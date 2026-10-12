@@ -51,5 +51,5 @@ USB-C 单线供电与键鼠数据的开机初始化见 [docs/usb-pd.md](docs/usb
 - [x] HDMI 输入采集：vdin0 → vfm_cap，4K60 UYVY 抓帧（见 `docs/bringup-log.md` §8）
 - [x] 采集→硬件编码：`vfmcapsrc ! amlvenc`，1080p60 H.264 零拷贝（[gst-plugin-vfmcap](https://github.com/vim4-kvm/gst-plugin-vfmcap)）
 - [x] OTG gadget：HID 键盘 + 绝对/相对鼠标 + NCM（Mac 键鼠实测通过；NCM IP 通信待验证）
-- [x] JetKVM 网页 + WebRTC：1080p60 H.264、浏览器键鼠输入、刷新重连及整机重启
+- [x] JetKVM 网页 + WebRTC：默认 4K H.264 12Mbps、浏览器键鼠输入、刷新重连及整机重启；4K60 输入下浏览器接收约 60fps、呈现约 57fps，支持配置回退到 1080p/720p
 - [ ] 音频、虚拟介质、视频设置与热插拔恢复

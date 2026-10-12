@@ -4,6 +4,7 @@ After=tvserver.service
 Requires=tvserver.service
 
 [Service]
+EnvironmentFile=-/etc/default/vim4-kvm-hdmi
 ExecStart=/usr/local/sbin/hdmi-setup.sh
 Restart=on-failure
 RestartSec=3

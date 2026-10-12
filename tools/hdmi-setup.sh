@@ -3,12 +3,16 @@
 #   HDMI RX port 1 -> vdin0 (8-bit NV21, hw scaled) -> vfm_cap (standalone)
 # then open the source through tvserver (hdmiin-demo) and keep it open.
 #
-# Usage: hdmi-setup.sh [WIDTH HEIGHT]     (default 1920 1080)
+# Usage: hdmi-setup.sh [WIDTH HEIGHT]     (default 3840 2160)
 # Runs as root (vim4-kvm-hdmi.service).
 set -eu
 
-W=${1:-1920}
-H=${2:-1080}
+W=${1:-${HDMI_WIDTH:-3840}}
+H=${2:-${HDMI_HEIGHT:-2160}}
+case "$W:$H" in
+	3840:2160|1920:1080|1280:720) ;;
+	*) echo "Unsupported capture size: $W x $H (use 3840x2160, 1920x1080 or 1280x720)" >&2; exit 2 ;;
+esac
 MAP=/sys/class/vfm/map
 VDIN=/sys/class/vdin/vdin0/attr
 
