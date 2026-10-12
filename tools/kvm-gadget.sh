@@ -16,7 +16,8 @@ hid() { # name protocol subclass report_length descriptor-hex
 	echo $2 > $G/functions/hid.$1/protocol
 	echo $3 > $G/functions/hid.$1/subclass
 	echo $4 > $G/functions/hid.$1/report_length
-	printf '%b' "$(echo "$5" | sed 's/../\\x&/g')" > $G/functions/hid.$1/report_desc
+	# dash's printf does not decode hex escapes; write actual descriptor bytes.
+	python3 -c 'import sys; sys.stdout.buffer.write(bytes.fromhex(sys.argv[1]))' "$5" > $G/functions/hid.$1/report_desc
 	ln -s $G/functions/hid.$1 $G/configs/c.1/
 }
 
@@ -62,7 +63,7 @@ start() {
 	echo 250 > $G/configs/c.1/MaxPower
 
 	# keyboard: modifiers, reserved, 5 LED outputs, 6 keys
-	hid keyboard 1 1 8 05010906a101050719e029e71500250175019508810295017508810195057501050819012905910295017503910195067508150026ff000507190029ff008100c0
+	hid keyboard 1 1 8 05010906a101050719e029e71500250175019508810295017508810195057501050819012905910295017503910195067508150026ff00050719002aff008100c0
 	# absolute pointer: 5 buttons, X/Y 0..32767, wheel
 	hid mouse_abs 0 0 6 05010902a1010901a100050919012905150025019505750181029501750381010501093016000026ff7f751095018102093116000026ff7f75109501810209381581257f750895018106c0c0
 	# relative mouse: 5 buttons, X/Y -127..127, wheel
