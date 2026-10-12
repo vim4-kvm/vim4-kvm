@@ -1,0 +1,1 @@
+SUBSYSTEM=="video4linux", ATTR{name}=="vfm_cap", SYMLINK+="video_cap", GROUP="video", MODE="0660"

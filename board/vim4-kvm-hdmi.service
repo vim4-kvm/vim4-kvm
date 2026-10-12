@@ -1,0 +1,12 @@
+[Unit]
+Description=vim4-kvm HDMI-in capture path (vdin0 -> vfm_cap)
+After=tvserver.service
+Requires=tvserver.service
+
+[Service]
+ExecStart=/usr/local/sbin/hdmi-setup.sh
+Restart=on-failure
+RestartSec=3
+
+[Install]
+WantedBy=multi-user.target

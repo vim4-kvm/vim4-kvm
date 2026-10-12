@@ -13,6 +13,9 @@
 | `tools/oowow-flash.sh` | 在 OOWOW 下通过串口把镜像写入 eMMC（下载 → 校验 → 写入 → md5 验证） |
 | `tools/kernel-install.sh` | 板上安装自编内核包，设为默认并保留 `Stock` 启动项 |
 | `tools/hdmi-capture.sh` | 板上经 vfm_cap 抓一帧 HDMI 输入存为 PNG |
+| `tools/hdmi-setup.sh` | 配置 vdin0（8bit、NV21 硬件缩放、线性写入）+ vfm_cap standalone 并打开 HDMI 源 |
+| `tools/kvm-gadget.sh` | USB gadget：HID 键盘 + 绝对/相对鼠标 + NCM |
+| `board/` | 板上安装：systemd 服务、udev 规则、`install.sh` |
 | [docs/kernel.md](docs/kernel.md) | 内核构建、安装、回退 |
 | `logs/` | 本地串口日志（不入库） |
 
@@ -21,6 +24,10 @@
 - 串口：Sipeed USB to Dual Uart，UART0 = `/dev/cu.usbserial-100`，921600 8N1
 - 交互串口：`brew install tio && tio -b 921600 /dev/cu.usbserial-100`（退出 `Ctrl-t q`）
 - SSH：`ssh vim4`（`~/.ssh/config` 中 `Host vim4` → `khadas@192.168.50.210`，密钥 `~/.ssh/id_ed25519_vim4_kvm`）
+
+板上安装（服务开机自启）：`scp -r board tools vim4:vim4-kvm/ && ssh vim4 'sudo sh vim4-kvm/board/install.sh'`
+
+采集编码示例：`gst-launch-1.0 -e vfmcapsrc ! queue ! amlvenc bitrate=8000 ! video/x-h264 ! h264parse ! mp4mux ! filesink location=cap.mp4`
 
 ```bash
 tools/uart-run.py 'uname -a'                       # 串口执行命令
@@ -35,5 +42,6 @@ tools/oowow-flash.sh --yes                          # 在 OOWOW 中重装默认 
 - [x] SSH 免密登录
 - [x] 自编内核 `5.15.137-vim4kvm`（[vim4-kvm/common_drivers](https://github.com/vim4-kvm/common_drivers) `vim4-kvm-5.15`）：风扇阈值 60/80/100、vfm_cap
 - [x] HDMI 输入采集：vdin0 → vfm_cap，4K60 UYVY 抓帧（见 `docs/bringup-log.md` §8）
-- [ ] OTG gadget 改为 HID 键鼠 + ECM/NCM（macOS 不支持 RNDIS）
+- [x] 采集→硬件编码：`vfmcapsrc ! amlvenc`，1080p60 H.264 零拷贝（[gst-plugin-vfmcap](https://github.com/vim4-kvm/gst-plugin-vfmcap)）
+- [x] OTG gadget：HID 键盘 + 绝对/相对鼠标 + NCM（待接被控机验证）
 - [ ] KVM 软件栈（先移植 PiKVM kvmd，后续评估 JetKVM 风格 Go + WebRTC + amlvenc）

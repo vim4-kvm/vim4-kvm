@@ -17,7 +17,7 @@ $M M=$PWD/common_drivers/drivers/media/vfm_cap modules        # vfm_cap 树外�
 
 打包：`modules_install INSTALL_MOD_STRIP=1 INSTALL_MOD_PATH=~/stage`，`vfm_cap.ko` 放 `lib/modules/R/extra/amlogic/` 后 `depmod`；`boot/` 下放 `vmlinuz-R`、`System.map-R`、`config-R`、`dtb-R/amlogic/kvim4{,n}.dtb`；打成 `vim4kvm-R.tgz`。
 
-只改了 vdin 等 `aml_media` 内的驱动时，可只 `$M modules`，把 `common_drivers/drivers/media/aml_media.ko`（`strip --strip-debug`）覆盖到板上 `modinfo -n aml_media` 的位置，`depmod` + `update-initramfs -u -k R` 后重启。
+只改了单个模块（如 `vfm_cap.ko`、`amvenc_multi.ko`）时同理替换对应 `.ko`；vfm_cap 被 tvpath 引用时先 `echo rm tvpath > /sys/class/vfm/map` 再卸载。只改了 vdin 等 `aml_media` 内的驱动时，可只 `$M modules`，把 `common_drivers/drivers/media/aml_media.ko`（`strip --strip-debug`）覆盖到板上 `modinfo -n aml_media` 的位置，`depmod` + `update-initramfs -u -k R` 后重启。
 
 ## 安装
 
@@ -52,3 +52,5 @@ U-Boot 读 p1 的 `/extlinux/extlinux.conf`；`APPEND` 中的变量来自 `/boot
 | media: add vfm_cap | VFM 链路 V4L2 抓帧 + DMA-buf 导出，支持无下游的 standalone 模式 |
 | vdin: only force-stop on release by the V4L2 queue owner | 修正上面 vdin1 补丁：任何进程关闭 video70/71 都会强停 tvserver 启动的 vdin0 |
 | vfm_cap: test_dmabuf: device path + frame dump | `tools/hdmi-capture.sh` 使用 |
+| vfm_cap: count contiguous chroma plane in canvas size check | NV21/NV12 输出不再每帧被丢 |
+| amvenc_multi: power off wave521 on last release | 原代码关电时调了 poweron，编码进程被 kill 后编码器卡死到重启 |

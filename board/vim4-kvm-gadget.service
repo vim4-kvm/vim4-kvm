@@ -1,0 +1,13 @@
+[Unit]
+Description=vim4-kvm USB gadget (HID keyboard/mouse + NCM)
+After=sys-kernel-config.mount
+Conflicts=usb-gadget-khadas.service
+
+[Service]
+Type=oneshot
+RemainAfterExit=yes
+ExecStart=/usr/local/sbin/kvm-gadget.sh start
+ExecStop=/usr/local/sbin/kvm-gadget.sh stop
+
+[Install]
+WantedBy=multi-user.target
