@@ -37,6 +37,9 @@ tools/oowow-flash.sh --yes                          # 在 OOWOW 中重装默认 
 
 ## 当前状态
 
+USB-C 单线供电与键鼠数据的开机初始化见 [docs/usb-pd.md](docs/usb-pd.md)。
+`board/install.sh` 会编译并启用 PD 服务；已在 Mac 上验证整机重启后自动枚举和实际输入。
+
 - [x] 串口控制台
 - [x] 刷入 Ubuntu 24.04.3 Server（fenix 1.7.5，kernel 5.15.137）
 - [x] SSH 免密登录

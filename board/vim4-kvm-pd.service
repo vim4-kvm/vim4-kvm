@@ -1,0 +1,16 @@
+[Unit]
+Description=VIM4 USB-capable PD contract at boot
+Requires=vim4-kvm-gadget.service
+After=vim4-kvm-gadget.service
+ConditionPathExists=/dev/i2c-6
+
+[Service]
+Type=oneshot
+ExecStart=/usr/local/sbin/usb-pd-init
+RemainAfterExit=yes
+TimeoutStartSec=30
+# No automatic retry: a negotiation error must not become a power-reset loop.
+Restart=no
+
+[Install]
+WantedBy=multi-user.target
