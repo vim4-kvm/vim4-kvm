@@ -1,6 +1,10 @@
 # 内核
 
-khadas/linux `khadas-vims-5.15.y`（未修改）+ [vim4-kvm/common_drivers](https://github.com/vim4-kvm/common_drivers) `vim4-kvm-5.15` 分支。发布名 `5.15.137-vim4kvm`，与原厂 `5.15.137` 的模块目录并存。
+[vim4-kvm/linux](https://github.com/vim4-kvm/linux) 基于 Khadas 官方 `khadas-vims-5.15.y`
+（4e557e233），工作分支 `vim4-kvm-5.15`；配合官方 fork
+[vim4-kvm/common_drivers](https://github.com/vim4-kvm/common_drivers) 的同名分支。
+发布名 `5.15.137-vim4kvm`，与原厂 `5.15.137` 的模块目录并存。
+主内核工作树保留在 VM，Mac 不检出内核文件；不要以第三方整套内核替代官方基线。
 
 ## 构建（OrbStack VM `vim4-build`，Ubuntu 24.04 arm64）
 
@@ -20,6 +24,34 @@ $M M=$PWD/common_drivers/drivers/media/vfm_cap modules        # vfm_cap 树外�
 只改了单个模块（如 `vfm_cap.ko`、`amvenc_multi.ko`）时同理替换对应 `.ko`；vfm_cap 被 tvpath 引用时先 `echo rm tvpath > /sys/class/vfm/map` 再卸载。只改了 vdin 等 `aml_media` 内的驱动时，可只 `$M modules`，把 `common_drivers/drivers/media/aml_media.ko`（`strip --strip-debug`）覆盖到板上 `modinfo -n aml_media` 的位置，`depmod` + `update-initramfs -u -k R` 后重启。
 
 ## 安装
+
+### 自动风扇与编码器频率
+
+主内核提交 `8df3bdb55` 增加 MCU 百分比调速；`cd7f74066` 修正紧急全速、
+温度读取失败时全速、手动模式下改温度阈值不干预输出，以及同步取消调速任务。
+两项提交当前保存在 VM 工作分支，尚未推送。对应模块为 `khadas-mcu.ko`：
+
+```sh
+make ARCH=arm64 CC=gcc-12 M=drivers/misc khadas-mcu.ko -j10
+```
+
+用此模块替换板上 `modinfo -n khadas_mcu` 的文件，执行 `depmod -a`、
+`update-initramfs -u -k 5.15.137-vim4kvm` 后重启。测试策略函数：
+`sh tools/test-fan-policy.sh /path/to/linux/drivers/misc/khadas-mcu.c`。
+
+默认自动模式保留 60/80/100°C 阈值，连续曲线为 45°C→5%、55°C→25%、
+60°C→35%、80°C→70%、100°C→100%；低于 45°C 停转。
+每 30 秒采样一次，非紧急调速每次最多变化 5 个百分点；达到全速条件时立即
+跳至 100%。`/sys/class/fan/speed` 是控制百分比，没有转速计反馈，不是实测 RPM。
+
+`board/90-vim4-encoder.conf` 将 Wave521 A/B/C 三路设置为 666666666Hz。
+原始 A 已为约 666MHz，B/C 为 500MHz。CPU、总线和电压保持默认。
+`board/install.sh` 安装该配置；已加载的模块需重启系统后生效。
+若模块被打进 initramfs，先运行 `update-initramfs -u -k 5.15.137-vim4kvm`。
+回退：删除 `/etc/modprobe.d/90-vim4-encoder.conf`，更新 initramfs 后重启。
+此配置是提频运行，短期测试通过不代表所有板子、负载和环境下均稳定。
+
+### 完整内核包
 
 ```sh
 scp vim4kvm-R.tgz tools/kernel-install.sh vim4:/tmp/

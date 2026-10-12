@@ -9,6 +9,7 @@ install -m 0755 "$pd_binary" /usr/local/sbin/usb-pd-init
 install -m 0755 ../tools/hdmi-setup.sh /usr/local/sbin/hdmi-setup.sh
 install -m 0755 ../tools/kvm-gadget.sh /usr/local/sbin/kvm-gadget.sh
 install -m 0644 99-vfm-cap.rules /etc/udev/rules.d/99-vfm-cap.rules
+install -m 0644 90-vim4-encoder.conf /etc/modprobe.d/90-vim4-encoder.conf
 install -m 0644 vim4-kvm-hdmi.service vim4-kvm-gadget.service vim4-kvm-pd.service /etc/systemd/system/
 udevadm control --reload
 udevadm trigger --subsystem-match=video4linux
