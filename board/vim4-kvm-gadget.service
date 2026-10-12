@@ -1,5 +1,5 @@
 [Unit]
-Description=vim4-kvm USB gadget (HID keyboard/mouse + NCM)
+Description=vim4-kvm USB gadget (HID, NCM and image media functions)
 After=sys-kernel-config.mount
 Conflicts=usb-gadget-khadas.service
 

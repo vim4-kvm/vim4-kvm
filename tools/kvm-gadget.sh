@@ -4,6 +4,7 @@
 #   hidg1 absolute mouse (0..32767)
 #   hidg2 relative mouse (boot protocol, for BIOS/UEFI)
 #   ncm   network (macOS/Linux/Windows 10+ native)
+#   disk  removable virtual media (empty until mounted by the application)
 #
 # Usage: kvm-gadget.sh start|stop     (vim4-kvm-gadget.service)
 set -eu
@@ -16,6 +17,9 @@ hid() { # name protocol subclass report_length descriptor-hex
 	echo $2 > $G/functions/hid.$1/protocol
 	echo $3 > $G/functions/hid.$1/subclass
 	echo $4 > $G/functions/hid.$1/report_length
+	# Input uses interrupt IN; keyboard LEDs use control SET_REPORT.
+	# Avoid reserving interrupt OUT buffers for these tiny output reports.
+	echo 1 > $G/functions/hid.$1/no_out_endpoint
 	# dash's printf does not decode hex escapes; write actual descriptor bytes.
 	python3 -c 'import sys; sys.stdout.buffer.write(bytes.fromhex(sys.argv[1]))' "$5" > $G/functions/hid.$1/report_desc
 	ln -s $G/functions/hid.$1 $G/configs/c.1/
@@ -58,7 +62,7 @@ start() {
 	echo "vim4-kvm Composite Device" > $G/strings/0x409/product
 
 	mkdir -p $G/configs/c.1/strings/0x409
-	echo "HID + NCM" > $G/configs/c.1/strings/0x409/configuration
+	echo "HID + NCM + Mass Storage" > $G/configs/c.1/strings/0x409/configuration
 	echo 0x80 > $G/configs/c.1/bmAttributes
 	echo 250 > $G/configs/c.1/MaxPower
 
@@ -73,6 +77,12 @@ start() {
 	echo "12$MAC" > $G/functions/ncm.usb0/host_addr
 	echo "02$MAC" > $G/functions/ncm.usb0/dev_addr
 	ln -s $G/functions/ncm.usb0 $G/configs/c.1/
+
+	mkdir -p $G/functions/mass_storage.disk0
+	echo 1 > $G/functions/mass_storage.disk0/lun.0/removable
+	echo 1 > $G/functions/mass_storage.disk0/lun.0/ro
+	# The application exchanges NCM for this function while media is mounted.
+	# Six simultaneous IN endpoints currently fail CRG CONFIG_EP on this board.
 
 	echo "$UDC" > $G/UDC
 }
