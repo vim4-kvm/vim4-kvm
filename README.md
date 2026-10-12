@@ -40,11 +40,16 @@ tools/oowow-flash.sh --yes                          # 在 OOWOW 中重装默认 
 USB-C 单线供电与键鼠数据的开机初始化见 [docs/usb-pd.md](docs/usb-pd.md)。
 `board/install.sh` 会编译并启用 PD 服务；已在 Mac 上验证整机重启后自动枚举和实际输入。
 
+网页入口：**http://192.168.50.210:8080**。应用代码位于同级 `kvm/` 仓库的
+`vim4` 分支，构建安装见其中 `VIM4.md`。`vim4-kvm.service` 以 khadas 运行，
+已验证整机重启后自动恢复视频和键鼠。当前网页使用本地免密码模式。
+
 - [x] 串口控制台
 - [x] 刷入 Ubuntu 24.04.3 Server（fenix 1.7.5，kernel 5.15.137）
 - [x] SSH 免密登录
 - [x] 自编内核 `5.15.137-vim4kvm`（[vim4-kvm/common_drivers](https://github.com/vim4-kvm/common_drivers) `vim4-kvm-5.15`）：风扇阈值 60/80/100、vfm_cap
 - [x] HDMI 输入采集：vdin0 → vfm_cap，4K60 UYVY 抓帧（见 `docs/bringup-log.md` §8）
 - [x] 采集→硬件编码：`vfmcapsrc ! amlvenc`，1080p60 H.264 零拷贝（[gst-plugin-vfmcap](https://github.com/vim4-kvm/gst-plugin-vfmcap)）
-- [x] OTG gadget：HID 键盘 + 绝对/相对鼠标 + NCM（待接被控机验证）
-- [ ] KVM 软件栈（先移植 PiKVM kvmd，后续评估 JetKVM 风格 Go + WebRTC + amlvenc）
+- [x] OTG gadget：HID 键盘 + 绝对/相对鼠标 + NCM（Mac 键鼠实测通过；NCM IP 通信待验证）
+- [x] JetKVM 网页 + WebRTC：1080p60 H.264、浏览器键鼠输入、刷新重连及整机重启
+- [ ] 音频、虚拟介质、视频设置与热插拔恢复
