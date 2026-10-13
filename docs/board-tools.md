@@ -12,7 +12,7 @@
 | 用户态打包与隔离验证 | tools/ubuntu-build.py package / verify | 否 |
 | 内核包与整机镜像 | tools/ubuntu-image.py kernel / assemble / verify / export | 否 |
 | 只读服务检查 | tools/board.py check | SSH 读取、HTTP GET |
-| 增量安装四组件包 | tools/install-components.sh --exclusive PACKAGE_DIRECTORY | 板上安装，重启 NanoKVM |
+| 增量安装四组件包 | tools/board.py deploy --exclusive（板上调用 install-components.sh） | 板上安装，重启 NanoKVM |
 | 浏览器视频冒烟测试 | tools/video-smoke.mjs | 打开一个 WebRTC 会话 |
 | 从 Ubuntu 进入 OOWOW | tools/board.py recover --exclusive | 重启，中断 KVM |
 | 整机刷写 | tools/board.py flash（见下） | 清空 eMMC，重启 |
@@ -31,12 +31,15 @@ board.py，以便校验导出清单、限制文件共享范围并记录全过程
 version=1.0.3+vim4.20261012.1
 python3 tools/ubuntu-build.py package --version "$version"
 python3 tools/ubuntu-build.py verify --version "$version"
-scp -r "build/packages/$version" vim4:/home/khadas/
-scp tools/install-components.sh vim4:/home/khadas/
-ssh -t vim4 "sudo bash /home/khadas/install-components.sh --exclusive /home/khadas/$version"
-python3 tools/board.py check
+python3 tools/board.py deploy --exclusive --packages "build/packages/$version"
 PLAYWRIGHT_MODULE=/absolute/path/to/playwright/index.mjs node tools/video-smoke.mjs
 ```
+
+board.py deploy 先在本地按 SHA256SUMS 校验四个 deb 和 sources.json 并输出脏源码仓库
+（--dry-run 到此为止），记录板上原有版本（Previous 行，回退时用对应目录再次 deploy），
+上传整个包目录与安装脚本到板上临时目录，以 sudo 运行 install-components.sh，
+确认四包版本一致后运行 check。sudo 规则同 recover；无终端时用 --sudo-password-stdin。
+安装失败时 NanoKVM 保持停止，先 `dpkg --audit` 检查，不要连续重试。
 
 示例版本已部署，重新构建使用新版本。安装脚本验证四包的 SHA256、名称、架构、
 相同版本和非降级条件，先模拟 APT 安装，随后暂停并重启 NanoKVM。保留应用配置。
@@ -119,5 +122,6 @@ python3 -m unittest discover -s tests -p 'test_*.py'
 ```
 
 离线测试覆盖损坏镜像拒绝、确认开关、dry-run 无硬件访问、HTTP 文件隔离、写入失败
-禁止重启、串口退出码和缺失完成标记。此工具尚未实际重启或刷写 VIM4，不能仅凭
+禁止重启、串口退出码和缺失完成标记；部署覆盖包集合校验、委托板上安装脚本、
+版本不一致时不报告通过、sudo 密码不进入命令行。此工具尚未实际重启或刷写 VIM4，不能仅凭
 离线测试将它标记为已完成实机验证。

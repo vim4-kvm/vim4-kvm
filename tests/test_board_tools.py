@@ -120,6 +120,67 @@ class BoardToolsTests(unittest.TestCase):
                 instance.job('write-command', 'write', 10)
             self.assertEqual(uart_call.call_count, 1)
 
+    def packages(self, directory, version='1.0~test1'):
+        folder = Path(directory) / version
+        folder.mkdir()
+        files = [folder / f'{name}_{version}_arm64.deb' for name in board.COMPONENTS]
+        for path in files:
+            path.write_bytes(path.name.encode())
+        sources = folder / 'sources.json'
+        sources.write_text('{"sources": {".": {"dirty": false}, "NanoKVM-Pro": {"dirty": true}}}')
+        (folder / 'SHA256SUMS').write_text(''.join(
+            hashlib.sha256(p.read_bytes()).hexdigest() + '  ' + p.name + '\n' for p in files + [sources]))
+        return folder
+
+    def test_package_set_validated_before_board_access(self):
+        with tempfile.TemporaryDirectory() as directory:
+            folder = self.packages(directory)
+            version, debs, dirty = board.package_metadata(folder)
+            self.assertEqual((version, len(debs), dirty), ('1.0~test1', 4, ['NanoKVM-Pro']))
+            debs[3].write_bytes(b'tampered')
+            with self.assertRaisesRegex(ValueError, 'vim4-nanokvm.*SHA256'):
+                board.package_metadata(folder)
+            debs[3].unlink()
+            with self.assertRaisesRegex(ValueError, 'vim4-nanokvm'):
+                board.package_metadata(folder)
+
+    def test_deploy_requires_exclusivity_and_dry_run_is_offline(self):
+        with tempfile.TemporaryDirectory() as directory:
+            folder = self.packages(directory)
+            with patch.object(board.subprocess, 'run', side_effect=AssertionError('hardware access')):
+                for args in (['deploy', '--packages', str(folder)], ['deploy', '--exclusive']):
+                    with self.assertRaises(SystemExit) as exc, patch('sys.stderr', io.StringIO()):
+                        board.main(args)
+                    self.assertEqual(exc.exception.code, 2)
+                board.main(['deploy', '--exclusive', '--packages', str(folder), '--dry-run'])
+
+    def test_deploy_delegates_to_board_installer_and_rejects_mismatch(self):
+        with tempfile.TemporaryDirectory() as directory:
+            metadata = board.package_metadata(self.packages(directory))
+            instance = board.Board(SimpleNamespace(host='vim4'), io.StringIO())
+            ssh_result = SimpleNamespace(stdout='/tmp/vim4-deploy.x\n', returncode=0)
+            old = {name: '0.9' for name in board.COMPONENTS}
+            with patch.object(instance, 'ssh', return_value=ssh_result), patch.object(instance, 'run') as run, \
+                 patch.object(instance, 'sudo') as sudo, patch.object(instance, 'check') as check, \
+                 patch.object(instance, 'installed_versions', side_effect=[old, old]):
+                with self.assertRaisesRegex(RuntimeError, 'Installed versions differ'):
+                    instance.deploy(metadata)
+            check.assert_not_called()
+            sudo.assert_called_once()
+            self.assertIn('install-components.sh --exclusive /tmp/vim4-deploy.x', sudo.call_args.args[0])
+            copied = run.call_args.args[0]
+            self.assertTrue(any(path.endswith('tools/install-components.sh') for path in copied))
+            self.assertTrue(any(path.endswith('SHA256SUMS') for path in copied))
+
+    def test_sudo_password_never_reaches_command_stdin(self):
+        instance = board.Board(SimpleNamespace(sudo_password_stdin=True), io.StringIO())
+        with patch('sys.stdin', io.StringIO('secret\n')), patch.object(instance, 'ssh') as ssh:
+            instance.sudo('true')
+            instance.sudo('true')
+        for call in ssh.call_args_list:
+            self.assertTrue(call.args[0].startswith("sudo -k -S -p '' "))
+            self.assertNotIn('secret', call.args[0])
+
     def test_uart_status_and_missing_completion(self):
         self.assertEqual(uart.parse_result('echo command\r\nBEGIN\r\nfailed\r\nDONE:7\r\n', 'BEGIN', 'DONE'), ('failed', 7))
         with self.assertRaises(TimeoutError):

@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Explicit board recovery, verified image flashing and read-only smoke checks."""
+"""Explicit board recovery, verified image flashing, component deployment and smoke checks."""
 import argparse
 import contextlib
 import fcntl
@@ -7,6 +7,7 @@ import getpass
 import hashlib
 import http.server
 import ipaddress
+import json
 import lzma
 import os
 from pathlib import Path
@@ -46,6 +47,30 @@ def image_metadata(image):
     return image, digest, raw_digest.hexdigest(), size
 
 
+COMPONENTS = ('vim4-kvm-board', 'vim4-vfmcap', 'vim4-amlvenc', 'vim4-nanokvm')
+
+
+def package_metadata(directory):
+    """Validate one ubuntu-build.py output set before copying it to the board."""
+    directory = directory.resolve(strict=True)
+    entries = {}
+    for line in (directory / 'SHA256SUMS').read_text().splitlines():
+        digest, name = line.split(maxsplit=1)
+        entries[name.lstrip('*')] = digest
+    version = directory.name
+    debs = [directory / f'{name}_{version}_arm64.deb' for name in COMPONENTS]
+    # Mixed versions would let dpkg pair a new server with old helpers.
+    for path in debs + [directory / 'sources.json']:
+        if path.name not in entries or not path.is_file():
+            raise ValueError(f'{path.name} is missing from SHA256SUMS; expected all components at {version}')
+        with path.open('rb') as stream:
+            if hashlib.file_digest(stream, 'sha256').hexdigest() != entries[path.name]:
+                raise ValueError(f'{path.name} SHA256 does not match SHA256SUMS')
+    sources = json.loads((directory / 'sources.json').read_text())
+    dirty = sorted(name for name, source in sources['sources'].items() if source['dirty'])
+    return version, debs, dirty
+
+
 @contextlib.contextmanager
 def serve_image(image, address):
     # Serve one unguessable URL, never a directory or other workspace files.
@@ -80,6 +105,7 @@ def serve_image(image, address):
 class Board:
     def __init__(self, args, log):
         self.args, self.log = args, log
+        self.password = self.password_read = None
 
     def note(self, message):
         print(message, flush=True)
@@ -100,23 +126,30 @@ class Board:
         return self.run([sys.executable, str(ROOT / 'tools/uart-run.py'),
                          '-d', self.args.device, '-t', '15', command], timeout=20).stdout
 
-    def ssh(self, command, check=True, input_text=None):
+    def ssh(self, command, check=True, input_text=None, timeout=30):
         return self.run(['ssh', '-o', 'BatchMode=yes', '-o', 'ConnectTimeout=5',
-                         self.args.host, command], check=check, input_text=input_text)
+                         self.args.host, command], timeout=timeout, check=check, input_text=input_text)
+
+    def sudo(self, command, timeout=30):
+        # The password stays in memory and travels only on SSH stdin. -k makes
+        # sudo always consume it; with cached credentials it would otherwise
+        # reach the command's stdin.
+        if not self.password_read:
+            self.password_read = True
+            if self.args.sudo_password_stdin:
+                self.password = sys.stdin.readline().rstrip('\n') + '\n'
+            elif self.ssh('sudo -n true', check=False).returncode:
+                if not sys.stdin.isatty():
+                    raise RuntimeError('sudo requires credentials; use --sudo-password-stdin with a secret provider')
+                self.password = getpass.getpass('VIM4 sudo password: ') + '\n'
+        prefix = "sudo -k -S -p '' " if self.password is not None else 'sudo -n '
+        return self.ssh(prefix + command, input_text=self.password, timeout=timeout)
 
     def recover(self):
         # Authenticate before scheduling a reset. Never treat a dropped SSH link
         # as proof that OOWOW started; confirm its serial shell separately.
         self.ssh("grep -qi 'Khadas VIM4' /proc/device-tree/model && test -x /usr/local/bin/reboot2oowow")
-        password = None
-        if self.args.sudo_password_stdin:
-            password = sys.stdin.readline().rstrip('\n') + '\n'
-        elif self.ssh('sudo -n true', check=False).returncode:
-            if not sys.stdin.isatty():
-                raise RuntimeError('sudo requires credentials; use --sudo-password-stdin with a secret provider')
-            password = getpass.getpass('VIM4 sudo password: ') + '\n'
-        sudo = "sudo -S -p ''" if password is not None else 'sudo -n'
-        self.ssh(sudo + " sh -c 'nohup sh -c \"sleep 2; sync; /usr/local/bin/reboot2oowow\" </dev/null >/tmp/vim4-recovery.log 2>&1 &'", input_text=password)
+        self.sudo("sh -c 'nohup sh -c \"sleep 2; sync; /usr/local/bin/reboot2oowow\" </dev/null >/tmp/vim4-recovery.log 2>&1 &'")
         self.run([sys.executable, str(ROOT / 'tools/uart-log.py'), '-d', self.args.device,
                   '-t', '60', '-o', str(self.args.log_dir / 'recovery-uart.log')], timeout=70)
         self.require_oowow()
@@ -165,6 +198,39 @@ class Board:
         # Fresh images intentionally do not contain the developer SSH key.
         self.note('Flash and boot capture complete. Run check after verifying SSH identity and installing your public key.')
 
+    def installed_versions(self):
+        output = self.ssh("dpkg-query -W -f '${Package} ${Version}\\n' " + ' '.join(COMPONENTS), check=False).stdout
+        return dict(line.split() for line in output.splitlines() if len(line.split()) == 2)
+
+    def deploy(self, metadata):
+        version, debs, dirty = metadata
+        self.note(f'Packages={version} dirty_sources={",".join(dirty) or "none"}')
+        self.ssh("grep -qi 'Khadas VIM4' /proc/device-tree/model")
+        previous = self.installed_versions()
+        # Recorded so an operator can redeploy the earlier build/packages set.
+        self.note('Previous: ' + ' '.join(f'{name}={previous.get(name, "absent")}' for name in COMPONENTS))
+        remote = self.ssh('mktemp -d /tmp/vim4-deploy.XXXXXX').stdout.strip().splitlines()[-1]
+        try:
+            # The installer checks every SHA256SUMS entry, so copy the whole set.
+            files = sorted(path for path in debs[0].parent.iterdir() if path.is_file())
+            self.run(['scp', '-q', '-o', 'BatchMode=yes', *map(str, files),
+                      str(ROOT / 'tools/install-components.sh'), f'{self.args.host}:{remote}/'], timeout=300)
+            # The board-side script owns verification, migration and restart;
+            # keep a single installation implementation.
+            self.sudo(f'bash {remote}/install-components.sh --exclusive {remote}', timeout=900)
+        finally:
+            self.ssh(f'rm -rf {remote}', check=False)
+        installed = self.installed_versions()
+        wrong = [name for name in COMPONENTS if installed.get(name) != version]
+        if wrong:
+            raise RuntimeError('Installed versions differ for ' + ', '.join(wrong))
+        # Give the server time to bind 8080 before the smoke check.
+        for _ in range(15):
+            if not self.ssh('curl -fsS --max-time 2 -o /dev/null http://127.0.0.1:8080/', check=False).returncode:
+                break
+            time.sleep(1)
+        self.check()
+
     def check(self):
         # is-active with multiple units succeeds if ANY unit is active.
         self.ssh("set -eu; for service in tvserver vim4-kvm-hdmi vim4-kvm-gadget nanokvm; do "
@@ -179,10 +245,11 @@ class Board:
 
 def main(argv=None):
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument('action', choices=['recover', 'flash', 'check'])
+    parser.add_argument('action', choices=['recover', 'flash', 'deploy', 'check'])
     parser.add_argument('--host', default='vim4')
     parser.add_argument('--device', default='/dev/cu.usbserial-100')
     parser.add_argument('--image', type=Path)
+    parser.add_argument('--packages', type=Path, help='ubuntu-build.py output, e.g. build/packages/VERSION')
     parser.add_argument('--serve-address', help='Mac LAN IPv4 reachable from OOWOW')
     parser.add_argument('--already-oowow', action='store_true')
     parser.add_argument('--sudo-password-stdin', action='store_true', help='read one password line; never store it in arguments or logs')
@@ -193,7 +260,7 @@ def main(argv=None):
     parser.add_argument('--log-dir', type=Path)
     args = parser.parse_args(argv)
     if args.action != 'check' and not args.exclusive:
-        parser.error('recover/flash requires --exclusive after coordinating board access')
+        parser.error('recover/flash/deploy requires --exclusive after coordinating board access')
     if args.action == 'flash':
         if not args.yes_erase_emmc or not args.image or not args.serve_address:
             parser.error('flash requires --yes-erase-emmc, --image and --serve-address')
@@ -202,8 +269,15 @@ def main(argv=None):
             parser.error('--serve-address must be a reachable LAN IPv4 address')
         metadata = image_metadata(args.image)
         print(f'Image verified: {metadata[0].name}; raw bytes={metadata[3]}', flush=True)
+    if args.action == 'deploy':
+        if not args.packages:
+            parser.error('deploy requires --packages')
+        metadata = package_metadata(args.packages)
+        print(f'Packages verified: {metadata[0]}', flush=True)
     if args.dry_run:
-        print(f'DRY RUN: {args.action}; no board access. Flash sequence: recover → OOWOW check → download/checksum → write → readback → reboot/log.')
+        sequences = {'flash': 'recover → OOWOW check → download/checksum → write → readback → reboot/log',
+                     'deploy': 'copy → install-components.sh (checksum, APT simulate, migrate, restart nanokvm) → version check → check'}
+        print(f'DRY RUN: {args.action}; no board access. Sequence: {sequences.get(args.action, args.action)}.')
         return
     args.log_dir = args.log_dir or ROOT / 'logs' / ('board-' + time.strftime('%Y%m%d-%H%M%S') + '-' + uuid.uuid4().hex[:6])
     args.log_dir.mkdir(parents=True, exist_ok=False, mode=0o700)
@@ -212,7 +286,7 @@ def main(argv=None):
     with (ROOT / 'logs/board.lock').open('w') as lock, (args.log_dir / 'operations.log').open('w') as log:
         fcntl.flock(lock, fcntl.LOCK_EX | fcntl.LOCK_NB)
         print(f'Logs: {args.log_dir}', flush=True)
-        if args.action != 'check':
+        if args.action in ('recover', 'flash'):
             # Fail before resetting a board when its serial adapter is missing,
             # busy, or cannot be configured at the expected baud rate.
             uart = __import__('uart-run')
@@ -221,6 +295,8 @@ def main(argv=None):
         board = Board(args, log)
         if args.action == 'flash':
             board.flash(metadata)
+        elif args.action == 'deploy':
+            board.deploy(metadata)
         elif args.action == 'recover':
             board.recover()
         else:

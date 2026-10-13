@@ -1,7 +1,7 @@
 # 构建与部署
 
-板级自动化先读 [board-tools.md](../board-tools.md)：远程进入 OOWOW、本地镜像刷写、
-启动日志与只读服务检查统一使用 tools/board.py。
+板级自动化先读 [board-tools.md](../board-tools.md)：组件包部署、远程进入 OOWOW、
+本地镜像刷写、启动日志与只读服务检查统一使用 tools/board.py。
 
 Ubuntu 隔离构建与组件打包先读 [ubuntu-build.md](../ubuntu-build.md)。
 内核打包与离线候选镜像组装见 [ubuntu-image.md](../ubuntu-image.md)。

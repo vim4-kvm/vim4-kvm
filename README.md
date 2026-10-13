@@ -12,6 +12,10 @@ Agent 入口见 [AGENTS.md](AGENTS.md)，经验记录见 [LESSONS.md](LESSONS.md
 |---|---|
 | [docs/hardware.md](docs/hardware.md) | 硬件接口、串口接线、供电与 KVM 相关的硬件约束 |
 | [docs/bringup-log.md](docs/bringup-log.md) | 上板记录（按时间顺序，含踩坑） |
+| `tools/workspace.py` | 克隆/查看子仓库，本地构建 |
+| `tools/ubuntu-build.py` | Docker 中构建 Ubuntu ARM64 组件包 |
+| `tools/ubuntu-image.py` | 内核包与整机镜像组装（OrbStack） |
+| `tools/board.py` | 组件包部署、冒烟检查、远程进入 OOWOW、校验刷机（见 [docs/board-tools.md](docs/board-tools.md)） |
 | `tools/uart-run.py` | 通过串口在板子上执行命令并取回输出 |
 | `tools/uart-log.py` | 只读抓取串口日志（可选发送一条命令，如重启） |
 | `tools/oowow-flash.sh` | 在 OOWOW 下通过串口把镜像写入 eMMC（下载 → 校验 → 写入 → md5 验证） |
@@ -31,7 +35,7 @@ Agent 入口见 [AGENTS.md](AGENTS.md)，经验记录见 [LESSONS.md](LESSONS.md
 - 交互串口：`brew install tio && tio -b 921600 /dev/cu.usbserial-100`（退出 `Ctrl-t q`）
 - SSH：`ssh vim4`（`~/.ssh/config` 中 `Host vim4` → `khadas@192.168.50.210`，密钥 `~/.ssh/id_ed25519_vim4_kvm`）
 
-板上安装（服务开机自启）：`scp -r board tools vim4:vim4-kvm/ && ssh vim4 'sudo sh vim4-kvm/board/install.sh'`
+板上更新组件：`python3 tools/board.py deploy --exclusive --packages build/packages/VERSION`（见 [docs/board-tools.md](docs/board-tools.md)）
 
 采集编码示例：`gst-launch-1.0 -e vfmcapsrc ! queue ! amlvenc bitrate=8000 ! video/x-h264 ! h264parse ! mp4mux ! filesink location=cap.mp4`
 
