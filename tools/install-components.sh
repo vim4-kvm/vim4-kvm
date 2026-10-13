@@ -60,6 +60,9 @@ while IFS= read -r file; do
         *) rm -f -- "$file" ;;
     esac
 done < "$stage/migrate"
+# The root filesystem uses data=writeback: flush new files (sudoers included)
+# so a later kernel panic cannot leave them empty.
+sync
 systemctl daemon-reload
 # Manual installations enabled units using absolute /etc paths. Recreate those
 # links against the packaged units so the next boot does not silently skip KVM.
