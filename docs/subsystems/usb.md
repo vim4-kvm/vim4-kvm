@@ -1,7 +1,7 @@
 # USB 与供电
 
 先读 [USB-C 协商](../usb-pd.md)、[硬件接线](../hardware.md) 和
-[应用集成](../../NanoKVM-Pro/VIM4.md)。
+[应用集成](../../NanoKVM/VIM4.md)。
 
 键鼠输入延迟、长按和 Mac 滚轮方向的测试入口见 [输入验证](../input-latency.md)。
 

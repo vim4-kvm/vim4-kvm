@@ -29,6 +29,8 @@ def package(name, version, output, populate, depends):
     with tempfile.TemporaryDirectory(prefix=name) as directory:
         stage = Path(directory)
         populate(stage)
+        if name == 'vim4-nanokvm':
+            write(stage, 'opt/vim4-nanokvm/version', version + '\n')
         # Every installation entry point (including dpkg and the web updater)
         # must flush payloads before reporting success or restarting services.
         postinst = stage / 'DEBIAN/postinst'
@@ -79,12 +81,15 @@ def encoder(stage):
 
 
 def application(stage):
-    deploy = ROOT / 'NanoKVM-Pro/deploy/vim4'
+    deploy = ROOT / 'NanoKVM/deploy/vim4'
     copy(ROOT / 'build/NanoKVM-Server', stage, 'opt/vim4-nanokvm/NanoKVM-Server', 0o755)
-    shutil.copytree(ROOT / 'NanoKVM-Pro/web/dist', stage / 'opt/vim4-nanokvm/web')
-    shutil.copytree(ROOT / 'NanoKVM-Pro/support/assistant', stage / 'opt/vim4-nanokvm/assistant',
+    shutil.copytree(ROOT / 'NanoKVM/web/dist', stage / 'opt/vim4-nanokvm/web')
+    shutil.copytree(ROOT / 'NanoKVM/support/assistant', stage / 'opt/vim4-nanokvm/assistant',
                     ignore=shutil.ignore_patterns('__pycache__'))
-    copy(ROOT / 'NanoKVM-Pro/LICENSE', stage, 'usr/share/doc/vim4-nanokvm/copyright')
+    shutil.copytree(ROOT / 'NanoKVM/kvmapp/picoclaw', stage / 'opt/vim4-nanokvm/picoclaw',
+                    ignore=shutil.ignore_patterns('__pycache__'))
+    copy(deploy / 'picoclaw', stage, 'usr/libexec/vim4-picoclaw', 0o755)
+    copy(ROOT / 'NanoKVM/LICENSE', stage, 'usr/share/doc/vim4-nanokvm/copyright')
     for name in ('vim4-video', 'vim4-media', 'vim4-system', 'vim4-update', 'vim4-edid', 'vim4-tailscale'):
         copy(deploy / name, stage, 'usr/libexec/' + name, 0o755)
         copy(deploy / (name + '.sudoers'), stage, 'etc/sudoers.d/' + name, 0o440)
@@ -99,6 +104,7 @@ if [ "$1" = configure ]; then
     getent passwd khadas >/dev/null || { echo 'Requires the Khadas Ubuntu base account' >&2; exit 1; }
     install -d -o khadas -g khadas -m 0755 /etc/kvm /var/lib/vim4-kvm/images
     install -d -o khadas -g khadas -m 0700 /var/lib/kvm/update-jobs /var/lib/vim4-kvm/update-cache
+    install -d -o khadas -g khadas -m 0700 /var/lib/vim4-kvm/picoclaw
     if [ ! -e /etc/kvm/server.yaml ]; then
         install -o khadas -g khadas -m 0600 /usr/share/vim4-nanokvm/server.yaml /etc/kvm/server.yaml
     fi
@@ -150,7 +156,7 @@ def main():
         ('vim4-kvm-board', board, 'libc6 (>= 2.38), python3, systemd, udev, kmod, psmisc, iproute2, alsa-utils, hdmiin-demo (= 0.8-202305~noble)'),
         ('vim4-vfmcap', capture, gst),
         ('vim4-amlvenc', encoder, gst + ', libamvenc (= 0.2-202406~noble), libge2d (= 0.4-202406), gst-aml-drmbufferpool-plugins (= 0.2-202311)'),
-        ('vim4-nanokvm', application, gst + ', libopus0, sudo, python3, picocom, network-manager, avahi-daemon, openssh-server, chrony, alsa-utils, gstreamer1.0-alsa, gstreamer1.0-plugins-base, gstreamer1.0-plugins-good, gstreamer1.0-plugins-bad, gstreamer1.0-libav, vim4-kvm-board (>= 1.0.3+vim4.20261013.18), vim4-vfmcap, vim4-amlvenc (>= 1.0.3+vim4.20261013.18)'),
+        ('vim4-nanokvm', application, gst + ', libopus0, sudo, python3, curl, ca-certificates, picocom, network-manager, avahi-daemon, openssh-server, chrony, alsa-utils, gstreamer1.0-alsa, gstreamer1.0-plugins-base, gstreamer1.0-plugins-good, gstreamer1.0-plugins-bad, gstreamer1.0-libav, vim4-kvm-board (>= 1.0.3+vim4.20261013.18), vim4-vfmcap, vim4-amlvenc (>= 1.0.3+vim4.20261013.18)'),
         ('vim4-jetkvm', jetkvm, 'libc6 (>= 2.38), libglib2.0-0t64, libgstreamer1.0-0 (>= 1.24), '
          'libgstreamer-plugins-base1.0-0 (>= 1.24), gstreamer1.0-plugins-bad, '
          f'vim4-kvm-board (>= {version}), vim4-vfmcap (>= {version}), vim4-amlvenc (>= {version}), '

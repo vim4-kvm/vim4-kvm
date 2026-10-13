@@ -1,9 +1,10 @@
 # NanoKVM 应用
 
-先读 [VIM4 集成](../../NanoKVM-Pro/VIM4.md)，其中维护功能覆盖、
+先读 [VIM4 集成](../../NanoKVM/VIM4.md)，其中维护功能覆盖、
 构建、安装和限制；代码规范见 [code-standards.md](../code-standards.md)。
 
 当前可用功能、缺项与实测边界见 [功能状态](../feature-status.md)。
+当前基线的迁移范围与软件验证见 [NanoKVM 基线切换](../nanokvm-migration.md)。
 
 nanokvm.service 与 JetKVM 的 vim4-kvm.service 都监听 8080、以 khadas 运行，
 互相 Conflicts=，不能并发占用编码器或 HID。由 vim4-manager（80 端口）选择开机启用哪一个，

@@ -74,10 +74,10 @@ def status(repos):
 def build_plan(target, jobs, kernel_dir, vm):
     output = ROOT / 'build'
     plans = {
-        'frontend': [('NanoKVM-Pro/web', 'pnpm install --frozen-lockfile && VITE_PLATFORM=vim4 pnpm build')],
+        'frontend': [('NanoKVM/web', 'pnpm install --frozen-lockfile && VITE_PLATFORM=vim4 pnpm build')],
         'capture': [('gst-plugin-vfmcap', 'if [ -f build/build.ninja ]; then meson setup --reconfigure build; else meson setup build; fi && meson compile -C build')],
         'encoder': [('gst-plugin-venc', f'make -C amlvenc PKG_CONFIG=pkg-config CC=gcc -j{jobs}')],
-        'server': [('NanoKVM-Pro/server', 'go test -tags vim4 ./... && go build -tags vim4 -o '
+        'server': [('NanoKVM/server', 'go test -tags vim4 ./... && go build -tags vim4 -o '
                     + shlex.quote(str(output / 'NanoKVM-Server')) + ' .')],
         # JetKVM embeds its UI, so the device build must precede the Go build.
         'jetkvm': [('kvm', 'npm ci --prefix ui --ignore-scripts && npm --prefix ui run build:device && '

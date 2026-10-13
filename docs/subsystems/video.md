@@ -11,8 +11,8 @@ HDMI_LOW_LATENCY=0 恢复厂商自动策略。模式含义、对照结果及帧�
 
 - [采集插件](../../gst-plugin-vfmcap/README.md)：格式和 DMA-buf 生命周期。
 - [编码插件](../../gst-plugin-venc/VIM4.md)：帧率预算、安装和测试。
-- [应用与音频](../../NanoKVM-Pro/VIM4.md)：功能覆盖和构建。
-- [视频配置](../../NanoKVM-Pro/deploy/vim4/VIDEO.md)：RTP、码率、GOP。
+- [应用与音频](../../NanoKVM/VIM4.md)：功能覆盖和构建。
+- [视频配置](../../NanoKVM/deploy/vim4/VIDEO.md)：RTP、码率、GOP。
 - [端到端测量](../latency.md)：软件端点定义和观测开销。
 - [编码实验记录](../encoder-experiments.md)：旧插件降级、帧率重建、QP 与行刷新验证。
 

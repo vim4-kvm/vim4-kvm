@@ -28,6 +28,10 @@ for binary in /tmp/package-check/root/usr/sbin/usb-pd-init \
 done
 for file in /tmp/package-check/root/etc/sudoers.d/*; do visudo -cf "$file"; done
 test -s /tmp/package-check/root/opt/vim4-nanokvm/web/index.html
+test "$(cat /tmp/package-check/root/opt/vim4-nanokvm/version)" = "$(dpkg-deb -f ./vim4-nanokvm_*.deb Version)"
+test -x /tmp/package-check/root/usr/libexec/vim4-picoclaw
+test -s /tmp/package-check/root/opt/vim4-nanokvm/assistant/snapshot.py
+test -d /tmp/package-check/root/opt/vim4-nanokvm/picoclaw/skills/kvm-control
 useradd --user-group khadas
 dpkg-deb -e ./vim4-nanokvm_*.deb /tmp/package-check/control
 mkdir -p /usr/share/vim4-nanokvm
@@ -37,6 +41,7 @@ cp -a /tmp/package-check/root/usr/libexec/. /usr/libexec/
 cp -a /tmp/package-check/root/etc/sudoers.d/. /etc/sudoers.d/
 sh /tmp/package-check/control/postinst configure
 test "$(stat -c %U:%a /etc/kvm/server.yaml)" = khadas:600
+test "$(stat -c %U:%a /var/lib/vim4-kvm/picoclaw)" = khadas:700
 printf 'existing user settings\n' > /etc/kvm/server.yaml
 sh /tmp/package-check/control/postinst configure
 test "$(cat /etc/kvm/server.yaml)" = 'existing user settings'

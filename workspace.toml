@@ -2,10 +2,10 @@
 # Existing checkouts are never reset or switched by bootstrap.
 
 [[repos]]
-name = "NanoKVM-Pro"
-url = "https://github.com/vim4-kvm/NanoKVM-Pro.git"
+name = "NanoKVM"
+url = "https://github.com/vim4-kvm/NanoKVM.git"
 branch = "vim4"
-revision = "60afb9e950d0c608cac7bfe0b3dfde369b725b26"
+revision = "a79114e7139a8bf8f5d1a7700a01cd768bfd0f41"
 
 [[repos]]
 name = "common_drivers"

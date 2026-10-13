@@ -51,11 +51,14 @@ tools/oowow-flash.sh --yes                          # 在 OOWOW 中重装默认 
 USB-C 单线供电与键鼠数据的开机初始化见 [docs/usb-pd.md](docs/usb-pd.md)。
 `board/install.sh` 会编译并启用 PD 服务；已在 Mac 上验证整机重启后自动枚举和实际输入。
 
-网页入口：**http://192.168.50.210:8080**。应用代码位于子目录 `NanoKVM-Pro/` 仓库的
+网页入口：**http://192.168.50.210:8080**。应用代码位于子目录 `NanoKVM/` 仓库的
 `vim4` 分支，构建安装见其中 `VIM4.md`。`nanokvm.service` 以 khadas 运行，
 已验证整机重启后自动恢复视频和键鼠。当前网页使用本地免密码模式。
 管理面板 **http://192.168.50.210**（[vim4-manager](vim4-manager/README.md)）可切换开机启用的
-NanoKVM-Pro 或 JetKVM（`kvm/`）界面，并查看板子状态；两者共用 8080，同一时间只运行一个。
+NanoKVM 或 JetKVM（`kvm/`）界面，并查看板子状态；两者共用 8080，同一时间只运行一个。
+
+当前源码基线已切换到 NanoKVM，旧 NanoKVM-Pro 工作树保留且不参与构建。
+以下上板结果属于之前版本；新基线的验证边界见 [VIM4.md](NanoKVM/VIM4.md)。
 
 - [x] 串口控制台
 - [x] 刷入 Ubuntu 24.04.3 Server（fenix 1.7.5，kernel 5.15.137）
