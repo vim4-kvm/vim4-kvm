@@ -14,7 +14,8 @@ SSH 为 ssh vim4（khadas@192.168.50.210），串口 /dev/cu.usbserial-100，921
 命令使用 tools/uart-run.py，只读日志用 tools/uart-log.py，输出放不入库的 logs/。
 串口超时不表示板上命令终止，长任务后台运行并轮询。
 
-sudo 使用既定本地凭据，不在新文档和日志中复制凭据。
+默认账户 khadas/khadas、root/khadas 见 [硬件](../hardware.md#默认账户开发环境)；
+日志和命令行参数不写入密码，经 stdin 传给 sudo。
 配置先 scp 到临时位置再 sudo cp，避免密码与 heredoc 共用 stdin。
 长期命令使用 nohup setsid command </dev/null >log 2>&1 &，避免 sudo -b 挂住 SSH。
 

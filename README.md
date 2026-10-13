@@ -34,6 +34,7 @@ Agent 入口见 [AGENTS.md](AGENTS.md)，经验记录见 [LESSONS.md](LESSONS.md
 - 串口：Sipeed USB to Dual Uart，UART0 = `/dev/cu.usbserial-100`，921600 8N1
 - 交互串口：`brew install tio && tio -b 921600 /dev/cu.usbserial-100`（退出 `Ctrl-t q`）
 - SSH：`ssh vim4`（`~/.ssh/config` 中 `Host vim4` → `khadas@192.168.50.210`，密钥 `~/.ssh/id_ed25519_vim4_kvm`）
+- 默认账户：khadas/khadas、root/khadas（原厂值，开发环境未改，见 [docs/hardware.md](docs/hardware.md#默认账户开发环境)）
 
 板上更新组件：`python3 tools/board.py deploy --exclusive --packages build/packages/VERSION`（见 [docs/board-tools.md](docs/board-tools.md)）
 

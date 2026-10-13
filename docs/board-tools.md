@@ -72,11 +72,12 @@ SKIP 不算通过。hid 假定 Mac 只有一个显示器；会短暂移动光标
 - flash 需要用户明确授权清空 eMMC。--yes-erase-emmc 表示已有授权，不是获取授权的替代。
 - 同一工作区的 board.py 有进程锁；串口工具也有端口锁。外部终端未必遵守这些锁。
 - SSH 使用现有密钥与 known_hosts，保持主机身份校验。工具不存储密码、不更改 SSH 配置。
-- 开发板先运行一次 `python3 tools/board.py enroll`（输入一次 khadas 密码），安装
+- 开发板先运行一次 `printf 'khadas\n' | python3 tools/board.py enroll --sudo-password-stdin`
+  （默认密码见 [硬件](hardware.md#默认账户开发环境)），安装
   board/vim4-dev-nopasswd.sudoers，之后 deploy/recover 全自动，不存储任何密码。
   该文件不进入组件包和整机镜像；新刷的镜像需重新 enroll。撤销：
   `sudo rm /etc/sudoers.d/vim4-dev-nopasswd`。不修改账户密码。
-- 未 enroll 时交互提示密码；无终端可用 --sudo-password-stdin 从凭据提供方读一行。
+- 未 enroll 时交互提示密码；无终端用 --sudo-password-stdin 经 stdin 传入，不放进参数或日志。
 
 ## 远程进入恢复环境
 

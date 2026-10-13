@@ -9,5 +9,6 @@
 | 键鼠、虚拟介质、USB-C 协商 | [USB](docs/subsystems/usb.md) |
 | NanoKVM 界面、账户、网络、更新 | [应用](docs/subsystems/application.md) |
 | 构建、部署、串口、刷机、系统镜像 | [部署](docs/subsystems/deployment.md) |
+| 板子账户密码、SSH/串口登录 | [默认账户](docs/hardware.md#默认账户开发环境) |
 | 查历史测试证据 | [上板记录](docs/bringup-log.md) |
 | 初始化仓库与构建 | [工作区初始化](docs/workspace.md#初始化入口) |
