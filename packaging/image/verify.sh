@@ -46,6 +46,7 @@ for unit in vim4-kvm-hdmi vim4-kvm-gadget vim4-kvm-pd vim4-kvm-cpufreq vim4-kvm-
 done
 test ! -e "$root/etc/systemd/system/multi-user.target.wants/audioserver.service"
 python3 "$(dirname "$0")/../ubuntu/check-audio-startup.py" "$root"
+python3 "$root/usr/sbin/vim4-rootfs-policy" --check "$root"
 chroot "$root" /usr/bin/amixer --version
 test -L "$root/etc/systemd/system/ssh.service.requires/vim4-kvm-firstboot.service"
 test ! -e "$root/usr/sbin/policy-rc.d"

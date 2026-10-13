@@ -30,6 +30,9 @@ useradd --user-group khadas
 dpkg-deb -e ./vim4-nanokvm_*.deb /tmp/package-check/control
 mkdir -p /usr/share/vim4-nanokvm
 cp /tmp/package-check/root/usr/share/vim4-nanokvm/server.yaml /usr/share/vim4-nanokvm/
+mkdir -p /usr/libexec
+cp -a /tmp/package-check/root/usr/libexec/. /usr/libexec/
+cp -a /tmp/package-check/root/etc/sudoers.d/. /etc/sudoers.d/
 sh /tmp/package-check/control/postinst configure
 test "$(stat -c %U:%a /etc/kvm/server.yaml)" = khadas:600
 printf 'existing user settings\n' > /etc/kvm/server.yaml

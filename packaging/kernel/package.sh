@@ -67,6 +67,7 @@ cat > "$stage/DEBIAN/postinst" <<EOF
 #!/bin/sh
 set -eu
 if [ "\$1" = configure ]; then depmod -a '$release'; fi
+sync
 EOF
 chmod 0755 "$stage/DEBIAN/postinst"
 cp COPYING "$stage/usr/share/doc/linux-image-vim4-kvm/copyright"

@@ -29,6 +29,13 @@ def package(name, version, output, populate, depends):
     with tempfile.TemporaryDirectory(prefix=name) as directory:
         stage = Path(directory)
         populate(stage)
+        # Every installation entry point (including dpkg and the web updater)
+        # must flush payloads before reporting success or restarting services.
+        postinst = stage / 'DEBIAN/postinst'
+        if not postinst.exists():
+            write(stage, 'DEBIAN/postinst', '#!/bin/sh\nset -eu\n', 0o755)
+        with postinst.open('a') as script:
+            script.write('sync\n')
         write(stage, 'DEBIAN/control', f'Package: {name}\nVersion: {version}\nArchitecture: arm64\n'
               'Maintainer: VIM4 KVM <318096335+localhost-copilot@users.noreply.github.com>\n'
               f'Section: misc\nPriority: optional\nDepends: {depends}\n'
@@ -43,6 +50,7 @@ def package(name, version, output, populate, depends):
 
 
 def board(stage):
+    copy(ROOT / 'tools/rootfs-policy.py', stage, 'usr/sbin/vim4-rootfs-policy', 0o755)
     copy(ROOT / 'build/usb-pd-init', stage, 'usr/sbin/usb-pd-init', 0o755)
     for name in ('hdmi-setup.sh', 'kvm-gadget.sh'):
         copy(ROOT / 'tools' / name, stage, 'usr/sbin/' + name, 0o755)
@@ -94,6 +102,12 @@ if [ "$1" = configure ]; then
     if [ ! -e /etc/kvm/server.yaml ]; then
         install -o khadas -g khadas -m 0600 /usr/share/vim4-nanokvm/server.yaml /etc/kvm/server.yaml
     fi
+    for name in vim4-video vim4-media vim4-system vim4-update vim4-edid vim4-tailscale; do
+        test -s /usr/libexec/$name
+        test -x /usr/libexec/$name
+        test -s /etc/sudoers.d/$name
+        visudo -cf /etc/sudoers.d/$name
+    done
     if [ -d /run/systemd/system ]; then systemctl daemon-reload; fi
 fi
 ''', 0o755)
@@ -104,10 +118,10 @@ def main():
     subprocess.run(['dpkg', '--validate-version', version], check=True)
     gst = 'libc6 (>= 2.38), libglib2.0-0t64, libgstreamer1.0-0 (>= 1.24), libgstreamer-plugins-base1.0-0 (>= 1.24)'
     for name, populate, depends in [
-        ('vim4-kvm-board', board, 'libc6 (>= 2.38), systemd, udev, kmod, psmisc, iproute2, alsa-utils, hdmiin-demo (= 0.8-202305~noble)'),
+        ('vim4-kvm-board', board, 'libc6 (>= 2.38), python3, systemd, udev, kmod, psmisc, iproute2, alsa-utils, hdmiin-demo (= 0.8-202305~noble)'),
         ('vim4-vfmcap', capture, gst),
         ('vim4-amlvenc', encoder, gst + ', libamvenc (= 0.2-202406~noble), libge2d (= 0.4-202406), gst-aml-drmbufferpool-plugins (= 0.2-202311)'),
-        ('vim4-nanokvm', application, gst + ', libopus0, sudo, python3, picocom, network-manager, avahi-daemon, openssh-server, chrony, alsa-utils, gstreamer1.0-alsa, gstreamer1.0-plugins-base, gstreamer1.0-plugins-good, gstreamer1.0-plugins-bad, gstreamer1.0-libav, vim4-kvm-board, vim4-vfmcap, vim4-amlvenc')]:
+        ('vim4-nanokvm', application, gst + ', libopus0, sudo, python3, picocom, network-manager, avahi-daemon, openssh-server, chrony, alsa-utils, gstreamer1.0-alsa, gstreamer1.0-plugins-base, gstreamer1.0-plugins-good, gstreamer1.0-plugins-bad, gstreamer1.0-libav, vim4-kvm-board (>= 1.0.3+vim4.20261013.18), vim4-vfmcap, vim4-amlvenc (>= 1.0.3+vim4.20261013.18)')]:
         package(name, version, output, populate, depends)
     shutil.copy('/opt/build-inputs/ubuntu-packages.txt', output)
     shutil.copy('/opt/build-inputs/downloads.lock.json', output)

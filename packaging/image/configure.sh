@@ -34,6 +34,7 @@ LABEL Stock
 timeout 5
 default Default
 EOF
+/usr/sbin/vim4-rootfs-policy /
 systemctl --root=/ disable usb-gadget-khadas.service audioserver.service
 systemctl --root=/ enable vim4-kvm-gadget.service vim4-kvm-pd.service vim4-kvm-hdmi.service \
     vim4-kvm-cpufreq.service nanokvm.service

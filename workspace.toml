@@ -5,7 +5,7 @@
 name = "NanoKVM-Pro"
 url = "https://github.com/vim4-kvm/NanoKVM-Pro.git"
 branch = "vim4"
-revision = "d175ecd46da15ef32e7089e792816092bc3545ea"
+revision = "b764a9f42432fbfca93d321e860c8d167608c44f"
 
 [[repos]]
 name = "common_drivers"
@@ -17,7 +17,7 @@ revision = "95e064470979afccb945bd32b862d348e3e8ea1f"
 name = "gst-plugin-venc"
 url = "https://github.com/vim4-kvm/gst-plugin-venc.git"
 branch = "vim4"
-revision = "2212f994cf457562d913b9efbabd4c00b6f503f0"
+revision = "7f34fb35c2b2457af6690027e92d5ba0348327bb"
 
 [[repos]]
 name = "gst-plugin-vfmcap"
@@ -34,6 +34,6 @@ revision = "c55c2f504f615b66b8ff447bd623b157a60d89c0"
 [kernel]
 url = "https://github.com/vim4-kvm/linux.git"
 branch = "vim4-kvm-5.15"
-revision = "cd7f74066f0a45cf9e000d15b1bbe9ec951ddfdf"
+revision = "dbcef7c1fd82717ec634bbca57f3a79ee5820b61"
 vm = "vim4-build"
 # Lives on a case-sensitive Linux filesystem, outside this checkout.

@@ -61,8 +61,9 @@ while IFS= read -r file; do
     esac
 done < "$stage/migrate"
 # The root filesystem uses data=writeback: flush new files (sudoers included)
-# so a later kernel panic cannot leave them empty.
+# before restarting. This does not make an interrupted installation atomic.
 sync
+if [[ -x /usr/sbin/vim4-rootfs-policy ]]; then /usr/sbin/vim4-rootfs-policy /; fi
 systemctl daemon-reload
 # Manual installations enabled units using absolute /etc paths. Recreate those
 # links against the packaged units so the next boot does not silently skip KVM.
@@ -75,4 +76,11 @@ udevadm control --reload-rules
 systemctl restart nanokvm.service
 systemctl is-active nanokvm.service
 dpkg-query -W -f='${Package} ${Version}\n' vim4-kvm-board vim4-vfmcap vim4-amlvenc vim4-nanokvm
+for file in "$stage"/etc/sudoers.d/*; do
+    installed=/etc/sudoers.d/$(basename "$file")
+    cmp "$file" "$installed"
+    visudo -cf "$installed"
+done
+# Include newly created service enablement links in the durability boundary.
+sync
 echo 'Installed. Run tools/board.py check on the host, then exercise a video session.'

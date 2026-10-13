@@ -16,8 +16,18 @@ with open(sys.argv[2],'rb') as stream: actual=hashlib.file_digest(stream,'sha256
 if actual != lock['sha256']: raise SystemExit('Base image checksum mismatch')
 PY
 (cd "$components" && sha256sum -c SHA256SUMS)
-kernel_packages=("$kernels"/linux-image-vim4-kvm_*.deb)
-[[ ${#kernel_packages[@]} == 1 && -f ${kernel_packages[0]} ]] || { echo 'Expected exactly one kernel package' >&2; exit 1; }
+kernel_name=$(python3 - "$workspace/workspace.toml" "$kernels/kernel-build.json" <<'PY'
+import json, sys, tomllib
+with open(sys.argv[1], 'rb') as f: lock = tomllib.load(f)
+with open(sys.argv[2]) as f: build = json.load(f)
+drivers = next(r['revision'] for r in lock['repos'] if r['name'] == 'common_drivers')
+if build['kernel'] != lock['kernel']['revision'] or build['drivers'] != drivers:
+    raise SystemExit('Kernel build does not match workspace lock')
+print(f"linux-image-vim4-kvm_5.15.137+git{build['kernel'][:9]}.{drivers[:9]}-1_arm64.deb")
+PY
+)
+kernel_packages=("$kernels/$kernel_name")
+[[ -f ${kernel_packages[0]} ]] || { echo 'Locked kernel package not found' >&2; exit 1; }
 (cd "$kernels" && sha256sum -c "$(basename "${kernel_packages[0]}").sha256")
 # The official xz expands to disk bytes followed by an OOWOW metadata trailer.
 # Remove that trailer before expanding p2; never copy stale size metadata.
