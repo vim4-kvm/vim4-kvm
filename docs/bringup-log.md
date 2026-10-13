@@ -616,3 +616,15 @@ after-1400-repeat}.json`。`/tmp/NanoKVM-Server` 未改，构建使用独立文�
 - 证据：build/reliability-{build,verify,final-image,export}.log，
   logs/reliability-{hid2-rebind,hid2-uart,usb-switch,final-verify}.log，
   reliability-update-{inspect,confirm,result}.json、reliability-browser-audio.json。
+
+## 采集分辨率菜单部署（2026-10-13）
+
+- 干净构建并校验 `1.0.3+vim4.20261013.20`，应用提交 `a7c0630`；通过
+  `board.py deploy --exclusive` 安装四组件，服务检查通过，没有重启内核。
+- Chrome 打开板上实际页面，确认菜单显示分辨率、最高 FPS 和采集输出说明，
+  当前 3840×2160 配置被勾选；没有切换分辨率或 EDID。
+- 当前信号实际输出 1920×1080；H.264 WebRTC 采样 10.007 秒解码 600 帧，
+  59.96fps，丢帧/丢包均为 0。菜单配置值不代表实际输入尺寸或实时帧率。
+- 证据：`logs/package-20261013-20.log`、`logs/verify-package-20261013-20.log`、
+  `logs/deploy-20261013-20.log`、`logs/video-20261013-20.json`、
+  `logs/deployed-resolution-menu-20.png`。本轮未重新测试音频、HID 或端到端延迟。
