@@ -121,7 +121,7 @@ class BoardToolsTests(unittest.TestCase):
         with patch.object(instance, 'uart') as uart_call, patch.object(board.time, 'monotonic', side_effect=[0, 11]):
             with self.assertRaisesRegex(RuntimeError, 'may still be running'):
                 instance.job('write-command', 'write', 10)
-            launches = [call for call in uart_call.call_args_list if call.args[0].startswith('( sh ')]
+            launches = [call for call in uart_call.call_args_list if '.started' in call.args[0]]
             self.assertEqual(len(launches), 1)
             self.assertFalse(any('STATUS=' in call.args[0] for call in uart_call.call_args_list))
 
@@ -305,8 +305,32 @@ class BoardToolsTests(unittest.TestCase):
         with patch.object(instance, 'uart', side_effect=uart):
             instance.job(command, 'download', 60)
         self.assertTrue(all(len(line) < 300 for line in sent), max(map(len, sent)))
-        chunks = ''.join(line.split()[2] for line in sent if line.startswith("printf '%s'"))
-        self.assertEqual(base64.b64decode(chunks).decode(), command)
+        chunks = [line for line in sent if line.startswith("printf '%s'")]
+        payload = ''.join(line.split()[2] for line in sorted(chunks, key=lambda line: line.rsplit('.', 1)[1]))
+        script = base64.b64decode(payload)
+        self.assertIn(command.encode(), script)
+        self.assertTrue(any(hashlib.sha256(script).hexdigest() in line for line in sent))
+        # The uploaded wrapper must run the command and record its status.
+        with tempfile.TemporaryDirectory() as directory:
+            job = next(line for line in sent if '.started' in line).split()[2].removesuffix('.started')
+            wrapper = script.decode().replace(job, directory + '/job').replace(command, 'exit 3')
+            subprocess.run(['sh', '-c', wrapper], check=True)
+            self.assertEqual(Path(directory, 'job.done').read_text().strip(), '3')
+
+    def test_corrupted_uart_reply_is_retried_without_relaunch(self):
+        instance = board.Board(SimpleNamespace(), io.StringIO())
+        sent = []
+        def uart(line):
+            sent.append(line)
+            # Each command's first reply is lost, as observed on OOWOW.
+            if sent.count(line) == 1:
+                raise RuntimeError('Command failed (124); see log')
+            return 'STATUS=0' if 'STATUS=' in line else ''
+        with patch.object(instance, 'uart', side_effect=uart), patch.object(board.time, 'sleep'):
+            instance.job('true', 'probe', 60)
+        launches = [line for line in sent if '.started' in line]
+        self.assertTrue(launches)
+        self.assertTrue(all(line.startswith('test -e ') for line in launches))
 
     def test_uart_status_and_missing_completion(self):
         self.assertEqual(uart.parse_result('echo command\r\nBEGIN\r\nfailed\r\nDONE:7\r\n', 'BEGIN', 'DONE'), ('failed', 7))

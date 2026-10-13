@@ -175,19 +175,36 @@ class Board:
                     raise RuntimeError('OOWOW shell not confirmed; inspect recovery-uart.log before retrying')
                 time.sleep(10)
 
+    def uart_retry(self, command, attempts=4):
+        # Only for idempotent commands: a corrupted reply at 921600 baud
+        # without flow control does not mean the command failed to run.
+        for attempt in range(attempts):
+            try:
+                return self.uart(command)
+            except (RuntimeError, subprocess.SubprocessError):
+                if attempt == attempts - 1:
+                    raise
+                time.sleep(2)
+
     def job(self, command, label, timeout):
         job = '/tmp/vim4-' + uuid.uuid4().hex
         self.note(f'{label}: remote log={job}.log status={job}.done')
         # OOWOW's console truncates lines near 400 bytes, leaving the shell in
-        # an unterminated quote. Upload the command as short base64 chunks.
-        encoded = base64.b64encode(command.encode()).decode()
-        for offset in range(0, len(encoded), UART_CHUNK):
-            self.uart(f"printf '%s' {encoded[offset:offset + UART_CHUNK]} >>{job}.b64")
-        self.uart(f'base64 -d {job}.b64 >{job}.sh && test "$(wc -c <{job}.sh)" -eq {len(command.encode())}')
-        self.uart(f'( sh {job}.sh >{job}.log 2>&1; echo $? >{job}.done ) </dev/null >/dev/null 2>&1 &')
+        # an unterminated quote. Upload the command as short base64 chunks,
+        # one overwritable file each so every step can be retried safely.
+        # The wrapper records the exit status; launch.started makes a retried
+        # launch a no-op instead of a second run.
+        script = (f'( {command}\n) >{job}.log 2>&1\necho $? >{job}.done\n').encode()
+        encoded = base64.b64encode(script).decode()
+        for index, offset in enumerate(range(0, len(encoded), UART_CHUNK)):
+            self.uart_retry(f"printf '%s' {encoded[offset:offset + UART_CHUNK]} >{job}.b64.{index:03d}")
+        digest = hashlib.sha256(script).hexdigest()
+        self.uart_retry(f'cat {job}.b64.* | base64 -d >{job}.sh && echo "{digest}  {job}.sh" | sha256sum -c -')
+        self.uart_retry(f'test -e {job}.started || {{ touch {job}.started; sh {job}.sh </dev/null >/dev/null 2>&1 & }}')
         deadline = time.monotonic() + timeout
         while time.monotonic() < deadline:
-            output = self.uart(f'if test -f {job}.done; then printf "STATUS="; cat {job}.done; cat {job}.log; else echo RUNNING; fi')
+            output = self.uart_retry(f'if test -f {job}.done; then printf "STATUS="; cat {job}.done; '
+                                     f'tail -c 400 {job}.log; else echo RUNNING; fi')
             statuses = [line for line in output.splitlines() if line.startswith('STATUS=')]
             if statuses:
                 if statuses[0] != 'STATUS=0':
