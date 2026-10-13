@@ -5,6 +5,7 @@
 #   hidg2 relative mouse (boot protocol, for BIOS/UEFI)
 #   ncm   network (macOS/Linux/Windows 10+ native)
 #   disk  removable virtual media (empty until mounted by the application)
+#   uac2  USB microphone (linked by the application when enabled)
 #
 # Usage: kvm-gadget.sh start|stop     (vim4-kvm-gadget.service)
 set -eu
@@ -83,6 +84,19 @@ start() {
 	echo 1 > $G/functions/mass_storage.disk0/lun.0/ro
 	# The application exchanges NCM for this function while media is mounted.
 	# Six simultaneous IN endpoints currently fail CRG CONFIG_EP on this board.
+
+	# USB microphone toward the host (48 kHz stereo S16), also exchanged for NCM
+	# while enabled. No host speaker and no volume/mute controls: those would add
+	# an OUT stream and an interrupt IN endpoint.
+	F=$G/functions/uac2.usb0
+	mkdir -p $F
+	echo 0 > $F/c_chmask
+	echo 3 > $F/p_chmask
+	echo 48000 > $F/p_srate
+	echo 2 > $F/p_ssize
+	for control in p_volume_present p_mute_present c_volume_present c_mute_present; do
+		echo 0 > $F/$control
+	done
 
 	echo "$UDC" > $G/UDC
 }
