@@ -162,3 +162,67 @@ build and verification passed, including 32 workspace Python tests, deployment
 tests, both Go targets and frontend compilation. This validates service restart,
 not a new power-cycle or all HDMI modes. Source/receiver coherence tool changes
 were compiled/syntax checked and exercised in the hardware runs above.
+
+## Per-stage timing and LAN packet sizing
+
+Development components `1.0.3+vim4.20261013.5` add opt-in timing (disabled
+normally). `VIM4_VIDEO_TIMING=1` records application read/send intervals;
+`GST_DEBUG=vfmcapsrc:4` additionally records kernel delivery to userspace dequeue.
+See NanoKVM-Pro/deploy/vim4/VIDEO.md for clock boundaries. Summarize one session:
+
+```sh
+python3 tools/video-timing-summary.py application.log capture.log
+```
+
+The tool excludes the first six seconds / 360 capture deliveries, joins read/send
+records by PTS, filters to one viewer, and rejects restarted sessions or mismatched
+frame sizes. Delivery sequence gaps are not a complete source-frame loss counter.
+
+Sequential 20s moving-pattern Chrome tests used 3840×2160 at 60Hz, 12000 Kbps,
+GOP 120, performance governors, completed-frame mode 0x3 and unchanged QP settings.
+Only RTP packet sizing changed; both direct LAN interfaces had MTU 1500.
+
+| Interval, ms | RTP 1200 median / p99 / max | RTP 1400 median / p99 / max |
+|---|---|---|
+| Kernel delivery → dequeue | 0.038 / 0.056 / 0.081 | 0.037 / 0.057 / 0.103 |
+| Source PTS → encoded sample copied | 11.848 / 13.186 / 14.675 | 11.848 / 13.101 / 14.881 |
+| Go handoff | 0.066 / 0.100 / 0.141 | 0.067 / 0.108 / 0.143 |
+| Ordinary-frame send | 0.632 / 3.901 / 5.336 | 0.570 / 3.507 / 5.012 |
+| I-frame send | 9.289 / 10.425 / 10.425 | 7.807 / 9.044 / 9.044 |
+| Draw → browser compositor | 65.467 / 76.069 / 79.095 | 65.818 / 71.751 / 71.945 |
+
+Each run contained 11 measured I frames. Their median sizes differed (271991 vs
+264788 bytes); median send time normalized by size also fell, from 35.45 to
+31.35 microseconds per decimal KB. This supports reduced sending overhead, not a
+lower median end-to-end delay. Neither run had reported browser drops/loss,
+incoherent markers or delivery sequence gaps. Observed rates were 59.99fps.
+Sparse marker sampling and short runs do not guarantee losslessness for all content.
+
+Installed the existing NanoKVM-Pro/deploy/vim4/rtp-lan.conf as
+`/etc/systemd/system/nanokvm.service.d/rtp-lan.conf` on this board. This is a
+LAN-specific override, not the default for unknown/VPN paths. Temporary timing
+overrides were removed and NanoKVM restarted. No bitrate, QP, GOP, resolution,
+frame-drop policy or frontend changes were used for this optimization.
+
+A separate 1080p diagnostic measured 55.23ms median / 60.93ms p99 at 59.98fps,
+with no reported drops/loss or incoherent markers. An earlier attempt had too few
+valid markers and was rejected. Resolution was restored to 4K; separate-session
+differences cannot establish how much latency resolution alone causes.
+
+Evidence: `logs/latency-stage{1200,1400}-*`, `logs/latency-1080-debug-*`.
+The isolated ARM64 build, both Go targets, frontend, package checks and deployment
+health checks passed; the workspace suite passed 34 tests after adding timing-log
+validation. These are software endpoint measurements, not optical or Safari results.
+
+Final uninstrumented 20s moving-pattern validation (`logs/latency-final1400-retry-*`):
+59.99fps, 12.19 Mbps received, draw→compositor median 66.79ms / p99 72.53ms /
+max 72.62ms, zero browser drops/loss/freezes and 172 coherent samples. Kernel
+`frames_dropped` remained zero. Clock mapping stayed within 0.9ms; pixel readback
+itself cost a median 14.30ms and is reported separately. The first final attempt
+(`logs/latency-final1400-*`) exceeded the 2ms clock validation limit (2.6ms), so
+its latency result was rejected despite zero reported drops/loss.
+
+The board retains 4K, 12000 Kbps and GOP 120, with no experimental QP/intra-refresh
+or timing environment settings. Package integrity and service checks passed.
+This establishes a measured operating point, not an absolute minimum or a guarantee
+of zero drops for arbitrary content, browsers or networks.

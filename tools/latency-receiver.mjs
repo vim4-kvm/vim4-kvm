@@ -5,6 +5,8 @@ const { chromium } = await import(process.env.PLAYWRIGHT_MODULE || 'playwright')
 const url = process.argv[2] || 'http://192.168.50.210:8080';
 const seconds = Number(process.argv[3] || 20);
 const verifyCoherence = process.argv.includes('--verify-coherence');
+const width = Number(process.argv.find(arg => arg.startsWith('--width='))?.split('=')[1] || 3840);
+if (![1280, 1920, 3840].includes(width)) throw new Error('Unsupported --width');
 const browser = await chromium.launch({ channel: 'chrome', headless: true });
 try {
   const page = await browser.newPage();
@@ -16,8 +18,8 @@ try {
     };
   });
   await page.goto(url);
-  await page.waitForFunction(() => document.querySelector('video')?.videoWidth === 3840,
-    {}, { timeout: 30000 });
+  await page.waitForFunction(width => document.querySelector('video')?.videoWidth === width,
+    width, { timeout: 30000 });
   await page.waitForTimeout(3000);
   const stats = () => page.evaluate(async () => {
     for (const peer of window.peers) {
@@ -91,8 +93,11 @@ try {
     return { frames: window.latencyFrames, invalidMarkers: window.invalidMarkers,
       incoherentMarkers: window.incoherentMarkers };
   });
-  if (result.frames.length < seconds * 5) throw new Error('Too few valid HDMI markers');
   console.log(JSON.stringify({ before, after, verifyCoherence, ...result }, null, 2));
+  if (result.frames.length < seconds * 5) {
+    if (process.env.VIM4_TEST_SCREENSHOT) await page.screenshot({ path: process.env.VIM4_TEST_SCREENSHOT });
+    throw new Error('Too few valid HDMI markers; inspect the emitted samples');
+  }
   if (verifyCoherence && (result.incoherentMarkers || result.invalidMarkers)) {
     throw new Error('Frame coherence check failed; inspect the emitted samples');
   }
