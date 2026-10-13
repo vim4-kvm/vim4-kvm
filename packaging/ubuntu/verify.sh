@@ -30,7 +30,7 @@ for file in /tmp/package-check/root/etc/sudoers.d/*; do visudo -cf "$file"; done
 test -s /tmp/package-check/root/opt/vim4-nanokvm/web/index.html
 test "$(cat /tmp/package-check/root/opt/vim4-nanokvm/version)" = "$(dpkg-deb -f ./vim4-nanokvm_*.deb Version)"
 test -x /tmp/package-check/root/usr/libexec/vim4-picoclaw
-test -s /tmp/package-check/root/opt/vim4-nanokvm/assistant/snapshot.py
+test ! -e /tmp/package-check/root/opt/vim4-nanokvm/assistant
 test -d /tmp/package-check/root/opt/vim4-nanokvm/picoclaw/skills/kvm-control
 useradd --user-group khadas
 dpkg-deb -e ./vim4-nanokvm_*.deb /tmp/package-check/control
@@ -43,7 +43,31 @@ sh /tmp/package-check/control/postinst configure
 test "$(stat -c %U:%a /etc/kvm/server.yaml)" = khadas:600
 test "$(stat -c %U:%a /var/lib/vim4-kvm/picoclaw)" = khadas:700
 printf 'existing user settings\n' > /etc/kvm/server.yaml
+# Simulate an installed assistant with a live worker and private runtime data.
+# The upgrade must retire it without touching the surviving PicoClaw state.
+mkdir -p /opt/vim4-nanokvm/assistant /var/lib/vim4-kvm/assistant/bin
+ln -s /usr/bin/python3 /var/lib/vim4-kvm/assistant/bin/python
+printf 'import pathlib,time; pathlib.Path("/tmp/assistant-ready").touch(); time.sleep(120)\n' > /opt/vim4-nanokvm/assistant/cua_webapp.py
+printf 'legacy settings\n' > /var/lib/vim4-kvm/assistant/settings
+printf 'PicoClaw settings\n' > /var/lib/vim4-kvm/picoclaw/keep
+/var/lib/vim4-kvm/assistant/bin/python /opt/vim4-nanokvm/assistant/cua_webapp.py --auth &
+assistant_pid=$!
+remaining=50
+while [ ! -f /tmp/assistant-ready ]; do
+    kill -0 "$assistant_pid"
+    test "$remaining" -gt 0
+    sleep 0.1
+    remaining=$((remaining - 1))
+done
 sh /tmp/package-check/control/postinst configure
+if kill -0 "$assistant_pid" 2>/dev/null; then
+    echo 'Retired assistant is still running' >&2
+    exit 1
+fi
+wait "$assistant_pid" 2>/dev/null || true
+test ! -e /opt/vim4-nanokvm/assistant
+test ! -e /var/lib/vim4-kvm/assistant
+test "$(cat /var/lib/vim4-kvm/picoclaw/keep)" = 'PicoClaw settings'
 test "$(cat /etc/kvm/server.yaml)" = 'existing user settings'
 test ! -e /etc/systemd/system/multi-user.target.wants/nanokvm.service
 # A crash previously left a conffile empty. Configuration must not report

@@ -84,11 +84,10 @@ def application(stage):
     deploy = ROOT / 'NanoKVM/deploy/vim4'
     copy(ROOT / 'build/NanoKVM-Server', stage, 'opt/vim4-nanokvm/NanoKVM-Server', 0o755)
     shutil.copytree(ROOT / 'NanoKVM/web/dist', stage / 'opt/vim4-nanokvm/web')
-    shutil.copytree(ROOT / 'NanoKVM/support/assistant', stage / 'opt/vim4-nanokvm/assistant',
-                    ignore=shutil.ignore_patterns('__pycache__'))
     shutil.copytree(ROOT / 'NanoKVM/kvmapp/picoclaw', stage / 'opt/vim4-nanokvm/picoclaw',
                     ignore=shutil.ignore_patterns('__pycache__'))
     copy(deploy / 'picoclaw', stage, 'usr/libexec/vim4-picoclaw', 0o755)
+    copy(deploy / 'remove-legacy-assistant', stage, 'usr/libexec/vim4-remove-legacy-assistant', 0o755)
     copy(ROOT / 'NanoKVM/LICENSE', stage, 'usr/share/doc/vim4-nanokvm/copyright')
     for name in ('vim4-video', 'vim4-media', 'vim4-system', 'vim4-update', 'vim4-edid', 'vim4-tailscale'):
         copy(deploy / name, stage, 'usr/libexec/' + name, 0o755)
@@ -102,6 +101,7 @@ def application(stage):
 set -eu
 if [ "$1" = configure ]; then
     getent passwd khadas >/dev/null || { echo 'Requires the Khadas Ubuntu base account' >&2; exit 1; }
+    /usr/libexec/vim4-remove-legacy-assistant
     install -d -o khadas -g khadas -m 0755 /etc/kvm /var/lib/vim4-kvm/images
     install -d -o khadas -g khadas -m 0700 /var/lib/kvm/update-jobs /var/lib/vim4-kvm/update-cache
     install -d -o khadas -g khadas -m 0700 /var/lib/vim4-kvm/picoclaw

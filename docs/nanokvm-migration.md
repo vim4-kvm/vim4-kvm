@@ -56,3 +56,17 @@ Chrome 实机完成 NanoKVM → JetKVM → NanoKVM → JetKVM → NanoKVM，
 1.89–2.12 秒。这是当前桌面场景的切换恢复测试，不是端到端输入延迟或长时间
 运动场景测试。最终 NanoKVM 启用，JetKVM 停用；详情见
 [上板记录](bringup-log.md)。
+
+## 移除旧 Smart Assistant
+
+NanoKVM `d64833d` 删除旧助手菜单、翻译、安装/启动 API、Python 服务及其专用依赖，
+保留 PicoClaw/MCP、截图和输入仲裁。安装包和手动安装入口共用旧助手清理脚本：
+停止匹配旧脚本命令行的进程，移除 `/opt/vim4-nanokvm/assistant`、
+`/var/lib/vim4-kvm/assistant` 和旧日志；不删除 PicoClaw 数据或系统 Python 包。
+
+开发验证包 `2.5.1+vim4.20261013.6`（`--allow-dirty`）完成完整 Ubuntu 构建、
+默认/VIM4 后端测试与构建、VIM4 前端构建及包校验；另跑默认前端构建和菜单浏览器回归。
+迁移测试在隔离容器启动旧助手模拟进程，确认重复配置时进程终止、旧文件删除，
+PicoClaw 与应用配置保留。宿主部署测试 28 项、1 项平台限制跳过。
+日志为 `logs/remove-assistant-{helpers,package,verify}.log`。
+本次仅修改源码与安装配方，未部署到板子；板子仍运行 `.5`。
