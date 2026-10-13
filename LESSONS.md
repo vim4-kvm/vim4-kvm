@@ -17,5 +17,5 @@
 | 把 video71 当 HDMI 输入 | vdin1 是输出回写；无 HDMI 输出时用 vdin0 → vfm_cap，HDMI RX 为 port 1 | [硬件](docs/hardware.md) |
 | HDMI 有音频包、WebRTC 已连接但始终静音 | TDM-B 默认读外部引脚。HDMI 服务 ExecStartPre 在 ALSA restore 后选 hdmirx，再允许 NanoKVM 启动；零峰值录音不能证明声音正常 | [功能与音频状态](docs/feature-status.md)、packaging/ubuntu/check-audio-startup.py |
 | 直接用 OOWOW /shell/write 或未经核对流式刷盘 | 项目曾遇到 GPT 被清空。使用专用校验刷机脚本，重装需用户确认 | tools/oowow-flash.sh、上板记录 |
-| USB 功能重新绑定后关闭 /dev/hidg*，内核 list_del panic | 5.15 f_hid 在 hidg_bind 中重新初始化等待队列，仍注册在 epoll 的 fd 会破坏链表。重新枚举前关闭 HID 文件；内核侧修复前不要在 gadget 切换时保持 HID 打开 | hid.Reenumerate、logs/uart-mic-crash.log |
-| 部署后不久内核 panic，刚装的 sudoers 变成 0 字节 | 根分区 data=writeback，未刷盘的新文件会被清零。部署后 sync；崩溃后用 dpkg --verify 检查 conffile，再按包内容恢复 | [上板记录](docs/bringup-log.md) |
+| USB 功能重新绑定后关闭 /dev/hidg*，内核 list_del panic | 5.15 f_hid 在 hidg_bind 中重置等待队列，破坏现存 epoll 注册。内核 dbcef7c1f 改为实例生命周期初始化；保留应用切换前关闭 HID 的保护。必须重启进入新 Image 才生效 | hid.Reenumerate、tools/hid-rebind-check.py、[内核](docs/kernel.md) |
+| 部署后不久内核 panic，刚装的 sudoers 变成 0 字节 | 原根分区 data=writeback、commit=600。新部署配置 ordered/commit=5；所有组件安装成功前 sync，网页更新复核文件后再重启。它不保证升级原子性，也不证明其他文件没有损坏 | tools/rootfs-policy.py、[上板记录](docs/bringup-log.md) |

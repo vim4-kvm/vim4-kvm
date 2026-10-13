@@ -28,6 +28,23 @@ $M M=$PWD/common_drivers/drivers/media/vfm_cap modules        # vfm_cap 树外�
 
 ## 安装
 
+### HID 重新绑定
+
+主内核 `dbcef7c1f` 将 f_hid 的等待队列、锁和接收链表初始化移到功能实例分配时。
+旧实现每次 UDC bind 都重置等待队列，破坏仍注册在 epoll 中的 HID 文件描述符。
+修复编进 Image（CONFIG_USB_F_HID=y），必须安装完整内核并重启，不能靠更换模块生效。
+应用在切换 USB 功能前关闭 HID 的保护继续保留。
+
+确认已经启动修复后的内核、停止 NanoKVM 并独占板子后，运行：
+
+```sh
+sudo python3 tools/hid-rebind-check.py --exclusive --fixed-kernel --cycles 20
+```
+
+此测试保持三个 HID 描述符注册在 epoll 中跨越 UDC 重新绑定，然后分别执行
+显式注销和关闭。禁止在旧内核运行，它能触发已知 panic。测试后启动 NanoKVM，
+再验证实际键鼠、音视频和内核日志。
+
 ### 自动风扇与编码器频率
 
 主内核提交 `8df3bdb55` 增加 MCU 百分比调速；`cd7f74066` 修正紧急全速、

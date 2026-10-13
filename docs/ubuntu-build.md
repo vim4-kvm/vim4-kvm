@@ -69,6 +69,17 @@ NanoKVM 特权调用与手工安装脚本同步改为 /usr/libexec，新服务�
 用户配置。需要在镜像集成阶段显式设置服务启用和冲突服务禁用；不要直接运行
 现有 board/install.sh 来模拟离线安装，因为它会操作正在运行的系统。
 
+组件包 postinst 在成功返回前 sync；应用包同时检查辅助程序和 sudoers。
+网页更新包直接封装这里生成的应用 deb，不另行编译或生成安装配方。更新助手
+预检 APT 安装计划：需要新增/升级平台依赖时拒绝安装，要求先部署完整组件。
+成功安装后比对辅助程序与 sudoers 内容、执行 visudo、sync，再安排应用重启。
+这些检查不能把 dpkg 升级变成断电原子事务；失败后仍需检查并恢复完整安装。
+
+组件部署和镜像组装运行 vim4-rootfs-policy：Default 启动项明确选择
+rootflags=data=ordered，根分区和 /boot 的 commit 改为 5 秒。Stock 启动行保持
+不变；应用镜像校验检查该配置。现有系统需重启后检查 findmnt / 确认生效。
+自定义 rootflags 或显式 fstab data= 设置会要求先审查，不静默覆盖。
+
 每次输出包含四个 deb、sources.json、Ubuntu 包版本列表、外部下载清单及 SHA256SUMS。
 SOURCE_DATE_EPOCH 来自主仓库提交；当前尚未证明所有工具链产物逐字节可复现。
 默认发布前还需运行 workspace.py bootstrap --locked，并先推送清单引用的组件提交。
