@@ -1,0 +1,41 @@
+[
+  {
+    "name": "gst-aml-drmbufferpool-plugins.deb",
+    "url": "https://dl.khadas.com/repos/vim4/pool/main/g/gst-aml-drmbufferpool-plugins/gst-aml-drmbufferpool-plugins_0.2-202311_arm64.deb",
+    "sha256": "d9b837adbd96c70980f57b14a996c9e1129ed94b4932512c326e37719ebcb03f",
+    "version": "0.2-202311"
+  },
+  {
+    "name": "libamvenc.deb",
+    "url": "https://dl.khadas.com/repos/vim4/pool/main/liba/libamvenc/libamvenc_0.2-202406~noble_arm64.deb",
+    "sha256": "bba5b248f0111bed1fde5c6996f5272eb6d4b03a270323dcadc20cca9e0aba59",
+    "version": "0.2-202406~noble"
+  },
+  {
+    "name": "libge2d.deb",
+    "url": "https://dl.khadas.com/repos/vim4/pool/main/libg/libge2d/libge2d_0.4-202406_arm64.deb",
+    "sha256": "6bc3fdf26e07ce036fc74ec74ad7494ad663307ecfc8a7b2db02da59bcde3f5c",
+    "version": "0.4-202406"
+  },
+  {
+    "name": "libion.deb",
+    "url": "https://dl.khadas.com/repos/vim4/pool/main/libi/libion/libion_0.4-202406_arm64.deb",
+    "sha256": "7eb8eb41e0a97a10a3f434afd06778a2b22480ec004e20beedfe60c3877a50fc",
+    "version": "0.4-202406"
+  },
+  {
+    "name": "go.tar.gz",
+    "url": "https://go.dev/dl/go1.25.0.linux-arm64.tar.gz",
+    "sha256": "05de75d6994a2783699815ee553bd5a9327d8b79991de36e38b66862782f54ae"
+  },
+  {
+    "name": "node.tar.xz",
+    "url": "https://nodejs.org/dist/v24.19.0/node-v24.19.0-linux-arm64.tar.xz",
+    "sha256": "01443c1e1a29e531ccad5a46fefa6df490d2189c49f7955904aecdbb0fe86fdc"
+  },
+  {
+    "name": "pnpm.tgz",
+    "url": "https://registry.npmjs.org/pnpm/-/pnpm-12.4.1.tgz",
+    "sha256": "6276298e9af576b7a7f5e9044bfafbe2678209250cd10b1705ea5d3aa64d4882"
+  }
+]

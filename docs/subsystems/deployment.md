@@ -1,5 +1,7 @@
 # 构建与部署
 
+Ubuntu 隔离构建与组件打包先读 [ubuntu-build.md](../ubuntu-build.md)。
+
 先读 [工作区](../workspace.md)、[硬件](../hardware.md)，再按目标读
 [内核](../kernel.md)、[USB-PD](../usb-pd.md) 或
 [应用安装](../../NanoKVM-Pro/VIM4.md)。

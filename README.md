@@ -25,6 +25,8 @@ Agent 入口见 [AGENTS.md](AGENTS.md)，经验记录见 [LESSONS.md](LESSONS.md
 
 ## 开发环境（Mac mini M4）
 
+可复现构建输入与 Ubuntu 组件打包入口见 [docs/ubuntu-build.md](docs/ubuntu-build.md)。
+
 - 串口：Sipeed USB to Dual Uart，UART0 = `/dev/cu.usbserial-100`，921600 8N1
 - 交互串口：`brew install tio && tio -b 921600 /dev/cu.usbserial-100`（退出 `Ctrl-t q`）
 - SSH：`ssh vim4`（`~/.ssh/config` 中 `Host vim4` → `khadas@192.168.50.210`，密钥 `~/.ssh/id_ed25519_vim4_kvm`）

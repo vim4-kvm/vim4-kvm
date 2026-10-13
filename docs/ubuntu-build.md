@@ -1,0 +1,82 @@
+# Ubuntu ARM64 构建与组件包
+
+系统保持 Ubuntu 24.04。这里定义的是用户态组件构建与打包，不是可刷入镜像；
+启动加载器、分区、内核及完整 Khadas BSP 根文件系统仍按后续镜像阶段集成。
+构建不挂载板子设备、不执行 SSH、不停启板子服务。
+
+## 固定输入
+
+- packaging/ubuntu/Dockerfile 固定 Ubuntu 基础镜像摘要及 ARM64 架构。
+- APT 指向 20261012T000000Z 的显式 Ubuntu 快照，保留签名校验。
+  check-valid-until=no 只允许历史 Release 过期，不跳过签名。
+- downloads.lock.json 固定 Go、Node、pnpm 和 Khadas 开发库下载 SHA256。
+  厂商 deb 只解包到构建容器，不执行其安装脚本；不从工作板抓取二进制。
+- 源码版本来自工作树，sources.json 记录各仓库提交、脏状态、内容摘要和实际
+  builder image ID。默认拒绝脏工作树，开发试构建需显式 --allow-dirty。
+
+快照方法见 [Ubuntu Snapshot Service](https://snapshot.ubuntu.com/)。快照服务有
+保留期限，长期发布需保留构建镜像与输入归档；固定地址不能替代长期存档。
+
+## 使用
+
+需要 Docker、Python 3.11+ 和已克隆的源码仓库：
+
+```sh
+python3 tools/ubuntu-build.py environment
+python3 tools/ubuntu-build.py package --version 0.1.0~dev1
+python3 tools/ubuntu-build.py verify --version 0.1.0~dev1
+```
+
+构建容器原生使用 linux/arm64，源码只读挂载并复制到容器独立工作目录；Mac
+上的 node_modules、编译产物不参与 Linux 构建。输出在 build/packages/VERSION，
+已有目录会拒绝覆盖。失败目录保留以便诊断，重跑请选新版本或人工清理该次产物。
+
+verify 在新的临时容器检查校验和、ARM64 ELF、动态库解析、sudoers 和网页文件，
+并执行首次配置与重复配置测试，确认已有 server.yaml 不被覆盖且没有自动启用应用服务。
+不要把 packaging/ubuntu/verify.sh 当作宿主机安装脚本执行。
+
+构建先检查 PD 边界和工作区工具，再编译两个插件，运行 VIM4 Go 测试并构建
+服务端、前端，随后验证上游 Go 目标和 sudoers。完整测试日志应由调用者保存。
+这里的通过不意味着硬件采集、编码、PD 和端到端延迟通过。
+
+## 包和安装边界
+
+| 包 | 内容 |
+|---|---|
+| vim4-kvm-board | PD 工具、HDMI/gadget 脚本、udev 和 systemd 配置 |
+| vim4-vfmcap | 系统 GStreamer 目录中的采集插件 |
+| vim4-amlvenc | /usr/lib/vim4-kvm 下的编码插件及服务搜索路径 |
+| vim4-nanokvm | /opt 应用与网页、/usr/libexec 特权工具、sudoers 与应用服务 |
+
+包不占用 /usr/local，遵循 [Debian 路径约定](https://www.debian.org/doc/debian-policy/ch-opersys.html)。
+NanoKVM 特权调用与手工安装脚本同步改为 /usr/libexec，新服务端必须与新工具一起安装。
+原有手工安装的 /etc/systemd/system 单元和编码插件 drop-in 可能覆盖包提供的
+/usr/lib 单元；迁移前应人工核对，不由包自动删除管理员文件。
+
+这些包供 Khadas Ubuntu 基础系统使用：必须已有 khadas 用户、tvserver、hdmiin-demo、
+固件、自编内核及厂商运行库；不能单独把普通 Ubuntu 容器变成可启动 VIM4 系统。
+编码包明确依赖固定的厂商运行库版本，下载清单中的 deb 不随组件包重新发布。
+板级包依赖固定版本 hdmiin-demo，它同时提供 tvserver.service。
+
+安装不自动启用或重启服务，不在 postinst 操作 configfs、I2C、网络或密码。
+应用首次配置建立所需目录，只在 server.yaml 不存在时写入既定默认值，升级保留
+用户配置。需要在镜像集成阶段显式设置服务启用和冲突服务禁用；不要直接运行
+现有 board/install.sh 来模拟离线安装，因为它会操作正在运行的系统。
+
+每次输出包含四个 deb、sources.json、Ubuntu 包版本列表、外部下载清单及 SHA256SUMS。
+SOURCE_DATE_EPOCH 来自主仓库提交；当前尚未证明所有工具链产物逐字节可复现。
+默认发布前还需运行 workspace.py bootstrap --locked，并先推送清单引用的组件提交。
+
+## 下一阶段
+
+内核包、Ubuntu rootfs/BSP 的固定来源、镜像分区与组装、离线服务初始化、实机
+刷入回归和发布 CI 尚需完成。本流程不会改变工作板，组件包先在隔离环境检查，
+再进入后续镜像验证。
+
+## 已完成的隔离验证
+
+开发包 0.1.0~dev3 已在固定 ARM64 容器完成四组件构建；PD 边界测试、六项
+Python 测试、VIM4 与上游两种 Go 目标测试/构建、前端构建和 sudoers 检查通过。
+verify 的 ELF/动态依赖、校验和、配置初始化与升级保留测试通过。
+首次干净构建暴露的 GStreamer 测试插件缺失及上游 libkvm 链接桩生成步骤均已补齐。
+这些结果不包含板级运行验证或可刷入镜像验证。
