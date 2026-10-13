@@ -43,6 +43,8 @@ def summarize(source_path, receiver_path):
         frame['drawEndMs'] - frame['sourceMs'] for frame in source.values()])
     result['clockOffsetMs'] = distribution(clocks)
     result['invalidMarkers'] = receiver['invalidMarkers']
+    if receiver.get('verifyCoherence'):
+        result['incoherentMarkers'] = receiver['incoherentMarkers']
     before, after = receiver['before'], receiver['after']
     seconds = (after['timestamp'] - before['timestamp']) / 1000
     result['decodedFPS'] = (after['framesDecoded'] - before['framesDecoded']) / seconds

@@ -4,6 +4,9 @@
 vfmcapsrc → amlvenc → NanoKVM WebRTC。板级 HDMI 服务打开输入并配置采集，
 应用负责推流。video71 是输出回写。
 
+HDMI 启动脚本默认使用完整帧低延迟模式（VDIN mask 0x3）；
+HDMI_LOW_LATENCY=0 恢复厂商自动策略。模式含义、对照结果及帧一致性检查见测量文档。
+
 按改动范围先读：
 
 - [采集插件](../../gst-plugin-vfmcap/README.md)：格式和 DMA-buf 生命周期。

@@ -4,6 +4,7 @@
 const { chromium } = await import(process.env.PLAYWRIGHT_MODULE || 'playwright');
 const url = process.argv[2] || 'http://192.168.50.210:8080';
 const seconds = Number(process.argv[3] || 20);
+const verifyCoherence = process.argv.includes('--verify-coherence');
 const browser = await chromium.launch({ channel: 'chrome', headless: true });
 try {
   const page = await browser.newPage();
@@ -25,12 +26,13 @@ try {
       }
     }
   });
-  await page.evaluate(() => {
+  await page.evaluate((verifyCoherence) => {
     const video = document.querySelector('video');
     const canvas = document.createElement('canvas');
-    canvas.width = 32; canvas.height = 1;
+    canvas.width = 32; canvas.height = verifyCoherence ? 216 : 1;
     const ctx = canvas.getContext('2d', { willReadFrequently: true });
     window.latencyFrames = []; window.invalidMarkers = 0;
+    window.incoherentMarkers = 0;
     window.keepLatency = false;
     let previous = -1, callbacks = 0;
     window.measureLatency = true;
@@ -45,16 +47,25 @@ try {
       const readStartMs = performance.timeOrigin + performance.now();
       // Coordinates are normalized to the source window's logical 1920x1080.
       ctx.drawImage(video, 20 / 1920 * video.videoWidth,
-        85 / 1080 * video.videoHeight - 2, 1880 / 1920 * video.videoWidth, 4,
-        0, 0, 32, 1);
-      const pixels = ctx.getImageData(0, 0, 32, 1).data;
-      let word = 0;
-      for (let bit = 0; bit < 32; bit++) {
-        word = ((word << 1) | (pixels[bit * 4] > 128 ? 1 : 0)) >>> 0;
-      }
+        verifyCoherence ? 0 : 85 / 1080 * video.videoHeight - 2,
+        1880 / 1920 * video.videoWidth, verifyCoherence ? video.videoHeight : 4,
+        0, 0, 32, canvas.height);
+      const pixels = ctx.getImageData(0, 0, 32, canvas.height).data;
+      const readWord = (row) => {
+        let word = 0;
+        for (let bit = 0; bit < 32; bit++) {
+          word = ((word << 1) | (pixels[(row * 32 + bit) * 4] > 128 ? 1 : 0)) >>> 0;
+        }
+        return word;
+      };
+      const word = readWord(verifyCoherence ? 17 : 0);
       const id = (word >>> 8) & 65535;
       const checksum = ((id >>> 8) ^ (id & 255) ^ 0xa5) & 255;
       if ((word >>> 24) === 0xa5 && (word & 255) === checksum) {
+        if (verifyCoherence && window.keepLatency &&
+            (readWord(108) !== word || readWord(199) !== word)) {
+          window.incoherentMarkers++;
+        }
         if (id !== previous && window.keepLatency) {
           window.latencyFrames.push({ id, readStartMs,
             observedMs: performance.timeOrigin + performance.now(),
@@ -68,7 +79,7 @@ try {
       video.requestVideoFrameCallback(frame);
     };
     video.requestVideoFrameCallback(frame);
-  });
+  }, verifyCoherence);
   // Warm up canvas allocation and GPU readback before measuring.
   await page.waitForTimeout(3000);
   await page.evaluate(() => { window.keepLatency = true; });
@@ -77,10 +88,14 @@ try {
   const after = await stats();
   const result = await page.evaluate(() => {
     window.measureLatency = false;
-    return { frames: window.latencyFrames, invalidMarkers: window.invalidMarkers };
+    return { frames: window.latencyFrames, invalidMarkers: window.invalidMarkers,
+      incoherentMarkers: window.incoherentMarkers };
   });
   if (result.frames.length < seconds * 5) throw new Error('Too few valid HDMI markers');
-  console.log(JSON.stringify({ before, after, ...result }, null, 2));
+  console.log(JSON.stringify({ before, after, verifyCoherence, ...result }, null, 2));
+  if (verifyCoherence && (result.incoherentMarkers || result.invalidMarkers)) {
+    throw new Error('Frame coherence check failed; inspect the emitted samples');
+  }
   await page.close();
 } finally {
   await browser.close();

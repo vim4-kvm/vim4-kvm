@@ -6,6 +6,7 @@ let app = NSApplication.shared
 app.setActivationPolicy(.accessory)
 let duration = Double(CommandLine.arguments.dropFirst().first ?? "35") ?? 35
 let moving = CommandLine.arguments.contains("--motion")
+let verifyCoherence = CommandLine.arguments.contains("--verify-coherence")
 guard let screen = NSScreen.screens.first(where: { $0.localizedName.contains("AML") }) else {
     fatalError("No AML HDMI display is available")
 }
@@ -44,11 +45,18 @@ class LatencyView: NSView {
         NSRect(x: 0, y: bounds.height - markerHeight, width: bounds.width, height: markerHeight).fill()
         let margin = bounds.width * 20 / 1920
         let cell = (bounds.width - 2 * margin) / 32
-        for bit in 0..<32 {
-            ((word & (1 << (31 - bit))) != 0 ? NSColor.white : NSColor.black).setFill()
-            NSRect(x: margin + CGFloat(bit) * cell + cell / 32,
-                   y: bounds.height * (1 - 125.0 / 1080),
-                   width: cell * 15 / 16, height: bounds.height * 80 / 1080).fill()
+        // Matching IDs at three heights expose buffers read before capture
+        // has finished writing them. All markers belong to this draw call.
+        for center in (verifyCoherence ? [85.0, 540.0, 995.0] : [85.0]) {
+            NSColor.black.setFill()
+            NSRect(x: 0, y: bounds.height * (1 - (center + 50) / 1080),
+                   width: bounds.width, height: bounds.height * 100 / 1080).fill()
+            for bit in 0..<32 {
+                ((word & (1 << (31 - bit))) != 0 ? NSColor.white : NSColor.black).setFill()
+                NSRect(x: margin + CGFloat(bit) * cell + cell / 32,
+                       y: bounds.height * (1 - (center + 40) / 1080),
+                       width: cell * 15 / 16, height: bounds.height * 80 / 1080).fill()
+            }
         }
         print("{\"id\":\(id),\"sourceMs\":\(sourceTime),\"drawEndMs\":\(Date().timeIntervalSince1970 * 1000)}")
     }
