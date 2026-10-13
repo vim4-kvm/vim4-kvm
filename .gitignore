@@ -7,4 +7,5 @@ __pycache__/
 /gst-plugin-venc/
 /gst-plugin-vfmcap/
 /kvm/
+/vim4-manager/
 /build/

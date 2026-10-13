@@ -54,7 +54,7 @@ def image_metadata(image):
 UART_CHUNK = 200
 # Stock Khadas account password; see docs/hardware.md (development only).
 DEFAULT_PASSWORD = 'khadas'
-COMPONENTS = ('vim4-kvm-board', 'vim4-vfmcap', 'vim4-amlvenc', 'vim4-nanokvm')
+COMPONENTS = ('vim4-kvm-board', 'vim4-vfmcap', 'vim4-amlvenc', 'vim4-nanokvm', 'vim4-jetkvm', 'vim4-manager')
 
 
 def package_metadata(directory):
@@ -401,11 +401,12 @@ class Board:
 
     def check(self):
         # is-active with multiple units succeeds if ANY unit is active.
-        self.ssh("set -eu; for service in tvserver vim4-kvm-hdmi vim4-kvm-gadget nanokvm; do "
+        self.ssh("set -eu; for service in tvserver vim4-kvm-hdmi vim4-kvm-gadget vim4-manager; do "
                  "printf '%s: ' \"$service\"; systemctl is-active \"$service\"; done")
         self.ssh("set -eu; uname -r; test \"$(uname -r)\" = " + shlex.quote(self.args.kernel) + "; "
                  "test -e /dev/video_cap; test -e /dev/hidg0; test -e /dev/hidg1; test -e /dev/hidg2; "
                  "curl -fsS --max-time 10 http://127.0.0.1:8080/ >/dev/null; "
+                 "curl -fsS --max-time 10 http://127.0.0.1/api/status >/dev/null; "
                  "cat /sys/class/udc/*/state; systemctl --failed --no-pager; "
                  "test -z \"$(systemctl --failed --no-legend --plain)\"")
         self.note('Smoke checks passed; this does not verify video, audio, HID input or latency end to end.')
@@ -465,7 +466,7 @@ def main(argv=None):
         print(f'Packages verified: {metadata[0]}', flush=True)
     if args.dry_run:
         sequences = {'flash': 'recover → OOWOW check → download/checksum → write → readback → reboot/log',
-                     'deploy': 'copy → install-components.sh (checksum, APT simulate, migrate, restart nanokvm) → version check → check'}
+                     'deploy': 'copy → install-components.sh (checksum, APT simulate, migrate, restart selected KVM app and manager) → version check → check'}
         print(f'DRY RUN: {args.action}; no board access. Sequence: {sequences.get(args.action, args.action)}.')
         return
     args.log_dir = args.log_dir or ROOT / 'logs' / ('board-' + time.strftime('%Y%m%d-%H%M%S') + '-' + uuid.uuid4().hex[:6])

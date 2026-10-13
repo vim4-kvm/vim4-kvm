@@ -113,6 +113,35 @@ fi
 ''', 0o755)
 
 
+def jetkvm(stage):
+    copy(ROOT / 'build/jetkvm', stage, 'opt/vim4-jetkvm/jetkvm', 0o755)
+    copy(ROOT / 'kvm/deploy/vim4/vim4-kvm.service', stage, 'usr/lib/systemd/system/vim4-kvm.service')
+    copy(ROOT / 'kvm/LICENSE', stage, 'usr/share/doc/vim4-jetkvm/copyright')
+    # Not enabled here: vim4-manager selects the application that boots.
+    write(stage, 'DEBIAN/postinst', '''#!/bin/sh
+set -eu
+if [ "$1" = configure ] && [ -d /run/systemd/system ]; then systemctl daemon-reload; fi
+''', 0o755)
+
+
+def manager(stage):
+    deploy = ROOT / 'vim4-manager/deploy'
+    copy(ROOT / 'build/vim4-manager', stage, 'opt/vim4-manager/vim4-manager', 0o755)
+    copy(deploy / 'vim4-manager-helper', stage, 'usr/libexec/vim4-manager-helper', 0o755)
+    copy(deploy / 'vim4-manager-helper.sudoers', stage, 'etc/sudoers.d/vim4-manager-helper', 0o440)
+    copy(deploy / 'vim4-manager.service', stage, 'usr/lib/systemd/system/vim4-manager.service')
+    copy(ROOT / 'vim4-manager/LICENSE', stage, 'usr/share/doc/vim4-manager/copyright')
+    write(stage, 'DEBIAN/postinst', '''#!/bin/sh
+set -eu
+if [ "$1" = configure ]; then
+    getent passwd khadas >/dev/null || { echo 'Requires the Khadas Ubuntu base account' >&2; exit 1; }
+    test -s /etc/sudoers.d/vim4-manager-helper
+    visudo -cf /etc/sudoers.d/vim4-manager-helper
+    if [ -d /run/systemd/system ]; then systemctl daemon-reload; fi
+fi
+''', 0o755)
+
+
 def main():
     version, output = sys.argv[1], Path(sys.argv[2])
     subprocess.run(['dpkg', '--validate-version', version], check=True)
@@ -121,7 +150,14 @@ def main():
         ('vim4-kvm-board', board, 'libc6 (>= 2.38), python3, systemd, udev, kmod, psmisc, iproute2, alsa-utils, hdmiin-demo (= 0.8-202305~noble)'),
         ('vim4-vfmcap', capture, gst),
         ('vim4-amlvenc', encoder, gst + ', libamvenc (= 0.2-202406~noble), libge2d (= 0.4-202406), gst-aml-drmbufferpool-plugins (= 0.2-202311)'),
-        ('vim4-nanokvm', application, gst + ', libopus0, sudo, python3, picocom, network-manager, avahi-daemon, openssh-server, chrony, alsa-utils, gstreamer1.0-alsa, gstreamer1.0-plugins-base, gstreamer1.0-plugins-good, gstreamer1.0-plugins-bad, gstreamer1.0-libav, vim4-kvm-board (>= 1.0.3+vim4.20261013.18), vim4-vfmcap, vim4-amlvenc (>= 1.0.3+vim4.20261013.18)')]:
+        ('vim4-nanokvm', application, gst + ', libopus0, sudo, python3, picocom, network-manager, avahi-daemon, openssh-server, chrony, alsa-utils, gstreamer1.0-alsa, gstreamer1.0-plugins-base, gstreamer1.0-plugins-good, gstreamer1.0-plugins-bad, gstreamer1.0-libav, vim4-kvm-board (>= 1.0.3+vim4.20261013.18), vim4-vfmcap, vim4-amlvenc (>= 1.0.3+vim4.20261013.18)'),
+        ('vim4-jetkvm', jetkvm, 'libc6 (>= 2.38), libglib2.0-0t64, libgstreamer1.0-0 (>= 1.24), '
+         'libgstreamer-plugins-base1.0-0 (>= 1.24), gstreamer1.0-plugins-bad, '
+         f'vim4-kvm-board (>= {version}), vim4-vfmcap (>= {version}), vim4-amlvenc (>= {version}), '
+         # The NanoKVM package owns the shared HID udev rule. Lower bounds only:
+         # the NanoKVM web updater replaces that one package by itself.
+         f'vim4-nanokvm (>= {version})'),
+        ('vim4-manager', manager, f'libc6 (>= 2.38), python3, sudo, systemd, vim4-nanokvm (>= {version})')]:
         package(name, version, output, populate, depends)
     shutil.copy('/opt/build-inputs/ubuntu-packages.txt', output)
     shutil.copy('/opt/build-inputs/downloads.lock.json', output)

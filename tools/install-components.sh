@@ -12,7 +12,8 @@ stage=$(mktemp -d)
 trap 'rm -rf "$stage"' EXIT
 packages=()
 version=
-for name in vim4-kvm-board vim4-vfmcap vim4-amlvenc vim4-nanokvm; do
+components=(vim4-kvm-board vim4-vfmcap vim4-amlvenc vim4-nanokvm vim4-jetkvm vim4-manager)
+for name in "${components[@]}"; do
     candidates=("${name}"_*_arm64.deb)
     [[ ${#candidates[@]} == 1 && -f ${candidates[0]} ]]
     package=${candidates[0]}
@@ -51,7 +52,15 @@ for source, installed in pairs:
 PY
 for file in "$stage"/etc/sudoers.d/*; do visudo -cf "$file"; done
 apt-get -s --no-remove install "${packages[@]}"
+# Keep the application selected in vim4-manager. NanoKVM is the default when
+# neither is enabled (first installation of the JetKVM package).
+app=nanokvm.service
+if systemctl is-enabled --quiet vim4-kvm.service 2>/dev/null; then app=vim4-kvm.service; fi
 systemctl stop nanokvm.service
+# Stopping a unit that is not installed yet fails; skip it rather than ignore errors.
+if [[ $(systemctl show --property=LoadState --value vim4-kvm.service) == loaded ]]; then
+    systemctl stop vim4-kvm.service
+fi
 # If installation fails, leave the service stopped: do not launch a mixed install.
 DEBIAN_FRONTEND=noninteractive apt-get -y --no-remove -o Dpkg::Options::=--force-confold install "${packages[@]}"
 while IFS= read -r file; do
@@ -67,15 +76,16 @@ if [[ -x /usr/sbin/vim4-rootfs-policy ]]; then /usr/sbin/vim4-rootfs-policy /; f
 systemctl daemon-reload
 # Manual installations enabled units using absolute /etc paths. Recreate those
 # links against the packaged units so the next boot does not silently skip KVM.
-systemctl reenable --force nanokvm.service vim4-kvm-hdmi.service vim4-kvm-gadget.service \
+systemctl reenable --force "$app" vim4-manager.service vim4-kvm-hdmi.service vim4-kvm-gadget.service \
     vim4-kvm-pd.service vim4-kvm-cpufreq.service
-for unit in nanokvm vim4-kvm-hdmi vim4-kvm-gadget vim4-kvm-pd vim4-kvm-cpufreq; do
-    readlink -e "/etc/systemd/system/multi-user.target.wants/$unit.service" >/dev/null
+for unit in "$app" vim4-manager.service vim4-kvm-hdmi.service vim4-kvm-gadget.service vim4-kvm-pd.service \
+    vim4-kvm-cpufreq.service; do
+    readlink -e "/etc/systemd/system/multi-user.target.wants/$unit" >/dev/null
 done
 udevadm control --reload-rules
-systemctl restart nanokvm.service
-systemctl is-active nanokvm.service
-dpkg-query -W -f='${Package} ${Version}\n' vim4-kvm-board vim4-vfmcap vim4-amlvenc vim4-nanokvm
+systemctl restart "$app" vim4-manager.service
+systemctl is-active "$app" vim4-manager.service
+dpkg-query -W -f='${Package} ${Version}\n' "${components[@]}"
 for file in "$stage"/etc/sudoers.d/*; do
     installed=/etc/sudoers.d/$(basename "$file")
     cmp "$file" "$installed"

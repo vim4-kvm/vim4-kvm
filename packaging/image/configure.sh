@@ -37,7 +37,7 @@ EOF
 /usr/sbin/vim4-rootfs-policy /
 systemctl --root=/ disable usb-gadget-khadas.service audioserver.service
 systemctl --root=/ enable vim4-kvm-gadget.service vim4-kvm-pd.service vim4-kvm-hdmi.service \
-    vim4-kvm-cpufreq.service nanokvm.service
+    vim4-kvm-cpufreq.service nanokvm.service vim4-manager.service
 # SSH host identity must be generated per installation, never copied into images.
 rm -f /etc/ssh/ssh_host_*
 cat > /usr/lib/systemd/system/vim4-kvm-firstboot.service <<'EOF'

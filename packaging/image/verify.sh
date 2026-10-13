@@ -41,9 +41,11 @@ for path in vmlinuz-5.15.137 initrd.img-5.15.137 dtb-5.15.137/amlogic/kvim4n.dtb
 grep -q '^LABEL Stock' "$root/boot/extlinux/extlinux.conf"
 grep -q "UUID=$(blkid -s UUID -o value "$bootloop")" "$root/etc/fstab"
 grep -q "UUID=$(blkid -s UUID -o value "$rootloop")" "$root/etc/fstab"
-for unit in vim4-kvm-hdmi vim4-kvm-gadget vim4-kvm-pd vim4-kvm-cpufreq vim4-kvm-firstboot nanokvm; do
+for unit in vim4-kvm-hdmi vim4-kvm-gadget vim4-kvm-pd vim4-kvm-cpufreq vim4-kvm-firstboot nanokvm vim4-manager; do
     systemctl --root="$root" is-enabled "$unit.service"
 done
+# Only one KVM application may boot; vim4-manager switches between them.
+test ! -e "$root/etc/systemd/system/multi-user.target.wants/vim4-kvm.service"
 test ! -e "$root/etc/systemd/system/multi-user.target.wants/audioserver.service"
 python3 "$(dirname "$0")/../ubuntu/check-audio-startup.py" "$root"
 python3 "$root/usr/sbin/vim4-rootfs-policy" --check "$root"

@@ -38,7 +38,7 @@ def main():
                         metadata['builder'], 'sh', '/checks/verify.sh'], check=True)
         return
     sources = {}
-    for name in ('.', 'NanoKVM-Pro', 'gst-plugin-vfmcap', 'gst-plugin-venc'):
+    for name in ('.', 'NanoKVM-Pro', 'gst-plugin-vfmcap', 'gst-plugin-venc', 'kvm', 'vim4-manager'):
         path = ROOT / name
         if Path(output('git', '-C', str(path), 'rev-parse', '--show-toplevel')).resolve() != path.resolve():
             raise ValueError(f'{name} is not an independent repository')

@@ -15,6 +15,8 @@ python3 /checks/check-audio-startup.py /tmp/package-check/root
 dpkg-deb -f ./vim4-kvm-board_*.deb Depends | grep -qw alsa-utils
 for binary in /tmp/package-check/root/usr/sbin/usb-pd-init \
     /tmp/package-check/root/opt/vim4-nanokvm/NanoKVM-Server \
+    /tmp/package-check/root/opt/vim4-jetkvm/jetkvm \
+    /tmp/package-check/root/opt/vim4-manager/vim4-manager \
     /tmp/package-check/root/usr/lib/aarch64-linux-gnu/gstreamer-1.0/libgstvfmcap.so \
     /tmp/package-check/root/usr/lib/vim4-kvm/gstreamer-1.0/libgstamlvenc.so; do
     readelf -h "$binary" | grep -q 'Machine:.*AArch64'
@@ -47,4 +49,16 @@ if sh /tmp/package-check/control/postinst configure; then
     exit 1
 fi
 cp -a /tmp/package-check/root/etc/sudoers.d/vim4-media /etc/sudoers.d/
+# Installing the JetKVM package must not change which application boots.
+dpkg-deb -e ./vim4-jetkvm_*.deb /tmp/package-check/jetkvm-control
+sh /tmp/package-check/jetkvm-control/postinst configure
+test ! -e /etc/systemd/system/multi-user.target.wants/vim4-kvm.service
+grep -qx 'Conflicts=nanokvm.service' /tmp/package-check/root/usr/lib/systemd/system/vim4-kvm.service
+dpkg-deb -e ./vim4-manager_*.deb /tmp/package-check/manager-control
+sh /tmp/package-check/manager-control/postinst configure
+truncate -s 0 /etc/sudoers.d/vim4-manager-helper
+if sh /tmp/package-check/manager-control/postinst configure; then
+    echo 'Empty manager sudoers file incorrectly accepted' >&2
+    exit 1
+fi
 echo 'PASS: checksums, ARM64 ELF, libraries, sudoers, config preservation, damaged-file rejection'

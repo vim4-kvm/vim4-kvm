@@ -141,12 +141,12 @@ class BoardToolsTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as directory:
             folder = self.packages(directory)
             version, debs, dirty = board.package_metadata(folder)
-            self.assertEqual((version, len(debs), dirty), ('1.0~test1', 4, ['NanoKVM-Pro']))
-            debs[3].write_bytes(b'tampered')
-            with self.assertRaisesRegex(ValueError, 'vim4-nanokvm.*SHA256'):
+            self.assertEqual((version, len(debs), dirty), ('1.0~test1', len(board.COMPONENTS), ['NanoKVM-Pro']))
+            debs[-1].write_bytes(b'tampered')
+            with self.assertRaisesRegex(ValueError, 'vim4-manager.*SHA256'):
                 board.package_metadata(folder)
-            debs[3].unlink()
-            with self.assertRaisesRegex(ValueError, 'vim4-nanokvm'):
+            debs[-1].unlink()
+            with self.assertRaisesRegex(ValueError, 'vim4-manager'):
                 board.package_metadata(folder)
 
     def test_deploy_requires_exclusivity_and_dry_run_is_offline(self):
