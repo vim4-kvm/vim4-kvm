@@ -1,6 +1,7 @@
 # 构建与部署
 
 Ubuntu 隔离构建与组件打包先读 [ubuntu-build.md](../ubuntu-build.md)。
+内核打包与离线候选镜像组装见 [ubuntu-image.md](../ubuntu-image.md)。
 
 先读 [工作区](../workspace.md)、[硬件](../hardware.md)，再按目标读
 [内核](../kernel.md)、[USB-PD](../usb-pd.md) 或

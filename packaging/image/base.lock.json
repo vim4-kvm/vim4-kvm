@@ -1,0 +1,14 @@
+{
+  "url": "https://dl.khadas.com/.images/vim4/vim4-ubuntu-24.04-server-linux-5.15-fenix-1.7.5-250925.img.xz",
+  "sha256": "16a467d75c8e35dc6e798cbbe18ba375e61879fa2fb7d4f795c4f74d278cfac4",
+  "disk_bytes": 3338665984,
+  "output_bytes": 8589934592,
+  "partition_table": "dos",
+  "boot_start": 32768,
+  "boot_sectors": 491520,
+  "root_start": 524288,
+  "sector_bytes": 512,
+  "stock_kernel": "5.15.137",
+  "kernel": "5.15.137-vim4kvm",
+  "ubuntu_snapshot": "20261012T000000Z"
+}

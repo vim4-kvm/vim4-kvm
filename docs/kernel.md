@@ -8,6 +8,9 @@
 
 ## 构建（OrbStack VM `vim4-build`，Ubuntu 24.04 arm64）
 
+固定配置与 deb 打包入口为 `python3 tools/ubuntu-image.py kernel`，详见
+[Ubuntu 镜像流程](ubuntu-image.md)。下方保留手工构建和板上回退说明。
+
 macOS 文件系统大小写不敏感，内核树不能放在 Mac 上，只放在 VM 的 `~/src/linux`。`~/src/linux/common_drivers` 是 Mac 侧仓库的克隆，Mac 上改完推送后在 VM 里 `git pull`。
 
 `.config` 取自板子 `/boot/config-5.15.137`，只改了 `CONFIG_LOCALVERSION="-vim4kvm"`。
