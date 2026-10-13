@@ -54,7 +54,8 @@ USB-C 单线供电与键鼠数据的开机初始化见 [docs/usb-pd.md](docs/usb
 网页入口：**http://192.168.50.210:8080**。应用代码位于子目录 `NanoKVM-Pro/` 仓库的
 `vim4` 分支，构建安装见其中 `VIM4.md`。`nanokvm.service` 以 khadas 运行，
 已验证整机重启后自动恢复视频和键鼠。当前网页使用本地免密码模式。
-旧 `kvm/` 应用保留用于回退，其 `vim4-kvm.service` 已禁用。
+管理面板 **http://192.168.50.210**（[vim4-manager](vim4-manager/README.md)）可切换开机启用的
+NanoKVM-Pro 或 JetKVM（`kvm/`）界面，并查看板子状态；两者共用 8080，同一时间只运行一个。
 
 - [x] 串口控制台
 - [x] 刷入 Ubuntu 24.04.3 Server（fenix 1.7.5，kernel 5.15.137）
