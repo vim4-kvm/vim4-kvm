@@ -74,8 +74,10 @@ def application(stage):
     deploy = ROOT / 'NanoKVM-Pro/deploy/vim4'
     copy(ROOT / 'build/NanoKVM-Server', stage, 'opt/vim4-nanokvm/NanoKVM-Server', 0o755)
     shutil.copytree(ROOT / 'NanoKVM-Pro/web/dist', stage / 'opt/vim4-nanokvm/web')
+    shutil.copytree(ROOT / 'NanoKVM-Pro/support/assistant', stage / 'opt/vim4-nanokvm/assistant',
+                    ignore=shutil.ignore_patterns('__pycache__'))
     copy(ROOT / 'NanoKVM-Pro/LICENSE', stage, 'usr/share/doc/vim4-nanokvm/copyright')
-    for name in ('vim4-video', 'vim4-media', 'vim4-system', 'vim4-update', 'vim4-edid'):
+    for name in ('vim4-video', 'vim4-media', 'vim4-system', 'vim4-update', 'vim4-edid', 'vim4-tailscale'):
         copy(deploy / name, stage, 'usr/libexec/' + name, 0o755)
         copy(deploy / (name + '.sudoers'), stage, 'etc/sudoers.d/' + name, 0o440)
     for name in ('nanokvm.service', 'vim4-kvm-cpufreq.service'):
@@ -105,7 +107,7 @@ def main():
         ('vim4-kvm-board', board, 'libc6 (>= 2.38), systemd, udev, kmod, psmisc, iproute2, alsa-utils, hdmiin-demo (= 0.8-202305~noble)'),
         ('vim4-vfmcap', capture, gst),
         ('vim4-amlvenc', encoder, gst + ', libamvenc (= 0.2-202406~noble), libge2d (= 0.4-202406), gst-aml-drmbufferpool-plugins (= 0.2-202311)'),
-        ('vim4-nanokvm', application, gst + ', libopus0, sudo, python3, picocom, network-manager, avahi-daemon, openssh-server, chrony, alsa-utils, gstreamer1.0-alsa, gstreamer1.0-plugins-base, gstreamer1.0-plugins-good, gstreamer1.0-plugins-bad, vim4-kvm-board, vim4-vfmcap, vim4-amlvenc')]:
+        ('vim4-nanokvm', application, gst + ', libopus0, sudo, python3, picocom, network-manager, avahi-daemon, openssh-server, chrony, alsa-utils, gstreamer1.0-alsa, gstreamer1.0-plugins-base, gstreamer1.0-plugins-good, gstreamer1.0-plugins-bad, gstreamer1.0-libav, vim4-kvm-board, vim4-vfmcap, vim4-amlvenc')]:
         package(name, version, output, populate, depends)
     shutil.copy('/opt/build-inputs/ubuntu-packages.txt', output)
     shutil.copy('/opt/build-inputs/downloads.lock.json', output)
