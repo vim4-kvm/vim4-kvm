@@ -43,3 +43,24 @@ ALSA 的 `TDMIN_B source select` 为硬件默认 `tdmin_b`，录音设备实际�
 证据：logs/audio-current-*（故障）、logs/audio-route-*（修复后）、
 logs/audio-pcm-tone.log 和 logs/audio-route.pcm。浏览器测试使用原音量菜单，
 没有绕过自动播放策略；验证的是非静音音频到达浏览器，不是扬声器的实际听感。
+
+恢复路由后还发现发送节奏问题：VIM4 的阻塞采集已经按 20ms 输出 Opus，发送
+循环又等待 20ms ticker，实际只发约 42–46 包/秒，接收端产生缺音补偿。VIM4
+成功读取时改为直接发送，空闲/失败仍限速；非 VIM4 保持原节奏。修复后的
+6 秒稳态区间收到 300 包、288000 个采样，丢包与缺音补偿增量为 0；启动阶段
+仍可能发生补偿，不声称长期或所有网络条件下零缺音。证据 logs/audio-pacing-*。
+
+复测非静音链路（Mac 有 AML TV HDMI 输出时）：
+
+```sh
+clang tools/hdmi-audio-tone.c -framework AudioToolbox -framework CoreAudio \
+  -framework CoreFoundation -o /tmp/hdmi-audio-tone
+/tmp/hdmi-audio-tone &
+PLAYWRIGHT_MODULE=/absolute/path/to/playwright/index.mjs \
+  node tools/audio-smoke.mjs http://192.168.50.210:8080 --expect-signal
+wait
+```
+
+测试音仅发送到 AML TV，不改变系统默认输出。audio-smoke 使用独立 Chrome
+与原音量菜单，报告包速率、缺音补偿和音频能量。未播放测试音时不要使用
+--expect-signal；能采到全零 PCM 不等于验证了实际声音。
