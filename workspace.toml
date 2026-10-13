@@ -34,6 +34,6 @@ revision = "c55c2f504f615b66b8ff447bd623b157a60d89c0"
 [kernel]
 url = "https://github.com/vim4-kvm/linux.git"
 branch = "vim4-kvm-5.15"
-revision = "dbcef7c1fd82717ec634bbca57f3a79ee5820b61"
+revision = "b86c7e5bd12c1c0eaa0d652e706775cbca699e4d"
 vm = "vim4-build"
 # Lives on a case-sensitive Linux filesystem, outside this checkout.

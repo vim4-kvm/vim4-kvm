@@ -39,4 +39,12 @@ printf 'existing user settings\n' > /etc/kvm/server.yaml
 sh /tmp/package-check/control/postinst configure
 test "$(cat /etc/kvm/server.yaml)" = 'existing user settings'
 test ! -e /etc/systemd/system/multi-user.target.wants/nanokvm.service
-echo 'PASS: checksums, ARM64 ELF, dynamic libraries, sudoers, initial config and upgrade preservation'
+# A crash previously left a conffile empty. Configuration must not report
+# success merely because visudo accepts an empty sudoers include.
+truncate -s 0 /etc/sudoers.d/vim4-media
+if sh /tmp/package-check/control/postinst configure; then
+    echo 'Empty sudoers file incorrectly accepted' >&2
+    exit 1
+fi
+cp -a /tmp/package-check/root/etc/sudoers.d/vim4-media /etc/sudoers.d/
+echo 'PASS: checksums, ARM64 ELF, libraries, sudoers, config preservation, damaged-file rejection'

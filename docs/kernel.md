@@ -30,7 +30,9 @@ $M M=$PWD/common_drivers/drivers/media/vfm_cap modules        # vfm_cap 树外�
 
 ### HID 重新绑定
 
-主内核 `dbcef7c1f` 将 f_hid 的等待队列、锁和接收链表初始化移到功能实例分配时。
+主内核 `dbcef7c1f` 将 f_hid 的等待队列、锁和接收链表初始化移到功能实例分配时；
+`b86c7e5bd` 为每次绑定独立分配字符设备，旧设备由仍打开的文件持有到最后关闭。
+两项缺一不可：只修等待队列的实机测试仍触发 list_del corruption。
 旧实现每次 UDC bind 都重置等待队列，破坏仍注册在 epoll 中的 HID 文件描述符。
 修复编进 Image（CONFIG_USB_F_HID=y），必须安装完整内核并重启，不能靠更换模块生效。
 应用在切换 USB 功能前关闭 HID 的保护继续保留。
