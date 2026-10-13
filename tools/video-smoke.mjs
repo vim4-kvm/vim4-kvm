@@ -18,8 +18,6 @@ try {
   const page = await browser.newPage();
   await page.addInitScript((mode) => {
     localStorage.setItem('nano-kvm-vide-mode', mode);
-    // Accept the original H.265 notice so the mode is selectable.
-    document.cookie = 'h265=Enable; path=/';
     window.smokePeers = [];
     window.smokeDirect = { messages: 0, keyframes: 0, bytes: 0 };
     const Original = RTCPeerConnection;
