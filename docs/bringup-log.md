@@ -628,3 +628,10 @@ after-1400-repeat}.json`。`/tmp/NanoKVM-Server` 未改，构建使用独立文�
 - 证据：`logs/package-20261013-20.log`、`logs/verify-package-20261013-20.log`、
   `logs/deploy-20261013-20.log`、`logs/video-20261013-20.json`、
   `logs/deployed-resolution-menu-20.png`。本轮未重新测试音频、HID 或端到端延迟。
+
+- 后续设置页改为 EDID 相同的标题/说明加 Select 布局，应用提交 `da6150a`，
+  干净构建、校验并部署 `1.0.3+vim4.20261013.21`。本地浏览器模拟接口验证
+  下拉框与快捷菜单双向同步、保存失败保留旧值并提示错误；板上 Chrome 确认
+  下拉框显示三档尺寸及最高 60 FPS，视频正常显示，没有切换实际采集设置。
+  部署服务检查通过，截图 `logs/deployed-resolution-settings-21.png`；构建、
+  包校验和部署日志分别为 `logs/{package,verify-package,deploy}-20261013-21.log`。
