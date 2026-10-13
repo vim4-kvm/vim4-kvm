@@ -73,3 +73,25 @@ VIM4 的 HasHDMISignal 只从 sysfs info 解析帧率，不能把它当成接收
 4. 只有找到可区分正常静态桌面和故障的条件后，才加入自动恢复。
 
 重置接口属于人工恢复能力；完善它不能标记为“虚拟屏退出自动恢复已修复”。
+
+## 控制状态采样工具
+
+`tools/hdmi-control-watch.py` 在板端以 root 运行，默认 180 秒、最多 600 秒，
+每秒输出一条 JSON。通过 debug 接口只发送固定的读寄存器命令，不发送
+HPD/EDID 更新、复位或任意寄存器写入命令；读取 /dev/kmsg 不清除内核日志。
+
+```sh
+scp tools/hdmi-control-watch.py vim4:/tmp/vim4-hdmi-control-watch.py
+ssh vim4 'sudo -n python3 /tmp/vim4-hdmi-control-watch.py --seconds 180' > control.jsonl
+```
+
+限定 VIM4 T7、HDMI RX port 1。DWC 标签是驱动打印名称：在 T7 上实际读取 COR。
+固定采样 SCDC 的 sink/source version（0x301/0x302）、TMDS config（0x320）、
+scramble status（0x321）、status flags0（0x340），以及 TOP 的
+EDID_GEN_STAT_B（0x25）；同时采集 vfm_cap status/stats。
+不读取中断状态或清零语义尚不明确的错误计数器，也不启用厂商 I2C debug 模式。
+
+已在板子上完成两次连续采样，每次返回全部六个寄存器，帧计数继续推进。
+这不是逐笔 DDC 抓包：一秒内的变化可能遗漏，状态寄存器也不能证明 ACK/NAK。
+采样期间避免其他任务使用 debug 接口，输出应核对每条是否包含六项读数。
+驱动的 `rx_i2c_dbg_monitor` 及配套 ACK/NAK 解码器仅支持 T3X，不能用在本板。
