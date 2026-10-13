@@ -12,6 +12,7 @@ import lzma
 import os
 from pathlib import Path
 import shlex
+import shutil
 import subprocess
 import sys
 import threading
@@ -248,6 +249,72 @@ class Board:
             time.sleep(1)
         self.check()
 
+    def verify_hid(self):
+        # Only meaningful when this Mac is the USB host of the gadget.
+        if '"idProduct" = 260' not in subprocess.run(['ioreg', '-p', 'IOUSB', '-l', '-w0'], text=True,
+                                                   capture_output=True).stdout:
+            return 'SKIP', 'gadget is not attached to this Mac'
+        original = host_pointer()
+        write = lambda x, y: self.ssh("printf '" + ''.join(f'\\{b:03o}' for b in absolute_report(x, y))
+                                      + "' > /dev/hidg1")
+        try:
+            for target in ((0.25, 0.25), (0.75, 0.6)):
+                write(*target)
+                time.sleep(0.3)
+                actual = host_pointer()
+                if max(abs(a - b) for a, b in zip(actual, target)) > 0.02:
+                    return 'FAIL', f'pointer at {actual}, expected {target}'
+        finally:
+            write(*original)
+        return 'PASS', 'absolute pointer reports moved the Mac cursor'
+
+    def verify_audio(self):
+        # The application may own the PCM while a client listens to audio.
+        result = self.ssh('timeout 5 arecord -q -D hw:AMLAUGESOUND,0 -f S16_LE -r 48000 -c 2 -d 1 -t raw '
+                          '| python3 -c "import sys,array; a=array.array(\'h\', sys.stdin.buffer.read()); '
+                          'print(len(a)//2, max(map(abs, a), default=0))"', check=False)
+        lines = result.stdout.split()
+        if result.returncode or len(lines) < 2:
+            if 'busy' in result.stdout.lower():
+                return 'SKIP', 'PCM busy (application audio session active)'
+            return 'FAIL', 'arecord failed: ' + result.stdout.strip()[-200:]
+        frames, peak = int(lines[-2]), int(lines[-1])
+        if frames < 40000:
+            return 'FAIL', f'only {frames} frames in 1 s'
+        return 'PASS', f'{frames} frames at 48 kHz, peak {peak} (0 means silent source)'
+
+    def verify_video(self):
+        module = os.environ.get('PLAYWRIGHT_MODULE')
+        if not module and not shutil.which('node'):
+            return 'SKIP', 'node is not installed'
+        # Same address SSH uses, not whichever interface the board lists first.
+        config = subprocess.run(['ssh', '-G', self.args.host], text=True, capture_output=True, check=True).stdout
+        address = next(line.split()[1] for line in config.splitlines() if line.startswith('hostname '))
+        url = f'http://{address}:8080'
+        result = self.run(['node', str(ROOT / 'tools/video-smoke.mjs'), url, '10'], timeout=120, check=False)
+        if result.returncode:
+            if 'playwright' in result.stdout.lower() and 'cannot find' in result.stdout.lower():
+                return 'SKIP', 'Playwright unavailable; set PLAYWRIGHT_MODULE'
+            return 'FAIL', 'video-smoke.mjs failed; see log'
+        stats = json.loads(result.stdout[result.stdout.index('{'):])
+        return 'PASS', f'{stats["width"]}x{stats["height"]} {stats["decodedFps"]:.1f} fps, ' \
+                       f'dropped {stats["framesDropped"]}, lost {stats["packetsLost"]}'
+
+    def verify(self):
+        self.check()
+        results = {}
+        for name, step in (('hid', self.verify_hid), ('audio', self.verify_audio), ('video', self.verify_video)):
+            try:
+                results[name] = step()
+            except (OSError, ValueError, RuntimeError, subprocess.SubprocessError) as exc:
+                results[name] = ('FAIL', str(exc))
+            self.note(f'{name}: {results[name][0]} - {results[name][1]}')
+        (self.args.log_dir / 'verify.json').write_text(json.dumps(
+            {name: {'status': status, 'detail': detail} for name, (status, detail) in results.items()}, indent=2))
+        if any(status == 'FAIL' for status, _ in results.values()):
+            raise RuntimeError('Functional verification failed')
+        self.note('Verification finished; SKIP entries are not passes. Latency and keyboard input are not covered.')
+
     def check(self):
         # is-active with multiple units succeeds if ANY unit is active.
         self.ssh("set -eu; for service in tvserver vim4-kvm-hdmi vim4-kvm-gadget nanokvm; do "
@@ -260,9 +327,28 @@ class Board:
         self.note('Smoke checks passed; this does not verify video, audio, HID input or latency end to end.')
 
 
+POINTER_SCRIPT = (
+    'ObjC.import("AppKit"); const p = $.NSEvent.mouseLocation; '
+    'const f = $.NSScreen.screens.objectAtIndex(0).frame; '
+    '[p.x / f.size.width, 1 - p.y / f.size.height].join(" ")')
+
+
+def host_pointer():
+    """Return the Mac cursor as fractions of the primary display, top-left origin."""
+    output = subprocess.run(['osascript', '-l', 'JavaScript', '-e', POINTER_SCRIPT], text=True,
+                            capture_output=True, check=True, timeout=10).stdout
+    return tuple(float(value) for value in output.split())
+
+
+def absolute_report(x, y):
+    # hidg1 layout from kvm-gadget.sh: buttons, X and Y as LE 0..32767, wheel.
+    to_axis = lambda value: max(0, min(32767, round(value * 32767)))
+    return bytes([0]) + to_axis(x).to_bytes(2, 'little') + to_axis(y).to_bytes(2, 'little') + bytes([0])
+
+
 def main(argv=None):
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument('action', choices=['recover', 'flash', 'deploy', 'enroll', 'check'])
+    parser.add_argument('action', choices=['recover', 'flash', 'deploy', 'enroll', 'check', 'verify'])
     parser.add_argument('--host', default='vim4')
     parser.add_argument('--device', default='/dev/cu.usbserial-100')
     parser.add_argument('--image', type=Path)
@@ -276,7 +362,7 @@ def main(argv=None):
     parser.add_argument('--dry-run', action='store_true', help='validate local inputs only; no SSH/UART/server')
     parser.add_argument('--log-dir', type=Path)
     args = parser.parse_args(argv)
-    if args.action not in ('check', 'enroll') and not args.exclusive:
+    if args.action not in ('check', 'enroll', 'verify') and not args.exclusive:
         parser.error('recover/flash/deploy requires --exclusive after coordinating board access')
     if args.action == 'flash':
         if not args.yes_erase_emmc or not args.image or not args.serve_address:
@@ -316,6 +402,8 @@ def main(argv=None):
             board.deploy(metadata)
         elif args.action == 'enroll':
             board.enroll()
+        elif args.action == 'verify':
+            board.verify()
         elif args.action == 'recover':
             board.recover()
         else:

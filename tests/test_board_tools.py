@@ -208,6 +208,39 @@ class BoardToolsTests(unittest.TestCase):
             instance.run(['ssh', 'vim4', 'sudo -S true'], input_text='secret\n')
             self.assertIsNone(run.call_args.kwargs['stdin'])
 
+    def test_absolute_report_matches_gadget_descriptor(self):
+        self.assertEqual(board.absolute_report(0, 1), bytes([0, 0, 0, 0xff, 0x7f, 0]))
+        self.assertEqual(board.absolute_report(-1, 2)[1:5], bytes([0, 0, 0xff, 0x7f]))
+        self.assertEqual(len(board.absolute_report(0.5, 0.5)), 6)
+
+    def hid_board(self):
+        instance = board.Board(SimpleNamespace(host='vim4'), io.StringIO())
+        attached = SimpleNamespace(stdout='"idProduct" = 260\n')
+        return instance, patch.object(board.subprocess, 'run', return_value=attached)
+
+    def test_hid_mismatch_fails_and_restores_cursor(self):
+        instance, ioreg = self.hid_board()
+        with ioreg, patch.object(board, 'host_pointer', side_effect=[(0.5, 0.5), (0.9, 0.9)]), \
+             patch.object(board.time, 'sleep'), patch.object(instance, 'ssh') as ssh:
+            status, _ = instance.verify_hid()
+        self.assertEqual(status, 'FAIL')
+        self.assertIn(''.join(f'\\{b:03o}' for b in board.absolute_report(0.5, 0.5)), ssh.call_args.args[0])
+
+    def test_verify_reports_skip_without_failing(self):
+        instance = board.Board(SimpleNamespace(log_dir=Path(tempfile.mkdtemp())), io.StringIO())
+        with patch.object(instance, 'check'), \
+             patch.object(instance, 'verify_hid', return_value=('SKIP', 'not attached')), \
+             patch.object(instance, 'verify_audio', return_value=('PASS', 'ok')), \
+             patch.object(instance, 'verify_video', return_value=('PASS', 'ok')):
+            instance.verify()
+        with patch.object(instance, 'check'), \
+             patch.object(instance, 'verify_hid', side_effect=RuntimeError('ssh dropped')), \
+             patch.object(instance, 'verify_audio', return_value=('PASS', 'ok')), \
+             patch.object(instance, 'verify_video', return_value=('PASS', 'ok')):
+            with self.assertRaisesRegex(RuntimeError, 'Functional verification failed'):
+                instance.verify()
+        self.assertIn('ssh dropped', (instance.args.log_dir / 'verify.json').read_text())
+
     def test_uart_status_and_missing_completion(self):
         self.assertEqual(uart.parse_result('echo command\r\nBEGIN\r\nfailed\r\nDONE:7\r\n', 'BEGIN', 'DONE'), ('failed', 7))
         with self.assertRaises(TimeoutError):

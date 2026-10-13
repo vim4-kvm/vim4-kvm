@@ -14,7 +14,8 @@
 | 只读服务检查 | tools/board.py check | SSH 读取、HTTP GET |
 | 开发板免密 sudo（一次） | tools/board.py enroll | 安装 sudoers 文件 |
 | 增量安装四组件包 | tools/board.py deploy --exclusive（板上调用 install-components.sh） | 板上安装，重启 NanoKVM |
-| 浏览器视频冒烟测试 | tools/video-smoke.mjs | 打开一个 WebRTC 会话 |
+| 部署后功能验证 | tools/board.py verify | 移动 Mac 光标、录 1 秒音频、打开一个 WebRTC 会话 |
+| 浏览器视频冒烟测试（单独） | tools/video-smoke.mjs | 打开一个 WebRTC 会话 |
 | 从 Ubuntu 进入 OOWOW | tools/board.py recover --exclusive | 重启，中断 KVM |
 | 整机刷写 | tools/board.py flash（见下） | 清空 eMMC，重启 |
 | 原始串口命令/日志 | tools/uart-run.py / uart-log.py | 取决于命令；不要并行使用 |
@@ -33,7 +34,7 @@ version=1.0.3+vim4.20261012.1
 python3 tools/ubuntu-build.py package --version "$version"
 python3 tools/ubuntu-build.py verify --version "$version"
 python3 tools/board.py deploy --exclusive --packages "build/packages/$version"
-PLAYWRIGHT_MODULE=/absolute/path/to/playwright/index.mjs node tools/video-smoke.mjs
+PLAYWRIGHT_MODULE=/absolute/path/to/playwright/index.mjs python3 tools/board.py verify
 ```
 
 board.py deploy 先在本地按 SHA256SUMS 校验四个 deb 和 sources.json 并输出脏源码仓库
@@ -52,6 +53,17 @@ board.py deploy 先在本地按 SHA256SUMS 校验四个 deb 和 sources.json 并
 video-smoke.mjs 需要 Playwright 和 Chrome，默认采样 15 秒，输出实际解码帧数、
 尺寸、丢帧和丢包；无视频或连接断开返回失败。它使用当前页面配置，需要无认证
 页面且默认显示 WebRTC 视频，不修改账户认证。此测试不测输入响应、音频或端到端延迟。
+
+board.py verify 先运行 check，再逐项输出 PASS/FAIL/SKIP，并写入日志目录的 verify.json：
+
+| 项 | 方法 | SKIP 条件 |
+|---|---|---|
+| hid | 向 /dev/hidg1 写两次绝对坐标，用 osascript 读取 Mac 光标核对（误差 2%），最后恢复原位置 | 本机不是 gadget 的 USB 主机 |
+| audio | arecord 读 hw:AMLAUGESOUND,0 一秒，要求帧数完整；输出峰值，0 表示信源静音 | PCM 被应用音频会话占用 |
+| video | video-smoke.mjs 采样 10 秒，地址取自 ssh -G | 无 node/Playwright |
+
+SKIP 不算通过。hid 假定 Mac 只有一个显示器；会短暂移动光标，不点击。
+不覆盖键盘输入、音频内容、运动画面和端到端延迟（见 [latency.md](latency.md)）。
 
 ## 操作前约定
 

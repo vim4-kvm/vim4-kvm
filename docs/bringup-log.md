@@ -487,3 +487,6 @@ after-1400-repeat}.json`。`/tmp/NanoKVM-Server` 未改，构建使用独立文�
   版本核对与 check 均通过，UDC configured。
 - video-smoke.mjs 15.005 秒，3840×2160，解码 900 帧（59.98 fps），丢帧/丢包 0。
   同版本重装，不代表新版本或运动场景、HID、音频、延迟通过；本轮未重启整机。
+- 同日 `board.py verify` 首次实机运行：hid PASS（hidg1 绝对坐标移动 Mac 光标并恢复），
+  audio PASS（1 秒 48000 帧，峰值 0，信源静音，未验证音频内容），video PASS
+  （3840×2160 60.0 fps，丢帧/丢包 0）。日志 logs/board-20261013-122034-b9aa0b/。
