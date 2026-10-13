@@ -4,11 +4,13 @@ import importlib.util
 import io
 import lzma
 import os
+import shutil
 import subprocess
 from pathlib import Path
 import tempfile
 from types import SimpleNamespace
 import unittest
+import unittest.mock
 from unittest.mock import patch
 import urllib.error
 import urllib.request
@@ -180,6 +182,23 @@ class BoardToolsTests(unittest.TestCase):
         for call in ssh.call_args_list:
             self.assertTrue(call.args[0].startswith("sudo -k -S -p '' "))
             self.assertNotIn('secret', call.args[0])
+
+    def test_dev_sudoers_is_valid_and_kept_out_of_packages(self):
+        root = Path(__file__).resolve().parents[1]
+        rule = root / 'board/vim4-dev-nopasswd.sudoers'
+        if shutil.which('visudo'):
+            subprocess.run(['visudo', '-cf', str(rule)], check=True, capture_output=True)
+        packaging = (root / 'packaging/ubuntu/package.py').read_text() + (root / 'packaging/image/configure.sh').read_text()
+        self.assertNotIn('nopasswd', packaging.lower())
+
+    def test_enroll_verifies_passwordless_sudo(self):
+        instance = board.Board(SimpleNamespace(host='vim4'), io.StringIO())
+        ssh_result = SimpleNamespace(stdout='/tmp/vim4-enroll.x\n', returncode=0)
+        with patch.object(instance, 'ssh', return_value=ssh_result) as ssh, patch.object(instance, 'run'), \
+             patch.object(instance, 'sudo') as sudo:
+            instance.enroll()
+        self.assertIn('visudo -cf', sudo.call_args.args[0])
+        self.assertIn(unittest.mock.call('sudo -n true'), ssh.call_args_list)
 
     def test_uart_status_and_missing_completion(self):
         self.assertEqual(uart.parse_result('echo command\r\nBEGIN\r\nfailed\r\nDONE:7\r\n', 'BEGIN', 'DONE'), ('failed', 7))

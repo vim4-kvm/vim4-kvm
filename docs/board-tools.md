@@ -12,6 +12,7 @@
 | 用户态打包与隔离验证 | tools/ubuntu-build.py package / verify | 否 |
 | 内核包与整机镜像 | tools/ubuntu-image.py kernel / assemble / verify / export | 否 |
 | 只读服务检查 | tools/board.py check | SSH 读取、HTTP GET |
+| 开发板免密 sudo（一次） | tools/board.py enroll | 安装 sudoers 文件 |
 | 增量安装四组件包 | tools/board.py deploy --exclusive（板上调用 install-components.sh） | 板上安装，重启 NanoKVM |
 | 浏览器视频冒烟测试 | tools/video-smoke.mjs | 打开一个 WebRTC 会话 |
 | 从 Ubuntu 进入 OOWOW | tools/board.py recover --exclusive | 重启，中断 KVM |
@@ -38,7 +39,7 @@ PLAYWRIGHT_MODULE=/absolute/path/to/playwright/index.mjs node tools/video-smoke.
 board.py deploy 先在本地按 SHA256SUMS 校验四个 deb 和 sources.json 并输出脏源码仓库
 （--dry-run 到此为止），记录板上原有版本（Previous 行，回退时用对应目录再次 deploy），
 上传整个包目录与安装脚本到板上临时目录，以 sudo 运行 install-components.sh，
-确认四包版本一致后运行 check。sudo 规则同 recover；无终端时用 --sudo-password-stdin。
+确认四包版本一致后运行 check。已 enroll 的开发板无需密码。
 安装失败时 NanoKVM 保持停止，先 `dpkg --audit` 检查，不要连续重试。
 
 示例版本已部署，重新构建使用新版本。安装脚本验证四包的 SHA256、名称、架构、
@@ -59,8 +60,11 @@ video-smoke.mjs 需要 Playwright 和 Chrome，默认采样 15 秒，输出实�
 - flash 需要用户明确授权清空 eMMC。--yes-erase-emmc 表示已有授权，不是获取授权的替代。
 - 同一工作区的 board.py 有进程锁；串口工具也有端口锁。外部终端未必遵守这些锁。
 - SSH 使用现有密钥与 known_hosts，保持主机身份校验。工具不存储密码、不更改 SSH 配置。
-- sudo 免密或现有缓存可用时直接运行；否则交互提示密码。agent 无终端时可以用
-  --sudo-password-stdin 从安全凭据提供方读取一行，不把密码放在参数、代码或日志中。
+- 开发板先运行一次 `python3 tools/board.py enroll`（输入一次 khadas 密码），安装
+  board/vim4-dev-nopasswd.sudoers，之后 deploy/recover 全自动，不存储任何密码。
+  该文件不进入组件包和整机镜像；新刷的镜像需重新 enroll。撤销：
+  `sudo rm /etc/sudoers.d/vim4-dev-nopasswd`。不修改账户密码。
+- 未 enroll 时交互提示密码；无终端可用 --sudo-password-stdin 从凭据提供方读一行。
 
 ## 远程进入恢复环境
 

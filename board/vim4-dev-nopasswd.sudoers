@@ -1,0 +1,4 @@
+# Development boards only: lets agents deploy and recover unattended.
+# Installed by tools/board.py enroll; never packaged or added to images.
+# Remove with: sudo rm /etc/sudoers.d/vim4-dev-nopasswd
+khadas ALL=(ALL:ALL) NOPASSWD: ALL

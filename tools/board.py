@@ -198,6 +198,21 @@ class Board:
         # Fresh images intentionally do not contain the developer SSH key.
         self.note('Flash and boot capture complete. Run check after verifying SSH identity and installing your public key.')
 
+    def enroll(self):
+        # Copy first, then sudo install: the password must not share stdin
+        # with file content.
+        self.ssh("grep -qi 'Khadas VIM4' /proc/device-tree/model")
+        remote = self.ssh('mktemp -d /tmp/vim4-enroll.XXXXXX').stdout.strip().splitlines()[-1]
+        try:
+            self.run(['scp', '-q', '-o', 'BatchMode=yes', str(ROOT / 'board/vim4-dev-nopasswd.sudoers'),
+                      f'{self.args.host}:{remote}/'])
+            self.sudo(f'sh -c "visudo -cf {remote}/vim4-dev-nopasswd.sudoers && '
+                      f'install -m 0440 {remote}/vim4-dev-nopasswd.sudoers /etc/sudoers.d/vim4-dev-nopasswd"')
+        finally:
+            self.ssh(f'rm -rf {remote}', check=False)
+        self.ssh('sudo -n true')
+        self.note('Passwordless sudo enabled for unattended deploy/recover on this development board.')
+
     def installed_versions(self):
         output = self.ssh("dpkg-query -W -f '${Package} ${Version}\\n' " + ' '.join(COMPONENTS), check=False).stdout
         return dict(line.split() for line in output.splitlines() if len(line.split()) == 2)
@@ -245,7 +260,7 @@ class Board:
 
 def main(argv=None):
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument('action', choices=['recover', 'flash', 'deploy', 'check'])
+    parser.add_argument('action', choices=['recover', 'flash', 'deploy', 'enroll', 'check'])
     parser.add_argument('--host', default='vim4')
     parser.add_argument('--device', default='/dev/cu.usbserial-100')
     parser.add_argument('--image', type=Path)
@@ -259,7 +274,7 @@ def main(argv=None):
     parser.add_argument('--dry-run', action='store_true', help='validate local inputs only; no SSH/UART/server')
     parser.add_argument('--log-dir', type=Path)
     args = parser.parse_args(argv)
-    if args.action != 'check' and not args.exclusive:
+    if args.action not in ('check', 'enroll') and not args.exclusive:
         parser.error('recover/flash/deploy requires --exclusive after coordinating board access')
     if args.action == 'flash':
         if not args.yes_erase_emmc or not args.image or not args.serve_address:
@@ -297,6 +312,8 @@ def main(argv=None):
             board.flash(metadata)
         elif args.action == 'deploy':
             board.deploy(metadata)
+        elif args.action == 'enroll':
+            board.enroll()
         elif args.action == 'recover':
             board.recover()
         else:
