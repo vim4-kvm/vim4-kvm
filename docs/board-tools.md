@@ -12,14 +12,42 @@
 | 用户态打包与隔离验证 | tools/ubuntu-build.py package / verify | 否 |
 | 内核包与整机镜像 | tools/ubuntu-image.py kernel / assemble / verify / export | 否 |
 | 只读服务检查 | tools/board.py check | SSH 读取、HTTP GET |
+| 增量安装四组件包 | tools/install-components.sh --exclusive PACKAGE_DIRECTORY | 板上安装，重启 NanoKVM |
+| 浏览器视频冒烟测试 | tools/video-smoke.mjs | 打开一个 WebRTC 会话 |
 | 从 Ubuntu 进入 OOWOW | tools/board.py recover --exclusive | 重启，中断 KVM |
 | 整机刷写 | tools/board.py flash（见下） | 清空 eMMC，重启 |
 | 原始串口命令/日志 | tools/uart-run.py / uart-log.py | 取决于命令；不要并行使用 |
 
 现有 tools/oowow-flash.sh 保留为手工 URL 刷写入口；新的本地候选镜像测试优先使用
 board.py，以便校验导出清单、限制文件共享范围并记录全过程。
-组件包安装与服务迁移仍按 [ubuntu-build.md](ubuntu-build.md) 操作；board.py 不自动
-删除 /etc 下的手工服务、不批量覆盖配置，也不把整机刷写用于每次应用迭代。
+组件包构建见 [ubuntu-build.md](ubuntu-build.md)，增量部署见下。board.py 不自动
+删除 /etc 下的手工服务，也不把整机刷写用于每次应用迭代。
+
+## 增量开发闭环
+
+协调板子独占后，选择新的版本号；三个构建/验证/上传步骤使用同一版本：
+
+```sh
+version=1.0.3+vim4.20261012.1
+python3 tools/ubuntu-build.py package --version "$version"
+python3 tools/ubuntu-build.py verify --version "$version"
+scp -r "build/packages/$version" vim4:/home/khadas/
+scp tools/install-components.sh vim4:/home/khadas/
+ssh -t vim4 "sudo bash /home/khadas/install-components.sh --exclusive /home/khadas/$version"
+python3 tools/board.py check
+PLAYWRIGHT_MODULE=/absolute/path/to/playwright/index.mjs node tools/video-smoke.mjs
+```
+
+示例版本已部署，重新构建使用新版本。安装脚本验证四包的 SHA256、名称、架构、
+相同版本和非降级条件，先模拟 APT 安装，随后暂停并重启 NanoKVM。保留应用配置。
+只迁移与候选包内容相同或仅已知旧路径不同的服务、udev 和 sudoers 文件，未知覆盖
+会在停服务之前拒绝；RTP 等其他管理员 drop-in 保留。修复启用链接指向包内服务，
+不重新执行 USB-PD 协商、不重启系统、不更新内核。失败不自动启动可能混装的应用。
+这是现有 VIM4 系统的升级入口，不代替完整镜像首次安装。
+
+video-smoke.mjs 需要 Playwright 和 Chrome，默认采样 15 秒，输出实际解码帧数、
+尺寸、丢帧和丢包；无视频或连接断开返回失败。它使用当前页面配置，需要无认证
+页面且默认显示 WebRTC 视频，不修改账户认证。此测试不测输入响应、音频或端到端延迟。
 
 ## 操作前约定
 
