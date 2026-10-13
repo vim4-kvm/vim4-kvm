@@ -29,7 +29,7 @@ $M M=$PWD/common_drivers/drivers/media/vfm_cap modules        # vfm_cap 树外�
 
 主内核提交 `8df3bdb55` 增加 MCU 百分比调速；`cd7f74066` 修正紧急全速、
 温度读取失败时全速、手动模式下改温度阈值不干预输出，以及同步取消调速任务。
-两项提交当前保存在 VM 工作分支，尚未推送。对应模块为 `khadas-mcu.ko`：
+两项提交已推送到 linux 仓库的 `vim4-kvm-5.15` 分支。对应模块为 `khadas-mcu.ko`：
 
 ```sh
 make ARCH=arm64 CC=gcc-12 M=drivers/misc khadas-mcu.ko -j10

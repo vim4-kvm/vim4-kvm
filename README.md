@@ -4,6 +4,10 @@
 
 ## 目录
 
+Agent 入口见 [AGENTS.md](AGENTS.md)，经验记录见 [LESSONS.md](LESSONS.md)。
+在 org 目录运行 `sh vim4-kvm/tools/setup-workspace.sh` 初始化本地入口；
+布局与冲突处理见 [工作区说明](docs/workspace.md)。
+
 | 路径 | 内容 |
 |---|---|
 | [docs/hardware.md](docs/hardware.md) | 硬件接口、串口接线、供电与 KVM 相关的硬件约束 |

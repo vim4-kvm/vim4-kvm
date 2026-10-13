@@ -16,7 +16,7 @@
 |---|---|---|
 | Micro HDMI 输入（Type-D） | 采集被控机画面 | HDMI RX **port 1**，进 vdin0。`/dev/video71`（vdin1）是显示输出回写，不是 HDMI 输入；采集走 tvserver 打开源 + vfm_cap（见 bringup-log §8）。官方称 HDMI 输出须接显示器，实测未接时 vdin0 + vfm_cap 可正常采集 |
 | USB-C（USB2.0 OTG + PD） | 模拟键鼠 / 虚拟 U 盘 / USB 网卡 | UDC = `fdd00000.crgudc2`。**同时也是 9–20V PD 供电口** |
-| VIN（背面） | 9–20V 供电 | 作为 KVM 使用时 USB-C 要接被控机，必须改由 VIN 供电 |
+| VIN（背面） | 9–20V 供电 | 可选独立供电；当前 Mac 已验证 USB-C 单线供电与 HID，协商边界见 [usb-pd.md](usb-pd.md) |
 | HDMI 输出 | 本地显示 / 挂假负载 | |
 | 40-pin GPIO | 串口、ATX 电源控制 | |
 | M.2（PCIe 2.0 x1） | NVMe | 未插盘时内核会报 `amlogic-pcie-v2 ... error -110`，无害 |
@@ -77,9 +77,9 @@ Khadas 40-pin 编号**与树莓派不同**：一排为 1–20，另一排为 21�
 - Sipeed 模块的 Type-C 口用 C-to-C 线时可能不被 Mac 枚举（`USB-C@N` 显示 `ConnectionActive=Yes` 但没有 USB 设备），换线/换接法后正常。
 - macOS 自带 `stty` 不能设置 921600，`tools/uart-run.py` 用 `IOSSIOSPEED` ioctl 设置波特率。
 
-## 推荐的开发拓扑
+## 开发拓扑
 
-Mac mini 同时充当被控机，一台机器即可验证 KVM 全链路：
+Mac mini 同时充当被控机。当前 USB-C 单线供电与 HID；VIN 和 HDMI 输出假负载均非当前配置的必需项：
 
 ```
                Ethernet (192.168.50.210)
@@ -87,6 +87,6 @@ Mac mini 同时充当被控机，一台机器即可验证 KVM 全链路：
      │ USB-UART ── GPIO 17/18/19 (921600) ────────┤
      │ HDMI out ── micro-HDMI ─────── HDMI-IN ────┤
      │ USB ──────── USB-C (OTG: HID/ECM/MSD) ─────┤
-                                 12V DC ── VIN ───┤
-                      HDMI dummy plug ── HDMI-OUT ┘
+                      可选独立电源 ── VIN ────────┤
+                      HDMI-OUT（当前未连接）──────┘
 ```
