@@ -75,7 +75,7 @@ def application(stage):
     copy(ROOT / 'build/NanoKVM-Server', stage, 'opt/vim4-nanokvm/NanoKVM-Server', 0o755)
     shutil.copytree(ROOT / 'NanoKVM-Pro/web/dist', stage / 'opt/vim4-nanokvm/web')
     copy(ROOT / 'NanoKVM-Pro/LICENSE', stage, 'usr/share/doc/vim4-nanokvm/copyright')
-    for name in ('vim4-video', 'vim4-media', 'vim4-system', 'vim4-update'):
+    for name in ('vim4-video', 'vim4-media', 'vim4-system', 'vim4-update', 'vim4-edid'):
         copy(deploy / name, stage, 'usr/libexec/' + name, 0o755)
         copy(deploy / (name + '.sudoers'), stage, 'etc/sudoers.d/' + name, 0o440)
     for name in ('nanokvm.service', 'vim4-kvm-cpufreq.service'):

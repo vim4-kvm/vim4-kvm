@@ -23,6 +23,12 @@ VDIN=/sys/class/vdin/vdin0/attr
 
 modprobe vfm_cap
 
+# tvserver reloads its vendor EDID set at boot; reapply the EDID selected in
+# NanoKVM (if any) before the host reads it. A failure keeps the vendor EDID.
+if [ -x /usr/libexec/vim4-edid ]; then
+	/usr/libexec/vim4-edid restore || echo "EDID restore failed; keeping vendor EDID" >&2
+fi
+
 pkill -x hdmiin-demo 2>/dev/null && sleep 2 || true
 
 # 8-bit only: the 4K 10-bit default is Amlogic packed 422 (AMLY)
