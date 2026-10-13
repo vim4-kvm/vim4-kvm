@@ -158,10 +158,19 @@ class Board:
         self.sudo("sh -c 'nohup sh -c \"sleep 2; sync; /usr/local/bin/reboot2oowow\" </dev/null >/tmp/vim4-recovery.log 2>&1 &'")
         self.run([sys.executable, str(ROOT / 'tools/uart-log.py'), '-d', self.args.device,
                   '-t', '60', '-o', str(self.args.log_dir / 'recovery-uart.log')], timeout=70)
-        self.require_oowow()
+        self.require_oowow(attempts=12)
 
-    def require_oowow(self):
-        self.uart('test -d /www/x/api/disk && test -b /dev/mmcblk0')
+    def require_oowow(self, attempts=1):
+        # OOWOW boot time varies; a console that has not finished booting
+        # just fails the probe, so poll instead of one fixed delay.
+        for attempt in range(attempts):
+            try:
+                self.uart('test -d /www/x/api/disk && test -b /dev/mmcblk0')
+                return
+            except (RuntimeError, subprocess.SubprocessError):
+                if attempt == attempts - 1:
+                    raise RuntimeError('OOWOW shell not confirmed; inspect recovery-uart.log before retrying')
+                time.sleep(10)
 
     def job(self, command, label, timeout):
         job = '/tmp/vim4-' + uuid.uuid4().hex
