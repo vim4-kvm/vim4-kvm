@@ -6,10 +6,10 @@ vfmcapsrc → amlvenc → NanoKVM WebRTC。板级 HDMI 服务打开输入并配�
 
 按改动范围先读：
 
-- [采集插件](../../../gst-plugin-vfmcap/README.md)：格式和 DMA-buf 生命周期。
-- [编码插件](../../../gst-plugin-venc/VIM4.md)：帧率预算、安装和测试。
-- [应用与音频](../../../NanoKVM-Pro/VIM4.md)：功能覆盖和构建。
-- [视频配置](../../../NanoKVM-Pro/deploy/vim4/VIDEO.md)：RTP、码率、GOP。
+- [采集插件](../../gst-plugin-vfmcap/README.md)：格式和 DMA-buf 生命周期。
+- [编码插件](../../gst-plugin-venc/VIM4.md)：帧率预算、安装和测试。
+- [应用与音频](../../NanoKVM-Pro/VIM4.md)：功能覆盖和构建。
+- [视频配置](../../NanoKVM-Pro/deploy/vim4/VIDEO.md)：RTP、码率、GOP。
 - [端到端测量](../latency.md)：软件端点定义和观测开销。
 
 编码器测试不能与应用或其他任务并发占用硬件。

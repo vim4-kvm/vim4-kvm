@@ -1,0 +1,39 @@
+# Development branches and source revisions for a reproducible checkout.
+# Existing checkouts are never reset or switched by bootstrap.
+
+[[repos]]
+name = "NanoKVM-Pro"
+url = "https://github.com/vim4-kvm/NanoKVM-Pro.git"
+branch = "vim4"
+revision = "1b321c4952cdbdbe2a8e54c877befd5b35ec98a7"
+
+[[repos]]
+name = "common_drivers"
+url = "https://github.com/vim4-kvm/common_drivers.git"
+branch = "vim4-kvm-5.15"
+revision = "95e064470979afccb945bd32b862d348e3e8ea1f"
+
+[[repos]]
+name = "gst-plugin-venc"
+url = "https://github.com/vim4-kvm/gst-plugin-venc.git"
+branch = "vim4"
+revision = "77bf42d968962b513a347489369a25937fe26e6f"
+
+[[repos]]
+name = "gst-plugin-vfmcap"
+url = "https://github.com/vim4-kvm/gst-plugin-vfmcap.git"
+branch = "main"
+revision = "0cc8d81d386f551b530d6514bda60d79a37a990d"
+
+[[repos]]
+name = "kvm"
+url = "https://github.com/vim4-kvm/kvm.git"
+branch = "vim4"
+revision = "c55c2f504f615b66b8ff447bd623b157a60d89c0"
+
+[kernel]
+url = "https://github.com/vim4-kvm/linux.git"
+branch = "vim4-kvm-5.15"
+revision = "cd7f74066f0a45cf9e000d15b1bbe9ec951ddfdf"
+vm = "vim4-build"
+# Lives on a case-sensitive Linux filesystem, outside this checkout.

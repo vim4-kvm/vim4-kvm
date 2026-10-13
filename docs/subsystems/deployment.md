@@ -2,7 +2,7 @@
 
 先读 [工作区](../workspace.md)、[硬件](../hardware.md)，再按目标读
 [内核](../kernel.md)、[USB-PD](../usb-pd.md) 或
-[应用安装](../../../NanoKVM-Pro/VIM4.md)。
+[应用安装](../../NanoKVM-Pro/VIM4.md)。
 
 SSH 为 ssh vim4（khadas@192.168.50.210），串口 /dev/cu.usbserial-100，921600 8N1。
 命令使用 tools/uart-run.py，只读日志用 tools/uart-log.py，输出放不入库的 logs/。

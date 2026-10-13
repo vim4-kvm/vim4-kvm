@@ -1,7 +1,7 @@
 # USB 与供电
 
 先读 [USB-C 协商](../usb-pd.md)、[硬件接线](../hardware.md) 和
-[应用集成](../../../NanoKVM-Pro/VIM4.md)。
+[应用集成](../../NanoKVM-Pro/VIM4.md)。
 
 板级 gadget 服务拥有 configfs，PD 服务负责开机有限协商。
 应用使用 hidg0/1/2 对应键盘、绝对鼠标、相对鼠标，不重新创建 gadget。

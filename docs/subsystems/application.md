@@ -1,6 +1,6 @@
 # NanoKVM 应用
 
-先读 [VIM4 集成](../../../NanoKVM-Pro/VIM4.md)，其中维护功能覆盖、
+先读 [VIM4 集成](../../NanoKVM-Pro/VIM4.md)，其中维护功能覆盖、
 构建、安装和限制；代码规范见 [code-standards.md](../code-standards.md)。
 
 nanokvm.service 监听 8080，以 khadas 运行；旧 vim4-kvm.service 仅用于回退，

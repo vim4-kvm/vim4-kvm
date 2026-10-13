@@ -5,7 +5,7 @@
 ## 目录
 
 Agent 入口见 [AGENTS.md](AGENTS.md)，经验记录见 [LESSONS.md](LESSONS.md)。
-在 org 目录运行 `sh vim4-kvm/tools/setup-workspace.sh` 初始化本地入口；
+当前目录即主仓库，运行 `python3 tools/workspace.py bootstrap` 克隆缺失子仓库；
 布局与冲突处理见 [工作区说明](docs/workspace.md)。
 
 | 路径 | 内容 |
@@ -44,7 +44,7 @@ tools/oowow-flash.sh --yes                          # 在 OOWOW 中重装默认 
 USB-C 单线供电与键鼠数据的开机初始化见 [docs/usb-pd.md](docs/usb-pd.md)。
 `board/install.sh` 会编译并启用 PD 服务；已在 Mac 上验证整机重启后自动枚举和实际输入。
 
-网页入口：**http://192.168.50.210:8080**。应用代码位于同级 `NanoKVM-Pro/` 仓库的
+网页入口：**http://192.168.50.210:8080**。应用代码位于子目录 `NanoKVM-Pro/` 仓库的
 `vim4` 分支，构建安装见其中 `VIM4.md`。`nanokvm.service` 以 khadas 运行，
 已验证整机重启后自动恢复视频和键鼠。当前网页使用本地免密码模式。
 旧 `kvm/` 应用保留用于回退，其 `vim4-kvm.service` 已禁用。

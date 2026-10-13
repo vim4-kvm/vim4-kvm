@@ -1,3 +1,9 @@
 logs/
 __pycache__/
 .DS_Store
+/NanoKVM-Pro/
+/common_drivers/
+/gst-plugin-venc/
+/gst-plugin-vfmcap/
+/kvm/
+/build/
