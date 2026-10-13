@@ -144,6 +144,19 @@ python3 tools/board.py provision --replace-host-key
 
 软件恢复依赖 Ubuntu/SSH 可用；系统死机、供电故障仍需物理复位或独立控制硬件。
 
+## KVM 应用切换回归
+
+```sh
+PLAYWRIGHT_MODULE=/absolute/path/to/playwright/index.mjs \
+  node tools/kvm-switch-check.mjs --exclusive http://192.168.50.210
+```
+
+保留上一界面的视频连接，通过管理器接口执行两轮 NanoKVM → JetKVM → NanoKVM。
+每次核对服务互斥、开机启用状态，再在 Chrome 采样 10 秒实际解码帧数、丢帧和丢包。
+最终保持 NanoKVM。两个入口使用不同的 `?kvm=` 参数，避免共用 8080 时复用另一应用的首页缓存。
+测试要求两个应用已完成初始化；不会自动创建账户或修改认证。
+`Conflicts=` 不保证退出顺序，管理器必须等旧服务完全停止后再启动新服务。
+
 ## USB 切换回归
 
 必须先启动包含两项 HID 生命周期修复的内核，详见 [内核](kernel.md)。
