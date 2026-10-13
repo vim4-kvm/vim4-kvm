@@ -1,5 +1,8 @@
 # 构建与部署
 
+板级自动化先读 [board-tools.md](../board-tools.md)：远程进入 OOWOW、本地镜像刷写、
+启动日志与只读服务检查统一使用 tools/board.py。
+
 Ubuntu 隔离构建与组件打包先读 [ubuntu-build.md](../ubuntu-build.md)。
 内核打包与离线候选镜像组装见 [ubuntu-image.md](../ubuntu-image.md)。
 
@@ -16,8 +19,8 @@ sudo 使用既定本地凭据，不在新文档和日志中复制凭据。
 长期命令使用 nohup setsid command </dev/null >log 2>&1 &，避免 sudo -b 挂住 SSH。
 
 内核安装用 tools/kernel-install.sh。重装清空 eMMC，须用户明确确认；
-按住 FUNCTION、短按 RESET、松开 FUNCTION 进入 OOWOW，再用
-tools/oowow-flash.sh，禁止直接用 OOWOW /shell/write。
+优先使用 tools/board.py recover 远程进入 OOWOW；系统无法响应时，按住 FUNCTION、
+短按 RESET、松开 FUNCTION。刷写见板级工具文档，禁止直接用 OOWOW /shell/write。
 
 镜像构建需记录各仓库提交、模块、插件、板级服务和应用配置。
 上板关键发现记入 [bringup-log.md](../bringup-log.md)，可复用教训归
