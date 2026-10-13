@@ -11,6 +11,7 @@ vfmcapsrc → amlvenc → NanoKVM WebRTC。板级 HDMI 服务打开输入并配�
 - [应用与音频](../../NanoKVM-Pro/VIM4.md)：功能覆盖和构建。
 - [视频配置](../../NanoKVM-Pro/deploy/vim4/VIDEO.md)：RTP、码率、GOP。
 - [端到端测量](../latency.md)：软件端点定义和观测开销。
+- [编码实验记录](../encoder-experiments.md)：旧插件降级、帧率重建、QP 与行刷新验证。
 
 编码器测试不能与应用或其他任务并发占用硬件。
 验证区分静止/运动、分辨率/帧率切换、热插拔、重连和丢包恢复。
