@@ -177,6 +177,16 @@ NCM。它会短暂断开 USB，不能与用户输入或其他硬件任务并行�
 
 ## 工具验证边界
 
+浏览器镜像上传与 Bash 终端回归（会在板上保留上传的镜像，重名不会覆盖）：
+
+```sh
+PLAYWRIGHT_MODULE=/absolute/path/to/playwright/index.mjs \
+  node tools/media-upload-check.mjs --exclusive /path/to/image.iso
+```
+
+使用原生 File/FormData 验证上传响应，并通过真实终端 WebSocket 回读 Bash 版本。
+此命令不验证镜像可启动、USB 挂载或文件系统写入；这些证据单独记在上板记录中。
+
 ```sh
 python3 -m unittest discover -s tests -p 'test_*.py'
 ```
