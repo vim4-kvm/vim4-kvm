@@ -11,6 +11,8 @@ for package in ./*.deb; do
     dpkg-deb -x "$package" /tmp/package-check/root
 done
 test ! -e /tmp/package-check/root/usr/local
+python3 /checks/check-audio-startup.py /tmp/package-check/root
+dpkg-deb -f ./vim4-kvm-board_*.deb Depends | grep -qw alsa-utils
 for binary in /tmp/package-check/root/usr/sbin/usb-pd-init \
     /tmp/package-check/root/opt/vim4-nanokvm/NanoKVM-Server \
     /tmp/package-check/root/usr/lib/aarch64-linux-gnu/gstreamer-1.0/libgstvfmcap.so \

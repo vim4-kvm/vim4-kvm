@@ -15,4 +15,5 @@
 | 用 game_mode 0 当作关闭低延迟的实验对照 | 0 恢复自动策略，实际模式可能是 0xb。核对驱动 state 中的当前模式，不能仅看全局参数；完整帧模式使用 0x3 | [采集延迟对照](docs/latency.md#board-side-isolation-and-completed-frame-mode) |
 | 认为 USB-C 供电必须另接 VIN 才能传键鼠 | 本项目已验证开机 PD 协商后单线供电和 HID，不代表所有供电、热插拔场景 | [USB-PD](docs/usb-pd.md) |
 | 把 video71 当 HDMI 输入 | vdin1 是输出回写；无 HDMI 输出时用 vdin0 → vfm_cap，HDMI RX 为 port 1 | [硬件](docs/hardware.md) |
+| HDMI 有音频包、WebRTC 已连接但始终静音 | TDM-B 默认读外部引脚。HDMI 服务 ExecStartPre 在 ALSA restore 后选 hdmirx，再允许 NanoKVM 启动；零峰值录音不能证明声音正常 | [功能与音频状态](docs/feature-status.md)、packaging/ubuntu/check-audio-startup.py |
 | 直接用 OOWOW /shell/write 或未经核对流式刷盘 | 项目曾遇到 GPT 被清空。使用专用校验刷机脚本，重装需用户确认 | tools/oowow-flash.sh、上板记录 |

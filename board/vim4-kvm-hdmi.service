@@ -1,10 +1,14 @@
 [Unit]
 Description=vim4-kvm HDMI-in capture path (vdin0 -> vfm_cap)
-After=tvserver.service
+After=tvserver.service sound.target alsa-restore.service
 Requires=tvserver.service
+Wants=alsa-restore.service
 
 [Service]
 EnvironmentFile=-/etc/default/vim4-kvm-hdmi
+# Set the route before this unit is considered started: NanoKVM is ordered after
+# us and must never open the PCM on the default external TDM pins.
+ExecStartPre=/usr/bin/amixer -q -D hw:AMLAUGESOUND cset "name=TDMIN_B source select" hdmirx
 ExecStart=/usr/local/sbin/hdmi-setup.sh
 Restart=on-failure
 RestartSec=3

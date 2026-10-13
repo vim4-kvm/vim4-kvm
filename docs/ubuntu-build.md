@@ -34,6 +34,8 @@ python3 tools/ubuntu-build.py verify --version 0.1.0~dev4
 verify 在新的临时容器检查校验和、ARM64 ELF、动态库解析、sudoers 和网页文件，
 并执行首次配置与重复配置测试，确认已有 server.yaml 不被覆盖且没有自动启用应用服务。
 不要把 packaging/ubuntu/verify.sh 当作宿主机安装脚本执行。
+校验也检查 HDMI 音频的启动顺序、ExecStartPre 路由和板级包的 alsa-utils 依赖，
+防止当前板子有声音、重新打包后却恢复为静音的遗漏。
 
 package/verify 必须显式提供 --version；后续镜像 assemble 的 --components 使用同一值。
 示例版本已有产物时，请三个命令一起换成新的版本，不覆盖已有包。

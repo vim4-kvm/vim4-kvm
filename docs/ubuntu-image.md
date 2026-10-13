@@ -73,6 +73,8 @@ verify 以只读方式挂载镜像，并检查：
 - vfm_cap 的模块依赖、应用及编码插件动态库解析、sudoers。
 - 服务启用关系、无共享 SSH 密钥、machine-id 清空及临时构建策略已移除。
 - dpkg 无未配置包。assemble 卸载后还检查两个 ext4 文件系统。
+- HDMI 服务在 ALSA 恢复后、NanoKVM 启动前通过 ExecStartPre 选择 HDMI 音频路由，
+  并确认镜像内 amixer 可运行；缺少这项修复的旧组件包无法通过新验证。
 
 镜像内 /usr/share/vim4-kvm/build 保存组件提交、内核配置摘要、基础镜像锁、
 配方脚本与系统包列表。候选镜像未执行实机启动、HDMI/USB 回归或端到端延迟测试。
