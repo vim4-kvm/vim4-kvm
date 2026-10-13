@@ -144,6 +144,24 @@ python3 tools/board.py provision --replace-host-key
 
 软件恢复依赖 Ubuntu/SSH 可用；系统死机、供电故障仍需物理复位或独立控制硬件。
 
+## USB 切换回归
+
+必须先启动包含两项 HID 生命周期修复的内核，详见 [内核](kernel.md)。
+`tools/hid-rebind-check.py` 在应用停止、板子独占时验证 epoll 描述符跨 UDC
+重新绑定。旧内核不能运行此测试，会触发 panic。
+
+应用层回归先上传可丢弃的 ISO，并确认麦克风关闭、没有挂载其他镜像：
+
+```sh
+PLAYWRIGHT_MODULE=/absolute/path/to/playwright/index.mjs \
+  node tools/usb-switch-check.mjs http://192.168.50.210:8080 \
+  /var/lib/vim4-kvm/images/test.iso --exclusive
+```
+
+脚本保持原查看页面连接，执行三轮麦克风/镜像组合切换，结束时弹出镜像并恢复
+NCM。它会短暂断开 USB，不能与用户输入或其他硬件任务并行。验证的是 API
+切换和恢复，不包含被控机录音、镜像文件读写或音画延迟。
+
 ## 工具验证边界
 
 ```sh
