@@ -18,9 +18,11 @@ def output(*args):
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('command', choices=['environment', 'package', 'verify'])
-    parser.add_argument('--version', default='0.1.0~dev1')
+    parser.add_argument('--version', help='Required for package/verify; explicit component package version')
     parser.add_argument('--allow-dirty', action='store_true', help='Allow development sources, recording dirty state')
     args = parser.parse_args()
+    if args.command != 'environment' and not args.version:
+        parser.error('package/verify requires --version; no implicit development version is selected')
     if args.command == 'environment':
         subprocess.run(['docker', 'build', '--platform', 'linux/arm64', '-t', IMAGE,
                         str(ROOT / 'packaging/ubuntu')], check=True)

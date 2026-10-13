@@ -10,6 +10,7 @@ cc -O2 -Wall -Wextra -Werror tools/usb-pd-init.c -o build/usb-pd-init
 cc -Wall -Wextra -Werror tests/pd-request.c -o build/pd-test
 build/pd-test
 python3 -m unittest discover -s tests -p 'test_*.py'
+python3 -m unittest discover -s NanoKVM-Pro/deploy/vim4 -p 'test_*.py'
 python3 tools/workspace.py build all
 cd NanoKVM-Pro/server
 g++ -shared -fPIC -Iinclude dl_lib/kvmimpl.cpp -o dl_lib/libkvm.so

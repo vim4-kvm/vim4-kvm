@@ -23,8 +23,8 @@
 
 ```sh
 python3 tools/ubuntu-build.py environment
-python3 tools/ubuntu-build.py package --version 0.1.0~dev1
-python3 tools/ubuntu-build.py verify --version 0.1.0~dev1
+python3 tools/ubuntu-build.py package --version 0.1.0~dev4
+python3 tools/ubuntu-build.py verify --version 0.1.0~dev4
 ```
 
 构建容器原生使用 linux/arm64，源码只读挂载并复制到容器独立工作目录；Mac
@@ -35,7 +35,11 @@ verify 在新的临时容器检查校验和、ARM64 ELF、动态库解析、sudo
 并执行首次配置与重复配置测试，确认已有 server.yaml 不被覆盖且没有自动启用应用服务。
 不要把 packaging/ubuntu/verify.sh 当作宿主机安装脚本执行。
 
-构建先检查 PD 边界和工作区工具，再编译两个插件，运行 VIM4 Go 测试并构建
+package/verify 必须显式提供 --version；后续镜像 assemble 的 --components 使用同一值。
+示例版本已有产物时，请三个命令一起换成新的版本，不覆盖已有包。
+
+构建先检查 PD 边界、工作区工具和 NanoKVM deploy/vim4 下的 Python 部署测试，
+再编译两个插件，运行 VIM4 Go 测试并构建
 服务端、前端，随后验证上游 Go 目标和 sudoers。完整测试日志应由调用者保存。
 这里的通过不意味着硬件采集、编码、PD 和端到端延迟通过。
 

@@ -166,8 +166,10 @@ class Board:
         self.note('Flash and boot capture complete. Run check after verifying SSH identity and installing your public key.')
 
     def check(self):
+        # is-active with multiple units succeeds if ANY unit is active.
+        self.ssh("set -eu; for service in tvserver vim4-kvm-hdmi vim4-kvm-gadget nanokvm; do "
+                 "printf '%s: ' \"$service\"; systemctl is-active \"$service\"; done")
         self.ssh("set -eu; uname -r; test \"$(uname -r)\" = " + shlex.quote(self.args.kernel) + "; "
-                 "systemctl is-active tvserver vim4-kvm-hdmi vim4-kvm-gadget nanokvm; "
                  "test -e /dev/video_cap; test -e /dev/hidg0; test -e /dev/hidg1; test -e /dev/hidg2; "
                  "curl -fsS --max-time 10 http://127.0.0.1:8080/ >/dev/null; "
                  "cat /sys/class/udc/*/state; systemctl --failed --no-pager; "

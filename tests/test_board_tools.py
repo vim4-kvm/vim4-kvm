@@ -4,6 +4,7 @@ import importlib.util
 import io
 import lzma
 import os
+import subprocess
 from pathlib import Path
 import tempfile
 from types import SimpleNamespace
@@ -25,6 +26,31 @@ uart = load('uart-run')
 
 
 class BoardToolsTests(unittest.TestCase):
+    def test_one_inactive_service_rejects_health_check(self):
+        instance = board.Board(SimpleNamespace(kernel='5.15.137-vim4kvm'), io.StringIO())
+        # Model systemctl's ANY-active exit status, including an inactive unit
+        # which would not appear in `systemctl --failed`.
+        fake_systemctl = '''systemctl() {
+            shift
+            result=3
+            for unit in "$@"; do
+                if [ "$unit" = vim4-kvm-hdmi ]; then echo inactive;
+                else echo active; result=0; fi
+            done
+            return "$result"
+        }
+        '''
+        def ssh(command):
+            result = subprocess.run(['sh', '-c', fake_systemctl + command], capture_output=True, text=True)
+            if result.returncode:
+                raise RuntimeError(result.stdout)
+            return result
+        with patch.object(instance, 'ssh', side_effect=ssh) as remote:
+            with self.assertRaisesRegex(RuntimeError, 'vim4-kvm-hdmi: inactive'):
+                instance.check()
+            self.assertEqual(remote.call_count, 1)
+        self.assertNotIn('Smoke checks passed', instance.log.getvalue())
+
     def fixture(self, directory):
         raw = b'fake disk contents\0' * 100
         image = Path(directory) / 'candidate.img.xz'

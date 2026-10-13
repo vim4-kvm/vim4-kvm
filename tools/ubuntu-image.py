@@ -27,9 +27,13 @@ def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('command', choices=['fetch', 'kernel', 'assemble', 'verify', 'export'])
     parser.add_argument('--name', default='vim4-kvm-ubuntu-0.1.0-dev2')
-    parser.add_argument('--components', default='0.1.0~dev4')
+    parser.add_argument('--components', help='Required for assemble; the version passed to ubuntu-build.py --version')
     args = parser.parse_args()
+    if args.command == 'assemble' and not args.components:
+        parser.error('assemble requires --components; use the same version as ubuntu-build.py --version')
     for value in (args.name, args.components):
+        if value is None:
+            continue
         if not re.fullmatch(r'[A-Za-z0-9][A-Za-z0-9_.~+-]*', value):
             raise ValueError('Names must be single filename components')
     base = ROOT / 'build/downloads/ubuntu-base.img.xz'

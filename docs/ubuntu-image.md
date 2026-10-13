@@ -8,7 +8,7 @@
 
 ## 前置条件
 
-- 按 [ubuntu-build.md](ubuntu-build.md) 构建并验证组件包，默认使用 0.1.0~dev4。
+- 按 [ubuntu-build.md](ubuntu-build.md) 构建并验证组件包，组装时显式传入同一组件版本。
 - Mac 通过 OrbStack 的 vim4-build 执行 Linux 操作，主仓库路径须在 VM 中同路径可见。
   原生 Linux ARM64 可直接运行。同一镜像不要被多个任务同时操作。
 - VM 中安装 fdisk、cloud-guest-utils、e2fsprogs、xz-utils、rsync、Python 3.11+，
@@ -22,7 +22,7 @@
 ```sh
 python3 tools/ubuntu-image.py fetch
 python3 tools/ubuntu-image.py kernel
-python3 tools/ubuntu-image.py assemble
+python3 tools/ubuntu-image.py assemble --components 0.1.0~dev4
 python3 tools/ubuntu-image.py verify
 python3 tools/ubuntu-image.py export
 ```
@@ -33,9 +33,10 @@ kernel 输出 build/packages/kernel 下的 deb 和构建记录。内核版本仍
 内核编译器版本写入 kernel-build.json；目前仍使用 VM 工具链，并未证明逐字节可复现。
 
 assemble 要求主仓库干净，输出 VM 的 ~/image-build/NAME.img；默认名称
-vim4-kvm-ubuntu-0.1.0-dev2。可用 --name 和 --components 指定名称及组件版本。
+vim4-kvm-ubuntu-0.1.0-dev2。可用 --name 指定名称；assemble 必须提供 --components，
+其值须与 ubuntu-build.py package/verify 的 --version 相同，避免默默使用旧包。
 已有输出拒绝覆盖；失败文件保留用于诊断。重新构建应选新名称或人工清理失败产物。
-默认参数表示当前验证样本，不是自动选择最新发布版本。
+默认镜像名称表示当前验证样本，不是自动选择最新发布版本。
 
 export 再次执行结构检查，以 xz 压缩并复制到主仓库 build/images/NAME/，附带
 压缩包校验和、原始镜像校验和、系统包版本列表和配方提交。该目录不入 Git。
