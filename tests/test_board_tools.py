@@ -1,4 +1,5 @@
 """Offline safety boundaries; no board, SSH, sudo or device writes."""
+import base64
 import hashlib
 import importlib.util
 import io
@@ -120,7 +121,9 @@ class BoardToolsTests(unittest.TestCase):
         with patch.object(instance, 'uart') as uart_call, patch.object(board.time, 'monotonic', side_effect=[0, 11]):
             with self.assertRaisesRegex(RuntimeError, 'may still be running'):
                 instance.job('write-command', 'write', 10)
-            self.assertEqual(uart_call.call_count, 1)
+            launches = [call for call in uart_call.call_args_list if call.args[0].startswith('( sh ')]
+            self.assertEqual(len(launches), 1)
+            self.assertFalse(any('STATUS=' in call.args[0] for call in uart_call.call_args_list))
 
     def packages(self, directory, version='1.0~test1'):
         folder = Path(directory) / version
@@ -291,6 +294,19 @@ class BoardToolsTests(unittest.TestCase):
                 instance.flash(board.image_metadata(image))
             provision.assert_called_once_with(replace_host_key=True)
             check.assert_called_once()
+
+    def test_long_job_commands_are_uploaded_in_short_lines(self):
+        instance = board.Board(SimpleNamespace(), io.StringIO())
+        command = 'curl -o /tmp/x "http://192.0.2.1/' + 'a' * 700 + '" && echo "done"'
+        sent = []
+        def uart(line):
+            sent.append(line)
+            return 'STATUS=0' if 'STATUS=' in line else ''
+        with patch.object(instance, 'uart', side_effect=uart):
+            instance.job(command, 'download', 60)
+        self.assertTrue(all(len(line) < 300 for line in sent), max(map(len, sent)))
+        chunks = ''.join(line.split()[2] for line in sent if line.startswith("printf '%s'"))
+        self.assertEqual(base64.b64decode(chunks).decode(), command)
 
     def test_uart_status_and_missing_completion(self):
         self.assertEqual(uart.parse_result('echo command\r\nBEGIN\r\nfailed\r\nDONE:7\r\n', 'BEGIN', 'DONE'), ('failed', 7))
