@@ -37,6 +37,13 @@ FSM_SIG_READY 分支检测 TMDS 有效性、时序和 AVI 变化，并在异常�
 DDC 过滤状态。本次故障停在 FSM_SIG_READY，这条路径不会执行；这是待测差异，
 不是应直接去掉状态限制的证据。
 
+进一步追踪 `rx_need_ddc_monitor`：它明确对 T7 rev C 返回 false，因此本板
+不会运行这段 DDC 过滤兼容逻辑，不仅是 READY 状态的限制。它不是通用 DDC
+请求处理器；T7 初始化另有启用 HDCP DDC/SCDC DDC 的硬件寄存器配置，
+`rx_clk_rate_monitor` 也读取 SCDC 时钟比例。不能把禁用该兼容监控解释为
+“本板不回应 DDC”。在已检索的 HDMI RX/CEC 代码中未找到明确的 DDC/CI
+MCCS 响应实现；是否有主机请求以及硬件如何应答，需要单独观测。
+
 TC358743 在 EDID 存在后安排延迟 HPD（代码为 HZ/7，注释约 143ms），
 5V 消失时撤销 HPD 并清除时序；格式变化通过 V4L2 SOURCE_CHANGE 通知消费者。
 它同样基于可检测的输入状态，并没有“静止画面就重新热插拔”的策略。
