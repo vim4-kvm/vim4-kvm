@@ -200,6 +200,14 @@ class BoardToolsTests(unittest.TestCase):
         self.assertIn('visudo -cf', sudo.call_args.args[0])
         self.assertIn(unittest.mock.call('sudo -n true'), ssh.call_args_list)
 
+    def test_subprocesses_never_consume_piped_password(self):
+        instance = board.Board(SimpleNamespace(), io.StringIO())
+        with patch.object(board.subprocess, 'run', return_value=SimpleNamespace(stdout='', returncode=0)) as run:
+            instance.run(['ssh', 'vim4', 'true'])
+            self.assertIs(run.call_args.kwargs['stdin'], board.subprocess.DEVNULL)
+            instance.run(['ssh', 'vim4', 'sudo -S true'], input_text='secret\n')
+            self.assertIsNone(run.call_args.kwargs['stdin'])
+
     def test_uart_status_and_missing_completion(self):
         self.assertEqual(uart.parse_result('echo command\r\nBEGIN\r\nfailed\r\nDONE:7\r\n', 'BEGIN', 'DONE'), ('failed', 7))
         with self.assertRaises(TimeoutError):

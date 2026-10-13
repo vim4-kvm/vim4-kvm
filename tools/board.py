@@ -113,7 +113,9 @@ class Board:
         self.log.flush()
 
     def run(self, command, timeout=30, check=True, input_text=None):
-        result = subprocess.run(command, text=True, stdout=subprocess.PIPE,
+        # Never inherit stdin: ssh would otherwise swallow a piped sudo password.
+        stdin = None if input_text is not None else subprocess.DEVNULL
+        result = subprocess.run(command, text=True, stdin=stdin, stdout=subprocess.PIPE,
                                 stderr=subprocess.STDOUT, timeout=timeout, input=input_text)
         print(result.stdout, end='', flush=True)
         self.log.write(result.stdout)
