@@ -1,4 +1,6 @@
-/* macOS diagnostic: 20 seconds of 440Hz PCM sent only to AML TV.
+/* macOS diagnostic: 20 seconds of 440Hz PCM sent only to the HDMI sink.
+ * The sink is named by the board's EDID: "AML TV" for the vendor tables,
+ * "JetKVM v1" for JetKVM's default. Usage: hdmi-audio-tone [NAME]
  * Does not change the system default output. Pair with audio-smoke.mjs.
  * Build: clang tools/hdmi-audio-tone.c -framework AudioToolbox
  *        -framework CoreAudio -framework CoreFoundation -o /tmp/hdmi-audio-tone
@@ -15,13 +17,14 @@ static void fill(void *ctx, AudioQueueRef q, AudioQueueBufferRef b) {
  for(int i=0;i<4800;i++) {float v=0.1f*sin(2*M_PI*440*(phase++)/48000.0);p[2*i]=v;p[2*i+1]=v;}
  b->mAudioDataByteSize=4800*2*sizeof(float);AudioQueueEnqueueBuffer(q,b,0,NULL);
 }
-int main(){
+int main(int argc,char **argv){
+ CFStringRef sink=CFStringCreateWithCString(NULL,argc>1?argv[1]:"AML TV",kCFStringEncodingUTF8);
  AudioObjectPropertyAddress p={kAudioHardwarePropertyDevices,kAudioObjectPropertyScopeGlobal,kAudioObjectPropertyElementMain};UInt32 size=0;
  AudioObjectGetPropertyDataSize(kAudioObjectSystemObject,&p,0,NULL,&size);
  AudioDeviceID *ids=malloc(size);AudioObjectGetPropertyData(kAudioObjectSystemObject,&p,0,NULL,&size,ids);CFStringRef uid=NULL;
  for(unsigned i=0;i<size/sizeof(*ids);i++){
   AudioObjectPropertyAddress n={kAudioObjectPropertyName,kAudioObjectPropertyScopeGlobal,kAudioObjectPropertyElementMain};CFStringRef name=NULL;UInt32 len=sizeof(name);AudioObjectGetPropertyData(ids[i],&n,0,NULL,&len,&name);
-  if(name&&CFStringFind(name,CFSTR("AML TV"),0).location!=kCFNotFound){n.mSelector=kAudioDevicePropertyDeviceUID;len=sizeof(uid);AudioObjectGetPropertyData(ids[i],&n,0,NULL,&len,&uid);}
+  if(name&&CFStringFind(name,sink,0).location!=kCFNotFound){n.mSelector=kAudioDevicePropertyDeviceUID;len=sizeof(uid);AudioObjectGetPropertyData(ids[i],&n,0,NULL,&len,&uid);}
   if(name)CFRelease(name);
  }
  if(!uid)return 1;

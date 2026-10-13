@@ -6,6 +6,8 @@
 当前可用功能、缺项与实测边界见 [功能状态](../feature-status.md)。
 当前基线的迁移范围与软件验证见 [NanoKVM 基线切换](../nanokvm-migration.md)。
 
+JetKVM 的功能映射、特权助手和验证见 [JetKVM VIM4 集成](../../kvm/VIM4.md)。
+
 nanokvm.service 与 JetKVM 的 vim4-kvm.service 都监听 8080、以 khadas 运行，
 互相 Conflicts=，不能并发占用编码器或 HID。由 vim4-manager（80 端口）选择开机启用哪一个，
 部署时保留当前选择。板级服务拥有 HDMI、gadget、PD 和编码器时钟。

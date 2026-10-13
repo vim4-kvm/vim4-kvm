@@ -58,6 +58,12 @@ cp -a /tmp/package-check/root/etc/sudoers.d/vim4-media /etc/sudoers.d/
 dpkg-deb -e ./vim4-jetkvm_*.deb /tmp/package-check/jetkvm-control
 sh /tmp/package-check/jetkvm-control/postinst configure
 test ! -e /etc/systemd/system/multi-user.target.wants/vim4-kvm.service
+truncate -s 0 /etc/sudoers.d/vim4-jetkvm
+if sh /tmp/package-check/jetkvm-control/postinst configure; then
+    echo 'Empty JetKVM sudoers file incorrectly accepted' >&2
+    exit 1
+fi
+cp -a /tmp/package-check/root/etc/sudoers.d/vim4-jetkvm /etc/sudoers.d/
 grep -qx 'Conflicts=nanokvm.service' /tmp/package-check/root/usr/lib/systemd/system/vim4-kvm.service
 dpkg-deb -e ./vim4-manager_*.deb /tmp/package-check/manager-control
 sh /tmp/package-check/manager-control/postinst configure

@@ -120,13 +120,22 @@ fi
 
 
 def jetkvm(stage):
+    deploy = ROOT / 'kvm/deploy/vim4'
     copy(ROOT / 'build/jetkvm', stage, 'opt/vim4-jetkvm/jetkvm', 0o755)
-    copy(ROOT / 'kvm/deploy/vim4/vim4-kvm.service', stage, 'usr/lib/systemd/system/vim4-kvm.service')
+    copy(deploy / 'vim4-kvm.service', stage, 'usr/lib/systemd/system/vim4-kvm.service')
+    copy(deploy / 'vim4-jetkvm', stage, 'usr/libexec/vim4-jetkvm', 0o755)
+    copy(deploy / 'vim4-jetkvm.sudoers', stage, 'etc/sudoers.d/vim4-jetkvm', 0o440)
     copy(ROOT / 'kvm/LICENSE', stage, 'usr/share/doc/vim4-jetkvm/copyright')
     # Not enabled here: vim4-manager selects the application that boots.
     write(stage, 'DEBIAN/postinst', '''#!/bin/sh
 set -eu
-if [ "$1" = configure ] && [ -d /run/systemd/system ]; then systemctl daemon-reload; fi
+if [ "$1" = configure ]; then
+    test -s /usr/libexec/vim4-jetkvm
+    test -x /usr/libexec/vim4-jetkvm
+    test -s /etc/sudoers.d/vim4-jetkvm
+    visudo -cf /etc/sudoers.d/vim4-jetkvm
+    if [ -d /run/systemd/system ]; then systemctl daemon-reload; fi
+fi
 ''', 0o755)
 
 
@@ -159,10 +168,13 @@ def main():
         ('vim4-nanokvm', application, gst + ', libopus0, sudo, python3, curl, ca-certificates, picocom, network-manager, avahi-daemon, openssh-server, chrony, alsa-utils, gstreamer1.0-alsa, gstreamer1.0-plugins-base, gstreamer1.0-plugins-good, gstreamer1.0-plugins-bad, gstreamer1.0-libav, vim4-kvm-board (>= 1.0.3+vim4.20261013.18), vim4-vfmcap, vim4-amlvenc (>= 1.0.3+vim4.20261013.18)'),
         ('vim4-jetkvm', jetkvm, 'libc6 (>= 2.38), libglib2.0-0t64, libgstreamer1.0-0 (>= 1.24), '
          'libgstreamer-plugins-base1.0-0 (>= 1.24), gstreamer1.0-plugins-bad, '
-         f'vim4-kvm-board (>= {version}), vim4-vfmcap (>= {version}), vim4-amlvenc (>= {version}), '
+         # Fixed lower bounds: the gadget with media/microphone functions and the
+         # encoder's framerate and forced-keyframe properties. The JetKVM web
+         # updater replaces this one package by itself.
+         'vim4-kvm-board (>= 1.0.3+vim4.20261013.18), vim4-vfmcap, vim4-amlvenc (>= 1.0.3+vim4.20261013.18), '
          # The NanoKVM package owns the shared HID udev rule. Lower bounds only:
          # the NanoKVM web updater replaces that one package by itself.
-         f'vim4-nanokvm (>= {version})'),
+         'vim4-nanokvm (>= 1.0.3+vim4.20261013.18), sudo, python3, network-manager, avahi-daemon'),
         ('vim4-manager', manager, f'libc6 (>= 2.38), python3, sudo, systemd, vim4-nanokvm (>= {version})')]:
         package(name, version, output, populate, depends)
     shutil.copy('/opt/build-inputs/ubuntu-packages.txt', output)

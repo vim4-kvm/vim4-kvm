@@ -81,7 +81,9 @@ def build_plan(target, jobs, kernel_dir, vm):
                     + shlex.quote(str(output / 'NanoKVM-Server')) + ' .')],
         # JetKVM embeds its UI, so the device build must precede the Go build.
         'jetkvm': [('kvm', 'npm ci --prefix ui --ignore-scripts && npm --prefix ui run build:device && '
-                    'go test -tags vim4 ./internal/... && go build -tags vim4 -trimpath -o '
+                    'go test -tags vim4 ./internal/... && go build -tags vim4 -trimpath '
+                    # The update page compares this with the package version.
+                    '-ldflags "-X github.com/jetkvm/kvm.builtAppVersion=${PACKAGE_VERSION:-0.1.0+dev}" -o '
                     + shlex.quote(str(output / 'jetkvm')) + ' ./cmd')],
         'manager': [('vim4-manager', 'pnpm --dir web install --frozen-lockfile && pnpm --dir web build && '
                      'go test ./... && go build -trimpath -o ' + shlex.quote(str(output / 'vim4-manager'))

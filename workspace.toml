@@ -29,7 +29,7 @@ revision = "b985957adedce8cc1d633669ce49e8628133b0f5"
 name = "kvm"
 url = "https://github.com/vim4-kvm/kvm.git"
 branch = "vim4"
-revision = "8257887c0a1037faba54110a74f36067e9ea06c8"
+revision = "1e469f5068618768973846985ef66abec2306443"
 
 [[repos]]
 name = "vim4-manager"
