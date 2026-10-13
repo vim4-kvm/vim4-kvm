@@ -3,6 +3,8 @@
 先读 [USB-C 协商](../usb-pd.md)、[硬件接线](../hardware.md) 和
 [应用集成](../../NanoKVM-Pro/VIM4.md)。
 
+键鼠输入延迟、长按和 Mac 滚轮方向的测试入口见 [输入验证](../input-latency.md)。
+
 板级 gadget 服务拥有 configfs，PD 服务负责开机有限协商。
 应用使用 hidg0/1/2 对应键盘、绝对鼠标、相对鼠标，不重新创建 gadget。
 虚拟介质与板级预设协调，不部署上游设备专用 USB 脚本。
