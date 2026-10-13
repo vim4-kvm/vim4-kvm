@@ -1,13 +1,25 @@
 // Verify the real volume control and received audio without bypassing autoplay.
 // Optional --expect-signal requires a non-silent HDMI source during the sample.
+// --mode selects the video transport (default h264-webrtc); MJPEG and Direct
+// modes receive audio through the separate audio-only WebRTC session.
 const { chromium } = await import(
   process.env.PLAYWRIGHT_MODULE || "playwright"
 );
-const url = process.argv[2] || "http://192.168.50.210:8080";
-const browser = await chromium.launch({ channel: "chrome", headless: true });
+const args = process.argv.slice(2);
+const modeIndex = args.indexOf("--mode");
+const mode = modeIndex >= 0 ? args.splice(modeIndex, 2)[1] : "h264-webrtc";
+const url = args.find((arg) => !arg.startsWith("--")) || "http://192.168.50.210:8080";
+// Direct modes need WebCodecs, which Chrome exposes only to secure contexts.
+const browser = await chromium.launch({
+  channel: "chrome",
+  headless: true,
+  args: [`--unsafely-treat-insecure-origin-as-secure=${new URL(url).origin}`],
+});
 try {
   const page = await browser.newPage();
-  await page.addInitScript(() => {
+  await page.addInitScript((mode) => {
+    localStorage.setItem("nano-kvm-vide-mode", mode);
+    document.cookie = "h265=Enable; path=/";
     window.audioTestPeers = [];
     const Original = RTCPeerConnection;
     window.RTCPeerConnection = class extends Original {
@@ -16,10 +28,15 @@ try {
         window.audioTestPeers.push(this);
       }
     };
-  });
+  }, mode);
   await page.goto(url);
   await page.waitForFunction(
-    () => document.querySelector("video")?.videoWidth > 0,
+    () =>
+      document.querySelector("video")?.videoWidth > 0 ||
+      document.querySelector("img[src*=\"/api/stream/mjpeg\"]")?.naturalWidth > 0 ||
+      document.querySelector("canvas#screen")?.width > 300,
+    {},
+    { timeout: 45000 },
   );
   await page.locator("svg.lucide-volume-x").click();
   await page.getByRole("slider").focus();
@@ -47,6 +64,7 @@ try {
   const seconds = (after.timestamp - before.timestamp) / 1000;
   const delta = (key) => after[key] - before[key];
   const result = {
+    mode,
     seconds,
     packetsPerSecond: delta("packetsReceived") / seconds,
     packetsLost: delta("packetsLost"),
