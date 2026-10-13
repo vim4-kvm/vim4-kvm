@@ -241,6 +241,57 @@ class BoardToolsTests(unittest.TestCase):
                 instance.verify()
         self.assertIn('ssh dropped', (instance.args.log_dir / 'verify.json').read_text())
 
+    def provision_board(self, directory, key_works):
+        key = Path(directory) / 'id_test'
+        key.with_suffix('.pub').write_text('ssh-ed25519 AAAATEST dev\n')
+        instance = board.Board(SimpleNamespace(host='vim4', sudo_password_stdin=False), io.StringIO())
+        config = {'hostname': '192.0.2.10', 'user': 'khadas', 'identityfile': str(key)}
+        results = iter(key_works)
+        ssh = lambda command, check=True, **_: SimpleNamespace(returncode=0 if next(results) else 255, stdout='')
+        return instance, config, ssh
+
+    def test_provision_uses_password_once_then_enrolls(self):
+        with tempfile.TemporaryDirectory() as directory:
+            # true fails, then succeeds after key install; sudo -n fails.
+            instance, config, ssh = self.provision_board(directory, [False, True, False])
+            with patch.object(instance, 'ssh_config', return_value=config), \
+                 patch.object(board.subprocess, 'run', return_value=SimpleNamespace(returncode=0)), \
+                 patch.object(instance, 'ssh', side_effect=ssh), patch.object(instance, 'run') as run, \
+                 patch.object(instance, 'enroll') as enroll:
+                instance.provision(replace_host_key=True)
+            commands = [call.args[0] for call in run.call_args_list]
+            self.assertEqual(commands[0], ['ssh-keygen', '-R', '192.0.2.10'])
+            login = commands[1]
+            self.assertIn('khadas@192.0.2.10', login)
+            self.assertIn('StrictHostKeyChecking=accept-new', login)
+            self.assertNotIn('khadas\n', ' '.join(login))
+            self.assertEqual(run.call_args_list[1].kwargs['env']['VIM4_PASSWORD'], 'khadas')
+            self.assertIn('ssh-ed25519 AAAATEST dev', login[-1])
+            enroll.assert_called_once()
+            self.assertEqual(instance.password, 'khadas\n')
+
+    def test_provision_is_noop_on_enrolled_board(self):
+        with tempfile.TemporaryDirectory() as directory:
+            instance, config, ssh = self.provision_board(directory, [True, True])
+            with patch.object(instance, 'ssh_config', return_value=config), \
+                 patch.object(board.subprocess, 'run', return_value=SimpleNamespace(returncode=0)), \
+                 patch.object(instance, 'ssh', side_effect=ssh), patch.object(instance, 'run') as run, \
+                 patch.object(instance, 'enroll') as enroll:
+                instance.provision()
+            run.assert_not_called()
+            enroll.assert_not_called()
+
+    def test_flash_provisions_after_verified_boot(self):
+        instance = board.Board(SimpleNamespace(already_oowow=True, serve_address='127.0.0.1',
+                                               device='/dev/null', log_dir=Path('/tmp')), io.StringIO())
+        with tempfile.TemporaryDirectory() as directory:
+            image, _ = self.fixture(directory)
+            with patch.object(instance, 'uart'), patch.object(instance, 'job'), patch.object(instance, 'run'), \
+                 patch.object(instance, 'provision') as provision, patch.object(instance, 'check') as check:
+                instance.flash(board.image_metadata(image))
+            provision.assert_called_once_with(replace_host_key=True)
+            check.assert_called_once()
+
     def test_uart_status_and_missing_completion(self):
         self.assertEqual(uart.parse_result('echo command\r\nBEGIN\r\nfailed\r\nDONE:7\r\n', 'BEGIN', 'DONE'), ('failed', 7))
         with self.assertRaises(TimeoutError):

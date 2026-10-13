@@ -12,7 +12,8 @@
 | 用户态打包与隔离验证 | tools/ubuntu-build.py package / verify | 否 |
 | 内核包与整机镜像 | tools/ubuntu-image.py kernel / assemble / verify / export | 否 |
 | 只读服务检查 | tools/board.py check | SSH 读取、HTTP GET |
-| 开发板免密 sudo（一次） | tools/board.py enroll | 安装 sudoers 文件 |
+| 首次接入（公钥 + 免密 sudo） | tools/board.py provision | 默认密码登录一次，写 authorized_keys 与 sudoers |
+| 开发板免密 sudo（单独） | tools/board.py enroll | 安装 sudoers 文件 |
 | 增量安装四组件包 | tools/board.py deploy --exclusive（板上调用 install-components.sh） | 板上安装，重启 NanoKVM |
 | 部署后功能验证 | tools/board.py verify | 移动 Mac 光标、录 1 秒音频、打开一个 WebRTC 会话 |
 | 浏览器视频冒烟测试（单独） | tools/video-smoke.mjs | 打开一个 WebRTC 会话 |
@@ -71,7 +72,8 @@ SKIP 不算通过。hid 假定 Mac 只有一个显示器；会短暂移动光标
   --exclusive 是调用者对独占状态的声明，不会自动发现其他机器或任务。
 - flash 需要用户明确授权清空 eMMC。--yes-erase-emmc 表示已有授权，不是获取授权的替代。
 - 同一工作区的 board.py 有进程锁；串口工具也有端口锁。外部终端未必遵守这些锁。
-- SSH 使用现有密钥与 known_hosts，保持主机身份校验。工具不存储密码、不更改 SSH 配置。
+- SSH 使用现有密钥与 known_hosts，日常保持主机身份校验，不更改 SSH 配置。
+  只有 flash 成功后（或显式 provision --replace-host-key）才删除该地址的旧主机密钥并接受新密钥。
 - 开发板先运行一次 `printf 'khadas\n' | python3 tools/board.py enroll --sudo-password-stdin`
   （默认密码见 [硬件](hardware.md#默认账户开发环境)），安装
   board/vim4-dev-nopasswd.sudoers，之后 deploy/recover 全自动，不存储任何密码。
@@ -125,10 +127,20 @@ python3 tools/board.py check
 设备节点、本机 8080 HTTP，并输出 UDC 状态和失败单元。UDC 未连接会显示，但不表示
 HID 实测失败；检查成功也不代表实际键鼠、画面、音频或延迟通过。
 
-新镜像没有注入开发者公钥，SSH 主机密钥也会重新生成。因此刷写入口只自动做到
-写盘校验和启动日志采集，**不会声称首次启动检查已通过**。需要通过可信串口核对
-新主机身份、安装开发公钥后再运行 check；不自动清理 known_hosts 或关闭主机校验。
-首次完整测试还需确认根分区扩容、分辨率切换、H264/MJPEG、音频和 HID 实际输入。
+新镜像没有开发者公钥，SSH 主机密钥也会重新生成。flash 在启动日志采集后自动运行
+provision 和 check：等待 22 端口，删除 known_hosts 中该地址的旧密钥并接受新密钥，
+公钥登录失败时用默认账户密码（见 [硬件](hardware.md#默认账户开发环境)）登录一次，
+把 ssh -G 中 IdentityFile 对应的 .pub 追加到 authorized_keys，再 enroll 免密 sudo。
+密码只经临时 askpass 的环境变量传给 ssh，不进入参数和日志。
+
+已有公钥和免密 sudo 的板子上 provision 不做任何修改，可重复运行。板子曾手工重装时：
+
+```sh
+python3 tools/board.py provision --replace-host-key
+```
+
+首次完整测试还需确认根分区扩容、分辨率切换、H264/MJPEG、音频和 HID 实际输入
+（board.py verify 覆盖其中一部分）。
 
 软件恢复依赖 Ubuntu/SSH 可用；系统死机、供电故障仍需物理复位或独立控制硬件。
 

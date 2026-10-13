@@ -490,3 +490,6 @@ after-1400-repeat}.json`。`/tmp/NanoKVM-Server` 未改，构建使用独立文�
 - 同日 `board.py verify` 首次实机运行：hid PASS（hidg1 绝对坐标移动 Mac 光标并恢复），
   audio PASS（1 秒 48000 帧，峰值 0，信源静音，未验证音频内容），video PASS
   （3840×2160 60.0 fps，丢帧/丢包 0）。日志 logs/board-20261013-122034-b9aa0b/。
+- 同日 `board.py provision` 实机验证：在当前板子用临时 SSH 密钥模拟新镜像，公钥登录
+  被拒后以默认密码登录一次，写入公钥，随后公钥登录与免密 sudo 均通过；临时密钥与
+  SSH 配置已清理。未经实际刷机，flash 后自动 provision 只由离线测试覆盖。

@@ -15,6 +15,7 @@ import shlex
 import shutil
 import subprocess
 import sys
+import tempfile
 import threading
 import time
 import uuid
@@ -48,6 +49,8 @@ def image_metadata(image):
     return image, digest, raw_digest.hexdigest(), size
 
 
+# Stock Khadas account password; see docs/hardware.md (development only).
+DEFAULT_PASSWORD = 'khadas'
 COMPONENTS = ('vim4-kvm-board', 'vim4-vfmcap', 'vim4-amlvenc', 'vim4-nanokvm')
 
 
@@ -113,11 +116,11 @@ class Board:
         self.log.write(message + '\n')
         self.log.flush()
 
-    def run(self, command, timeout=30, check=True, input_text=None):
+    def run(self, command, timeout=30, check=True, input_text=None, env=None):
         # Never inherit stdin: ssh would otherwise swallow a piped sudo password.
         stdin = None if input_text is not None else subprocess.DEVNULL
         result = subprocess.run(command, text=True, stdin=stdin, stdout=subprocess.PIPE,
-                                stderr=subprocess.STDOUT, timeout=timeout, input=input_text)
+                                stderr=subprocess.STDOUT, timeout=timeout, input=input_text, env=env)
         print(result.stdout, end='', flush=True)
         self.log.write(result.stdout)
         self.log.flush()
@@ -198,8 +201,9 @@ class Board:
         self.run([sys.executable, str(ROOT / 'tools/uart-log.py'), '-d', self.args.device,
                   '-t', '180', '-o', str(self.args.log_dir / 'firstboot-uart.log'),
                   '--send', 'sync; reboot'], timeout=190)
-        # Fresh images intentionally do not contain the developer SSH key.
-        self.note('Flash and boot capture complete. Run check after verifying SSH identity and installing your public key.')
+        # Fresh images contain no developer key and new host keys.
+        self.provision(replace_host_key=True)
+        self.check()
 
     def enroll(self):
         # Copy first, then sudo install: the password must not share stdin
@@ -215,6 +219,53 @@ class Board:
             self.ssh(f'rm -rf {remote}', check=False)
         self.ssh('sudo -n true')
         self.note('Passwordless sudo enabled for unattended deploy/recover on this development board.')
+
+    def ssh_config(self):
+        output = subprocess.run(['ssh', '-G', self.args.host], text=True, capture_output=True, check=True).stdout
+        config = {}
+        for line in output.splitlines():
+            key, _, value = line.partition(' ')
+            config.setdefault(key, value)
+        return config
+
+    def provision(self, replace_host_key=False):
+        """First access to a fresh image: install the developer key, then enroll."""
+        config = self.ssh_config()
+        address, user = config['hostname'], config['user']
+        public_key = Path(os.path.expanduser(config['identityfile'])).with_suffix('.pub').read_text().strip()
+        # Fresh images generate host keys on first boot and sshd starts late.
+        deadline = time.monotonic() + 180
+        while subprocess.run(['nc', '-z', '-w', '3', address, '22'], capture_output=True).returncode:
+            if time.monotonic() > deadline:
+                raise RuntimeError(f'SSH on {address} did not come up within 180 s')
+            time.sleep(5)
+        if replace_host_key:
+            # Only after a flash we performed: the old key is known to be gone.
+            self.run(['ssh-keygen', '-R', address], check=False)
+        if self.ssh('true', check=False).returncode:
+            self.note('Key login refused (expected on a fresh image); using the default account password.')
+            # Stock credentials, documented in docs/hardware.md; the password
+            # reaches ssh only through a private askpass helper's environment.
+            with tempfile.TemporaryDirectory() as directory:
+                askpass = Path(directory) / 'askpass'
+                askpass.write_text('#!/bin/sh\nprintf "%s\\n" "$VIM4_PASSWORD"\n')
+                askpass.chmod(0o700)
+                env = dict(os.environ, SSH_ASKPASS=str(askpass), SSH_ASKPASS_REQUIRE='force',
+                           VIM4_PASSWORD=DEFAULT_PASSWORD)
+                key = shlex.quote(public_key)
+                self.run(['ssh', '-o', 'StrictHostKeyChecking=accept-new', '-o', 'PubkeyAuthentication=no',
+                          '-o', 'PreferredAuthentications=password', '-o', 'NumberOfPasswordPrompts=1',
+                          '-o', 'ConnectTimeout=10', f'{user}@{address}',
+                          f'umask 077; mkdir -p ~/.ssh; touch ~/.ssh/authorized_keys; '
+                          f'grep -qxF {key} ~/.ssh/authorized_keys || echo {key} >> ~/.ssh/authorized_keys'],
+                         env=env)
+            self.ssh('true')
+            self.note('Developer SSH key installed with the default account password.')
+        if self.ssh('sudo -n true', check=False).returncode:
+            if not self.args.sudo_password_stdin:
+                self.password, self.password_read = DEFAULT_PASSWORD + '\n', True
+            self.enroll()
+        self.note('Provisioned: key login and passwordless sudo work.')
 
     def installed_versions(self):
         output = self.ssh("dpkg-query -W -f '${Package} ${Version}\\n' " + ' '.join(COMPONENTS), check=False).stdout
@@ -288,9 +339,7 @@ class Board:
         if not module and not shutil.which('node'):
             return 'SKIP', 'node is not installed'
         # Same address SSH uses, not whichever interface the board lists first.
-        config = subprocess.run(['ssh', '-G', self.args.host], text=True, capture_output=True, check=True).stdout
-        address = next(line.split()[1] for line in config.splitlines() if line.startswith('hostname '))
-        url = f'http://{address}:8080'
+        url = f'http://{self.ssh_config()["hostname"]}:8080'
         result = self.run(['node', str(ROOT / 'tools/video-smoke.mjs'), url, '10'], timeout=120, check=False)
         if result.returncode:
             if 'playwright' in result.stdout.lower() and 'cannot find' in result.stdout.lower():
@@ -348,7 +397,7 @@ def absolute_report(x, y):
 
 def main(argv=None):
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument('action', choices=['recover', 'flash', 'deploy', 'enroll', 'check', 'verify'])
+    parser.add_argument('action', choices=['recover', 'flash', 'deploy', 'enroll', 'provision', 'check', 'verify'])
     parser.add_argument('--host', default='vim4')
     parser.add_argument('--device', default='/dev/cu.usbserial-100')
     parser.add_argument('--image', type=Path)
@@ -361,8 +410,10 @@ def main(argv=None):
     parser.add_argument('--kernel', default='5.15.137-vim4kvm')
     parser.add_argument('--dry-run', action='store_true', help='validate local inputs only; no SSH/UART/server')
     parser.add_argument('--log-dir', type=Path)
+    parser.add_argument('--replace-host-key', action='store_true',
+                        help='provision: forget the recorded host key (only after reinstalling the board)')
     args = parser.parse_args(argv)
-    if args.action not in ('check', 'enroll', 'verify') and not args.exclusive:
+    if args.action not in ('check', 'enroll', 'provision', 'verify') and not args.exclusive:
         parser.error('recover/flash/deploy requires --exclusive after coordinating board access')
     if args.action == 'flash':
         if not args.yes_erase_emmc or not args.image or not args.serve_address:
@@ -404,6 +455,8 @@ def main(argv=None):
             board.enroll()
         elif args.action == 'verify':
             board.verify()
+        elif args.action == 'provision':
+            board.provision(args.replace_host_key)
         elif args.action == 'recover':
             board.recover()
         else:
