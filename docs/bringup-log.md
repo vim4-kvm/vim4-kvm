@@ -635,3 +635,19 @@ after-1400-repeat}.json`。`/tmp/NanoKVM-Server` 未改，构建使用独立文�
   下拉框显示三档尺寸及最高 60 FPS，视频正常显示，没有切换实际采集设置。
   部署服务检查通过，截图 `logs/deployed-resolution-settings-21.png`；构建、
   包校验和部署日志分别为 `logs/{package,verify-package,deploy}-20261013-21.log`。
+
+## H.265 默认开放（2026-10-13）
+
+- H.265 后端已经实现，但两个前端入口仍依赖上游 `h265` Cookie，原冒烟脚本
+  注入该 Cookie 掩盖了普通用户入口的问题。VIM4 现在默认开放 H.265，保留
+  浏览器能力检测；快捷菜单逐模式检查能力，避免 HTTP 下误启 Direct。
+  非 VIM4 版本保留原启用流程，冒烟脚本移除 Cookie 注入。
+- 应用 `60afb9e` 干净构建、包校验并部署 `.22`；服务检查通过。
+  新 Chrome 会话通过实际设置下拉框选择 H.265 WebRTC，收到 H.265 解码帧，
+  前后均没有 `h265` Cookie；快捷菜单入口同样可用。
+- 当前 3840×2160 信号：H.265 WebRTC 10.008 秒解码 601 帧（60.05fps），
+  丢帧、丢包均为 0。H.265 Direct 画布显示 3840×2160，10.002 秒收到
+  600 条帧消息；这不是 Direct 渲染丢帧计数或端到端延迟测量。
+- Direct 测试使用 Chrome 的指定源安全上下文开关；常规访问需 HTTPS。
+  本轮未测试 Safari，也未作复杂运动画面质量与延迟对比。
+  证据：`logs/h265-{ui,webrtc,direct}-22.*`、`logs/deploy-20261013-22.log`。
