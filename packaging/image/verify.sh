@@ -80,12 +80,20 @@ for path in "$root/opt/vim4-nanokvm/NanoKVM-Server" "$root"/usr/lib/vim4-kvm/gst
     if grep -q 'not found' <<<"$result"; then echo "$result" >&2; exit 1; fi
 done
 if [[ -f "$root/usr/lib/systemd/system/vim4-pikvm.service" ]]; then
+    # The application must not rebind USB while boot-time PD negotiation runs.
+    grep -q '^After=.*vim4-kvm-pd.service' "$root/usr/lib/systemd/system/vim4-pikvm.service"
+    grep -q '^Requires=.*vim4-kvm-pd.service' "$root/usr/lib/systemd/system/vim4-pikvm.service"
     for path in "$root/usr/bin/ustreamer" "$root/usr/bin/janus" "$root/opt/vim4-pikvm/bin/nginx" \
         "$root/opt/vim4-pikvm/python/bin/python3.14" "$root"/usr/lib/ustreamer/janus/*.so "$root"/usr/lib/janus/transports/*.so; do
         binary=${path#"$root"}
         result=$(chroot "$root" ldd "$binary")
         if grep -q 'not found' <<<"$result"; then echo "$result" >&2; exit 1; fi
     done
+    while IFS= read -r path; do
+        binary=${path#"$root"}
+        result=$(chroot "$root" ldd "$binary")
+        if grep -q 'not found' <<<"$result"; then echo "$result" >&2; exit 1; fi
+    done < <(find "$root/opt/vim4-pikvm/python" -type f -name '*.so')
     chroot "$root" /usr/bin/env KVMD_PLATFORM=vim4 /opt/vim4-pikvm/python/bin/kvmd -m > "$image.pikvm-config.yaml"
     chroot "$root" /usr/bin/env KVMD_PLATFORM=vim4 /opt/vim4-pikvm/python/bin/python3.14 -c \
         'import ustreamer; from kvmd.apps.kvmd import main; from kvmd.apps.media import main'

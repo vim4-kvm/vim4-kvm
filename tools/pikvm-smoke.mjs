@@ -57,6 +57,12 @@ try {
   if (soakSeconds) {
     const soak = await page.evaluate(async seconds => {
       const video = document.querySelector('#stream-video');
+      const baseline = new Map();
+      for (const peer of window.pikvmPeers) {
+        for (const report of (await peer.getStats()).values()) {
+          if (report.type === 'inbound-rtp' && report.kind === 'video') baseline.set(report.id, report);
+        }
+      }
       const gaps = [];
       let last;
       let callback;
@@ -71,7 +77,14 @@ try {
       const stats = [];
       for (const peer of window.pikvmPeers) {
         for (const report of (await peer.getStats()).values()) {
-          if (report.type === 'inbound-rtp' && report.kind === 'video') stats.push(report);
+          if (report.type === 'inbound-rtp' && report.kind === 'video') {
+            const before = baseline.get(report.id);
+            const delta = {};
+            for (const field of ['framesDecoded', 'framesDropped', 'packetsLost', 'freezeCount', 'totalFreezesDuration']) {
+              if (before && report[field] !== undefined) delta[field] = report[field] - before[field];
+            }
+            stats.push({ ...report, observedDelta: delta });
+          }
         }
       }
       gaps.sort((a, b) => a - b);
