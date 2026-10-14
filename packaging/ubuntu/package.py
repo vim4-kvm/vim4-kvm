@@ -162,6 +162,10 @@ def onekvm(stage):
     copy(deploy / 'vim4-onekvm-update', stage, 'usr/libexec/vim4-onekvm-update', 0o755)
     copy(deploy / 'vim4-onekvm.sudoers', stage, 'etc/sudoers.d/vim4-onekvm', 0o440)
     copy(ROOT / 'One-KVM/LICENSE', stage, 'usr/share/doc/vim4-onekvm/copyright')
+    # Ship only the terminal executable: depending on ttyd also enables its
+    # standalone daemon, while One-KVM owns the authenticated Unix socket.
+    copy('/usr/bin/ttyd', stage, 'opt/vim4-onekvm/bin/ttyd', 0o755)
+    copy('/usr/share/doc/ttyd/copyright', stage, 'usr/share/doc/vim4-onekvm/ttyd-copyright')
     copy(deploy / '71-onekvm-watchdog.rules', stage, 'usr/lib/udev/rules.d/71-onekvm-watchdog.rules')
     extensions = Path('/opt/one-kvm-extensions')
     for archive, member, destination in (
@@ -256,7 +260,8 @@ def main():
          'vim4-nanokvm (>= 1.0.3+vim4.20261013.18), sudo, python3, network-manager, avahi-daemon'),
         ('vim4-onekvm', onekvm, gst + ', libavcodec60, libavutil58, libdrm2, libyuv0, '
          'libasound2t64, libudev1, libdbus-1-3, libopus0, libstdc++6, '
-         'gstreamer1.0-plugins-good, gstreamer1.0-plugins-bad, gstreamer-aml (= 0.6-202406), sudo, python3, ttyd, libcap2-bin, '
+         'gstreamer1.0-plugins-good, gstreamer1.0-plugins-bad, gstreamer-aml (= 0.6-202406), sudo, python3, libcap2-bin, '
+         'libjson-c5, libuv1t64, libssl3t64, libcap2, zlib1g, libwebsockets-evlib-uv, '
          'vim4-kvm-board (>= 1.0.3+vim4.20261013.18), vim4-vfmcap, '
          'vim4-amlvenc (>= 1.0.3+vim4.20261013.18), vim4-nanokvm (>= 1.0.3+vim4.20261013.18), '
          'vim4-manager (>= 2.5.1+vim4.20261014.4)'),

@@ -15,6 +15,8 @@ let originalMode;
 try {
   await page.addInitScript(() => {
     window.testPeers = [];
+    window.testAudioPeak = 0;
+    window.testAudioContexts = [];
     const Original = window.RTCPeerConnection;
     window.RTCPeerConnection = class extends Original {
       constructor(...args) {
@@ -27,6 +29,19 @@ try {
           audio.volume = 0;
           document.body.append(audio);
           audio.play().catch(() => {});
+          const context = new AudioContext({ sampleRate: 48000 });
+          const source = context.createMediaStreamSource(new MediaStream([event.track]));
+          const analyser = context.createAnalyser();
+          const silentOutput = context.createGain();
+          silentOutput.gain.value = 0;
+          source.connect(analyser).connect(silentOutput).connect(context.destination);
+          window.testAudioContexts.push(context);
+          context.resume().catch(() => {});
+          const samples = new Float32Array(analyser.fftSize);
+          setInterval(() => {
+            analyser.getFloatTimeDomainData(samples);
+            for (const sample of samples) window.testAudioPeak = Math.max(window.testAudioPeak, Math.abs(sample));
+          }, 50);
         });
       }
     };
@@ -109,6 +124,11 @@ try {
     const last = after.find(s => s.kind === 'video');
     assert(first && last && last.state === 'connected' && last.frames > first.frames, 'Video did not advance');
     console.log(JSON.stringify({ streams: after, fps: (last.frames - first.frames) * 1000 / (last.time - first.time) }));
+    if (args.includes('--audio')) {
+      const peak = await page.evaluate(() => window.testAudioPeak);
+      console.log(JSON.stringify({ decodedWebRTCAudioPeak: peak }));
+      assert(peak > 0.001, 'No non-silent WebRTC audio decoded; play an HDMI test signal');
+    }
   }
 } finally {
   try {

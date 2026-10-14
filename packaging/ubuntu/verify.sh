@@ -102,7 +102,12 @@ mkdir -p /usr/share/vim4-onekvm
 cp -a /tmp/package-check/root/usr/share/vim4-onekvm/ventoy /usr/share/vim4-onekvm/
 sh /tmp/package-check/onekvm-control/postinst configure
 getcap /opt/vim4-onekvm/bin/easytier-core | grep -q 'cap_net_admin=ep'
-test -x /usr/bin/ttyd
+test -x /opt/vim4-onekvm/bin/ttyd
+ldd /opt/vim4-onekvm/bin/ttyd > /tmp/package-check/ttyd-ldd.txt
+if grep -q 'not found' /tmp/package-check/ttyd-ldd.txt; then
+    cat /tmp/package-check/ttyd-ldd.txt >&2
+    exit 1
+fi
 for resource in boot.img core.img ventoy.disk.img; do
     mv "/usr/share/vim4-onekvm/ventoy/$resource" /tmp/ventoy-resource
     if sh /tmp/package-check/onekvm-control/postinst configure; then
