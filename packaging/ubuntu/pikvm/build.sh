@@ -10,6 +10,9 @@ sh /work/packaging/ubuntu/pikvm/build-janus.sh
 export PATH=/opt/vim4-pikvm/python/bin:$PATH
 cd /work/ustreamer
 make -j8 WITH_VIM4=1 WITH_JANUS=1 WITH_PYTHON=1 PY=python3.14
+cc -D_GNU_SOURCE -std=c17 -Wall -Wextra $(pkg-config --cflags janus-gateway) \
+    janus/test-rtpv.c janus/src/rtpv.c janus/src/rtp.c -o /work/test-rtpv -lm
+/work/test-rtpv
 python3.14 -m pip install --no-deps --no-index python/dist/*.whl
 cd /work/kvmd
 python3.14 -m build --wheel --no-isolation

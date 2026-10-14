@@ -108,7 +108,8 @@ python3 tools/board.py deploy --exclusive --packages build/packages/VERSION
 Janus JS 补丁均固定版本及校验和；Python 和 nginx 使用私有路径。Janus 直接使用
 固定上游源码，无需维护额外 fork。安装不切换应用，管理器新增 PiKVM 选项。
 组件模式由 sources.json 记录，部署验证仅比较本次两个组件，保留其他组件版本。
-`all` 仍指原有七包，不隐式包含 PiKVM。镜像组装尚未加入 PiKVM 默认选项。
+`all` 仍指原有七包，不隐式包含 PiKVM。镜像组装使用 `--pikvm-components VERSION`
+加入两个 PiKVM 集成包，并用 `--default-app pikvm` 选择默认界面，见 ubuntu-image.md。
 
 隔离验证检查实际 Janus WebSocket 插件会话、ARM64 动态库、kvmd 配置、nginx 配置、
 升级保留认证文件及不自动启用服务。上板检查使用 `tools/pikvm-smoke.mjs --exclusive`，

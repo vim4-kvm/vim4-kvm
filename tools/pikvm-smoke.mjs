@@ -89,15 +89,19 @@ try {
     const result = [];
     for (const peer of window.pikvmPeers) {
       if (peer.connectionState === 'connected') {
-        for (const stat of (await peer.getStats()).values()) {
+        const stats = await peer.getStats();
+        for (const stat of stats.values()) {
           if (stat.type === 'inbound-rtp') result.push({ kind: stat.kind, bytes: stat.bytesReceived,
-            frames: stat.framesDecoded, packetsLost: stat.packetsLost });
+            frames: stat.framesDecoded, packetsLost: stat.packetsLost, codec: stats.get(stat.codecId)?.mimeType });
         }
       }
     }
     return result;
   });
   assert(rtc.some(stat => stat.kind === 'video' && stat.frames > 0), 'No Janus WebRTC video');
+  if (process.env.PIKVM_EXPECT_CODEC) {
+    assert(rtc.some(stat => stat.kind === 'video' && stat.codec === process.env.PIKVM_EXPECT_CODEC), 'Unexpected video codec');
+  }
   const extra = {};
   if (process.argv.includes('--motion')) {
     sourceBrowser = await chromium.launch({ channel: 'chrome', headless: false });

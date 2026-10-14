@@ -92,6 +92,9 @@ printf '#!/bin/sh\nexit 101\n' > "$root/usr/sbin/policy-rc.d"
 chmod 0755 "$root/usr/sbin/policy-rc.d"
 mkdir -p "$root/tmp/vim4-packages"
 cp "$components"/*.deb "${kernel_packages[0]}" "$root/tmp/vim4-packages/"
+# Some fixed Ubuntu pool objects intermittently fail through the snapshot
+# endpoint. Fetch the identical, hash-pinned package from the Ubuntu archive.
+python3 "$workspace/packaging/ubuntu/fetch.py" "$workspace/packaging/image/downloads.lock.json" "$root/tmp/vim4-packages"
 if [[ -n "$pikvm" ]]; then
     rm "$root/tmp/vim4-packages/"vim4-manager_*.deb
     cp "$pikvm/"*.deb "$root/tmp/vim4-packages/"
@@ -104,6 +107,7 @@ rm -r "$root/tmp/vim4-packages"
 mkdir -p "$root/usr/share/vim4-kvm/build"
 cp "$components/sources.json" "$components/downloads.lock.json" "$kernels/kernel-build.json" \
     "$workspace/packaging/image/base.lock.json" "$root/usr/share/vim4-kvm/build/"
+cp "$workspace/packaging/image/downloads.lock.json" "$root/usr/share/vim4-kvm/build/image-downloads.lock.json"
 printf '%s\n' "$default_app" > "$root/usr/share/vim4-kvm/build/default-app"
 if [[ -n "$pikvm" ]]; then
     mkdir "$root/usr/share/vim4-kvm/build/pikvm"

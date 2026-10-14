@@ -68,12 +68,15 @@ if compgen -G "$root/etc/ssh/ssh_host_*" >/dev/null; then echo 'Image contains s
 audit=$(chroot "$root" dpkg --audit)
 [[ -z "$audit" ]] || { echo "$audit" >&2; exit 1; }
 chroot "$root" modprobe -n -v -S "$release" vfm_cap > "$image.module-dependencies.txt"
+for binary in /opt/vim4-nanokvm/NanoKVM-Server /opt/vim4-jetkvm/jetkvm /opt/vim4-onekvm/one-kvm /opt/vim4-manager/vim4-manager; do
+    test -x "$root$binary"
+done
 for path in "$root/opt/vim4-nanokvm/NanoKVM-Server" "$root"/usr/lib/vim4-kvm/gstreamer-1.0/*.so \
-    "$root/opt/vim4-kvm/kvm" "$root"/opt/vim4-onekvm/bin/* "$root"/opt/vim4-onekvm/lib/*.so; do
+    "$root/opt/vim4-jetkvm/jetkvm" "$root/opt/vim4-onekvm/one-kvm" "$root"/opt/vim4-onekvm/bin/* "$root"/opt/vim4-onekvm/lib/*.so; do
     [[ -f "$path" ]] || continue
-    file "$path" | grep -q ELF || continue
+    file "$path" | grep -Eq 'dynamically linked|shared object' || continue
     binary=${path#"$root"}
-    result=$(chroot "$root" ldd "$binary")
+    result=$(chroot "$root" /usr/bin/env LD_LIBRARY_PATH=/opt/vim4-onekvm/lib ldd "$binary")
     if grep -q 'not found' <<<"$result"; then echo "$result" >&2; exit 1; fi
 done
 if [[ -f "$root/usr/lib/systemd/system/vim4-pikvm.service" ]]; then

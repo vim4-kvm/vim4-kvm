@@ -3,7 +3,8 @@
 导出后的远程刷写与首次启动检查见 [板级工具](board-tools.md)。
 
 以锁定的 Khadas Ubuntu 24.04 Server / Fenix 1.7.5 镜像为基础，离线加入自编
-内核和四个 KVM 组件包。保留原厂引导程序、BSP、用户与密码；不从工作板克隆磁盘。
+内核和 KVM 组件包。可同时安装 NanoKVM、JetKVM、One-KVM 和 PiKVM，
+保留原厂引导程序、BSP、用户与密码；不从工作板克隆磁盘。
 工具只接受普通镜像文件，不刷写设备。离线验证通过仍不代表 VIM4 实机能启动。
 
 ## 前置条件
@@ -26,6 +27,22 @@ python3 tools/ubuntu-image.py assemble --components 0.1.0~dev4
 python3 tools/ubuntu-image.py verify
 python3 tools/ubuntu-image.py export
 ```
+
+包含 PiKVM 的镜像显式提供两个已验证的干净组件集，例如：
+
+```sh
+python3 tools/ubuntu-image.py assemble --components 2.5.1+vim4.20261014.24 \
+  --pikvm-components PIKVM_VERSION --default-app pikvm --name IMAGE_NAME
+python3 tools/ubuntu-image.py verify --name IMAGE_NAME
+python3 tools/ubuntu-image.py export --name IMAGE_NAME
+```
+
+PiKVM 组件集的管理器替换基础组件集中的版本；共八个组件包，拒绝混用脏源码。
+`--default-app` 可选 nanokvm（默认）、jetkvm、onekvm、pikvm，仅启用所选应用。
+PiKVM 默认 H.264；HEVC 是需浏览器支持的独立服务配置，见 kvmd/VIM4.md。
+四个应用的动态库、PiKVM Python 模块和 nginx 配置均在原厂镜像的 chroot 内验证，
+不使用开发板上的手工依赖。image/downloads.lock.json 补充固定哈希的 Ubuntu
+运行依赖，避免特定快照下载端点故障；软件源版本快照保持不变。
 
 kernel 输出 build/packages/kernel 下的 deb 和构建记录。内核版本仍为
 5.15.137-vim4kvm；包版本包含内核与驱动提交。模块直接打包到 /usr/lib/modules，
@@ -57,7 +74,7 @@ packaging/image/base.lock.json 记录官方 URL、SHA256 和固定布局。这�
 链接并移除临时策略与安装包。原厂 APT 源保留，构建快照不强制冻结运行时更新。
 
 新内核成为 Default，原厂 5.15.137 保留为 Stock；新 DTB 复制原厂 overlay 配置，
-并生成对应 initramfs。启用 HDMI、gadget、PD、CPU 调频和 NanoKVM 服务，禁用
+并生成对应 initramfs。启用 HDMI、gadget、PD、CPU 调频、管理器和选定的 KVM 服务，禁用
 冲突的原厂 USB gadget 与 audioserver。通用镜像不自动启用设备专用的 RTP 1400 覆盖。
 
 保留原厂账户与密码，清空 machine-id 并移除镜像内 SSH 主机密钥。
