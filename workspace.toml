@@ -32,10 +32,16 @@ branch = "vim4"
 revision = "165f0aa1ebfb7518d2f01e98ba42be5eddaed31a"
 
 [[repos]]
+name = "One-KVM"
+url = "https://github.com/vim4-kvm/One-KVM.git"
+branch = "vim4"
+revision = "0c753be4f59491172c0867512f02311accbb8d44"
+
+[[repos]]
 name = "vim4-manager"
 url = "https://github.com/vim4-kvm/vim4-manager.git"
-branch = "hdr-curve"
-revision = "d44cb9547db22c3f15dbd38f8386bae26da3713e"
+branch = "onekvm"
+revision = "7489ba1e9c71eb60ba503d8ddf0dea4a5368b573"
 
 [kernel]
 url = "https://github.com/vim4-kvm/linux.git"

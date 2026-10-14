@@ -141,6 +141,30 @@ fi
 ''', 0o755)
 
 
+def onekvm(stage):
+    deploy = ROOT / 'One-KVM/deploy/vim4'
+    copy(ROOT / 'build/onekvm', stage, 'opt/vim4-onekvm/one-kvm', 0o755)
+    copy(deploy / 'one-kvm.service', stage, 'usr/lib/systemd/system/one-kvm.service')
+    copy(deploy / 'vim4-onekvm', stage, 'usr/libexec/vim4-onekvm', 0o755)
+    copy(deploy / 'vim4-onekvm.sudoers', stage, 'etc/sudoers.d/vim4-onekvm', 0o440)
+    copy(ROOT / 'One-KVM/LICENSE', stage, 'usr/share/doc/vim4-onekvm/copyright')
+    # Also constrain previously installed versions of the other two units.
+    for unit in ('nanokvm.service', 'vim4-kvm.service'):
+        write(stage, f'usr/lib/systemd/system/{unit}.d/onekvm.conf',
+              '[Unit]\nConflicts=one-kvm.service\n')
+    write(stage, 'DEBIAN/postinst', '''#!/bin/sh
+set -eu
+if [ "$1" = configure ]; then
+    getent passwd khadas >/dev/null
+    test -s /usr/libexec/vim4-onekvm
+    test -x /usr/libexec/vim4-onekvm
+    test -s /etc/sudoers.d/vim4-onekvm
+    visudo -cf /etc/sudoers.d/vim4-onekvm
+    if [ -d /run/systemd/system ]; then systemctl daemon-reload; fi
+fi
+''', 0o755)
+
+
 def manager(stage):
     deploy = ROOT / 'vim4-manager/deploy'
     copy(ROOT / 'build/vim4-manager', stage, 'opt/vim4-manager/vim4-manager', 0o755)
@@ -177,7 +201,12 @@ def main():
          # The NanoKVM package owns the shared HID udev rule. Lower bounds only:
          # the NanoKVM web updater replaces that one package by itself.
          'vim4-nanokvm (>= 1.0.3+vim4.20261013.18), sudo, python3, network-manager, avahi-daemon'),
-        ('vim4-manager', manager, f'libc6 (>= 2.38), python3, sudo, systemd, vim4-nanokvm (>= {version})')]:
+        ('vim4-onekvm', onekvm, gst + ', libavcodec60, libavutil58, libdrm2, libyuv0, '
+         'libasound2t64, libudev1, libdbus-1-3, libopus0, libstdc++6, '
+         'gstreamer1.0-plugins-good, gstreamer1.0-plugins-bad, sudo, python3, '
+         'vim4-kvm-board (>= 1.0.3+vim4.20261013.18), vim4-vfmcap, '
+         'vim4-amlvenc (>= 1.0.3+vim4.20261013.18), vim4-nanokvm (>= 1.0.3+vim4.20261013.18)'),
+        ('vim4-manager', manager, 'libc6 (>= 2.38), python3, sudo, systemd, vim4-nanokvm (>= 1.0.3+vim4.20261013.18)')]:
         package(name, version, output, populate, depends)
     shutil.copy('/opt/build-inputs/ubuntu-packages.txt', output)
     shutil.copy('/opt/build-inputs/downloads.lock.json', output)

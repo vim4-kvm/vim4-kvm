@@ -88,6 +88,9 @@ def build_plan(target, jobs, kernel_dir, vm):
         'manager': [('vim4-manager', 'pnpm --dir web install --frozen-lockfile && pnpm --dir web build && '
                      'go test ./... && go build -trimpath -o ' + shlex.quote(str(output / 'vim4-manager'))
                      + ' ./cmd/vim4-manager')],
+        'onekvm': [('One-KVM', 'npm ci --prefix web --ignore-scripts && npm --prefix web run build && '
+                    'cargo test --locked --features vim4 --lib && cargo build --locked --release --features vim4 && '
+                    'cp target/release/one-kvm ' + shlex.quote(str(output / 'onekvm')))],
     }
     if target == 'kernel':
         # Kernel stays on Linux; this neither copies sources nor deploys modules.
@@ -102,7 +105,7 @@ def build_plan(target, jobs, kernel_dir, vm):
                             'cd ' + (shlex.quote(kernel_dir) if kernel_dir else '"$HOME/src/linux"')
                             + ' && ' + command])]
         return [(Path(kernel_dir or '~/src/linux').expanduser(), ['bash', '-c', command])]
-    targets = ['capture', 'encoder', 'server', 'frontend', 'jetkvm', 'manager'] if target == 'all' else [target]
+    targets = ['capture', 'encoder', 'server', 'frontend', 'jetkvm', 'onekvm', 'manager'] if target == 'all' else [target]
     return [(ROOT / folder, ['bash', '-c', command])
             for item in targets for folder, command in plans[item]]
 
@@ -113,7 +116,7 @@ def build(args, config):
         print(f'[{cwd}] {shlex.join(argv)}', flush=True)
     if args.dry_run:
         return
-    if args.target in ('all', 'capture', 'encoder', 'server', 'jetkvm'):
+    if args.target in ('all', 'capture', 'encoder', 'server', 'jetkvm', 'onekvm'):
         if platform.system() != 'Linux' or platform.machine() not in ('aarch64', 'arm64'):
             raise ValueError('Native backend builds require Linux ARM64 with vendor development libraries; use --dry-run to inspect')
     if args.target == 'kernel' and platform.system() != 'Darwin' and platform.system() != 'Linux':
@@ -135,7 +138,7 @@ def main():
     init.add_argument('--locked', action='store_true', help='Detach new clones at recorded revisions')
     commands.add_parser('status', help='Show branches, source revisions and dirty state')
     compile_cmd = commands.add_parser('build', help='Build only; never deploy or restart services')
-    compile_cmd.add_argument('target', choices=['frontend', 'capture', 'encoder', 'server', 'jetkvm', 'manager', 'kernel', 'all'])
+    compile_cmd.add_argument('target', choices=['frontend', 'capture', 'encoder', 'server', 'jetkvm', 'onekvm', 'manager', 'kernel', 'all'])
     compile_cmd.add_argument('--jobs', type=int, default=10)
     compile_cmd.add_argument('--kernel-dir', help='Kernel path on Linux or inside the VM')
     compile_cmd.add_argument('--dry-run', action='store_true')

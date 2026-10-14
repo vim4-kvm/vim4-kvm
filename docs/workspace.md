@@ -12,7 +12,8 @@ AGENTS.md、CLAUDE.md、LESSONS.md 直接随主仓库版本管理，不再生成
 | gst-plugin-vfmcap | main | DMA-buf 采集插件 |
 | common_drivers | vim4-kvm-5.15 | 官方 Khadas 驱动与设备树 fork |
 | kvm | vim4 | JetKVM 应用，可在管理面板中选择 |
-| vim4-manager | hdr-curve | 管理面板：选择 KVM 界面、查看板子状态与 HDR 调节 |
+| One-KVM | vim4 | One-KVM 应用，可在管理面板中选择 |
+| vim4-manager | onekvm | 管理面板：选择 KVM 界面、查看板子状态与 HDR 调节 |
 
 ## 初始化入口
 
@@ -42,7 +43,7 @@ python3 tools/workspace.py build all       # 在具备依赖的 Linux ARM64 上
 python3 tools/workspace.py build kernel    # Mac 上使用 OrbStack vim4-build
 ```
 
-all 顺序构建 capture、encoder、server、frontend、jetkvm、manager，不包含独立的内核构建。
+all 顺序构建 capture、encoder、server、frontend、jetkvm、onekvm、manager，不包含独立的内核构建。
 支持分别选择上述目标，服务端先运行 VIM4 Go 测试，再输出 build/NanoKVM-Server；
 前端输出 NanoKVM/web/dist，插件输出各自构建目录。build/ 不入库。
 构建使用现有工作树（含开发改动），正式打包前先执行 locked 检查。

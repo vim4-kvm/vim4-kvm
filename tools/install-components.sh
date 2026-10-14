@@ -12,7 +12,7 @@ stage=$(mktemp -d)
 trap 'rm -rf "$stage"' EXIT
 packages=()
 version=
-components=(vim4-kvm-board vim4-vfmcap vim4-amlvenc vim4-nanokvm vim4-jetkvm vim4-manager)
+components=(vim4-kvm-board vim4-vfmcap vim4-amlvenc vim4-nanokvm vim4-jetkvm vim4-onekvm vim4-manager)
 for name in "${components[@]}"; do
     candidates=("${name}"_*_arm64.deb)
     [[ ${#candidates[@]} == 1 && -f ${candidates[0]} ]]
@@ -53,14 +53,17 @@ PY
 for file in "$stage"/etc/sudoers.d/*; do visudo -cf "$file"; done
 apt-get -s --no-remove install "${packages[@]}"
 # Keep the application selected in vim4-manager. NanoKVM is the default when
-# neither is enabled (first installation of the JetKVM package).
+# no alternative is enabled (first installation).
 app=nanokvm.service
-if systemctl is-enabled --quiet vim4-kvm.service 2>/dev/null; then app=vim4-kvm.service; fi
-systemctl stop nanokvm.service
-# Stopping a unit that is not installed yet fails; skip it rather than ignore errors.
-if [[ $(systemctl show --property=LoadState --value vim4-kvm.service) == loaded ]]; then
-    systemctl stop vim4-kvm.service
-fi
+for unit in vim4-kvm.service one-kvm.service; do
+    if systemctl is-enabled --quiet "$unit" 2>/dev/null; then app=$unit; fi
+done
+# Wait for every installed application to release the shared hardware.
+for unit in nanokvm.service vim4-kvm.service one-kvm.service; do
+    if [[ $(systemctl show --property=LoadState --value "$unit") == loaded ]]; then
+        systemctl stop "$unit"
+    fi
+done
 # If installation fails, leave the service stopped: do not launch a mixed install.
 DEBIAN_FRONTEND=noninteractive apt-get -y --no-remove -o Dpkg::Options::=--force-confold install "${packages[@]}"
 while IFS= read -r file; do

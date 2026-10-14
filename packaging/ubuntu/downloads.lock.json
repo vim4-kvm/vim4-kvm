@@ -1,5 +1,10 @@
 [
   {
+    "name": "rust.tar.xz",
+    "url": "https://static.rust-lang.org/dist/rust-1.99.0-aarch64-unknown-linux-gnu.tar.xz",
+    "sha256": "5a30ce742be0835d9b23fc862db5cbbbc71464e1c9b1fca22917e10e4ba32a92"
+  },
+  {
     "name": "gst-aml-drmbufferpool-plugins.deb",
     "url": "https://dl.khadas.com/repos/vim4/pool/main/g/gst-aml-drmbufferpool-plugins/gst-aml-drmbufferpool-plugins_0.2-202311_arm64.deb",
     "sha256": "d9b837adbd96c70980f57b14a996c9e1129ed94b4932512c326e37719ebcb03f",

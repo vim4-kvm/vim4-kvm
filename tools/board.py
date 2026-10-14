@@ -54,7 +54,7 @@ def image_metadata(image):
 UART_CHUNK = 200
 # Stock Khadas account password; see docs/hardware.md (development only).
 DEFAULT_PASSWORD = 'khadas'
-COMPONENTS = ('vim4-kvm-board', 'vim4-vfmcap', 'vim4-amlvenc', 'vim4-nanokvm', 'vim4-jetkvm', 'vim4-manager')
+COMPONENTS = ('vim4-kvm-board', 'vim4-vfmcap', 'vim4-amlvenc', 'vim4-nanokvm', 'vim4-jetkvm', 'vim4-onekvm', 'vim4-manager')
 
 
 def package_metadata(directory):

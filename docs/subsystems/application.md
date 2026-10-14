@@ -8,7 +8,9 @@
 
 JetKVM 的功能映射、特权助手和验证见 [JetKVM VIM4 集成](../../kvm/VIM4.md)。
 
-nanokvm.service 与 JetKVM 的 vim4-kvm.service 都监听 8080、以 khadas 运行，
+One-KVM 的硬件映射、构建和限制见 [One-KVM VIM4 集成](../../One-KVM/VIM4.md)。
+
+nanokvm.service、JetKVM 的 vim4-kvm.service 与 one-kvm.service 都监听 8080、以 khadas 运行，
 互相 Conflicts=，不能并发占用编码器或 HID。由 vim4-manager（80 端口）选择开机启用哪一个，
 部署时保留当前选择。板级服务拥有 HDMI、gadget、PD 和编码器时钟。
 应用更新不能替代平台依赖。独立编码测试以相同用户共享 /tmp 锁空间，

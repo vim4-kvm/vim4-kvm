@@ -9,7 +9,7 @@
 - packaging/ubuntu/Dockerfile 固定 Ubuntu 基础镜像摘要及 ARM64 架构。
 - APT 指向 20261012T000000Z 的显式 Ubuntu 快照，保留签名校验。
   check-valid-until=no 只允许历史 Release 过期，不跳过签名。
-- downloads.lock.json 固定 Go、Node、pnpm 和 Khadas 开发库下载 SHA256。
+- downloads.lock.json 固定 Go、Rust、Node、pnpm 和 Khadas 开发库下载 SHA256。
   厂商 deb 只解包到构建容器，不执行其安装脚本；不从工作板抓取二进制。
 - 源码版本来自工作树，sources.json 记录各仓库提交、脏状态、内容摘要和实际
   builder image ID。默认拒绝脏工作树，开发试构建需显式 --allow-dirty。
@@ -53,6 +53,9 @@ package/verify 必须显式提供 --version；后续镜像 assemble 的 --compon
 | vim4-vfmcap | 系统 GStreamer 目录中的采集插件 |
 | vim4-amlvenc | /usr/lib/vim4-kvm 下的编码插件及服务搜索路径 |
 | vim4-nanokvm | /opt 应用与网页、/usr/libexec 特权工具、sudoers 与应用服务 |
+| vim4-jetkvm | JetKVM 应用、特权工具与服务 |
+| vim4-onekvm | One-KVM 应用（嵌入网页）、虚拟介质助手与互斥服务 |
+| vim4-manager | 三套应用选择、板级状态与 HDR 曲线 |
 
 包不占用 /usr/local，遵循 [Debian 路径约定](https://www.debian.org/doc/debian-policy/ch-opersys.html)。
 NanoKVM 特权调用与手工安装脚本同步改为 /usr/libexec，新服务端必须与新工具一起安装。
@@ -80,7 +83,7 @@ rootflags=data=ordered，根分区和 /boot 的 commit 改为 5 秒。Stock 启�
 不变；应用镜像校验检查该配置。现有系统需重启后检查 findmnt / 确认生效。
 自定义 rootflags 或显式 fstab data= 设置会要求先审查，不静默覆盖。
 
-每次输出包含四个 deb、sources.json、Ubuntu 包版本列表、外部下载清单及 SHA256SUMS。
+每次输出包含七个 deb、sources.json、Ubuntu 包版本列表、外部下载清单及 SHA256SUMS。
 SOURCE_DATE_EPOCH 来自主仓库提交；当前尚未证明所有工具链产物逐字节可复现。
 默认发布前还需运行 workspace.py bootstrap --locked，并先推送清单引用的组件提交。
 

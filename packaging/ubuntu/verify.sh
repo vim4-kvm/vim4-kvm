@@ -16,6 +16,7 @@ dpkg-deb -f ./vim4-kvm-board_*.deb Depends | grep -qw alsa-utils
 for binary in /tmp/package-check/root/usr/sbin/usb-pd-init \
     /tmp/package-check/root/opt/vim4-nanokvm/NanoKVM-Server \
     /tmp/package-check/root/opt/vim4-jetkvm/jetkvm \
+    /tmp/package-check/root/opt/vim4-onekvm/one-kvm \
     /tmp/package-check/root/opt/vim4-manager/vim4-manager \
     /tmp/package-check/root/usr/lib/aarch64-linux-gnu/gstreamer-1.0/libgstvfmcap.so \
     /tmp/package-check/root/usr/lib/vim4-kvm/gstreamer-1.0/libgstamlvenc.so; do
@@ -89,6 +90,16 @@ if sh /tmp/package-check/jetkvm-control/postinst configure; then
 fi
 cp -a /tmp/package-check/root/etc/sudoers.d/vim4-jetkvm /etc/sudoers.d/
 grep -qx 'Conflicts=nanokvm.service' /tmp/package-check/root/usr/lib/systemd/system/vim4-kvm.service
+dpkg-deb -e ./vim4-onekvm_*.deb /tmp/package-check/onekvm-control
+sh /tmp/package-check/onekvm-control/postinst configure
+test ! -e /etc/systemd/system/multi-user.target.wants/one-kvm.service
+truncate -s 0 /etc/sudoers.d/vim4-onekvm
+if sh /tmp/package-check/onekvm-control/postinst configure; then
+    echo 'Empty One-KVM sudoers file incorrectly accepted' >&2
+    exit 1
+fi
+cp -a /tmp/package-check/root/etc/sudoers.d/vim4-onekvm /etc/sudoers.d/
+grep -qx 'Conflicts=nanokvm.service vim4-kvm.service' /tmp/package-check/root/usr/lib/systemd/system/one-kvm.service
 dpkg-deb -e ./vim4-manager_*.deb /tmp/package-check/manager-control
 sh /tmp/package-check/manager-control/postinst configure
 truncate -s 0 /etc/sudoers.d/vim4-manager-helper
