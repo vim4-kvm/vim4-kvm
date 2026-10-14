@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 """Assemble Ubuntu component packages without running installation scripts."""
 import hashlib
+import lzma
 from pathlib import Path
 import shutil
 import subprocess
@@ -150,6 +151,14 @@ def onekvm(stage):
     copy(deploy / 'vim4-onekvm', stage, 'usr/libexec/vim4-onekvm', 0o755)
     copy(deploy / 'vim4-onekvm.sudoers', stage, 'etc/sudoers.d/vim4-onekvm', 0o440)
     copy(ROOT / 'One-KVM/LICENSE', stage, 'usr/share/doc/vim4-onekvm/copyright')
+    resources = ROOT / 'One-KVM/libs/ventoy-img-rs/resources'
+    destination = 'usr/share/vim4-onekvm/ventoy'
+    copy(resources / 'boot.img', stage, f'{destination}/boot.img')
+    for name in ('core.img', 'ventoy.disk.img'):
+        target = stage / destination / name
+        with lzma.open(resources / f'{name}.xz', 'rb') as source, target.open('wb') as output:
+            shutil.copyfileobj(source, output)
+        target.chmod(0o644)
     # Also constrain previously installed versions of the other two units.
     for unit in ('nanokvm.service', 'vim4-kvm.service'):
         write(stage, f'usr/lib/systemd/system/{unit}.d/onekvm.conf',
@@ -160,6 +169,9 @@ if [ "$1" = configure ]; then
     getent passwd khadas >/dev/null
     test -s /usr/libexec/vim4-onekvm
     test -s /opt/vim4-onekvm/lib/libgst-aml-dma-allocator.so
+    for name in boot.img core.img ventoy.disk.img; do
+        test -s "/usr/share/vim4-onekvm/ventoy/$name"
+    done
     test -x /usr/libexec/vim4-onekvm
     test -s /etc/sudoers.d/vim4-onekvm
     visudo -cf /etc/sudoers.d/vim4-onekvm

@@ -54,7 +54,7 @@ package/verify 必须显式提供 --version；后续镜像 assemble 的 --compon
 | vim4-amlvenc | /usr/lib/vim4-kvm 下的编码插件及服务搜索路径 |
 | vim4-nanokvm | /opt 应用与网页、/usr/libexec 特权工具、sudoers 与应用服务 |
 | vim4-jetkvm | JetKVM 应用、特权工具与服务 |
-| vim4-onekvm | One-KVM 应用（嵌入网页）、虚拟介质助手与互斥服务 |
+| vim4-onekvm | One-KVM 应用（嵌入网页）、Ventoy 引导资源、虚拟介质助手与互斥服务 |
 | vim4-manager | 三套应用选择、板级状态与 HDR 曲线 |
 
 包不占用 /usr/local，遵循 [Debian 路径约定](https://www.debian.org/doc/debian-policy/ch-opersys.html)。
@@ -73,6 +73,11 @@ NanoKVM 特权调用与手工安装脚本同步改为 /usr/libexec，新服务�
 现有 board/install.sh 来模拟离线安装，因为它会操作正在运行的系统。
 
 组件包 postinst 在成功返回前 sync；应用包同时检查辅助程序和 sudoers。
+One-KVM 将仓库内 Ventoy 资源解压到 `/usr/share/vim4-onekvm/ventoy`，
+安装检查与包验证拒绝缺失的引导文件；用户虚拟盘保留在 `/var/lib/one-kvm/msd/ventoy`。
+`tools/one-kvm-drive-check.mjs --exclusive --initialize --mount-host` 可在独占板子时
+创建缺失的 256 MiB 虚拟盘并验证网页读写与 macOS USB 读取；已有盘不会重新格式化，
+测试结束保留虚拟盘，移除本次测试文件。认证环境变量与其他 One-KVM 检查相同。
 网页更新包直接封装这里生成的应用 deb，不另行编译或生成安装配方。更新助手
 预检 APT 安装计划：需要新增/升级平台依赖时拒绝安装，要求先部署完整组件。
 成功安装后比对辅助程序与 sudoers 内容、执行 visudo、sync，再安排应用重启。

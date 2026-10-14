@@ -94,7 +94,17 @@ grep -qx 'Conflicts=nanokvm.service' /tmp/package-check/root/usr/lib/systemd/sys
 dpkg-deb -e ./vim4-onekvm_*.deb /tmp/package-check/onekvm-control
 mkdir -p /opt/vim4-onekvm/lib
 cp /tmp/package-check/root/opt/vim4-onekvm/lib/libgst-aml-dma-allocator.so /opt/vim4-onekvm/lib/
+mkdir -p /usr/share/vim4-onekvm
+cp -a /tmp/package-check/root/usr/share/vim4-onekvm/ventoy /usr/share/vim4-onekvm/
 sh /tmp/package-check/onekvm-control/postinst configure
+for resource in boot.img core.img ventoy.disk.img; do
+    mv "/usr/share/vim4-onekvm/ventoy/$resource" /tmp/ventoy-resource
+    if sh /tmp/package-check/onekvm-control/postinst configure; then
+        echo "Missing Ventoy resource incorrectly accepted: $resource" >&2
+        exit 1
+    fi
+    mv /tmp/ventoy-resource "/usr/share/vim4-onekvm/ventoy/$resource"
+done
 test ! -e /etc/systemd/system/multi-user.target.wants/one-kvm.service
 truncate -s 0 /etc/sudoers.d/vim4-onekvm
 if sh /tmp/package-check/onekvm-control/postinst configure; then
