@@ -1,6 +1,7 @@
 // Exclusive One-KVM USB regression. Requires detached media and restores settings.
 import assert from 'node:assert/strict';
 import { execFileSync, spawn } from 'node:child_process';
+import { writeFileSync } from 'node:fs';
 const { chromium } = await import(process.env.PLAYWRIGHT_MODULE || 'playwright');
 assert(process.argv.includes('--exclusive'), 'Coordinate board access first');
 const ssh = command => execFileSync('ssh', ['vim4', command], { encoding: 'utf8' }).trim();
@@ -21,6 +22,8 @@ try {
   await api('auth/login', 'POST', { username: process.env.ONEKVM_USERNAME, password: process.env.ONEKVM_PASSWORD });
   saved = { hid: await api('config/hid'), msd: await api('config/msd'),
     network: await api('config/otg-network'), uac: await api('config/uac') };
+  assert.equal(saved.hid.backend, 'otg', 'Enable OTG before this hardware regression');
+  writeFileSync('logs/one-kvm/usb-original-config.json', JSON.stringify(saved, null, 2));
   const base = { hid: { ...saved.hid, otg_profile: 'custom', mouse_macos_drag: false,
     otg_functions: { keyboard: true, mouse_absolute: true, mouse_relative: true, consumer: false } },
     msd: { ...saved.msd, enabled: false }, network: { ...saved.network, enabled: false, bridge_interface: '' },
@@ -51,7 +54,8 @@ try {
   if (process.argv.includes('--audio')) {
     // Existing host diagnostic records the selected USB input; synthetic PCM
     // traverses the same authenticated WebSocket used by the browser microphone.
-    const recording = spawn('/tmp/uac-record-level', ['5']);
+    await page.waitForTimeout(1500); // allow the host audio device to enumerate
+    const recording = spawn('/tmp/uac-record-level', ['5', base.hid.otg_descriptor.manufacturer]);
     let output = '', error = '';
     recording.stdout.on('data', chunk => { output += chunk; });
     recording.stderr.on('data', chunk => { error += chunk; });
@@ -59,6 +63,7 @@ try {
       recording.on('error', reject);
       recording.on('close', code => code === 0 ? resolve(output) : reject(new Error(error)));
     });
+    recorded.catch(() => {}); // observe early process failures while sending PCM
     await page.evaluate(() => new Promise((resolve, reject) => {
       const socket = new WebSocket(`ws://${location.host}/api/ws/uac-audio`);
       let frame = 0, timer;
@@ -80,7 +85,7 @@ try {
     }));
     const level = JSON.parse(await recorded);
     console.log(JSON.stringify({ microphone: level }));
-    assert(level.device.includes('One-KVM') || level.device.includes('vim4'), 'Host default input is not the USB microphone');
+    assert.equal(level.manufacturer, base.hid.otg_descriptor.manufacturer);
     assert(level.rms > 0.02 && level.frequency > 400 && level.frequency < 480, 'USB microphone did not deliver the tone');
   }
   for (const driver_mode of ['ncm', 'ecm', 'rndis']) {
