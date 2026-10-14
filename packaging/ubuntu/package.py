@@ -262,6 +262,7 @@ def main():
          'libasound2t64, libudev1, libdbus-1-3, libopus0, libstdc++6, '
          'gstreamer1.0-plugins-good, gstreamer1.0-plugins-bad, gstreamer-aml (= 0.6-202406), sudo, python3, libcap2-bin, '
          'libjson-c5, libuv1t64, libssl3t64, libcap2, zlib1g, libwebsockets-evlib-uv, '
+         'network-manager, dnsmasq-base, '
          'vim4-kvm-board (>= 1.0.3+vim4.20261013.18), vim4-vfmcap, '
          'vim4-amlvenc (>= 1.0.3+vim4.20261013.18), vim4-nanokvm (>= 1.0.3+vim4.20261013.18), '
          'vim4-manager (>= 2.5.1+vim4.20261014.4)'),
