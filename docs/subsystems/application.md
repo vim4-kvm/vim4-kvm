@@ -1,5 +1,11 @@
 # NanoKVM 应用
 
+三套 VIM4 应用的自定义 H.264/H.265 码率范围统一为 1000–60000 kbps。
+NanoKVM 默认 12000 kbps、JetKVM 原质量档 12/6/1.2 Mbps、One-KVM 快捷档
+1/4/8/12 Mbps 保留。JetKVM 通过 custom_bitrate 能力显示自定义输入。
+部署这些版本时须同时升级 vim4-amlvenc（旧插件上限 12000 kbps），不能只更新网页。
+高码率测试依据和局限见 [高码率实验](../encoder-high-bitrate.md)。
+
 先读 [VIM4 集成](../../NanoKVM/VIM4.md)，其中维护功能覆盖、
 构建、安装和限制；代码规范见 [code-standards.md](../code-standards.md)。
 
