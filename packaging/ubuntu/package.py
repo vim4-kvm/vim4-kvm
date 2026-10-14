@@ -85,6 +85,10 @@ def capture(stage):
 
 
 def encoder(stage):
+    copy(ROOT / 'gst-plugin-venc/jpeg/vim4/libgstvim4jpegenc.so', stage,
+         'usr/lib/vim4-kvm/gstreamer-1.0/libgstvim4jpegenc.so', 0o644)
+    copy(ROOT / 'gst-plugin-venc/jpeg/vim4/gstvim4jpegenc.c', stage,
+         'usr/share/doc/vim4-amlvenc/source/gstvim4jpegenc.c')
     copy(ROOT / 'gst-plugin-venc/amlvenc/libgstamlvenc.so', stage,
          'usr/lib/vim4-kvm/gstreamer-1.0/libgstamlvenc.so', 0o644)
     write(stage, 'usr/lib/systemd/system/nanokvm.service.d/encoder.conf',

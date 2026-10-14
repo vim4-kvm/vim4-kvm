@@ -20,7 +20,8 @@ for binary in /tmp/package-check/root/usr/sbin/usb-pd-init \
     /tmp/package-check/root/opt/vim4-onekvm/lib/libgst-aml-dma-allocator.so \
     /tmp/package-check/root/opt/vim4-manager/vim4-manager \
     /tmp/package-check/root/usr/lib/aarch64-linux-gnu/gstreamer-1.0/libgstvfmcap.so \
-    /tmp/package-check/root/usr/lib/vim4-kvm/gstreamer-1.0/libgstamlvenc.so; do
+    /tmp/package-check/root/usr/lib/vim4-kvm/gstreamer-1.0/libgstamlvenc.so \
+    /tmp/package-check/root/usr/lib/vim4-kvm/gstreamer-1.0/libgstvim4jpegenc.so; do
     readelf -h "$binary" | grep -q 'Machine:.*AArch64'
     ldd "$binary" > /tmp/package-check/ldd.txt
     if grep -q 'not found' /tmp/package-check/ldd.txt; then

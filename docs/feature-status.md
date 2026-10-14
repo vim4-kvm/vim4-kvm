@@ -14,7 +14,7 @@
 |---|---|
 | H.264 WebRTC | 已接入，4K60 已测；延迟与测试范围见 latency.md |
 | H.265 WebRTC、H.264/H.265 Direct | 已接入，4K60 静态桌面约 60fps 已测；Direct 需 WebCodecs（HTTPS 或安全上下文）；H.265 需浏览器支持解码 |
-| MJPEG、分辨率、码率、GOP、帧率、缩放/旋转 | 已接入；MJPEG 是软件编码，限制为最多 10fps，不等于 H.264 的 4K60 能力 |
+| MJPEG、分辨率、码率、GOP、帧率、缩放/旋转 | 已接入；NanoKVM/One-KVM 使用 DMA 硬件 JPEG，缺少新插件时软件回退最多 10fps；实测吞吐与 H.264 不同 |
 | HDMI 声音 | WebRTC 视频随附音频；MJPEG/Direct 通过独立纯音频 WebRTC 会话播放，四种模式 50 包/秒已测 |
 | 键盘、绝对/相对鼠标、快捷键、文本粘贴 | 已接入；长按与 Mac 滚轮的实测见 input-latency.md；输入法/断网/多客户端边界未全部验证 |
 | 镜像上传、下载、管理、虚拟磁盘/CD-ROM | 已接入并验证 Mac 枚举；被控端完整文件读写仍待验证；虚拟介质与 NCM 互斥 |
