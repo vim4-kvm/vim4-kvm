@@ -99,7 +99,13 @@ try {
       for (const name of ['ttyd', 'gostc', 'easytier', 'frpc']) {
         if (!originals[name].config.enabled) {
           await api(`extensions/${name}/stop`, 'POST');
-          await api(`extensions/${name}/config`, 'PATCH', originals[name].config);
+          // GET omits empty secrets/full-config strings; PATCH omission would
+          // retain this test's values instead of restoring the empty settings.
+          const emptyFields = {
+            ttyd: {}, gostc: { key: '' }, easytier: { custom_toml: '' }, frpc: { custom_toml: '' },
+          };
+          await api(`extensions/${name}/config`, 'PATCH', { ...emptyFields[name], ...originals[name].config });
+          assert.deepEqual((await api('extensions'))[name].config, originals[name].config);
         }
       }
     }

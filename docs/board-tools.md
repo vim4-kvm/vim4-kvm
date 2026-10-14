@@ -64,6 +64,12 @@ ONEKVM_TEST_ISO 指向包含测试标记的 ONEKVM_TEST 卷。三套应用切换
 `kvm-switch-check.mjs --exclusive`，结束恢复初始选择。这些实机测试依次运行，
 不要并发登录同一个 One-KVM 账户，以免会话替换干扰结果。
 
+`one-kvm-smoke.mjs --exclusive --audio` 会通过 Web Audio 检查 WebRTC 解码波形，
+需从 HDMI 输入播放非静音测试信号；不以浏览器 totalAudioEnergy 单项统计替代声音证据。
+`one-kvm-features-check.mjs --exclusive` 检查终端、扩展及看门狗，本地 FRP 测试服务
+须监听 127.0.0.1:17700，使用脚本中的测试 token。结束恢复关闭状态和原配置，
+`--restore-drive` 仅用于测试前原本已连接虚拟盘的场景。测试 FRP 服务不得监听公网。
+
 board.py verify 先运行 check，再逐项输出 PASS/FAIL/SKIP，并写入日志目录的 verify.json：
 
 | 项 | 方法 | SKIP 条件 |
