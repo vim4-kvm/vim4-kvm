@@ -37,7 +37,18 @@ EOF
 /usr/sbin/vim4-rootfs-policy /
 systemctl --root=/ disable usb-gadget-khadas.service audioserver.service
 systemctl --root=/ enable vim4-kvm-gadget.service vim4-kvm-pd.service vim4-kvm-hdmi.service \
-    vim4-kvm-cpufreq.service nanokvm.service vim4-manager.service
+    vim4-kvm-cpufreq.service vim4-manager.service
+app_units=(nanokvm.service vim4-kvm.service one-kvm.service)
+[[ ! -f /usr/lib/systemd/system/vim4-pikvm.service ]] || app_units+=(vim4-pikvm.service)
+systemctl --root=/ disable "${app_units[@]}"
+case ${VIM4_DEFAULT_APP:-nanokvm} in
+    nanokvm) app=nanokvm.service;;
+    jetkvm) app=vim4-kvm.service;;
+    onekvm) app=one-kvm.service;;
+    pikvm) app=vim4-pikvm.service;;
+    *) echo 'Unknown default app' >&2; exit 1;;
+esac
+systemctl --root=/ enable "$app"
 # SSH host identity must be generated per installation, never copied into images.
 rm -f /etc/ssh/ssh_host_*
 cat > /usr/lib/systemd/system/vim4-kvm-firstboot.service <<'EOF'

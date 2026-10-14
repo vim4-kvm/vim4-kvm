@@ -38,16 +38,12 @@ let mediaName;
 let sound;
 try {
   await page.goto(url + '/login');
-  const login = await page.evaluate(async credentials => {
-    for (let attempt = 0; attempt < 20; ++attempt) {
-      const response = await fetch('/api/auth/login', { method: 'POST', body: new URLSearchParams(credentials) });
-      if (![502, 503].includes(response.status)) return response.status;
-      await new Promise(resolve => setTimeout(resolve, 500));
-    }
-    return 503;
-  }, { user: process.env.PIKVM_USERNAME, passwd: process.env.PIKVM_PASSWORD });
-  assert.equal(login, 200, `Login HTTP ${login}`);
-  await page.goto(url + '/kvm/');
+  await page.locator('#user-input').fill(process.env.PIKVM_USERNAME);
+  await page.locator('#passwd-input').fill(process.env.PIKVM_PASSWORD);
+  await page.locator('#login-button').click();
+  await page.waitForURL(url + '/');
+  await page.locator('#apps a[href="./kvm/"]').click();
+  await page.waitForURL(url + '/kvm/');
   await page.waitForFunction(() => document.querySelector('#stream-video')?.videoWidth > 0, null, { timeout: 60000 });
   const first = await page.$eval('#stream-video', video => video.getVideoPlaybackQuality().totalVideoFrames);
   await page.waitForTimeout(10000);
@@ -57,6 +53,33 @@ try {
     dropped: video.getVideoPlaybackQuality().droppedVideoFrames,
   }));
   assert(video.frames > first + 10, 'Video decoding did not advance');
+  const soakSeconds = Number(process.argv.find(arg => arg.startsWith('--soak='))?.split('=')[1] || 0);
+  if (soakSeconds) {
+    const soak = await page.evaluate(async seconds => {
+      const video = document.querySelector('#stream-video');
+      const gaps = [];
+      let last;
+      let callback;
+      const frame = now => {
+        if (last !== undefined) gaps.push(now - last);
+        last = now;
+        callback = video.requestVideoFrameCallback(frame);
+      };
+      callback = video.requestVideoFrameCallback(frame);
+      await new Promise(resolve => setTimeout(resolve, seconds * 1000));
+      video.cancelVideoFrameCallback(callback);
+      const stats = [];
+      for (const peer of window.pikvmPeers) {
+        for (const report of (await peer.getStats()).values()) {
+          if (report.type === 'inbound-rtp' && report.kind === 'video') stats.push(report);
+        }
+      }
+      gaps.sort((a, b) => a - b);
+      return { seconds, callbacks: gaps.length, maxGapMs: gaps.at(-1), p99GapMs: gaps[Math.floor(gaps.length * .99)],
+        gapsOver250ms: gaps.filter(gap => gap > 250), stats };
+    }, soakSeconds);
+    console.log('SOAK', JSON.stringify(soak));
+  }
   const snapshot = await page.evaluate(async () => {
     const response = await fetch('/api/streamer/snapshot');
     return { status: response.status, signature: [...new Uint8Array(await response.arrayBuffer()).slice(0, 2)] };

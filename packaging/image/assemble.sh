@@ -6,6 +6,8 @@ base=$(realpath "${1:?base image .xz required}")
 components=$(realpath "${2:?component package directory required}")
 kernels=$(realpath "${3:?kernel package directory required}")
 image=$(realpath -m "${4:?new output image path required}")
+pikvm=${5:-}
+default_app=${6:-nanokvm}
 workspace=$(cd "$(dirname "$0")/../.." && pwd)
 [[ -f "$base" && ! -e "$image" && ! -L "$image" ]] || { echo 'Input must be a file; output must not exist' >&2; exit 1; }
 for cmd in xz sfdisk growpart losetup mount resize2fs e2fsck python3 chroot; do command -v "$cmd" >/dev/null; done
@@ -16,6 +18,20 @@ with open(sys.argv[2],'rb') as stream: actual=hashlib.file_digest(stream,'sha256
 if actual != lock['sha256']: raise SystemExit('Base image checksum mismatch')
 PY
 (cd "$components" && sha256sum -c SHA256SUMS)
+if [[ -n "$pikvm" ]]; then pikvm=$(realpath "$pikvm"); (cd "$pikvm" && sha256sum -c SHA256SUMS); fi
+python3 - "$workspace" "$components" "$pikvm" "$default_app" <<'PY'
+import json, pathlib, sys
+sys.path.insert(0, str(pathlib.Path(sys.argv[1]) / 'tools'))
+from board import package_metadata
+for directory, expected in [(sys.argv[2], 'all'), (sys.argv[3], 'pikvm')]:
+    if not directory: continue
+    path = pathlib.Path(directory)
+    if json.loads((path / 'sources.json').read_text()).get('component', 'all') != expected:
+        raise SystemExit(f'Expected {expected} component set: {path}')
+    if package_metadata(path)[2]: raise SystemExit('Images require clean component sources')
+if sys.argv[4] not in ('nanokvm', 'jetkvm', 'onekvm', 'pikvm') or (sys.argv[4] == 'pikvm' and not sys.argv[3]):
+    raise SystemExit('Invalid default application or missing PiKVM packages')
+PY
 kernel_name=$(python3 - "$workspace/workspace.toml" "$kernels/kernel-build.json" <<'PY'
 import json, sys, tomllib
 with open(sys.argv[1], 'rb') as f: lock = tomllib.load(f)
@@ -76,14 +92,24 @@ printf '#!/bin/sh\nexit 101\n' > "$root/usr/sbin/policy-rc.d"
 chmod 0755 "$root/usr/sbin/policy-rc.d"
 mkdir -p "$root/tmp/vim4-packages"
 cp "$components"/*.deb "${kernel_packages[0]}" "$root/tmp/vim4-packages/"
+if [[ -n "$pikvm" ]]; then
+    rm "$root/tmp/vim4-packages/"vim4-manager_*.deb
+    cp "$pikvm/"*.deb "$root/tmp/vim4-packages/"
+fi
 cp "$workspace/packaging/image/configure.sh" "$root/tmp/vim4-configure.sh"
-chroot "$root" /usr/bin/env VIM4_IMAGE_ASSEMBLY=1 /bin/bash /tmp/vim4-configure.sh
+chroot "$root" /usr/bin/env VIM4_IMAGE_ASSEMBLY=1 VIM4_DEFAULT_APP="$default_app" /bin/bash /tmp/vim4-configure.sh
 rm "$root/usr/sbin/policy-rc.d" "$root/etc/resolv.conf" "$root/tmp/vim4-configure.sh"
 ln -s "$resolv_link" "$root/etc/resolv.conf"
 rm -r "$root/tmp/vim4-packages"
 mkdir -p "$root/usr/share/vim4-kvm/build"
 cp "$components/sources.json" "$components/downloads.lock.json" "$kernels/kernel-build.json" \
     "$workspace/packaging/image/base.lock.json" "$root/usr/share/vim4-kvm/build/"
+printf '%s\n' "$default_app" > "$root/usr/share/vim4-kvm/build/default-app"
+if [[ -n "$pikvm" ]]; then
+    mkdir "$root/usr/share/vim4-kvm/build/pikvm"
+    cp "$pikvm/sources.json" "$pikvm/pikvm-downloads.lock.json" "$pikvm/requirements.lock" \
+        "$pikvm/bootstrap.lock" "$root/usr/share/vim4-kvm/build/pikvm/"
+fi
 cp "$workspace/packaging/image/assemble.sh" "$workspace/packaging/image/configure.sh" \
     "$workspace/workspace.toml" "$root/usr/share/vim4-kvm/build/"
 git --git-dir="$workspace/.git" rev-parse HEAD > "$root/usr/share/vim4-kvm/build/image-recipe-commit.txt"

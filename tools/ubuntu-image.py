@@ -28,10 +28,14 @@ def main():
     parser.add_argument('command', choices=['fetch', 'kernel', 'assemble', 'verify', 'export'])
     parser.add_argument('--name', default='vim4-kvm-ubuntu-0.1.0-dev2')
     parser.add_argument('--components', help='Required for assemble; the version passed to ubuntu-build.py --version')
+    parser.add_argument('--pikvm-components', help='Additional PiKVM package version; replaces the manager from --components')
+    parser.add_argument('--default-app', choices=['nanokvm', 'jetkvm', 'onekvm', 'pikvm'], default='nanokvm')
     args = parser.parse_args()
     if args.command == 'assemble' and not args.components:
         parser.error('assemble requires --components; use the same version as ubuntu-build.py --version')
-    for value in (args.name, args.components):
+    if args.command == 'assemble' and args.default_app == 'pikvm' and not args.pikvm_components:
+        parser.error('--default-app pikvm requires --pikvm-components')
+    for value in (args.name, args.components, args.pikvm_components):
         if value is None:
             continue
         if not re.fullmatch(r'[A-Za-z0-9][A-Za-z0-9_.~+-]*', value):
@@ -64,7 +68,9 @@ def main():
             raise ValueError('Commit the image recipe before assembling; the image records its commit')
         vm_command(['mkdir', '-p', f'{home}/image-build'])
         vm_command(['sudo', 'bash', str(ROOT / 'packaging/image/assemble.sh'), str(base),
-                    str(ROOT / 'build/packages' / args.components), str(kernel), image])
+                    str(ROOT / 'build/packages' / args.components), str(kernel), image,
+                    str(ROOT / 'build/packages' / args.pikvm_components) if args.pikvm_components else '',
+                    args.default_app])
     elif args.command == 'verify':
         vm_command(['sudo', 'bash', str(ROOT / 'packaging/image/verify.sh'), image, str(base)])
     else:
