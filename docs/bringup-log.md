@@ -1456,3 +1456,21 @@ kvmd `464a3558` 增加 VIM4 Janus 配置，主仓库 `7f53d27` 打包该配置�
 `h264-client-wire.log`、`h264-mac-en0.pcap`、`h264-mac-en1.pcap`、
 `freeze-correlation.json`、`h264-ipv4-soak.log`、`h264-regular-soak.log`（同目录）；
 `build/pikvm-package-40.log`、`build/pikvm-verify-40.log`、`logs/pikvm/deploy-40/`。
+
+`.40` 正式包最终长测（3840×2160、60fps、12000kbps、GOP30，Mac 同时开启有线与
+Wi-Fi，使用无缓存 Chrome 上下文）：H.264/H.265 各观察 300 秒，各解码 17998 帧，
+两者 framesDropped、packetsLost、freezeCount、totalFreezesDuration 增量均为 0。
+最大画面回调间隔分别为 33.5ms/50ms，P99 均约 33.4ms；H.264 窗口期间宿主还在
+组装和压缩镜像。两种编码的独立运动检查各取得 8 个不同图像哈希；长测窗口本身
+是桌面场景，不是持续高运动或 WAN 性能保证。H.265 额外复测音频峰值 0.16226、
+键鼠、ISO 主机读取/eject、4K MJPEG 切换、设置保存与刷新，全部通过。
+`dpkg -V vim4-pikvm` 无差异，临时诊断程序已被正式包替换；最终保持 PiKVM
+active/enabled、H.265 开启、虚拟介质未挂载。整机 check 通过。
+证据：`logs/pikvm/h264-final-40.log`、`hevc-final-40.log`、
+`stability-summary-40.json`、`hevc-final40-route.pcap`（同目录）、
+`logs/pikvm/final-state-40/`。
+
+同步导出包含修正的 `build/images/vim4-kvm-ubuntu-pikvm40/`，配方 `7f53d27`，
+默认 PiKVM/H.264。只读离线验证、压缩包/原始镜像校验和 flash dry-run 通过；
+尚未擦除 eMMC 或进行新镜像首次启动。用户要求优先解决画面卡顿，当前完成的是
+现有系统正式包上板回归与新镜像准备，不能将其表述为已通过刷机验收。
