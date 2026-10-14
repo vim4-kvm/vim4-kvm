@@ -42,7 +42,8 @@ PiKVM 组件集的管理器替换基础组件集中的版本；共八个组件�
 PiKVM 默认 H.264；HEVC 是需浏览器支持的独立服务配置，见 kvmd/VIM4.md。
 四个应用的动态库、PiKVM Python 模块和 nginx 配置均在原厂镜像的 chroot 内验证，
 不使用开发板上的手工依赖。image/downloads.lock.json 补充固定哈希的 Ubuntu
-运行依赖，避免特定快照下载端点故障；软件源版本快照保持不变。
+运行依赖，版本与哈希来自已验证的 Ubuntu 快照索引。组装先下载并校验，chroot
+安装阶段禁止联网取包；缺失依赖直接失败，不静默改用实时软件源中的版本。
 
 kernel 输出 build/packages/kernel 下的 deb 和构建记录。内核版本仍为
 5.15.137-vim4kvm；包版本包含内核与驱动提交。模块直接打包到 /usr/lib/modules，
@@ -69,7 +70,7 @@ packaging/image/base.lock.json 记录官方 URL、SHA256 和固定布局。这�
 解压数据末尾有 OOWOW 元数据；工具先截取真实磁盘大小，去掉旧尺寸元数据，
 再扩展至 8GiB 并扩大 p2。引导区域和文件系统 UUID 保留。
 
-离线安装使用 Ubuntu 固定软件源快照补齐缺失依赖，policy-rc.d 禁止启动服务。
+离线安装使用固定哈希的运行依赖补齐原厂镜像，policy-rc.d 禁止启动服务。
 仅挂载临时 proc/dev，不把 VM 磁盘设备映射给安装脚本。安装完成后恢复解析器
 链接并移除临时策略与安装包。原厂 APT 源保留，构建快照不强制冻结运行时更新。
 

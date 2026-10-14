@@ -5,12 +5,9 @@ set -euo pipefail
 compgen -G '/tmp/vim4-packages/linux-image-vim4-kvm_*.deb' >/dev/null
 [[ -L /lib && $(readlink /lib) == usr/lib ]]
 export DEBIAN_FRONTEND=noninteractive
-printf 'deb [signed-by=/usr/share/keyrings/ubuntu-archive-keyring.gpg check-valid-until=no] https://snapshot.ubuntu.com/ubuntu/20261012T000000Z %s main universe\n' noble noble-updates noble-security > /tmp/vim4-build.sources.list
-apt_options=(-o Dir::Etc::sourcelist=/tmp/vim4-build.sources.list -o Dir::Etc::sourceparts=-
-    -o Acquire::Retries=5 -o Acquire::Languages=none -o Acquire::https::Timeout=30)
-apt-get "${apt_options[@]}" update
-apt-get "${apt_options[@]}" install -y --no-install-recommends /tmp/vim4-packages/*.deb
-rm /tmp/vim4-build.sources.list
+# Runtime dependencies are part of the hash-locked input set. Fail on a missing
+# dependency instead of silently selecting a newer version from a live mirror.
+apt-get --no-download install -y --no-install-recommends /tmp/vim4-packages/*.deb
 release=5.15.137-vim4kvm
 stock=5.15.137
 cp -a /boot/dtb-$stock/amlogic/kvim4*.dtb.overlay* /boot/dtb-$release/amlogic/

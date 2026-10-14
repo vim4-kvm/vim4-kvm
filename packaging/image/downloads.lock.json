@@ -1,5 +1,40 @@
 [
   {
+    "name": "libevent-2.1-7t64_2.1.12-stable-9ubuntu2.2_arm64.deb",
+    "url": "https://ports.ubuntu.com/ubuntu-ports/pool/main/libe/libevent/libevent-2.1-7t64_2.1.12-stable-9ubuntu2.2_arm64.deb",
+    "sha256": "fa673bc6df96f47db3aad32fa0158fccd0d15af9065fa4a4e11d90007abe4c9f"
+  },
+  {
+    "name": "libevent-core-2.1-7t64_2.1.12-stable-9ubuntu2.2_arm64.deb",
+    "url": "https://ports.ubuntu.com/ubuntu-ports/pool/main/libe/libevent/libevent-core-2.1-7t64_2.1.12-stable-9ubuntu2.2_arm64.deb",
+    "sha256": "2fff3280ca73b151af50f29057b56b050465df23c255ece6f8cd83103c6fc711"
+  },
+  {
+    "name": "libevent-pthreads-2.1-7t64_2.1.12-stable-9ubuntu2.2_arm64.deb",
+    "url": "https://ports.ubuntu.com/ubuntu-ports/pool/main/libe/libevent/libevent-pthreads-2.1-7t64_2.1.12-stable-9ubuntu2.2_arm64.deb",
+    "sha256": "07f2eb4ba77055429b24d10fce941a378197b9d4fcac44fb99fef187cede9e7b"
+  },
+  {
+    "name": "libspeexdsp1_1.2.1-1ubuntu3_arm64.deb",
+    "url": "https://ports.ubuntu.com/ubuntu-ports/pool/main/s/speexdsp/libspeexdsp1_1.2.1-1ubuntu3_arm64.deb",
+    "sha256": "8b88a84272b56722272c695a4c61e441a59e23055278d621a02ddf0141e05461"
+  },
+  {
+    "name": "libwebsockets19t64_4.3.3-1.1build3_arm64.deb",
+    "url": "https://ports.ubuntu.com/ubuntu-ports/pool/universe/libw/libwebsockets/libwebsockets19t64_4.3.3-1.1build3_arm64.deb",
+    "sha256": "b2ecc97daf04749f29fd67f97d794be0f811877ec6fb9f572aef38a9297b1db2"
+  },
+  {
+    "name": "libyuv0_0.0~git202401110.af6ac82-1_arm64.deb",
+    "url": "https://ports.ubuntu.com/ubuntu-ports/pool/universe/liby/libyuv/libyuv0_0.0~git202401110.af6ac82-1_arm64.deb",
+    "sha256": "927405a85ab7b53612ded42f680e6d6d4f83a394220ad276504d5e45869c25e5"
+  },
+  {
+    "name": "picocom_3.1-4_arm64.deb",
+    "url": "https://ports.ubuntu.com/ubuntu-ports/pool/universe/p/picocom/picocom_3.1-4_arm64.deb",
+    "sha256": "baab3a18b882d139b34adf04b1e1d64679f2e41b457c7c50209dd87e085dec86"
+  },
+  {
     "name": "libwebsockets-evlib-uv_4.3.3-1.1build3_arm64.deb",
     "url": "https://ports.ubuntu.com/ubuntu-ports/pool/universe/libw/libwebsockets/libwebsockets-evlib-uv_4.3.3-1.1build3_arm64.deb",
     "sha256": "da41730ba62c9446634c6f029cc09f071834990ff9c17e4d3b6ec89065ea3a00"
