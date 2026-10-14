@@ -12,7 +12,7 @@ AGENTS.md、CLAUDE.md、LESSONS.md 直接随主仓库版本管理，不再生成
 | gst-plugin-vfmcap | main | DMA-buf 采集插件 |
 | common_drivers | vim4-kvm-5.15 | 官方 Khadas 驱动与设备树 fork |
 | kvm | vim4 | JetKVM 应用，可在管理面板中选择 |
-| vim4-manager | main | 管理面板：选择 KVM 界面、查看板子状态 |
+| vim4-manager | hdr-curve | 管理面板：选择 KVM 界面、查看板子状态与 HDR 调节 |
 
 ## 初始化入口
 

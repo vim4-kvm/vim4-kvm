@@ -8,7 +8,9 @@ import sys
 
 def check(root):
     units = root / 'usr/lib/systemd/system'
-    hdmi = configparser.ConfigParser(interpolation=None)
+    # EnvironmentFile is repeatable in systemd. The audio route remains checked
+    # below; unrelated repeated settings must not reject an otherwise valid unit.
+    hdmi = configparser.ConfigParser(interpolation=None, strict=False)
     hdmi.read(units / 'vim4-kvm-hdmi.service')
     app = configparser.ConfigParser(interpolation=None)
     app.read(units / 'nanokvm.service')

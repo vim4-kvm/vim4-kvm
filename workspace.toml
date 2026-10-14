@@ -11,7 +11,7 @@ revision = "b6bc786ba1d1697fafc9dc9dd4112a45151f58e1"
 name = "common_drivers"
 url = "https://github.com/vim4-kvm/common_drivers.git"
 branch = "vim4-kvm-5.15"
-revision = "b4c7dc9253c2b40e91b5dc8cec1600dac87875b2"
+revision = "305ab27e9315339bb74ac48279793f41670c9a03"
 
 [[repos]]
 name = "gst-plugin-venc"
@@ -34,8 +34,8 @@ revision = "1e469f5068618768973846985ef66abec2306443"
 [[repos]]
 name = "vim4-manager"
 url = "https://github.com/vim4-kvm/vim4-manager.git"
-branch = "main"
-revision = "1575c432af8b8c320c3e94e1db2f342c19dd3067"
+branch = "hdr-curve"
+revision = "d44cb9547db22c3f15dbd38f8386bae26da3713e"
 
 [kernel]
 url = "https://github.com/vim4-kvm/linux.git"

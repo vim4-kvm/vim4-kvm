@@ -27,9 +27,11 @@ case "$ACTION:$WHITE:$PEAK" in
 	tables:*|apply:*) ;;
 	*) usage ;;
 esac
-case "$WHITE:$PEAK" in
-	*[!0-9:]*|:*|*:|0*|*:0*) usage ;;
-esac
+for value in "$WHITE" "$PEAK"; do
+	case "$value" in
+		''|*[!0-9]*|0*) usage ;;
+	esac
+done
 if [ "${#WHITE}" -gt 5 ] || [ "${#PEAK}" -gt 5 ] ||
 	[ "$WHITE" -lt 160 ] || [ "$WHITE" -gt 1000 ] ||
 	[ "$PEAK" -le "$WHITE" ] || [ "$PEAK" -gt 10000 ]; then
@@ -89,6 +91,6 @@ tables | {
 	echo "$gain" > "$OOTF"
 	echo "$oetf" > "$OETF"
 }
-# The driver only reads the tables when it configures vdin0; ask a running
-# input to reload them. Before vdin0 starts this only logs "not started".
-echo reload_hdr > "$VDIN" 2>/dev/null || true
+# The capture ISR applies the request at a frame boundary. Without an active
+# input it stays pending until capture starts; a failed write is a real error.
+echo reload_hdr > "$VDIN"

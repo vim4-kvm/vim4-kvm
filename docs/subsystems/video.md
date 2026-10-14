@@ -52,7 +52,7 @@ Dolby Vision 未支持，EDID 也不声明。
 SDR 白以下 95% 线性，其上用扩展 Reinhard 曲线压入顶部 5%；编码为 sRGB。
 增益寄存器为 12 位（上限 4095），SDR 白低于 157 尼特会溢出反而变暗，故下限 160。
 
-hdmi-setup.sh 在打开输入前写入；运行中由 vdin0 attr 的 `reload_hdr` 立即重载，
+hdmi-setup.sh 在打开输入前写入；运行中由 vdin0 attr 的 `reload_hdr` 请求采集中断在帧边界重载，
 不重启采集。vim4-manager 的“HDR 转 SDR”滑动条拖动时实时预览，松开后保存。
 `oe_y_lut_sdr` 与 VPP/OSD 的 HDR→SDR 共用，将来接 HDMI 输出时同样生效。
 HLG 输入仍用厂商 HLG 曲线。
