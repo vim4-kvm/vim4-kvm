@@ -11,7 +11,7 @@ revision = "b6bc786ba1d1697fafc9dc9dd4112a45151f58e1"
 name = "common_drivers"
 url = "https://github.com/vim4-kvm/common_drivers.git"
 branch = "vim4-kvm-5.15"
-revision = "95e064470979afccb945bd32b862d348e3e8ea1f"
+revision = "bf78dd65c57d800e06c56ca77302b64581457e42"
 
 [[repos]]
 name = "gst-plugin-venc"
