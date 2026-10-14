@@ -50,7 +50,7 @@ SDR 编码曲线 `oe_y_lut_sdr`。厂商增益曲线相当于 400 尼特映射�
 即 BT.2408 参考白；macOS HDR 灰阶实测 199）和 `HDR_SDR_PEAK`（高光保留到的亮度，
 默认 1000）。SDR 白以下 95% 线性，其上用扩展 Reinhard 曲线压入顶部 5%；
 编码改为 sRGB（macOS 以 sRGB 解码 SDR 界面）。`oe_y_lut_sdr` 与 VPP/OSD 的
-HDR→SDR 共用，将来接 HDMI 输出时同样生效。修改后重启 vim4-kvm-hdmi 生效。
+HDR→SDR 共用，将来接 HDMI 输出时同样生效。修改后重启 vim4-kvm-hdmi 生效；vim4-manager 面板的“HDR 转 SDR”可直接修改并重启采集。
 该文件与 NanoKVM 改写的 `/etc/default/vim4-kvm-hdmi` 分开。HLG 输入仍用厂商 HLG 曲线。
 
 HDMI 启动脚本默认使用完整帧低延迟模式（VDIN mask 0x3）；
