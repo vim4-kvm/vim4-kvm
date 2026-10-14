@@ -12,6 +12,7 @@ import tempfile
 import threading
 import time
 import urllib.request
+import urllib.error
 
 assert Path('/.dockerenv').exists() and not Path('/run/systemd/system').exists()
 helper = '/tmp/package-check/root/usr/libexec/vim4-onekvm-update'
@@ -116,6 +117,10 @@ with tempfile.TemporaryDirectory() as state, open('/tmp/one-kvm-update-api.log',
                     raise RuntimeError(status['last_error'])
                 if status['current_version'] == target and status['phase'] == 'idle':
                     break
+            except urllib.error.HTTPError as error:
+                if error.code != 401:
+                    raise
+                api('auth/login', credentials)
             except OSError:
                 pass  # The listening socket closes briefly during exec restart.
             time.sleep(0.1)
