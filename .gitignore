@@ -8,5 +8,6 @@ __pycache__/
 /gst-plugin-vfmcap/
 /kvm/
 /One-KVM/
+/kvmd/
 /vim4-manager/
 /build/

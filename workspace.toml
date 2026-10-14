@@ -38,6 +38,12 @@ branch = "vim4"
 revision = "a2c450a1ed0ddca069d2e3998a65d0c25c7dd98d"
 
 [[repos]]
+name = "kvmd"
+url = "https://github.com/vim4-kvm/kvmd.git"
+branch = "vim4"
+revision = "99029a07332a4e496ef4f5262706a35007bb6206"
+
+[[repos]]
 name = "vim4-manager"
 url = "https://github.com/vim4-kvm/vim4-manager.git"
 branch = "main"

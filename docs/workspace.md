@@ -13,6 +13,7 @@ AGENTS.md、CLAUDE.md、LESSONS.md 直接随主仓库版本管理，不再生成
 | common_drivers | vim4-kvm-5.15 | 官方 Khadas 驱动与设备树 fork |
 | kvm | vim4 | JetKVM 应用，可在管理面板中选择 |
 | One-KVM | vim4 | One-KVM 应用，可在管理面板中选择 |
+| kvmd | vim4 | 官方 PiKVM kvmd fork，待适配 VIM4，尚未接入构建、部署与管理面板 |
 | vim4-manager | main | 管理面板：选择 KVM 界面、查看板子状态、HDR 调节与 Wi-Fi 开关 |
 
 ## 初始化入口
