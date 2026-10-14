@@ -28,5 +28,6 @@
 | 编码器超频后帧率提升，就以为可用 | 750/800 MHz 下同一输入的码流已不再一致，但不报错、帧数正常。超频必须重复编码同一段录制输入并比较码流哈希，同时用低频对照排除时钟源问题 | [编码实验记录](docs/encoder-experiments.md#wave521-时钟与-4k-编码耗时2026-10-14) |
 | PiKVM 原有视频能播放，但重新连接找不到共享内存 | 普通用户服务不能依赖登录会话的 IPC 生命周期。整组服务使用私有 /dev/shm，验证音频启停与 MJPEG/WebRTC 重连 | kvmd/deploy/vim4/vim4-pikvm.service、logs/pikvm/full-smoke-rate.log |
 | HDMI 输入稳定，编码器却不断重建 | sysfs 的 centi-Hz 测量可在 5987–5999 间抖动，原 0.1Hz 容差仍会误重启。改为超过 1Hz 且连续两次稳定读数才重建，并保留无帧看门狗；MJPEG 测试必须匹配真实输入尺寸，不能把离线占位图判为成功 | ustreamer/src/ustreamer/vim4.c、tools/pikvm-smoke.mjs |
+| 网页走有线、WebRTC 报告 IPv4，却仍周期停顿 | Janus aggressive nomination 实测将视频发往客户端 Wi-Fi IPv6，selected candidate pair 统计不足以证明媒体路径。按 SSRC 对照两端网卡收发时间，使用 regular nomination；不通过关掉所有 IPv6 或一味缩短 GOP 掩盖路径问题 | kvmd/deploy/vim4/janus.jcfg、logs/pikvm/h264-client-wire.log、logs/pikvm/h264-regular-soak.log |
 | USB 主机卸载卷后仍不能弹出 PiKVM 镜像 | unmount 不清除 SCSI 防弹出锁；必须 host eject。厂商内核 host eject 不发 configfs inotify，需要在现有轮询中核对 LUN file | kvmd/kvmd/plugins/msd/otg/__init__.py |
 | 给 pion SettingEngine.SetNet 包装 UDP 套接字后进程空闲占满 3 核 | mDNS 的 ipv4.PacketConn 需要具体的 *net.UDPConn，包装后读取持续出错且非 ErrClosed，读循环空转。只包装单播套接字，部署前查空闲 CPU 与 pprof | NanoKVM service/stream/webrtc/batch_vim4.go |

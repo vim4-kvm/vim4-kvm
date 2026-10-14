@@ -36,9 +36,10 @@ def pikvm(stage):
         copy(source, stage, 'etc/kvmd/nginx/' + source.name)
     copy('/etc/nginx/mime.types', stage, 'etc/kvmd/nginx/mime.types')
     copy(deploy / 'nginx.conf', stage, 'etc/kvmd/nginx/vim4.conf')
-    for name in ('janus.jcfg', 'janus.transport.websockets.jcfg'):
-        copy(ROOT / 'kvmd/configs/janus' / name, stage, 'etc/kvmd/janus/' + name)
-    copy(deploy / 'janus.plugin.ustreamer.jcfg', stage, 'etc/kvmd/janus/janus.plugin.ustreamer.jcfg')
+    copy(ROOT / 'kvmd/configs/janus/janus.transport.websockets.jcfg', stage,
+         'etc/kvmd/janus/janus.transport.websockets.jcfg')
+    for name in ('janus.jcfg', 'janus.plugin.ustreamer.jcfg'):
+        copy(deploy / name, stage, 'etc/kvmd/janus/' + name)
     for name in ('meta.yaml', 'web.css'):
         copy(ROOT / 'kvmd/configs/kvmd' / name, stage, 'etc/kvmd/' + name)
     for name in ('htpasswd', 'override.yaml', 'totp.secret'):

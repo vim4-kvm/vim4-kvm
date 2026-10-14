@@ -64,10 +64,17 @@ try {
         }
       }
       const gaps = [];
+      const slowFrames = [];
       let last;
       let callback;
-      const frame = now => {
-        if (last !== undefined) gaps.push(now - last);
+      const frame = (now, metadata) => {
+        if (last !== undefined) {
+          const gapMs = now - last;
+          gaps.push(gapMs);
+          if (gapMs > 100) slowFrames.push({ timeMs: performance.timeOrigin + now, gapMs,
+            mediaTime: metadata.mediaTime, processingDuration: metadata.processingDuration,
+            presentationTime: metadata.presentationTime, expectedDisplayTime: metadata.expectedDisplayTime });
+        }
         last = now;
         callback = video.requestVideoFrameCallback(frame);
       };
@@ -75,8 +82,14 @@ try {
       await new Promise(resolve => setTimeout(resolve, seconds * 1000));
       video.cancelVideoFrameCallback(callback);
       const stats = [];
+      const paths = [];
       for (const peer of window.pikvmPeers) {
-        for (const report of (await peer.getStats()).values()) {
+        const reports = await peer.getStats();
+        for (const report of reports.values()) {
+          if (report.type === 'transport' && report.selectedCandidatePairId) {
+            const pair = reports.get(report.selectedCandidatePairId);
+            paths.push({ pair, local: reports.get(pair.localCandidateId), remote: reports.get(pair.remoteCandidateId) });
+          }
           if (report.type === 'inbound-rtp' && report.kind === 'video') {
             const before = baseline.get(report.id);
             const delta = {};
@@ -89,7 +102,7 @@ try {
       }
       gaps.sort((a, b) => a - b);
       return { seconds, callbacks: gaps.length, maxGapMs: gaps.at(-1), p99GapMs: gaps[Math.floor(gaps.length * .99)],
-        gapsOver250ms: gaps.filter(gap => gap > 250), stats };
+        gapsOver250ms: gaps.filter(gap => gap > 250), slowFrames, paths, stats };
     }, soakSeconds);
     console.log('SOAK', JSON.stringify(soak));
   }

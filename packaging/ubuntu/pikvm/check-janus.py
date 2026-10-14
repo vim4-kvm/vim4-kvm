@@ -10,7 +10,7 @@ import websocket
 
 with tempfile.TemporaryDirectory() as directory:
     config = Path(directory)
-    (config / 'janus.jcfg').write_text('general: { debug_level = 4 }\n')
+    (config / 'janus.jcfg').write_bytes(Path('/etc/kvmd/janus/janus.jcfg').read_bytes())
     (config / 'janus.transport.websockets.jcfg').write_text(
         'general: { ws = true; ws_ip = "127.0.0.1"; ws_port = 18188; }\n')
     (config / 'janus.plugin.ustreamer.jcfg').write_text(
