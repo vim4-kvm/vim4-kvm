@@ -113,7 +113,9 @@ Janus JS 补丁均固定版本及校验和；Python 和 nginx 使用私有路径
 隔离验证检查实际 Janus WebSocket 插件会话、ARM64 动态库、kvmd 配置、nginx 配置、
 升级保留认证文件及不自动启用服务。上板检查使用 `tools/pikvm-smoke.mjs --exclusive`，
 设置 PIKVM_USERNAME、PIKVM_PASSWORD；`--usb --motion --audio --media --mjpeg` 扩展到
-macOS 主机键鼠、画面变化、HDMI 声音、虚拟光盘与视频切换。音频需要
+macOS 主机键鼠、画面变化、HDMI 声音、虚拟光盘与视频切换。
+`--settings` 检查参数修改与刷新，`--media --switch-guard` 经 VIM4_SSH（默认 vim4）
+检查挂载介质时拒绝应用切换。音频需要
 PIKVM_TEST_AUDIO WAV，介质需要 PIKVM_TEST_ISO（卷标 PIKVM_TEST，readme.txt 内容
 `PiKVM VIM4 virtual media validation`）。测试期间需要独占板子、USB 主机和 HDMI 输出。
 

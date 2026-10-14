@@ -166,6 +166,16 @@ try {
       await page.waitForTimeout(500);
     }
     assert.equal(marker?.trim(), 'PiKVM VIM4 virtual media validation', 'USB host could not read the ISO');
+    if (process.argv.includes('--switch-guard')) {
+      let rejection;
+      try {
+        execFileSync('ssh', [process.env.VIM4_SSH || 'vim4',
+          'sudo -n /usr/libexec/vim4-manager-helper select nanokvm'], { stdio: 'pipe' });
+      } catch (error) { rejection = error.stderr?.toString(); }
+      assert(rejection?.includes('Eject the PiKVM virtual disk'), 'Manager must refuse a switch with mounted media');
+      assert((await api('msd')).drive.connected, 'Rejected switch changed the running application');
+      extra.mountedMediaSwitchGuard = 'passed';
+    }
     execFileSync('diskutil', ['eject', '/Volumes/PIKVM_TEST'], { stdio: 'pipe' });
     for (let i = 0; i < 20 && (await api('msd')).drive?.connected; ++i) await page.waitForTimeout(250);
     if ((await api('msd')).drive?.connected) await api('msd/set_connected?connected=false', 'POST');
