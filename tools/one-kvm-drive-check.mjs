@@ -23,8 +23,9 @@ try {
   await page.goto((process.env.ONEKVM_URL || 'http://192.168.50.210:8080') + '/api/setup');
   await api('auth/login', 'POST', { username: process.env.ONEKVM_USERNAME, password: process.env.ONEKVM_PASSWORD });
   const status = await api('msd/status');
-  assert.equal(status.mounted_count, 0, 'Detach existing virtual media before testing');
-  assert.equal(status.usb_reenumerating, false);
+  assert.equal(status.available, true, 'Virtual media is unavailable');
+  assert.equal(status.state.mounted_count, 0, 'Detach existing virtual media before testing');
+  assert.equal(status.state.usb_reenumerating, false);
   let info;
   try {
     info = await api('msd/drive');
