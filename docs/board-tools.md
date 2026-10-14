@@ -70,6 +70,14 @@ ONEKVM_TEST_ISO 指向包含测试标记的 ONEKVM_TEST 卷。三套应用切换
 须监听 127.0.0.1:17700，使用脚本中的测试 token。结束恢复关闭状态和原配置，
 `--restore-drive` 仅用于测试前原本已连接虚拟盘的场景。测试 FRP 服务不得监听公网。
 
+`one-kvm-usb-profile-check.mjs --exclusive` 检查 HID 组合、禁用/重新启用、UAC 枚举、
+三种 USB 网卡、超限回滚及网页保存；保存原配置到日志并在 finally 恢复。
+`--audio` 另要求 macOS 已授予录音终端麦克风权限，以及编译好的
+`/tmp/uac-record-level`。录音器可按名称或厂商选择 USB 输入，不改变系统默认输入。
+VIM4 UAC2 在 macOS 可能显示为 `Capture Inactive`；设备名本身不代表无音频。
+板端 `one-kvm-usb-board-check.py` 只能在应用停止且介质已安全弹出并卸载时运行，
+直接验证助手的枚举与恢复。实际键鼠及 ISO 读取仍用 `one-kvm-usb-check.mjs`。
+
 board.py verify 先运行 check，再逐项输出 PASS/FAIL/SKIP，并写入日志目录的 verify.json：
 
 | 项 | 方法 | SKIP 条件 |
