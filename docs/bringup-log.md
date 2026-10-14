@@ -809,3 +809,43 @@ Mac 随后重新枚举 AML TV 4K60。该 ioctl 同时触发 HPD 和 RX 状态机
 失锁/重锁，退出后接收与采集状态仍正常，Mac 又只枚举虚拟显示器。
 再次执行相同 ioctl 恢复连接。尚未找到板端可靠的自动触发条件；没有部署
 周期热插拔或静止像素看门狗，不能宣称自动恢复已修复。
+
+## HDR 输入映射到 SDR（2026-10-14）
+
+Mac 开启 HDR 后，RX 报告 `HDR10-GAMMA_ST2084`、3840×2160 60Hz YUV420 10bit。
+厂商 4K60 EDID 含 HDR 静态元数据（SDR/ST2084/HLG）与 HDR10+ 块。
+原驱动只对 vdin1 回写调用 HDR 核，vdin0 以 8bit 采集 PQ 信号：
+同一 Mac 设置界面 YMAX 151、YAVG 135、SATAVG 0.69，画面发灰。
+
+vdin0 HDR2 核寄存器（0x1280 起）复位值与 vdin1 相同（CTRL 0xd05f）。
+以临时模块调用 `hdr_set(VDIN0_HDR, HDR_SDR)` 后 CTRL 变为 0xe05e，
+采集结果 YMAX 201、YAVG 158、SATAVG 2.71，颜色恢复；vfm_cap 60fps、零丢帧。
+
+common_drivers 改为 T7 vdin0 在 HDMI 输入时按 hdr10p/vdin_hdr_flag/EOTF 选择
+HDR_SDR、HLG_SDR 或直通，只替换 aml_media.ko 后重启（旧模块备份在
+`/var/lib/vim4-kvm/aml_media.ko.pre-vdin0-hdr`）。开机 HDR 状态下自动映射；
+用户开关 HDR 4 轮，每次 2–3 秒内 `vdin_set_hdr vdin0 fmt:0/1` 跟随，
+SDR 时 CTRL 0x1c040（核关闭），无 Oops。HDR 帧 YMAX 201、SATAVG 约 2.77；
+SDR 帧 YMAX 235、YAVG 212、SATAVG 3.21，与正常 SDR 一致。
+
+未测：HLG 源、HDR10+ 源、4:4:4/RGB HDR 输入、浏览器端到端主观画质和延迟。
+HDR 映射后的白场 201 低于 SDR 235，属于 macOS HDR 模式下界面白低于峰值，
+未调色调映射参数。
+
+厂商 HDR→SDR 增益表按 HDR2 OOTF 149 点（线性，满刻度 10000 尼特，增益 64 为 1 倍，
+输出满刻度为 SDR 白）推算，等效于 400 尼特映射为 SDR 白。整体乘 1.0/1.15/1.3/1.5
+实测 YMAX 201/214/225/235，用该模型拟合得 macOS 桌面白约 284 尼特（与 8bit 读数
+151 按 PQ 反算的 285 一致）。hdmi-setup.sh 改为按 HDR_SDR_WHITE=284、
+HDR_SDR_PEAK=1000 生成曲线（90% 以下线性，扩展 Reinhard 肩部）；模型预测桌面白
+229.9，重启 HDMI 服务后实测 YMAX 230、YAVG 183、SATAVG 3.03。
+旧脚本备份于 `/var/lib/vim4-kvm/hdmi-setup.sh.pre-hdr-curve`。高光层次只在模型中检查，
+尚未用 HDR 视频或测试图主观验证。
+
+上面的 YMAX 230 取自设置面板里的 HDR 壁纸缩略图，不是桌面白，校准有误。
+改用 Mac 上 17 级 sRGB 灰阶窗口（0–255 步进 16）测量：284 尼特曲线下 HDR 模式读数为
+16,33,43,54,64,75,86,98,109,120,132,144,155,167,179,191,202，白块只有 202，
+暗部偏亮。拟合得 macOS 在 HDR 下把 SDR 白放在 199 尼特、以 sRGB 解码（残差 0.27 码），
+厂商 SDR 编码表为 gamma 2.2。默认改为 HDR_SDR_WHITE=203、拐点 95%、
+编码 sRGB 后实测 16,30,43,57,70,84,97,112,125,139,152,166,179,193,207,220,231，
+与理想 SDR 值相差不超过 1 码，白块 231。
+
