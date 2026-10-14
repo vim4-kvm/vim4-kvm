@@ -94,9 +94,15 @@ grep -qx 'Conflicts=nanokvm.service' /tmp/package-check/root/usr/lib/systemd/sys
 dpkg-deb -e ./vim4-onekvm_*.deb /tmp/package-check/onekvm-control
 mkdir -p /opt/vim4-onekvm/lib
 cp /tmp/package-check/root/opt/vim4-onekvm/lib/libgst-aml-dma-allocator.so /opt/vim4-onekvm/lib/
+cp -a /tmp/package-check/root/opt/vim4-onekvm/bin /opt/vim4-onekvm/
+for binary in /opt/vim4-onekvm/bin/*; do
+    readelf -h "$binary" | grep -q 'Machine:.*AArch64'
+done
 mkdir -p /usr/share/vim4-onekvm
 cp -a /tmp/package-check/root/usr/share/vim4-onekvm/ventoy /usr/share/vim4-onekvm/
 sh /tmp/package-check/onekvm-control/postinst configure
+getcap /opt/vim4-onekvm/bin/easytier-core | grep -q 'cap_net_admin=ep'
+test -x /usr/bin/ttyd
 for resource in boot.img core.img ventoy.disk.img; do
     mv "/usr/share/vim4-onekvm/ventoy/$resource" /tmp/ventoy-resource
     if sh /tmp/package-check/onekvm-control/postinst configure; then
@@ -121,3 +127,4 @@ if sh /tmp/package-check/manager-control/postinst configure; then
     exit 1
 fi
 echo 'PASS: checksums, ARM64 ELF, libraries, sudoers, config preservation, damaged-file rejection'
+python3 /checks/check-onekvm-update.py

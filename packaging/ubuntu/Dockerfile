@@ -38,3 +38,8 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
  && rm -rf /var/lib/apt/lists/*
 WORKDIR /work
 RUN chmod 0755 /opt/pnpm/bin/pnpm.mjs && pnpm --version && go version && node --version
+COPY extensions.lock.json /opt/build-inputs/
+RUN python3 /opt/build-inputs/fetch.py /opt/build-inputs/extensions.lock.json /opt/one-kvm-extensions \
+ && apt-get update && apt-get install -y --no-install-recommends ttyd libcap2-bin \
+ && dpkg-query -W > /opt/build-inputs/ubuntu-packages.txt \
+ && rm -rf /var/lib/apt/lists/*

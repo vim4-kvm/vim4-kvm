@@ -1,12 +1,15 @@
 #!/usr/bin/env python3
 """Assemble Ubuntu component packages without running installation scripts."""
 import hashlib
+import json
 import lzma
 from pathlib import Path
 import shutil
 import subprocess
 import sys
 import tempfile
+import tarfile
+import zipfile
 
 ROOT = Path('/work')
 
@@ -32,6 +35,8 @@ def package(name, version, output, populate, depends):
         populate(stage)
         if name == 'vim4-nanokvm':
             write(stage, 'opt/vim4-nanokvm/version', version + '\n')
+        if name == 'vim4-onekvm':
+            write(stage, 'opt/vim4-onekvm/version', version + '\n')
         # Every installation entry point (including dpkg and the web updater)
         # must flush payloads before reporting success or restarting services.
         postinst = stage / 'DEBIAN/postinst'
@@ -47,6 +52,11 @@ def package(name, version, output, populate, depends):
         if configs:
             write(stage, 'DEBIAN/conffiles', '\n'.join(configs) + '\n')
         copy('/out/sources.json', stage, f'usr/share/doc/{name}/sources.json')
+        if name == 'vim4-onekvm':
+            sums = [f'{hashlib.md5(path.read_bytes()).hexdigest()}  {path.relative_to(stage)}'
+                    for path in sorted(stage.rglob('*'))
+                    if path.is_file() and path.relative_to(stage).parts[0] != 'DEBIAN']
+            write(stage, 'DEBIAN/md5sums', '\n'.join(sums) + '\n')
         # dpkg-deb clamps archive timestamps to SOURCE_DATE_EPOCH.
         subprocess.run(['dpkg-deb', '--root-owner-group', '--build', str(stage),
                         str(output / f'{name}_{version}_arm64.deb')], check=True)
@@ -149,8 +159,30 @@ def onekvm(stage):
          'opt/vim4-onekvm/lib/libgst-aml-dma-allocator.so', 0o755)
     copy(deploy / 'one-kvm.service', stage, 'usr/lib/systemd/system/one-kvm.service')
     copy(deploy / 'vim4-onekvm', stage, 'usr/libexec/vim4-onekvm', 0o755)
+    copy(deploy / 'vim4-onekvm-update', stage, 'usr/libexec/vim4-onekvm-update', 0o755)
     copy(deploy / 'vim4-onekvm.sudoers', stage, 'etc/sudoers.d/vim4-onekvm', 0o440)
     copy(ROOT / 'One-KVM/LICENSE', stage, 'usr/share/doc/vim4-onekvm/copyright')
+    copy(deploy / '71-onekvm-watchdog.rules', stage, 'usr/lib/udev/rules.d/71-onekvm-watchdog.rules')
+    extensions = Path('/opt/one-kvm-extensions')
+    for archive, member, destination in (
+        ('gostc.tar.gz', 'gostc', 'opt/vim4-onekvm/bin/gostc'),
+        ('gostc.tar.gz', 'LICENSE', 'usr/share/doc/vim4-onekvm/gostc-LICENSE'),
+        ('frp.tar.gz', 'frp_0.71.0_linux_arm64/frpc', 'opt/vim4-onekvm/bin/frpc'),
+        ('frp.tar.gz', 'frp_0.71.0_linux_arm64/LICENSE', 'usr/share/doc/vim4-onekvm/frp-LICENSE'),
+    ):
+        with tarfile.open(extensions / archive) as source:
+            target = stage / destination
+            target.parent.mkdir(parents=True, exist_ok=True)
+            with source.extractfile(member) as incoming, target.open('wb') as output:
+                shutil.copyfileobj(incoming, output)
+            target.chmod(0o755 if '/bin/' in destination else 0o644)
+    with zipfile.ZipFile(extensions / 'easytier.zip') as source:
+        target = stage / 'opt/vim4-onekvm/bin/easytier-core'
+        with source.open('easytier-linux-aarch64/easytier-core') as incoming, target.open('wb') as output:
+            shutil.copyfileobj(incoming, output)
+        target.chmod(0o755)
+    copy(extensions / 'easytier-LICENSE', stage, 'usr/share/doc/vim4-onekvm/easytier-LICENSE')
+    copy(ROOT / 'packaging/ubuntu/extensions.lock.json', stage, 'usr/share/doc/vim4-onekvm/extensions.lock.json')
     resources = ROOT / 'One-KVM/libs/ventoy-img-rs/resources'
     destination = 'usr/share/vim4-onekvm/ventoy'
     copy(resources / 'boot.img', stage, f'{destination}/boot.img')
@@ -167,6 +199,8 @@ def onekvm(stage):
 set -eu
 if [ "$1" = configure ]; then
     getent passwd khadas >/dev/null
+    getent group vim4-watchdog >/dev/null || groupadd --system vim4-watchdog
+    setcap cap_net_admin=ep /opt/vim4-onekvm/bin/easytier-core
     test -s /usr/libexec/vim4-onekvm
     test -s /opt/vim4-onekvm/lib/libgst-aml-dma-allocator.so
     for name in boot.img core.img ventoy.disk.img; do
@@ -175,7 +209,11 @@ if [ "$1" = configure ]; then
     test -x /usr/libexec/vim4-onekvm
     test -s /etc/sudoers.d/vim4-onekvm
     visudo -cf /etc/sudoers.d/vim4-onekvm
-    if [ -d /run/systemd/system ]; then systemctl daemon-reload; fi
+    if [ -d /run/systemd/system ]; then
+        systemctl daemon-reload
+        udevadm control --reload-rules
+        udevadm trigger --subsystem-match=watchdog
+    fi
 fi
 ''', 0o755)
 
@@ -218,7 +256,7 @@ def main():
          'vim4-nanokvm (>= 1.0.3+vim4.20261013.18), sudo, python3, network-manager, avahi-daemon'),
         ('vim4-onekvm', onekvm, gst + ', libavcodec60, libavutil58, libdrm2, libyuv0, '
          'libasound2t64, libudev1, libdbus-1-3, libopus0, libstdc++6, '
-         'gstreamer1.0-plugins-good, gstreamer1.0-plugins-bad, gstreamer-aml (= 0.6-202406), sudo, python3, '
+         'gstreamer1.0-plugins-good, gstreamer1.0-plugins-bad, gstreamer-aml (= 0.6-202406), sudo, python3, ttyd, libcap2-bin, '
          'vim4-kvm-board (>= 1.0.3+vim4.20261013.18), vim4-vfmcap, '
          'vim4-amlvenc (>= 1.0.3+vim4.20261013.18), vim4-nanokvm (>= 1.0.3+vim4.20261013.18), '
          'vim4-manager (>= 2.5.1+vim4.20261014.4)'),
@@ -226,6 +264,17 @@ def main():
         package(name, version, output, populate, depends)
     shutil.copy('/opt/build-inputs/ubuntu-packages.txt', output)
     shutil.copy('/opt/build-inputs/downloads.lock.json', output)
+    shutil.copy('/opt/build-inputs/extensions.lock.json', output)
+    package_path = output / f'vim4-onekvm_{version}_arm64.deb'
+    artifact = {'url': f'https://github.com/vim4-kvm/vim4-kvm/releases/download/{version}/{package_path.name}',
+                'sha256': hashlib.sha256(package_path.read_bytes()).hexdigest(),
+                'size': package_path.stat().st_size}
+    (output / 'onekvm-channels.json').write_text(json.dumps({'stable': version, 'beta': version}) + '\n')
+    (output / 'onekvm-releases.json').write_text(json.dumps({'releases': [{
+        'version': version, 'channel': 'stable', 'published_at': '',
+        'notes': ['VIM4 Ubuntu application package'],
+        'artifacts': {'vim4-ubuntu-arm64': artifact},
+    }]}, indent=2) + '\n')
     checksums = []
     for path in sorted(output.iterdir()):
         if path.is_file() and path.name != 'SHA256SUMS':

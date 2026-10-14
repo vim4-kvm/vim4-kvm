@@ -1,0 +1,22 @@
+[
+  {
+    "name": "gostc.tar.gz",
+    "url": "https://github.com/SianHH/gostc-open/releases/download/v2.0.9/gostc_linux_arm64_v8.0.tar.gz",
+    "sha256": "2a100487a4f3ccd27ad82132c4f8e6ac253c9696428f0d3fd4c53170e1c3682e"
+  },
+  {
+    "name": "easytier.zip",
+    "url": "https://github.com/EasyTier/EasyTier/releases/download/v2.4.5/easytier-linux-aarch64-v2.4.5.zip",
+    "sha256": "df08c842f2ab2b8e9922f13c686a1d0f5a5219775cfdabb3e4a8599c6772201f"
+  },
+  {
+    "name": "easytier-LICENSE",
+    "url": "https://raw.githubusercontent.com/EasyTier/EasyTier/v2.4.5/LICENSE",
+    "sha256": "e3a994d82e644b03a792a930f574002658412f62407f5fee083f2555c5f23118"
+  },
+  {
+    "name": "frp.tar.gz",
+    "url": "https://github.com/fatedier/frp/releases/download/v0.71.0/frp_0.71.0_linux_arm64.tar.gz",
+    "sha256": "f33c293c275d8fc68c654b6fba8f10b2551d6463d09a9fc9cffb7227eae82266"
+  }
+]
