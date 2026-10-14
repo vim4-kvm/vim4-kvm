@@ -17,7 +17,7 @@ revision = "305ab27e9315339bb74ac48279793f41670c9a03"
 name = "gst-plugin-venc"
 url = "https://github.com/vim4-kvm/gst-plugin-venc.git"
 branch = "vim4"
-revision = "7f34fb35c2b2457af6690027e92d5ba0348327bb"
+revision = "fab116f6ac684da4fd525bd7019df6cbb82cdd23"
 
 [[repos]]
 name = "gst-plugin-vfmcap"
