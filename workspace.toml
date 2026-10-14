@@ -5,7 +5,7 @@
 name = "NanoKVM"
 url = "https://github.com/vim4-kvm/NanoKVM.git"
 branch = "vim4"
-revision = "172ddabe3cdcdd0d06ae7dd1b088d96c2b507796"
+revision = "28eafd827023d606d59f4bf6e76f4dab6aca6a86"
 
 [[repos]]
 name = "common_drivers"
@@ -29,19 +29,19 @@ revision = "b985957adedce8cc1d633669ce49e8628133b0f5"
 name = "kvm"
 url = "https://github.com/vim4-kvm/kvm.git"
 branch = "vim4"
-revision = "9faf1c57cb9292f29a49fef29e54003affcc40b5"
+revision = "70402193ca33f41ac43c350ba00490c6ba285be4"
 
 [[repos]]
 name = "One-KVM"
 url = "https://github.com/vim4-kvm/One-KVM.git"
 branch = "vim4"
-revision = "84172cdf02d19b7fc2c2c89d14a32509767e090f"
+revision = "a2c450a1ed0ddca069d2e3998a65d0c25c7dd98d"
 
 [[repos]]
 name = "vim4-manager"
 url = "https://github.com/vim4-kvm/vim4-manager.git"
-branch = "onekvm"
-revision = "7489ba1e9c71eb60ba503d8ddf0dea4a5368b573"
+branch = "main"
+revision = "be7f4f0408c526c1589c457ccaff883e79f944e8"
 
 [kernel]
 url = "https://github.com/vim4-kvm/linux.git"

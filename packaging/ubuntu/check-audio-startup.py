@@ -12,7 +12,8 @@ def check(root):
     # below; unrelated repeated settings must not reject an otherwise valid unit.
     hdmi = configparser.ConfigParser(interpolation=None, strict=False)
     hdmi.read(units / 'vim4-kvm-hdmi.service')
-    app = configparser.ConfigParser(interpolation=None)
+    # systemd allows repeated options such as ExecStartPre; only [Unit] is read.
+    app = configparser.ConfigParser(interpolation=None, strict=False)
     app.read(units / 'nanokvm.service')
     for option in ('After', 'Wants'):
         if 'alsa-restore.service' not in hdmi.get('Unit', option, fallback='').split():
