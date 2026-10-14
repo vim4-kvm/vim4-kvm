@@ -7,8 +7,13 @@ compgen -G '/tmp/vim4-packages/linux-image-vim4-kvm_*.deb' >/dev/null
 export DEBIAN_FRONTEND=noninteractive
 # Runtime dependencies are part of the hash-locked input set. Fail on a missing
 # dependency instead of silently selecting a newer version from a live mirror.
-apt-get --no-download -o Dir::Etc::sourcelist=/dev/null -o Dir::Etc::sourceparts=- \
-    install -y --no-install-recommends /tmp/vim4-packages/*.deb
+mkdir /tmp/vim4-empty-sources
+touch /tmp/vim4-empty-sources/list
+apt-get --simulate --no-download -o Dir::Etc::sourcelist=/tmp/vim4-empty-sources/list \
+    -o Dir::Etc::sourceparts=/tmp/vim4-empty-sources \
+    install --no-install-recommends /tmp/vim4-packages/*.deb
+dpkg --install /tmp/vim4-packages/*.deb
+rm -r /tmp/vim4-empty-sources
 release=5.15.137-vim4kvm
 stock=5.15.137
 cp -a /boot/dtb-$stock/amlogic/kvim4*.dtb.overlay* /boot/dtb-$release/amlogic/
