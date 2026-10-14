@@ -5,7 +5,7 @@
 name = "NanoKVM"
 url = "https://github.com/vim4-kvm/NanoKVM.git"
 branch = "vim4"
-revision = "d639e8f7170a949d0839b599fb7998b68ed19f08"
+revision = "a0c9574d0b8df8e9c80351e0b81f64bfc01c1115"
 
 [[repos]]
 name = "common_drivers"
