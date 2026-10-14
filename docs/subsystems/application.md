@@ -20,3 +20,9 @@ VIM4 后端使用 -tags vim4，保留上游目标实现。共享代码修改检�
 前端按锁文件构建，具体命令以 VIM4.md 为准。
 账户、网络、更新沿用原 UI/API，经平台适配实现 Ubuntu 行为；
 不能将上游整机固件更新部署到 VIM4。缺失外接硬件保持未配置。
+
+One-KVM 的视频菜单和设置页支持 HDMI 输入状态、输出尺寸/帧率上限、码率、
+MJPEG 质量、EDID 预设和共享 HDR 曲线。输出缩放使用 GE2D，不重启 HDMI 服务；
+修改 EDID 才重新协商显示器。其私有 DMA 分配器避免厂商库重复关闭 fd，
+随 vim4-onekvm 包安装；服务使用独立 GStreamer 注册缓存。参数与边界见
+[One-KVM/VIM4.md](../../One-KVM/VIM4.md)。

@@ -89,6 +89,7 @@ def build_plan(target, jobs, kernel_dir, vm):
                      'go test ./... && go build -trimpath -o ' + shlex.quote(str(output / 'vim4-manager'))
                      + ' ./cmd/vim4-manager')],
         'onekvm': [('One-KVM', 'npm ci --prefix web --ignore-scripts && npm --prefix web run build && '
+                    'sh deploy/vim4/build-dma-allocator.sh && '
                     'cargo test --locked --features vim4 --lib && cargo build --locked --release --features vim4 && '
                     'cp target/release/one-kvm ' + shlex.quote(str(output / 'onekvm')))],
     }
