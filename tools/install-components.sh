@@ -13,6 +13,12 @@ trap 'rm -rf "$stage"' EXIT
 packages=()
 version=
 components=(vim4-kvm-board vim4-vfmcap vim4-amlvenc vim4-nanokvm vim4-jetkvm vim4-onekvm vim4-manager)
+component=$(python3 -c 'import json; print(json.load(open("sources.json")).get("component", "all"))')
+case "$component" in
+    all) ;;
+    pikvm) components=(vim4-pikvm vim4-manager) ;;
+    *) echo 'Unknown package component set' >&2; exit 1 ;;
+esac
 for name in "${components[@]}"; do
     candidates=("${name}"_*_arm64.deb)
     [[ ${#candidates[@]} == 1 && -f ${candidates[0]} ]]
@@ -55,11 +61,11 @@ apt-get -s --no-remove install "${packages[@]}"
 # Keep the application selected in vim4-manager. NanoKVM is the default when
 # no alternative is enabled (first installation).
 app=nanokvm.service
-for unit in vim4-kvm.service one-kvm.service; do
+for unit in vim4-kvm.service one-kvm.service vim4-pikvm.service; do
     if systemctl is-enabled --quiet "$unit" 2>/dev/null; then app=$unit; fi
 done
 # Wait for every installed application to release the shared hardware.
-for unit in nanokvm.service vim4-kvm.service one-kvm.service; do
+for unit in nanokvm.service vim4-kvm.service one-kvm.service vim4-pikvm.service; do
     if [[ $(systemctl show --property=LoadState --value "$unit") == loaded ]]; then
         systemctl stop "$unit"
     fi

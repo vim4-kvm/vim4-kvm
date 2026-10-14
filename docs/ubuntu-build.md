@@ -92,6 +92,31 @@ rootflags=data=ordered，根分区和 /boot 的 commit 改为 5 秒。Stock 启�
 SOURCE_DATE_EPOCH 来自主仓库提交；当前尚未证明所有工具链产物逐字节可复现。
 默认发布前还需运行 workspace.py bootstrap --locked，并先推送清单引用的组件提交。
 
+## PiKVM 组件
+
+PiKVM 复用已部署的 `.24` 或更新的板级、VFM 与编码组件，单独构建两个包：
+`vim4-pikvm`、`vim4-manager`。先构建本页的基础 builder，再执行：
+
+```sh
+python3 tools/ubuntu-build.py environment --component pikvm
+python3 tools/ubuntu-build.py package --component pikvm --version VERSION
+python3 tools/ubuntu-build.py verify --component pikvm --version VERSION
+python3 tools/board.py deploy --exclusive --packages build/packages/VERSION
+```
+
+配方在 `packaging/ubuntu/pikvm/`。CPython 3.14、Python 依赖、Janus 与 PiKVM 的
+Janus JS 补丁均固定版本及校验和；Python 和 nginx 使用私有路径。Janus 直接使用
+固定上游源码，无需维护额外 fork。安装不切换应用，管理器新增 PiKVM 选项。
+组件模式由 sources.json 记录，部署验证仅比较本次两个组件，保留其他组件版本。
+`all` 仍指原有七包，不隐式包含 PiKVM。镜像组装尚未加入 PiKVM 默认选项。
+
+隔离验证检查实际 Janus WebSocket 插件会话、ARM64 动态库、kvmd 配置、nginx 配置、
+升级保留认证文件及不自动启用服务。上板检查使用 `tools/pikvm-smoke.mjs --exclusive`，
+设置 PIKVM_USERNAME、PIKVM_PASSWORD；`--usb --motion --audio --media --mjpeg` 扩展到
+macOS 主机键鼠、画面变化、HDMI 声音、虚拟光盘与视频切换。音频需要
+PIKVM_TEST_AUDIO WAV，介质需要 PIKVM_TEST_ISO（卷标 PIKVM_TEST，readme.txt 内容
+`PiKVM VIM4 virtual media validation`）。测试期间需要独占板子、USB 主机和 HDMI 输出。
+
 ## 下一阶段
 
 内核包、锁定基础镜像与离线组装流程见 [ubuntu-image.md](ubuntu-image.md)。

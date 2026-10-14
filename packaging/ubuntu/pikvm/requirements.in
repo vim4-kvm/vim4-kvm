@@ -1,0 +1,25 @@
+# Runtime for the enabled kvmd, media, OTG, htpasswd and Janus components.
+aiohttp
+aiofiles
+async-lru
+ruamel.yaml
+passlib
+pyotp
+qrcode
+pyserial
+setproctitle
+psutil
+netifaces
+systemd-python
+dbus-next
+Pillow
+Pygments
+python-xlib
+evdev
+gpiod
+Mako
+zstandard
+setuptools
+wheel
+build
+installer

@@ -4,6 +4,8 @@
 本地镜像刷写、启动日志与只读服务检查统一使用 tools/board.py。
 
 Ubuntu 隔离构建与组件打包先读 [ubuntu-build.md](../ubuntu-build.md)。
+PiKVM 使用 `--component pikvm` 单独构建和验证，部署仍使用 board.py；复用 `.24`
+或更新板级组件。切换应用前先在 USB 主机安全弹出虚拟介质。
 内核打包与离线候选镜像组装见 [ubuntu-image.md](../ubuntu-image.md)。
 
 先读 [工作区](../workspace.md)、[硬件](../hardware.md)，再按目标读

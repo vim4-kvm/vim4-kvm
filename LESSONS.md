@@ -26,4 +26,7 @@
 | GE2D 缩放单次成功，切编码后进程报 safe_close EBADF | 厂商 DMA 分配器把同一个 fd 同时交给 GstDmaBufMemory 和附属 qdata 释放。One-KVM 使用私有兼容分配器，fd 只由标准 GStreamer memory 关闭；需验证重复切换与缓冲区持有周期 | One-KVM/deploy/vim4/test-dma-allocator.c、tools/one-kvm-settings-check.mjs |
 | 厂商 JPEG 插件直接输入 DMA 后只出 4 帧 | JPEG NEW_CMD 的直接 DMA 路径未释放导入，耗尽 VDIN 的 4 个采集缓冲。vim4jpegenc 使用 CONFIG_DMA_INPUT / RELEASE_DMA_INPUT 管理每帧生命周期，异常时先关闭编码器再归还输入；验证连续帧和重复启停 | gst-plugin-venc/tests/jpeg-hardware.py、logs/mjpeg-hardware/ |
 | 编码器超频后帧率提升，就以为可用 | 750/800 MHz 下同一输入的码流已不再一致，但不报错、帧数正常。超频必须重复编码同一段录制输入并比较码流哈希，同时用低频对照排除时钟源问题 | [编码实验记录](docs/encoder-experiments.md#wave521-时钟与-4k-编码耗时2026-10-14) |
+| PiKVM 原有视频能播放，但重新连接找不到共享内存 | 普通用户服务不能依赖登录会话的 IPC 生命周期。整组服务使用私有 /dev/shm，验证音频启停与 MJPEG/WebRTC 重连 | kvmd/deploy/vim4/vim4-pikvm.service、logs/pikvm/full-smoke-rate.log |
+| HDMI 输入稳定，编码器却不断重建 | sysfs 的 centi-Hz 测量在 5998/5999 等值之间抖动。速率变化检测需要容差；MJPEG 测试必须匹配真实输入尺寸，不能把离线占位图判为成功 | ustreamer/src/ustreamer/vim4.c、tools/pikvm-smoke.mjs |
+| USB 主机卸载卷后仍不能弹出 PiKVM 镜像 | unmount 不清除 SCSI 防弹出锁；必须 host eject。厂商内核 host eject 不发 configfs inotify，需要在现有轮询中核对 LUN file | kvmd/kvmd/plugins/msd/otg/__init__.py |
 | 给 pion SettingEngine.SetNet 包装 UDP 套接字后进程空闲占满 3 核 | mDNS 的 ipv4.PacketConn 需要具体的 *net.UDPConn，包装后读取持续出错且非 ErrClosed，读循环空转。只包装单播套接字，部署前查空闲 CPU 与 pprof | NanoKVM service/stream/webrtc/batch_vim4.go |

@@ -41,19 +41,19 @@ revision = "a2c450a1ed0ddca069d2e3998a65d0c25c7dd98d"
 name = "kvmd"
 url = "https://github.com/vim4-kvm/kvmd.git"
 branch = "vim4"
-revision = "99029a07332a4e496ef4f5262706a35007bb6206"
+revision = "638d12e068cd0c41c912c43e87fc6288e700dd4e"
 
 [[repos]]
 name = "ustreamer"
 url = "https://github.com/vim4-kvm/ustreamer.git"
 branch = "vim4"
-revision = "296639a2acd06f8f39131e2d27170caccf8fd63a"
+revision = "60fe8b1771061c67d19c334c21cffe57f766fdd4"
 
 [[repos]]
 name = "vim4-manager"
 url = "https://github.com/vim4-kvm/vim4-manager.git"
 branch = "main"
-revision = "be7f4f0408c526c1589c457ccaff883e79f944e8"
+revision = "ec46f9c39b76e95fbf947043564383e04baebb75"
 
 [kernel]
 url = "https://github.com/vim4-kvm/linux.git"

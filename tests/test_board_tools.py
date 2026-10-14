@@ -3,6 +3,7 @@ import base64
 import hashlib
 import importlib.util
 import io
+import json
 import lzma
 import os
 import shutil
@@ -125,14 +126,15 @@ class BoardToolsTests(unittest.TestCase):
             self.assertEqual(len(launches), 1)
             self.assertFalse(any('STATUS=' in call.args[0] for call in uart_call.call_args_list))
 
-    def packages(self, directory, version='1.0~test1'):
+    def packages(self, directory, version='1.0~test1', component='all'):
         folder = Path(directory) / version
         folder.mkdir()
-        files = [folder / f'{name}_{version}_arm64.deb' for name in board.COMPONENTS]
+        components = board.PIKVM_COMPONENTS if component == 'pikvm' else board.COMPONENTS
+        files = [folder / f'{name}_{version}_arm64.deb' for name in components]
         for path in files:
             path.write_bytes(path.name.encode())
         sources = folder / 'sources.json'
-        sources.write_text('{"sources": {".": {"dirty": false}, "NanoKVM-Pro": {"dirty": true}}}')
+        sources.write_text(json.dumps({'component': component, 'sources': {'.': {'dirty': False}, 'NanoKVM-Pro': {'dirty': True}}}))
         (folder / 'SHA256SUMS').write_text(''.join(
             hashlib.sha256(p.read_bytes()).hexdigest() + '  ' + p.name + '\n' for p in files + [sources]))
         return folder
@@ -147,6 +149,14 @@ class BoardToolsTests(unittest.TestCase):
                 board.package_metadata(folder)
             debs[-1].unlink()
             with self.assertRaisesRegex(ValueError, 'vim4-manager'):
+                board.package_metadata(folder)
+
+    def test_pikvm_deployment_validates_its_complete_set(self):
+        with tempfile.TemporaryDirectory() as directory:
+            folder = self.packages(directory, component='pikvm')
+            _, debs, _ = board.package_metadata(folder)
+            debs[0].write_bytes(b'corrupt application')
+            with self.assertRaisesRegex(ValueError, 'SHA256'):
                 board.package_metadata(folder)
 
     def test_deploy_requires_exclusivity_and_dry_run_is_offline(self):

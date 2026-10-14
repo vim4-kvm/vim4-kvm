@@ -1,0 +1,22 @@
+[
+  {
+    "name": "python.tar.xz",
+    "url": "https://www.python.org/ftp/python/3.14.0/Python-3.14.0.tar.xz",
+    "sha256": "2299dae542d395ce3883aca00d3c910307cd68e0b2f7336098c8e7b7eee9f3e9"
+  },
+  {
+    "name": "janus.tar.gz",
+    "url": "https://github.com/meetecho/janus-gateway/archive/53b4173b1e429c371db10dd9d40cad981812063c.tar.gz",
+    "sha256": "b77138907713af46b4c0eba29d3489ebcde37a684811be68ab6ce0fb47ae8529"
+  },
+  {
+    "name": "janus-js.patch",
+    "url": "https://raw.githubusercontent.com/pikvm/packages/24443e09ac87421b8a90b7c6879fef6e28077cbf/packages/janus-gateway-pikvm/0001-js.patch",
+    "sha256": "a693aec2c5b214363ea7631868a72fb9fae8471ad60d1e76300e6307faefc5ab"
+  },
+  {
+    "name": "adapter.js",
+    "url": "https://webrtc.github.io/adapter/adapter-9.0.3.js",
+    "sha256": "cf03c48eba575b2c2864276ef3372e4a784c84ac2db71df17de84bc96da00e6e"
+  }
+]

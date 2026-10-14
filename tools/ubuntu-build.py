@@ -20,11 +20,16 @@ def main():
     parser.add_argument('command', choices=['environment', 'package', 'verify'])
     parser.add_argument('--version', help='Required for package/verify; explicit component package version')
     parser.add_argument('--allow-dirty', action='store_true', help='Allow development sources, recording dirty state')
+    parser.add_argument('--component', choices=['all', 'pikvm'], default='all',
+                        help='Build the established component set or the PiKVM integration')
     args = parser.parse_args()
+    image = 'vim4-pikvm-builder:ubuntu24.04' if args.component == 'pikvm' else IMAGE
+    recipes = 'packaging/ubuntu/pikvm' if args.component == 'pikvm' else 'packaging/ubuntu'
     if args.command != 'environment' and not args.version:
         parser.error('package/verify requires --version; no implicit development version is selected')
     if args.command == 'environment':
-        subprocess.run(['docker', 'build', '--platform', 'linux/arm64', '-t', IMAGE,
+        subprocess.run(['docker', 'build', '--platform', 'linux/arm64', '-t', image,
+                        '-f', str(ROOT / recipes / 'Dockerfile'),
                         str(ROOT / 'packaging/ubuntu')], check=True)
         return
     if Path(args.version).name != args.version or args.version in ('.', '..'):
@@ -32,13 +37,18 @@ def main():
     destination = ROOT / 'build/packages' / args.version
     if args.command == 'verify':
         metadata = json.loads((destination / 'sources.json').read_text())
+        if metadata.get('component', 'all') != args.component:
+            raise ValueError('Verification component does not match package metadata')
         subprocess.run(['docker', 'run', '--rm', '--platform', 'linux/arm64',
                         '--mount', f'type=bind,src={ROOT / "packaging/ubuntu"},dst=/checks,readonly',
                         '--mount', f'type=bind,src={destination},dst=/packages,readonly',
-                        metadata['builder'], 'sh', '/checks/verify.sh'], check=True)
+                        metadata['builder'], 'sh',
+                        '/checks/pikvm/verify.sh' if args.component == 'pikvm' else '/checks/verify.sh'], check=True)
         return
     sources = {}
-    for name in ('.', 'NanoKVM', 'gst-plugin-vfmcap', 'gst-plugin-venc', 'kvm', 'One-KVM', 'vim4-manager'):
+    repos = ('.', 'kvmd', 'ustreamer', 'vim4-manager') if args.component == 'pikvm' else (
+        '.', 'NanoKVM', 'gst-plugin-vfmcap', 'gst-plugin-venc', 'kvm', 'One-KVM', 'vim4-manager')
+    for name in repos:
         path = ROOT / name
         if Path(output('git', '-C', str(path), 'rev-parse', '--show-toplevel')).resolve() != path.resolve():
             raise ValueError(f'{name} is not an independent repository')
@@ -60,16 +70,16 @@ def main():
                 digest.update(b'<deleted>')
         sources[name]['tree_sha256'] = digest.hexdigest()
     # Resolve the tag before running so metadata describes the actual image used.
-    image_id = output('docker', 'image', 'inspect', '--format', '{{.Id}}', IMAGE)
+    image_id = output('docker', 'image', 'inspect', '--format', '{{.Id}}', image)
     epoch = output('git', 'show', '-s', '--format=%ct', 'HEAD')
     destination.mkdir(parents=True, exist_ok=False)
-    (destination / 'sources.json').write_text(json.dumps(dict(sources=sources, builder=image_id,
+    (destination / 'sources.json').write_text(json.dumps(dict(sources=sources, builder=image_id, component=args.component,
         source_date_epoch=epoch, development=any(s['dirty'] for s in sources.values())), indent=2) + '\n')
     subprocess.run(['docker', 'run', '--rm', '--platform', 'linux/arm64',
                     '--mount', f'type=bind,src={ROOT},dst=/src,readonly',
                     '--mount', f'type=bind,src={destination},dst=/out',
                     '-e', f'PACKAGE_VERSION={args.version}', '-e', f'SOURCE_DATE_EPOCH={epoch}',
-                    image_id, 'sh', '/src/packaging/ubuntu/build.sh'], check=True)
+                    image_id, 'sh', '/src/' + recipes + '/build.sh'], check=True)
     print(f'Packages: {destination}')
 
 

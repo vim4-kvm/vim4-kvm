@@ -32,3 +32,11 @@ MJPEG 质量、EDID 预设和共享 HDR 曲线。输出缩放使用 GE2D，不�
 修改 EDID 才重新协商显示器。其私有 DMA 分配器避免厂商库重复关闭 fd，
 随 vim4-onekvm 包安装；服务使用独立 GStreamer 注册缓存。参数与边界见
 [One-KVM/VIM4.md](../../One-KVM/VIM4.md)。
+
+## PiKVM VIM4 集成
+
+PiKVM 源码在 `kvmd/`，VIM4 视频后端在 `ustreamer/`，部署约定见 `kvmd/VIM4.md`。
+管理器选择 `pikvm` 启动 vim4-pikvm.service，网页监听 8080；首次账户 admin/admin。
+它保留原生 PiKVM 网页和认证，复用公共 HDMI、HID 和编码组件；本地虚拟介质使用
+限定助手控制现有 LUN。切换前先安全弹出虚拟盘。构建使用 ubuntu-build.py 的
+`--component pikvm`，不会替换系统 Python 或启动树莓派板级服务。

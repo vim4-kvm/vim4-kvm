@@ -55,6 +55,7 @@ UART_CHUNK = 200
 # Stock Khadas account password; see docs/hardware.md (development only).
 DEFAULT_PASSWORD = 'khadas'
 COMPONENTS = ('vim4-kvm-board', 'vim4-vfmcap', 'vim4-amlvenc', 'vim4-nanokvm', 'vim4-jetkvm', 'vim4-onekvm', 'vim4-manager')
+PIKVM_COMPONENTS = ('vim4-pikvm', 'vim4-manager')
 
 
 def package_metadata(directory):
@@ -65,7 +66,12 @@ def package_metadata(directory):
         digest, name = line.split(maxsplit=1)
         entries[name.lstrip('*')] = digest
     version = directory.name
-    debs = [directory / f'{name}_{version}_arm64.deb' for name in COMPONENTS]
+    sources = json.loads((directory / 'sources.json').read_text())
+    component = sources.get('component', 'all')
+    if component not in ('all', 'pikvm'):
+        raise ValueError('Unknown package component set')
+    components = PIKVM_COMPONENTS if component == 'pikvm' else COMPONENTS
+    debs = [directory / f'{name}_{version}_arm64.deb' for name in components]
     # Mixed versions would let dpkg pair a new server with old helpers.
     for path in debs + [directory / 'sources.json']:
         if path.name not in entries or not path.is_file():
@@ -303,16 +309,17 @@ class Board:
         self.note('Provisioned: key login and passwordless sudo work.')
 
     def installed_versions(self):
-        output = self.ssh("dpkg-query -W -f '${Package} ${Version}\\n' " + ' '.join(COMPONENTS), check=False).stdout
+        output = self.ssh("dpkg-query -W -f '${Package} ${Version}\\n' " + ' '.join((*COMPONENTS, 'vim4-pikvm')), check=False).stdout
         return dict(line.split() for line in output.splitlines() if len(line.split()) == 2)
 
     def deploy(self, metadata):
         version, debs, dirty = metadata
+        components = [path.name.split('_', 1)[0] for path in debs]
         self.note(f'Packages={version} dirty_sources={",".join(dirty) or "none"}')
         self.ssh("grep -qi 'Khadas VIM4' /proc/device-tree/model")
         previous = self.installed_versions()
         # Recorded so an operator can redeploy the earlier build/packages set.
-        self.note('Previous: ' + ' '.join(f'{name}={previous.get(name, "absent")}' for name in COMPONENTS))
+        self.note('Previous: ' + ' '.join(f'{name}={previous.get(name, "absent")}' for name in components))
         remote = self.ssh('mktemp -d /tmp/vim4-deploy.XXXXXX').stdout.strip().splitlines()[-1]
         try:
             # The installer checks every SHA256SUMS entry, so copy the whole set.
@@ -325,7 +332,7 @@ class Board:
         finally:
             self.ssh(f'rm -rf {remote}', check=False)
         installed = self.installed_versions()
-        wrong = [name for name in COMPONENTS if installed.get(name) != version]
+        wrong = [name for name in components if installed.get(name) != version]
         if wrong:
             raise RuntimeError('Installed versions differ for ' + ', '.join(wrong))
         # Give the server time to bind 8080 before the smoke check.
