@@ -56,6 +56,8 @@ def board(stage):
     copy(ROOT / 'build/usb-pd-init', stage, 'usr/sbin/usb-pd-init', 0o755)
     for name in ('hdmi-setup.sh', 'kvm-gadget.sh'):
         copy(ROOT / 'tools' / name, stage, 'usr/sbin/' + name, 0o755)
+    # hdmi-setup.sh calls it from its own directory; vim4-manager-helper too.
+    copy(ROOT / 'tools/hdr-curve.sh', stage, 'usr/sbin/vim4-hdr-curve', 0o755)
     for file in (ROOT / 'board').glob('*.service'):
         write(stage, 'usr/lib/systemd/system/' + file.name,
               file.read_text().replace('/usr/local/sbin/', '/usr/sbin/'))

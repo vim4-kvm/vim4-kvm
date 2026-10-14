@@ -7,6 +7,7 @@ trap 'rm -f "$pd_binary"' EXIT HUP INT TERM
 cc -O2 -Wall -Wextra -Werror ../tools/usb-pd-init.c -o "$pd_binary"
 install -m 0755 "$pd_binary" /usr/local/sbin/usb-pd-init
 install -m 0755 ../tools/hdmi-setup.sh /usr/local/sbin/hdmi-setup.sh
+install -m 0755 ../tools/hdr-curve.sh /usr/local/sbin/vim4-hdr-curve
 install -m 0755 ../tools/kvm-gadget.sh /usr/local/sbin/kvm-gadget.sh
 install -m 0644 99-vfm-cap.rules /etc/udev/rules.d/99-vfm-cap.rules
 install -m 0644 90-vim4-encoder.conf /etc/modprobe.d/90-vim4-encoder.conf
