@@ -14,7 +14,7 @@
 | 只读服务检查 | tools/board.py check | SSH 读取、HTTP GET |
 | 首次接入（公钥 + 免密 sudo） | tools/board.py provision | 默认密码登录一次，写 authorized_keys 与 sudoers |
 | 开发板免密 sudo（单独） | tools/board.py enroll | 安装 sudoers 文件 |
-| 增量安装四组件包 | tools/board.py deploy --exclusive（板上调用 install-components.sh） | 板上安装，重启 NanoKVM |
+| 增量安装七组件包 | tools/board.py deploy --exclusive（板上调用 install-components.sh） | 板上安装，恢复管理器所选应用 |
 | 部署后功能验证 | tools/board.py verify | 移动 Mac 光标、录 1 秒音频、打开一个 WebRTC 会话 |
 | 浏览器视频冒烟测试（单独） | tools/video-smoke.mjs | 打开一个 WebRTC 会话 |
 | 从 Ubuntu 进入 OOWOW | tools/board.py recover --exclusive | 重启，中断 KVM |
@@ -38,14 +38,14 @@ python3 tools/board.py deploy --exclusive --packages "build/packages/$version"
 PLAYWRIGHT_MODULE=/absolute/path/to/playwright/index.mjs python3 tools/board.py verify
 ```
 
-board.py deploy 先在本地按 SHA256SUMS 校验四个 deb 和 sources.json 并输出脏源码仓库
+board.py deploy 先在本地按 SHA256SUMS 校验七个 deb 和 sources.json 并输出脏源码仓库
 （--dry-run 到此为止），记录板上原有版本（Previous 行，回退时用对应目录再次 deploy），
 上传整个包目录与安装脚本到板上临时目录，以 sudo 运行 install-components.sh，
-确认四包版本一致后运行 check。已 enroll 的开发板无需密码。
-安装失败时 NanoKVM 保持停止，先 `dpkg --audit` 检查，不要连续重试。
+确认七包版本一致后运行 check。已 enroll 的开发板无需密码。
+安装失败时应用保持停止，先 `dpkg --audit` 检查，不要连续重试。
 
-示例版本已部署，重新构建使用新版本。安装脚本验证四包的 SHA256、名称、架构、
-相同版本和非降级条件，先模拟 APT 安装，随后暂停并重启 NanoKVM。保留应用配置。
+示例版本已部署，重新构建使用新版本。安装脚本验证七包的 SHA256、名称、架构、
+相同版本和非降级条件，先模拟 APT 安装，随后暂停应用并恢复原选择。保留应用配置。
 只迁移与候选包内容相同或仅已知旧路径不同的服务、udev 和 sudoers 文件，未知覆盖
 会在停服务之前拒绝；RTP 等其他管理员 drop-in 保留。修复启用链接指向包内服务，
 不重新执行 USB-PD 协商、不重启系统、不更新内核。失败不自动启动可能混装的应用。
@@ -54,6 +54,15 @@ board.py deploy 先在本地按 SHA256SUMS 校验四个 deb 和 sources.json 并
 video-smoke.mjs 需要 Playwright 和 Chrome，默认采样 15 秒，输出实际解码帧数、
 尺寸、丢帧和丢包；无视频或连接断开返回失败。它使用当前页面配置，需要无认证
 页面且默认显示 WebRTC 视频，不修改账户认证。此测试不测输入响应、音频或端到端延迟。
+
+One-KVM 使用 `tools/one-kvm-smoke.mjs --exclusive`，通过 ONEKVM_USERNAME 和
+ONEKVM_PASSWORD 环境变量提供独立网页账户。可加 `--mode=h265` 或 `--mode=mjpeg`，
+结束恢复原模式；首次初始化必须显式加 `--initialize`。音频解码验证使用
+`one-kvm-audio-check.mjs --exclusive`，输入端应播放有声内容；USB 主机为本机 Mac 时，
+`one-kvm-usb-check.mjs --exclusive` 检查键鼠、测试 ISO 和重新枚举后的键鼠，
+ONEKVM_TEST_ISO 指向包含测试标记的 ONEKVM_TEST 卷。三套应用切换使用
+`kvm-switch-check.mjs --exclusive`，结束恢复初始选择。这些实机测试依次运行，
+不要并发登录同一个 One-KVM 账户，以免会话替换干扰结果。
 
 board.py verify 先运行 check，再逐项输出 PASS/FAIL/SKIP，并写入日志目录的 verify.json：
 
