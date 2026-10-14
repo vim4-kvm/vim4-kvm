@@ -244,6 +244,17 @@ class BoardToolsTests(unittest.TestCase):
                 instance.verify()
         self.assertIn('ssh dropped', (instance.args.log_dir / 'verify.json').read_text())
 
+    def test_audio_busy_pipeline_is_skipped_but_empty_capture_fails(self):
+        instance = board.Board(SimpleNamespace(host='vim4'), io.StringIO())
+        for output, expected in [
+            ('arecord: audio open error: Device or resource busy\n0 0\n', 'SKIP'),
+            ('0 0\n', 'FAIL'),
+            ('48000 0\n', 'PASS'),
+        ]:
+            with self.subTest(output=output), patch.object(instance, 'ssh',
+                    return_value=SimpleNamespace(returncode=0, stdout=output)):
+                self.assertEqual(instance.verify_audio()[0], expected)
+
     def provision_board(self, directory, key_works):
         key = Path(directory) / 'id_test'
         key.with_suffix('.pub').write_text('ssh-ed25519 AAAATEST dev\n')

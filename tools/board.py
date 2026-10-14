@@ -360,9 +360,11 @@ class Board:
                           '| python3 -c "import sys,array; a=array.array(\'h\', sys.stdin.buffer.read()); '
                           'print(len(a)//2, max(map(abs, a), default=0))"', check=False)
         lines = result.stdout.split()
+        # The parser at the end of the pipeline can exit successfully after
+        # arecord failed, leaving both the diagnostic and "0 0" in the output.
+        if 'device or resource busy' in result.stdout.lower():
+            return 'SKIP', 'PCM busy (application audio session active)'
         if result.returncode or len(lines) < 2:
-            if 'busy' in result.stdout.lower():
-                return 'SKIP', 'PCM busy (application audio session active)'
             return 'FAIL', 'arecord failed: ' + result.stdout.strip()[-200:]
         frames, peak = int(lines[-2]), int(lines[-1])
         if frames < 40000:
