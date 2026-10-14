@@ -1378,3 +1378,11 @@ WAN/NAT、端到端延迟、断电恢复或 PiKVM 可刷入整机镜像。
 证据：`build/pikvm-package-34.log`、`build/pikvm-verify-34.log`、
 `logs/pikvm/deploy-34/`、`logs/pikvm/final-smoke-34.log`、
 `logs/pikvm/switch-guard-34.log`、`logs/pikvm/restored-state.txt`。
+
+### PiKVM 切入检查补漏
+
+用户从已恢复虚拟磁盘的 NanoKVM 切入 PiKVM，prepare 因 LUN 非空拒绝启动；
+旧管理器只检查 PiKVM 自己挂载的介质，已经停止并禁用了 NanoKVM。
+管理器 `de596ac` 在 select/restart PiKVM 前检查任何现有 LUN，提前给出安全弹出
+提示，保留原应用和开机选择。16 项助手测试通过；板上带原磁盘切换被拒绝，
+NanoKVM 仍 active/enabled。macOS 安全 eject 后可正常切入 PiKVM。
