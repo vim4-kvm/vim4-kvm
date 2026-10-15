@@ -5,7 +5,7 @@
 name = "NanoKVM"
 url = "https://github.com/vim4-kvm/NanoKVM.git"
 branch = "vim4"
-revision = "d009b34651162782f0619f947efc7dbb0764423f"
+revision = "156f78a131919446752ace1fb1ab392dd0579252"
 
 [[repos]]
 name = "common_drivers"
@@ -41,7 +41,7 @@ revision = "e5878e6d9e3c8d41ee96d3cc9d443c934057ed26"
 name = "kvmd"
 url = "https://github.com/vim4-kvm/kvmd.git"
 branch = "vim4"
-revision = "3aa6bc21b5873a582b3140bbf6b425d89843cefb"
+revision = "4f9ad16f4fe95b80b94361e0ddb8725ad5b7758a"
 
 [[repos]]
 name = "ustreamer"
