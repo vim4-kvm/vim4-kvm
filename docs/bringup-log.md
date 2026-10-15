@@ -1704,10 +1704,27 @@ H.265 或回退 H.264；固定编码不兼容会拒绝连接。活动 UU 会话�
 UU RTP 帧扩展；H.264 路径保持 sample track。新增 CRA、混合起始码、整倍数
 分片末尾、序号、时间戳与 marker 回归，604 项 Rust 测试及 ARM64 release 通过。
 修正版 `.9` 完整包验证通过并已上板，服务 active、HTTP 200、dpkg -V 无差异、
-UU host online。尚待官方客户端重连确认出画面与解码，不能将封包回归视作验收成功。
+UU host online。官方客户端复测仍显示“正在传输画面”但黑屏；板端约 60fps，
+客户端解码统计为空并持续请求关键帧。封包修正尚不足以恢复出画面。
 未进行长期运行、其他平台客户端或 H.264/H.265 端到端延迟对比。
 
 制品：`build/packages/2.5.1+vim4.20261015.9/`，deb SHA256：
 `98d8b3dc01fef224de428be62113a8d3dba3659ca3a4c7ea2819c15e9a731bf2`。
 证据：`logs/uu-remote/hevc-{tests,frontend,browser,package-verify,session}.log`、
 `logs/uu-remote/hevc-packet-{tests,release,package-verify,deploy,after-deploy}.log`。
+
+继续排查发现 webrtc-rs 保留 codec preference 中非零的 payload type。原代码在
+set_remote_description 前筛选 H.265，将服务端默认 126 固定进偏好；客户端使用
+其他编号时，答案仍错误地给出 126。回归将客户端 H.265 编号改为 104，旧实现
+确定失败；`894aa390` 将筛选移至应用 offer 之后，答案及 sender 参数均为 104，
+604 项 Rust 测试通过。仅记录协商编号，不记录原始 SDP、凭证或用户输入。
+本机官方 UU 4.39.1 libstreamer 离线检查接受历史硬件码流的 SPS 和 VideoToolbox
+格式描述；这只排除该样本的参数解析失败，不能替代实际客户端播放验证。
+证据：`logs/uu-remote/hevc-payload-{regression,tests,release}.log`。
+
+`.10` 完成 ARM64 发布构建、完整安装包验证（含真实升级、配置保留和认证更新
+API），03:47 UTC 通过单应用更新助手上板并重启。服务 active、HTTP 200、
+dpkg -V 无差异、UU host online；等待官方客户端重新连接确认画面和解码统计。
+制品：`build/packages/2.5.1+vim4.20261015.10/`，deb SHA256：
+`c0303970657d7390f49d712cd070bbd75f690a4bc7ddf0c7e64f364b048c2838`。
+证据：`logs/uu-remote/hevc-payload-{package-verify,deploy,after-deploy}.log`。
