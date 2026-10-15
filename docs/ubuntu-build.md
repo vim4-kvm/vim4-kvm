@@ -121,6 +121,9 @@ CI 使用主仓库的可复用工作流 `.github/workflows/release-component.yml
 Release 标签与包版本相同并标为 latest。uStreamer 验证完整 PiKVM 集成后独立发布源码；
 其二进制随 kvmd 的 PiKVM 包发布。linux/common_drivers 共用 `kernel.yml` 构建内核 deb。
 CI 不访问板子，发布不代表实机回归通过。
+构建任务只有读取权限，独立发布任务才取得 Release 写权限。构建镜像缓存按 Dockerfile、
+下载清单、Python 锁文件及下载脚本的哈希失效；PR 可以读取缓存，但不保存缓存。
+首次运行仍需从 Ubuntu 快照源下载完整依赖，可能比本地复用 builder 慢很多。
 
 ## PiKVM 组件
 

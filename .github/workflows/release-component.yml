@@ -79,9 +79,38 @@ jobs:
           echo "version=$version" >> "$GITHUB_OUTPUT"
           echo "Version: $version"
 
+      - name: Restore locked builder cache
+        id: builder-cache
+        uses: actions/cache/restore@0057852bfaa89a56745cba8c7296529d2fc39830 # v4
+        with:
+          path: ${{ runner.temp }}/vim4-builder.tar.zst
+          key: builder-${{ runner.os }}-${{ runner.arch }}-${{ inputs.component == 'pikvm' && 'pikvm' || 'base' }}-${{ hashFiles('workspace/packaging/ubuntu/Dockerfile', 'workspace/packaging/ubuntu/fetch.py', 'workspace/packaging/ubuntu/*.lock.json', 'workspace/packaging/ubuntu/pikvm/Dockerfile', 'workspace/packaging/ubuntu/pikvm/*.lock*') }}
+
+      - name: Load cached builder
+        if: steps.builder-cache.outputs.cache-hit == 'true'
+        run: zstd -dc "$RUNNER_TEMP/vim4-builder.tar.zst" | docker load
+
       - name: Build builder image
+        if: steps.builder-cache.outputs.cache-hit != 'true'
         working-directory: workspace
         run: python3 tools/ubuntu-build.py environment --component "$COMPONENT"
+
+      - name: Archive locked builder
+        if: steps.builder-cache.outputs.cache-hit != 'true'
+        run: |
+          images=(vim4-kvm-builder:ubuntu24.04)
+          if [ "$COMPONENT" = pikvm-app ]; then images+=(vim4-pikvm-builder:ubuntu24.04); fi
+          docker save "${images[@]}" | zstd -T2 -3 > "$RUNNER_TEMP/vim4-builder.tar.zst"
+
+      - name: Save locked builder cache
+        if: steps.builder-cache.outputs.cache-hit != 'true' && github.event_name != 'pull_request'
+        uses: actions/cache/save@0057852bfaa89a56745cba8c7296529d2fc39830 # v4
+        with:
+          path: ${{ runner.temp }}/vim4-builder.tar.zst
+          key: ${{ steps.builder-cache.outputs.cache-primary-key }}
+
+      - name: Reclaim temporary archive space
+        run: rm "$RUNNER_TEMP/vim4-builder.tar.zst"
 
       - name: Build packages
         working-directory: workspace
