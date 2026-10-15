@@ -1656,3 +1656,22 @@ Windows 默认不反转；同一身份下手动覆盖保存后，刷新与重启
 无差异并恢复 UU host online。SHA256：
 `0063e59f587518f38086b1aed1fd240bc0e8d005b197be6adcd59279f813871b`。
 证据：`logs/uu-remote/scroll-{tests,frontend,release,browser,package-verify,deploy,after-deploy}.log`。
+
+### UU 连接初期体感延迟诊断（2026-10-15）
+
+用户报告连接初期延迟偏高、随后下降，截图为连接第 6 秒、UDP P2P、60fps、
+56 ms frm.、0% loss；frm. 的确切统计口径尚未确认，不能视作网络 RTT。
+当前连接为 3840×2160、60fps、20Mbps，握手约 46ms；单次 UDP 发送队列采样
+为空、温度 54°C，不据此排除瞬时积压或客户端缓冲。UU 使用发送时刻预测 RTP
+间隔，网页 H.264 使用帧 PTS，列为待测差异，尚未修改时间戳或队列策略。
+
+One-KVM `9c251763` 增加 STREAMER 客户端回报的数值白名单解析（含压缩 JSON），
+仅记录帧率、延迟和计数；限制负载大小、解压大小、递归与节点数，不记录原始
+负载、凭据或键鼠内容。发送端每 5 秒记录 FPS、发送耗时、帧间隔、序号缺口和
+相对首帧 PTS 的积压变化；后者不是绝对采集延迟。
+
+600 项 Rust 测试、ARM64 release 与完整包验证通过。诊断包
+`2.5.1+vim4.20261015.7` 已部署，服务 active、HTTP 200、dpkg -V 无差异，
+UU host online；等待客户端重连采样，尚未证明延迟根因或修复效果。
+deb SHA256：`8e1effe270f0c22cd50510fc62e28d460281e78208752b41e813240e3a3520b5`。
+证据：`logs/uu-remote/latency-{tests,release,package-verify,deploy,after-deploy}.log`。
