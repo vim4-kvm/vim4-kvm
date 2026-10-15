@@ -65,6 +65,7 @@ make ARCH=arm64 CC=gcc-12 M=drivers/misc khadas-mcu.ko -j10
 60°C→35%、80°C→70%、100°C→100%；低于 45°C 停转。
 每 30 秒采样一次，非紧急调速每次最多变化 5 个百分点；达到全速条件时立即
 跳至 100%。`/sys/class/fan/speed` 是控制百分比，没有转速计反馈，不是实测 RPM。
+三个阈值可在 vim4-manager 散热页调节，保存后由管理器开机恢复，不改设备树。
 
 `board/90-vim4-encoder.conf` 将 Wave521 A/B/C 三路设置为 666666666Hz。
 原始 A 已为约 666MHz，B/C 为 500MHz。CPU、总线和电压保持默认。

@@ -55,7 +55,7 @@ package/verify 必须显式提供 --version；后续镜像 assemble 的 --compon
 | vim4-nanokvm | /opt 应用与网页、/usr/libexec 特权工具、sudoers 与应用服务 |
 | vim4-jetkvm | JetKVM 应用、特权工具与服务 |
 | vim4-onekvm | One-KVM 应用（嵌入网页）、Ventoy 引导资源、虚拟介质助手与互斥服务 |
-| vim4-manager | 四套应用选择、板级状态、HDR 曲线与 EDID 兼容性预设 |
+| vim4-manager | 四套应用选择、板级状态、HDR 曲线、EDID 兼容性预设与风扇曲线 |
 
 包不占用 /usr/local，遵循 [Debian 路径约定](https://www.debian.org/doc/debian-policy/ch-opersys.html)。
 NanoKVM 特权调用与手工安装脚本同步改为 /usr/libexec，新服务端必须与新工具一起安装。
