@@ -1988,3 +1988,16 @@ InvocationID、加载 EDID 标记时间戳、active.bin SHA256 及采集状态�
 管理器 Python 25 项、Go 测试、前端构建、board tools 28 项与安装脚本语法检查通过。
 安装后 GET /api/edid 返回三项预设、RTK-CONTROL 和 JetKVM 已同步状态。
 证据：logs/manager-edid-deploy/（安装日志、部署前后状态、Mac 显示记录和网页截图）。
+
+## 2026-10-15：UU 虚拟屏恢复故障定位
+
+用户重发 EDID 恢复后再次用真实 UU 客户端复现。只读检查确认板端仍接收
+4K60 YUV444 8bit 且帧数推进，Mac 在线列表仅有系统兜底 ID 44；RTK 物理 ID 2
+无法通过公开显示 API 查询。UU 4.42.0 的 UURemoteServer 创建“UU远程 1”
+后约 0.43 秒销毁，随后 WindowServer 生成兜底屏。
+
+ARM64 静态分析确认 UU 的 restorePhysicalModes 路径只遍历在线显示器，
+不能处理已不在线的物理屏；模式设置函数另有忽略单步错误返回的局限。
+尚未确定最初掉出在线列表的触发点，不能直接归结为 UU 缺少所有恢复逻辑，
+也不能把热插拔有效当成 EDID 内容错误。详见 [调查记录](hdmi-uu-recovery.md)。
+本轮未修改 Mac 显示配置、未重发 EDID、未停启服务，故障现场保留。
