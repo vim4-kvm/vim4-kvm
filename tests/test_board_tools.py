@@ -129,7 +129,8 @@ class BoardToolsTests(unittest.TestCase):
     def packages(self, directory, version='1.0~test1', component='all'):
         folder = Path(directory) / version
         folder.mkdir()
-        components = board.PIKVM_COMPONENTS if component == 'pikvm' else board.COMPONENTS
+        components = {'all': board.COMPONENTS, 'pikvm': board.PIKVM_COMPONENTS,
+                      'manager': ('vim4-manager',)}[component]
         files = [folder / f'{name}_{version}_arm64.deb' for name in components]
         for path in files:
             path.write_bytes(path.name.encode())
@@ -156,6 +157,15 @@ class BoardToolsTests(unittest.TestCase):
             folder = self.packages(directory, component='pikvm')
             _, debs, _ = board.package_metadata(folder)
             debs[0].write_bytes(b'corrupt application')
+            with self.assertRaisesRegex(ValueError, 'SHA256'):
+                board.package_metadata(folder)
+
+    def test_manager_only_deployment_validates_checksum(self):
+        with tempfile.TemporaryDirectory() as directory:
+            folder = self.packages(directory, component='manager')
+            _, debs, _ = board.package_metadata(folder)
+            self.assertEqual(len(debs), 1)
+            debs[0].write_bytes(b'corrupt manager')
             with self.assertRaisesRegex(ValueError, 'SHA256'):
                 board.package_metadata(folder)
 

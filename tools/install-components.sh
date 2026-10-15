@@ -17,6 +17,7 @@ component=$(python3 -c 'import json; print(json.load(open("sources.json")).get("
 case "$component" in
     all) ;;
     pikvm) components=(vim4-pikvm vim4-manager) ;;
+    manager) components=(vim4-manager) ;;
     *) echo 'Unknown package component set' >&2; exit 1 ;;
 esac
 for name in "${components[@]}"; do
@@ -58,6 +59,26 @@ for source, installed in pairs:
 PY
 for file in "$stage"/etc/sudoers.d/*; do visudo -cf "$file"; done
 apt-get -s --no-remove install "${packages[@]}"
+# A dashboard-only update must preserve capture and display failure evidence.
+# Share the helper lock so an in-flight user operation finishes before upgrade.
+if [[ $component == manager ]]; then
+    exec 8>/run/lock/vim4-manager.lock
+    flock -n 8
+    systemctl stop vim4-manager.service
+    DEBIAN_FRONTEND=noninteractive NEEDRESTART_MODE=l apt-get -y --no-remove -o Dpkg::Options::=--force-confold install "${packages[@]}"
+    while IFS= read -r file; do
+        case "$file" in
+            /etc/sudoers.d/*) install -m 0440 "$stage$file" "$file" ;;
+            *) rm -f -- "$file" ;;
+        esac
+    done < "$stage/migrate"
+    systemctl daemon-reload
+    sync
+    systemctl start vim4-manager.service
+    systemctl is-active vim4-manager.service
+    dpkg-query -W -f='${Package} ${Version}\n' vim4-manager
+    exit 0
+fi
 # Keep the application selected in vim4-manager. NanoKVM is the default when
 # no alternative is enabled (first installation).
 app=nanokvm.service

@@ -68,9 +68,9 @@ def package_metadata(directory):
     version = directory.name
     sources = json.loads((directory / 'sources.json').read_text())
     component = sources.get('component', 'all')
-    if component not in ('all', 'pikvm'):
+    if component not in ('all', 'pikvm', 'manager'):
         raise ValueError('Unknown package component set')
-    components = PIKVM_COMPONENTS if component == 'pikvm' else COMPONENTS
+    components = {'all': COMPONENTS, 'pikvm': PIKVM_COMPONENTS, 'manager': ('vim4-manager',)}[component]
     debs = [directory / f'{name}_{version}_arm64.deb' for name in components]
     # Mixed versions would let dpkg pair a new server with old helpers.
     for path in debs + [directory / 'sources.json']:

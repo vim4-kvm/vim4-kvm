@@ -26,6 +26,12 @@ board.py，以便校验导出清单、限制文件共享范围并记录全过程
 组件包构建见 [ubuntu-build.md](ubuntu-build.md)，增量部署见下。board.py 不自动
 删除 /etc 下的手工服务，也不把整机刷写用于每次应用迭代。
 
+仅更新管理器时，包清单 `sources.json` 可声明 `component: "manager"`，目录只包含
+对应版本的 vim4-manager deb、sources.json 与 SHA256SUMS，仍使用 `board.py deploy`。
+此路径取得管理器操作锁，仅停止和启动 vim4-manager，不重启 KVM 应用、HDMI、USB
+或修改 EDID，适用于保留显示故障现场。它是部署入口；ubuntu-build.py 尚不提供
+manager 单组件构建选项，开发交叉编译包需如实记录构建方式。
+
 ## 增量开发闭环
 
 协调板子独占后，选择新的版本号；三个构建/验证/上传步骤使用同一版本：
