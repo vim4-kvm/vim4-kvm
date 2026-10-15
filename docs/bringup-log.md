@@ -1724,7 +1724,21 @@ set_remote_description 前筛选 H.265，将服务端默认 126 固定进偏好�
 
 `.10` 完成 ARM64 发布构建、完整安装包验证（含真实升级、配置保留和认证更新
 API），03:47 UTC 通过单应用更新助手上板并重启。服务 active、HTTP 200、
-dpkg -V 无差异、UU host online；等待官方客户端重新连接确认画面和解码统计。
+dpkg -V 无差异、UU host online。官方客户端再次反馈仍停在“正在传输画面”，
+因此 `.10` 仍未通过 H.265 上板验收。
 制品：`build/packages/2.5.1+vim4.20261015.10/`，deb SHA256：
 `c0303970657d7390f49d712cd070bbd75f690a4bc7ddf0c7e64f364b048c2838`。
 证据：`logs/uu-remote/hevc-payload-{package-verify,deploy,after-deploy}.log`。
+
+现场只提取 SDP 编码/方向/轨道属性，未保存原始 SDP 或凭证：官方 offer 的 H.265
+编号为 96，无 fmtp，五个接收视频 m-line；答案和线上媒体均为 96，媒体 SSRC
+对应首个视频 m-line。只统计线上包头的 3 秒观察有 180 个视频 marker，仍无
+客户端解码统计。官方 libstreamer 的离线 H.265 解包器接受参数集 AP、IDR/CRA
+首分片；其 Annex-B 转 CMSampleBuffer 函数加 macOS VideoToolbox 能解出历史
+硬件样本的 IDR19 和 CRA21 首帧。这些排查没有定位现场黑屏的剩余原因。
+
+03:58 UTC 将板端 UU 偏好临时设为 H.264，保留其他配置、凭证和 `.10` 安装包。
+新会话确认 H.264，03:58:49 官方客户端回报 decode/render 59fps、decode 2ms、
+current/target delay 13ms、jitter buffer 3ms；板端稳定窗口约 60fps。
+H.265 代码与选择项仍在开发分支，自动模式仍优先 H.265，不能作为已验收默认
+发布或认为全新镜像验证通过。现场记录：`logs/uu-remote/hevc-payload-session.log`。
