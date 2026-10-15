@@ -18,6 +18,7 @@ case "$component" in
     all) ;;
     pikvm) components=(vim4-pikvm vim4-manager) ;;
     manager) components=(vim4-manager) ;;
+    onekvm) components=(vim4-onekvm) ;;
     *) echo 'Unknown package component set' >&2; exit 1 ;;
 esac
 for name in "${components[@]}"; do
