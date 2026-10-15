@@ -5,59 +5,59 @@
 name = "NanoKVM"
 url = "https://github.com/vim4-kvm/NanoKVM.git"
 branch = "vim4"
-revision = "28eafd827023d606d59f4bf6e76f4dab6aca6a86"
+revision = "1b8b74cbc99ad9c9f2bb0a0d32c6d1e1855dbc02"
 
 [[repos]]
 name = "common_drivers"
 url = "https://github.com/vim4-kvm/common_drivers.git"
 branch = "vim4-kvm-5.15"
-revision = "305ab27e9315339bb74ac48279793f41670c9a03"
+revision = "a11d723e2d4a52a1e54979434237a050d2a290af"
 
 [[repos]]
 name = "gst-plugin-venc"
 url = "https://github.com/vim4-kvm/gst-plugin-venc.git"
 branch = "vim4"
-revision = "a99edf0a8a8f532eec7d498e387df4cc301e3883"
+revision = "b1528f73bccbb0b0796fb220015aca4ba67024df"
 
 [[repos]]
 name = "gst-plugin-vfmcap"
 url = "https://github.com/vim4-kvm/gst-plugin-vfmcap.git"
 branch = "main"
-revision = "4626814c1139eaa7a20df7303c11346ffc9cd7c9"
+revision = "380508f1d42ce486f4b5ec999a19ec9cca33368e"
 
 [[repos]]
 name = "kvm"
 url = "https://github.com/vim4-kvm/kvm.git"
 branch = "vim4"
-revision = "70402193ca33f41ac43c350ba00490c6ba285be4"
+revision = "390d7e982d31110b8fad0675063b74f4358bea79"
 
 [[repos]]
 name = "One-KVM"
 url = "https://github.com/vim4-kvm/One-KVM.git"
 branch = "vim4"
-revision = "25198572888021f48286022297e4c4e8ef665ef5"
+revision = "e0c51901d68d7657df06bae1b46c4b6a0dc9d9ad"
 
 [[repos]]
 name = "kvmd"
 url = "https://github.com/vim4-kvm/kvmd.git"
 branch = "vim4"
-revision = "7729e1f695b32fecf7c35f5681de545ab350c350"
+revision = "3aa6bc21b5873a582b3140bbf6b425d89843cefb"
 
 [[repos]]
 name = "ustreamer"
 url = "https://github.com/vim4-kvm/ustreamer.git"
 branch = "vim4"
-revision = "04e27567914d3b499bd148b8b4d7a4d1ebf63a68"
+revision = "9baf264c1cfc81c66786b70eac9f04c5560f91a8"
 
 [[repos]]
 name = "vim4-manager"
 url = "https://github.com/vim4-kvm/vim4-manager.git"
 branch = "main"
-revision = "dc6035377fdacc3ce5fd0df3bf2b68112a349cf4"
+revision = "9b2cadad8f4199647bec69cdbd1623f98835a4c0"
 
 [kernel]
 url = "https://github.com/vim4-kvm/linux.git"
 branch = "vim4-kvm-5.15"
-revision = "b86c7e5bd12c1c0eaa0d652e706775cbca699e4d"
+revision = "80a07ad5406d57855c996285ae75a50a1b9147ae"
 vm = "vim4-build"
 # Lives on a case-sensitive Linux filesystem, outside this checkout.
