@@ -1675,3 +1675,13 @@ One-KVM `9c251763` 增加 STREAMER 客户端回报的数值白名单解析（含
 UU host online；等待客户端重连采样，尚未证明延迟根因或修复效果。
 deb SHA256：`8e1effe270f0c22cd50510fc62e28d460281e78208752b41e813240e3a3520b5`。
 证据：`logs/uu-remote/latency-{tests,release,package-verify,deploy,after-deploy}.log`。
+
+03:07–03:08 UTC 用户反馈暂未复现。03:07:53 的 4K60/20Mbps 会话，板端
+连续 5 秒窗口约 60fps，平均发送耗时约 0.35–2.01ms，窗口最大发送耗时可达
+41.6ms，启动一次序号缺口后未继续缺帧。PTS 相对偏移约 -561ms 后稳定，
+不能把这个负值当作负延迟或绝对采集耗时。客户端 30 秒回报 current delay
+10ms、target delay 12ms、jitter buffer 2ms、decode 2ms、render 59fps；这些
+不是完整操作到显示延迟，也不能证明启动前几秒从未偏高。
+此前会话发送曾为 34–41fps 后回到 60fps，不能只保留恢复后的数据宣称始终稳定。
+诊断版未修改视频发送策略，因此本次未复现不作为修复结论。证据：
+`logs/uu-remote/latency-session.log`。
