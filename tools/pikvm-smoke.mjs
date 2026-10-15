@@ -53,6 +53,11 @@ try {
     dropped: video.getVideoPlaybackQuality().droppedVideoFrames,
   }));
   assert(video.frames > first + 10, 'Video decoding did not advance');
+  if (process.argv.includes('--motion')) {
+    sourceBrowser = await chromium.launch({ channel: 'chrome', headless: false });
+    const source = await sourceBrowser.newPage();
+    await source.setContent('<body style="margin:0"><canvas width="1200" height="800"></canvas><script>const c=document.querySelector("canvas").getContext("2d");setInterval(()=>{const t=Date.now();c.fillStyle=t%1000<500?"#ff0033":"#00cc66";c.fillRect(0,0,1200,800);c.fillStyle="white";c.font="64px monospace";c.fillText("VIM4 motion "+t,30,150)},100)</script>');
+  }
   const soakSeconds = Number(process.argv.find(arg => arg.startsWith('--soak='))?.split('=')[1] || 0);
   if (soakSeconds) {
     const soak = await page.evaluate(async seconds => {
@@ -130,9 +135,6 @@ try {
   }
   const extra = {};
   if (process.argv.includes('--motion')) {
-    sourceBrowser = await chromium.launch({ channel: 'chrome', headless: false });
-    const source = await sourceBrowser.newPage();
-    await source.setContent('<body style="margin:0"><canvas width="1200" height="800"></canvas><script>const c=document.querySelector("canvas").getContext("2d");setInterval(()=>{const t=Date.now();c.fillStyle=t%1000<500?"#ff0033":"#00cc66";c.fillRect(0,0,1200,800);c.fillStyle="white";c.font="64px monospace";c.fillText("VIM4 motion "+t,30,150)},100)</script>');
     const hashes = await page.evaluate(async () => {
       const video = document.querySelector('#stream-video');
       const canvas = document.createElement('canvas'); canvas.width = 64; canvas.height = 36;
