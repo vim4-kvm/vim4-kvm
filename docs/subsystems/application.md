@@ -33,6 +33,9 @@ MJPEG 质量、EDID 预设和共享 HDR 曲线。输出缩放使用 GE2D，不�
 随 vim4-onekvm 包安装；服务使用独立 GStreamer 注册缓存。参数与边界见
 [One-KVM/VIM4.md](../../One-KVM/VIM4.md)。
 
+One-KVM 的 UU 远程让网易UU远程官方客户端经云端控制被控机：网页扫码绑定账号，凭据存于
+数据目录私有文件，共享 H.264 编码与 HID。范围与限制见 One-KVM/VIM4.md 的 UU 远程一节。
+
 ## PiKVM VIM4 集成
 
 PiKVM 源码在 `kvmd/`，VIM4 视频后端在 `ustreamer/`，部署约定见 `kvmd/VIM4.md`。
