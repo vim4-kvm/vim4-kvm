@@ -233,6 +233,8 @@ def manager(stage):
     copy(deploy / 'vim4-manager-helper', stage, 'usr/libexec/vim4-manager-helper', 0o755)
     copy(deploy / 'vim4-manager-helper.sudoers', stage, 'etc/sudoers.d/vim4-manager-helper', 0o440)
     copy(deploy / 'vim4-manager.service', stage, 'usr/lib/systemd/system/vim4-manager.service')
+    for file in (deploy / 'edid').iterdir():
+        copy(file, stage, 'usr/share/vim4-manager/edid/' + file.name)
     copy(ROOT / 'vim4-manager/LICENSE', stage, 'usr/share/doc/vim4-manager/copyright')
     write(stage, 'DEBIAN/postinst', '''#!/bin/sh
 set -eu
