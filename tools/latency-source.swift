@@ -1,5 +1,6 @@
 // Encode a frame ID into HDMI pixels; log the source draw time on the same Mac
 // that runs latency-receiver.mjs. This measures software endpoints, not photons.
+// Set VIM4_HDMI_DISPLAY=RTK for the RTK UHD HDR EDID (default name match: AML).
 import Cocoa
 
 let app = NSApplication.shared
@@ -7,8 +8,9 @@ app.setActivationPolicy(.accessory)
 let duration = Double(CommandLine.arguments.dropFirst().first ?? "35") ?? 35
 let moving = CommandLine.arguments.contains("--motion")
 let verifyCoherence = CommandLine.arguments.contains("--verify-coherence")
-guard let screen = NSScreen.screens.first(where: { $0.localizedName.contains("AML") }) else {
-    fatalError("No AML HDMI display is available")
+let displayName = ProcessInfo.processInfo.environment["VIM4_HDMI_DISPLAY"] ?? "AML"
+guard let screen = NSScreen.screens.first(where: { $0.localizedName.contains(displayName) }) else {
+    fatalError("No HDMI display matching \(displayName) is available")
 }
 setbuf(stdout, nil)
 

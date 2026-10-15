@@ -17,6 +17,8 @@ swiftc tools/latency-source.swift -o /tmp/vim4-latency-source
 With NanoKVM already streaming 3840x2160 H.264, start the source in one terminal
 and promptly run the receiver in another. The source window closes automatically.
 Use `--motion` for scrolling content; omit it for a mostly static scene.
+For the RTK UHD HDR EDID, prefix the source command with
+`VIM4_HDMI_DISPLAY=RTK`; the default display-name match remains `AML`.
 
 ```sh
 mkdir -p logs
