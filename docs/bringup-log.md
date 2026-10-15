@@ -1949,3 +1949,11 @@ UUDisplay 未运行；因此不能把这轮叫作没有 UU 的环境。
 当前 One-KVM 继续使用它。未替换默认预设、未部署周期 HPD；也未同步修改
 JetKVM 独立保存的 EDID，不能声称四套应用切换与整机重启回归已通过。
 证据与实验变体位于 `logs/hdmi-post-reboot-20261015/`。
+
+用户随后要求 JetKVM 也使用 RTK。在 vim4-kvm.service 为 inactive、One-KVM
+继续运行时，仅将 `/var/lib/jetkvm/config.json` 的 hdmi_edid_string 更新为
+RTK 原件的十六进制值，读回比较确认其他配置字段未变。原配置保存在板上
+`/var/lib/jetkvm/config.json.before-rtk-20261015T065353Z`（0600）。读回 EDID
+SHA256 与 RTK 原件一致；调用 JetKVM 自身 edid-apply 助手返回 loaded=false，
+即接收端已经加载相同表，未再次脉冲 HPD。当前 One-KVM 与采集继续正常。
+没有改 JetKVM 内置默认预设，也没有实际切换四套应用或重启验收。
