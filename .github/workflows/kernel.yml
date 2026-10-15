@@ -21,7 +21,7 @@ jobs:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
         with:
           repository: vim4-kvm/vim4-kvm
-          ref: main
+          ref: ${{ github.repository == 'vim4-kvm/vim4-kvm' && github.sha || 'main' }}
           path: workspace
           persist-credentials: false
       - name: Select source revisions

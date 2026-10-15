@@ -18,6 +18,15 @@ on:
         required: false
         type: boolean
         default: false
+      include-manager:
+        description: Include the manager with PiKVM for image assembly
+        required: false
+        type: boolean
+        default: false
+    outputs:
+      version:
+        description: Verified package version
+        value: ${{ jobs.build.outputs.version }}
   workflow_dispatch:
     inputs:
       component:
@@ -47,7 +56,7 @@ jobs:
     outputs:
       version: ${{ steps.version.outputs.version }}
     env:
-      COMPONENT: ${{ inputs.component == 'pikvm' && 'pikvm-app' || inputs.component }}
+      COMPONENT: ${{ inputs.component == 'pikvm' && !inputs.include-manager && 'pikvm-app' || inputs.component }}
       SOURCE: ${{ inputs.repository || '.' }}
     steps:
       - name: Check out workspace recipes
@@ -75,7 +84,11 @@ jobs:
         run: |
           # Board updaters compare x.y.z+vim4.YYYYMMDD.N numerically. CI
           # numbers start at 1000 so they sort after same-day local builds.
-          version="2.5.1+vim4.$(date -u +%Y%m%d).$((1000 + GITHUB_RUN_NUMBER))"
+          build_number=$((1000 + 2 * GITHUB_RUN_NUMBER))
+          # Image jobs build both sets in one run; their output directories
+          # must differ because each set owns its own sources.json/checksums.
+          if [ "$COMPONENT" = pikvm ]; then build_number=$((build_number + 1)); fi
+          version="2.5.1+vim4.$(date -u +%Y%m%d).$build_number"
           echo "version=$version" >> "$GITHUB_OUTPUT"
           echo "Version: $version"
 

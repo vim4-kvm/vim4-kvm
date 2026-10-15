@@ -1,0 +1,90 @@
+name: Ubuntu image
+on:
+  workflow_dispatch:
+    inputs:
+      publish:
+        description: Publish the verified candidate image (not boot-tested)
+        type: boolean
+        default: false
+permissions:
+  contents: read
+jobs:
+  components:
+    uses: ./.github/workflows/release-component.yml
+    permissions:
+      contents: write
+    with:
+      component: all
+      repository: '.'
+  pikvm:
+    uses: ./.github/workflows/release-component.yml
+    permissions:
+      contents: write
+    with:
+      component: pikvm
+      repository: '.'
+      include-manager: true
+  kernel:
+    uses: ./.github/workflows/kernel.yml
+    permissions:
+      contents: write
+    with:
+      repository: ''
+  image:
+    needs: [components, pikvm, kernel]
+    runs-on: ubuntu-24.04-arm
+    timeout-minutes: 90
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          persist-credentials: false
+      - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4
+        with:
+          name: all-${{ needs.components.outputs.version }}
+          path: build/packages/${{ needs.components.outputs.version }}
+      - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4
+        with:
+          name: pikvm-${{ needs.pikvm.outputs.version }}
+          path: build/packages/${{ needs.pikvm.outputs.version }}
+      - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4
+        with:
+          name: kernel
+          path: build/packages/kernel
+      - name: Assemble and verify candidate
+        env:
+          VERSION: ${{ needs.components.outputs.version }}
+          PIKVM_VERSION: ${{ needs.pikvm.outputs.version }}
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y xz-utils e2fsprogs dosfstools util-linux fdisk cloud-guest-utils
+          python3 tools/ubuntu-image.py fetch
+          python3 tools/ubuntu-image.py assemble --components "$VERSION" \
+            --pikvm-components "$PIKVM_VERSION" --default-app nanokvm \
+            --name "vim4-kvm-ubuntu-$VERSION"
+          python3 tools/ubuntu-image.py export --name "vim4-kvm-ubuntu-$VERSION"
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: ubuntu-image
+          path: build/images/
+          compression-level: 0
+          if-no-files-found: error
+  publish:
+    if: inputs.publish
+    needs: [components, image]
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4
+        with:
+          name: ubuntu-image
+          path: images
+      - name: Publish candidate image
+        env:
+          GH_TOKEN: ${{ github.token }}
+          VERSION: ${{ needs.components.outputs.version }}
+        run: |
+          cd "images/vim4-kvm-ubuntu-$VERSION"
+          sha256sum -c SHA256SUMS
+          gh release create "image-$VERSION" --repo "$GITHUB_REPOSITORY" --target "$GITHUB_SHA" \
+            --title "Ubuntu image $VERSION" --notes 'Four KVM applications on Khadas VIM4. Offline image checks passed; boot and hardware testing remain required.' *

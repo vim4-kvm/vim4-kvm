@@ -117,13 +117,17 @@ APT 预演需要新增或升级平台包时拒绝安装，先部署平台组件�
 CI 使用主仓库的可复用工作流 `.github/workflows/release-component.yml`，在 GitHub
 `ubuntu-24.04-arm` 原生运行。各仓库的 `vim4-release.yml` 在分支推送、PR 与普通手动运行时只构建验证；
 推送 `release-*` 标签或手动勾选 publish 才发布。发布时其他仓库取 workspace.toml 固定版本，
-本仓库取触发提交。版本为 `2.5.1+vim4.UTC日期.(1000+运行序号)`，排在同日本地构建之后，
+本仓库取触发提交。版本为 `2.5.1+vim4.UTC日期.(1000+2×运行序号)`，排在同日本地构建之后；
+同一次整机镜像构建的 PiKVM 补充包序号再加 1，避免两个组件目录相撞。
 Release 标签与包版本相同并标为 latest。uStreamer 验证完整 PiKVM 集成后独立发布源码；
 其二进制随 kvmd 的 PiKVM 包发布。linux/common_drivers 共用 `kernel.yml` 构建内核 deb。
 CI 不访问板子，发布不代表实机回归通过。
 构建任务只有读取权限，独立发布任务才取得 Release 写权限。构建镜像缓存按 Dockerfile、
 下载清单、Python 锁文件及下载脚本的哈希失效；PR 可以读取缓存，但不保存缓存。
 首次运行仍需从 Ubuntu 快照源下载完整依赖，可能比本地复用 builder 慢很多。
+主仓库另有手动触发的 `Ubuntu image` 工作流：构建完整组件、PiKVM 补充包和
+固定内核，再在 Linux ARM64 上组装、离线验证并上传镜像。默认只上传 Actions
+artifact；显式选择 publish 才发布整机候选镜像，不代替上板启动测试。
 
 ## PiKVM 组件
 
