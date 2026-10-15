@@ -1,0 +1,26 @@
+# 已验证的自定义 EDID
+
+`rtk-uhd-hdr.bin` 是从用户连接的 RTK UHD HDR 物理显示器读取的完整
+256 字节 EDID，未经字段修改。SHA256：
+`32c6a60823dd676e848f8423feff1b469d07f5bac52885723dfa70b74cfda33d`。
+
+2026-10-15，在 Mac M4、macOS 27.0.1 上，经 VIM4 输入两次验证 Apple
+Screen Sharing 高性能会话退出后自动恢复；实际协商为 4K60 YUV444 8bit。
+没有验证该表声明的全部模式、HDR 或所有主机。它是可复现的自定义配置，
+不是已替换的系统默认预设。对照记录见 docs/bringup-log.md。
+
+加载并保存到板级配置（会重新协商 HDMI）：
+
+```sh
+ssh vim4 'sudo -n /usr/libexec/vim4-edid apply RTK-CONTROL' < board/edid/rtk-uhd-hdr.bin
+```
+
+恢复厂商默认表：
+
+```sh
+ssh vim4 'sudo -n /usr/libexec/vim4-edid preset VIM4-4K60'
+```
+
+NanoKVM 使用板级共享 EDID 配置；One-KVM 通过同一助手修改它，PiKVM
+沿用板级输入。JetKVM 有独立保存的 EDID，启动时会加载，不能仅写板级
+配置就假设四套应用切换后都保持同一张表。

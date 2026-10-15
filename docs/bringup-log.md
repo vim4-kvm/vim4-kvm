@@ -1917,3 +1917,35 @@ UUDisplay 源码 PhysicalDisplays.swift 明确记载其私有 API 禁用状态�
 从物理屏正常显示开始只测试 Apple Screen Sharing，以排除当前会话历史状态。
 测试中 bootout 了 UU 用户 launch agent，没有写入持久禁用设置；系统 daemon
 未停止，重启后需核对 UU 是否自动启动，不能默认环境已干净。
+
+### 重启后 EDID 对照与保留 RTK（同日后续）
+
+用户重启后报告普通物理显示器可以自动恢复。切回 VIM4 后，原 VIM4-4K60
+仍复现：06:39:56 UTC 进入共享导致失锁，06:40:09 自动重锁 4K60，但 Mac
+选择 unkn/virt 兜底屏。UU 用户服务、GUI、Server 和 root daemon 已自动启动，
+UUDisplay 未运行；因此不能把这轮叫作没有 UU 的环境。
+
+从此前 RTK UHD HDR 的 IOKit EDID 提取原始 256 字节，两块校验和均有效，
+经同一个 vim4-edid 助手加载后进行实际进入/退出共享对照：
+
+| EDID | 实际输入 | 退出后自动恢复 |
+|---|---|---|
+| 原 VIM4-4K60 | 4K60 YUV420 10bit | 失败 |
+| 完整 RTK UHD HDR | 4K60 YUV444 8bit | 成功，06:42:52 退出 |
+| 回切原 VIM4-4K60 | 4K60 YUV420 10bit | 再次失败 |
+| 原表取消深色能力 | 4K60 YUV420 8bit | 失败 |
+| 上一表允许完整色度 4K60、TMDS 上限 600MHz | 4K60 YUV444 8bit | 失败 |
+| 原表仅增加 DPMS Active Off 位 | 4K60 YUV420 10bit | 失败 |
+| 再次加载完整 RTK UHD HDR | 4K60 YUV444 8bit | 成功，06:48:43 退出 |
+
+两次 RTK 成功均有用户画面确认、Mac 在线显示器枚举和板端采集状态支持。
+原表失败时采集仍推进。结果支持 EDID 内容/身份所触发的 Mac 显示配置差异；
+不能归结为单独的色深、YUV420 或 Active Off 能力位。尚未区分其他能力字段
+与按显示器身份保存的 Mac 配置；用户选择停止进一步身份对照，保持 RTK。
+
+完整 RTK 原件保存为 `board/edid/rtk-uhd-hdr.bin`，SHA256 为
+`32c6a60823dd676e848f8423feff1b469d07f5bac52885723dfa70b74cfda33d`。
+板上 `/var/lib/vim4-kvm/edid/active.bin` 哈希相同，active.name 为 RTK-CONTROL，
+当前 One-KVM 继续使用它。未替换默认预设、未部署周期 HPD；也未同步修改
+JetKVM 独立保存的 EDID，不能声称四套应用切换与整机重启回归已通过。
+证据与实验变体位于 `logs/hdmi-post-reboot-20261015/`。
