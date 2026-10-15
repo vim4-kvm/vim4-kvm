@@ -1,6 +1,8 @@
 #!/bin/sh
 # Only run in a disposable builder container, never on the host or board.
 set -eu
+test -f /.dockerenv
+test ! -d /run/systemd/system
 test "$(dpkg --print-architecture)" = arm64
 cd /packages
 sha256sum -c SHA256SUMS
