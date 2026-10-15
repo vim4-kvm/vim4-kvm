@@ -45,3 +45,8 @@ tools/oowow-flash.sh --yes                          # 在 OOWOW 中重装默认 
 KVM 应用并查看板子状态；NanoKVM、JetKVM（`kvm/`）、One-KVM、PiKVM（`kvmd/`）共用 8080，
 同一时间只运行一个。各应用的功能覆盖与验证边界以其 VIM4.md 为准，
 板级能力见 [docs/subsystems/](docs/subsystems/)，历史证据见上板记录。
+
+## 许可证
+
+主仓库以 [GPL-3.0](LICENSE) 发布。各子仓库保留各自许可证：fork 沿用上游许可证，
+vim4-manager 为 GPL-3.0，gst-plugin-vfmcap 为 LGPL-2.1-or-later。

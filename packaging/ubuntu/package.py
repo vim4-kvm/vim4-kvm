@@ -74,6 +74,7 @@ def board(stage):
               file.read_text().replace('/usr/local/sbin/', '/usr/sbin/'))
     copy(ROOT / 'board/99-vfm-cap.rules', stage, 'usr/lib/udev/rules.d/99-vfm-cap.rules')
     copy(ROOT / 'board/90-vim4-encoder.conf', stage, 'etc/modprobe.d/90-vim4-encoder.conf')
+    copy(ROOT / 'LICENSE', stage, 'usr/share/doc/vim4-kvm-board/copyright')
 
 
 def capture(stage):
