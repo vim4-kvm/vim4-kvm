@@ -112,6 +112,11 @@ try {
           if (s.type === 'inbound-rtp') streams.push({ kind: s.kind, time: s.timestamp,
             frames: s.framesDecoded, width: s.frameWidth, height: s.frameHeight,
             dropped: s.framesDropped, lost: s.packetsLost, bytes: s.bytesReceived,
+            jitterBufferDelay: s.jitterBufferDelay,
+            jitterBufferTargetDelay: s.jitterBufferTargetDelay,
+            jitterBufferMinimumDelay: s.jitterBufferMinimumDelay,
+            jitterBufferEmittedCount: s.jitterBufferEmittedCount,
+            totalDecodeTime: s.totalDecodeTime,
             energy: s.totalAudioEnergy, state: peer.connectionState });
         }
       }
@@ -123,7 +128,16 @@ try {
     const first = before.find(s => s.kind === 'video');
     const last = after.find(s => s.kind === 'video');
     assert(first && last && last.state === 'connected' && last.frames > first.frames, 'Video did not advance');
-    console.log(JSON.stringify({ streams: after, fps: (last.frames - first.frames) * 1000 / (last.time - first.time) }));
+    const emitted = last.jitterBufferEmittedCount - first.jitterBufferEmittedCount;
+    const bufferMs = field => emitted > 0 && Number.isFinite(last[field]) && Number.isFinite(first[field])
+      ? (last[field] - first[field]) * 1000 / emitted : null;
+    console.log(JSON.stringify({ streams: after,
+      fps: (last.frames - first.frames) * 1000 / (last.time - first.time),
+      videoBufferMs: bufferMs('jitterBufferDelay'),
+      videoTargetBufferMs: bufferMs('jitterBufferTargetDelay'),
+      videoMinimumBufferMs: bufferMs('jitterBufferMinimumDelay'),
+      decodeMsPerFrame: (last.totalDecodeTime - first.totalDecodeTime) * 1000 / (last.frames - first.frames),
+    }));
     if (args.includes('--audio')) {
       const peak = await page.evaluate(() => window.testAudioPeak);
       console.log(JSON.stringify({ decodedWebRTCAudioPeak: peak }));

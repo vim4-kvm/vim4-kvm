@@ -63,7 +63,7 @@ One-KVM 测试经 ONEKVM_USERNAME / ONEKVM_PASSWORD 传入账户，不打印凭�
 | tools/media-upload-check.mjs | NanoKVM | 独占，留下上传文件 | 镜像上传与网页终端 | [板级工具](board-tools.md#工具验证边界) |
 | tools/input-check.mjs | NanoKVM | 独占，移动光标 | 键鼠延迟、长按、滚轮；配 input-target.swift、input-summary.py | [输入验证](input-latency.md) |
 | tools/jetkvm-smoke.mjs | JetKVM | 独占 | 视频、JSON-RPC 调用、网页终端 | [JetKVM](../kvm/VIM4.md) |
-| tools/one-kvm-smoke.mjs | One-KVM | 独占 | H.264/H.265/MJPEG 解码与 `--audio` 波形 | [板级工具](board-tools.md) |
+| tools/one-kvm-smoke.mjs | One-KVM | 独占 | H.264/H.265/MJPEG 解码、WebRTC 缓冲驻留与 `--audio` 波形 | [板级工具](board-tools.md) |
 | tools/one-kvm-audio-check.mjs | One-KVM | 独占 | Opus WebSocket 音频，静音判失败 | [板级工具](board-tools.md) |
 | tools/one-kvm-settings-check.mjs | One-KVM | 独占，改 EDID/HDR 后恢复 | 视频设置往返 | [One-KVM](../One-KVM/VIM4.md) |
 | tools/one-kvm-features-check.mjs | One-KVM | 独占 | 终端、扩展、看门狗；需本地 FRP 17700 | [板级工具](board-tools.md) |
