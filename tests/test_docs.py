@@ -25,6 +25,8 @@ def anchors(path):
     return {anchor(line.lstrip('#')) for line in path.read_text().splitlines() if line.startswith('#')}
 
 
+# The isolated package builder copies sources without .git; the pre-commit run covers these.
+@unittest.skipUnless((ROOT / '.git').exists(), 'requires a Git checkout')
 class DocsTest(unittest.TestCase):
     def test_every_tool_is_catalogued(self):
         catalog = (ROOT / 'docs/tools.md').read_text()
