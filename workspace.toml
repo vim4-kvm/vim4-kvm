@@ -53,7 +53,7 @@ revision = "9baf264c1cfc81c66786b70eac9f04c5560f91a8"
 name = "vim4-manager"
 url = "https://github.com/vim4-kvm/vim4-manager.git"
 branch = "main"
-revision = "9b2cadad8f4199647bec69cdbd1623f98835a4c0"
+revision = "0c4c0ade707a222bcd7f05bee8deb5a962515e32"
 
 [kernel]
 url = "https://github.com/vim4-kvm/linux.git"
