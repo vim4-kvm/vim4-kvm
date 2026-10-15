@@ -16,26 +16,24 @@ const browser = await chromium.launch({
 });
 try {
   const page = await browser.newPage();
+  const direct = { messages: 0, keyframes: 0, bytes: 0 };
+  // Direct sockets live in a worker, outside the page's JavaScript globals.
+  page.on('websocket', (socket) => {
+    if (!socket.url().includes('/direct')) return;
+    socket.on('framereceived', ({ payload }) => {
+      if (!Buffer.isBuffer(payload) || payload.length < 9) return;
+      direct.messages++;
+      direct.bytes += payload.length;
+      if (payload[0] === 1) direct.keyframes++;
+    });
+  });
   await page.addInitScript((mode) => {
-    localStorage.setItem('nano-kvm-vide-mode', mode);
+    const storedMode = { 'h264-webrtc': 'h264', 'h265-webrtc': 'h265', 'h264-direct': 'direct', 'h265-direct': 'h265-direct' }[mode];
+    localStorage.setItem('nano-kvm-vide-mode', storedMode);
     window.smokePeers = [];
-    window.smokeDirect = { messages: 0, keyframes: 0, bytes: 0 };
     const Original = RTCPeerConnection;
     window.RTCPeerConnection = class extends Original {
       constructor(...args) { super(...args); window.smokePeers.push(this); }
-    };
-    const OriginalSocket = WebSocket;
-    window.WebSocket = class extends OriginalSocket {
-      constructor(...args) {
-        super(...args);
-        if (!String(args[0]).includes('/direct')) return;
-        this.addEventListener('message', (event) => {
-          if (!(event.data instanceof ArrayBuffer) || event.data.byteLength < 9) return;
-          window.smokeDirect.messages++;
-          window.smokeDirect.bytes += event.data.byteLength;
-          if (new Uint8Array(event.data)[0] === 1) window.smokeDirect.keyframes++;
-        });
-      }
     };
   }, mode);
   await page.goto(url);
@@ -77,14 +75,14 @@ try {
       throw new Error(`Video smoke test failed: ${JSON.stringify(result)}`);
     }
   } else {
-    // The decoder worker resizes the canvas only when it renders a decoded frame.
-    await page.waitForFunction(() => document.querySelector('canvas#screen')?.width > 300, {}, { timeout: 45000 });
-    const start = await page.evaluate(() => ({ ...window.smokeDirect, at: performance.now() }));
+    // The worker reports dimensions after rendering its first decoded frame.
+    await page.waitForFunction(() => Number(document.querySelector('canvas#screen')?.dataset.mediaWidth) > 300, {}, { timeout: 45000 });
+    const start = { ...direct, at: performance.now() };
     await page.waitForTimeout(seconds * 1000);
-    const end = await page.evaluate(() => ({ ...window.smokeDirect, at: performance.now() }));
+    const end = { ...direct, at: performance.now() };
     const canvas = await page.evaluate(() => {
       const c = document.querySelector('canvas#screen');
-      return { width: c.width, height: c.height };
+      return { width: Number(c.dataset.mediaWidth), height: Number(c.dataset.mediaHeight) };
     });
     const elapsed = (end.at - start.at) / 1000;
     result = {

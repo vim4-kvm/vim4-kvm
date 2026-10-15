@@ -56,7 +56,7 @@ One-KVM 测试经 ONEKVM_USERNAME / ONEKVM_PASSWORD 传入账户，不打印凭�
 
 | 入口 | 应用 | 影响 | 覆盖 | 文档 |
 |---|---|---|---|---|
-| tools/video-smoke.mjs | NanoKVM | 独占 | WebRTC/Direct 解码帧数、丢帧、丢包 | [板级工具](board-tools.md) |
+| tools/video-smoke.mjs | NanoKVM | 独占 | WebRTC 实际编码、解码帧数/丢帧/丢包；Direct 首帧尺寸与持续收包（不等于持续呈现） | [板级工具](board-tools.md) |
 | tools/audio-smoke.mjs | NanoKVM | 独占 | 音量控件与解码音频；配 hdmi-audio-tone | [功能状态](feature-status.md) |
 | tools/mic-smoke.mjs | NanoKVM | 独占，重新枚举 USB | Chrome 合成麦克风到 UAC2 播放 | 脚本头注释 |
 | tools/usb-switch-check.mjs | NanoKVM | 独占，断开 USB | 麦克风/镜像组合切换与恢复 | [板级工具](board-tools.md#usb-切换回归) |
