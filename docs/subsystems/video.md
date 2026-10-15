@@ -68,6 +68,7 @@ HDMI_LOW_LATENCY=0 恢复厂商自动策略。模式含义、对照结果及帧�
 - [视频配置](../../NanoKVM/deploy/vim4/VIDEO.md)：RTP、码率、GOP。
 - [端到端测量](../latency.md)：软件端点定义和观测开销。
 - [编码实验记录](../encoder-experiments.md)：旧插件降级、帧率重建、QP 与行刷新验证。
+- [HDMI 恢复路径对照](../hdmi-recovery-review.md)、[UU 虚拟屏恢复](../hdmi-uu-recovery.md)：显示器恢复故障的源码审查与现场取证。
 
 编码器测试不能与应用或其他任务并发占用硬件。
 验证区分静止/运动、分辨率/帧率切换、热插拔、重连和丢包恢复。

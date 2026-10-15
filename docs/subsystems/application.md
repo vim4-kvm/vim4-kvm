@@ -10,7 +10,8 @@ NanoKVM 默认 12000 kbps、JetKVM 原质量档 12/6/1.2 Mbps、One-KVM 快捷�
 构建、安装和限制；代码规范见 [code-standards.md](../code-standards.md)。
 
 当前可用功能、缺项与实测边界见 [功能状态](../feature-status.md)。
-当前基线的迁移范围与软件验证见 [NanoKVM 基线切换](../nanokvm-migration.md)。
+当前基线的迁移范围与软件验证见 [NanoKVM 基线切换](../nanokvm-migration.md)；
+切换前的功能差异评估见 [NanoKVM 功能差异](../nanokvm-feature-review.md)，One-KVM 复核见 [One-KVM 审查](../one-kvm-audit.md)。
 
 JetKVM 的功能映射、特权助手和验证见 [JetKVM VIM4 集成](../../kvm/VIM4.md)。
 

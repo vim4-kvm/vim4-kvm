@@ -68,6 +68,8 @@ MCU 风扇代码属于主内核。内核构建不会同步或覆盖 VM 中的现
 ## 文档维护
 
 CLAUDE.md 仅引用 AGENTS.md 和 LESSONS.md；AGENTS.md 只做路由。
+新增、删除或改变 tools/ 脚本的影响时同步 [工具目录](tools.md)；tests/test_docs.py 检查
+目录完整性和本地链接、锚点。日期标题的上板记录新条目追加在文件末尾。
 当前架构归子系统文档，历史证据归上板记录，错题本记录原因与验证入口。
 子仓库独立克隆时可从 [公共文档](https://github.com/vim4-kvm/vim4-kvm/tree/main)
 读取；完整工作区中的相对链接按本布局解析。

@@ -1,115 +1,5 @@
 # 上板记录
 
-## 2026-10-14：MJPEG 单帧耗时与 NanoKVM 分辨率菜单
-
-在 `.20` 的编码路径上增加临时计时探针（只从 /tmp 加载，不安装探针插件），
-保持 4K60 输入、Q80、666MHz 默认编码时钟和全屏运动网格。连续输入 300 帧，
-队列允许丢弃积压帧，去掉起始 10 个输出后统计 238 个编码输出，平均耗时如下：
-DMA 导入 0.016ms、命令提交 0.163ms、poll 等待完成 18.792ms、输出 ioctl
-0.206ms、输出复制 0.803ms、释放导入 0.013ms。证据：
-logs/mjpeg-hardware/profile-split.log、profile-motion-split.jsonl。
-
-poll 包含硬件运行与中断/调度等待，不是纯硅片时延；但远大于 DMA/提交开销，
-不能把每帧约 19ms 的等待归因于网页限帧。当前路径即使忽略其他开销也仅约 53fps，
-尚未证明能稳定 4K60。驱动 jpeg_enc_clk_enable 对 T7 固定设置 666666666Hz，
-其 clock_level 参数不改变这个分支；没有超频或修改内核。测试结束恢复 NanoKVM。
-
-NanoKVM e3dbe78 删除采集分辨率菜单遗留的 MJPEG 10fps 显示上限，按配置 FPS
-显示（自动时为 60），保留原样式及实际帧率说明，并修正流设置 API 文档。
-前端需显式使用 VITE_PLATFORM=vim4；首次 `.21` 漏带参数，实机检查发现通用菜单，
-随后重新构建 `.22`。通用构建检查不能替代 VIM4 菜单实机验证。
-`.22` 组件校验和部署通过，Chrome 实机打开采集分辨率菜单及刷新后，三个选项均
-显示“最高 60 FPS”，保存设置仍为 4K、60fps、Q80、30000kbps。证据：
-logs/mjpeg-hardware/nano-resolution-ui.log、nano-resolution.png、
-verify-resolution-final.log、deploy-resolution-final.log。保留当前 NanoKVM 选择、
-disk.img 挂载和 HDMI 服务运行实例。
-
-## 2026-10-14：MJPEG 硬件编码与 4K 运动画面吞吐
-
-原 NanoKVM / One-KVM 的 VIM4 路径使用软件 jpegenc 并主动限制到 10fps。
-新增 vim4jpegenc，通过 /dev/jpegenc 编码 NV12/NV21 DMA 输入，质量支持 1–100。
-厂商 amljpegenc 直接 DMA 输入实测只输出 4 帧后停滞：NEW_CMD 路径未归还
-导入的采集缓冲。新插件使用 CONFIG_DMA_INPUT / RELEASE_DMA_INPUT 管理逐帧
-导入；异常时关闭硬件后释放输入。没有改内核或超频，缺少新插件时仍回退软件 10fps。
-NanoKVM 取消原应用 30Hz 轮询限制；One-KVM 在缩放后使用单帧队列重叠缩放与编码，
-状态接口按实际帧数计量，并沿用公共接口的百分之一帧存储单位。
-
-HDMI 输入 3840×2160、约 60Hz，以 tools/latency-source.swift 的 --motion
-模式生成全屏运动网格，编码器保持原 666MHz。每组 240 帧，统计剔除起始 10 帧：
-
-| 输出 / JPEG 质量 | 板端编码 fps | 编码数据 Mbps |
-|---|---:|---:|
-| 2160p / 50 | 51.17 | 393.49 |
-| 2160p / 80 | 51.22 | 582.93 |
-| 2160p / 100 | 47.19 | 1290.96 |
-| 4K 缩至 1080p / 80 | 40.78 | 188.33 |
-| 4K 缩至 720p / 80 | 43.62 | 110.18 |
-| 再次开启 2160p / 80 | 51.21 | 583.57 |
-
-各组首尾 JPEG 均成功解码，重复关闭、开启通过。缩小分辨率包含 GE2D 成本，
-不能用原生小分辨率性能解释这些结果；51fps 是当前路径实测，非芯片理论上限。
-Q100 的数据量超过千兆网络容量，不能承诺该质量下的完整帧率交付。
-
-`.19` 实机 Chrome 在相同 4K/Q80 运动画面下，One-KVM 初次连接 / 刷新收到
-50.84 / 50.75fps，约 579Mbps；NanoKVM 为 42.60 / 39.59fps，约 488 / 454Mbps。
-此处统计 HTTP 收齐的完整 JPEG 帧，不是显示器实际呈现帧数。另用真实 One-KVM
-网页验证 MJPEG 图像尺寸为 3840×2160。首次部署发现状态显示单位不符，将真实
-约 51fps 显示为 0.51fps，后续修正不影响编码或收帧路径。
-
-最终 `.20` 完整包校验及部署通过，Chrome 再次连接 / 刷新收到 50.90 / 50.79fps，
-状态接口分别为 50.77 / 50.64fps，确认显示单位修复。记录见
-browser-one-final.jsonl、verify-fps.log、deploy-fps.log；编码器固定 a99edf0，
-NanoKVM c6ad206、One-KVM 84172cdf，部署根源码固定 7463ca3。
-
-构建验证：NanoKVM VIM4 Go 测试、One-KVM 561 项 Rust 测试、两套前端构建、
-根仓库 42 项测试及组件包隔离升级校验通过。插件以 -Wall -Wextra -Werror 构建。
-One-KVM 二进制保留此前 `.17` 已部署的 VNC Tight JPEG 兼容改动，包内 sources.json
-记录其精确未提交补丁，未改动原工作树的该文件。JetKVM 不提供 MJPEG，此次未新增。
-
-证据位于 logs/mjpeg-hardware/：motion-final.jsonl、browser-one.jsonl、
-browser-nano.jsonl、one-ui-smoke.log、one-fps-build.log、nano-final-build.log。
-测试后恢复 One-KVM 选择及原 MJPEG 模式；USB disk.img 挂载保留，HDMI 服务未重启。
-
-## 2026-10-14：JetKVM 码率控件部署
-
-JetKVM `9faf1c5` 将码率预设、0.1 Mbps 滑块和精确 kbps 输入合并，
-采用原生下拉框、滑块轨道和保存按钮。浏览器回归覆盖同步、显式保存、
-刷新恢复、保存失败回退、非法边界和保存按钮文字。干净快照前端构建、
-ARM64 构建及内部 Go 测试通过，最终 `.16` 七组件包校验与部署通过。
-
-实机 Chrome 将 12 Mbps 改为 17.6 Mbps，保存并刷新确认，再恢复 12 Mbps；
-配置文件确认 factor=1。最终版 3840×2160 视频采样 10 秒约 60.06fps，
-零解码丢帧、零 RTP 丢包。保留当前 JetKVM 选择，HDMI 服务未重启。
-`.15` 截图发现旧控件以 children 传递按钮标签而组件只读取 text，已在
-`.16` 修正并补充可见标签检查。未测试长期运动场景或端到端延迟。
-证据：`logs/jet-bitrate-final-{build,package,verify,deploy,browser}.log`、
-`logs/jet-bitrate-deployed.png`。
-
-## 2026-10-14：NanoKVM 码率菜单样式修正
-
-NanoKVM `a0c9574` 清除新增档位按钮的浏览器默认背景、边框与字体，
-继承原菜单样式，滑块区域缩至 180px。VIM4 前端构建和码率浏览器回归通过。
-完整 `.14` 包校验及部署通过；Chrome 实机检查确认透明按钮背景、无边框、
-继承菜单文字颜色和字体，深色主题截图符合原菜单风格，视频正常播放。
-当前设备码率为用户设置的 30 Mbps，刷新后恢复；测试未写入码率。
-证据：`logs/nano-style-{release-build,package,verify,deploy,browser}.log`、
-`logs/nano-style-deployed.png`。
-
-## 2026-10-14：NanoKVM 码率滑块部署
-
-NanoKVM `d639e8f` 增加 1–60 Mbps 快捷档与 0.1 Mbps 步进滑块，
-拖动结束提交，刷新从设备设置恢复自定义值。两种前端构建、浏览器模拟 API
-回归（拖动只在释放时保存、刷新恢复、保存失败回滚）通过。
-
-干净快照重新构建 NanoKVM 前端，原生二进制复用 `.12` 验证产物，生成
-`2.5.1+vim4.20261014.13` 七组件包；隔离包验证与部署检查通过。
-实机 Chrome 确认滑块和快捷档存在，刷新后恢复原来的 50 Mbps；未修改用户
-视频参数，保持 NanoKVM 为当前应用，HDMI 服务 InvocationID 未变化。
-部署后 H.264 WebRTC 3840×2160 采样 10 秒：600 帧、59.97fps，
-零解码丢帧、零 RTP 丢包。此为播放冒烟检查，不代表运动场景或端到端延迟。
-证据：`logs/nano-slider-{release-build,package,verify,deploy,browser,video}.log`、
-`logs/nano-slider-deployed.png`。
-
 ## 2026-10-12 串口 + 重装 Ubuntu
 
 ### 1. 串口接通
@@ -1828,6 +1718,116 @@ force-key-unit uprobe 记录了主动关键帧事件，尚未逐一关联请求�
 `66da64e28df1d7ac6030622ee1a8140e55b1429e16ad1f75e6dd0fa359abf6b0`。
 证据：`logs/uu-remote/hevc-refresh-{build,package-verify,deploy,health,session,
 packets,steady-packets,key-requests,loss,recovery-packets}.log`。
+
+## 2026-10-14：MJPEG 单帧耗时与 NanoKVM 分辨率菜单
+
+在 `.20` 的编码路径上增加临时计时探针（只从 /tmp 加载，不安装探针插件），
+保持 4K60 输入、Q80、666MHz 默认编码时钟和全屏运动网格。连续输入 300 帧，
+队列允许丢弃积压帧，去掉起始 10 个输出后统计 238 个编码输出，平均耗时如下：
+DMA 导入 0.016ms、命令提交 0.163ms、poll 等待完成 18.792ms、输出 ioctl
+0.206ms、输出复制 0.803ms、释放导入 0.013ms。证据：
+logs/mjpeg-hardware/profile-split.log、profile-motion-split.jsonl。
+
+poll 包含硬件运行与中断/调度等待，不是纯硅片时延；但远大于 DMA/提交开销，
+不能把每帧约 19ms 的等待归因于网页限帧。当前路径即使忽略其他开销也仅约 53fps，
+尚未证明能稳定 4K60。驱动 jpeg_enc_clk_enable 对 T7 固定设置 666666666Hz，
+其 clock_level 参数不改变这个分支；没有超频或修改内核。测试结束恢复 NanoKVM。
+
+NanoKVM e3dbe78 删除采集分辨率菜单遗留的 MJPEG 10fps 显示上限，按配置 FPS
+显示（自动时为 60），保留原样式及实际帧率说明，并修正流设置 API 文档。
+前端需显式使用 VITE_PLATFORM=vim4；首次 `.21` 漏带参数，实机检查发现通用菜单，
+随后重新构建 `.22`。通用构建检查不能替代 VIM4 菜单实机验证。
+`.22` 组件校验和部署通过，Chrome 实机打开采集分辨率菜单及刷新后，三个选项均
+显示“最高 60 FPS”，保存设置仍为 4K、60fps、Q80、30000kbps。证据：
+logs/mjpeg-hardware/nano-resolution-ui.log、nano-resolution.png、
+verify-resolution-final.log、deploy-resolution-final.log。保留当前 NanoKVM 选择、
+disk.img 挂载和 HDMI 服务运行实例。
+
+## 2026-10-14：MJPEG 硬件编码与 4K 运动画面吞吐
+
+原 NanoKVM / One-KVM 的 VIM4 路径使用软件 jpegenc 并主动限制到 10fps。
+新增 vim4jpegenc，通过 /dev/jpegenc 编码 NV12/NV21 DMA 输入，质量支持 1–100。
+厂商 amljpegenc 直接 DMA 输入实测只输出 4 帧后停滞：NEW_CMD 路径未归还
+导入的采集缓冲。新插件使用 CONFIG_DMA_INPUT / RELEASE_DMA_INPUT 管理逐帧
+导入；异常时关闭硬件后释放输入。没有改内核或超频，缺少新插件时仍回退软件 10fps。
+NanoKVM 取消原应用 30Hz 轮询限制；One-KVM 在缩放后使用单帧队列重叠缩放与编码，
+状态接口按实际帧数计量，并沿用公共接口的百分之一帧存储单位。
+
+HDMI 输入 3840×2160、约 60Hz，以 tools/latency-source.swift 的 --motion
+模式生成全屏运动网格，编码器保持原 666MHz。每组 240 帧，统计剔除起始 10 帧：
+
+| 输出 / JPEG 质量 | 板端编码 fps | 编码数据 Mbps |
+|---|---:|---:|
+| 2160p / 50 | 51.17 | 393.49 |
+| 2160p / 80 | 51.22 | 582.93 |
+| 2160p / 100 | 47.19 | 1290.96 |
+| 4K 缩至 1080p / 80 | 40.78 | 188.33 |
+| 4K 缩至 720p / 80 | 43.62 | 110.18 |
+| 再次开启 2160p / 80 | 51.21 | 583.57 |
+
+各组首尾 JPEG 均成功解码，重复关闭、开启通过。缩小分辨率包含 GE2D 成本，
+不能用原生小分辨率性能解释这些结果；51fps 是当前路径实测，非芯片理论上限。
+Q100 的数据量超过千兆网络容量，不能承诺该质量下的完整帧率交付。
+
+`.19` 实机 Chrome 在相同 4K/Q80 运动画面下，One-KVM 初次连接 / 刷新收到
+50.84 / 50.75fps，约 579Mbps；NanoKVM 为 42.60 / 39.59fps，约 488 / 454Mbps。
+此处统计 HTTP 收齐的完整 JPEG 帧，不是显示器实际呈现帧数。另用真实 One-KVM
+网页验证 MJPEG 图像尺寸为 3840×2160。首次部署发现状态显示单位不符，将真实
+约 51fps 显示为 0.51fps，后续修正不影响编码或收帧路径。
+
+最终 `.20` 完整包校验及部署通过，Chrome 再次连接 / 刷新收到 50.90 / 50.79fps，
+状态接口分别为 50.77 / 50.64fps，确认显示单位修复。记录见
+browser-one-final.jsonl、verify-fps.log、deploy-fps.log；编码器固定 a99edf0，
+NanoKVM c6ad206、One-KVM 84172cdf，部署根源码固定 7463ca3。
+
+构建验证：NanoKVM VIM4 Go 测试、One-KVM 561 项 Rust 测试、两套前端构建、
+根仓库 42 项测试及组件包隔离升级校验通过。插件以 -Wall -Wextra -Werror 构建。
+One-KVM 二进制保留此前 `.17` 已部署的 VNC Tight JPEG 兼容改动，包内 sources.json
+记录其精确未提交补丁，未改动原工作树的该文件。JetKVM 不提供 MJPEG，此次未新增。
+
+证据位于 logs/mjpeg-hardware/：motion-final.jsonl、browser-one.jsonl、
+browser-nano.jsonl、one-ui-smoke.log、one-fps-build.log、nano-final-build.log。
+测试后恢复 One-KVM 选择及原 MJPEG 模式；USB disk.img 挂载保留，HDMI 服务未重启。
+
+## 2026-10-14：JetKVM 码率控件部署
+
+JetKVM `9faf1c5` 将码率预设、0.1 Mbps 滑块和精确 kbps 输入合并，
+采用原生下拉框、滑块轨道和保存按钮。浏览器回归覆盖同步、显式保存、
+刷新恢复、保存失败回退、非法边界和保存按钮文字。干净快照前端构建、
+ARM64 构建及内部 Go 测试通过，最终 `.16` 七组件包校验与部署通过。
+
+实机 Chrome 将 12 Mbps 改为 17.6 Mbps，保存并刷新确认，再恢复 12 Mbps；
+配置文件确认 factor=1。最终版 3840×2160 视频采样 10 秒约 60.06fps，
+零解码丢帧、零 RTP 丢包。保留当前 JetKVM 选择，HDMI 服务未重启。
+`.15` 截图发现旧控件以 children 传递按钮标签而组件只读取 text，已在
+`.16` 修正并补充可见标签检查。未测试长期运动场景或端到端延迟。
+证据：`logs/jet-bitrate-final-{build,package,verify,deploy,browser}.log`、
+`logs/jet-bitrate-deployed.png`。
+
+## 2026-10-14：NanoKVM 码率菜单样式修正
+
+NanoKVM `a0c9574` 清除新增档位按钮的浏览器默认背景、边框与字体，
+继承原菜单样式，滑块区域缩至 180px。VIM4 前端构建和码率浏览器回归通过。
+完整 `.14` 包校验及部署通过；Chrome 实机检查确认透明按钮背景、无边框、
+继承菜单文字颜色和字体，深色主题截图符合原菜单风格，视频正常播放。
+当前设备码率为用户设置的 30 Mbps，刷新后恢复；测试未写入码率。
+证据：`logs/nano-style-{release-build,package,verify,deploy,browser}.log`、
+`logs/nano-style-deployed.png`。
+
+## 2026-10-14：NanoKVM 码率滑块部署
+
+NanoKVM `d639e8f` 增加 1–60 Mbps 快捷档与 0.1 Mbps 步进滑块，
+拖动结束提交，刷新从设备设置恢复自定义值。两种前端构建、浏览器模拟 API
+回归（拖动只在释放时保存、刷新恢复、保存失败回滚）通过。
+
+干净快照重新构建 NanoKVM 前端，原生二进制复用 `.12` 验证产物，生成
+`2.5.1+vim4.20261014.13` 七组件包；隔离包验证与部署检查通过。
+实机 Chrome 确认滑块和快捷档存在，刷新后恢复原来的 50 Mbps；未修改用户
+视频参数，保持 NanoKVM 为当前应用，HDMI 服务 InvocationID 未变化。
+部署后 H.264 WebRTC 3840×2160 采样 10 秒：600 帧、59.97fps，
+零解码丢帧、零 RTP 丢包。此为播放冒烟检查，不代表运动场景或端到端延迟。
+证据：`logs/nano-slider-{release-build,package,verify,deploy,browser,video}.log`、
+`logs/nano-slider-deployed.png`。
 
 ## Screen Sharing 退出后物理桌面未恢复：同步取证（2026-10-15）
 
