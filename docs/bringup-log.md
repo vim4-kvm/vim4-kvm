@@ -1875,3 +1875,45 @@ EDID 做 A/B，再分离模式/色深/SCDC 能力与 HPD/DDC 时序的影响；�
 证据：`logs/hdmi-virtual-20261015/`，含 control-transition.jsonl（180 秒）、
 kernel-transition.txt、mac-transition.txt、mac-display-detail.txt、
 mac-kernel-display.txt 和两次恢复记录。内核日志跟踪用 timeout 正常结束（124）。
+
+### 普通物理显示器也复现（同日后续）
+
+用户修正此前的对照结果：同一台 Mac 直接连接普通显示器，退出高性能共享后
+也无法恢复。现场 IOKit 识别 `RTK UHD HDR`（RTK、product 6938），在线桌面
+却仅有 1920×1080 的 unkn/virt 显示器 ID 359。系统为 macOS 27.0.1（26A434）。
+这推翻了“普通显示器正常，所以优先查 VIM4 独有兼容问题”的前提。
+
+06:16:43 UTC，Screen Sharing 创建 ID 358，WindowServer 记录断开物理屏 2，
+CoreAnimation 记录 `Display 2 setEnabled:0`。06:16:48 共享屏销毁，DCP 报告
+startLink 成功、linkStable=YES；WindowServer 处理物理屏的 hotplug in 后仍
+选择兜底虚拟屏 359。不是 VIM4 采集服务导致，也不是共享虚拟屏未销毁。
+
+06:20:51，用临时诊断程序在当前会话对 display 2 调用
+CGSConfigureDisplayEnabled(true)，begin/enable/complete 均返回 0；日志确实
+出现 `Display 2 setEnabled:1`，但在线列表仍只有 359。返回成功不能作为
+物理桌面恢复的证据，也不能仅凭缺少 setEnabled:1 判定根因是启用开关残留。
+两份 WindowServer 显示配置 plist 已备份，没有删除或重置用户显示设置。
+
+用户授权暂时停止 UU 对照。已退出 UU GUI、用户服务和 UURemoteServer；
+系统级 UURemoteDaemon 仍运行（停止需要管理员权限）。停止用户进程后现有
+故障没有自行恢复，尚不能据此排除 UU 造成的历史状态或系统服务影响。
+另一个 UUDisplay 辅助工具未在运行，其日志最后退出时间为前一天，磁盘中
+没有 disabled-displays.json；不能仅因找到其禁用物理屏代码就认定它是原因。
+
+证据：`logs/hdmi-physical-20261015/`。当前调查重点转为 Mac 显示配置恢复；
+06:24:35–39 用户拔插物理显示器恢复后，06:25:02–07 只使用 Apple Screen
+Sharing 再次进入退出，仍黑屏。此次 UU 用户进程全程没有运行，root daemon
+仍在；Screen Sharing 虚拟屏 ID 360 被销毁后出现兜底屏 361。
+完整流式日志明确记录退出时 `Display 2 setEnabled:1`，纠正此前只看部分日志
+产生的“没有重新启用调用”线索：有启用调用也未成功恢复在线物理桌面。
+
+随后尝试当前会话内禁用再启用 display 2：禁用返回 1001，取消该事务；
+启用和提交返回 0，但仍只有兜底屏。因此这次不能声称完成了有效的开关循环。
+没有继续操作低层寄存器、重启 WindowServer 或删除显示偏好文件。
+
+UUDisplay 源码 PhysicalDisplays.swift 明确记载其私有 API 禁用状态可能在进程
+退出后保留，与现场有相似性，但本轮没有调用者追踪，不能证明是它留下的状态。
+用户提出重启；下一项有效对照是正常重启 Mac 后先不启动 UU/UUDisplay，
+从物理屏正常显示开始只测试 Apple Screen Sharing，以排除当前会话历史状态。
+测试中 bootout 了 UU 用户 launch agent，没有写入持久禁用设置；系统 daemon
+未停止，重启后需核对 UU 是否自动启动，不能默认环境已干净。
