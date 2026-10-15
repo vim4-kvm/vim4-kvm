@@ -113,3 +113,16 @@ release 构建和 15 项 VIM4 Python 助手测试通过。全仓 cargo fmt --che
 既有的 update/web 等文件格式差异，未为本任务修改这些无关文件。
 测试和构建日志在 `logs/uu-scroll/offline-tests-final.log`、`offline-build.log`。
 测试仅验证总刻度、余数、方向、断线重置及有界输出等软件行为，不替代实机手感验收。
+
+## 候选部署
+
+用户授权后通过 `tools/board.py deploy --exclusive` 将 One-KVM 从
+`2.5.1+vim4.20261015.43` 升至 `.44`，源码 `dac8693c`。
+包使用现有 Ubuntu 打包配方，仅生成 One-KVM 组件；sources.json 分别记录
+二进制构建镜像与完整打包镜像。其他组件版本保持不变。
+部署校验和、APT 模拟与安装通过，One-KVM 和管理器 active，网页 HTTP 200；
+部署后立即探测 8080 曾遇启动窗口拒绝连接，随后重查成功。
+板端二进制 SHA256 与本地 release 一致，HDMI 服务 InvocationID 未变，
+新进程识别输入为 3840×2160 NV21 60fps。尚未取得新进程的 UU 发送统计，
+不能引用旧进程的 60fps 作为升级后视频验收；慢速、快速滚轮手感仍待用户确认。
+部署日志：`logs/uu-scroll/deploy-44/`。本轮没有再次使用 ptrace。
