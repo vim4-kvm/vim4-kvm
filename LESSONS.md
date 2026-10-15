@@ -32,3 +32,4 @@
 | PiKVM 短测 60fps，隔夜降到约 30fps 并卡顿 | 现场 JPEG 线程与网卡/JPEG IRQ 同在 CPU0；不重启做亲和性对照才能保留证据。uStreamer 避开 CPU0 后恢复 60fps；仍须同时检查浏览器 freeze 与 UDP 发送错误，平均帧率恢复不等于所有停顿消失 | kvmd/deploy/vim4/main.yaml、logs/pikvm/overnight/、tools/pikvm-smoke.mjs |
 | USB 主机卸载卷后仍不能弹出 PiKVM 镜像 | unmount 不清除 SCSI 防弹出锁；必须 host eject。厂商内核 host eject 不发 configfs inotify，需要在现有轮询中核对 LUN file | kvmd/kvmd/plugins/msd/otg/__init__.py |
 | 给 pion SettingEngine.SetNet 包装 UDP 套接字后进程空闲占满 3 核 | mDNS 的 ipv4.PacketConn 需要具体的 *net.UDPConn，包装后读取持续出错且非 ErrClosed，读循环空转。只包装单播套接字，部署前查空闲 CPU 与 pprof | NanoKVM service/stream/webrtc/batch_vim4.go |
+| UU 客户端 H.265 一直"正在传输画面"，发送端 60fps 且零丢包 | libstreamer 的 H265VpsSpsPpsTracker 解析 AP 时从 data()+1 起按 2 字节 NAL 头遍历，错把第二个头字节当长度高位，AP 一律 kDrop；帧里缺 SPS/PPS，SpsPpsIdrIsH265Keyframe 把 IRAP 降级为 delta，解码器永不启动。VPS/SPS/PPS 必须拆成独立单 NAL 包发送，不能用 type 48 聚合包 | One-KVM/src/webrtc/h265_payloader.rs、/Applications/UURemote.app libstreamer.dylib 反汇编 |
