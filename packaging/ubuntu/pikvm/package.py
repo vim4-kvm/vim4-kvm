@@ -72,7 +72,7 @@ def main():
                'libopus0, libasound2t64, libspeexdsp1, libatomic1, libevent-2.1-7t64, '
                'libevent-pthreads-2.1-7t64, libbsd0, libjpeg-turbo8, libbz2-1.0, liblzma5, '
                'libsqlite3-0, libreadline8t64, libffi8, libsystemd0, libxkbcommon0, libfreetype6, '
-               'libpcre2-8-0, libcrypt1, zlib1g, python3, sudo, ca-certificates, '
+               'libpcre2-8-0, libcrypt1, zlib1g, python3, sudo, util-linux, ca-certificates, '
                'gstreamer1.0-plugins-base, gstreamer1.0-plugins-good, gstreamer1.0-plugins-bad, '
                'vim4-kvm-board (>= 2.5.1+vim4.20261014.24), vim4-vfmcap (>= 2.5.1+vim4.20261014.24), '
                'vim4-amlvenc (>= 2.5.1+vim4.20261014.24), vim4-nanokvm')
