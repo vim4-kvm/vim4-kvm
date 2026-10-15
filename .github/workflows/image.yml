@@ -56,7 +56,7 @@ jobs:
           PIKVM_VERSION: ${{ needs.pikvm.outputs.version }}
         run: |
           sudo apt-get update
-          sudo apt-get install -y xz-utils e2fsprogs dosfstools util-linux fdisk cloud-guest-utils
+          sudo apt-get install -y file xz-utils e2fsprogs dosfstools util-linux fdisk cloud-guest-utils
           python3 tools/ubuntu-image.py fetch
           python3 tools/ubuntu-image.py assemble --components "$VERSION" \
             --pikvm-components "$PIKVM_VERSION" --default-app nanokvm \

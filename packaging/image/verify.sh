@@ -1,6 +1,7 @@
 #!/bin/bash
 # Read-only structural checks; these cannot establish that a board will boot.
 set -euo pipefail
+command -v file >/dev/null || { echo 'Image verification requires the file package' >&2; exit 1; }
 image=$(realpath "${1:?image file required}")
 base=$(realpath "${2:?locked base .xz required}")
 [[ $(id -u) == 0 && -f "$image" && -f "$base" ]]
@@ -74,7 +75,8 @@ done
 for path in "$root/opt/vim4-nanokvm/NanoKVM-Server" "$root"/usr/lib/vim4-kvm/gstreamer-1.0/*.so \
     "$root/opt/vim4-jetkvm/jetkvm" "$root/opt/vim4-onekvm/one-kvm" "$root"/opt/vim4-onekvm/bin/* "$root"/opt/vim4-onekvm/lib/*.so; do
     [[ -f "$path" ]] || continue
-    file "$path" | grep -Eq 'dynamically linked|shared object' || continue
+    description=$(file -- "$path")
+    grep -Eq 'dynamically linked|shared object' <<<"$description" || continue
     binary=${path#"$root"}
     result=$(chroot "$root" /usr/bin/env LD_LIBRARY_PATH=/opt/vim4-onekvm/lib ldd "$binary")
     if grep -q 'not found' <<<"$result"; then echo "$result" >&2; exit 1; fi
