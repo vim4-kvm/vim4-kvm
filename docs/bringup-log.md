@@ -1828,3 +1828,50 @@ force-key-unit uprobe 记录了主动关键帧事件，尚未逐一关联请求�
 `66da64e28df1d7ac6030622ee1a8140e55b1429e16ad1f75e6dd0fa359abf6b0`。
 证据：`logs/uu-remote/hevc-refresh-{build,package-verify,deploy,health,session,
 packets,steady-packets,key-requests,loss,recovery-packets}.log`。
+
+## Screen Sharing 退出后物理桌面未恢复：同步取证（2026-10-15）
+
+用户反馈同一台 Mac 连接普通物理显示器可以自动恢复；当前 VIM4 则需要重新
+协商。板子运行 `5.15.137-vim4kvm`、板级包 `2.5.1+vim4.20261014.24`，
+使用 One-KVM 和 VIM4-4K60 EDID。本轮没有修改或部署生产代码。
+
+首次现场：RX 为 3840×2160、YUV420 10bit、约 59.98Hz，avmute skip=0；
+vfm_cap 为 sm_state=5、fmt_valid=1，接收和交付计数继续增长，发送日志约
+60fps。Mac 在线显示器只有 1920×1080、vendor=`0x756e6b6e`（unkn）、
+model=`0x76697274`（virt），没有 AML TV。`HDMI_HPD=Yes`、
+`HDMI_HPD-Debounced=0` 在恢复前后相同，不能据此判定连接故障。
+
+用户配合重新进入、退出高性能 Screen Sharing，同步记录两端状态。以下为 UTC，
+Mac 原始 unified log 使用 UTC+8：
+
+- 06:02:57：WindowServer 创建 Screen Sharing Virtual Display（ID 341），
+  明确记录 `Disconnecting display 2 due to exclusive display`；板端 RX 失锁。
+- 06:03:09.770：WindowServer 释放 ID 341；DCP 启动 3840×2160@60 链路，
+  startLink 返回成功；WindowServer 插入并处理物理 display 2 的 hotplug in。
+- 06:03:09.969：移除共享虚拟屏后，桌面却切入新的兜底虚拟显示器 ID 342
+  （unkn/virt）。不是共享虚拟屏对象一直没有销毁。
+- 06:03:10：VIM4 自动回到 FSM_SIG_READY，恢复 4K60 采集。与此前一次记录
+  不同，本轮确实有失锁/重锁，不能把“虚拟屏切换不产生 RX 状态变化”泛化。
+- 06:05:38–39：执行 `hpd0 1`、间隔 0.5 秒、`hpd1 1`，Mac 重新枚举 AML TV；
+  用户确认画面恢复。06:00:13 的首次现场也用相同方法恢复，用户同样确认。
+
+两次都没有写 EDID 内容、调用 EDID_UPDATE ioctl 或重启应用/HDMI 服务。
+debug HPD 路径调用 rx_set_cur_hpd，可能条件性复位 EDID 模块，因此不能称为
+完全隔离所有接收端副作用的电气实验。第二次脉冲前 TOP[8] 和 TOP[25] 都是 0，
+按当前源码的 offset 判断不满足 EDID 模块复位条件；未跟踪分支实际执行。
+HPD 操作本身仍导致正常失锁与重锁。
+
+已确认故障边界：物理 HDMI 链路与采集恢复后，Mac 的桌面未重新挂到物理屏；
+无信号/无帧看门狗无法识别此状态。尚未确定普通显示器与 VIM4 的具体差异，
+不能归结为 macOS 必然如此，也不能据 HPD 有效证明 EDID 内容损坏。
+DDC/SCDC 快照不是总线事务或 ACK 记录，不能排除瞬时握手问题。
+Mac 的 HDCP 重试在正常显示期间也存在，当前不能作为本故障的特异性判据。
+
+后续应在相同连接条件下对照普通显示器与 VIM4：优先用已知能恢复的显示器
+EDID 做 A/B，再分离模式/色深/SCDC 能力与 HPD/DDC 时序的影响；每次需完整
+进入和退出共享会话，不能以切 EDID 当场恢复替代回归。未部署周期 HPD，
+未声称自动恢复已修复。实验结束保留原 4K60 EDID 与已恢复桌面。
+
+证据：`logs/hdmi-virtual-20261015/`，含 control-transition.jsonl（180 秒）、
+kernel-transition.txt、mac-transition.txt、mac-display-detail.txt、
+mac-kernel-display.txt 和两次恢复记录。内核日志跟踪用 timeout 正常结束（124）。
