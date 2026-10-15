@@ -32,14 +32,16 @@ try {
   assert.equal(await name.inputValue(), 'vim4-kvm');
   await name.fill('Fixture Mac');
   const form = name.locator('..');
-  await form.getByRole('combobox').click();
+  await form.getByRole('combobox').first().click();
   await page.getByRole('option', { name: 'Mac / macOS', exact: true }).click();
   const reverse = page.locator('#uu-reverse-scroll');
   assert.equal(await reverse.getAttribute('aria-checked'), 'true');
   const saved = page.waitForResponse(r => r.url().endsWith('/api/config/uu-remote') && r.request().method() === 'PATCH');
   await form.getByRole('button').click();
   assert.equal((await saved).status(), 200);
-  assert.deepEqual((await api('config/uu-remote')).config, { enabled: false, system: 'macos', device_name: 'Fixture Mac', reverse_scroll: true });
+  assert.deepEqual((await api('config/uu-remote')).config, { enabled: false, system: 'macos', device_name: 'Fixture Mac', reverse_scroll: true, video_codec: 'auto' });
+  await form.getByRole('combobox').nth(1).click();
+  await page.getByRole('option', { name: 'H.265 / HEVC', exact: true }).click();
   await reverse.click();
   const overridden = page.waitForResponse(r => r.url().endsWith('/api/config/uu-remote') && r.request().method() === 'PATCH');
   await form.getByRole('button').click();
@@ -69,6 +71,7 @@ try {
   await api('auth/login', 'POST', credentials);
   assert.equal((await api('config/uu-remote')).config.system, 'macos');
   assert.equal((await api('config/uu-remote')).config.reverse_scroll, false);
+  assert.equal((await api('config/uu-remote')).config.video_codec, 'h265');
   const restored = await api('config/uu-remote', 'PATCH', { system: 'windows', device_name: ' vim4-kvm ' });
   assert.equal(restored.config.device_name, 'vim4-kvm');
   assert.equal(restored.config.system, 'windows');
@@ -81,7 +84,7 @@ try {
   assert.equal(await reverse.getAttribute('aria-checked'), 'true');
   assert.equal(restored.status.logged_in, false);
   assert.deepEqual(errors, []);
-  console.log('PASS: browser profile save, output controls, validation, scroll defaults and override, restart persistence, system switch');
+  console.log('PASS: browser profile save, output controls, validation, scroll defaults and override, codec selection, restart persistence, system switch');
 } finally {
   await browser.close();
 }

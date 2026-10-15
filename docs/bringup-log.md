@@ -1685,3 +1685,29 @@ deb SHA256：`8e1effe270f0c22cd50510fc62e28d460281e78208752b41e813240e3a3520b5`�
 此前会话发送曾为 34–41fps 后回到 60fps，不能只保留恢复后的数据宣称始终稳定。
 诊断版未修改视频发送策略，因此本次未复现不作为修复结论。证据：
 `logs/uu-remote/latency-session.log`。
+
+### UU H.265 协商与封包修正（2026-10-15）
+
+One-KVM `10247267` 增加自动/H.264/H.265 选择、配置持久化及当前会话编码显示。
+默认自动：按活动视频 SDP 的 payload 列表、Main profile 与其他共享服务限制选择
+H.265 或回退 H.264；固定编码不兼容会拒绝连接。活动 UU 会话固定共享编码器，
+关闭时释放，其他服务的配置验证考虑协商结果。真实 WebRTC SDP 单元回归验证
+同时提供 H.264/H.265 时答案只选 H.265；浏览器验证选择保存及应用重启恢复。
+
+首包 `.8` 通过 603 项 Rust 测试、前端与发布构建、完整包验证，但官方客户端
+上板黑屏：协商 H.265、板端约 60fps，观看端不断 PLI 请求关键帧，没有解码统计。
+检查 rtp 0.17.2 默认 HevcPayloader：只识别类型 19 的 IDR，忽略类型 21 CRA；
+存在四字节起始码时不再识别同一输入内的三字节起始码，且整倍数分片末尾标记有误。
+历史硬件 H.265 20Mbps 码流包含 1 个类型 19、14 个类型 21，不能仅验证 IDR19。
+
+`1a7fd9e5` 改为复用网页已用的 H265Payloader，经 TrackLocalStaticRTP 发送并保留
+UU RTP 帧扩展；H.264 路径保持 sample track。新增 CRA、混合起始码、整倍数
+分片末尾、序号、时间戳与 marker 回归，604 项 Rust 测试及 ARM64 release 通过。
+修正版 `.9` 完整包验证通过并已上板，服务 active、HTTP 200、dpkg -V 无差异、
+UU host online。尚待官方客户端重连确认出画面与解码，不能将封包回归视作验收成功。
+未进行长期运行、其他平台客户端或 H.264/H.265 端到端延迟对比。
+
+制品：`build/packages/2.5.1+vim4.20261015.9/`，deb SHA256：
+`98d8b3dc01fef224de428be62113a8d3dba3659ca3a4c7ea2819c15e9a731bf2`。
+证据：`logs/uu-remote/hevc-{tests,frontend,browser,package-verify,session}.log`、
+`logs/uu-remote/hevc-packet-{tests,release,package-verify,deploy,after-deploy}.log`。
