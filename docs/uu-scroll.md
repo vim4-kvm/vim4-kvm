@@ -44,6 +44,10 @@ logs/uu-scroll/probe > logs/uu-scroll/events.jsonl
 不能把事件数量直接当作物理滚轮格数；比较应同时考虑 delta 单位和事件节奏。
 此测量并不直接记录 CONTROL 数据通道的原始报文。
 
+网页对照可选择第三个按钮“KVM 网页”。每个连接方式分别做慢速和快速两轮，
+每轮开始重新点击对应按钮；程序的 begin 记录用于划分轮次。窗口汇总统一使用
+CG pointDeltaY，避免混合 NSEvent 的行与点单位。
+
 ## 本轮用户对照结果
 
 用户完成两轮后确认“完成”。两轮各收到 10 个事件：
@@ -67,3 +71,45 @@ KVM 后三个间隔较长的事件都只有 -1 point，直连所有事件稳定�
 并限制快速输入时的输出突发。现有普通鼠标描述符不能直接承诺精确像素语义，
 应单独验证慢速单格与快速连续滚动，而不能仅调整一个常数后声称与直连一致。
 当前尚未修改输入换算或部署修复。
+
+## 增加 One-KVM 网页对照
+
+用户要求进一步比较绕过 UU、直接打开 One-KVM 网页的滚轮行为。
+`web/src/views/ConsoleView.vue` 的 handleWheel 对每个 WheelEvent 只保留
+deltaY 的正负，发送 scroll=±1；不保留幅度或 deltaMode。
+`src/hid/datachannel.rs` 把该值直接交给同一个 HID 后端。
+因此网页与 UU 的转换入口不同，但都落到普通 USB 鼠标滚轮报告。
+
+Mac IORegistry 的 One-KVM USB Device 事件服务显示 HIDScrollResolution=589824、
+HIDScrollAccelerationType=HIDMouseScrollAcceleration；其 HIDEventServiceProperties
+中 HIDMouseScrollAcceleration=20480。此处仅记录只读属性，不据此判断描述符错误。
+网页初步样本也为 precise=false，间隔较长时约 1 point、连续输入时明显增大。
+首段包含 51 个事件和双向操作，不能当作严格的 10 格标定。
+
+用户进一步澄清：网页没有 UU 那种突然变得很快的感觉。因此共同的系统加速
+只能解释共有行为，不能解释 UU 独有的突增；不能据此将两条输入链路等同。
+代码中 UU 将一条累计出 N 格的 CONTROL 事件拆成 N 份 wheel=±1 报告，而网页
+每个事件只发一份报告。这是需要隔离的额外突发来源。
+
+后续网页轮 29 个原生事件、总点增量 +1167；UU 轮 27 个原生事件、总点增量
+-7374。两轮节奏、方向及事件数量不同，不用这个比值计算补偿系数。
+USB 抓取第一轮只覆盖网页，捕获 31 份非零滚轮报告；超时发生在 UU 轮之前。
+测试期间另有更新把板端版本从 .14 升到 .43 并重启服务，导致补抓的旧 PID
+失效；再次附加新 PID 时用户滚动已结束，未取得足以验证 UU 突发的 USB 样本。
+
+对 One-KVM 进程使用 strace（即使仅输出鼠标 fd 的 write）造成明显卡顿，
+UU 发送约 23–34fps。用户报告卡顿后立即发送 SIGINT 解除跟踪，确认
+TracerPid=0、服务保持 active；发送恢复约 60fps、mean_send_us 约 767–798，
+sequence_gaps=0，用户确认恢复。测试窗口和临时 LaunchAgent 已关闭。
+后续不能继续用 ptrace 跟踪实时视频进程来判断输入或视频性能。
+
+离线候选修正仅消除人工拆包：保留累计值、方向和余数，将同一 CONTROL
+事件换算得到的 N 格作为一个 wheel=N 报告发送（现有输入限幅保证 |N|≤100，
+可由有符号 8 位 HID 字段承载）。这不等于已解决 Mac 像素与 HID 单位的标定，
+也尚未经过实机手感对照。
+
+候选验证：修改文件 rustfmt 检查通过；ARM64 Ubuntu 环境中 605 项 Rust 库测试、
+release 构建和 15 项 VIM4 Python 助手测试通过。全仓 cargo fmt --check 还报告
+既有的 update/web 等文件格式差异，未为本任务修改这些无关文件。
+测试和构建日志在 `logs/uu-scroll/offline-tests-final.log`、`offline-build.log`。
+测试仅验证总刻度、余数、方向、断线重置及有界输出等软件行为，不替代实机手感验收。

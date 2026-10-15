@@ -5,6 +5,7 @@
 
 | 触发条件 / 错误 | 原因与正确做法 | 验证入口 |
 |---|---|---|
+| 为抓滚轮写入而对正在传视频的 One-KVM 使用 strace，UU 明显卡顿 | 即使按 HID fd 过滤输出，ptrace 仍会干扰多线程视频进程；本轮发送降至约 23–34fps，解除跟踪后恢复 60fps。实时音视频进程优先使用程序内有界计数、低频汇总或独立接收窗口，不能把过滤日志当作低开销采样 | [UU 滚轮调查](docs/uu-scroll.md) |
 | 向 Ubuntu 根目录直接解内核包，动态程序失效 | tar 替换 /lib 符号链接。安装必须带 --keep-directory-symlink，并保留 Stock 启动项 | [内核安装](docs/kernel.md)、tools/kernel-install.sh |
 | sudo 管道混用 heredoc，密码写进配置 | sudo 缓存改变 stdin 消费行为。配置先 scp 再 sudo cp，不与密码共用 stdin | [部署](docs/subsystems/deployment.md) |
 | 串口超时后立刻发下一条命令 | 板上命令可能仍在执行。长任务后台运行并轮询结果，确认 shell 空闲 | tools/uart-run.py |
