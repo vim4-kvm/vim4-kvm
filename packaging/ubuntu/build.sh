@@ -2,7 +2,7 @@
 # Runs only inside the isolated Ubuntu builder. Source mount is read-only.
 set -eu
 rsync -a --exclude=.git --exclude=node_modules --exclude=build --exclude=dist \
-    --exclude=logs --exclude=__pycache__ --exclude=target --exclude=/common_drivers/ --exclude=/NanoKVM-Pro/ \
+    --exclude=logs --exclude=__pycache__ --exclude=target --exclude=/common_drivers/ \
     /src/ /work/
 cd /work
 mkdir -p build

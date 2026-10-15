@@ -2,7 +2,7 @@
 
 2026-10-13：应用仓库切换到 [vim4-kvm/NanoKVM](https://github.com/vim4-kvm/NanoKVM)，
 基于官方 main `d0ff328db81c8d08a9133639ce63d32cba54f172`，工作分支为 `vim4`。
-旧 NanoKVM-Pro 工作树及未完成修改保留，不再参与默认构建。
+旧 NanoKVM-Pro 已退役并从工作区与 GitHub 移除，历史提交以 git bundle 离线归档。
 
 保留 NanoKVM 原有桌面、菜单、账户/角色、MCP、PicoClaw、控制区域、移动端手势、
 共享视频源和 Direct 流控。VIM4 采集、编码、音频、HID、虚拟介质、EDID、

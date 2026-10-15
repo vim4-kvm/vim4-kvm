@@ -36,7 +36,7 @@
 `amvenc.h` 定义 qp_mode=1 使用自定义 QP 范围；插件新增 `i-qp-min`，
 默认 -1 保留厂商行为。`intra-refresh-rows` 默认 0，正值映射行刷新模式及行数。
 两个属性只在启动前设置。应用可通过临时 service 环境变量测试；操作见
-[VIDEO.md](../NanoKVM-Pro/deploy/vim4/VIDEO.md) 和
+[VIDEO.md](../NanoKVM/deploy/vim4/VIDEO.md) 和
 [插件说明](../gst-plugin-venc/VIM4.md)。
 
 停止应用后，按顺序对同一 HDMI 输入运行各 720 帧，设置 12000 Kbps、60fps 预算。

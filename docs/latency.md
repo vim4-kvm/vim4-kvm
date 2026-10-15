@@ -168,7 +168,7 @@ were compiled/syntax checked and exercised in the hardware runs above.
 Development components `1.0.3+vim4.20261013.5` add opt-in timing (disabled
 normally). `VIM4_VIDEO_TIMING=1` records application read/send intervals;
 `GST_DEBUG=vfmcapsrc:4` additionally records kernel delivery to userspace dequeue.
-See NanoKVM-Pro/deploy/vim4/VIDEO.md for clock boundaries. Summarize one session:
+See NanoKVM/deploy/vim4/VIDEO.md for clock boundaries. Summarize one session:
 
 ```sh
 python3 tools/video-timing-summary.py application.log capture.log
