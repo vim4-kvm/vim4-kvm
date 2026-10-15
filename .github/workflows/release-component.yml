@@ -1,0 +1,139 @@
+name: Release component
+
+# Called by each application repository to build, verify and publish one
+# independently updatable component on a native ARM64 runner.
+on:
+  workflow_call:
+    inputs:
+      component:
+        description: nanokvm, jetkvm, onekvm, manager, pikvm or platform
+        required: true
+        type: string
+      repository:
+        description: Workspace directory of the calling repository ("." for this one)
+        required: true
+        type: string
+      publish:
+        description: Publish a GitHub release; otherwise only build and verify
+        required: false
+        type: boolean
+        default: false
+  workflow_dispatch:
+    inputs:
+      component:
+        description: Component set to build
+        required: true
+        type: choice
+        options: [platform, capture, encoder, nanokvm, jetkvm, onekvm, manager, pikvm]
+      publish:
+        description: Publish a GitHub release in this repository
+        required: false
+        type: boolean
+        default: false
+
+permissions:
+  contents: read
+
+concurrency:
+  group: release-${{ inputs.component }}-${{ github.repository }}
+  cancel-in-progress: false
+
+jobs:
+  build:
+    runs-on: ubuntu-24.04-arm
+    timeout-minutes: 120
+    permissions:
+      contents: read
+    outputs:
+      version: ${{ steps.version.outputs.version }}
+    env:
+      COMPONENT: ${{ inputs.component == 'pikvm' && 'pikvm-app' || inputs.component }}
+      SOURCE: ${{ inputs.repository || '.' }}
+    steps:
+      - name: Check out workspace recipes
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          repository: vim4-kvm/vim4-kvm
+          ref: ${{ github.repository == 'vim4-kvm/vim4-kvm' && github.sha || 'main' }}
+          path: workspace
+          fetch-depth: 1
+          persist-credentials: false
+
+      - name: Check out pinned sources
+        working-directory: workspace
+        run: |
+          # The calling repository is built at the commit that triggered the
+          # release; every other source stays at the workspace pin.
+          override=()
+          if [ "$SOURCE" != . ]; then override=(--override "$SOURCE=$GITHUB_SHA"); fi
+          python3 tools/workspace.py bootstrap --locked "${override[@]}"
+          python3 tools/workspace.py status
+
+      - name: Choose version
+        id: version
+        working-directory: workspace
+        run: |
+          # Board updaters compare x.y.z+vim4.YYYYMMDD.N numerically. CI
+          # numbers start at 1000 so they sort after same-day local builds.
+          version="2.5.1+vim4.$(date -u +%Y%m%d).$((1000 + GITHUB_RUN_NUMBER))"
+          echo "version=$version" >> "$GITHUB_OUTPUT"
+          echo "Version: $version"
+
+      - name: Build builder image
+        working-directory: workspace
+        run: python3 tools/ubuntu-build.py environment --component "$COMPONENT"
+
+      - name: Build packages
+        working-directory: workspace
+        run: python3 tools/ubuntu-build.py package --component "$COMPONENT" --version "${{ steps.version.outputs.version }}"
+
+      - name: Verify packages
+        working-directory: workspace
+        run: python3 tools/ubuntu-build.py verify --component "$COMPONENT" --version "${{ steps.version.outputs.version }}"
+
+      - name: Upload build artifact
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: ${{ inputs.component }}-${{ steps.version.outputs.version }}
+          path: workspace/build/packages/${{ steps.version.outputs.version }}
+          if-no-files-found: error
+  publish:
+    if: inputs.publish && github.event_name != 'pull_request'
+    needs: build
+    runs-on: ubuntu-24.04-arm
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4
+        with:
+          name: ${{ inputs.component }}-${{ needs.build.outputs.version }}
+          path: packages
+      - name: Publish release
+        working-directory: packages
+        env:
+          GH_TOKEN: ${{ github.token }}
+          VERSION: ${{ needs.build.outputs.version }}
+          COMPONENT: ${{ inputs.component }}
+        run: |
+          case "$COMPONENT" in
+            nanokvm) owner=NanoKVM ;;
+            jetkvm) owner=kvm ;;
+            onekvm) owner=One-KVM ;;
+            manager) owner=vim4-manager ;;
+            pikvm) owner=kvmd ;;
+            platform) owner=vim4-kvm ;;
+            capture) owner=gst-plugin-vfmcap ;;
+            encoder) owner=gst-plugin-venc ;;
+            *) exit 1 ;;
+          esac
+          test "$GITHUB_REPOSITORY" = "vim4-kvm/$owner"
+          sha256sum -c SHA256SUMS
+          # Board updaters read releases/latest/download/<feed>, so the tag
+          # equals the package version and the release becomes "latest".
+          gh release create "$VERSION" --repo "$GITHUB_REPOSITORY" --target "$GITHUB_SHA" \
+            --title "$VERSION" --notes-file - --latest * <<EOF
+          VIM4 Ubuntu \`$COMPONENT\` component, built and verified in an isolated ARM64 container.
+
+          Sources are listed in \`sources.json\`; install with \`tools/board.py deploy\` or the web updater.
+          Not tested on hardware by CI.
+          EOF

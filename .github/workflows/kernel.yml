@@ -1,0 +1,103 @@
+name: VIM4 kernel package
+on:
+  workflow_call:
+    inputs:
+      repository:
+        type: string
+        required: true
+      publish:
+        type: boolean
+        default: false
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  build:
+    runs-on: ubuntu-24.04-arm
+    timeout-minutes: 120
+    outputs:
+      version: ${{ steps.package.outputs.version }}
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          repository: vim4-kvm/vim4-kvm
+          ref: main
+          path: workspace
+          persist-credentials: false
+      - name: Select source revisions
+        id: sources
+        env:
+          SOURCE: ${{ inputs.repository }}
+        working-directory: workspace
+        run: |
+          python3 - <<'PY'
+          import os, pathlib, tomllib
+          path = pathlib.Path('workspace.toml')
+          text = path.read_text()
+          lock = tomllib.loads(text)
+          driver = next(r for r in lock['repos'] if r['name'] == 'common_drivers')
+          kernel = lock['kernel']
+          source = os.environ['SOURCE']
+          if source not in ('', 'linux', 'common_drivers'):
+              raise SystemExit('Unsupported source repository')
+          if source:
+              selected = kernel if source == 'linux' else driver
+              previous = selected['revision']
+              selected['revision'] = os.environ['GITHUB_SHA']
+              text = text.replace(previous, selected['revision'])
+          path.write_text(text)
+          with open(os.environ['GITHUB_OUTPUT'], 'a') as output:
+              output.write(f"kernel={kernel['revision']}\ndrivers={driver['revision']}\n")
+          PY
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          repository: vim4-kvm/linux
+          ref: ${{ steps.sources.outputs.kernel }}
+          path: kernel
+          persist-credentials: false
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          repository: vim4-kvm/common_drivers
+          ref: ${{ steps.sources.outputs.drivers }}
+          path: kernel/common_drivers
+          persist-credentials: false
+      - name: Install kernel build dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y gcc-12 make bc bison flex libssl-dev libelf-dev libncurses-dev dwarves rsync kmod cpio
+      - name: Build and verify package
+        id: package
+        env:
+          JOBS: '4'
+        run: |
+          cp workspace/packaging/kernel/vim4.config kernel/.config
+          bash workspace/packaging/kernel/package.sh kernel packages
+          cd packages
+          sha256sum -c ./*.sha256
+          test "$(dpkg-deb -f ./*.deb Architecture)" = arm64
+          echo "version=$(dpkg-deb -f ./*.deb Version)" >> "$GITHUB_OUTPUT"
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: kernel
+          path: packages/
+          if-no-files-found: error
+  publish:
+    if: inputs.publish && github.event_name != 'pull_request'
+    needs: build
+    runs-on: ubuntu-24.04-arm
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4
+        with:
+          name: kernel
+          path: packages
+      - name: Publish kernel package
+        working-directory: packages
+        env:
+          GH_TOKEN: ${{ github.token }}
+          VERSION: ${{ needs.build.outputs.version }}
+        run: |
+          sha256sum -c ./*.sha256
+          gh release create "$VERSION" --repo "$GITHUB_REPOSITORY" --target "$GITHUB_SHA" \
+            --title "$VERSION" --notes 'VIM4 kernel, modules and device trees. Built in CI; requires offline integration and boot testing.' *

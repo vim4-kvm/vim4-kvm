@@ -9,6 +9,20 @@ import sys
 
 ROOT = Path(__file__).resolve().parent.parent
 IMAGE = 'vim4-kvm-builder:ubuntu24.04'
+# Component sets and their source repositories. 'all' is the established
+# seven-package set used for images; the others are independent releases.
+REPOS = {
+    'all': ('.', 'NanoKVM', 'gst-plugin-vfmcap', 'gst-plugin-venc', 'kvm', 'One-KVM', 'vim4-manager'),
+    'platform': ('.', 'gst-plugin-vfmcap', 'gst-plugin-venc'),
+    'capture': ('.', 'gst-plugin-vfmcap'),
+    'encoder': ('.', 'gst-plugin-venc'),
+    'nanokvm': ('.', 'NanoKVM'),
+    'jetkvm': ('.', 'kvm'),
+    'onekvm': ('.', 'One-KVM'),
+    'manager': ('.', 'vim4-manager'),
+    'pikvm': ('.', 'kvmd', 'ustreamer', 'vim4-manager'),
+    'pikvm-app': ('.', 'kvmd', 'ustreamer'),
+}
 
 
 def output(*args):
@@ -20,17 +34,19 @@ def main():
     parser.add_argument('command', choices=['environment', 'package', 'verify'])
     parser.add_argument('--version', help='Required for package/verify; explicit component package version')
     parser.add_argument('--allow-dirty', action='store_true', help='Allow development sources, recording dirty state')
-    parser.add_argument('--component', choices=['all', 'pikvm'], default='all',
-                        help='Build the established component set or the PiKVM integration')
+    parser.add_argument('--component', choices=list(REPOS), default='all',
+                        help='Build the established component set, the platform packages or one application')
     args = parser.parse_args()
-    image = 'vim4-pikvm-builder:ubuntu24.04' if args.component == 'pikvm' else IMAGE
-    recipes = 'packaging/ubuntu/pikvm' if args.component == 'pikvm' else 'packaging/ubuntu'
+    image = 'vim4-pikvm-builder:ubuntu24.04' if args.component in ('pikvm', 'pikvm-app') else IMAGE
+    recipes = 'packaging/ubuntu/pikvm' if args.component in ('pikvm', 'pikvm-app') else 'packaging/ubuntu'
     if args.command != 'environment' and not args.version:
         parser.error('package/verify requires --version; no implicit development version is selected')
     if args.command == 'environment':
-        subprocess.run(['docker', 'build', '--platform', 'linux/arm64', '-t', image,
-                        '-f', str(ROOT / recipes / 'Dockerfile'),
-                        str(ROOT / 'packaging/ubuntu')], check=True)
+        # The PiKVM builder extends the base builder image.
+        for tag, dockerfile in ([(IMAGE, 'packaging/ubuntu/Dockerfile')] if image == IMAGE else
+                                [(IMAGE, 'packaging/ubuntu/Dockerfile'), (image, recipes + '/Dockerfile')]):
+            subprocess.run(['docker', 'build', '--platform', 'linux/arm64', '-t', tag,
+                            '-f', str(ROOT / dockerfile), str(ROOT / 'packaging/ubuntu')], check=True)
         return
     if Path(args.version).name != args.version or args.version in ('.', '..'):
         raise ValueError('Version must not contain path components')
@@ -39,16 +55,14 @@ def main():
         metadata = json.loads((destination / 'sources.json').read_text())
         if metadata.get('component', 'all') != args.component:
             raise ValueError('Verification component does not match package metadata')
-        subprocess.run(['docker', 'run', '--rm', '--platform', 'linux/arm64',
+        subprocess.run(['docker', 'run', '--rm', '--platform', 'linux/arm64', '-e', f'COMPONENT={args.component}',
                         '--mount', f'type=bind,src={ROOT / "packaging/ubuntu"},dst=/checks,readonly',
                         '--mount', f'type=bind,src={destination},dst=/packages,readonly',
                         metadata['builder'], 'sh',
-                        '/checks/pikvm/verify.sh' if args.component == 'pikvm' else '/checks/verify.sh'], check=True)
+                        '/checks/pikvm/verify.sh' if args.component in ('pikvm', 'pikvm-app') else '/checks/verify.sh'], check=True)
         return
     sources = {}
-    repos = ('.', 'kvmd', 'ustreamer', 'vim4-manager') if args.component == 'pikvm' else (
-        '.', 'NanoKVM', 'gst-plugin-vfmcap', 'gst-plugin-venc', 'kvm', 'One-KVM', 'vim4-manager')
-    for name in repos:
+    for name in REPOS[args.component]:
         path = ROOT / name
         if Path(output('git', '-C', str(path), 'rev-parse', '--show-toplevel')).resolve() != path.resolve():
             raise ValueError(f'{name} is not an independent repository')
@@ -79,7 +93,9 @@ def main():
                     '--mount', f'type=bind,src={ROOT},dst=/src,readonly',
                     '--mount', f'type=bind,src={destination},dst=/out',
                     '-e', f'PACKAGE_VERSION={args.version}', '-e', f'SOURCE_DATE_EPOCH={epoch}',
-                    image_id, 'sh', '/src/' + recipes + '/build.sh'], check=True)
+                    '-e', f'COMPONENT={args.component}',
+                    image_id, 'sh', '-c', 'cp "$1" /tmp/vim4-build.sh && exec sh /tmp/vim4-build.sh',
+                    'build', '/src/' + recipes + '/build.sh'], check=True)
     print(f'Packages: {destination}')
 
 

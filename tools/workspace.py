@@ -52,6 +52,10 @@ def bootstrap(repos, locked):
             continue
         run(['git', 'clone', '--branch', repo['branch'], '--single-branch', repo['url'], str(path)])
         if locked:
+            # Release tags and pull requests may point outside the branch.
+            if subprocess.run(['git', '-C', str(path), 'cat-file', '-e', repo['revision'] + '^{commit}'],
+                              capture_output=True).returncode:
+                run(['git', '-C', str(path), 'fetch', '--depth=1', 'origin', repo['revision']])
             # A failed checkout leaves the clone for inspection; never delete it.
             run(['git', '-C', str(path), 'checkout', '--detach', repo['revision']])
 
@@ -137,6 +141,8 @@ def main():
     commands = parser.add_subparsers(dest='command', required=True)
     init = commands.add_parser('bootstrap', help='Clone missing application/driver repos; preserve existing ones')
     init.add_argument('--locked', action='store_true', help='Detach new clones at recorded revisions')
+    init.add_argument('--override', action='append', default=[], metavar='NAME=REVISION',
+                      help='With --locked, use REVISION for NAME instead of the recorded one (release builds)')
     commands.add_parser('status', help='Show branches, source revisions and dirty state')
     compile_cmd = commands.add_parser('build', help='Build only; never deploy or restart services')
     compile_cmd.add_argument('target', choices=['frontend', 'capture', 'encoder', 'server', 'jetkvm', 'onekvm', 'manager', 'kernel', 'all'])
@@ -146,7 +152,16 @@ def main():
     args = parser.parse_args()
     config = tomllib.loads((ROOT / 'workspace.toml').read_text())
     if args.command == 'bootstrap':
-        bootstrap(config['repos'], args.locked)
+        repos = config['repos']
+        for override in args.override:
+            name, _, revision = override.partition('=')
+            if not args.locked or len(revision) != 40 or not all(c in '0123456789abcdef' for c in revision):
+                parser.error('--override requires --locked and a full commit hash')
+            matches = [repo for repo in repos if repo['name'] == name]
+            if not matches:
+                parser.error(f'Unknown repository: {name}')
+            repos = [dict(repo, revision=revision) if repo['name'] == name else repo for repo in repos]
+        bootstrap(repos, args.locked)
     elif args.command == 'status':
         status(config['repos'])
         print('Kernel: external Linux checkout; expected ' + config['kernel']['revision'])

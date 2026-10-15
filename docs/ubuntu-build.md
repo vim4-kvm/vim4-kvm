@@ -92,6 +92,36 @@ rootflags=data=ordered，根分区和 /boot 的 commit 改为 5 秒。Stock 启�
 SOURCE_DATE_EPOCH 来自主仓库提交；当前尚未证明所有工具链产物逐字节可复现。
 默认发布前还需运行 workspace.py bootstrap --locked，并先推送清单引用的组件提交。
 
+## 单独发布与网页更新
+
+每个应用在各自仓库发布，板子从对应仓库的 `releases/latest/download` 读取更新：
+
+| 组件 | 仓库 | 包 | 板上更新入口 |
+|---|---|---|---|
+| nanokvm | NanoKVM | vim4-nanokvm | NanoKVM 设置 → 更新（`nanokvm_pro_latest.json` 与 tar.gz） |
+| jetkvm | kvm | vim4-jetkvm | JetKVM 设置 → 更新（`releases`） |
+| onekvm | One-KVM | vim4-onekvm | One-KVM 设置 → 更新（`onekvm-*.json`） |
+| pikvm-app | kvmd | vim4-pikvm | 管理面板 → 更新（`vim4-pikvm-latest.json`） |
+| manager | vim4-manager | vim4-manager | 管理面板 → 更新（`vim4-manager-latest.json`） |
+| platform | vim4-kvm | 板级、采集、编码三包 | 组件部署或镜像，不做网页更新 |
+| capture | gst-plugin-vfmcap | vim4-vfmcap | 组件部署或镜像 |
+| encoder | gst-plugin-venc | vim4-amlvenc | 组件部署或镜像 |
+
+`--component` 只构建并验证所选组件，`packaging/ubuntu/feeds.py` 按各应用原有更新协议生成清单，
+`check-feeds.py` 校验清单哈希、大小与下载地址。五个更新入口都只允许替换自身一个包：
+APT 预演需要新增或升级平台包时拒绝安装，先部署平台组件。
+
+镜像仍用 `--component pikvm` 同时构建 PiKVM 与管理器；独立发布使用 `pikvm-app`，
+避免把另一个仓库尚未发布的管理器版本混入更新源。
+
+CI 使用主仓库的可复用工作流 `.github/workflows/release-component.yml`，在 GitHub
+`ubuntu-24.04-arm` 原生运行。各仓库的 `vim4-release.yml` 在分支推送、PR 与普通手动运行时只构建验证；
+推送 `release-*` 标签或手动勾选 publish 才发布。发布时其他仓库取 workspace.toml 固定版本，
+本仓库取触发提交。版本为 `2.5.1+vim4.UTC日期.(1000+运行序号)`，排在同日本地构建之后，
+Release 标签与包版本相同并标为 latest。uStreamer 验证完整 PiKVM 集成后独立发布源码；
+其二进制随 kvmd 的 PiKVM 包发布。linux/common_drivers 共用 `kernel.yml` 构建内核 deb。
+CI 不访问板子，发布不代表实机回归通过。
+
 ## PiKVM 组件
 
 PiKVM 复用已部署的 `.24` 或更新的板级、VFM 与编码组件，单独构建两个包：

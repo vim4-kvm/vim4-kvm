@@ -51,6 +51,17 @@ class WorkspaceTests(unittest.TestCase):
             workspace.bootstrap([self.repo, other], locked=False)
         self.assertFalse((self.root / 'child').exists())
 
+    def test_locked_clone_fetches_release_commit_outside_default_branch(self):
+        self.git('-C', str(self.source), 'checkout', '-b', 'release')
+        (self.source / 'file').write_text('release candidate')
+        self.git('-C', str(self.source), 'commit', '-am', 'release candidate')
+        revision = workspace.git(self.source, 'rev-parse', 'HEAD')
+        self.git('-C', str(self.source), 'checkout', 'main')
+        # file:// uses the transport protocol rather than copying every local object.
+        workspace.bootstrap([dict(self.repo, url=self.source.as_uri(), revision=revision)], locked=True)
+        self.assertEqual(workspace.git(self.root / 'child', 'rev-parse', 'HEAD'), revision)
+        self.assertEqual((self.root / 'child/file').read_text(), 'release candidate')
+
     def test_symlink_and_revision_mismatch_preserved(self):
         child = self.root / 'child'
         child.symlink_to('missing')

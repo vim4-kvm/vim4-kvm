@@ -52,11 +52,11 @@ def package(name, version, output, populate, depends):
         if configs:
             write(stage, 'DEBIAN/conffiles', '\n'.join(configs) + '\n')
         copy('/out/sources.json', stage, f'usr/share/doc/{name}/sources.json')
-        if name == 'vim4-onekvm':
-            sums = [f'{hashlib.md5(path.read_bytes()).hexdigest()}  {path.relative_to(stage)}'
-                    for path in sorted(stage.rglob('*'))
-                    if path.is_file() and path.relative_to(stage).parts[0] != 'DEBIAN']
-            write(stage, 'DEBIAN/md5sums', '\n'.join(sums) + '\n')
+        # dpkg --verify needs checksums for every independently updated app.
+        sums = [f'{hashlib.md5(path.read_bytes()).hexdigest()}  {path.relative_to(stage)}'
+                for path in sorted(stage.rglob('*'))
+                if path.is_file() and not path.is_symlink() and path.relative_to(stage).parts[0] != 'DEBIAN']
+        write(stage, 'DEBIAN/md5sums', '\n'.join(sums) + '\n')
         # dpkg-deb clamps archive timestamps to SOURCE_DATE_EPOCH.
         subprocess.run(['dpkg-deb', '--root-owner-group', '--build', str(stage),
                         str(output / f'{name}_{version}_arm64.deb')], check=True)
@@ -248,53 +248,54 @@ fi
 ''', 0o755)
 
 
-def main():
-    version, output = sys.argv[1], Path(sys.argv[2])
-    subprocess.run(['dpkg', '--validate-version', version], check=True)
-    gst = 'libc6 (>= 2.38), libglib2.0-0t64, libgstreamer1.0-0 (>= 1.24), libgstreamer-plugins-base1.0-0 (>= 1.24)'
-    for name, populate, depends in [
+GST = 'libc6 (>= 2.38), libglib2.0-0t64, libgstreamer1.0-0 (>= 1.24), libgstreamer-plugins-base1.0-0 (>= 1.24)'
+# Applications state lower bounds only: their web updaters replace one package
+# and refuse any plan that would also upgrade the platform.
+PLATFORM = ('vim4-kvm-board (>= 1.0.3+vim4.20261013.18), vim4-vfmcap, '
+            'vim4-amlvenc (>= 1.0.3+vim4.20261013.18)')
+PACKAGES = {
+    'platform': [
         ('vim4-kvm-board', board, 'libc6 (>= 2.38), python3, systemd, udev, kmod, psmisc, iproute2, alsa-utils, hdmiin-demo (= 0.8-202305~noble)'),
-        ('vim4-vfmcap', capture, gst),
-        ('vim4-amlvenc', encoder, gst + ', libamvenc (= 0.2-202406~noble), libge2d (= 0.4-202406), gst-aml-drmbufferpool-plugins (= 0.2-202311)'),
-        ('vim4-nanokvm', application, gst + ', libopus0, sudo, python3, dosfstools, curl, ca-certificates, picocom, network-manager, avahi-daemon, openssh-server, chrony, alsa-utils, gstreamer1.0-alsa, gstreamer1.0-plugins-base, gstreamer1.0-plugins-good, gstreamer1.0-plugins-bad, gstreamer1.0-libav, vim4-kvm-board (>= 1.0.3+vim4.20261013.18), vim4-vfmcap, vim4-amlvenc (>= 1.0.3+vim4.20261013.18)'),
+        ('vim4-vfmcap', capture, GST),
+        ('vim4-amlvenc', encoder, GST + ', libamvenc (= 0.2-202406~noble), libge2d (= 0.4-202406), gst-aml-drmbufferpool-plugins (= 0.2-202311)')],
+    'nanokvm': [
+        ('vim4-nanokvm', application, GST + ', libopus0, sudo, python3, dosfstools, curl, ca-certificates, picocom, network-manager, avahi-daemon, openssh-server, chrony, alsa-utils, gstreamer1.0-alsa, gstreamer1.0-plugins-base, gstreamer1.0-plugins-good, gstreamer1.0-plugins-bad, gstreamer1.0-libav, ' + PLATFORM)],
+    'jetkvm': [
         ('vim4-jetkvm', jetkvm, 'libc6 (>= 2.38), libglib2.0-0t64, libgstreamer1.0-0 (>= 1.24), '
-         'libgstreamer-plugins-base1.0-0 (>= 1.24), gstreamer1.0-plugins-bad, '
-         # Fixed lower bounds: the gadget with media/microphone functions and the
-         # encoder's framerate and forced-keyframe properties. The JetKVM web
-         # updater replaces this one package by itself.
-         'vim4-kvm-board (>= 1.0.3+vim4.20261013.18), vim4-vfmcap, vim4-amlvenc (>= 1.0.3+vim4.20261013.18), '
-         # The NanoKVM package owns the shared HID udev rule. Lower bounds only:
-         # the NanoKVM web updater replaces that one package by itself.
-         'vim4-nanokvm (>= 1.0.3+vim4.20261013.18), sudo, python3, network-manager, avahi-daemon'),
-        ('vim4-onekvm', onekvm, gst + ', libavcodec60, libavutil58, libdrm2, libyuv0, '
+         'libgstreamer-plugins-base1.0-0 (>= 1.24), gstreamer1.0-plugins-bad, ' + PLATFORM + ', '
+         # The NanoKVM package owns the shared HID udev rule.
+         'vim4-nanokvm (>= 1.0.3+vim4.20261013.18), sudo, python3, network-manager, avahi-daemon')],
+    'onekvm': [
+        ('vim4-onekvm', onekvm, GST + ', libavcodec60, libavutil58, libdrm2, libyuv0, '
          'libasound2t64, libudev1, libdbus-1-3, libopus0, libstdc++6, '
          'gstreamer1.0-plugins-good, gstreamer1.0-plugins-bad, gstreamer-aml (= 0.6-202406), sudo, python3, libcap2-bin, '
          'libjson-c5, libuv1t64, libssl3t64, libcap2, zlib1g, libwebsockets-evlib-uv, '
-         'network-manager, dnsmasq-base, '
-         'vim4-kvm-board (>= 1.0.3+vim4.20261013.18), vim4-vfmcap, '
-         'vim4-amlvenc (>= 1.0.3+vim4.20261013.18), vim4-nanokvm (>= 1.0.3+vim4.20261013.18), '
-         'vim4-manager (>= 2.5.1+vim4.20261014.4)'),
-        ('vim4-manager', manager, 'libc6 (>= 2.38), python3, sudo, systemd, vim4-nanokvm (>= 1.0.3+vim4.20261013.18)')]:
+         'network-manager, dnsmasq-base, ' + PLATFORM + ', vim4-nanokvm (>= 1.0.3+vim4.20261013.18), '
+         'vim4-manager (>= 2.5.1+vim4.20261014.4)')],
+    'manager': [
+        ('vim4-manager', manager, 'libc6 (>= 2.38), python3, sudo, systemd, vim4-nanokvm (>= 1.0.3+vim4.20261013.18)')],
+}
+PACKAGES['all'] = [entry for name in ('platform', 'nanokvm', 'jetkvm', 'onekvm', 'manager') for entry in PACKAGES[name]]
+PACKAGES['capture'] = [PACKAGES['platform'][1]]
+PACKAGES['encoder'] = [PACKAGES['platform'][2]]
+
+
+def main():
+    version, output = sys.argv[1], Path(sys.argv[2])
+    component = sys.argv[3] if len(sys.argv) > 3 else 'all'
+    subprocess.run(['dpkg', '--validate-version', version], check=True)
+    for name, populate, depends in PACKAGES[component]:
         package(name, version, output, populate, depends)
     shutil.copy('/opt/build-inputs/ubuntu-packages.txt', output)
     shutil.copy('/opt/build-inputs/downloads.lock.json', output)
-    shutil.copy('/opt/build-inputs/extensions.lock.json', output)
-    package_path = output / f'vim4-onekvm_{version}_arm64.deb'
-    artifact = {'url': f'https://github.com/vim4-kvm/vim4-kvm/releases/download/{version}/{package_path.name}',
-                'sha256': hashlib.sha256(package_path.read_bytes()).hexdigest(),
-                'size': package_path.stat().st_size}
-    (output / 'onekvm-channels.json').write_text(json.dumps({'stable': version, 'beta': version}) + '\n')
-    (output / 'onekvm-releases.json').write_text(json.dumps({'releases': [{
-        'version': version, 'channel': 'stable', 'published_at': '',
-        'notes': ['VIM4 Ubuntu application package'],
-        'artifacts': {'vim4-ubuntu-arm64': artifact},
-    }]}, indent=2) + '\n')
+    if component in ('all', 'onekvm'):
+        shutil.copy('/opt/build-inputs/extensions.lock.json', output)
+    subprocess.run([sys.executable, str(ROOT / 'packaging/ubuntu/feeds.py'), str(output), version], check=True)
     checksums = []
     for path in sorted(output.iterdir()):
         if path.is_file() and path.name != 'SHA256SUMS':
             checksums.append(hashlib.sha256(path.read_bytes()).hexdigest() + '  ' + path.name)
     (output / 'SHA256SUMS').write_text('\n'.join(checksums) + '\n')
-
 
 if __name__ == '__main__':
     main()

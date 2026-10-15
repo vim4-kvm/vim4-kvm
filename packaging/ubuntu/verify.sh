@@ -5,23 +5,37 @@ test -f /.dockerenv
 test ! -d /run/systemd/system
 cd /packages
 sha256sum -c SHA256SUMS
+case "${COMPONENT:-all}" in
+    all) expected='vim4-kvm-board vim4-vfmcap vim4-amlvenc vim4-nanokvm vim4-jetkvm vim4-onekvm vim4-manager' ;;
+    platform) expected='vim4-kvm-board vim4-vfmcap vim4-amlvenc' ;;
+    capture) expected='vim4-vfmcap' ;;
+    encoder) expected='vim4-amlvenc' ;;
+    nanokvm|jetkvm|onekvm) expected="vim4-$COMPONENT" ;;
+    manager) expected='vim4-manager' ;;
+    *) echo "Unknown component: $COMPONENT" >&2; exit 1 ;;
+esac
+for name in $expected; do test -f "./${name}_"*_arm64.deb; done
+has() { case " $expected " in *" $1 "*) return 0 ;; *) return 1 ;; esac; }
 mkdir -p /tmp/package-check/root /tmp/package-check/control
 for package in ./*.deb; do
     test "$(dpkg-deb -f "$package" Architecture)" = arm64
     dpkg-deb -x "$package" /tmp/package-check/root
 done
 test ! -e /tmp/package-check/root/usr/local
-python3 /checks/check-audio-startup.py /tmp/package-check/root
-dpkg-deb -f ./vim4-kvm-board_*.deb Depends | grep -qw alsa-utils
-for binary in /tmp/package-check/root/usr/sbin/usb-pd-init \
-    /tmp/package-check/root/opt/vim4-nanokvm/NanoKVM-Server \
-    /tmp/package-check/root/opt/vim4-jetkvm/jetkvm \
-    /tmp/package-check/root/opt/vim4-onekvm/one-kvm \
-    /tmp/package-check/root/opt/vim4-onekvm/lib/libgst-aml-dma-allocator.so \
-    /tmp/package-check/root/opt/vim4-manager/vim4-manager \
-    /tmp/package-check/root/usr/lib/aarch64-linux-gnu/gstreamer-1.0/libgstvfmcap.so \
-    /tmp/package-check/root/usr/lib/vim4-kvm/gstreamer-1.0/libgstamlvenc.so \
-    /tmp/package-check/root/usr/lib/vim4-kvm/gstreamer-1.0/libgstvim4jpegenc.so; do
+if has vim4-kvm-board && has vim4-nanokvm; then
+    python3 /checks/check-audio-startup.py /tmp/package-check/root
+fi
+if has vim4-kvm-board; then dpkg-deb -f ./vim4-kvm-board_*.deb Depends | grep -qw alsa-utils; fi
+binaries=''
+has vim4-kvm-board && binaries="$binaries usr/sbin/usb-pd-init"
+has vim4-vfmcap && binaries="$binaries usr/lib/aarch64-linux-gnu/gstreamer-1.0/libgstvfmcap.so"
+has vim4-amlvenc && binaries="$binaries usr/lib/vim4-kvm/gstreamer-1.0/libgstamlvenc.so usr/lib/vim4-kvm/gstreamer-1.0/libgstvim4jpegenc.so"
+has vim4-nanokvm && binaries="$binaries opt/vim4-nanokvm/NanoKVM-Server"
+has vim4-jetkvm && binaries="$binaries opt/vim4-jetkvm/jetkvm"
+has vim4-onekvm && binaries="$binaries opt/vim4-onekvm/one-kvm opt/vim4-onekvm/lib/libgst-aml-dma-allocator.so"
+has vim4-manager && binaries="$binaries opt/vim4-manager/vim4-manager"
+for binary in $binaries; do
+    binary=/tmp/package-check/root/$binary
     readelf -h "$binary" | grep -q 'Machine:.*AArch64'
     ldd "$binary" > /tmp/package-check/ldd.txt
     if grep -q 'not found' /tmp/package-check/ldd.txt; then
@@ -29,19 +43,25 @@ for binary in /tmp/package-check/root/usr/sbin/usb-pd-init \
         exit 1
     fi
 done
-for file in /tmp/package-check/root/etc/sudoers.d/*; do visudo -cf "$file"; done
+if [ -d /tmp/package-check/root/etc/sudoers.d ]; then
+    for file in /tmp/package-check/root/etc/sudoers.d/*; do visudo -cf "$file"; done
+    mkdir -p /etc/sudoers.d
+    cp -a /tmp/package-check/root/etc/sudoers.d/. /etc/sudoers.d/
+fi
+if [ -d /tmp/package-check/root/usr/libexec ]; then
+    mkdir -p /usr/libexec
+    cp -a /tmp/package-check/root/usr/libexec/. /usr/libexec/
+fi
+useradd --user-group khadas
+if has vim4-nanokvm; then
 test -s /tmp/package-check/root/opt/vim4-nanokvm/web/index.html
 test "$(cat /tmp/package-check/root/opt/vim4-nanokvm/version)" = "$(dpkg-deb -f ./vim4-nanokvm_*.deb Version)"
 test -x /tmp/package-check/root/usr/libexec/vim4-picoclaw
 test ! -e /tmp/package-check/root/opt/vim4-nanokvm/assistant
 test -d /tmp/package-check/root/opt/vim4-nanokvm/picoclaw/skills/kvm-control
-useradd --user-group khadas
 dpkg-deb -e ./vim4-nanokvm_*.deb /tmp/package-check/control
 mkdir -p /usr/share/vim4-nanokvm
 cp /tmp/package-check/root/usr/share/vim4-nanokvm/server.yaml /usr/share/vim4-nanokvm/
-mkdir -p /usr/libexec
-cp -a /tmp/package-check/root/usr/libexec/. /usr/libexec/
-cp -a /tmp/package-check/root/etc/sudoers.d/. /etc/sudoers.d/
 sh /tmp/package-check/control/postinst configure
 test "$(stat -c %U:%a /etc/kvm/server.yaml)" = khadas:600
 test "$(stat -c %U:%a /var/lib/vim4-kvm/picoclaw)" = khadas:700
@@ -81,6 +101,8 @@ if sh /tmp/package-check/control/postinst configure; then
     exit 1
 fi
 cp -a /tmp/package-check/root/etc/sudoers.d/vim4-media /etc/sudoers.d/
+fi
+if has vim4-jetkvm; then
 # Installing the JetKVM package must not change which application boots.
 dpkg-deb -e ./vim4-jetkvm_*.deb /tmp/package-check/jetkvm-control
 sh /tmp/package-check/jetkvm-control/postinst configure
@@ -92,6 +114,8 @@ if sh /tmp/package-check/jetkvm-control/postinst configure; then
 fi
 cp -a /tmp/package-check/root/etc/sudoers.d/vim4-jetkvm /etc/sudoers.d/
 grep -qx 'Conflicts=nanokvm.service' /tmp/package-check/root/usr/lib/systemd/system/vim4-kvm.service
+fi
+if has vim4-onekvm; then
 dpkg-deb -e ./vim4-onekvm_*.deb /tmp/package-check/onekvm-control
 mkdir -p /opt/vim4-onekvm/lib
 cp /tmp/package-check/root/opt/vim4-onekvm/lib/libgst-aml-dma-allocator.so /opt/vim4-onekvm/lib/
@@ -125,6 +149,8 @@ if sh /tmp/package-check/onekvm-control/postinst configure; then
 fi
 cp -a /tmp/package-check/root/etc/sudoers.d/vim4-onekvm /etc/sudoers.d/
 grep -qx 'Conflicts=nanokvm.service vim4-kvm.service' /tmp/package-check/root/usr/lib/systemd/system/one-kvm.service
+fi
+if has vim4-manager; then
 dpkg-deb -e ./vim4-manager_*.deb /tmp/package-check/manager-control
 sh /tmp/package-check/manager-control/postinst configure
 truncate -s 0 /etc/sudoers.d/vim4-manager-helper
@@ -132,5 +158,7 @@ if sh /tmp/package-check/manager-control/postinst configure; then
     echo 'Empty manager sudoers file incorrectly accepted' >&2
     exit 1
 fi
-echo 'PASS: checksums, ARM64 ELF, libraries, sudoers, config preservation, damaged-file rejection'
-python3 /checks/check-onekvm-update.py
+fi
+python3 /checks/check-feeds.py /packages
+echo "PASS ($expected): checksums, ARM64 ELF, libraries, sudoers, config preservation, damaged-file rejection, update feeds"
+if has vim4-onekvm; then python3 /checks/check-onekvm-update.py; fi

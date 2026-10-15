@@ -19,7 +19,7 @@ AGENTS.md、CLAUDE.md、LESSONS.md 直接随主仓库版本管理，不再生成
 
 ## 初始化入口
 
-需要 Python 3.11+、Git 和相应私有仓库访问权限：
+需要 Python 3.11+ 和 Git；源码仓库均可公开克隆：
 
 ```sh
 git clone https://github.com/vim4-kvm/vim4-kvm.git

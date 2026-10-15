@@ -77,10 +77,12 @@ def main():
                'vim4-kvm-board (>= 2.5.1+vim4.20261014.24), vim4-vfmcap (>= 2.5.1+vim4.20261014.24), '
                'vim4-amlvenc (>= 2.5.1+vim4.20261014.24), vim4-nanokvm')
     package('vim4-pikvm', version, output, pikvm, depends)
-    package('vim4-manager', version, output, manager, 'libc6 (>= 2.38), python3, sudo, systemd, vim4-nanokvm')
+    if len(sys.argv) < 4 or sys.argv[3] == 'pikvm':
+        package('vim4-manager', version, output, manager, 'libc6 (>= 2.38), python3, sudo, systemd, vim4-nanokvm')
     for name in ('ubuntu-packages.txt', 'pikvm-downloads.lock.json', 'bootstrap.lock'):
         shutil.copy('/opt/build-inputs/' + name, output)
     shutil.copy(ROOT / 'packaging/ubuntu/pikvm/requirements.lock', output)
+    subprocess.run([sys.executable, str(ROOT / 'packaging/ubuntu/feeds.py'), str(output), version], check=True)
     entries = [f'{hashlib.sha256(path.read_bytes()).hexdigest()}  {path.name}'
                for path in sorted(output.iterdir()) if path.is_file() and path.name != 'SHA256SUMS']
     (output / 'SHA256SUMS').write_text('\n'.join(entries) + '\n')

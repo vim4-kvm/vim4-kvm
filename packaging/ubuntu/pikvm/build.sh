@@ -21,5 +21,7 @@ python3 -m unittest discover -s deploy/vim4 -p 'test_*.py'
 visudo -cf deploy/vim4/vim4-pikvm-media.sudoers
 cd /work
 mkdir -p build
-python3 tools/workspace.py build manager
-python3 packaging/ubuntu/pikvm/package.py "$PACKAGE_VERSION" /out
+if [ "${COMPONENT:-pikvm}" = pikvm ]; then
+    python3 tools/workspace.py build manager
+fi
+python3 packaging/ubuntu/pikvm/package.py "$PACKAGE_VERSION" /out "${COMPONENT:-pikvm}"

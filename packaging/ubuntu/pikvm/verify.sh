@@ -25,3 +25,4 @@ mkdir -p /run/kvmd
 /usr/bin/python3 /checks/pikvm/check-janus.py
 test -s /usr/share/kvmd/web/kvm/index.html
 test ! -e /etc/systemd/system/multi-user.target.wants/vim4-pikvm.service
+python3 /checks/check-feeds.py /packages

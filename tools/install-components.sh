@@ -17,8 +17,14 @@ component=$(python3 -c 'import json; print(json.load(open("sources.json")).get("
 case "$component" in
     all) ;;
     pikvm) components=(vim4-pikvm vim4-manager) ;;
+    pikvm-app) components=(vim4-pikvm) ;;
     manager) components=(vim4-manager) ;;
     onekvm) components=(vim4-onekvm) ;;
+    nanokvm) components=(vim4-nanokvm) ;;
+    jetkvm) components=(vim4-jetkvm) ;;
+    platform) components=(vim4-kvm-board vim4-vfmcap vim4-amlvenc) ;;
+    capture) components=(vim4-vfmcap) ;;
+    encoder) components=(vim4-amlvenc) ;;
     *) echo 'Unknown package component set' >&2; exit 1 ;;
 esac
 for name in "${components[@]}"; do

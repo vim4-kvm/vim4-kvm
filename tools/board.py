@@ -68,10 +68,13 @@ def package_metadata(directory):
     version = directory.name
     sources = json.loads((directory / 'sources.json').read_text())
     component = sources.get('component', 'all')
-    if component not in ('all', 'pikvm', 'manager', 'onekvm'):
+    if component not in ('all', 'pikvm', 'pikvm-app', 'manager', 'onekvm', 'nanokvm', 'jetkvm', 'platform', 'capture', 'encoder'):
         raise ValueError('Unknown package component set')
-    components = {'all': COMPONENTS, 'pikvm': PIKVM_COMPONENTS,
-                  'manager': ('vim4-manager',), 'onekvm': ('vim4-onekvm',)}[component]
+    components = {'all': COMPONENTS, 'pikvm': PIKVM_COMPONENTS, 'pikvm-app': ('vim4-pikvm',),
+                  'manager': ('vim4-manager',), 'onekvm': ('vim4-onekvm',),
+                  'nanokvm': ('vim4-nanokvm',), 'jetkvm': ('vim4-jetkvm',),
+                  'platform': COMPONENTS[:3], 'capture': ('vim4-vfmcap',),
+                  'encoder': ('vim4-amlvenc',)}[component]
     debs = [directory / f'{name}_{version}_arm64.deb' for name in components]
     # Mixed versions would let dpkg pair a new server with old helpers.
     for path in debs + [directory / 'sources.json']:
