@@ -82,13 +82,16 @@ jobs:
         id: version
         working-directory: workspace
         run: |
-          # Board updaters compare x.y.z+vim4.YYYYMMDD.N numerically. CI
-          # numbers start at 1000 so they sort after same-day local builds.
-          build_number=$((1000 + 2 * GITHUB_RUN_NUMBER))
-          # Image jobs build both sets in one run; their output directories
-          # must differ because each set owns its own sources.json/checksums.
-          if [ "$COMPONENT" = pikvm ]; then build_number=$((build_number + 1)); fi
-          version="2.5.1+vim4.$(date -u +%Y%m%d).$build_number"
+          version=$(python3 - <<'PY'
+          import datetime
+          import os
+          import runpy
+          build = runpy.run_path('tools/ubuntu-build.py')
+          previous = build['latest_component_release'](os.environ['COMPONENT'], allow_cached=False)
+          print(build['release_version'](datetime.datetime.now(datetime.timezone.utc).strftime('%Y%m%d'),
+                int(os.environ['GITHUB_RUN_NUMBER']), previous, pikvm=os.environ['COMPONENT'] == 'pikvm'))
+          PY
+          )
           echo "version=$version" >> "$GITHUB_OUTPUT"
           echo "Version: $version"
 
@@ -170,6 +173,17 @@ jobs:
           esac
           test "$GITHUB_REPOSITORY" = "vim4-kvm/$owner"
           sha256sum -c SHA256SUMS
+          python3 - <<'PY'
+          import json
+          import os
+          import re
+          metadata = json.load(open('sources.json'))
+          version = os.environ['VERSION']
+          if (not re.fullmatch(r'\d+\.\d+\.\d+\+vim4\.\d{8}\.\d+', version)
+              or metadata.get('version') != version or metadata.get('development') is not False
+              or any(source['dirty'] for source in metadata['sources'].values())):
+              raise SystemExit('Only clean release builds may be published')
+          PY
           # Board updaters read releases/latest/download/<feed>, so the tag
           # equals the package version and the release becomes "latest".
           gh release create "$VERSION" --repo "$GITHUB_REPOSITORY" --target "$GITHUB_SHA" \

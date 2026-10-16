@@ -33,8 +33,8 @@ board.py，以便校验导出清单、限制文件共享范围并记录全过程
 仅更新管理器时，包清单 `sources.json` 可声明 `component: "manager"`，目录只包含
 对应版本的 vim4-manager deb、sources.json 与 SHA256SUMS，仍使用 `board.py deploy`。
 此路径取得管理器操作锁，仅停止和启动 vim4-manager，不重启 KVM 应用、HDMI、USB
-或修改 EDID，适用于保留显示故障现场。它是部署入口；ubuntu-build.py 尚不提供
-manager 单组件构建选项，开发交叉编译包需如实记录构建方式。
+或修改 EDID，适用于保留显示故障现场。使用 ubuntu-build.py 的 `--component manager`
+构建和验证；开发构建省略 `--version`，自动生成带 `.dev.N` 的版本号。
 
 仅更新 One-KVM 时可声明 `component: "onekvm"`，只打包并安装 vim4-onekvm。
 此模式沿用应用升级流程：暂停 KVM 应用，安装后恢复管理器所选应用并重启管理器，
@@ -42,11 +42,12 @@ manager 单组件构建选项，开发交叉编译包需如实记录构建方式
 
 ## 增量开发闭环
 
-协调板子独占后，选择新的版本号；三个构建/验证/上传步骤使用同一版本：
+协调板子独占后，构建并使用输出的版本号完成验证和上传：
 
 ```sh
-version=1.0.3+vim4.20261012.1
-python3 tools/ubuntu-build.py package --version "$version"
+python3 tools/ubuntu-build.py package
+# 将下面变量设为 package 输出的实际版本
+version=2.5.1+vim4.20261016.1020.dev.1.g49c45f2.dirty
 python3 tools/ubuntu-build.py verify --version "$version"
 python3 tools/board.py deploy --exclusive --packages "build/packages/$version"
 PLAYWRIGHT_MODULE=/absolute/path/to/playwright/index.mjs python3 tools/board.py verify

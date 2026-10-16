@@ -15,7 +15,7 @@
 - downloads.lock.json 固定 Go、Rust、Node、pnpm 和 Khadas 开发库下载 SHA256。
   厂商 deb 只解包到构建容器，不执行其安装脚本；不从工作板抓取二进制。
 - 源码版本来自工作树，sources.json 记录各仓库提交、脏状态、内容摘要和实际
-  builder image ID。默认拒绝脏工作树，开发试构建需显式 --allow-dirty。
+  builder image ID。开发构建自动编号并记录脏状态；指定正式版本时必须全部源码干净。
 
 快照方法见 [Ubuntu Snapshot Service](https://snapshot.ubuntu.com/)。快照服务有
 保留期限，长期发布需保留构建镜像与输入归档；固定地址不能替代长期存档。
@@ -26,8 +26,9 @@
 
 ```sh
 python3 tools/ubuntu-build.py environment
-python3 tools/ubuntu-build.py package --version 0.1.0~dev4
-python3 tools/ubuntu-build.py verify --version 0.1.0~dev4
+python3 tools/ubuntu-build.py package --component manager
+# 使用上一步输出的版本（示例，序号和提交号以实际输出为准）
+python3 tools/ubuntu-build.py verify --component manager --version 2.5.1+vim4.20261016.1020.dev.1.g49c45f2.dirty
 ```
 
 构建容器原生使用 linux/arm64，源码只读挂载并复制到容器独立工作目录；Mac
@@ -40,8 +41,19 @@ verify 在新的临时容器检查校验和、ARM64 ELF、动态库解析、sudo
 校验也检查 HDMI 音频的启动顺序、ExecStartPre 路由和板级包的 alsa-utils 依赖，
 防止当前板子有声音、重新打包后却恢复为静音的遗漏。
 
-package/verify 必须显式提供 --version；后续镜像 assemble 的 --components 使用同一值。
-示例版本已有产物时，请三个命令一起换成新的版本，不覆盖已有包。
+package 不传 --version 时自动生成开发版；verify 和后续镜像 assemble 的 --components
+必须使用 package 输出的同一版本，不隐式选择旧产物。
+
+版本约定：正式版为 `x.y.z+vim4.YYYYMMDD.N`（UTC 日期、递增编号），开发版在
+所属组件最新正式 tag 后追加 `.dev.N.g<提交号>`，有未提交修改时追加 `.dirty`。
+开发序号在本机已有包目录上递增，分配时持锁；失败目录也占用序号，不要覆盖或清空后复用。
+组合构建以所含组件的最高正式版本为基础。构建会刷新 tags；离线时警告并使用本地 tags，
+没有 tag 时以 `0.0.0+vim4.00000000.0` 为基础，部署前应先联网同步正式版本。
+排序为「基础正式版 < 开发版 < 下一正式版」，版本格式同时兼容 dpkg 与各应用更新器。
+`sources.json` 记录实际版本、开发标记、各仓库提交和内容摘要；干净源码的本地试构建也标为开发版。
+`--allow-dirty` 已移除；未提交源码不能通过 `--version` 冒充正式版。
+CI 编号从 run number 推导，并超过已有同日 tags，兼容旧的 1000 段编号与重跑。
+CI 发布前再次拒绝开发版本号、开发标记或脏源码；网页更新只接收正式版。
 
 构建先检查 PD 边界、工作区工具和 NanoKVM deploy/vim4 下的 Python 部署测试，
 再编译两个插件，运行 VIM4 Go 测试并构建
