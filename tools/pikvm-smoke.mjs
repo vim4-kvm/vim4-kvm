@@ -6,7 +6,8 @@ const { chromium } = await import(process.env.PLAYWRIGHT_MODULE || 'playwright')
 assert(process.argv.includes('--exclusive'), 'Coordinate hardware access and pass --exclusive');
 assert(process.env.PIKVM_USERNAME && process.env.PIKVM_PASSWORD, 'Set PIKVM_USERNAME and PIKVM_PASSWORD');
 const url = process.env.PIKVM_URL || 'http://192.168.50.210:8080';
-const browser = await chromium.launch({ channel: 'chrome', headless: true,
+const browser = process.env.PIKVM_CDP ? await chromium.connectOverCDP(process.env.PIKVM_CDP)
+  : await chromium.launch({ channel: 'chrome', headless: true,
   args: ['--autoplay-policy=no-user-gesture-required'] });
 const context = await browser.newContext();
 await context.addInitScript(() => {
@@ -112,10 +113,13 @@ try {
     console.log('SOAK', JSON.stringify(soak));
   }
   const snapshot = await page.evaluate(async () => {
+    const start = performance.now();
     const response = await fetch('/api/streamer/snapshot');
-    return { status: response.status, signature: [...new Uint8Array(await response.arrayBuffer()).slice(0, 2)] };
+    const signature = [...new Uint8Array(await response.arrayBuffer()).slice(0, 2)];
+    return { status: response.status, signature, elapsedMs: performance.now() - start };
   });
   assert(snapshot.status === 200 && snapshot.signature.join(',') === '255,216', 'JPEG snapshot missing');
+  assert(snapshot.elapsedMs < 2000, 'Fresh JPEG snapshot waited for the server timeout');
   const rtc = await page.evaluate(async () => {
     const result = [];
     for (const peer of window.pikvmPeers) {
@@ -267,7 +271,7 @@ try {
   }
   await page.screenshot({ path: 'logs/pikvm/browser.png' });
   console.log(JSON.stringify({ video, framesInTenSeconds: video.frames - first, rtc,
-    jpeg: 'passed', usb: original ? 'passed' : 'not requested', ...extra }, null, 2));
+    jpeg: snapshot, usb: original ? 'passed' : 'not requested', ...extra }, null, 2));
 } finally {
   sound?.kill();
   if (sourceBrowser) await sourceBrowser.close();
@@ -277,5 +281,5 @@ try {
       if ((await api('msd')).drive?.connected) await api('msd/set_connected?connected=false', 'POST');
     }
     if (original) await move(original);
-  } finally { await browser.close(); }
+  } finally { await context.close(); await browser.close(); }
 }

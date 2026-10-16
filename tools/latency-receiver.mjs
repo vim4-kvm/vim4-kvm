@@ -5,30 +5,100 @@ const { chromium } = await import(process.env.PLAYWRIGHT_MODULE || 'playwright')
 const url = process.argv[2] || 'http://192.168.50.210:8080';
 const seconds = Number(process.argv[3] || 20);
 const verifyCoherence = process.argv.includes('--verify-coherence');
+const noPixels = process.argv.includes('--no-pixels');
+const pikvm = process.argv.includes('--pikvm');
+const cdp = process.env.LATENCY_CDP;
 const width = Number(process.argv.find(arg => arg.startsWith('--width='))?.split('=')[1] || 3840);
 if (![1280, 1920, 3840].includes(width)) throw new Error('Unsupported --width');
-const browser = await chromium.launch({ channel: 'chrome', headless: true });
+if (!Number.isFinite(seconds) || seconds <= 0) throw new Error('Invalid duration');
+const browser = cdp ? await chromium.connectOverCDP(cdp)
+  : await chromium.launch({ channel: 'chrome', headless: true });
+const context = await browser.newContext();
 try {
-  const page = await browser.newPage();
-  await page.addInitScript(() => {
+  const page = await context.newPage();
+  await page.addInitScript(({localIP, remoteIP, pikvm}) => {
     window.peers = [];
     const Original = RTCPeerConnection;
+    const filter = (sdp, ip) => !ip ? sdp : sdp.split('\r\n')
+      .filter(line => !line.startsWith('a=candidate:') || line.split(' ')[4] === ip).join('\r\n');
     window.RTCPeerConnection = class extends Original {
-      constructor(...args) { super(...args); window.peers.push(this); }
+      constructor(...args) {
+        super(...args); window.peers.push(this);
+        if (localIP) this.addEventListener('icecandidate', event => {
+          if (event.candidate && event.candidate.address !== localIP) event.stopImmediatePropagation();
+        });
+      }
+      get localDescription() {
+        const d = super.localDescription;
+        return d && localIP ? new RTCSessionDescription({type: d.type, sdp: filter(d.sdp, localIP)}) : d;
+      }
+      setRemoteDescription(d) {
+        return super.setRemoteDescription(d?.sdp && remoteIP ? {type: d.type, sdp: filter(d.sdp, remoteIP)} : d);
+      }
+      addIceCandidate(c) {
+        if (remoteIP && c?.candidate && c.candidate.split(' ')[4] !== remoteIP) return Promise.resolve();
+        return super.addIceCandidate(c);
+      }
     };
-  });
-  await page.goto(url);
+    if (pikvm) {
+      localStorage.setItem('stream.mode', 'janus');
+      localStorage.setItem('stream.multimedia', '1');
+      localStorage.setItem('stream.audio', '100');
+    }
+  }, {localIP: process.env.LATENCY_LOCAL_IP, remoteIP: process.env.LATENCY_REMOTE_IP, pikvm});
+  if (pikvm) {
+    if (!process.env.PIKVM_USERNAME || !process.env.PIKVM_PASSWORD) throw new Error('PiKVM credentials required');
+    const origin = new URL(url).origin;
+    await page.goto(origin + '/login');
+    // nginx can serve the login page before kvmd is ready after a restart.
+    // Use the browser's network context, including its local-network access.
+    const loginStatus = await page.evaluate(async credentials => {
+      const deadline = Date.now() + 15000;
+      let ready = false;
+      while (Date.now() < deadline) {
+        try {
+          const response = await fetch('/api/auth/check', {signal: AbortSignal.timeout(1000)});
+          if ([200, 401, 403].includes(response.status)) { ready = true; break; }
+        } catch { /* Backend may still be starting. */ }
+        await new Promise(resolve => setTimeout(resolve, 250));
+      }
+      if (!ready) throw new Error('PiKVM authentication backend did not become ready');
+      const response = await fetch('/api/auth/login', {method: 'POST',
+        body: new URLSearchParams(credentials), signal: AbortSignal.timeout(10000)});
+      return response.status;
+    }, {user: process.env.PIKVM_USERNAME, passwd: process.env.PIKVM_PASSWORD});
+    if (loginStatus !== 200) throw new Error(`PiKVM login failed: HTTP ${loginStatus}`);
+    await page.goto(origin + '/kvm/');
+  } else await page.goto(url);
   await page.waitForFunction(width => document.querySelector('video')?.videoWidth === width,
     width, { timeout: 30000 });
-  await page.waitForTimeout(3000);
+  if (pikvm) {
+    await page.evaluate(() => {
+      const toggle = document.querySelector('#stream-multimedia-switch');
+      if (!toggle.checked) toggle.click();
+      document.querySelector('video').muted = true;
+    });
+    await page.waitForFunction(() => document.querySelector('video')?.srcObject?.getAudioTracks().length > 0,
+      null, {timeout: 30000});
+  }
+  // The source must already be running; exclude connection and source startup.
+  await page.waitForTimeout(15000);
+  const streamerState = () => !pikvm ? null : page.evaluate(async () => {
+    const response = await fetch('/api/streamer');
+    if (!response.ok) throw new Error('Cannot read PiKVM stream configuration');
+    const {result} = await response.json();
+    return {params: result.params, codec: result.features.video_codec};
+  });
+  const streamerBefore = await streamerState();
   const stats = () => page.evaluate(async () => {
     for (const peer of window.peers) {
+      if (peer.connectionState !== 'connected') continue;
       for (const stat of (await peer.getStats()).values()) {
         if (stat.type === 'inbound-rtp' && stat.kind === 'video') return stat;
       }
     }
   });
-  await page.evaluate((verifyCoherence) => {
+  await page.evaluate(({verifyCoherence, noPixels}) => {
     const video = document.querySelector('video');
     const canvas = document.createElement('canvas');
     canvas.width = 32; canvas.height = verifyCoherence ? 216 : 1;
@@ -36,13 +106,17 @@ try {
     window.latencyFrames = []; window.invalidMarkers = 0;
     window.incoherentMarkers = 0;
     window.keepLatency = false;
+    window.latencyTimeline = [];
     let previous = -1, callbacks = 0;
     window.measureLatency = true;
     const frame = (now, metadata) => {
       if (!window.measureLatency) return;
+      if (window.keepLatency) window.latencyTimeline.push({
+        presentationMs: performance.timeOrigin + metadata.presentationTime,
+        callbackMs: performance.timeOrigin + now, presentedFrames: metadata.presentedFrames});
       // GPU-to-CPU readback is intrusive at 4K. Sample about 10 times/second,
       // and report its cost separately rather than calling it transport delay.
-      if (++callbacks % 6 !== 0) {
+      if (noPixels || ++callbacks % 6 !== 0) {
         video.requestVideoFrameCallback(frame);
         return;
       }
@@ -81,20 +155,35 @@ try {
       video.requestVideoFrameCallback(frame);
     };
     video.requestVideoFrameCallback(frame);
-  }, verifyCoherence);
+  }, {verifyCoherence, noPixels});
   // Warm up canvas allocation and GPU readback before measuring.
   await page.waitForTimeout(3000);
-  await page.evaluate(() => { window.keepLatency = true; });
   const before = await stats();
+  const startedMs = await page.evaluate(() => {
+    window.keepLatency = true;
+    return performance.timeOrigin + performance.now();
+  });
   await page.waitForTimeout(seconds * 1000);
   const after = await stats();
   const result = await page.evaluate(() => {
     window.measureLatency = false;
-    return { frames: window.latencyFrames, invalidMarkers: window.invalidMarkers,
+    return { endedMs: performance.timeOrigin + performance.now(),
+      timeline: window.latencyTimeline, frames: window.latencyFrames, invalidMarkers: window.invalidMarkers,
       incoherentMarkers: window.incoherentMarkers };
   });
-  console.log(JSON.stringify({ before, after, verifyCoherence, ...result }, null, 2));
-  if (result.frames.length < seconds * 5) {
+  const negotiation = await page.evaluate(async () => {
+    const peers = window.peers.filter(p => p.connectionState === 'connected');
+    return Promise.all(peers.map(async p => ({sdp: p.remoteDescription?.sdp,
+      reports: [...(await p.getStats()).values()].filter(s =>
+        ['codec', 'transport', 'candidate-pair', 'local-candidate', 'remote-candidate'].includes(s.type))})));
+  });
+  const streamerAfter = await streamerState();
+  console.log(JSON.stringify({ before, after, startedMs, noPixels, browserVersion: browser.version(),
+    streamerBefore, streamerAfter, negotiation, verifyCoherence, ...result }, null, 2));
+  if (JSON.stringify(streamerBefore) !== JSON.stringify(streamerAfter)) {
+    throw new Error('PiKVM stream configuration changed during measurement');
+  }
+  if (!noPixels && result.frames.length < seconds * 5) {
     if (process.env.VIM4_TEST_SCREENSHOT) await page.screenshot({ path: process.env.VIM4_TEST_SCREENSHOT });
     throw new Error('Too few valid HDMI markers; inspect the emitted samples');
   }
@@ -103,5 +192,6 @@ try {
   }
   await page.close();
 } finally {
+  await context.close();
   await browser.close();
 }

@@ -14,6 +14,8 @@ tools/ 与 packaging/ 下每个入口一行。tests/test_docs.py 检查本表与
 （`mdfind -name index.mjs | grep 'playwright/index.mjs'` 可找到本机已有副本）。
 One-KVM 测试经 ONEKVM_USERNAME / ONEKVM_PASSWORD 传入账户，不打印凭据。
 默认地址为 http://192.168.50.210:8080（管理器 :80）。同一应用账户的测试依次运行。
+PiKVM smoke 可用 `PIKVM_CDP` 接入专用测试 Chrome；结束时关闭测试 context，
+保留外部浏览器。截图检查包含局域网响应时间，拒绝等待 3 秒超时才返回的 JPEG。
 
 ## 工作区、构建与打包
 
@@ -72,7 +74,7 @@ One-KVM 测试经 ONEKVM_USERNAME / ONEKVM_PASSWORD 传入账户，不打印凭�
 | tools/one-kvm-usb-profile-check.mjs | One-KVM | 独占，改 USB 组合后恢复 | HID/UAC/网卡组合与超限回滚 | [板级工具](board-tools.md) |
 | tools/one-kvm-usb-board-check.py | 板（root） | 独占，应用停止 | 板端 USB 助手枚举与恢复 | [板级工具](board-tools.md) |
 | tools/one-kvm-uu-ui-check.mjs | 一次性容器实例 | 无（禁止对板子账户运行） | UU 远程绑定界面 | [上板记录](bringup-log.md) |
-| tools/pikvm-smoke.mjs | PiKVM | 独占 | 解码与 Mac USB 输入 | [Ubuntu 构建](ubuntu-build.md#pikvm-组件) |
+| tools/pikvm-smoke.mjs | PiKVM | 独占 | 解码、及时截图、MJPEG 重连与可选 Mac USB 输入 | [Ubuntu 构建](ubuntu-build.md#pikvm-组件) |
 | tools/kvm-switch-check.mjs | 管理器 | 独占，切换应用 | 应用互斥切换并恢复原选择 | [板级工具](board-tools.md#kvm-应用切换回归) |
 
 ## 诊断与测量
@@ -80,8 +82,8 @@ One-KVM 测试经 ONEKVM_USERNAME / ONEKVM_PASSWORD 传入账户，不打印凭�
 | 入口 | 运行位置 | 影响 | 用途 | 文档 |
 |---|---|---|---|---|
 | tools/latency-source.swift | Mac | 占用 HDMI 画面 | 把帧号画进 HDMI 输出，`--motion` 产生运动网格 | [延迟测量](latency.md) |
-| tools/latency-receiver.mjs | Mac | 独占 | 从解码像素读帧号 | [延迟测量](latency.md) |
-| tools/latency-summary.py | Mac | 无 | 匹配两端时间戳 | [延迟测量](latency.md) |
+| tools/latency-receiver.mjs | Mac | 独占 | 解码像素帧号与呈现节奏；支持 PiKVM 认证、专用 CDP 浏览器和无像素回读对照 | [延迟测量](latency.md) |
+| tools/latency-summary.py | Mac | 无 | 匹配两端时间戳，统计呈现间隔、回调漏采和无更新尾段 | [延迟测量](latency.md) |
 | tools/video-timing-summary.py | Mac | 无 | 汇总 VIM4_VIDEO_TIMING 分段计时 | [延迟测量](latency.md) |
 | tools/input-target.swift | Mac | 覆盖显示器 | input-check 的临时接收窗口 | [输入验证](input-latency.md) |
 | tools/input-summary.py | Mac | 无 | 汇总 input-check 日志 | [输入验证](input-latency.md) |

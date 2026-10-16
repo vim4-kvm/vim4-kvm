@@ -90,7 +90,7 @@ For the RTK UHD HDR EDID, prefix the source command with
 
 ```sh
 mkdir -p logs
-/tmp/vim4-latency-source 40 --motion > logs/motion-source.jsonl
+/tmp/vim4-latency-source 65 --motion > logs/motion-source.jsonl
 ```
 
 ```sh
@@ -104,7 +104,30 @@ The receiver requires Chrome and Playwright, an accessible video page, and an
 existing authenticated session if authentication is enabled. It samples every
 six video callbacks after warming up pixel readback. Record service PID, video
 configuration and encoder version before and after each run; reject runs with
-changes. The script does not enforce configuration stability itself.
+changes. In PiKVM mode the script rejects changes to the reported streamer
+parameters and codec; service PID and encoder version still require separate checks.
+
+For PiKVM, add `--pikvm` and provide `PIKVM_USERNAME` / `PIKVM_PASSWORD`;
+the receiver opens an isolated authenticated context and enables multimedia.
+It does not change the board's codec or bitrate. `LATENCY_CDP` can point to a
+dedicated test Chrome debugging endpoint when an externally launched browser is
+needed; the context is closed afterward but the externally owned browser remains
+running. Never use a personal browser profile for this test endpoint.
+Optional `LATENCY_LOCAL_IP` / `LATENCY_REMOTE_IP` restrict ICE candidates for a
+controlled interface test (disable Chrome's mDNS candidate obfuscation for this
+case). These are diagnostic overrides, not application networking defaults.
+The report includes negotiated codecs and candidate statistics; verify the actual
+media path independently when comparing interfaces.
+
+The receiver warms up video for 15 seconds and pixel readback for another three.
+Start the source first and allow enough time for authentication, warmup and the
+full measurement; the short examples above are diagnostic, not 120-second
+acceptance runs. Use `--no-pixels` for the paired cadence test without GPU
+readback. Both modes record presentation/callback timestamps and presented-frame
+counters, including the silent tail after the final callback. The summary reports
+missed callbacks separately from browser-reported dropped frames and distinguishes
+active-span FPS from progress across the whole observation window. For a cadence
+run an empty source log is sufficient; no marker matching is performed.
 
 `presentationMs` measures source draw start to browser compositor submission.
 `readStartMs` includes JavaScript callback scheduling; `observedMs` additionally
