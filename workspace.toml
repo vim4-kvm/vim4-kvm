@@ -41,7 +41,7 @@ revision = "a8f245b9ddd5e9ef01cdac5d5bb3bcf6184ace5f"
 name = "kvmd"
 url = "https://github.com/vim4-kvm/kvmd.git"
 branch = "vim4"
-revision = "89e5a5c954c9f03cbd840f93d8356652ad3f903e"
+revision = "b7a3042880ddd9781cb94aedf7aab88e3c85a52a"
 
 [[repos]]
 name = "ustreamer"
