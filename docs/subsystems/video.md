@@ -68,6 +68,7 @@ HDMI_LOW_LATENCY=0 恢复厂商自动策略。模式含义、对照结果及帧�
 - [视频配置](../../NanoKVM/deploy/vim4/VIDEO.md)：RTP、码率、GOP。
 - [端到端测量](../latency.md)：软件端点定义和观测开销。
 - [KVM 播放延迟复核](../kvm-playout-review.md)：各应用同步组、队列与媒体时钟风险及验证边界。
+- [KVM 延迟差异调查](../kvm-delay-causes.md)：播放策略对照、接收耗时拆分、GOP 与时间戳差异。
 - [编码实验记录](../encoder-experiments.md)：旧插件降级、帧率重建、QP 与行刷新验证。
 - [HDMI 恢复路径对照](../hdmi-recovery-review.md)、[UU 虚拟屏恢复](../hdmi-uu-recovery.md)：显示器恢复故障的源码审查与现场取证。
 
