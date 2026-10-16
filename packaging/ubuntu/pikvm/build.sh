@@ -1,6 +1,6 @@
 #!/bin/sh
 set -eu
-for name in kvmd ustreamer vim4-manager packaging tools; do
+for name in kvmd ustreamer vim4-manager packaging tools board; do
     mkdir -p "/work/$name"
     rsync -a --exclude=.git --exclude=node_modules --exclude=build --exclude=dist \
         --exclude=__pycache__ "/src/$name/" "/work/$name/"
