@@ -6,8 +6,8 @@ NanoKVM 默认 12000 kbps、JetKVM 原质量档 12/6/1.2 Mbps、One-KVM 快捷�
 部署这些版本时须同时升级 vim4-amlvenc（旧插件上限 12000 kbps），不能只更新网页。
 高码率测试依据和局限见 [高码率实验](../encoder-high-bitrate.md)。
 
-先读 [VIM4 集成](../../NanoKVM/VIM4.md)，其中维护功能覆盖、
-构建、安装和限制；代码规范见 [code-standards.md](../code-standards.md)。
+改 NanoKVM 读 [NanoKVM VIM4 集成](../../NanoKVM/VIM4.md)（功能覆盖、构建、安装和限制）；
+其他应用读下方对应的 VIM4.md，只读与任务相关的一份。
 
 当前可用功能、缺项与实测边界见 [功能状态](../feature-status.md)。
 当前基线的迁移范围与软件验证见 [NanoKVM 基线切换](../nanokvm-migration.md)；

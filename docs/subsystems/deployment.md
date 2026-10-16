@@ -8,9 +8,7 @@ PiKVM 使用 `--component pikvm` 单独构建和验证，部署仍使用 board.p
 或更新板级组件。切换应用前先在 USB 主机安全弹出虚拟介质。
 内核打包与离线候选镜像组装见 [ubuntu-image.md](../ubuntu-image.md)。
 
-先读 [工作区](../workspace.md)、[硬件](../hardware.md)，再按目标读
-[内核](../kernel.md)、[USB-PD](../usb-pd.md) 或
-[应用安装](../../NanoKVM/VIM4.md)。
+按目标再读：内核 [kernel.md](../kernel.md)、PD [usb-pd.md](../usb-pd.md)、应用安装见各应用 VIM4.md。
 
 SSH 为 ssh vim4（khadas@192.168.50.210），串口 /dev/cu.usbserial-100，921600 8N1。
 命令使用 tools/uart-run.py，只读日志用 tools/uart-log.py，输出放不入库的 logs/。

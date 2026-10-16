@@ -35,32 +35,13 @@ JetKVM 的“空闲时隐藏显示器”是用户主动选择的例外，默认�
 
 ## HDR 输入
 
-EDID 预设声明 HDR10/HLG，主机开启 HDR 时发送 PQ/HLG 10bit 信号。采集为 8bit，
-未处理时画面发白。T7 的 vdin0 有独立 HDR2 核，内核在 HDMI 输入为
-HDR10/HDR10+/HLG 时将其映射到 SDR，SDR 输入直通（`dmesg` 中
-`vdin_set_hdr vdin0 fmt:N`，0=SDR、1=HDR10）。切换由驱动的信号变化处理完成，
-不重启服务。vframe 的 signal_type 仍描述源信号；将来 HDMI 环出需要原样输出 HDR 时，
-在 vdin0 上设置 `vdin1_bypass_hdr 1` 关闭入口映射，网页另走 vdin1 回写。
-Dolby Vision 未支持，EDID 也不声明。
-
-映射表由 `vim4-hdr-curve`（tools/hdr-curve.sh）生成：增益曲线 `oo_y_lut_hdr_sdr`
-和 SDR 编码曲线 `oe_y_lut_sdr`。厂商增益曲线相当于 400 尼特映射为 SDR 白，
-厂商编码为 gamma 2.2，macOS HDR 桌面会整体偏暗、暗部偏亮。
-参数 `HDR_SDR_WHITE`（主机 SDR 白，默认 203 尼特，即 BT.2408 参考白；macOS HDR
-灰阶实测 199）和 `HDR_SDR_PEAK`（高光保留到的亮度，默认 1000）保存在
-`/etc/default/vim4-kvm-hdr`，与 NanoKVM 改写的 `/etc/default/vim4-kvm-hdmi` 分开。
-SDR 白以下 95% 线性，其上用扩展 Reinhard 曲线压入顶部 5%；编码为 sRGB。
-增益寄存器为 12 位（上限 4095），SDR 白低于 157 尼特会溢出反而变暗，故下限 160。
-
-hdmi-setup.sh 在打开输入前写入；运行中由 vdin0 attr 的 `reload_hdr` 请求采集中断在帧边界重载，
-不重启采集。vim4-manager 的“HDR 转 SDR”滑动条拖动时实时预览，松开后保存。
-`oe_y_lut_sdr` 与 VPP/OSD 的 HDR→SDR 共用，将来接 HDMI 输出时同样生效。
-HLG 输入仍用厂商 HLG 曲线。
+内核在 vdin0 用 HDR2 核把 HDR10/HLG 输入映射到 SDR，SDR 直通；曲线由 `vim4-hdr-curve`
+生成，参数在 `/etc/default/vim4-kvm-hdr`，管理器可实时调节。改 HDR 映射或曲线时读 [HDR 输入映射](../hdr.md)。
 
 HDMI 启动脚本默认使用完整帧低延迟模式（VDIN mask 0x3）；
-HDMI_LOW_LATENCY=0 恢复厂商自动策略。模式含义、对照结果及帧一致性检查见测量文档。
+HDMI_LOW_LATENCY=0 恢复厂商自动策略。模式含义、对照结果及帧一致性检查见 [测量文档](../latency.md#board-side-isolation-and-completed-frame-mode)。
 
-按改动范围先读：
+按改动范围读取（只读与任务相关的一项）：
 
 - [采集插件](../../gst-plugin-vfmcap/README.md)：格式和 DMA-buf 生命周期。
 - [编码插件](../../gst-plugin-venc/VIM4.md)：帧率预算、安装和测试。
@@ -78,36 +59,22 @@ HDMI_LOW_LATENCY=0 恢复厂商自动策略。模式含义、对照结果及帧�
 
 ## 4:4:4 采集
 
-`tools/hdmi-setup.sh` 接受 `HDMI_CAPTURE_FORMAT=NV21`（默认）或 `YUV444`。
-该设置属于共享 HDMI 服务，变更需要重启服务，不能当作单个 UU 会话的选项。
-YUV444 要求新版 vfm_cap，报告 `VUY3`：8-bit 单平面 Cr/Cb/Y，stride 来自 canvas。
-新版 vfmcapsrc 将其重排为 GStreamer `v308`（Y/Cb/Cr），保留全部色度；
-此路径需要 CPU 拷贝，NV21 等现有路径仍是 DMA-BUF 零拷贝。
-
-已有原始 DMA 采集 4K60 实测，不代表重排、编码或网络端到端达到相同帧率。
-驱动的 CPU 映射现为只读可缓存页，每次导出完成帧时按需执行缓存失效；
-CPU 读取必须使用 DMA_BUF_IOCTL_SYNC READ，禁止写入共享帧。
-插件融合复制与 NEON 重排，并复用输出缓冲。旧 write-combine 映射下仅约 13.2fps，
-优化后 4K 全帧读取、重排到 appsink 已实测约 60fps；细节和帧连续性见上板记录。
-现有 KVM 硬件编码路径继续使用 NV21；在编码器与客户端验证前不开放真彩开关。
-编码实测：现有 libamvenc 接受 RGB 但 H.264 输出 High/yuv420p，H.265 输出
-Main/yuv420p；不能用输入格式或插件 caps 证明真彩。插件已移除未经支持的
-4:4:4/4:2:2/10-bit profile 声明。软件编码未达到 4K60，详见上板记录。
-驱动的 `test_lifecycle.c` 用于独占测试 close、STREAMOFF、REQBUFS(0) 后的
-DMA-BUF 生命周期；测试结束应确认模块引用归零并可正常卸载。
+`HDMI_CAPTURE_FORMAT=YUV444` 是共享 HDMI 服务的可选格式，原始采集与 CPU 重排可达
+4K60，但现有硬件编码只输出 4:2:0，应用仍用 NV21。改采集格式、vfm_cap 映射或
+真彩编码前读 [4:4:4 采集](../capture444.md)。
 
 ## 错题
 
 | 触发条件 / 错误 | 原因与正确做法 | 验证入口 |
 |---|---|---|
 | 原始 DMA 采集 60fps，但全帧 CPU 处理只有约 13fps | write-combine 映射下读一帧 4K 需约 55.6ms，SIMD 无法弥补。改为只读可缓存映射并实现 DMA-BUF CPU 访问同步，融合复制与重排，复用输出缓冲；必须逐帧验证动态标记与单像素色度，不能只测重复读取同一帧 | common_drivers/drivers/media/vfm_cap/test_lifecycle.c、gst-plugin-vfmcap/tests/capture-integrity.c |
-| 30fps 编码预算配 60fps 输入 | 旧 amlvenc 造成实际码率偏大。修正插件并传入输入帧率；预算不是采集节奏 | [音视频](../../docs/subsystems/video.md) |
-| 用 game_mode 0 当作关闭低延迟的实验对照 | 0 恢复自动策略，实际模式可能是 0xb。核对驱动 state 中的当前模式，不能仅看全局参数；完整帧模式使用 0x3 | [采集延迟对照](../../docs/latency.md#board-side-isolation-and-completed-frame-mode) |
-| 把 video71 当 HDMI 输入 | vdin1 是输出回写；无 HDMI 输出时用 vdin0 → vfm_cap，HDMI RX 为 port 1 | [硬件](../../docs/hardware.md) |
-| HDMI 有音频包、WebRTC 已连接但始终静音 | TDM-B 默认读外部引脚。HDMI 服务 ExecStartPre 在 ALSA restore 后选 hdmirx，再允许 NanoKVM 启动；零峰值录音不能证明声音正常 | [功能与音频状态](../../docs/feature-status.md)、packaging/ubuntu/check-audio-startup.py |
+| 30fps 编码预算配 60fps 输入 | 旧 amlvenc 造成实际码率偏大。修正插件并传入输入帧率；预算不是采集节奏 | gst-plugin-venc/VIM4.md |
+| 用 game_mode 0 当作关闭低延迟的实验对照 | 0 恢复自动策略，实际模式可能是 0xb。核对驱动 state 中的当前模式，不能仅看全局参数；完整帧模式使用 0x3 | [采集延迟对照](../latency.md#board-side-isolation-and-completed-frame-mode) |
+| 把 video71 当 HDMI 输入 | vdin1 是输出回写；无 HDMI 输出时用 vdin0 → vfm_cap，HDMI RX 为 port 1 | [硬件](../hardware.md) |
+| HDMI 有音频包、WebRTC 已连接但始终静音 | TDM-B 默认读外部引脚。HDMI 服务 ExecStartPre 在 ALSA restore 后选 hdmirx，再允许 NanoKVM 启动；零峰值录音不能证明声音正常 | [功能与音频状态](../feature-status.md)、packaging/ubuntu/check-audio-startup.py |
 | GE2D 缩放单次成功，切编码后进程报 safe_close EBADF | 厂商 DMA 分配器把同一个 fd 同时交给 GstDmaBufMemory 和附属 qdata 释放。One-KVM 使用私有兼容分配器，fd 只由标准 GStreamer memory 关闭；需验证重复切换与缓冲区持有周期 | One-KVM/deploy/vim4/test-dma-allocator.c、tools/one-kvm-settings-check.mjs |
 | 厂商 JPEG 插件直接输入 DMA 后只出 4 帧 | JPEG NEW_CMD 的直接 DMA 路径未释放导入，耗尽 VDIN 的 4 个采集缓冲。vim4jpegenc 使用 CONFIG_DMA_INPUT / RELEASE_DMA_INPUT 管理每帧生命周期，异常时先关闭编码器再归还输入；验证连续帧和重复启停 | gst-plugin-venc/tests/jpeg-hardware.py、logs/mjpeg-hardware/ |
-| 编码器超频后帧率提升，就以为可用 | 750/800 MHz 下同一输入的码流已不再一致，但不报错、帧数正常。超频必须重复编码同一段录制输入并比较码流哈希，同时用低频对照排除时钟源问题 | [编码实验记录](../../docs/encoder-experiments.md#wave521-时钟与-4k-编码耗时2026-10-14) |
+| 编码器超频后帧率提升，就以为可用 | 750/800 MHz 下同一输入的码流已不再一致，但不报错、帧数正常。超频必须重复编码同一段录制输入并比较码流哈希，同时用低频对照排除时钟源问题 | [编码实验记录](../encoder-experiments.md#wave521-时钟与-4k-编码耗时2026-10-14) |
 | HDMI 输入稳定，编码器却不断重建 | sysfs 的 centi-Hz 测量可在 5987–5999 间抖动，原 0.1Hz 容差仍会误重启。改为超过 1Hz 且连续两次稳定读数才重建，并保留无帧看门狗；MJPEG 测试必须匹配真实输入尺寸，不能把离线占位图判为成功 | ustreamer/src/ustreamer/vim4.c、tools/pikvm-smoke.mjs |
 | 网页走有线、WebRTC 报告 IPv4，却仍周期停顿 | Janus aggressive nomination 实测将视频发往客户端 Wi-Fi IPv6，selected candidate pair 统计不足以证明媒体路径。按 SSRC 对照两端网卡收发时间，使用 regular nomination；不通过关掉所有 IPv6 或一味缩短 GOP 掩盖路径问题 | kvmd/deploy/vim4/janus.jcfg、logs/pikvm/h264-client-wire.log、logs/pikvm/h264-regular-soak.log |
 | PiKVM 短测 60fps，隔夜降到约 30fps 并卡顿 | 现场 JPEG 线程与网卡/JPEG IRQ 同在 CPU0；不重启做亲和性对照才能保留证据。uStreamer 避开 CPU0 后恢复 60fps；仍须同时检查浏览器 freeze 与 UDP 发送错误，平均帧率恢复不等于所有停顿消失 | kvmd/deploy/vim4/main.yaml、logs/pikvm/overnight/、tools/pikvm-smoke.mjs |
