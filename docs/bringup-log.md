@@ -2438,3 +2438,7 @@ USB 已连接。开启等待再取消未发送 /api/select，应用和磁盘状�
   此部分仅有离线边界/回滚测试，不能当作真实主机读写验证。
   构建、包验证、部署与浏览器证据：`logs/media-switch/manager99-*.log`、
   `logs/media-switch/live-management.log`、`logs/media-switch/live-management.png`。
+- 后续界面修正 `a77d92b` 允许已连接磁盘时浏览镜像列表，仅禁止替换。
+  最终部署 `2.5.1+vim4.20261016.100`，再次通过前端回归、干净 ARM64 构建和隔离验证，
+  实机列表选择与拒绝替换测试通过；dpkg 校验无差异，原应用、磁盘与 boot ID 保持不变。
+  最终包日志为 `logs/media-switch/manager100-*.log`。
