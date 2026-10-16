@@ -44,9 +44,10 @@ def package(name, version, output, populate, depends):
             write(stage, 'DEBIAN/postinst', '#!/bin/sh\nset -eu\n', 0o755)
         with postinst.open('a') as script:
             script.write('sync\n')
+        provides = 'Provides: vim4-media-api-1\n' if name == 'vim4-kvm-board' else ''
         write(stage, 'DEBIAN/control', f'Package: {name}\nVersion: {version}\nArchitecture: arm64\n'
               'Maintainer: VIM4 KVM <318096335+localhost-copilot@users.noreply.github.com>\n'
-              f'Section: misc\nPriority: optional\nDepends: {depends}\n'
+              f'Section: misc\nPriority: optional\nDepends: {depends}\n{provides}'
               f'Description: VIM4 Ubuntu {name} component\n')
         configs = sorted('/' + str(p.relative_to(stage)) for p in (stage / 'etc').rglob('*') if p.is_file())
         if configs:
@@ -63,6 +64,7 @@ def package(name, version, output, populate, depends):
 
 
 def board(stage):
+    copy(ROOT / 'board/vim4media.py', stage, 'usr/lib/vim4-kvm/python/vim4media.py', 0o644)
     copy(ROOT / 'tools/rootfs-policy.py', stage, 'usr/sbin/vim4-rootfs-policy', 0o755)
     copy(ROOT / 'build/usb-pd-init', stage, 'usr/sbin/usb-pd-init', 0o755)
     for name in ('hdmi-setup.sh', 'kvm-gadget.sh'):
@@ -251,11 +253,11 @@ fi
 GST = 'libc6 (>= 2.38), libglib2.0-0t64, libgstreamer1.0-0 (>= 1.24), libgstreamer-plugins-base1.0-0 (>= 1.24)'
 # Applications state lower bounds only: their web updaters replace one package
 # and refuse any plan that would also upgrade the platform.
-PLATFORM = ('vim4-kvm-board (>= 1.0.3+vim4.20261013.18), vim4-vfmcap, '
+PLATFORM = ('vim4-kvm-board (>= 1.0.3+vim4.20261013.18), vim4-media-api-1, vim4-vfmcap, '
             'vim4-amlvenc (>= 1.0.3+vim4.20261013.18)')
 PACKAGES = {
     'platform': [
-        ('vim4-kvm-board', board, 'libc6 (>= 2.38), python3, systemd, udev, kmod, psmisc, iproute2, alsa-utils, hdmiin-demo (= 0.8-202305~noble)'),
+        ('vim4-kvm-board', board, 'libc6 (>= 2.38), python3, mtools, dosfstools, systemd, udev, kmod, psmisc, iproute2, alsa-utils, hdmiin-demo (= 0.8-202305~noble)'),
         ('vim4-vfmcap', capture, GST),
         ('vim4-amlvenc', encoder, GST + ', libamvenc (= 0.2-202406~noble), libge2d (= 0.4-202406), gst-aml-drmbufferpool-plugins (= 0.2-202311)')],
     'nanokvm': [
@@ -273,7 +275,7 @@ PACKAGES = {
          'network-manager, dnsmasq-base, ' + PLATFORM + ', vim4-nanokvm (>= 1.0.3+vim4.20261013.18), '
          'vim4-manager (>= 2.5.1+vim4.20261014.4)')],
     'manager': [
-        ('vim4-manager', manager, 'libc6 (>= 2.38), python3, sudo, systemd, vim4-nanokvm (>= 1.0.3+vim4.20261013.18)')],
+        ('vim4-manager', manager, 'libc6 (>= 2.38), python3, sudo, systemd, vim4-media-api-1, vim4-nanokvm (>= 1.0.3+vim4.20261013.18)')],
 }
 PACKAGES['all'] = [entry for name in ('platform', 'nanokvm', 'jetkvm', 'onekvm', 'manager') for entry in PACKAGES[name]]
 PACKAGES['capture'] = [PACKAGES['platform'][1]]

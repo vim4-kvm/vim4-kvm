@@ -9,6 +9,7 @@ sha256sum -c SHA256SUMS
 getent passwd khadas >/dev/null || useradd -m khadas
 for file in ./*.deb; do dpkg-deb -x "$file" /; done
 package=$(find . -maxdepth 1 -name 'vim4-pikvm_*.deb')
+dpkg-deb -f "$package" Depends | grep -qw vim4-media-api-1
 mkdir /tmp/pikvm-control
 dpkg-deb -e "$package" /tmp/pikvm-control
 sh /tmp/pikvm-control/postinst configure

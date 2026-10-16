@@ -2,6 +2,10 @@
 # Install the board-side KVM setup. Run as root from this directory.
 set -eu
 cd "$(dirname "$0")"
+for tool in mcopy mdir mkfs.vfat fsck.vfat; do
+    command -v "$tool" >/dev/null || { echo 'Install mtools and dosfstools before installing board services' >&2; exit 1; }
+done
+install -D -m 0644 vim4media.py /usr/lib/vim4-kvm/python/vim4media.py
 pd_binary=$(mktemp)
 trap 'rm -f "$pd_binary"' EXIT HUP INT TERM
 cc -O2 -Wall -Wextra -Werror ../tools/usb-pd-init.c -o "$pd_binary"

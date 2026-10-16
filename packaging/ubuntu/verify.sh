@@ -25,7 +25,14 @@ test ! -e /tmp/package-check/root/usr/local
 if has vim4-kvm-board && has vim4-nanokvm; then
     python3 /checks/check-audio-startup.py /tmp/package-check/root
 fi
-if has vim4-kvm-board; then dpkg-deb -f ./vim4-kvm-board_*.deb Depends | grep -qw alsa-utils; fi
+if has vim4-kvm-board; then
+    dpkg-deb -f ./vim4-kvm-board_*.deb Depends | grep -qw alsa-utils
+    dpkg-deb -f ./vim4-kvm-board_*.deb Provides | grep -qw vim4-media-api-1
+    PYTHONPATH=/tmp/package-check/root/usr/lib/vim4-kvm/python python3 -c 'import vim4media'
+fi
+for app in vim4-nanokvm vim4-jetkvm vim4-onekvm vim4-manager; do
+    if has "$app"; then dpkg-deb -f ./"${app}"_*.deb Depends | grep -qw vim4-media-api-1; fi
+done
 binaries=''
 has vim4-kvm-board && binaries="$binaries usr/sbin/usb-pd-init"
 has vim4-vfmcap && binaries="$binaries usr/lib/aarch64-linux-gnu/gstreamer-1.0/libgstvfmcap.so"
