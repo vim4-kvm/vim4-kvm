@@ -47,7 +47,7 @@ revision = "259d2c7e29a5d405b41d57aee0a9c00186df15ad"
 name = "ustreamer"
 url = "https://github.com/vim4-kvm/ustreamer.git"
 branch = "vim4"
-revision = "9baf264c1cfc81c66786b70eac9f04c5560f91a8"
+revision = "b9f7f0439414f7f86c39a92aaac2b3db70ba8cd0"
 
 [[repos]]
 name = "vim4-manager"
