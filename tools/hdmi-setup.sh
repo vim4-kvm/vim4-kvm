@@ -10,6 +10,12 @@ set -eu
 W=${1:-${HDMI_WIDTH:-3840}}
 H=${2:-${HDMI_HEIGHT:-2160}}
 LOW_LATENCY=${HDMI_LOW_LATENCY:-1}
+CAPTURE_FORMAT=${HDMI_CAPTURE_FORMAT:-NV21}
+case "$CAPTURE_FORMAT" in
+	NV21) CONVERSION=8 ;;
+	YUV444) CONVERSION=2 ;;
+	*) echo "HDMI_CAPTURE_FORMAT must be NV21 or YUV444" >&2; exit 2 ;;
+esac
 case "$LOW_LATENCY" in
 	0|1) ;;
 	*) echo "HDMI_LOW_LATENCY must be 0 or 1" >&2; exit 2 ;;
@@ -43,8 +49,9 @@ pkill -x hdmiin-demo 2>/dev/null && sleep 2 || true
 echo "color_depth_support 0x1" > $VDIN
 # linear little-endian writes, as the CPU/encoder read them
 echo "no_swap_en 1" > $VDIN
-# hw scaler + NV21 (TVIN_NV21 = 8)
-echo "conversion $W $H 8" > $VDIN
+# Capture is shared by every viewer. YUV444 requires a compatible downstream
+# pipeline; changing it is a service configuration, not a per-session option.
+echo "conversion $W $H $CONVERSION" > $VDIN
 
 # BIT0 | BIT1 selects completed-frame game mode 1. With RDMA, the normal
 # path otherwise retains the finished frame until the following interrupt.

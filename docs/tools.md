@@ -5,6 +5,7 @@ tools/ 与 packaging/ 下每个入口一行。tests/test_docs.py 检查本表与
 “影响”列决定是否需要先协调板子独占（见 [代码规范](code-standards.md)）。
 
 运行位置：Mac = 开发机；板 = 先 scp 到板上 /tmp 再 ssh 运行；容器/VM = 由上层工具调用。
+`hdmi-setup.sh` 的 `HDMI_CAPTURE_FORMAT=YUV444` 只供兼容的采集管线使用；现有应用保留默认 NV21。
 影响：无 = 不访问硬件；读 = 只读访问板子；独占 = 停启服务、占用编码器/HID/USB 或改设置，
 不能与其他硬件任务并行；破坏 = 清空 eMMC 或重启，须用户明确授权。
 

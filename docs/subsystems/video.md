@@ -75,3 +75,18 @@ HDMI_LOW_LATENCY=0 恢复厂商自动策略。模式含义、对照结果及帧�
 编码器测试不能与应用或其他任务并发占用硬件。
 验证区分静止/运动、分辨率/帧率切换、热插拔、重连和丢包恢复。
 记录版本、配置、负载；帧率、吞吐量和端到端延迟分别报告。
+
+## 4:4:4 采集
+
+`tools/hdmi-setup.sh` 接受 `HDMI_CAPTURE_FORMAT=NV21`（默认）或 `YUV444`。
+该设置属于共享 HDMI 服务，变更需要重启服务，不能当作单个 UU 会话的选项。
+YUV444 要求新版 vfm_cap，报告 `VUY3`：8-bit 单平面 Cr/Cb/Y，stride 来自 canvas。
+新版 vfmcapsrc 将其重排为 GStreamer `v308`（Y/Cb/Cr），保留全部色度；
+此路径需要 CPU 拷贝，NV21 等现有路径仍是 DMA-BUF 零拷贝。
+
+已有原始 DMA 采集 4K60 实测，不代表重排、编码或网络端到端达到相同帧率。
+当前插件 release 版本的 4K 全帧读取与重排约 13.2fps；write-combine 映射下的
+CPU 路径不满足 4K60，需继续验证硬件转换或直接消费原始格式。
+现有 KVM 硬件编码路径继续使用 NV21；在编码器与客户端验证前不开放真彩开关。
+驱动的 `test_lifecycle.c` 用于独占测试 close、STREAMOFF、REQBUFS(0) 后的
+DMA-BUF 生命周期；测试结束应确认模块引用归零并可正常卸载。
