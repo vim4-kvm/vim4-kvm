@@ -6,12 +6,16 @@ JetKVM `390d7e98`、One-KVM `e5878e6d`、kvmd `259d2c7e`、uStreamer `9baf264c`�
 
 ## 首要差异：接收端播放策略
 
-| 系统 | 当前发送策略 | 源码证据 |
+| 系统 | 调查基线的发送策略 | 源码证据 |
 |---|---|---|
 | NanoKVM | 协商后在每帧首包发送 playout-delay min=0/max=0 | [track.go](../NanoKVM/server/service/stream/webrtc/track.go) |
 | JetKVM | 拦截器在已协商的 RTP 包上发送 min=0/max=0 | [interceptor.go](../kvm/internal/playoutdelay/interceptor.go) |
 | One-KVM | 会话没有注册/发送该扩展，使用浏览器自适应行为 | [universal_session.rs](../One-KVM/src/webrtc/universal_session.rs) |
 | PiKVM | GOP 非零时发送 min=0/max=1000（单位 10ms，即上限 10 秒）；只有 GOP=0 才发送 0/0 | [client.c](../ustreamer/janus/src/client.c)、[plugin.c](../ustreamer/janus/src/plugin.c) |
+
+One-KVM 后续提交 `e9de9eeb` 已将下文验证的 0/0 策略加入 VIM4 网页 H.264/H.265：
+协商扩展后每帧首包发送，未支持的接收端保持自身策略。保留编码配置、行刷新及音频时钟。
+上表和下文默认策略数据描述改动前的基线。
 
 10 秒是允许范围，不是固定等待 10 秒。0/0 是尽快播放意图，也不是网络、解码或显示耗时为零的保证。
 [WebRTC 扩展定义](https://webrtc.googlesource.com/src/+/refs/heads/main/docs/native-code/rtp-hdrext/playout-delay/README.md)
