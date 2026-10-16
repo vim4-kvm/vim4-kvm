@@ -116,3 +116,4 @@
 - [4:4:4 全帧处理优化至 4K60](2026-10-16-yuv444-full-frame-4k60.md) — video
 - [4:4:4 编码能力核验与错误声明修复](2026-10-16-yuv444-encoder-capability.md) — video
 - [PiKVM HDMI 音频周期性爆音](2026-10-16-pikvm-hdmi-audio-pops.md) — pikvm audio
+- [数据盘交互修正与管理器动效](2026-10-16-data-disk-ui-motion.md) — manager
