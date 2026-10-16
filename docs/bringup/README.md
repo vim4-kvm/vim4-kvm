@@ -118,3 +118,4 @@
 - [PiKVM HDMI 音频周期性爆音](2026-10-16-pikvm-hdmi-audio-pops.md) — pikvm audio
 - [数据盘交互修正与管理器动效](2026-10-16-data-disk-ui-motion.md) — manager
 - [开发版本规则与管理器正式版部署](2026-10-16-development-release-versions.md) — manager deployment
+- [四套 KVM 正式包部署](2026-10-16-kvm-release-deployment.md) — applications deployment
