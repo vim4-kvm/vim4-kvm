@@ -47,6 +47,23 @@ sudo python3 tools/hid-rebind-check.py --exclusive --fixed-kernel --cycles 20
 显式注销和关闭。禁止在旧内核运行，它能触发已知 panic。测试后启动 NanoKVM，
 再验证实际键鼠、音视频和内核日志。
 
+### CRG USB 控制端点重连
+
+CRG UDC 在总线重置时先进入 `USB_STATE_RECONNECTING`，等事件环排空后才由
+`prepare_for_setup()` 清理 EP0 请求并重新启用 SETUP。此期间必须继续消费旧传输
+完成事件，但不能处理新 SETUP；否则 SET_ADDRESS 会将仍在队列中的 `status_req`
+再次入队，触发 `list_add double add` 和内核 panic。这与上面的 f_hid 生命周期问题不同。
+仅恢复状态检查不足以解决解绑竞态：驱动还必须登记 `gadget.irq`，让 USB 核心在
+解绑前等待已进入的中断完成，并在锁内检查异步回调开关。禁用期间不创建 SETUP/
+STALL 请求、不调用 gadget 的 disconnect；请求完成事件仍可消费。旧代码释放锁后
+检查开关并补发 STALL，可能跨过控制器重置而留下新的 EP0 请求。
+
+`common_drivers/drivers/usb/crg/test_setup_events.py` 编译实际事件分派函数，验证
+重连期间跳过新请求、旧完成事件仍可处理、恢复 DEFAULT 后可重新枚举。
+运行 `python3 common_drivers/drivers/usb/crg/test_setup_events.py` 无需板子。
+修改编入 `amlogic-usb.ko`；替换模块、更新 initramfs 并重启后，核对运行模块的
+build ID，再做独占 USB 重绑定及各应用切换回归。不能只凭磁盘文件判断修复已生效。
+
 ### 自动风扇与编码器频率
 
 主内核提交 `8df3bdb55` 增加 MCU 百分比调速；`cd7f74066` 修正紧急全速、

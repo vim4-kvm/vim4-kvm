@@ -20,6 +20,7 @@
 | HDMI 有音频包、WebRTC 已连接但始终静音 | TDM-B 默认读外部引脚。HDMI 服务 ExecStartPre 在 ALSA restore 后选 hdmirx，再允许 NanoKVM 启动；零峰值录音不能证明声音正常 | [功能与音频状态](docs/feature-status.md)、packaging/ubuntu/check-audio-startup.py |
 | 直接用 OOWOW /shell/write 或未经核对流式刷盘 | 项目曾遇到 GPT 被清空。使用专用校验刷机脚本，重装需用户确认 | tools/oowow-flash.sh、上板记录 |
 | USB 功能重新绑定后关闭 /dev/hidg*，内核 list_del panic | 5.15 f_hid 同时重置等待队列和仍被打开的 cdev。必须同时修复队列生命周期（dbcef7c1f）与独立 cdev 分配（b86c7e5bd）；只修前者实测仍会崩溃。保留应用保护，重启进入新 Image 才生效 | hid.Reenumerate、tools/hid-rebind-check.py、[内核](docs/kernel.md) |
+| USB 重连期间 SET_ADDRESS 触发 list_add double add | 仅恢复 CRG UDC 的设备状态检查实测仍会 panic。还需登记 gadget.irq，让核心在解绑前同步中断；在锁内检查回调开关，禁用期间不补发 STALL 或处理新 SETUP。继续消费旧完成事件，不直接重置仍被硬件持有的请求链表 | common_drivers/drivers/usb/crg/test_setup_events.py、[CRG 重连](docs/kernel.md#crg-usb-控制端点重连) |
 | 部署后不久内核 panic，刚装的 sudoers 变成 0 字节 | 原根分区 data=writeback、commit=600。新部署配置 ordered/commit=5；所有组件安装成功前 sync，网页更新复核文件后再重启。它不保证升级原子性，也不证明其他文件没有损坏 | tools/rootfs-policy.py、[上板记录](docs/bringup-log.md) |
 | 沿用上游设备固件代码，在 Ubuntu 上以 khadas 运行时功能静默失败 | 设备固件默认 root 与自带工具（写 /proc/sys、tailscale set --login-server、reboot）。逐条走一遍特权路径，改经 sudo 助手；只有单元测试不足以发现 | kvm/VIM4.md、tools/jetkvm-smoke.mjs |
 | 他人正在构建同一工作区时修改共享接口 | 构建读取工作树，半成品会使对方打包失败。跨仓库接口改动一次写完再保存，或先在独立 worktree 中修改 | logs/nanokvm-migration-package.log |
