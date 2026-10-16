@@ -47,8 +47,30 @@ done
 # overrides (including rtp-lan.conf) and reject unknown conflicting units.
 python3 - "$stage" > "$stage/migrate" <<'PY'
 from pathlib import Path
+import hashlib
+import subprocess
 import sys
 stage = Path(sys.argv[1])
+
+def unchanged_packaged_sudoers(path):
+    # Package-owned conffiles legitimately change across releases. Only accept
+    # the previous shipped bytes; administrator edits remain an explicit error.
+    if path.parent != Path('/etc/sudoers.d') or path.is_symlink():
+        return False
+    owner = subprocess.run(['dpkg-query', '-S', str(path)], capture_output=True, text=True)
+    if owner.returncode or len(owner.stdout.splitlines()) != 1:
+        return False
+    package, separator, filename = owner.stdout.strip().partition(': ')
+    if not separator or filename != str(path):
+        return False
+    installed = subprocess.run(['dpkg-query', '-W', '-f=${Conffiles}', package],
+                               capture_output=True, text=True)
+    if installed.returncode:
+        return False
+    digest = hashlib.md5(path.read_bytes()).hexdigest()
+    return any(fields == [str(path), digest]
+               for fields in (line.split() for line in installed.stdout.splitlines()))
+
 pairs = [(p, Path('/etc/systemd/system') / p.relative_to(stage / 'usr/lib/systemd/system'))
          for p in (stage / 'usr/lib/systemd/system').rglob('*') if p.is_file()]
 pairs += [(p, Path('/etc/udev/rules.d') / p.name)
@@ -60,7 +82,8 @@ for source, installed in pairs:
         continue
     expected = source.read_bytes()
     legacy = expected.replace(b'/usr/sbin/', b'/usr/local/sbin/').replace(b'/usr/lib/vim4-kvm/', b'/usr/local/lib/vim4-kvm/').replace(b'/usr/libexec/', b'/usr/local/libexec/')
-    if installed.is_symlink() or installed.read_bytes() not in (expected, legacy):
+    if installed.is_symlink() or (installed.read_bytes() not in (expected, legacy)
+                                  and not unchanged_packaged_sudoers(installed)):
         raise SystemExit(f'Unrecognized override; review before installing: {installed}')
     print(installed)
 PY
