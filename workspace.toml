@@ -11,19 +11,19 @@ revision = "d58501dfabde4752fccb8831a5ac5fb79f33b8e2"
 name = "common_drivers"
 url = "https://github.com/vim4-kvm/common_drivers.git"
 branch = "vim4-kvm-5.15"
-revision = "4cfb128d36f8511b2db1bd13c08d5704347ded49"
+revision = "563cff9dab2c8cd44590bf57c8ffaa7e2dae35e1"
 
 [[repos]]
 name = "gst-plugin-venc"
 url = "https://github.com/vim4-kvm/gst-plugin-venc.git"
 branch = "vim4"
-revision = "b1528f73bccbb0b0796fb220015aca4ba67024df"
+revision = "a61a49726cfc2a7c242deba1a9be328e5cf40c34"
 
 [[repos]]
 name = "gst-plugin-vfmcap"
 url = "https://github.com/vim4-kvm/gst-plugin-vfmcap.git"
 branch = "main"
-revision = "380508f1d42ce486f4b5ec999a19ec9cca33368e"
+revision = "9a883c94ddb3d4352909e5030ec80498d984a91b"
 
 [[repos]]
 name = "kvm"
