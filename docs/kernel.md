@@ -98,7 +98,7 @@ scp vim4kvm-R.tgz tools/kernel-install.sh vim4:/tmp/
 ssh vim4 'echo khadas | sudo -S -p "" sh /tmp/kernel-install.sh /tmp/vim4kvm-R.tgz'
 ```
 
-脚本做的事：带 `--keep-directory-symlink` 解包（见 bringup-log §7）、复制 overlay 文件、备份 `extlinux.conf.stock`、写入 `Default`（新内核）+ `Stock`（原厂，显式路径）两个启动项、生成 initramfs、切换 `/boot/Image` 和 `/boot/dtb` 链接。
+脚本做的事：带 `--keep-directory-symlink` 解包（见 [内核与 /lib 事故](bringup/2026-10-12-custom-kernel-lib-symlink.md)）、复制 overlay 文件、备份 `extlinux.conf.stock`、写入 `Default`（新内核）+ `Stock`（原厂，显式路径）两个启动项、生成 initramfs、切换 `/boot/Image` 和 `/boot/dtb` 链接。
 
 ## 回退
 

@@ -1,9 +1,9 @@
 # KVM 播放延迟复核（2026-10-15）
 
 以下保留最初的源码审查结论，当时没有切换板上应用或复现其他 KVM 的运动场景。
-后续实测、已修复项与限制见 [上板记录](bringup-log.md)。
+后续实测、已修复项与限制见 [跨 KVM 运动播放](bringup/2026-10-15-cross-kvm-motion-playout-backlog.md)。
 不同系统当前缓冲差异的机制与对照见 [延迟差异调查](kvm-delay-causes.md)。
-已上板验证的 One-KVM 修复及测量见 [上板记录](bringup-log.md)。
+已上板验证的 One-KVM 修复及测量见 [One-KVM 低延迟播放](bringup/2026-10-15-onekvm-low-latency-playout.md)。
 下面区分确定的实现行为与尚未测量的用户可见影响；不能据此宣称其他系统已修复或全部正常。
 
 | 仓库 | 审查提交 | 结论 |

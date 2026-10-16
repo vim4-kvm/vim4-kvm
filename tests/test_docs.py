@@ -1,4 +1,4 @@
-"""Documentation stays navigable: every tool is catalogued and local links resolve."""
+"""Documentation stays navigable and cheap to load: tools catalogued, links resolve, entry docs small."""
 from pathlib import Path
 import re
 import subprocess
@@ -53,6 +53,19 @@ class DocsTest(unittest.TestCase):
                 elif fragment and resolved.suffix == '.md' and fragment not in anchors(resolved):
                     broken.append(f'{doc.relative_to(ROOT)}: {target}')
         self.assertEqual(broken, [])
+
+    # Loaded into every agent session; subsystem detail belongs in docs/subsystems/.
+    def test_always_loaded_docs_stay_small(self):
+        sizes = {name: len((ROOT / name).read_bytes()) for name in ('CLAUDE.md', 'AGENTS.md', 'LESSONS.md')}
+        self.assertLessEqual(sum(sizes.values()), 6000, sizes)
+
+    def test_bringup_entries_are_indexed_and_bounded(self):
+        index = (ROOT / 'docs/bringup/README.md').read_text()
+        entries = [path for path in tracked('docs/bringup/*.md') if path.name != 'README.md']
+        self.assertEqual([p.name for p in entries if not re.fullmatch(r'\d{4}-\d\d-\d\d-[a-z0-9-]+\.md', p.name)], [])
+        self.assertEqual([p.name for p in entries if f'({p.name})' not in index], [])
+        self.assertEqual([p.name for p in entries if len(p.read_bytes()) > 12000], [])
+        self.assertFalse((ROOT / 'docs/bringup-log.md').exists())
 
 
 if __name__ == '__main__':

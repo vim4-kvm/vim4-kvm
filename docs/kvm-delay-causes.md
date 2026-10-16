@@ -1,6 +1,10 @@
 # 不同 KVM 的播放延迟差异调查
 
-本次调查接续 [跨 KVM 实测](bringup-log.md)；源码对应 NanoKVM `1ca2e15`、
+> 摘要：各 KVM 延迟差异的首要原因是接收端 playout-delay 策略；One-KVM、PiKVM
+> 已改为 0/0 并复测。后续节依次为接收耗时拆分、编码配置差异、其余实现差异、
+> 两个应用的启用与复测，以及 PiKVM 软件端到端基线与候选筛选。按需读取单节。
+
+本次调查接续 [跨 KVM 实测](bringup/2026-10-15-cross-kvm-motion-playout-backlog.md)；源码对应 NanoKVM `1ca2e15`、
 JetKVM `390d7e98`、One-KVM `e5878e6d`、kvmd `259d2c7e`、uStreamer `9baf264c`。
 分析对象是 Chrome 155 WebRTC 接收路径，不把 Direct、浏览器缓冲和键鼠端到端延迟混为一谈。
 

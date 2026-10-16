@@ -13,7 +13,7 @@ Agent 入口见 [AGENTS.md](AGENTS.md)（任务路由），经验记录见 [LESS
 | [docs/tools.md](docs/tools.md) | 全部脚本的运行位置、对板子的影响和文档入口 |
 | [docs/subsystems/](docs/subsystems/) | 内核、音视频、USB、应用、部署的当前约定 |
 | [docs/hardware.md](docs/hardware.md) | 硬件接口、串口接线、供电与默认账户 |
-| [docs/bringup-log.md](docs/bringup-log.md) | 上板记录（按时间顺序，含踩坑） |
+| [docs/bringup/](docs/bringup/README.md) | 上板记录：每条一个文件，先查索引 |
 | `tools/` | 构建、部署、串口、回归与测量脚本 |
 | `packaging/` | Ubuntu 组件包、内核包与候选镜像组装 |
 | `board/` | 板级 systemd 服务、udev 规则、`install.sh` |

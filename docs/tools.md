@@ -74,7 +74,7 @@ PiKVM smoke 可用 `PIKVM_CDP` 接入专用测试 Chrome；结束时关闭测试
 | tools/one-kvm-usb-check.mjs | One-KVM | 独占，重新枚举 USB | Mac 主机键鼠、ISO 挂载 | [板级工具](board-tools.md) |
 | tools/one-kvm-usb-profile-check.mjs | One-KVM | 独占，改 USB 组合后恢复 | HID/UAC/网卡组合与超限回滚 | [板级工具](board-tools.md) |
 | tools/one-kvm-usb-board-check.py | 板（root） | 独占，应用停止 | 板端 USB 助手枚举与恢复 | [板级工具](board-tools.md) |
-| tools/one-kvm-uu-ui-check.mjs | 一次性容器实例 | 无（禁止对板子账户运行） | UU 远程绑定界面 | [上板记录](bringup-log.md) |
+| tools/one-kvm-uu-ui-check.mjs | 一次性容器实例 | 无（禁止对板子账户运行） | UU 远程绑定界面 | [上板记录](bringup/2026-10-15-uu-output-controls-identity.md) |
 | tools/pikvm-smoke.mjs | PiKVM | 独占 | 解码、及时截图、MJPEG 重连与可选 Mac USB 输入 | [Ubuntu 构建](ubuntu-build.md#pikvm-组件) |
 | tools/kvm-switch-check.mjs | 管理器 | 独占，切换应用 | 应用互斥切换并恢复原选择 | [板级工具](board-tools.md#kvm-应用切换回归) |
 

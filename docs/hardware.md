@@ -30,7 +30,7 @@
 
 | 接口 | 用途 | 备注 |
 |---|---|---|
-| Micro HDMI 输入（Type-D） | 采集被控机画面 | HDMI RX **port 1**，进 vdin0。`/dev/video71`（vdin1）是显示输出回写，不是 HDMI 输入；采集走 tvserver 打开源 + vfm_cap（见 bringup-log §8）。官方称 HDMI 输出须接显示器，实测未接时 vdin0 + vfm_cap 可正常采集 |
+| Micro HDMI 输入（Type-D） | 采集被控机画面 | HDMI RX **port 1**，进 vdin0。`/dev/video71`（vdin1）是显示输出回写，不是 HDMI 输入；采集走 tvserver 打开源 + vfm_cap（见 [HDMI 输入采集](bringup/2026-10-12-hdmi-input-capture.md)）。官方称 HDMI 输出须接显示器，实测未接时 vdin0 + vfm_cap 可正常采集 |
 | USB-C（USB2.0 OTG + PD） | 模拟键鼠 / 虚拟 U 盘 / USB 网卡 | UDC = `fdd00000.crgudc2`。**同时也是 9–20V PD 供电口** |
 | VIN（背面） | 9–20V 供电 | 可选独立供电；当前 Mac 已验证 USB-C 单线供电与 HID，协商边界见 [usb-pd.md](usb-pd.md) |
 | HDMI 输出 | 本地显示 / 挂假负载 | |

@@ -26,5 +26,13 @@ SSH 为 ssh vim4（khadas@192.168.50.210），串口 /dev/cu.usbserial-100，921
 短按 RESET、松开 FUNCTION。刷写见板级工具文档，禁止直接用 OOWOW /shell/write。
 
 镜像构建需记录各仓库提交、模块、插件、板级服务和应用配置。
-上板关键发现记入 [bringup-log.md](../bringup-log.md)，可复用教训归
-[LESSONS.md](../../LESSONS.md)，临时实验配置不能写成已验证默认值。
+上板关键发现按 [上板记录索引](../bringup/README.md) 新建条目，跨子系统教训归
+[LESSONS.md](../../LESSONS.md)、子系统教训归对应文档的「错题」，临时实验配置不能写成已验证默认值。
+
+## 错题
+
+| 触发条件 / 错误 | 原因与正确做法 | 验证入口 |
+|---|---|---|
+| 部署后不久内核 panic，刚装的 sudoers 变成 0 字节 | 原根分区 data=writeback、commit=600。新部署配置 ordered/commit=5；所有组件安装成功前 sync，网页更新复核文件后再重启。它不保证升级原子性，也不证明其他文件没有损坏 | tools/rootfs-policy.py、[上板记录](../bringup/2026-10-13-hid-lifecycle-deploy-reliability.md) |
+| 从 HDR 分支构建管理器后，已部署的趋势图表消失 | 图表在另一工作树的未提交改动中。部署前同时核对固定分支与已部署功能，合并到同一可构建提交；保留原工作树不等于保留线上功能 | vim4-manager onekvm 分支、logs/one-kvm/manager-final.png |
+| 提高应用包对平台包的版本下限后，网页更新一律失败 | 五个更新入口都只允许替换自身一个包，APT 预演需要升级 vim4-kvm-board/vfmcap/amlvenc 时直接拒绝。只有在新平台组件已部署或已进镜像后才提高下限，并先单独发布 platform；CI 通过不代表现有板子能网页升级 | packaging/ubuntu/package.py PLATFORM、vim4-manager-helper update |

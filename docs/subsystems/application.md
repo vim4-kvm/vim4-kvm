@@ -45,3 +45,13 @@ PiKVM 源码在 `kvmd/`，VIM4 视频后端在 `ustreamer/`，部署约定见 `k
 它保留原生 PiKVM 网页和认证，复用公共 HDMI、HID 和编码组件；本地虚拟介质使用
 限定助手控制现有 LUN。切换前先安全弹出虚拟盘。构建使用 ubuntu-build.py 的
 `--component pikvm`，不会替换系统 Python 或启动树莓派板级服务。
+
+## 错题
+
+| 触发条件 / 错误 | 原因与正确做法 | 验证入口 |
+|---|---|---|
+| 沿用上游设备固件代码，在 Ubuntu 上以 khadas 运行时功能静默失败 | 设备固件默认 root 与自带工具（写 /proc/sys、tailscale set --login-server、reboot）。逐条走一遍特权路径，改经 sudo 助手；只有单元测试不足以发现 | kvm/VIM4.md、tools/jetkvm-smoke.mjs |
+| 两个 KVM 共用 8080，切换后绑定失败或仍显示旧界面 | systemd Conflicts 不保证旧进程退出后才启动新进程。助手先等待 stop 完成再启动，失败时不启动替代程序；管理器链接区分应用，NanoKVM 首页禁用缓存 | vim4-manager/deploy/test_helper.py、tools/kvm-switch-check.mjs |
+| PiKVM 原有视频能播放，但重新连接找不到共享内存 | 普通用户服务不能依赖登录会话的 IPC 生命周期。整组服务使用私有 /dev/shm，验证音频启停与 MJPEG/WebRTC 重连 | kvmd/deploy/vim4/vim4-pikvm.service、logs/pikvm/full-smoke-rate.log |
+| 给 pion SettingEngine.SetNet 包装 UDP 套接字后进程空闲占满 3 核 | mDNS 的 ipv4.PacketConn 需要具体的 *net.UDPConn，包装后读取持续出错且非 ErrClosed，读循环空转。只包装单播套接字，部署前查空闲 CPU 与 pprof | NanoKVM service/stream/webrtc/batch_vim4.go |
+| UU 客户端 H.265 一直"正在传输画面"，发送端 60fps 且零丢包 | libstreamer 的 H265VpsSpsPpsTracker 解析 AP 时从 data()+1 起按 2 字节 NAL 头遍历，错把第二个头字节当长度高位，AP 一律 kDrop；帧里缺 SPS/PPS，SpsPpsIdrIsH265Keyframe 把 IRAP 降级为 delta，解码器永不启动。VPS/SPS/PPS 必须拆成独立单 NAL 包发送，不能用 type 48 聚合包 | One-KVM/src/webrtc/h265_payloader.rs、/Applications/UURemote.app libstreamer.dylib 反汇编 |

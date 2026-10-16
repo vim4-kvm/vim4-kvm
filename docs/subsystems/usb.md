@@ -47,3 +47,11 @@ JetKVM、PiKVM 只读挂载。NanoKVM 的旧“虚拟磁盘”开关仍对应 `d
 PD 不是完整 TCPM；单线供电时拔线会断电。启动枚举通过不等于睡眠唤醒、
 运行中重置和 NCM IP 通信通过。改描述符或协商代码后运行相关边界测试，
 再验证主机枚举和实际输入，避免干扰其他任务。
+
+## 错题
+
+| 触发条件 / 错误 | 原因与正确做法 | 验证入口 |
+|---|---|---|
+| 认为 USB-C 供电必须另接 VIN 才能传键鼠 | 本项目已验证开机 PD 协商后单线供电和 HID，不代表所有供电、热插拔场景 | [USB-PD](../../docs/usb-pd.md) |
+| USB 主机卸载卷后仍不能弹出 PiKVM 镜像 | unmount 不清除 SCSI 防弹出锁；必须 host eject。厂商内核 host eject 不发 configfs inotify，需要在现有轮询中核对 LUN file | kvmd/kvmd/plugins/msd/otg/__init__.py |
+| 管理器挂载共享介质后，以为各 KVM 网页都能看到并安全操作 | 实测只有 PiKVM 实时读取 LUN；JetKVM 只在启动时读一次并把他处镜像标成自有存储，One-KVM 从不读取且自身挂载会 forced_eject 他处可写盘。共享资源的状态必须在查询和变更时读取实际 LUN，非本进程挂载的介质只显示不覆盖，特权助手在共享锁内再核对一次；切换四个应用逐一在网页核对，不能只看管理器 | logs/media-crossapp/、kvm/internal/vim4media、One-KVM/src/msd/controller.rs |

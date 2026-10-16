@@ -5,7 +5,7 @@
 
 当前 NanoKVM `.8` 新增可写 512 MiB FAT32 U 盘，已验证 Mac 写入、开关后数据保留；
 已修复镜像上传运行目录权限和 Bash 终端。Ventoy ISO 的 Chrome 上传及 CD-ROM 文件读取
-已通过，详见 [上板记录](bringup-log.md)。以下仍为旧版功能清单。
+已通过，详见 [NanoKVM 终端、镜像上传与可写 U 盘](bringup/2026-10-13-nanokvm-terminal-upload-writable-disk.md)。以下仍为旧版功能清单。
 
 2026-10-13 按当前 VIM4 路由与前端条件核对；上游目录中存在代码，不代表
 已注册对应接口或已完成 VIM4 适配。硬件仍只有 HDMI 和 USB-C。

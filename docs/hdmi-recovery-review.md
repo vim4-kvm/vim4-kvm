@@ -1,7 +1,7 @@
 # HDMI 恢复路径对照
 
 2026-10-13；源码审查，不代表新增硬件验证。复现记录见
-[上板记录](bringup-log.md#虚拟显示器退出后-hdmi-桌面未恢复2026-10-13)。
+[上板记录](bringup/2026-10-13-virtual-display-hdmi-not-restored.md)。
 
 ## 审查范围
 

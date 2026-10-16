@@ -55,7 +55,7 @@ Chrome 实机完成 NanoKVM → JetKVM → NanoKVM → JetKVM → NanoKVM，
 每次采样 10 秒均为 3840×2160、约 60fps、零丢帧/丢包；切换到首帧
 1.89–2.12 秒。这是当前桌面场景的切换恢复测试，不是端到端输入延迟或长时间
 运动场景测试。最终 NanoKVM 启用，JetKVM 停用；详情见
-[上板记录](bringup-log.md)。
+[NanoKVM 正式部署与 JetKVM 往返切换](bringup/2026-10-13-nanokvm-deploy-jetkvm-switch.md)。
 
 ## 移除旧 Smart Assistant
 
