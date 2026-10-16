@@ -9,10 +9,14 @@ Screen Sharing 高性能会话退出后自动恢复；实际协商为 4K60 YUV44
 没有验证该表声明的全部模式、HDR 或所有主机。它是可复现的自定义配置，
 不是已替换的系统默认预设。对照记录见 docs/bringup-log.md。
 
+板级助手 vim4-edid 内置同一张表作为 `RTK-CONTROL` 预设，NanoKVM、One-KVM
+与 JetKVM 菜单中显示为 RTK UHD HDR 4K60；vim4-manager 仍用本文件的安装副本。
+`apply RTK-CONTROL` 只接受与内置表一致的数据。
+
 加载并保存到板级配置（会重新协商 HDMI）：
 
 ```sh
-ssh vim4 'sudo -n /usr/libexec/vim4-edid apply RTK-CONTROL' < board/edid/rtk-uhd-hdr.bin
+ssh vim4 'sudo -n /usr/libexec/vim4-edid preset RTK-CONTROL'
 ```
 
 恢复厂商默认表：

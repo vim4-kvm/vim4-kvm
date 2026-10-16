@@ -31,7 +31,7 @@ try {
   await api('auth/login', 'POST', { username, password });
   saved = { video: await api('config/video'), stream: await api('config/stream'),
     mode: await api('stream/mode'), board: await api('vim4/video') };
-  assert(['VIM4-4K60', 'VIM4-1080P60'].includes(saved.board.edid), 'Preserve custom EDID; test requires a built-in preset');
+  assert(['VIM4-4K60', 'RTK-CONTROL', 'VIM4-1080P60'].includes(saved.board.edid), 'Preserve custom EDID; test requires a built-in preset');
   const input = await api('video/input-status?device=/dev/video_cap');
   assert.equal(input.state, 'locked');
   assert(input.width > 0 && input.fps > 0);
@@ -116,7 +116,7 @@ try {
   // Changing the curve while SDR is active must not interrupt the HDMI service.
   assert.equal((await api('vim4/video', 'POST', { action: 'hdr', white: 220, peak: 1200 })).white, 220);
   if (process.argv.includes('--edid')) {
-    for (const preset of ['VIM4-1080P60', 'VIM4-4K60']) {
+    for (const preset of ['VIM4-1080P60', 'RTK-CONTROL', 'VIM4-4K60']) {
       assert.equal((await api('vim4/video', 'POST', { action: 'edid', preset })).edid, preset);
       await view.waitForTimeout(6000);
       assert.equal((await api('video/input-status?device=/dev/video_cap')).state, 'locked');
@@ -145,7 +145,7 @@ try {
       await api('stream/bitrate', 'POST', { bitrate_preset: saved.stream.bitrate_preset });
       await api('stream/mode', 'POST', { mode: saved.mode.mode });
       await api('vim4/video', 'POST', { action: 'hdr', white: saved.board.white, peak: saved.board.peak });
-      if (process.argv.includes('--edid') && ['VIM4-4K60', 'VIM4-1080P60'].includes(saved.board.edid))
+      if (process.argv.includes('--edid') && ['VIM4-4K60', 'RTK-CONTROL', 'VIM4-1080P60'].includes(saved.board.edid))
         await api('vim4/video', 'POST', { action: 'edid', preset: saved.board.edid });
     }
   } finally { await browser.close(); }
