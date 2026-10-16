@@ -2587,3 +2587,43 @@ USB 已连接。开启等待再取消未发送 /api/select，应用和磁盘状�
 - 证据：`logs/capture444/check-debug.log`、`check-release-direct.log`、
   `check-release-copy.log`、`check-final-regression.log`、`v308.raw`、
   `v308-pixels.json`、`implementation-restored.log`；测试入口随驱动和插件提交。
+
+## 2026-10-16：4:4:4 全帧处理优化至 4K60
+
+- common_drivers `563cff9da`、gst-plugin-vfmcap `9a883c9`。
+  保持此前 3840×2160、YUV444 8-bit SDR 输入和 5.15.137-vim4kvm 内核。
+  驱动以独立 `vfm_check` 名称加载，插件从 `/tmp` 加载；正式文件未替换。
+- 对同一个持有的 DMA 帧做分项测量：write-combine 映射下 memcpy 55.560ms、
+  缓存内存重排 5.864ms、直接交错读取重排 82.077ms；改用只读可缓存映射后，
+  memcpy 3.480ms、直接复制并重排 3.786ms。这是微基准，不能代替连续采集吞吐。
+- 驱动通过 DMA API 为 CPU 读取按需建立缓存维护映射，首次读取每个独立导出帧时
+  失效缓存；帧只读且持有期间不回收，后续 mmap/SYNC_START 不重复失效。
+  不允许可写 mmap/mprotect 或 WRITE 同步，处理部分映射偏移，释放时解除映射；
+  无 CPU 读取的硬件消费者不增加缓存维护开销。不接受改变物理地址的 bounce 映射。
+- 插件将复制和 NEON 重排融合，复用输出缓冲池，避免逐帧分配和首次触碰约 25MB
+  内存。中间版本虽平均达到 60fps，但短测出现重复/跳号；最终验收使用物理 HDMI
+  动态标记，在预热 120 帧后逐帧读取三个位置的帧号及横纵单像素色度条纹。
+
+  | 最终对照窗口 | 结果 |
+  |---|---|
+  | 完整插件 → appsink | 3600 帧，59.985469 秒，59.998fps |
+  | 最大接收间隔 | 18.327ms |
+  | 帧号校验失败 / 撕裂 / 重复 / 跳号 / 色度错误 | 0 / 0 / 0 / 0 / 0 |
+  | 同时运行的原始 DMA 标记采样 | 3900 帧，59.998067fps，3899 次连续变化，校验失败和撕裂均为 0 |
+  | 插件进程 CPU（ps 采样） | 约一个核心的 46%，不是整机 46% |
+  | NV21 零拷贝回归 | 300 帧约 5.003 秒，约 60fps |
+
+- 同一最终实现的前一轮单消费者窗口为 59.998fps，最大间隔 17.518ms，
+  色度错误和撕裂为 0，但出现一次重复和一次跳号，完整性程序返回 1。
+  最终双消费者窗口返回 0，未复现该现象；不能据此确定前一次异常属于输入端还是采集端，
+  也不将一分钟无异常当作长期零丢帧保证。
+- YUV444 与 NV21 各 30 轮 close/STREAMOFF/REQBUFS(0) 回归通过，包含设备关闭后
+  持有 DMA fd 继续读取、拒绝可写映射/mprotect、部分映射与完整映射内容对照。
+  两条采集路径结束后的测试模块引用均归零，可正常卸载。正式服务全部 active，
+  8080 HTTP 200，近期内核日志无 BUG/Oops/panic/DMA-API/refcount 报错。
+- ARM64 模块与插件 release 构建、NEON 重排测试通过；动态图和 appsink 完整性程序
+  已提交在插件 tests/，不自动作为离线测试运行。本次没有硬件编码、UU 客户端或
+  网络传输验收，没有重启或正式部署；旧 `vfm_probe` 的历史引用仍待正常重启清除。
+- 证据：`logs/capture444/profile-wc.log`、`profile-cached.log`、`cached-pooled.log`、
+  `cached-final.log`、`cached-compare.log`、`cached-reference.log`、
+  `pattern-final.csv`、`pattern-reference.csv`、`performance-restored.log`。
