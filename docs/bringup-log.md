@@ -2329,3 +2329,38 @@ H.265 P99 33.4ms、最大 50.0ms。三组均零统计丢包、丢帧、freeze，
 测试结束恢复正常 One-KVM 与管理器，清除临时账户目录、测试服务、恢复定时器。
 dpkg 文件校验、包审计与 board check 通过；HDMI InvocationID 和 EDID SHA256 均不变。
 配置、指标和限制见 [延迟差异调查](kvm-delay-causes.md)，证据在 `logs/onekvm-playout-release/`。
+
+## 2026-10-15：PiKVM 尽快播放策略部署与对照
+
+uStreamer `b9f7f04` 在 VIM4 Janus 视频上固定使用协商后的 playout-delay 0/0，
+保留 GOP30、编码码率与非 VIM4 路径。构建、隔离验证并安装 PiKVM 单组件包
+`2.5.1+vim4.20261016.91`；工作区 49 项测试、14 项部署测试、RTP 分包重组和
+Janus 挂载/卸载检查通过。
+
+Chrome 155、有线 IPv4、4K60/60Mbps，H.264/H.265 原版与新版各采样 100 次，
+含 60 秒 HDMI 全屏运动。包头确认实际扩展从 0/1000 变为 0/0，媒体走本机有线地址。
+首组运动段缓冲 H.264 为 64.00→5.73ms，H.265 为 31.20→4.32ms；
+末段为 29.62→1.90ms、20.51→1.44ms。这四轮零统计丢包、丢帧、freeze，音频正常。
+但回调 P99 分别从 33.4ms 变为 66.7/50.1ms，不能把低缓冲写成所有流畅度指标改善。
+
+临时 0/10ms 测试与接收机编译重叠，发生丢包和解码停止，作废因果比较；
+10/20ms 没有改善尾间隔，未采用。正式版重复测试也遇到一次丢包/停顿；
+重启测试浏览器再对照时原插件亦出现运动启动附近停顿，正式新版则零丢包、丢帧、freeze，
+缓冲 5.62/1.50ms、P99 66.6ms。剩余异常没有根因结论；不承诺所有场景持续丝滑。
+完整指标、试验边界和失败轮次见 [延迟差异调查](kvm-delay-causes.md)。
+
+结束恢复 `.91` 正式插件、原 One-KVM 选择及 PiKVM H.264/12Mbps 设置；
+清理所有临时插件、测试浏览器、SSH 转发与恢复定时器。dpkg 校验、包审计及 board check
+通过，HDMI InvocationID、EDID 与 override.yaml 哈希不变。证据：`logs/pikvm-playout-release/`。
+
+## 2026-10-16：RTK UHD HDR 4K60 成为各应用内置 EDID
+
+按用户要求，板级助手 vim4-edid 内置 `board/edid/rtk-uhd-hdr.bin` 原表，沿用板上已保存的
+`RTK-CONTROL` 标识；NanoKVM、One-KVM 与 JetKVM 菜单显示为 RTK UHD HDR 4K60。
+vim4-manager 已有该预设，仍以 `apply RTK-CONTROL` 传入安装副本；助手只接受与内置表一致的数据。
+PiKVM 沿用板级输入，无独立 EDID 选择。
+
+离线：vim4-edid 11 项、NanoKVM router（ARM64 容器）、JetKVM EDID 测试与 vet、One-KVM
+board_changes 测试、两套前端类型检查通过。板上仅用临时副本核对：内置表与当前 active.bin 一致，
+错误数据被拒绝且 status 仍为 RTK-CONTROL；未执行 preset 加载，避免 HPD 重新协商。
+尚未打包部署，也未在各应用界面实测切换。
