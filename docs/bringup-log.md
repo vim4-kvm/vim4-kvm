@@ -2509,3 +2509,48 @@ USB 已连接。开启等待再取消未发送 /api/select，应用和磁盘状�
   不作为新版功能通过证据，输入竞态及编码能力约束目前由离线测试覆盖。
 - 证据：`logs/one-kvm/uu-deploy-package.log`、`uu-deploy-verify.log`、`uu-deploy112/`、
   `uu-postcheck112/` 和 `uu-current-service112.log`（均在 `logs/one-kvm/` 下）。
+
+## 2026-10-16：4K60 8-bit YUV444 原始采集实测
+
+- 结论：当前 VIM4 的 HDMI RX → VDIN → DMA-BUF 路径可连续采集
+  **3840×2160、约 60 fps、8-bit YUV444**。本次持续约一分钟，未测试硬件编码、
+  网络传输或客户端解码，不代表 UU 已能端到端运行 4K60 4:4:4。
+- 环境：内核 `5.15.137-vim4kvm`；构建树 `80a07ad5406d`，common_drivers
+  `4cfb128d36f8`。Mac HDMI 输出 YUV444 8-bit SDR，输入报告 59.999 Hz。
+  停止应用和原采集服务后，用独立名称 `vfm_probe`、`video_nr=72` 加载临时模块；
+  原模块与磁盘上的正式模块均未替换。
+- 临时模块仅在格式识别中加入 `VIDTYPE_VIU_444` / `VIDTYPE_RGB_444`，用诊断
+  fourcc `V444` 暴露单平面、每像素 3 字节，stride 取 canvas 宽度。
+  VDIN 设置 `color_depth_support 0x1`、`no_swap_en 1`、
+  `conversion 3840 2160 2`、`game_mode 3`，tvpath 改接 `vdin0 vfm_probe`。
+  G_FMT 返回宽 3840、高 2160、stride 11520、sizeimage 24883200；
+  VDIN 状态确认 `FMT_CONVERT_YUV_YUV444` 和 source_bitdepth 8。
+- 测试端用 4 个 V4L2 缓冲，逐帧 DQBUF、取得 DMA-BUF、映射和同步后采样，随后 QBUF。
+  Mac 测试图包含横向与纵向单物理像素红/青条纹，以及每次刷新递增、带校验的帧号，
+  在画面顶部、中间、底部重复显示。测量端点为用户态收到原始帧，未经过编码器。
+
+  | 指标 | 结果 |
+  |---|---|
+  | 帧数 / 首末帧间隔 | 3600 / 59.985092 秒 |
+  | 帧率（3599 个间隔） | 59.998241 fps |
+  | 最大接收间隔 | 17.082 ms |
+  | 动态帧号变化 | 3599 次，首末编号差 3599，无观测到的丢帧或重复 |
+  | 帧号校验失败 / 三处帧号不一致 | 0 / 0 |
+
+- 最后一帧完整保存为 24,883,200 字节，实际字节序为 Cr、Cb、Y。
+  纵向单像素条纹的两组均值分别为 `(240,103,62)` / `(16,153,188)`；
+  横向条纹为 `(16,154,188)` / `(240,102,63)`，与大色块参考值相差至多 1。
+  两个方向的色度都逐像素交替，证明并非 4:2:0 / 4:2:2 上采样。
+  原始数据率约 1.493 GB/s；测试逐帧只读取标记，最后一帧才完整复制，
+  因此不能据此声称 CPU 全帧处理或编码也能达到该吞吐。
+- 测试程序输出的 progress `seq=0` 是 QBUF 后结构被改写造成，不能作为丢帧证据；
+  驱动的 sequence 也是交付计数。本次连续性结论依据画面内的动态帧号。
+- 收尾恢复原 `vdin0 vfm_cap` 路径与 NV21 正式采集，One-KVM `.112`、管理器、
+  HDMI 服务均 active，8080 HTTP 200，boot ID 不变。
+  临时模块未安装到磁盘，但仍有 3 个引用，普通 rmmod 返回 in use；已断开其采集路径，
+  没有强制卸载或重启，正常重启后清除。疑似停止时未出队 DONE 缓冲的 DMA-BUF
+  引用未释放，正式支持前需要排查这个生命周期问题。
+- 本地证据位于 `logs/capture444/`：`capture444-run.log`、
+  `capture444-state-before.log`、`capture444-state-after.log`、`capture444-frame.raw`、
+  `pixel-analysis.json`、`pattern.csv`、`restored.log`；诊断源码和构建产物在
+  `build/capture444/`（上述目录均不入版本库）。本次不修改正式驱动或应用。
