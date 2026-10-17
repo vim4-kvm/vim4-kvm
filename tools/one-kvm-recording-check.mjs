@@ -15,6 +15,11 @@ const browser = await chromium.launch({ channel: 'chrome', headless: true });
 const context = await browser.newContext({ viewport: { width: 1280, height: 900 }, locale: 'en-US' });
 let saved, tone;
 const created = new Set();
+const openRecording = async page => {
+  const collapse = page.getByRole('button', { name: 'Collapse toolbar', exact: true });
+  if (await collapse.isVisible()) await collapse.click();
+  await page.getByRole('button', { name: 'Device recording', exact: true }).click();
+};
 const api = async (endpoint, method = 'GET', data) => {
   const response = await context.request.fetch(url + '/api/' + endpoint, { method, data });
   assert(response.ok(), `${method} ${endpoint}: ${response.status()} ${await response.text()}`);
@@ -30,6 +35,17 @@ try {
   }
   await api('auth/login', 'POST', { username, password });
   assert.equal((await api('recording')).recording, false, 'Do not interrupt an existing recording');
+  const layouts = process.env.ONEKVM_CONSOLE_LAYOUT ? [process.env.ONEKVM_CONSOLE_LAYOUT] : ['floating', 'sidebar', 'current'];
+  const layoutPage = await context.newPage();
+  await layoutPage.goto(url + '/api/setup');
+  for (const layout of layouts) {
+    await layoutPage.evaluate(layout => localStorage.setItem('consoleLayout', layout), layout);
+    await layoutPage.goto(url);
+    await layoutPage.getByRole('button', { name: 'Device recording', exact: true }).waitFor();
+    await openRecording(layoutPage);
+    await layoutPage.keyboard.press('Escape');
+  }
+  await layoutPage.close();
   saved = { mode: await api('stream/mode'), audio: await api('config/audio') };
   await api('config/audio', 'PATCH', { enabled: true });
   for (const codec of ['h264', 'h265']) {
@@ -45,7 +61,7 @@ try {
     }
     let page = await context.newPage();
     await page.goto(url);
-    await page.getByRole('button', { name: 'Device recording', exact: true }).click();
+    await openRecording(page);
     await page.getByRole('button', { name: 'Start recording', exact: true }).click();
     await page.getByRole('button', { name: /Stop and save/ }).waitFor({ timeout: 20000 });
     const running = await api('recording');
@@ -63,7 +79,7 @@ try {
     }
     page = await context.newPage();
     await page.goto(url);
-    await page.getByRole('button', { name: 'Device recording', exact: true }).click();
+    await openRecording(page);
     await page.getByRole('button', { name: /Stop and save/ }).click();
     await page.getByRole('button', { name: 'Start recording', exact: true }).waitFor({ timeout: 15000 });
     const stopped = await api('recording');
@@ -101,6 +117,13 @@ try {
   created.delete(restarted.file); created.add(stopped.file);
   assert.equal(stopped.error, null, JSON.stringify(stopped));
   console.log('PASS: authenticated recording, duplicate start, file protection, closed-browser recording, download, audio interruption and restart');
+} catch (error) {
+  const page = context.pages().at(-1);
+  if (page) {
+    await page.screenshot({ path: path.join(output, 'failure.png') }).catch(() => {});
+    await fs.writeFile(path.join(output, 'failure.txt'), await page.locator('body').innerText().catch(() => ''));
+  }
+  throw error;
 } finally {
   tone?.kill();
   if (saved) {
