@@ -74,3 +74,19 @@ dpkg 确认已安装上述版本，`dpkg --audit` 与 `dpkg -V vim4-onekvm` 无�
 `package-delete-fix.log`、`verify-delete-fix.log` 和 `deploy-delete-fix/`。
 
 不把短测推广为长时间口型同步、所有播放器兼容、突然掉电可恢复或慢盘性能保证。
+
+## 界面重做与状态接口
+
+入口移到工具栏“粘贴文本”之后，按钮下方弹出面板；录制中顶部显示 REC 计时。状态接口新增错误码、
+开始时间、编码、实时大小、剩余空间和录制前置条件；文件列表新增时长、编码、停止原因（同名 JSON
+元数据）。下载名按浏览器时区生成 `one-kvm-YYYYMMDD-HHMMSS.mkv`：板子时区为 UTC，设备生成的名称
+与列表显示时间不一致。录制中切换编码时，管线先关闭再更新编码，帧通道关闭的原因会被误判为采集中断；
+现在会等待最多 2 秒确认编码是否变化，归为 `codec_changed`。
+
+开发包 `2.5.1+vim4.20261017.28.dev.14.g1a9eed7.dirty` 经 ubuntu-build verify 与
+`board.py deploy --exclusive` 安装，633 项 Rust 测试通过。`tools/one-kvm-recording-check.mjs --exclusive`
+使用现有账户，在三个布局中均通过工具栏打开面板，H.264/H.265 各录约 13 秒，下载名、删除确认、音频中断
+（`capture_timeout`）与编码切换（`codec_changed`，文件记录停止原因）通过。两份下载在板上用 FFmpeg 严格
+解码通过：3840×2160，Opus 48 kHz 双声道。另在网页实测录制中切换编码：取消后继续录制且编码不变；
+确认后文件完整保存、无停止原因，再切到 H.264。本轮未接定向测试音，不重新证明音频内容。
+证据在 `logs/one-kvm-recording/redesign/`。

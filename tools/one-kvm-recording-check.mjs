@@ -16,9 +16,15 @@ const context = await browser.newContext({ viewport: { width: 1280, height: 900 
 let saved, tone;
 const created = new Set();
 const openRecording = async page => {
-  const collapse = page.getByRole('button', { name: 'Collapse toolbar', exact: true });
-  if (await collapse.isVisible()) await collapse.click();
-  await page.getByRole('button', { name: 'Device recording', exact: true }).click();
+  const expand = page.getByRole('button', { name: 'Expand toolbar', exact: true });
+  if (await expand.isVisible()) await expand.click();
+  const entry = page.getByRole('button', { name: 'Device recording', exact: true });
+  if (await entry.isVisible()) await entry.click();
+  else {
+    await page.getByRole('button', { name: 'More actions', exact: true }).click();
+    await page.getByRole('menuitem', { name: 'Device recording' }).click();
+  }
+  await page.locator('[data-recording-panel]').waitFor();
 };
 const api = async (endpoint, method = 'GET', data) => {
   const response = await context.request.fetch(url + '/api/' + endpoint, { method, data });
@@ -41,7 +47,8 @@ try {
   for (const layout of layouts) {
     await layoutPage.evaluate(layout => localStorage.setItem('consoleLayout', layout), layout);
     await layoutPage.goto(url);
-    await layoutPage.getByRole('button', { name: 'Device recording', exact: true }).waitFor();
+    await layoutPage.locator('.console-action-bar').first().waitFor();
+    await layoutPage.waitForTimeout(1000);
     await openRecording(layoutPage);
     await layoutPage.keyboard.press('Escape');
   }
@@ -91,10 +98,15 @@ try {
     const downloadEvent = page.waitForEvent('download');
     await page.getByRole('link', { name: 'Download', exact: true }).first().click();
     const download = await downloadEvent;
+    assert.match(download.suggestedFilename(), /^one-kvm-\d{8}-\d{6}\.mkv$/);
     await download.saveAs(path.join(output, `${codec}.mkv`));
     const files = await api('recording/files');
     const file = files.find(file => file.name === stopped.file);
     assert(file.complete && file.bytes > 100000);
+    assert.equal(file.codec, codec);
+    assert.equal(file.stop_reason, null);
+    assert(file.duration_seconds > 10, JSON.stringify(file));
+    assert.equal(stopped.codec, codec);
     await page.screenshot({ path: path.join(output, `${codec}-recording.png`) });
     console.log(JSON.stringify({ codec, ...stopped, bytes: file.bytes }));
     // Exercise the actual UI client: successful deletion must not produce a parse-error toast.
@@ -108,11 +120,11 @@ try {
       });
       observer.observe(document.body, { childList: true, subtree: true });
     });
-    const row = page.getByRole('dialog').locator('div.rounded.border').filter({ hasText: stopped.file });
-    page.once('dialog', dialog => dialog.accept());
+    const row = page.locator(`[data-recording="${stopped.file}"]`);
     const deleted = page.waitForResponse(response => response.request().method() === 'DELETE'
       && response.url().endsWith(`/recording/files/${stopped.file}`));
     await row.getByRole('button', { name: 'Delete', exact: true }).click();
+    await page.getByRole('alertdialog').getByRole('button', { name: 'Delete', exact: true }).click();
     assert((await deleted).ok());
     await row.waitFor({ state: 'detached' });
     assert.deepEqual(visibleErrors, [], 'Successful deletion displayed an error');
@@ -130,7 +142,7 @@ try {
     if (!interrupted.recording) break;
     await new Promise(resolve => setTimeout(resolve, 1000));
   }
-  assert(!interrupted.recording && interrupted.error, JSON.stringify(interrupted));
+  assert(!interrupted.recording && interrupted.error && interrupted.error_code, JSON.stringify(interrupted));
   created.delete(running.file); created.add(interrupted.file);
   console.log(JSON.stringify({ interruption: interrupted }));
   await api('audio/start', 'POST');
@@ -146,7 +158,9 @@ try {
     if (!switched.recording) break;
     await new Promise(resolve => setTimeout(resolve, 1000));
   }
-  assert(!switched.recording && switched.error, JSON.stringify(switched));
+  assert(!switched.recording && switched.error_code === 'codec_changed', JSON.stringify(switched));
+  const switchedFile = (await api('recording/files')).find(file => file.name === switched.file);
+  assert.equal(switchedFile?.stop_reason, 'codec_changed', JSON.stringify(switchedFile));
   created.delete(beforeSwitch.file); created.add(switched.file);
   console.log(JSON.stringify({ codecSwitch: switched }));
   console.log('PASS: authenticated recording, duplicate start, file protection, closed-browser recording, download, audio interruption, restart and codec change');
