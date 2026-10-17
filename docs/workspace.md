@@ -62,6 +62,11 @@ workspace.toml 的 kernel 表记录来源、分支、固定提交和 VM 名，bo
 Mac 上该参数指 VM 内路径。此目标不检查外部工作树版本，应单独核对清单。
 MCU 风扇代码属于主内核。内核构建不会同步或覆盖 VM 中的现有源码。
 
+U-Boot fork 为 [vim4-kvm/u-boot](https://github.com/vim4-kvm/u-boot/tree/vim4-kvm-2019.01)，
+VM 工作树为 `~/src/u-boot`，版本记在 workspace.toml 的 `uboot` 表。
+按该仓库 VIM4.md 手工构建与重打包；workspace.py 和镜像组装尚未自动集成。
+启动风扇测试的修改与实板结果见 [上板记录](bringup/2026-10-17-uboot-quiet-fan.md)。
+
 部署仍显式使用 board/install.sh、tools/kernel-install.sh 或 NanoKVM 的安装工具，
 分别遵循对应文档。完成构建不意味着硬件回归或整机镜像验证通过。
 

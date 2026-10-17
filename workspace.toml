@@ -61,3 +61,11 @@ branch = "vim4-kvm-5.15"
 revision = "80a07ad5406d57855c996285ae75a50a1b9147ae"
 vm = "vim4-build"
 # Lives on a case-sensitive Linux filesystem, outside this checkout.
+
+[uboot]
+url = "https://github.com/vim4-kvm/u-boot.git"
+branch = "vim4-kvm-2019.01"
+revision = "b60ff51ece0fb05456261b1aabb043db6bd923d5"
+vm = "vim4-build"
+# External ~/src/u-boot; manual build/repack instructions in its VIM4.md.
+# Not managed by workspace.py bootstrap/build or the image assembler yet.

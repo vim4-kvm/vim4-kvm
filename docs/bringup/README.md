@@ -123,3 +123,4 @@
 ## 2026-10-17
 
 - [Tailscale 管理修复部署](2026-10-17-tailscale-management-fixes.md) — manager application deployment
+- [U-Boot 取消启动风扇测试](2026-10-17-uboot-quiet-fan.md) — kernel deployment
