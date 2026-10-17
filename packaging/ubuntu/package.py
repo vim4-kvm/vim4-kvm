@@ -109,7 +109,7 @@ def application(stage):
     copy(deploy / 'picoclaw', stage, 'usr/libexec/vim4-picoclaw', 0o755)
     copy(deploy / 'remove-legacy-assistant', stage, 'usr/libexec/vim4-remove-legacy-assistant', 0o755)
     copy(ROOT / 'NanoKVM/LICENSE', stage, 'usr/share/doc/vim4-nanokvm/copyright')
-    for name in ('vim4-video', 'vim4-media', 'vim4-system', 'vim4-update', 'vim4-edid', 'vim4-tailscale'):
+    for name in ('vim4-video', 'vim4-media', 'vim4-system', 'vim4-update', 'vim4-edid'):
         copy(deploy / name, stage, 'usr/libexec/' + name, 0o755)
         copy(deploy / (name + '.sudoers'), stage, 'etc/sudoers.d/' + name, 0o440)
     for name in ('nanokvm.service', 'vim4-kvm-cpufreq.service'):
@@ -122,13 +122,15 @@ set -eu
 if [ "$1" = configure ]; then
     getent passwd khadas >/dev/null || { echo 'Requires the Khadas Ubuntu base account' >&2; exit 1; }
     /usr/libexec/vim4-remove-legacy-assistant
+    # dpkg retains obsolete conffiles; revoke the old application's access.
+    rm -f /etc/sudoers.d/vim4-tailscale
     install -d -o khadas -g khadas -m 0755 /etc/kvm /var/lib/vim4-kvm/images
     install -d -o khadas -g khadas -m 0700 /var/lib/kvm/update-jobs /var/lib/vim4-kvm/update-cache
     install -d -o khadas -g khadas -m 0700 /var/lib/vim4-kvm/picoclaw
     if [ ! -e /etc/kvm/server.yaml ]; then
         install -o khadas -g khadas -m 0600 /usr/share/vim4-nanokvm/server.yaml /etc/kvm/server.yaml
     fi
-    for name in vim4-video vim4-media vim4-system vim4-update vim4-edid vim4-tailscale; do
+    for name in vim4-video vim4-media vim4-system vim4-update vim4-edid; do
         test -s /usr/libexec/$name
         test -x /usr/libexec/$name
         test -s /etc/sudoers.d/$name

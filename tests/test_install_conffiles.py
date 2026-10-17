@@ -1,10 +1,16 @@
-"""Only unchanged package-owned sudoers may migrate during component upgrades."""
+"""Component upgrades migrate owned sudoers and retire obsolete privileges."""
 import ast
 import hashlib
+import importlib.util
+import os
 from pathlib import Path
+import re
+import shlex
+import subprocess
+import tempfile
 from types import SimpleNamespace
 import unittest
-from unittest.mock import Mock
+from unittest.mock import Mock, patch
 
 
 class SudoersMigrationTest(unittest.TestCase):
@@ -42,3 +48,46 @@ class SudoersMigrationTest(unittest.TestCase):
         self.run.reset_mock()
         self.assertFalse(self.check(self.path))
         self.run.assert_not_called()
+
+
+class NanoKVMTailscaleUpgradeTest(unittest.TestCase):
+    def test_configure_revokes_legacy_sudoers_and_preserves_tailscale(self):
+        source = Path(__file__).resolve().parents[1] / 'packaging/ubuntu/package.py'
+        spec = importlib.util.spec_from_file_location('ubuntu_package', source)
+        package = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(package)
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            stage = root / 'stage'
+            # Render the real maintainer script without requiring built assets.
+            with patch.object(package, 'copy'), patch.object(package.shutil, 'copytree'):
+                package.application(stage)
+            script = (stage / 'DEBIAN/postinst').read_text()
+            script = re.sub(r'/(?:etc|usr|var|run)/',
+                            lambda match: shlex.quote(str(root)) + match[0], script)
+            commands = root / 'commands'
+            commands.mkdir()
+            for name in ('getent', 'install', 'visudo'):
+                command = commands / name
+                command.write_text('#!/bin/sh\nexit 0\n')
+                command.chmod(0o755)
+            # Provide the retained helper/sudoers pairs checked by configure.
+            for name in ('vim4-video', 'vim4-media', 'vim4-system', 'vim4-update',
+                         'vim4-edid', 'vim4-remove-legacy-assistant'):
+                package.write(root, 'usr/libexec/' + name, '#!/bin/sh\nexit 0\n', 0o755)
+                package.write(root, 'etc/sudoers.d/' + name, 'retained rule\n', 0o440)
+            package.write(root, 'etc/sudoers.d/vim4-tailscale', 'old rule\n', 0o440)
+            legacy = root / 'etc/sudoers.d/vim4-tailscale'
+            preserved = {
+                'usr/bin/tailscale': b'existing client',
+                'usr/sbin/tailscaled': b'existing daemon',
+                'var/lib/tailscale/tailscaled.state': b'existing login state',
+            }
+            for path, content in preserved.items():
+                package.write(root, path, content.decode())
+            for _ in range(2):
+                subprocess.run(['sh', '-c', script, 'postinst', 'configure'], check=True,
+                               env={**os.environ, 'PATH': str(commands) + os.pathsep + os.environ['PATH']})
+                self.assertFalse(legacy.exists())
+                for path, content in preserved.items():
+                    self.assertEqual((root / path).read_bytes(), content)
