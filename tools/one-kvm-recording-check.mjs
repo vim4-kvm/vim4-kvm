@@ -1,0 +1,116 @@
+// Exclusive HDMI regression. Uses a configured or explicitly initialized test instance.
+// Saves downloaded recordings locally; removes only recordings created by this test.
+import assert from 'node:assert/strict';
+import fs from 'node:fs/promises';
+import path from 'node:path';
+import { spawn } from 'node:child_process';
+const { chromium } = await import(process.env.PLAYWRIGHT_MODULE || 'playwright');
+assert(process.argv.includes('--exclusive'), 'Coordinate board access and pass --exclusive');
+const url = process.env.ONEKVM_URL || 'http://192.168.50.210:8080';
+const username = process.env.ONEKVM_USERNAME, password = process.env.ONEKVM_PASSWORD;
+assert(username && password, 'Set ONEKVM_USERNAME and ONEKVM_PASSWORD');
+const output = process.env.RECORDING_OUTPUT || 'logs/one-kvm-recording';
+await fs.mkdir(output, { recursive: true });
+const browser = await chromium.launch({ channel: 'chrome', headless: true });
+const context = await browser.newContext({ viewport: { width: 1280, height: 900 }, locale: 'en-US' });
+let saved, tone;
+const created = new Set();
+const api = async (endpoint, method = 'GET', data) => {
+  const response = await context.request.fetch(url + '/api/' + endpoint, { method, data });
+  assert(response.ok(), `${method} ${endpoint}: ${response.status()} ${await response.text()}`);
+  return response.status() === 204 ? null : response.json();
+};
+try {
+  const unauthorized = await context.request.get(url + '/api/recording');
+  assert.equal(unauthorized.status(), 401);
+  if (!(await api('setup')).initialized) {
+    assert(process.argv.includes('--initialize'), 'Test instance needs explicit --initialize');
+    await api('setup/init', 'POST', { username, password, video_device: '/dev/video_cap',
+      audio_device: 'hw:AMLAUGESOUND,0', ttyd_enabled: false, rustdesk_enabled: false, msd_enabled: false });
+  }
+  await api('auth/login', 'POST', { username, password });
+  assert.equal((await api('recording')).recording, false, 'Do not interrupt an existing recording');
+  saved = { mode: await api('stream/mode'), audio: await api('config/audio') };
+  await api('config/audio', 'PATCH', { enabled: true });
+  for (const codec of ['h264', 'h265']) {
+    await api('stream/mode', 'POST', { mode: codec });
+    for (let attempt = 0; ; attempt++) {
+      const mode = await api('stream/mode');
+      if (!mode.switching && mode.mode === codec) break;
+      assert(attempt < 30, 'Video mode did not settle');
+      await new Promise(resolve => setTimeout(resolve, 500));
+    }
+    if (process.env.HDMI_TONE) {
+      tone = spawn(process.env.HDMI_TONE, [process.env.HDMI_AUDIO_NAME || 'RTK UHD HDR'], { stdio: 'ignore' });
+    }
+    let page = await context.newPage();
+    await page.goto(url);
+    await page.getByRole('button', { name: 'Device recording', exact: true }).click();
+    await page.getByRole('button', { name: 'Start recording', exact: true }).click();
+    await page.getByRole('button', { name: /Stop and save/ }).waitFor({ timeout: 20000 });
+    const running = await api('recording');
+    assert.equal(running.recording, true);
+    created.add(running.file);
+    for (const [endpoint, method] of [['recording/start', 'POST'], [`recording/files/${running.file}`, 'GET'], [`recording/files/${running.file}`, 'DELETE']]) {
+      assert.equal((await context.request.fetch(url + '/api/' + endpoint, { method })).status(), 409);
+    }
+    await page.close();
+    // No browser video/audio consumer remains during this interval.
+    for (let second = 0; second < 12; second++) {
+      await new Promise(resolve => setTimeout(resolve, 1000));
+      const current = await api('recording');
+      assert.equal(current.recording, true, JSON.stringify(current));
+    }
+    page = await context.newPage();
+    await page.goto(url);
+    await page.getByRole('button', { name: 'Device recording', exact: true }).click();
+    await page.getByRole('button', { name: /Stop and save/ }).click();
+    await page.getByRole('button', { name: 'Start recording', exact: true }).waitFor({ timeout: 15000 });
+    const stopped = await api('recording');
+    assert.equal(stopped.error, null, JSON.stringify(stopped));
+    assert(stopped.file.endsWith('.mkv'));
+    created.delete(running.file); created.add(stopped.file);
+    const downloadEvent = page.waitForEvent('download');
+    await page.getByRole('link', { name: 'Download', exact: true }).first().click();
+    const download = await downloadEvent;
+    await download.saveAs(path.join(output, `${codec}.mkv`));
+    const files = await api('recording/files');
+    const file = files.find(file => file.name === stopped.file);
+    assert(file.complete && file.bytes > 100000);
+    await page.screenshot({ path: path.join(output, `${codec}-recording.png`) });
+    console.log(JSON.stringify({ codec, ...stopped, bytes: file.bytes }));
+    await api(`recording/files/${stopped.file}`, 'DELETE'); created.delete(stopped.file);
+    await page.close();
+    tone?.kill(); tone = undefined;
+  }
+  // Audio shutdown must stop the recording with a visible error, then allow restart.
+  const running = await api('recording/start', 'POST'); created.add(running.file);
+  await api('audio/stop', 'POST');
+  let interrupted;
+  for (let second = 0; second < 15; second++) {
+    interrupted = await api('recording');
+    if (!interrupted.recording) break;
+    await new Promise(resolve => setTimeout(resolve, 1000));
+  }
+  assert(!interrupted.recording && interrupted.error, JSON.stringify(interrupted));
+  created.delete(running.file); created.add(interrupted.file);
+  console.log(JSON.stringify({ interruption: interrupted }));
+  await api('audio/start', 'POST');
+  const restarted = await api('recording/start', 'POST'); created.add(restarted.file);
+  const stopped = await api('recording/stop', 'POST');
+  created.delete(restarted.file); created.add(stopped.file);
+  assert.equal(stopped.error, null, JSON.stringify(stopped));
+  console.log('PASS: authenticated recording, duplicate start, file protection, closed-browser recording, download, audio interruption and restart');
+} finally {
+  tone?.kill();
+  if (saved) {
+    try {
+      const stopped = await api('recording/stop', 'POST');
+      if (stopped.file && created.has(stopped.file + '.part')) created.add(stopped.file);
+      for (const file of await api('recording/files')) if (created.has(file.name)) await api(`recording/files/${file.name}`, 'DELETE');
+      await api('config/audio', 'PATCH', saved.audio);
+      await api('stream/mode', 'POST', { mode: saved.mode.mode });
+    } catch (error) { console.error('Cleanup failed:', error.message); process.exitCode = 1; }
+  }
+  await browser.close();
+}

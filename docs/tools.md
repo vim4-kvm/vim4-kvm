@@ -68,6 +68,7 @@ PiKVM smoke 可用 `PIKVM_CDP` 接入专用测试 Chrome；结束时关闭测试
 | tools/jetkvm-smoke.mjs | JetKVM | 独占 | 视频、JSON-RPC 调用、网页终端 | [JetKVM](../kvm/VIM4.md) |
 | tools/one-kvm-smoke.mjs | One-KVM | 独占 | H.264/H.265/MJPEG 解码、WebRTC 缓冲驻留与 `--audio` 波形 | [板级工具](board-tools.md) |
 | tools/one-kvm-audio-check.mjs | One-KVM | 独占 | Opus WebSocket 音频，静音判失败 | [板级工具](board-tools.md) |
+| tools/one-kvm-recording-check.mjs | One-KVM | 独占 | H.264/H.265 带声音录屏、关网页续录、下载、断流与重启；仅清理本次录像 | [板级工具](board-tools.md) |
 | tools/one-kvm-settings-check.mjs | One-KVM | 独占，改 EDID/HDR 后恢复 | 视频设置往返 | [One-KVM](../One-KVM/VIM4.md) |
 | tools/one-kvm-features-check.mjs | One-KVM | 独占 | 终端、扩展、看门狗；需本地 FRP 17700 | [板级工具](board-tools.md) |
 | tools/one-kvm-drive-check.mjs | One-KVM | 独占，可能创建虚拟盘 | Ventoy 虚拟盘与文件往返 | [Ubuntu 构建](ubuntu-build.md) |
