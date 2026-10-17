@@ -18,3 +18,4 @@ VDIN、vfm_cap、Wave521、CRG USB 驱动在 common_drivers。
 | 向 Ubuntu 根目录直接解内核包，动态程序失效 | tar 替换 /lib 符号链接。安装必须带 --keep-directory-symlink，并保留 Stock 启动项 | [内核安装](../kernel.md)、tools/kernel-install.sh |
 | USB 功能重新绑定后关闭 /dev/hidg*，内核 list_del panic | 5.15 f_hid 同时重置等待队列和仍被打开的 cdev。必须同时修复队列生命周期（dbcef7c1f）与独立 cdev 分配（b86c7e5bd）；只修前者实测仍会崩溃。保留应用保护，重启进入新 Image 才生效 | hid.Reenumerate、tools/hid-rebind-check.py、[内核](../kernel.md) |
 | USB 重连期间 SET_ADDRESS 触发 list_add double add | 仅恢复 CRG UDC 的设备状态检查实测仍会 panic。还需登记 gadget.irq，让核心在解绑前同步中断；在锁内检查回调开关，禁用期间不补发 STALL 或处理新 SETUP。继续消费旧完成事件，不直接重置仍被硬件持有的请求链表 | common_drivers/drivers/usb/crg/test_setup_events.py、[CRG 重连](../kernel.md#crg-usb-控制端点重连) |
+| 在 FUSE 挂载上 inotify 后守护进程挂死、变僵尸 | 厂商内核为 inotify 发非标准 FUSE_CANONICAL_PATH(2016)；go-fuse v2.8 解析失败不回复，请求永久挂起。FUSE 守护进程必须对未知 opcode 回错误（go-fuse ≥ v2.12；空成功会越界）；卡死时写 /sys/fs/fuse/connections/N/abort 清理 | [NAS 存储与 U 盘](../bringup/2026-10-18-nas-storage-usb-disk.md) |

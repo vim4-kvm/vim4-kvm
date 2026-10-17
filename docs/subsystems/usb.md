@@ -55,3 +55,5 @@ PD 不是完整 TCPM；单线供电时拔线会断电。启动枚举通过不等
 | 认为 USB-C 供电必须另接 VIN 才能传键鼠 | 本项目已验证开机 PD 协商后单线供电和 HID，不代表所有供电、热插拔场景 | [USB-PD](../usb-pd.md) |
 | USB 主机卸载卷后仍不能弹出 PiKVM 镜像 | unmount 不清除 SCSI 防弹出锁；必须 host eject。厂商内核 host eject 不发 configfs inotify，需要在现有轮询中核对 LUN file | kvmd/kvmd/plugins/msd/otg/__init__.py |
 | 管理器挂载共享介质后，以为各 KVM 网页都能看到并安全操作 | 实测只有 PiKVM 实时读取 LUN；JetKVM 只在启动时读一次并把他处镜像标成自有存储，One-KVM 从不读取且自身挂载会 forced_eject 他处可写盘。共享资源的状态必须在查询和变更时读取实际 LUN，非本进程挂载的介质只显示不覆盖，特权助手在共享锁内再核对一次；切换四个应用逐一在网页核对，不能只看管理器 | logs/media-crossapp/、kvm/internal/vim4media、One-KVM/src/msd/controller.rs |
+| FUSE 镜像做 LUN，后端 NAS 卡住，主机复位整个 USB 设备 | 读写超过主机 SCSI 超时（约 30 秒）主机会复位设备，Mac 随后不再识别存储接口，需 UDC 重新枚举。LUN 后端 I/O 必须在约 8 秒内返回错误；本内核无 forced_eject，模拟拔线用 UDC 解绑 | [NAS 存储与 U 盘](../bringup/2026-10-18-nas-storage-usb-disk.md) |
+| 合成 FAT32 + 4 KiB 写入层，主机只读的文件被当作改写 | 数据区起点未按 4 KiB 对齐，块跨簇使相邻文件被标脏。合成卷的 FAT 与数据区按簇对齐；FAT 时间是无时区本地时间，按发起挂载的浏览器偏移换算 | vim4-manager/internal/vfat |

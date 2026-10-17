@@ -15,3 +15,4 @@
 | 在接收机性能采样期间并行编译下一个候选版本 | CPU/GPU/网络环境不再可比；PiKVM 0/10ms 轮次在编译重叠期间出现丢包和解码停止，不能据此归因播放策略。先完成构建，再独占采样；保留失败数据，检查整个采样窗口是否推进 | [PiKVM 对照](docs/kvm-delay-causes.md#pikvm-正式启用低缓冲策略与限制) |
 | 直接用 OOWOW /shell/write 或未经核对流式刷盘 | 项目曾遇到 GPT 被清空。使用专用校验刷机脚本，重装需用户确认 | tools/oowow-flash.sh、上板记录 |
 | 他人正在构建同一工作区时修改共享接口 | 构建读取工作树，半成品会使对方打包失败。跨仓库接口改动一次写完再保存，或先在独立 worktree 中修改 | logs/nanokvm-migration-package.log |
+| 在板上同时运行 NFS 服务器并 loopback 挂载自己做测试 | 板子整机卡死需 RESET，日志未保留。NAS 测试的服务器放在 Mac/OrbStack VM；冻结用 docker pause 或 VM 内 nft 丢包 | [NAS 存储与 U 盘](docs/bringup/2026-10-18-nas-storage-usb-disk.md) |
