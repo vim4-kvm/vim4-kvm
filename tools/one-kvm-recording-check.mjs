@@ -97,7 +97,27 @@ try {
     assert(file.complete && file.bytes > 100000);
     await page.screenshot({ path: path.join(output, `${codec}-recording.png`) });
     console.log(JSON.stringify({ codec, ...stopped, bytes: file.bytes }));
-    await api(`recording/files/${stopped.file}`, 'DELETE'); created.delete(stopped.file);
+    // Exercise the actual UI client: successful deletion must not produce a parse-error toast.
+    const visibleErrors = [];
+    await page.exposeFunction('recordDeletionError', text => visibleErrors.push(text));
+    await page.evaluate(() => {
+      const observer = new MutationObserver(() => {
+        for (const node of document.querySelectorAll('[role="alert"], [data-sonner-toast][data-type="error"]')) {
+          window.recordDeletionError(node.textContent);
+        }
+      });
+      observer.observe(document.body, { childList: true, subtree: true });
+    });
+    const row = page.getByRole('dialog').locator('div.rounded.border').filter({ hasText: stopped.file });
+    page.once('dialog', dialog => dialog.accept());
+    const deleted = page.waitForResponse(response => response.request().method() === 'DELETE'
+      && response.url().endsWith(`/recording/files/${stopped.file}`));
+    await row.getByRole('button', { name: 'Delete', exact: true }).click();
+    assert((await deleted).ok());
+    await row.waitFor({ state: 'detached' });
+    assert.deepEqual(visibleErrors, [], 'Successful deletion displayed an error');
+    assert(!(await api('recording/files')).some(file => file.name === stopped.file));
+    created.delete(stopped.file);
     await page.close();
     tone?.kill(); tone = undefined;
   }
