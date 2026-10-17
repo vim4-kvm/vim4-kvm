@@ -51,6 +51,42 @@ class SudoersMigrationTest(unittest.TestCase):
 
 
 class NanoKVMTailscaleUpgradeTest(unittest.TestCase):
+    def test_script_upgrade_revokes_legacy_privileges_and_preserves_daemon(self):
+        source = Path(__file__).resolve().parents[1] / 'NanoKVM/deploy/vim4/install.sh'
+        if not source.exists():
+            self.skipTest('NanoKVM checkout not present')
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            script = re.sub(r'/(?:etc|usr|var|run|opt)/',
+                            lambda match: shlex.quote(str(root)) + match[0], source.read_text())
+            commands = root / 'commands'
+            commands.mkdir()
+            for name in ('install', 'visudo', 'cp', 'mv', 'sh', 'udevadm', 'systemctl', 'sync'):
+                command = commands / name
+                command.write_text('#!/bin/sh\nexit 0\n')
+                command.chmod(0o755)
+            command = commands / 'id'
+            command.write_text('#!/bin/sh\nprintf "0\\n"\n')
+            command.chmod(0o755)
+            binary = root / 'binary'
+            binary.write_bytes(b'binary')
+            web = root / 'web'
+            web.mkdir()
+            (web / 'index.html').write_text('web')
+            legacy = ['etc/sudoers.d/vim4-tailscale', 'usr/libexec/vim4-tailscale']
+            preserved = ['usr/bin/tailscale', 'usr/sbin/tailscaled', 'var/lib/tailscale/tailscaled.state']
+            for name in legacy + preserved:
+                path = root / name
+                path.parent.mkdir(parents=True, exist_ok=True)
+                path.write_bytes(b'existing')
+            for _ in range(2):
+                subprocess.run(['/bin/sh', '-c', script, str(source), str(binary), str(web)], check=True,
+                               env={**os.environ, 'PATH': str(commands) + ':/usr/bin:/bin'})
+                for name in legacy:
+                    self.assertFalse((root / name).exists())
+                for name in preserved:
+                    self.assertEqual((root / name).read_bytes(), b'existing')
+
     def test_configure_revokes_legacy_sudoers_and_preserves_tailscale(self):
         source = Path(__file__).resolve().parents[1] / 'packaging/ubuntu/package.py'
         spec = importlib.util.spec_from_file_location('ubuntu_package', source)

@@ -123,7 +123,7 @@ if [ "$1" = configure ]; then
     getent passwd khadas >/dev/null || { echo 'Requires the Khadas Ubuntu base account' >&2; exit 1; }
     /usr/libexec/vim4-remove-legacy-assistant
     # dpkg retains obsolete conffiles; revoke the old application's access.
-    rm -f /etc/sudoers.d/vim4-tailscale
+    rm -f /etc/sudoers.d/vim4-tailscale /usr/libexec/vim4-tailscale
     install -d -o khadas -g khadas -m 0755 /etc/kvm /var/lib/vim4-kvm/images
     install -d -o khadas -g khadas -m 0700 /var/lib/kvm/update-jobs /var/lib/vim4-kvm/update-cache
     install -d -o khadas -g khadas -m 0700 /var/lib/vim4-kvm/picoclaw
