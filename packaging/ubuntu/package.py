@@ -45,6 +45,8 @@ def package(name, version, output, populate, depends):
         with postinst.open('a') as script:
             script.write('sync\n')
         provides = 'Provides: vim4-media-api-1\n' if name == 'vim4-kvm-board' else ''
+        if name == 'vim4-manager':
+            provides = 'Provides: vim4-nas-api-1\n'
         write(stage, 'DEBIAN/control', f'Package: {name}\nVersion: {version}\nArchitecture: arm64\n'
               'Maintainer: VIM4 KVM <318096335+localhost-copilot@users.noreply.github.com>\n'
               f'Section: misc\nPriority: optional\nDepends: {depends}\n{provides}'
@@ -277,7 +279,7 @@ PACKAGES = {
          'network-manager, dnsmasq-base, ' + PLATFORM + ', vim4-nanokvm (>= 1.0.3+vim4.20261013.18), '
          'vim4-manager (>= 2.5.1+vim4.20261014.4)')],
     'manager': [
-        ('vim4-manager', manager, 'libc6 (>= 2.38), python3, sudo, systemd, vim4-media-api-1, vim4-nanokvm (>= 1.0.3+vim4.20261013.18)')],
+        ('vim4-manager', manager, 'libc6 (>= 2.38), python3, sudo, systemd, cifs-utils, nfs-common, vim4-media-api-1, vim4-nanokvm (>= 1.0.3+vim4.20261013.18)')],
 }
 PACKAGES['all'] = [entry for name in ('platform', 'nanokvm', 'jetkvm', 'onekvm', 'manager') for entry in PACKAGES[name]]
 PACKAGES['capture'] = [PACKAGES['platform'][1]]
