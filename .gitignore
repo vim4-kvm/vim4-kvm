@@ -8,6 +8,7 @@ __pycache__/
 /kvm/
 /One-KVM/
 /kvmd/
+/glkvm/
 /ustreamer/
 /vim4-manager/
 /build/
