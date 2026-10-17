@@ -39,6 +39,7 @@
 static int fd;
 static int txid;
 static int contract_ready;
+static unsigned requested_ma;
 #define LOG(...) do { printf(__VA_ARGS__); fflush(stdout); } while (0)
 
 static void fail(const char *message)
@@ -163,6 +164,7 @@ static uint32_t request_5v(uint32_t pdo)
 	if ((pdo >> 30) != 0 || ((pdo >> 10) & 0x3ff) != 100 || !current)
 		fail("First source PDO must be fixed 5V with nonzero current");
 	if (current > 300) current = 300; /* Board policy: at most 3A. */
+	requested_ma = current * 10;
 	return (1u << 28) | (1u << 25) | (1u << 24) | (current << 10) | current;
 }
 
@@ -208,7 +210,8 @@ static void serve(int secs)
 
 int main(int argc, char **argv)
 {
-	if (argc != 1) { fprintf(stderr, "Usage: %s\n", argv[0]); return 2; }
+	int status_only = argc == 2 && !strcmp(argv[1], "--status");
+	if (argc != 1 && !status_only) { fprintf(stderr, "Usage: %s [--status]\n", argv[0]); return 2; }
 	uint32_t obj[8], caps[8];
 	int n, ncaps = 0, id, h, r, k;
 
@@ -220,6 +223,14 @@ int main(int argc, char **argv)
 	fd = open("/dev/i2c-6", O_RDWR);
 	if (fd < 0) { perror("i2c"); return 1; }
 	if (rd1(0x01) != 0x91) fail("Unexpected FUSB302B device ID");
+	if (status_only) {
+		/* STATUS0 is non-destructive. Do not read interrupt registers/FIFO,
+		 * change the measurement mux, or send PD traffic during monitoring.
+		 * VBUSOK is a threshold indication, not a voltage/current reading.
+		 */
+		printf("{\"vbusPresent\":%s}\n", rd1(R_STATUS0) & 0x80 ? "true" : "false");
+		return 0;
+	}
 	if ((rd1(R_SWITCHES1) & 0xf7) != 0x45 &&
 	    (rd1(R_SWITCHES1) & 0xf7) != 0x46)
 		fail("Expected U-Boot initialized PD2 sink/UFP with automatic GoodCRC");
@@ -256,6 +267,7 @@ int main(int argc, char **argv)
 		LOG("Request rdo %08x: tx %d\n", rdo, r);
 		if (r) fail("Initial request failed");
 		serve(20);
+		LOG("PD contract at bootstrap: 5000mV %umA\n", requested_ma);
 	}
 
 	for (k = 0; k < ncaps; k++)

@@ -53,7 +53,7 @@ PiKVM smoke 可用 `PIKVM_CDP` 接入专用测试 Chrome；结束时关闭测试
 | tools/hdmi-setup.sh | /usr/local/sbin/hdmi-setup.sh | vdin0 + vfm_cap 配置并打开 HDMI 源 | [音视频](subsystems/video.md) |
 | tools/hdr-curve.sh | vim4-hdr-curve | HDR10→SDR 映射表生成与写入 | [音视频](subsystems/video.md#hdr-输入) |
 | tools/kvm-gadget.sh | /usr/local/sbin/kvm-gadget.sh | USB gadget：键盘、绝对/相对鼠标、NCM | [USB](subsystems/usb.md) |
-| tools/usb-pd-init.c | vim4-kvm-pd.service | 开机 FUSB302B 5V PD 协商 | [USB-PD](usb-pd.md) |
+| tools/usb-pd-init.c | vim4-kvm-pd.service | 开机 FUSB302B 5V PD 协商；`--status` 只读 VBUS 状态 | [USB-PD](usb-pd.md) |
 
 ## 应用回归（浏览器）
 
