@@ -15,7 +15,7 @@ AGENTS.md、CLAUDE.md、LESSONS.md 直接随主仓库版本管理，不再生成
 | One-KVM | vim4 | One-KVM 应用，可在管理面板中选择 |
 | kvmd | vim4 | 官方 PiKVM fork，VIM4 HID、虚拟介质与 Ubuntu 服务集成 |
 | ustreamer | vim4 | 官方视频服务及 Janus 插件 fork，VIM4 DMA 采集和硬件编码 |
-| vim4-manager | main | 管理面板：选择 KVM 界面、查看板子状态、EDID/HDR/风扇曲线调节与 Wi-Fi 开关 |
+| vim4-manager | main | 管理面板：选择 KVM 界面、查看板子状态、EDID/HDR/风扇曲线调节、Wi-Fi 连接与热点 |
 
 ## 初始化入口
 

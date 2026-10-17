@@ -124,3 +124,4 @@
 
 - [Tailscale 管理修复部署](2026-10-17-tailscale-management-fixes.md) — manager application deployment
 - [U-Boot 取消启动风扇测试](2026-10-17-uboot-quiet-fan.md) — kernel deployment
+- [管理器 Wi-Fi 网络管理与热点模式](2026-10-17-wifi-client-hotspot.md) — manager deployment
