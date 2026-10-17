@@ -91,7 +91,8 @@ def build_plan(target, jobs, kernel_dir, vm):
                     + shlex.quote(str(output / 'jetkvm')) + ' ./cmd')],
         'manager': [('vim4-manager', 'pnpm --dir web install --frozen-lockfile && pnpm --dir web build && '
                      'go test ./... && go build -trimpath -o ' + shlex.quote(str(output / 'vim4-manager'))
-                     + ' ./cmd/vim4-manager')],
+                     + ' ./cmd/vim4-manager && go build -trimpath -o '
+                     + shlex.quote(str(output / 'vim4-nasdisk')) + ' ./cmd/vim4-nasdisk')],
         'onekvm': [('One-KVM', 'npm ci --prefix web --ignore-scripts && npm --prefix web run build && '
                     'sh deploy/vim4/build-dma-allocator.sh && '
                     'cargo test --locked --features vim4 --lib && cargo build --locked --release --features vim4 && '

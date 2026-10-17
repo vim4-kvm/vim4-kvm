@@ -240,6 +240,8 @@ def manager(stage):
     copy(deploy / 'vim4-manager-helper', stage, 'usr/libexec/vim4-manager-helper', 0o755)
     copy(deploy / 'vim4-manager-helper.sudoers', stage, 'etc/sudoers.d/vim4-manager-helper', 0o440)
     copy(deploy / 'vim4-manager.service', stage, 'usr/lib/systemd/system/vim4-manager.service')
+    copy(ROOT / 'build/vim4-nasdisk', stage, 'usr/libexec/vim4-nasdisk', 0o755)
+    copy(deploy / 'vim4-nasdisk.service', stage, 'usr/lib/systemd/system/vim4-nasdisk.service')
     for file in (deploy / 'edid').iterdir():
         copy(file, stage, 'usr/share/vim4-manager/edid/' + file.name)
     copy(ROOT / 'vim4-manager/LICENSE', stage, 'usr/share/doc/vim4-manager/copyright')
@@ -279,7 +281,7 @@ PACKAGES = {
          'network-manager, dnsmasq-base, ' + PLATFORM + ', vim4-nanokvm (>= 1.0.3+vim4.20261013.18), '
          'vim4-manager (>= 2.5.1+vim4.20261014.4)')],
     'manager': [
-        ('vim4-manager', manager, 'libc6 (>= 2.38), python3, sudo, systemd, cifs-utils, nfs-common, vim4-media-api-1, vim4-nanokvm (>= 1.0.3+vim4.20261013.18)')],
+        ('vim4-manager', manager, 'libc6 (>= 2.38), python3, sudo, systemd, fuse3, cifs-utils, nfs-common, vim4-media-api-1, vim4-nanokvm (>= 1.0.3+vim4.20261013.18)')],
 }
 PACKAGES['all'] = [entry for name in ('platform', 'nanokvm', 'jetkvm', 'onekvm', 'manager') for entry in PACKAGES[name]]
 PACKAGES['capture'] = [PACKAGES['platform'][1]]

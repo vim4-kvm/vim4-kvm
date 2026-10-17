@@ -47,7 +47,8 @@ python3 tools/workspace.py build kernel    # Mac 上使用 OrbStack vim4-build
 
 all 顺序构建 capture、encoder、server、frontend、jetkvm、onekvm、manager，不包含独立的内核构建。
 支持分别选择上述目标，服务端先运行 VIM4 Go 测试，再输出 build/NanoKVM-Server；
-前端输出 NanoKVM/web/dist，插件输出各自构建目录。build/ 不入库。
+前端输出 NanoKVM/web/dist，插件输出各自构建目录。manager 同时输出
+`build/vim4-manager` 和 NAS 文件夹 U 盘守护进程 `build/vim4-nasdisk`。build/ 不入库。
 构建使用现有工作树（含开发改动），正式打包前先执行 locked 检查。
 
 前端需要 pnpm/Node；Linux 后端需要 Go、Meson、GCC、GStreamer 开发库，
