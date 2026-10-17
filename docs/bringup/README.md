@@ -123,6 +123,7 @@
 ## 2026-10-17
 
 - [One-KVM HID 队列修复部署](2026-10-17-hid-queue.md) — usb uu application deployment
+- [UU 视频诊断统计部署](2026-10-17-uu-video-metrics.md) — uu video application deployment
 
 - [供电信息只读验证](2026-10-17-power-telemetry.md) — usb manager board
 
