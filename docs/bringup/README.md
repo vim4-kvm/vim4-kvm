@@ -122,6 +122,8 @@
 
 ## 2026-10-17
 
+- [One-KVM 设备端带声音录屏](2026-10-17-onekvm-device-recording.md) — application video audio
+
 - [One-KVM HID 队列修复部署](2026-10-17-hid-queue.md) — usb uu application deployment
 - [UU 视频诊断统计部署](2026-10-17-uu-video-metrics.md) — uu video application deployment
 

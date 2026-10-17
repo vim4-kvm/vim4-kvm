@@ -61,6 +61,7 @@ try {
     }
     let page = await context.newPage();
     await page.goto(url);
+    await page.waitForFunction(() => document.querySelector('video')?.videoWidth > 0, null, { timeout: 30000 });
     await openRecording(page);
     await page.getByRole('button', { name: 'Start recording', exact: true }).click();
     await page.getByRole('button', { name: /Stop and save/ }).waitFor({ timeout: 20000 });
@@ -79,6 +80,7 @@ try {
     }
     page = await context.newPage();
     await page.goto(url);
+    await page.waitForFunction(() => document.querySelector('video')?.videoWidth > 0, null, { timeout: 30000 });
     await openRecording(page);
     await page.getByRole('button', { name: /Stop and save/ }).click();
     await page.getByRole('button', { name: 'Start recording', exact: true }).waitFor({ timeout: 15000 });
@@ -116,7 +118,18 @@ try {
   const stopped = await api('recording/stop', 'POST');
   created.delete(restarted.file); created.add(stopped.file);
   assert.equal(stopped.error, null, JSON.stringify(stopped));
-  console.log('PASS: authenticated recording, duplicate start, file protection, closed-browser recording, download, audio interruption and restart');
+  const beforeSwitch = await api('recording/start', 'POST'); created.add(beforeSwitch.file);
+  await api('stream/mode', 'POST', { mode: 'h264' });
+  let switched;
+  for (let second = 0; second < 15; second++) {
+    switched = await api('recording');
+    if (!switched.recording) break;
+    await new Promise(resolve => setTimeout(resolve, 1000));
+  }
+  assert(!switched.recording && switched.error, JSON.stringify(switched));
+  created.delete(beforeSwitch.file); created.add(switched.file);
+  console.log(JSON.stringify({ codecSwitch: switched }));
+  console.log('PASS: authenticated recording, duplicate start, file protection, closed-browser recording, download, audio interruption, restart and codec change');
 } catch (error) {
   const page = context.pages().at(-1);
   if (page) {
