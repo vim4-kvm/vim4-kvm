@@ -59,4 +59,18 @@ ARM64 依赖检查、配置保留及升级验证通过。通过 `board.py deploy
 dpkg 确认已安装上述版本，`dpkg --audit` 与 `dpkg -V vim4-onekvm` 无异常。
 原应用账户及数据目录保留。部署日志在 `logs/one-kvm-recording/deploy/`。
 
+## 删除响应回归修复
+
+用户反馈删除成功但显示「解析响应失败」。原因是删除接口返回 204 空响应，网页
+`request()` 要求成功响应为 JSON。One-KVM `494a0ea1` 改为返回 `{ "success": true }`，
+与现有网页客户端约定一致。之前的实板脚本直接调用删除接口，未覆盖网页错误提示。
+
+回归脚本现通过网页确认框点击删除，监听页面错误与错误 toast，检查列表移除及服务端
+文件消失。同一脚本在 `.2` 版本稳定复现解析错误，在修复版
+`2.5.1+vim4.20261017.3` 的已安装二进制和内嵌网页通过；分别覆盖 H.264/H.265
+录制、下载和删除。626 项 Rust 测试、前端构建、包校验及升级检查通过；主仓库
+77 项测试中跳过 1 项，其余通过。测试使用临时账户及目录，不删除用户录像。
+证据为 `logs/one-kvm-recording/` 下 `delete-before.log`、`delete-fixed.log`、
+`package-delete-fix.log`、`verify-delete-fix.log` 和 `deploy-delete-fix/`。
+
 不把短测推广为长时间口型同步、所有播放器兼容、突然掉电可恢复或慢盘性能保证。
