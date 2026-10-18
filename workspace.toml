@@ -35,7 +35,7 @@ revision = "384e6d2bee34ada88dcd400ab06deea3b7899f28"
 name = "One-KVM"
 url = "https://github.com/vim4-kvm/One-KVM.git"
 branch = "vim4"
-revision = "912ca7556964ca16e4a75f4a5140f7554b1c0eee"
+revision = "c70817dddc915360c9ca707ad092318fbda969b2"
 
 [[repos]]
 name = "kvmd"
