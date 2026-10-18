@@ -194,9 +194,11 @@ python3 tools/board.py provision --replace-host-key
 ## KVM 应用切换回归
 
 ```sh
-PLAYWRIGHT_MODULE=/absolute/path/to/playwright/index.mjs \
+MANAGER_PASSWORD=… PLAYWRIGHT_MODULE=/absolute/path/to/playwright/index.mjs \
   node tools/kvm-switch-check.mjs --exclusive http://192.168.50.210
 ```
+
+`MANAGER_PASSWORD`（及可选 `MANAGER_USERNAME`，默认 admin）用于先登录管理器。
 
 保留上一界面的视频连接，通过管理器接口执行两轮 NanoKVM → JetKVM → NanoKVM。
 每次核对服务互斥、开机启用状态，再在 Chrome 采样 10 秒实际解码帧数、丢帧和丢包。

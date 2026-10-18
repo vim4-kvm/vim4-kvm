@@ -419,7 +419,7 @@ class Board:
         self.ssh("set -eu; uname -r; test \"$(uname -r)\" = " + shlex.quote(self.args.kernel) + "; "
                  "test -e /dev/video_cap; test -e /dev/hidg0; test -e /dev/hidg1; test -e /dev/hidg2; "
                  "curl -fsS --max-time 10 http://127.0.0.1:8080/ >/dev/null; "
-                 "curl -fsS --max-time 10 http://127.0.0.1/api/status >/dev/null; "
+                 "curl -fsS --max-time 10 http://127.0.0.1/__vim4/api/auth/state >/dev/null; "
                  "cat /sys/class/udc/*/state; systemctl --failed --no-pager; "
                  "test -z \"$(systemctl --failed --no-legend --plain)\"")
         self.note('Smoke checks passed; this does not verify video, audio, HID input or latency end to end.')

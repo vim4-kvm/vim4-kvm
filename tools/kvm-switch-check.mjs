@@ -1,5 +1,6 @@
 // Requires exclusive board access. Exercises the manager's real selection API
 // while the previous browser viewer remains connected; restores the initial selection.
+// Set MANAGER_PASSWORD (and MANAGER_USERNAME, default admin) for the manager login.
 // Set ONEKVM_USERNAME / ONEKVM_PASSWORD if One-KVM is installed.
 // PLAYWRIGHT_MODULE=/path/to/playwright/index.mjs node tools/kvm-switch-check.mjs --exclusive [manager URL]
 import assert from 'node:assert/strict';
@@ -13,6 +14,13 @@ const browser = await chromium.launch({ channel: 'chrome', headless: true });
 const page = await browser.newPage();
 const control = await browser.newPage();
 await control.goto(manager);
+const login = await control.evaluate(async (body) => {
+  const response = await fetch('/__vim4/api/auth/login', {
+    method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body),
+  });
+  return response.status + ' ' + await response.text();
+}, { username: process.env.MANAGER_USERNAME || 'admin', password: process.env.MANAGER_PASSWORD || '' });
+assert.match(login, /^200 /, 'manager login: ' + login);
 const managerAPI = (path, body) => control.evaluate(async ({ path, body }) => {
   const response = await fetch(path, body ? {
     method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body),

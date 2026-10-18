@@ -19,6 +19,7 @@
 |---|---|---|
 | khadas | khadas | 日常 SSH、sudo；nanokvm 以此账户运行 |
 | root | khadas | 原厂 sshd 允许 root 密码登录 |
+| admin | khadas-kvm | 管理面板网页登录（2026-10-18 用 `vim4-manager set-password` 设置；新镜像首次打开面板时在局域网内设置） |
 
 - 串口控制台登录同样使用上述账户。
 - 当前板子另有开发公钥（`ssh vim4`）和 enroll 安装的免密 sudo，日常不需要密码；
