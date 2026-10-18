@@ -1,3 +1,4 @@
+import { loginManager } from './manager-login.mjs';
 // Exclusive One-KVM USB regression. Requires detached media and restores settings.
 import assert from 'node:assert/strict';
 import { execFileSync, spawn } from 'node:child_process';
@@ -18,8 +19,8 @@ const api = (path, method = 'GET', body) => page.evaluate(async ({ path, method,
 }, { path, method, body });
 let saved;
 try {
+  await loginManager(page.context(), url);
   await page.goto(url + '/api/setup');
-  await api('auth/login', 'POST', { username: process.env.ONEKVM_USERNAME, password: process.env.ONEKVM_PASSWORD });
   saved = { hid: await api('config/hid'), msd: await api('config/msd'),
     network: await api('config/otg-network'), uac: await api('config/uac') };
   assert.equal(saved.hid.backend, 'otg', 'Enable OTG before this hardware regression');

@@ -17,7 +17,7 @@ JetKVM 的功能映射、特权助手和验证见 [JetKVM VIM4 集成](../../kvm
 
 One-KVM 的硬件映射、构建和限制见 [One-KVM VIM4 集成](../../One-KVM/VIM4.md)。
 
-nanokvm.service、JetKVM 的 vim4-kvm.service 与 one-kvm.service 都监听 8080、以 khadas 运行，
+四套应用都监听 127.0.0.1:8081，由管理器 8080 网关统一登录，以 khadas 运行，
 互相 Conflicts=，不能并发占用编码器或 HID。由 vim4-manager（80 端口）选择开机启用哪一个，
 部署时保留当前选择。板级服务拥有 HDMI、gadget、PD 和编码器时钟。
 应用更新不能替代平台依赖。独立编码测试以相同用户共享 /tmp 锁空间，
@@ -25,7 +25,7 @@ nanokvm.service、JetKVM 的 vim4-kvm.service 与 one-kvm.service 都监听 8080
 
 VIM4 后端使用 -tags vim4，保留上游目标实现。共享代码修改检查两个构建目标；
 前端按锁文件构建，具体命令以 VIM4.md 为准。
-账户、网络、更新沿用原 UI/API，经平台适配实现 Ubuntu 行为；
+网页登录由管理器负责；网络、更新沿用原 UI/API，经平台适配实现 Ubuntu 行为；
 不能将上游整机固件更新部署到 VIM4。缺失外接硬件保持未配置。
 
 One-KVM 的视频菜单和设置页支持 HDMI 输入状态、输出尺寸/帧率上限、码率、
@@ -45,8 +45,8 @@ One-KVM/VIM4.md 的 MCP 一节。被控机就是开发用 Mac mini 时，键鼠�
 ## PiKVM VIM4 集成
 
 PiKVM 源码在 `kvmd/`，VIM4 视频后端在 `ustreamer/`，部署约定见 `kvmd/VIM4.md`。
-管理器选择 `pikvm` 启动 vim4-pikvm.service，网页监听 8080；首次账户 admin/admin。
-它保留原生 PiKVM 网页和认证，复用公共 HDMI、HID 和编码组件；本地虚拟介质使用
+管理器选择 `pikvm` 启动 vim4-pikvm.service，应用监听 127.0.0.1:8081，由管理器 8080 网关统一登录。
+它保留原生 PiKVM 网页，关闭应用认证，复用公共 HDMI、HID 和编码组件；本地虚拟介质使用
 限定助手控制现有 LUN。切换前先安全弹出虚拟盘。构建使用 ubuntu-build.py 的
 `--component pikvm`，不会替换系统 Python 或启动树莓派板级服务。
 
@@ -55,7 +55,7 @@ PiKVM 源码在 `kvmd/`，VIM4 视频后端在 `ustreamer/`，部署约定见 `k
 | 触发条件 / 错误 | 原因与正确做法 | 验证入口 |
 |---|---|---|
 | 沿用上游设备固件代码，在 Ubuntu 上以 khadas 运行时功能静默失败 | 设备固件默认 root 与自带工具（写 /proc/sys、tailscale set --login-server、reboot）。逐条走一遍特权路径，改经 sudo 助手；只有单元测试不足以发现 | kvm/VIM4.md、tools/jetkvm-smoke.mjs |
-| 两个 KVM 共用 8080，切换后绑定失败或仍显示旧界面 | systemd Conflicts 不保证旧进程退出后才启动新进程。助手先等待 stop 完成再启动，失败时不启动替代程序；管理器链接区分应用，NanoKVM 首页禁用缓存 | vim4-manager/deploy/test_helper.py、tools/kvm-switch-check.mjs |
+| 两个 KVM 共用后端 8081，切换后绑定失败或仍显示旧界面 | systemd Conflicts 不保证旧进程退出后才启动新进程。助手先等待 stop 完成再启动，失败时不启动替代程序；管理器链接区分应用，NanoKVM 首页禁用缓存 | vim4-manager/deploy/test_helper.py、tools/kvm-switch-check.mjs |
 | PiKVM 原有视频能播放，但重新连接找不到共享内存 | 普通用户服务不能依赖登录会话的 IPC 生命周期。整组服务使用私有 /dev/shm，验证音频启停与 MJPEG/WebRTC 重连 | kvmd/deploy/vim4/vim4-pikvm.service、logs/pikvm/full-smoke-rate.log |
 | 给 pion SettingEngine.SetNet 包装 UDP 套接字后进程空闲占满 3 核 | mDNS 的 ipv4.PacketConn 需要具体的 *net.UDPConn，包装后读取持续出错且非 ErrClosed，读循环空转。只包装单播套接字，部署前查空闲 CPU 与 pprof | NanoKVM service/stream/webrtc/batch_vim4.go |
 | UU 客户端 H.265 一直"正在传输画面"，发送端 60fps 且零丢包 | libstreamer 的 H265VpsSpsPpsTracker 解析 AP 时从 data()+1 起按 2 字节 NAL 头遍历，错把第二个头字节当长度高位，AP 一律 kDrop；帧里缺 SPS/PPS，SpsPpsIdrIsH265Keyframe 把 IRAP 降级为 delta，解码器永不启动。VPS/SPS/PPS 必须拆成独立单 NAL 包发送，不能用 type 48 聚合包 | One-KVM/src/webrtc/h265_payloader.rs、/Applications/UURemote.app libstreamer.dylib 反汇编 |

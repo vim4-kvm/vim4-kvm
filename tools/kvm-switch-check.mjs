@@ -1,9 +1,9 @@
 // Requires exclusive board access. Exercises the manager's real selection API
 // while the previous browser viewer remains connected; restores the initial selection.
 // Set MANAGER_PASSWORD (and MANAGER_USERNAME, default admin) for the manager login.
-// Set ONEKVM_USERNAME / ONEKVM_PASSWORD if One-KVM is installed.
 // PLAYWRIGHT_MODULE=/path/to/playwright/index.mjs node tools/kvm-switch-check.mjs --exclusive [manager URL]
 import assert from 'node:assert/strict';
+import { loginManager } from './manager-login.mjs';
 const { chromium } = await import(process.env.PLAYWRIGHT_MODULE || 'playwright');
 const args = process.argv.slice(2);
 if (!args.includes('--exclusive')) throw new Error('Coordinate board access and pass --exclusive');
@@ -11,16 +11,11 @@ const manager = args.find((arg) => arg !== '--exclusive') || 'http://192.168.50.
 const appURL = new URL(manager);
 appURL.port = '8080';
 const browser = await chromium.launch({ channel: 'chrome', headless: true });
-const page = await browser.newPage();
-const control = await browser.newPage();
+const context = await browser.newContext();
+const page = await context.newPage();
+const control = await context.newPage();
+await loginManager(context, manager);
 await control.goto(manager);
-const login = await control.evaluate(async (body) => {
-  const response = await fetch('/__vim4/api/auth/login', {
-    method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body),
-  });
-  return response.status + ' ' + await response.text();
-}, { username: process.env.MANAGER_USERNAME || 'admin', password: process.env.MANAGER_PASSWORD || '' });
-assert.match(login, /^200 /, 'manager login: ' + login);
 const managerAPI = (path, body) => control.evaluate(async ({ path, body }) => {
   const response = await fetch(path, body ? {
     method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body),
@@ -78,12 +73,6 @@ try {
     }
     assert(loaded, 'application HTTP server did not become ready');
     if (app === 'onekvm') {
-      assert(process.env.ONEKVM_USERNAME && process.env.ONEKVM_PASSWORD, 'Set One-KVM credentials');
-      await page.evaluate(async (credentials) => {
-        const response = await fetch('/api/auth/login', { method: 'POST',
-          headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(credentials) });
-        if (!response.ok) throw new Error('One-KVM login HTTP ' + response.status);
-      }, { username: process.env.ONEKVM_USERNAME, password: process.env.ONEKVM_PASSWORD });
       await page.goto(appURL.href);
     }
     await page.waitForFunction(() => document.querySelector('video')?.videoWidth > 0, {}, { timeout: 45000 });

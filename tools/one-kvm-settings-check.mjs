@@ -1,11 +1,10 @@
+import { loginManager } from './manager-login.mjs';
 // Exclusive hardware regression: restores all changed settings, including EDID/HDR.
 import assert from 'node:assert/strict';
 import { execFileSync } from 'node:child_process';
 const { chromium } = await import(process.env.PLAYWRIGHT_MODULE || 'playwright');
 assert(process.argv.includes('--exclusive'), 'Coordinate board access and pass --exclusive');
 const url = process.env.ONEKVM_URL || 'http://192.168.50.210:8080';
-const username = process.env.ONEKVM_USERNAME, password = process.env.ONEKVM_PASSWORD;
-assert(username && password, 'Set ONEKVM_USERNAME and ONEKVM_PASSWORD');
 const browser = await chromium.launch({ channel: 'chrome', headless: true,
   args: ['--autoplay-policy=no-user-gesture-required'] });
 const context = await browser.newContext();
@@ -27,8 +26,8 @@ const api = (path, method = 'GET', body) => control.evaluate(async ({ path, meth
 }, { path, method, body });
 let saved;
 try {
+  await loginManager(context, url);
   await control.goto(url + '/api/setup');
-  await api('auth/login', 'POST', { username, password });
   saved = { video: await api('config/video'), stream: await api('config/stream'),
     mode: await api('stream/mode'), board: await api('vim4/video') };
   assert(['VIM4-4K60', 'RTK-CONTROL', 'VIM4-1080P60'].includes(saved.board.edid), 'Preserve custom EDID; test requires a built-in preset');
@@ -57,7 +56,6 @@ try {
           await control.waitForTimeout(250);
         }
       }
-      await api('auth/login', 'POST', { username, password });
       const persisted = await api('config/video');
       assert.deepEqual(persisted.output, { height: scenario.height, fps: scenario.fps });
       assert.equal(persisted.quality, scenario.quality);
@@ -138,9 +136,8 @@ try {
   try {
     await view.goto('about:blank');
     if (saved) {
-      // A failed candidate may have restarted and invalidated its sessions.
+      // Reopen the backend after a failed candidate or restart; the manager session persists.
       await control.goto(url + '/api/setup');
-      await api('auth/login', 'POST', { username, password });
       await api('config/video', 'PATCH', { output: saved.video.output, quality: saved.video.quality });
       await api('stream/bitrate', 'POST', { bitrate_preset: saved.stream.bitrate_preset });
       await api('stream/mode', 'POST', { mode: saved.mode.mode });

@@ -1,3 +1,4 @@
+import { loginManager } from './manager-login.mjs';
 // Exercise the application USB relink paths while its original viewer holds HID.
 // Pre-upload a disposable ISO. Requires an idle gadget with NCM, no microphone/media.
 import assert from 'node:assert/strict';
@@ -21,6 +22,7 @@ async function api(path, body) {
 }
 try {
   page = await browser.newPage();
+  await loginManager(page.context(), url);
   await page.goto(url);
   await page.waitForFunction(() => document.querySelector('video')?.videoWidth > 0);
   const initial = await api('vm/device/virtual');

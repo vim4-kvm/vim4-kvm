@@ -103,7 +103,7 @@ class NanoKVMTailscaleUpgradeTest(unittest.TestCase):
                             lambda match: shlex.quote(str(root)) + match[0], script)
             commands = root / 'commands'
             commands.mkdir()
-            for name in ('getent', 'install', 'visudo'):
+            for name in ('getent', 'install', 'visudo', 'python3'):
                 command = commands / name
                 command.write_text('#!/bin/sh\nexit 0\n')
                 command.chmod(0o755)

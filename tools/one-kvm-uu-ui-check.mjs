@@ -1,9 +1,11 @@
 // Run against a disposable, uninitialized One-KVM instance, never the board account.
 // The container must supervise one-kvm and restart it after SIGTERM.
 import assert from 'node:assert/strict';
+import { loginManager } from './manager-login.mjs';
 import { execFileSync } from 'node:child_process';
 const { chromium } = await import(process.env.PLAYWRIGHT_MODULE || 'playwright');
 const url = process.env.ONEKVM_URL || 'http://127.0.0.1:18089';
+const managed = new URL(url).port === '8080';
 assert.equal(new URL(url).hostname, '127.0.0.1');
 const container = process.env.ONEKVM_TEST_CONTAINER;
 assert(container?.startsWith('vim4-uu-ui-test-'));
@@ -16,9 +18,16 @@ const api = async (path, method = 'GET', data) => {
   return response.json();
 };
 try {
-  assert.equal((await api('setup')).needs_setup, true, 'Refusing to change an existing installation');
-  await api('setup/init', 'POST', credentials);
-  await api('auth/login', 'POST', credentials);
+  // Disposable fixtures normally use native auth on 18089. A fixture behind
+  // the manager must authenticate before any application request on 8080.
+  if (managed) {
+    await loginManager(context, url);
+    assert.equal((await api('setup')).initialized, true, 'Managed fixtures initialize on startup');
+  } else {
+    assert.equal((await api('setup')).needs_setup, true, 'Refusing to change an existing installation');
+    await api('setup/init', 'POST', credentials);
+    await api('auth/login', 'POST', credentials);
+  }
   const initial = await api('config/uu-remote');
   assert.equal(initial.config.device_name, 'vim4-kvm');
   assert.equal(initial.config.system, 'windows');
@@ -68,7 +77,7 @@ try {
     await new Promise(resolve => setTimeout(resolve, 100));
   }
   await page.waitForFunction(async () => { try { return (await fetch('/api/setup', { cache: 'no-store' })).ok; } catch { return false; } }, null, { timeout: 15000 });
-  await api('auth/login', 'POST', credentials);
+  if (!managed) await api('auth/login', 'POST', credentials);
   assert.equal((await api('config/uu-remote')).config.system, 'macos');
   assert.equal((await api('config/uu-remote')).config.reverse_scroll, false);
   assert.equal((await api('config/uu-remote')).config.video_codec, 'h265');

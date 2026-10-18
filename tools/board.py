@@ -339,9 +339,9 @@ class Board:
         wrong = [name for name in components if installed.get(name) != version]
         if wrong:
             raise RuntimeError('Installed versions differ for ' + ', '.join(wrong))
-        # Give the server time to bind 8080 before the smoke check.
+        # The gateway can be alive before the selected backend is ready.
         for _ in range(15):
-            if not self.ssh('curl -fsS --max-time 2 -o /dev/null http://127.0.0.1:8080/', check=False).returncode:
+            if not self.ssh('curl -fsS --max-time 2 -o /dev/null http://127.0.0.1:8081/', check=False).returncode:
                 break
             time.sleep(1)
         self.check()
@@ -418,8 +418,8 @@ class Board:
                  "printf '%s: ' \"$service\"; systemctl is-active \"$service\"; done")
         self.ssh("set -eu; uname -r; test \"$(uname -r)\" = " + shlex.quote(self.args.kernel) + "; "
                  "test -e /dev/video_cap; test -e /dev/hidg0; test -e /dev/hidg1; test -e /dev/hidg2; "
-                 "curl -fsS --max-time 10 http://127.0.0.1:8080/ >/dev/null; "
-                 "curl -fsS --max-time 10 http://127.0.0.1/__vim4/api/auth/state >/dev/null; "
+                 "curl -fsS --max-time 10 http://127.0.0.1:8081/ >/dev/null; "
+                 "curl -fsS --max-time 10 http://127.0.0.1:8080/__vim4/api/auth/state >/dev/null; "
                  "cat /sys/class/udc/*/state; systemctl --failed --no-pager; "
                  "test -z \"$(systemctl --failed --no-legend --plain)\"")
         self.note('Smoke checks passed; this does not verify video, audio, HID input or latency end to end.')

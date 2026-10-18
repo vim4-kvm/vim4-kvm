@@ -118,6 +118,7 @@ def application(stage):
         copy(deploy / name, stage, 'usr/lib/systemd/system/' + name)
     copy(deploy / '99-vim4-kvm-hid.rules', stage, 'usr/lib/udev/rules.d/99-vim4-kvm-hid.rules')
     copy(deploy / 'server.yaml', stage, 'usr/share/vim4-nanokvm/server.yaml')
+    copy(ROOT / 'packaging/ubuntu/manager-config.py', stage, 'usr/share/vim4-nanokvm/manager-config.py')
     # Preserve application-managed settings and credentials on upgrade.
     write(stage, 'DEBIAN/postinst', '''#!/bin/sh
 set -eu
@@ -132,6 +133,7 @@ if [ "$1" = configure ]; then
     if [ ! -e /etc/kvm/server.yaml ]; then
         install -o khadas -g khadas -m 0600 /usr/share/vim4-nanokvm/server.yaml /etc/kvm/server.yaml
     fi
+    python3 /usr/share/vim4-nanokvm/manager-config.py nanokvm /etc/kvm/server.yaml
     for name in vim4-video vim4-media vim4-system vim4-update vim4-edid; do
         test -s /usr/libexec/$name
         test -x /usr/libexec/$name
@@ -150,10 +152,14 @@ def jetkvm(stage):
     copy(deploy / 'vim4-jetkvm', stage, 'usr/libexec/vim4-jetkvm', 0o755)
     copy(deploy / 'vim4-jetkvm.sudoers', stage, 'etc/sudoers.d/vim4-jetkvm', 0o440)
     copy(ROOT / 'kvm/LICENSE', stage, 'usr/share/doc/vim4-jetkvm/copyright')
+    copy(ROOT / 'packaging/ubuntu/manager-config.py', stage, 'usr/share/vim4-jetkvm/manager-config.py')
     # Not enabled here: vim4-manager selects the application that boots.
     write(stage, 'DEBIAN/postinst', '''#!/bin/sh
 set -eu
 if [ "$1" = configure ]; then
+    if [ -e /var/lib/jetkvm/config.json ]; then
+        python3 /usr/share/vim4-jetkvm/manager-config.py jetkvm /var/lib/jetkvm/config.json
+    fi
     test -s /usr/libexec/vim4-jetkvm
     test -x /usr/libexec/vim4-jetkvm
     test -s /etc/sudoers.d/vim4-jetkvm
@@ -267,7 +273,7 @@ PACKAGES = {
         ('vim4-vfmcap', capture, GST),
         ('vim4-amlvenc', encoder, GST + ', libamvenc (= 0.2-202406~noble), libge2d (= 0.4-202406), gst-aml-drmbufferpool-plugins (= 0.2-202311)')],
     'nanokvm': [
-        ('vim4-nanokvm', application, GST + ', libopus0, sudo, python3, dosfstools, curl, ca-certificates, picocom, network-manager, avahi-daemon, openssh-server, chrony, alsa-utils, gstreamer1.0-alsa, gstreamer1.0-plugins-base, gstreamer1.0-plugins-good, gstreamer1.0-plugins-bad, gstreamer1.0-libav, ' + PLATFORM)],
+        ('vim4-nanokvm', application, GST + ', libopus0, sudo, python3, python3-ruamel.yaml, dosfstools, curl, ca-certificates, picocom, network-manager, avahi-daemon, openssh-server, chrony, alsa-utils, gstreamer1.0-alsa, gstreamer1.0-plugins-base, gstreamer1.0-plugins-good, gstreamer1.0-plugins-bad, gstreamer1.0-libav, ' + PLATFORM)],
     'jetkvm': [
         ('vim4-jetkvm', jetkvm, 'libc6 (>= 2.38), libglib2.0-0t64, libgstreamer1.0-0 (>= 1.24), '
          'libgstreamer-plugins-base1.0-0 (>= 1.24), gstreamer1.0-plugins-bad, ' + PLATFORM + ', '

@@ -42,8 +42,10 @@ def pikvm(stage):
         copy(deploy / name, stage, 'etc/kvmd/janus/' + name)
     for name in ('meta.yaml', 'web.css'):
         copy(ROOT / 'kvmd/configs/kvmd' / name, stage, 'etc/kvmd/' + name)
-    for name in ('htpasswd', 'override.yaml', 'totp.secret'):
+    for name in ('htpasswd', 'totp.secret'):
         copy(ROOT / 'kvmd/configs/kvmd' / name, stage, 'usr/share/vim4-pikvm/defaults/' + name, 0o600)
+    copy(deploy / 'override.yaml', stage, 'usr/share/vim4-pikvm/defaults/override.yaml', 0o600)
+    copy(ROOT / 'packaging/ubuntu/manager-config.py', stage, 'usr/share/vim4-pikvm/manager-config.py')
     copy(deploy / 'vim4-pikvm.service', stage, 'usr/lib/systemd/system/vim4-pikvm.service')
     for name in ('vim4-pikvm-media', 'vim4-pikvm-run'):
         copy(deploy / name, stage, 'usr/libexec/' + name, 0o755)
@@ -58,6 +60,7 @@ if [ "$1" = configure ]; then
             install -o khadas -g khadas -m 0600 "/usr/share/vim4-pikvm/defaults/$name" "/etc/kvmd/$name"
         fi
     done
+    /opt/vim4-pikvm/python/bin/python3.14 /usr/share/vim4-pikvm/manager-config.py pikvm /etc/kvmd/override.yaml
     visudo -cf /etc/sudoers.d/vim4-pikvm-media
     if [ -d /run/systemd/system ]; then systemctl daemon-reload; fi
 fi

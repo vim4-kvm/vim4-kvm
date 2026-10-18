@@ -1,3 +1,4 @@
+import { loginManager } from './manager-login.mjs';
 // Verify the real volume control and received audio without bypassing autoplay.
 // Optional --expect-signal requires a non-silent HDMI source during the sample.
 // --mode selects the video transport (default h264-webrtc); MJPEG and Direct
@@ -17,6 +18,7 @@ const browser = await chromium.launch({
 });
 try {
   const page = await browser.newPage();
+  await loginManager(page.context(), url);
   await page.addInitScript((mode) => {
     localStorage.setItem("nano-kvm-vide-mode", mode);
     document.cookie = "h265=Enable; path=/";

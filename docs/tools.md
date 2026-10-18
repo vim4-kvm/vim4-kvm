@@ -13,7 +13,8 @@ tools/ 与 packaging/ 下每个入口一行。tests/test_docs.py 检查本表与
 
 *.mjs 需要 Node 与 Playwright + Chrome，经 PLAYWRIGHT_MODULE 指向 playwright/index.mjs 的绝对路径
 （`mdfind -name index.mjs | grep 'playwright/index.mjs'` 可找到本机已有副本）。
-One-KVM 测试经 ONEKVM_USERNAME / ONEKVM_PASSWORD 传入账户，不打印凭据。
+访问网关的浏览器测试经 MANAGER_PASSWORD 和可选 MANAGER_USERNAME（默认 admin）
+传入统一账户，由 tools/manager-login.mjs 登录，不打印凭据；无需应用独立密码。
 默认地址为 http://192.168.50.210:8080（管理器 :80）。同一应用账户的测试依次运行。
 PiKVM smoke 可用 `PIKVM_CDP` 接入专用测试 Chrome；结束时关闭测试 context，
 保留外部浏览器。截图检查包含局域网响应时间，拒绝等待 3 秒超时才返回的 JPEG。
@@ -25,7 +26,7 @@ PiKVM smoke 可用 `PIKVM_CDP` 接入专用测试 Chrome；结束时关闭测试
 | tools/workspace.py | Mac / CI | 无 | bootstrap/status 子仓库（`--override` 供发布 CI 替换单个仓库提交），build 各目标（kernel 走 OrbStack） | [工作区](workspace.md) |
 | tools/ubuntu-build.py | Mac / CI → Docker | 无 | package/verify 七组件；支持 platform、capture、encoder、nanokvm、jetkvm、onekvm、manager、pikvm、pikvm-app | [Ubuntu 构建](ubuntu-build.md) |
 | tools/ubuntu-image.py | Mac → OrbStack | 无 | 内核包、候选镜像 assemble/verify/export | [候选镜像](ubuntu-image.md) |
-| packaging/ubuntu/ | 容器 | 无 | Dockerfile、锁文件、fetch.py、build.sh、package.py、verify.sh；check-audio-startup.py、check-onekvm-update.py 与 pikvm/check-janus.py 为打包门禁 | [Ubuntu 构建](ubuntu-build.md) |
+| packaging/ubuntu/ | 容器 | 无 | Dockerfile、锁文件、fetch.py、build.sh、package.py、verify.sh；manager-config.py 迁移网关配置；check-audio-startup.py、check-onekvm-update.py 与 pikvm/check-janus.py 为打包门禁 | [Ubuntu 构建](ubuntu-build.md) |
 | packaging/kernel/ | VM | 无 | package.sh 构建内核包，vim4.config 为配置 | [内核](kernel.md) |
 | packaging/image/ | VM（root） | 无 | assemble.sh 组装镜像文件，configure.sh 仅由其调用，verify.sh 只读检查 | [候选镜像](ubuntu-image.md) |
 | tests/ | Mac | 无 | 离线单元测试：`python3 -m unittest discover -s tests -p 'test_*.py'` | 本页 |
@@ -34,7 +35,7 @@ PiKVM smoke 可用 `PIKVM_CDP` 接入专用测试 Chrome；结束时关闭测试
 
 | 入口 | 运行位置 | 影响 | 用途 | 文档 |
 |---|---|---|---|---|
-| tools/board.py check | Mac | 读 | 内核、服务、设备节点、8080 HTTP | [板级工具](board-tools.md) |
+| tools/board.py check | Mac | 读 | 内核、服务、设备节点、8081 后端与 8080 网关状态 | [板级工具](board-tools.md) |
 | tools/board.py deploy --exclusive | Mac | 独占 | 校验并安装组件包（委托 install-components.sh） | [板级工具](board-tools.md#增量开发闭环) |
 | tools/board.py verify | Mac | 独占 | 部署后 hid/audio/video 实测，写 verify.json | [板级工具](board-tools.md) |
 | tools/board.py provision / enroll | Mac | 改板配置 | 公钥与开发用免密 sudo | [板级工具](board-tools.md#操作前约定) |
@@ -78,13 +79,14 @@ PiKVM smoke 可用 `PIKVM_CDP` 接入专用测试 Chrome；结束时关闭测试
 | tools/one-kvm-uu-ui-check.mjs | 一次性容器实例 | 无（禁止对板子账户运行） | UU 远程绑定界面 | [上板记录](bringup/2026-10-15-uu-output-controls-identity.md) |
 | tools/pikvm-smoke.mjs | PiKVM | 独占 | 解码、及时截图、MJPEG 重连与可选 Mac USB 输入 | [Ubuntu 构建](ubuntu-build.md#pikvm-组件) |
 | tools/kvm-switch-check.mjs | 管理器 | 独占，切换应用 | 应用互斥切换并恢复原选择 | [板级工具](board-tools.md#kvm-应用切换回归) |
+| tools/manager-login.mjs | 管理器 | 创建登录会话 | 浏览器测试共享统一登录；导出 loginManager(context, managerURL) | 本页 |
 
 ## 诊断与测量
 
 | 入口 | 运行位置 | 影响 | 用途 | 文档 |
 |---|---|---|---|---|
 | tools/latency-source.swift | Mac | 占用 HDMI 画面 | 把帧号画进 HDMI 输出，`--motion` 产生运动网格 | [延迟测量](latency.md) |
-| tools/latency-receiver.mjs | Mac | 独占 | 解码像素帧号与呈现节奏；支持 PiKVM 认证、专用 CDP 浏览器和无像素回读对照 | [延迟测量](latency.md) |
+| tools/latency-receiver.mjs | Mac | 独占 | 解码像素帧号与呈现节奏；统一管理器登录、专用 CDP 浏览器和无像素回读对照 | [延迟测量](latency.md) |
 | tools/latency-summary.py | Mac | 无 | 匹配两端时间戳，统计呈现间隔、回调漏采和无更新尾段 | [延迟测量](latency.md) |
 | tools/video-timing-summary.py | Mac | 无 | 汇总 VIM4_VIDEO_TIMING 分段计时 | [延迟测量](latency.md) |
 | tools/input-target.swift | Mac | 覆盖显示器 | input-check 的临时接收窗口 | [输入验证](input-latency.md) |

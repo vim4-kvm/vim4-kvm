@@ -1,3 +1,4 @@
+import { loginManager } from './manager-login.mjs';
 // Play a non-silent HDMI source before running. Decodes the application's Opus
 // WebSocket stream; silence is a failure, not evidence of working audio.
 import assert from 'node:assert/strict';
@@ -8,11 +9,9 @@ const browser = await chromium.launch({ channel: 'chrome', headless: true,
   args: [`--unsafely-treat-insecure-origin-as-secure=${origin}`] });
 try {
   const page = await browser.newPage();
+  await loginManager(page.context(), origin);
   await page.goto(origin + '/api/setup');
-  const result = await page.evaluate(async credentials => {
-    const response = await fetch('/api/auth/login', { method: 'POST',
-      headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(credentials) });
-    if (!response.ok) throw new Error('Login HTTP ' + response.status);
+  const result = await page.evaluate(async () => {
     let frames = 0, peak = 0, failure;
     const decoder = new AudioDecoder({
       output(audio) {
@@ -39,7 +38,7 @@ try {
     decoder.close();
     if (failure) throw new Error(failure);
     return { frames, peak };
-  }, { username: process.env.ONEKVM_USERNAME, password: process.env.ONEKVM_PASSWORD });
+  });
   console.log(JSON.stringify(result));
   assert(result.frames >= 48000 && result.peak > 0.001, 'No audible signal decoded');
 } finally {

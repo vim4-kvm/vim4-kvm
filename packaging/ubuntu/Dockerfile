@@ -10,7 +10,7 @@ RUN test "$(dpkg --print-architecture)" = arm64 \
  && printf 'deb [signed-by=/usr/share/keyrings/ubuntu-archive-keyring.gpg check-valid-until=no] http://snapshot.ubuntu.com/ubuntu/20261012T000000Z %s main universe\n' noble noble-updates noble-security > /etc/apt/sources.list \
  && apt-get update \
  && apt-get install -y --no-install-recommends \
-    ca-certificates curl xz-utils git build-essential gcc-12 pkg-config python3 \
+    ca-certificates curl xz-utils git build-essential gcc-12 pkg-config python3 python3-ruamel.yaml \
     meson ninja-build libgstreamer1.0-dev libgstreamer-plugins-base1.0-dev \
     libopus-dev libdrm-dev dpkg-dev file sudo libssl-dev bc bison flex \
     device-tree-compiler kmod rsync clang libclang-dev cmake nasm \

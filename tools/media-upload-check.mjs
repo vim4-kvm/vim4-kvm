@@ -1,3 +1,4 @@
+import { loginManager } from './manager-login.mjs';
 // Real browser multipart upload plus a read-only command in the web terminal.
 // Requires a trusted local session with authentication disabled or already set up.
 // PLAYWRIGHT_MODULE=/path/to/playwright/index.mjs node tools/media-upload-check.mjs --exclusive IMAGE [URL]
@@ -12,6 +13,7 @@ const { chromium } = await import(process.env.PLAYWRIGHT_MODULE || 'playwright')
 const browser = await chromium.launch({ channel: 'chrome', headless: true });
 try {
   const page = await browser.newPage();
+  await loginManager(page.context(), url);
   await page.goto(url);
   // Use a native File/FormData, as the application's upload button does.
   await page.evaluate(() => {

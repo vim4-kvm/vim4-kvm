@@ -1,14 +1,13 @@
-// Exclusive HDMI regression. Uses a configured or explicitly initialized test instance.
+// Exclusive HDMI regression through the manager gateway.
 // Saves downloaded recordings locally; removes only recordings created by this test.
 import assert from 'node:assert/strict';
+import { loginManager } from './manager-login.mjs';
 import fs from 'node:fs/promises';
 import path from 'node:path';
 import { spawn } from 'node:child_process';
 const { chromium } = await import(process.env.PLAYWRIGHT_MODULE || 'playwright');
 assert(process.argv.includes('--exclusive'), 'Coordinate board access and pass --exclusive');
 const url = process.env.ONEKVM_URL || 'http://192.168.50.210:8080';
-const username = process.env.ONEKVM_USERNAME, password = process.env.ONEKVM_PASSWORD;
-assert(username && password, 'Set ONEKVM_USERNAME and ONEKVM_PASSWORD');
 const output = process.env.RECORDING_OUTPUT || 'logs/one-kvm-recording';
 await fs.mkdir(output, { recursive: true });
 const browser = await chromium.launch({ channel: 'chrome', headless: true });
@@ -34,12 +33,7 @@ const api = async (endpoint, method = 'GET', data) => {
 try {
   const unauthorized = await context.request.get(url + '/api/recording');
   assert.equal(unauthorized.status(), 401);
-  if (!(await api('setup')).initialized) {
-    assert(process.argv.includes('--initialize'), 'Test instance needs explicit --initialize');
-    await api('setup/init', 'POST', { username, password, video_device: '/dev/video_cap',
-      audio_device: 'hw:AMLAUGESOUND,0', ttyd_enabled: false, rustdesk_enabled: false, msd_enabled: false });
-  }
-  await api('auth/login', 'POST', { username, password });
+  await loginManager(context, url);
   assert.equal((await api('recording')).recording, false, 'Do not interrupt an existing recording');
   const layouts = process.env.ONEKVM_CONSOLE_LAYOUT ? [process.env.ONEKVM_CONSOLE_LAYOUT] : ['floating', 'sidebar', 'current'];
   const layoutPage = await context.newPage();

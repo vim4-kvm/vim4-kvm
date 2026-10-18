@@ -1,15 +1,12 @@
-// Run with One-KVM selected and exclusive board access. Credentials are supplied
-// through ONEKVM_USERNAME / ONEKVM_PASSWORD and are never printed.
+// Run with One-KVM selected and exclusive board access. Set MANAGER_PASSWORD.
 // --seconds=120 --warmup=15 measures steady-state cadence. Run a physical HDMI
 // motion source separately; presentation callbacks do not prove content changes.
 import assert from 'node:assert/strict';
+import { loginManager } from './manager-login.mjs';
 const { chromium } = await import(process.env.PLAYWRIGHT_MODULE || 'playwright');
 const args = process.argv.slice(2);
 assert(args.includes('--exclusive'), 'Coordinate board access and pass --exclusive');
 const url = args.find(arg => !arg.startsWith('--')) || 'http://192.168.50.210:8080';
-const username = process.env.ONEKVM_USERNAME;
-const password = process.env.ONEKVM_PASSWORD;
-assert(username && password, 'Set ONEKVM_USERNAME and ONEKVM_PASSWORD');
 const seconds = Number(args.find(arg => arg.startsWith('--seconds='))?.split('=')[1] || 10);
 const warmup = Number(args.find(arg => arg.startsWith('--warmup='))?.split('=')[1] || 0);
 assert(Number.isFinite(seconds) && seconds > 0 && seconds <= 3600, 'Invalid --seconds');
@@ -53,22 +50,8 @@ try {
       }
     };
   });
+  await loginManager(page.context(), url);
   await page.goto(url);
-  await page.evaluate(async ({ username, password, initialize }) => {
-    const api = async (path, body) => {
-      const response = await fetch('/api/' + path, body ? {
-        method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body),
-      } : {});
-      if (!response.ok) throw new Error(path + ' HTTP ' + response.status);
-      return response.json();
-    };
-    const setup = await api('setup');
-    if (!setup.initialized) {
-      if (!initialize) throw new Error('Complete first setup or pass --initialize');
-      await api('setup/init', { username, password });
-    }
-    await api('auth/login', { username, password });
-  }, { username, password, initialize: args.includes('--initialize') });
   const requestedMode = args.find(arg => arg.startsWith('--mode='))?.split('=')[1];
   if (requestedMode) {
     originalMode = await page.evaluate(async () => (await (await fetch('/api/stream/mode')).json()).mode);

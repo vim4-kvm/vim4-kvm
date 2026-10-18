@@ -1,3 +1,4 @@
+import { loginManager } from './manager-login.mjs';
 // Usage: PLAYWRIGHT_MODULE=/absolute/path/to/playwright/index.mjs node ... URL SECONDS
 // Read frame IDs from actual decoded pixels. Source and receiver must run on
 // the same Mac; no device clock or RTP sender clock is used for latency.
@@ -15,6 +16,7 @@ const browser = cdp ? await chromium.connectOverCDP(cdp)
   : await chromium.launch({ channel: 'chrome', headless: true });
 const context = await browser.newContext();
 try {
+  await loginManager(context, url);
   const page = await context.newPage();
   await page.addInitScript(({localIP, remoteIP, pikvm}) => {
     window.peers = [];
@@ -47,27 +49,7 @@ try {
     }
   }, {localIP: process.env.LATENCY_LOCAL_IP, remoteIP: process.env.LATENCY_REMOTE_IP, pikvm});
   if (pikvm) {
-    if (!process.env.PIKVM_USERNAME || !process.env.PIKVM_PASSWORD) throw new Error('PiKVM credentials required');
     const origin = new URL(url).origin;
-    await page.goto(origin + '/login');
-    // nginx can serve the login page before kvmd is ready after a restart.
-    // Use the browser's network context, including its local-network access.
-    const loginStatus = await page.evaluate(async credentials => {
-      const deadline = Date.now() + 15000;
-      let ready = false;
-      while (Date.now() < deadline) {
-        try {
-          const response = await fetch('/api/auth/check', {signal: AbortSignal.timeout(1000)});
-          if ([200, 401, 403].includes(response.status)) { ready = true; break; }
-        } catch { /* Backend may still be starting. */ }
-        await new Promise(resolve => setTimeout(resolve, 250));
-      }
-      if (!ready) throw new Error('PiKVM authentication backend did not become ready');
-      const response = await fetch('/api/auth/login', {method: 'POST',
-        body: new URLSearchParams(credentials), signal: AbortSignal.timeout(10000)});
-      return response.status;
-    }, {user: process.env.PIKVM_USERNAME, passwd: process.env.PIKVM_PASSWORD});
-    if (loginStatus !== 200) throw new Error(`PiKVM login failed: HTTP ${loginStatus}`);
     await page.goto(origin + '/kvm/');
   } else await page.goto(url);
   await page.waitForFunction(width => document.querySelector('video')?.videoWidth === width,

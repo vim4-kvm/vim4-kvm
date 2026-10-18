@@ -1,3 +1,4 @@
+import { loginManager } from './manager-login.mjs';
 // Requires Playwright and Chrome. Opens one viewer; coordinate encoder access.
 // PLAYWRIGHT_MODULE=/absolute/path/to/playwright/index.mjs node tools/video-smoke.mjs [URL] [SECONDS] [--mode MODE]
 // MODE: h264-webrtc (default), h265-webrtc, h264-direct or h265-direct.
@@ -16,6 +17,7 @@ const browser = await chromium.launch({
 });
 try {
   const page = await browser.newPage();
+  await loginManager(page.context(), url);
   const direct = { messages: 0, keyframes: 0, bytes: 0 };
   // Direct sockets live in a worker, outside the page's JavaScript globals.
   page.on('websocket', (socket) => {

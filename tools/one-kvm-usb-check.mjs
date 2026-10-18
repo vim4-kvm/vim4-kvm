@@ -1,3 +1,4 @@
+import { loginManager } from './manager-login.mjs';
 // macOS host regression: authenticated HID input, read-only ISO mount/eject,
 // then HID input again after USB re-enumeration. Run only with exclusive access.
 import assert from 'node:assert/strict';
@@ -37,8 +38,8 @@ const checkPointer = async () => {
   }
 };
 try {
+  await loginManager(page.context(), 'http://192.168.50.210:8080');
   await page.goto('http://192.168.50.210:8080/api/setup');
-  await api('auth/login', 'POST', { username: process.env.ONEKVM_USERNAME, password: process.env.ONEKVM_PASSWORD });
   await page.evaluate(() => new Promise((resolve, reject) => {
     const socket = window.usbSocket = new WebSocket(`ws://${location.host}/api/ws/hid`);
     socket.binaryType = 'arraybuffer';

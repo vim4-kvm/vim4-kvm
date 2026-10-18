@@ -68,17 +68,18 @@ board.py deploy 先在本地按 SHA256SUMS 校验七个 deb 和 sources.json 并
 这是现有 VIM4 系统的升级入口，不代替完整镜像首次安装。
 
 video-smoke.mjs 需要 Playwright 和 Chrome，默认采样 15 秒，输出实际解码帧数、
-尺寸、丢帧和丢包；无视频或连接断开返回失败。它使用当前页面配置，需要无认证
-页面且默认显示 WebRTC 视频，不修改账户认证。此测试不测输入响应、音频或端到端延迟。
+尺寸、丢帧和丢包；无视频或连接断开返回失败。它使用当前页面配置，默认显示
+WebRTC 视频，不修改账户认证。此测试不测输入响应、音频或端到端延迟。
 
-One-KVM 使用 `tools/one-kvm-smoke.mjs --exclusive`，通过 ONEKVM_USERNAME 和
-ONEKVM_PASSWORD 环境变量提供独立网页账户。可加 `--mode=h265` 或 `--mode=mjpeg`，
-结束恢复原模式；首次初始化必须显式加 `--initialize`。音频解码验证使用
+所有访问 8080 的浏览器测试通过 MANAGER_PASSWORD 和可选 MANAGER_USERNAME（默认 admin）
+登录管理器，复用 tools/manager-login.mjs；不再需要 ONEKVM_PASSWORD 或 PIKVM_PASSWORD。
+先在管理器完成首次账户设置。One-KVM 使用 `tools/one-kvm-smoke.mjs --exclusive`，
+可加 `--mode=h265` 或 `--mode=mjpeg`，结束恢复原模式。托管模式自动完成应用初始化。音频解码验证使用
 `one-kvm-audio-check.mjs --exclusive`，输入端应播放有声内容；USB 主机为本机 Mac 时，
 `one-kvm-usb-check.mjs --exclusive` 检查键鼠、测试 ISO 和重新枚举后的键鼠，
 ONEKVM_TEST_ISO 指向包含测试标记的 ONEKVM_TEST 卷。三套应用切换使用
 `kvm-switch-check.mjs --exclusive`，结束恢复初始选择。这些实机测试依次运行，
-不要并发登录同一个 One-KVM 账户，以免会话替换干扰结果。
+避免并发占用同一套硬件。
 
 周期卡顿排查可加 `--seconds=120 --warmup=15`，同时在物理 HDMI 桌面运行
 运动标记。输出包含关键帧/丢包/丢帧/freeze 增量，以及呈现回调间隔的
@@ -171,7 +172,8 @@ python3 tools/board.py check
 ```
 
 检查预期内核（可用 --kernel 指定）、tvserver/HDMI/gadget/NanoKVM 服务、采集和 HID
-设备节点、本机 8080 HTTP，并输出 UDC 状态和失败单元。UDC 未连接会显示，但不表示
+设备节点、本机 8081 后端及 8080 的 /__vim4/api/auth/state，并输出 UDC 状态和失败单元。
+未登录访问网关首页的 302 属正常（curl -f 不将 302 判失败）。UDC 未连接会显示，但不表示
 HID 实测失败；检查成功也不代表实际键鼠、画面、音频或延迟通过。
 
 新镜像没有开发者公钥，SSH 主机密钥也会重新生成。flash 在启动日志采集后自动运行

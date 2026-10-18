@@ -1,3 +1,4 @@
+import { loginManager } from './manager-login.mjs';
 // JetKVM UI smoke test. Requires Playwright and Chrome; opens one viewer, so
 // coordinate encoder access. JSON-RPC calls use the page's own "rpc" channel.
 // PLAYWRIGHT_MODULE=/absolute/path/to/playwright/index.mjs \
@@ -31,6 +32,7 @@ const browser = await chromium.launch({ channel: 'chrome', headless: true,
 let failed = false;
 try {
   const page = await browser.newPage();
+  await loginManager(page.context(), url);
   await page.addInitScript(() => {
     window.smokePeers = [];
     window.smokeEvents = [];

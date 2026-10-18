@@ -1,3 +1,4 @@
+import { loginManager } from './manager-login.mjs';
 // Real Ventoy creation and file round-trip against an exclusively reserved board.
 // --initialize creates a missing 256 MiB drive; an existing drive is never reformatted.
 // --mount-host additionally verifies the uploaded file through the macOS USB volume.
@@ -6,7 +7,6 @@ import { readFileSync } from 'node:fs';
 import { execFileSync } from 'node:child_process';
 const { chromium } = await import(process.env.PLAYWRIGHT_MODULE || 'playwright');
 assert(process.argv.includes('--exclusive'), 'Coordinate board access and pass --exclusive');
-assert(process.env.ONEKVM_USERNAME && process.env.ONEKVM_PASSWORD, 'Set One-KVM credentials');
 const browser = await chromium.launch({ channel: 'chrome', headless: true });
 const page = await browser.newPage();
 const filename = `vim4-drive-check-${Date.now()}.txt`;
@@ -20,8 +20,9 @@ const api = (path, method = 'GET', body) => page.evaluate(async ({ path, method,
   return response.json();
 }, { path, method, body });
 try {
-  await page.goto((process.env.ONEKVM_URL || 'http://192.168.50.210:8080') + '/api/setup');
-  await api('auth/login', 'POST', { username: process.env.ONEKVM_USERNAME, password: process.env.ONEKVM_PASSWORD });
+  const url = process.env.ONEKVM_URL || 'http://192.168.50.210:8080';
+  await loginManager(page.context(), url);
+  await page.goto(url + '/api/setup');
   const status = await api('msd/status');
   assert.equal(status.available, true, 'Virtual media is unavailable');
   assert.equal(status.state.mounted_count, 0, 'Detach existing virtual media before testing');

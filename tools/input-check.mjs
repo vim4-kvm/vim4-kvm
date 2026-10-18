@@ -1,3 +1,4 @@
+import { loginManager } from './manager-login.mjs';
 import { spawn } from "node:child_process";
 import fs from "node:fs";
 // Usage: PLAYWRIGHT_MODULE=... node tools/input-check.mjs TARGET_BINARY LOG_PREFIX [URL]
@@ -13,6 +14,7 @@ if (!targetBinary || !prefix)
 fs.accessSync(targetBinary, fs.constants.X_OK);
 const browser = await chromium.launch({ channel: "chrome", headless: true });
 const page = await browser.newPage();
+await loginManager(page.context(), url);
 const reports = [];
 await page.exposeFunction("recordInput", (row) => reports.push(row));
 await page.addInitScript(() => {

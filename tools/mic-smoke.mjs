@@ -1,3 +1,4 @@
+import { loginManager } from './manager-login.mjs';
 // Enable the original microphone control with Chrome's synthetic microphone,
 // then report the board's UAC2 playback state. Re-enumerates USB on the board
 // (USB networking is replaced while the microphone is on); coordinate access.
@@ -22,6 +23,7 @@ const browser = await chromium.launch({
 try {
   const context = await browser.newContext({ permissions: ['microphone'] });
   const page = await context.newPage();
+  await loginManager(context, url);
   await page.addInitScript(() => localStorage.setItem('nano-kvm-vide-mode', 'h264-webrtc'));
   await page.goto(url);
   await page.waitForFunction(() => document.querySelector('video')?.videoWidth > 0, {}, { timeout: 45000 });

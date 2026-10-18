@@ -1,10 +1,10 @@
 // PiKVM browser decoding and macOS USB input checks. Requires exclusive access.
 import assert from 'node:assert/strict';
+import { loginManager } from './manager-login.mjs';
 import { execFileSync, spawn } from 'node:child_process';
 import { readFileSync } from 'node:fs';
 const { chromium } = await import(process.env.PLAYWRIGHT_MODULE || 'playwright');
 assert(process.argv.includes('--exclusive'), 'Coordinate hardware access and pass --exclusive');
-assert(process.env.PIKVM_USERNAME && process.env.PIKVM_PASSWORD, 'Set PIKVM_USERNAME and PIKVM_PASSWORD');
 const url = process.env.PIKVM_URL || 'http://192.168.50.210:8080';
 const browser = process.env.PIKVM_CDP ? await chromium.connectOverCDP(process.env.PIKVM_CDP)
   : await chromium.launch({ channel: 'chrome', headless: true,
@@ -38,11 +38,8 @@ let sourceBrowser;
 let mediaName;
 let sound;
 try {
-  await page.goto(url + '/login');
-  await page.locator('#user-input').fill(process.env.PIKVM_USERNAME);
-  await page.locator('#passwd-input').fill(process.env.PIKVM_PASSWORD);
-  await page.locator('#login-button').click();
-  await page.waitForURL(url + '/');
+  await loginManager(context, url);
+  await page.goto(url + '/');
   await page.locator('#apps a[href="./kvm/"]').click();
   await page.waitForURL(url + '/kvm/');
   await page.waitForFunction(() => document.querySelector('#stream-video')?.videoWidth > 0, null, { timeout: 60000 });

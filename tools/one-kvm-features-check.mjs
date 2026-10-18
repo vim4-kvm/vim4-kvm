@@ -1,3 +1,4 @@
+import { loginManager } from './manager-login.mjs';
 // Authenticated terminal, local-only extension lifecycle and safe watchdog toggle.
 // A loopback FRP server must already listen on 17700 with the test token below.
 import assert from 'node:assert/strict';
@@ -15,8 +16,8 @@ const api = (path, method = 'GET', body) => page.evaluate(async ({ path, method,
 let originals;
 let watchdog;
 try {
+  await loginManager(page.context(), 'http://192.168.50.210:8080');
   await page.goto('http://192.168.50.210:8080/api/setup');
-  await api('auth/login', 'POST', { username: process.env.ONEKVM_USERNAME, password: process.env.ONEKVM_PASSWORD });
   originals = await api('extensions');
   for (const name of ['ttyd', 'gostc', 'easytier', 'frpc']) {
     assert(originals[name].available, name + ' unavailable');
