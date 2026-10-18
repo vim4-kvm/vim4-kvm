@@ -38,6 +38,10 @@ One-KVM 的 UU 远程让网易UU远程官方客户端经云端控制被控机：
 数据目录私有文件，共享 H.264/H.265 编码与 HID。网页可选择自动或固定编码，自动模式按
 客户端及其他共享服务的能力回退。官方「终端远控」可打开 KVM 板子 shell、被控机串口（USB 转串口或占 2 个端点的 USB ACM gadget）与经板子的 SSH，三项默认关闭，新会话在终端内选择目标。范围与验证限制见 One-KVM/VIM4.md 的 UU 远程一节。
 
+One-KVM 的外部 MCP（设置「扩展 → MCP」）让 Claude Code、Codex 等客户端经 `/api/mcp` 截图并操作键鼠，
+工具沿用 computer use 命名与截图像素坐标，手动键鼠随时接管并冷却 2 秒。鉴权、截图管线、输入法与自然滚动限制见
+One-KVM/VIM4.md 的 MCP 一节。被控机就是开发用 Mac mini 时，键鼠实测前须让用户停手并限定在测试窗口内。
+
 ## PiKVM VIM4 集成
 
 PiKVM 源码在 `kvmd/`，VIM4 视频后端在 `ustreamer/`，部署约定见 `kvmd/VIM4.md`。
