@@ -140,3 +140,4 @@
 
 - [NAS 网络存储与 NAS 文件夹 U 盘](2026-10-18-nas-storage-usb-disk.md) — manager usb kernel
 - [One-KVM H.264 每秒停顿](2026-10-18-onekvm-h264-periodic-stutter.md) — application video
+- [One-KVM MCP Fit 截图提前“超时”](2026-10-18-onekvm-snapshot-fit.md) — application video deployment
