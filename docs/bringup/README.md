@@ -135,5 +135,7 @@
 
 ## 2026-10-18
 
+- [One-KVM 原生指针默认样式](2026-10-18-onekvm-native-cursor.md) — application deployment
+
 - [NAS 网络存储与 NAS 文件夹 U 盘](2026-10-18-nas-storage-usb-disk.md) — manager usb kernel
 - [One-KVM H.264 每秒停顿](2026-10-18-onekvm-h264-periodic-stutter.md) — application video
