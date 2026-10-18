@@ -2,8 +2,7 @@
 
 ## 部署来源
 
-管理器 `vim4-manager` 从 `38e6986` 起到 `fdb828d`，最终安装 `2.5.1+vim4.20261017.28.dev.22.gfdb828d.dirty`
-（dirty 仅为主仓库文档改动）。最终全量包 `dev.24`/`dev.25`（含 One-KVM）。
+管理器 `vim4-manager` 从 `38e6986` 起到 `bcf8b9c`，One-KVM 到 `9bd71c1a`；最终全量安装 `2.5.1+vim4.20261017.28.dev.25.g59190cc`。
 测试 NAS：Mac 上的 Samba 容器 `vim4-smbtest`（445 端口，含中文共享名）与 OrbStack VM `vim4-build` 的 NFS 导出 `/srv/nfs`
 （OrbStack 自动把 2049 转发到 Mac）。被控电脑为同一台 Mac。
 
