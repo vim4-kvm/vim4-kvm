@@ -66,7 +66,7 @@ PiKVM smoke 可用 `PIKVM_CDP` 接入专用测试 Chrome；结束时关闭测试
 | tools/media-upload-check.mjs | NanoKVM | 独占，留下上传文件 | 镜像上传与网页终端 | [板级工具](board-tools.md#工具验证边界) |
 | tools/input-check.mjs | NanoKVM | 独占，移动光标 | 键鼠延迟、长按、滚轮；配 input-target.swift、input-summary.py | [输入验证](input-latency.md) |
 | tools/jetkvm-smoke.mjs | JetKVM | 独占 | 视频、JSON-RPC 调用、网页终端 | [JetKVM](../kvm/VIM4.md) |
-| tools/one-kvm-smoke.mjs | One-KVM | 独占 | H.264/H.265/MJPEG 解码、WebRTC 缓冲驻留与 `--audio` 波形 | [板级工具](board-tools.md) |
+| tools/one-kvm-smoke.mjs | One-KVM | 独占 | H.264/H.265/MJPEG 解码、缓冲与呈现间隔尾部；`--seconds`/`--warmup` 控制测量窗口，`--audio` 检查波形 | [板级工具](board-tools.md) |
 | tools/one-kvm-audio-check.mjs | One-KVM | 独占 | Opus WebSocket 音频，静音判失败 | [板级工具](board-tools.md) |
 | tools/one-kvm-recording-check.mjs | One-KVM | 独占 | H.264/H.265 带声音录屏、关网页续录、下载、断流与重启；仅清理本次录像 | [板级工具](board-tools.md) |
 | tools/one-kvm-settings-check.mjs | One-KVM | 独占，改 EDID/HDR 后恢复 | 视频设置往返 | [One-KVM](../One-KVM/VIM4.md) |

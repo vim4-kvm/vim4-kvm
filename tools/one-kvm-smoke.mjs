@@ -1,5 +1,7 @@
 // Run with One-KVM selected and exclusive board access. Credentials are supplied
 // through ONEKVM_USERNAME / ONEKVM_PASSWORD and are never printed.
+// --seconds=120 --warmup=15 measures steady-state cadence. Run a physical HDMI
+// motion source separately; presentation callbacks do not prove content changes.
 import assert from 'node:assert/strict';
 const { chromium } = await import(process.env.PLAYWRIGHT_MODULE || 'playwright');
 const args = process.argv.slice(2);
@@ -8,7 +10,12 @@ const url = args.find(arg => !arg.startsWith('--')) || 'http://192.168.50.210:80
 const username = process.env.ONEKVM_USERNAME;
 const password = process.env.ONEKVM_PASSWORD;
 assert(username && password, 'Set ONEKVM_USERNAME and ONEKVM_PASSWORD');
-const browser = await chromium.launch({ channel: 'chrome', headless: true,
+const seconds = Number(args.find(arg => arg.startsWith('--seconds='))?.split('=')[1] || 10);
+const warmup = Number(args.find(arg => arg.startsWith('--warmup='))?.split('=')[1] || 0);
+assert(Number.isFinite(seconds) && seconds > 0 && seconds <= 3600, 'Invalid --seconds');
+assert(Number.isFinite(warmup) && warmup >= 0 && warmup <= 300, 'Invalid --warmup');
+const headed = args.includes('--headed');
+const browser = await chromium.launch({ channel: 'chrome', headless: !headed,
   args: ['--autoplay-policy=no-user-gesture-required'] });
 const page = await browser.newPage();
 let originalMode;
@@ -105,13 +112,37 @@ try {
         if (receiver.track?.kind === 'audio') receiver.track.enabled = true;
       }
     });
+    await page.waitForTimeout(warmup * 1000);
+    await page.evaluate(() => {
+      const video = document.querySelector('video');
+      const cadence = window.testCadence = {
+        start: performance.now(), last: null, gaps: [], callbackMissed: 0, presented: 0,
+      };
+      const observe = (_now, frame) => {
+        if (cadence.last) {
+          cadence.gaps.push(frame.presentationTime - cadence.last.presentationTime);
+          const advanced = frame.presentedFrames - cadence.last.presentedFrames;
+          cadence.callbackMissed += Math.max(0, advanced - 1);
+          cadence.presented += advanced;
+        } else cadence.firstTime = frame.presentationTime;
+        cadence.last = { presentationTime: frame.presentationTime, presentedFrames: frame.presentedFrames };
+        cadence.callbackId = video.requestVideoFrameCallback(observe);
+      };
+      cadence.callbackId = video.requestVideoFrameCallback(observe);
+    });
     const sample = () => page.evaluate(async () => {
       const streams = [];
       for (const peer of window.testPeers) {
-        for (const s of (await peer.getStats()).values()) {
-          if (s.type === 'inbound-rtp') streams.push({ kind: s.kind, time: s.timestamp,
+        if (peer.connectionState !== 'connected') continue;
+        const report = await peer.getStats();
+        for (const s of report.values()) {
+          if (s.type === 'inbound-rtp') streams.push({ id: s.id, ssrc: s.ssrc,
+            codec: report.get(s.codecId)?.mimeType,
+            decoder: s.decoderImplementation, powerEfficientDecoder: s.powerEfficientDecoder,
+            kind: s.kind, time: s.timestamp,
             frames: s.framesDecoded, width: s.frameWidth, height: s.frameHeight,
             dropped: s.framesDropped, lost: s.packetsLost, bytes: s.bytesReceived,
+            keyFrames: s.keyFramesDecoded, freezes: s.freezeCount, pli: s.pliCount,
             jitterBufferDelay: s.jitterBufferDelay,
             jitterBufferTargetDelay: s.jitterBufferTargetDelay,
             jitterBufferMinimumDelay: s.jitterBufferMinimumDelay,
@@ -123,20 +154,42 @@ try {
       return streams;
     });
     const before = await sample();
-    await page.waitForTimeout(10000);
+    await page.waitForTimeout(seconds * 1000);
     const after = await sample();
+    const cadence = await page.evaluate(() => {
+      const c = window.testCadence;
+      document.querySelector('video').cancelVideoFrameCallback(c.callbackId);
+      const gaps = c.gaps.sort((a, b) => a - b);
+      const percentile = fraction => gaps.length ? gaps[Math.floor((gaps.length - 1) * fraction)] : null;
+      return {
+        samples: gaps.length, callbackMissed: c.callbackMissed,
+        presentedFps: c.last && c.last.presentationTime > c.firstTime
+          ? c.presented * 1000 / (c.last.presentationTime - c.firstTime) : null,
+        p50Ms: percentile(0.5), p95Ms: percentile(0.95), p99Ms: percentile(0.99), maxMs: percentile(1),
+        over50Ms: gaps.filter(gap => gap > 50).length,
+        over100Ms: gaps.filter(gap => gap > 100).length,
+        over250Ms: gaps.filter(gap => gap > 250).length,
+        noCallbackTailMs: performance.now() - (c.last?.presentationTime ?? c.start),
+      };
+    });
     const first = before.find(s => s.kind === 'video');
     const last = after.find(s => s.kind === 'video');
     assert(first && last && last.state === 'connected' && last.frames > first.frames, 'Video did not advance');
+    assert(first.id === last.id && first.ssrc === last.ssrc && first.codec === last.codec,
+      'Video stream changed during measurement; discard this window and retry');
     const emitted = last.jitterBufferEmittedCount - first.jitterBufferEmittedCount;
     const bufferMs = field => emitted > 0 && Number.isFinite(last[field]) && Number.isFinite(first[field])
       ? (last[field] - first[field]) * 1000 / emitted : null;
-    console.log(JSON.stringify({ streams: after,
+    console.log(JSON.stringify({ browser: browser.version(), headed, streams: after,
       fps: (last.frames - first.frames) * 1000 / (last.time - first.time),
       videoBufferMs: bufferMs('jitterBufferDelay'),
       videoTargetBufferMs: bufferMs('jitterBufferTargetDelay'),
       videoMinimumBufferMs: bufferMs('jitterBufferMinimumDelay'),
       decodeMsPerFrame: (last.totalDecodeTime - first.totalDecodeTime) * 1000 / (last.frames - first.frames),
+      videoDeltas: Object.fromEntries(['keyFrames', 'freezes', 'dropped', 'lost', 'pli']
+        .map(field => [field, Number.isFinite(last[field]) && Number.isFinite(first[field])
+          ? last[field] - first[field] : null])),
+      presentationCadence: cadence,
     }));
     if (args.includes('--audio')) {
       const peak = await page.evaluate(() => window.testAudioPeak);
