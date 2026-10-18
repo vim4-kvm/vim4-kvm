@@ -23,8 +23,7 @@ except ImportError:
 
 
 class ManagerConfigTest(unittest.TestCase):
-    @unittest.skipUnless(YAML, 'requires ruamel.yaml')
-    def test_real_postinst_migrates_existing_application_configs(self):
+    def test_real_postinst_preserves_or_migrates_existing_application_configs(self):
         root = Path(__file__).resolve().parents[1]
         spec = importlib.util.spec_from_file_location('ubuntu_package', root / 'packaging/ubuntu/package.py')
         package = importlib.util.module_from_spec(spec)
@@ -35,11 +34,14 @@ class ManagerConfigTest(unittest.TestCase):
             pikvm = importlib.util.module_from_spec(spec)
             spec.loader.exec_module(pikvm)
         for app, render, config_path, content in [
-            ('nanokvm', package.application, 'etc/kvm/server.yaml', 'proto: https\ncustom: keep\n'),
+            ('nanokvm', package.application, 'etc/kvm/server.yaml',
+             '# private settings\nhost: 0.0.0.0\nproto: https\nport: {http: 8080, https: 8443}\ncustom: keep\n'),
             ('jetkvm', package.jetkvm, 'var/lib/jetkvm/config.json', '{"localAuthMode":"password","private":"keep"}'),
             ('pikvm', pikvm.pikvm, 'etc/kvmd/override.yaml', 'kvmd: {auth: {enabled: true}}\ncustom: keep\n'),
         ]:
             with self.subTest(application=app), tempfile.TemporaryDirectory() as directory:
+                if app == 'pikvm' and not YAML:
+                    self.skipTest('PiKVM migration requires ruamel.yaml')
                 staging = Path(directory)
                 (staging / 'stage/usr/share/kvmd').mkdir(parents=True)
                 with patch.object(package, 'copy'), patch.object(pikvm, 'copy'), \
@@ -62,11 +64,12 @@ class ManagerConfigTest(unittest.TestCase):
                              'vim4-remove-legacy-assistant', 'vim4-jetkvm'):
                     package.write(staging, 'usr/libexec/' + name, '#!/bin/sh\nexit 0\n', 0o755)
                     package.write(staging, 'etc/sudoers.d/' + name, 'fixture rule\n', 0o440)
-                destination = staging / f'usr/share/vim4-{app}/manager-config.py'
-                destination.parent.mkdir(parents=True, exist_ok=True)
-                shutil.copyfile(root / 'packaging/ubuntu/manager-config.py', destination)
+                if app != 'nanokvm':
+                    destination = staging / f'usr/share/vim4-{app}/manager-config.py'
+                    destination.parent.mkdir(parents=True, exist_ok=True)
+                    shutil.copyfile(root / 'packaging/ubuntu/manager-config.py', destination)
                 package.write(staging, config_path, content, 0o600)
-                expected, _ = migration.migrate(content, app)
+                expected = content if app == 'nanokvm' else migration.migrate(content, app)
                 for _ in range(2):
                     result = subprocess.run(['sh', '-c', script, 'postinst', 'configure'],
                                             env={**os.environ, 'PATH': str(commands) + os.pathsep + os.environ['PATH']},
@@ -77,38 +80,21 @@ class ManagerConfigTest(unittest.TestCase):
     def test_jetkvm_preserves_unknown_keys_and_password_hash(self):
         original = dict(localAuthMode='password', local_loopback_only=False, tls_mode='custom',
                         hashedPassword='private hash', future={'nested': [1, 2]}, videoQualityFactor=3)
-        updated, _ = migration.migrate(json.dumps(original), 'jetkvm')
+        updated = migration.migrate(json.dumps(original), 'jetkvm')
         config = json.loads(updated)
         self.assertEqual(config.pop('localAuthMode'), 'noPassword')
         self.assertTrue(config.pop('local_loopback_only'))
         self.assertEqual(config.pop('tls_mode'), '')
         self.assertEqual(config, {key: value for key, value in original.items()
                                   if key not in ('localAuthMode', 'local_loopback_only', 'tls_mode')})
-        self.assertEqual(migration.migrate(updated, 'jetkvm')[0], updated)
-
-    @unittest.skipUnless(YAML, 'requires ruamel.yaml (included in the PiKVM runtime)')
-    def test_nanokvm_https_upgrade_preserves_comments_and_other_ports(self):
-        original = ('# private configuration\nhost: 0.0.0.0 # listen address\nproto: https # TLS\n'
-                    'port: {http: 8080, https: 8443} # ports\nauthentication: disable\n'
-                    'jwt:\n  secret: "keep-me" # credential\n')
-        updated, was_https = migration.migrate(original, 'nanokvm')
-        self.assertTrue(was_https)
-        config = YAML().load(updated)
-        self.assertEqual(config['host'], '127.0.0.1')
-        self.assertEqual(config['proto'], 'http')
-        self.assertEqual(config['port'], dict(http=8081, https=8443))
-        self.assertEqual(config['jwt']['secret'], 'keep-me')
-        self.assertEqual(config['authentication'], 'disable')
-        for comment in ('# private configuration', '# listen address', '# TLS', '# ports', '# credential'):
-            self.assertIn(comment, updated)
-        self.assertEqual(migration.migrate(updated, 'nanokvm'), (updated, False))
+        self.assertEqual(migration.migrate(updated, 'jetkvm'), updated)
 
     @unittest.skipUnless(YAML, 'requires ruamel.yaml')
     def test_pikvm_manual_auth_override_and_other_settings_survive(self):
         original = ('# user configuration\nkvmd:\n  auth:\n    enabled: true # local login\n'
                     '    totp: {secret: /private/totp}\n  streamer: {h264_bitrate: 30000}\n'
                     'vnc: {enabled: true}\n')
-        updated, _ = migration.migrate(original, 'pikvm')
+        updated = migration.migrate(original, 'pikvm')
         config = YAML().load(updated)
         self.assertIs(config['kvmd']['auth']['enabled'], False)
         self.assertEqual(config['kvmd']['auth']['totp']['secret'], '/private/totp')
@@ -116,15 +102,15 @@ class ManagerConfigTest(unittest.TestCase):
         self.assertTrue(config['vnc']['enabled'])
         self.assertIn('# local login', updated)
         self.assertIn('# user configuration', updated)
-        self.assertEqual(migration.migrate(updated, 'pikvm')[0], updated)
+        self.assertEqual(migration.migrate(updated, 'pikvm'), updated)
 
     @unittest.skipUnless(YAML, 'requires ruamel.yaml')
     def test_missing_sections_are_created_and_invalid_configs_are_not_overwritten(self):
-        for application, content in [('nanokvm', '# only a comment\n'), ('pikvm', 'kvmd: {}\n')]:
-            with self.subTest(application=application):
-                updated, _ = migration.migrate(content, application)
+        for content in ('# only a comment\n', 'kvmd: {}\n'):
+            with self.subTest(content=content):
+                updated = migration.migrate(content, 'pikvm')
                 self.assertIsInstance(YAML().load(updated), dict)
-        for application, content in [('nanokvm', 'port: [80]\n'), ('pikvm', 'kvmd: broken\n'),
+        for application, content in [('pikvm', 'kvmd: broken\n'),
                                      ('jetkvm', '{invalid')]:
             with self.subTest(application=application), tempfile.TemporaryDirectory() as directory:
                 path = Path(directory) / 'config'

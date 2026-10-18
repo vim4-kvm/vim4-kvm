@@ -61,6 +61,11 @@ if [ -d /tmp/package-check/root/usr/libexec ]; then
 fi
 useradd --user-group khadas
 if has vim4-nanokvm; then
+if dpkg-deb -f ./vim4-nanokvm_*.deb Depends | grep -qw python3-ruamel.yaml; then
+    echo 'NanoKVM must remain upgradable without installing ruamel.yaml' >&2
+    exit 1
+fi
+test ! -e /tmp/package-check/root/usr/share/vim4-nanokvm/manager-config.py
 test -s /tmp/package-check/root/opt/vim4-nanokvm/web/index.html
 test "$(cat /tmp/package-check/root/opt/vim4-nanokvm/version)" = "$(dpkg-deb -f ./vim4-nanokvm_*.deb Version)"
 test -x /tmp/package-check/root/usr/libexec/vim4-picoclaw
@@ -68,11 +73,12 @@ test ! -e /tmp/package-check/root/opt/vim4-nanokvm/assistant
 test -d /tmp/package-check/root/opt/vim4-nanokvm/picoclaw/skills/kvm-control
 dpkg-deb -e ./vim4-nanokvm_*.deb /tmp/package-check/control
 mkdir -p /usr/share/vim4-nanokvm
-cp /tmp/package-check/root/usr/share/vim4-nanokvm/*.py /tmp/package-check/root/usr/share/vim4-nanokvm/server.yaml /usr/share/vim4-nanokvm/
+cp /tmp/package-check/root/usr/share/vim4-nanokvm/server.yaml /usr/share/vim4-nanokvm/
 sh /tmp/package-check/control/postinst configure
 test "$(stat -c %U:%a /etc/kvm/server.yaml)" = khadas:600
 test "$(stat -c %U:%a /var/lib/vim4-kvm/picoclaw)" = khadas:700
 printf '# existing user settings\nproto: https\nport: {http: 8080, https: 8443}\ncustom: keep\n' > /etc/kvm/server.yaml
+cp /etc/kvm/server.yaml /tmp/package-check/server.yaml.before
 # Simulate an installed assistant with a live worker and private runtime data.
 # The upgrade must retire it without touching the surviving PicoClaw state.
 mkdir -p /opt/vim4-nanokvm/assistant /var/lib/vim4-kvm/assistant/bin
@@ -98,15 +104,7 @@ wait "$assistant_pid" 2>/dev/null || true
 test ! -e /opt/vim4-nanokvm/assistant
 test ! -e /var/lib/vim4-kvm/assistant
 test "$(cat /var/lib/vim4-kvm/picoclaw/keep)" = 'PicoClaw settings'
-python3 - <<'PY'
-from ruamel.yaml import YAML
-from pathlib import Path
-text = Path('/etc/kvm/server.yaml').read_text()
-config = YAML().load(text)
-assert config['host'] == '127.0.0.1' and config['proto'] == 'http'
-assert config['port'] == {'http': 8081, 'https': 8443}
-assert config['custom'] == 'keep' and '# existing user settings' in text
-PY
+cmp /tmp/package-check/server.yaml.before /etc/kvm/server.yaml
 test ! -e /etc/systemd/system/multi-user.target.wants/nanokvm.service
 # A crash previously left a conffile empty. Configuration must not report
 # success merely because visudo accepts an empty sudoers include.

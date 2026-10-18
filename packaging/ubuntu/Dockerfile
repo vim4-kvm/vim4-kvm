@@ -5,6 +5,8 @@ RUN dpkg-deb -x /tmp/ca-certificates.deb / \
  && mkdir -p /etc/ssl/certs \
  && cat /usr/share/ca-certificates/mozilla/*.crt > /etc/ssl/certs/ca-certificates.crt \
  && rm /tmp/ca-certificates.deb
+# System ruamel.yaml runs the PiKVM migration regression in the workspace suite.
+# PiKVM installation uses its private Python; NanoKVM needs no YAML migration.
 RUN test "$(dpkg --print-architecture)" = arm64 \
  && rm /etc/apt/sources.list.d/ubuntu.sources \
  && printf 'deb [signed-by=/usr/share/keyrings/ubuntu-archive-keyring.gpg check-valid-until=no] http://snapshot.ubuntu.com/ubuntu/20261012T000000Z %s main universe\n' noble noble-updates noble-security > /etc/apt/sources.list \

@@ -20,7 +20,8 @@ AGENTS.md、CLAUDE.md、LESSONS.md 直接随主仓库版本管理，不再生成
 ## 初始化入口
 
 需要 Python 3.11+ 和 Git；源码仓库均可公开克隆：
-完整配置迁移测试另需 ruamel.yaml（构建镜像已包含）；浏览器登录集成测试使用
+PiKVM 配置迁移测试另需 ruamel.yaml（构建镜像已包含；安装时使用 PiKVM 自带的
+Python）。NanoKVM 运行时强制回环 HTTP，无需 YAML 迁移依赖。浏览器登录集成测试使用
 PLAYWRIGHT_MODULE 指定 Playwright，没有浏览器依赖时只运行纯离线单元部分。
 
 ```sh

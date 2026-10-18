@@ -14,7 +14,10 @@ def migrate(content, application):
         if not isinstance(config, dict):
             raise ValueError('JetKVM config must be a JSON object')
         config.update(local_loopback_only=True, localAuthMode='noPassword', tls_mode='')
-        return json.dumps(config, indent=2) + '\n', False
+        return json.dumps(config, indent=2) + '\n'
+
+    if application != 'pikvm':
+        raise ValueError('Unknown application')
 
     from ruamel.yaml import YAML
     from ruamel.yaml.comments import CommentedMap
@@ -35,25 +38,16 @@ def migrate(content, application):
             raise ValueError(f'{key} must be a YAML mapping')
         return parent[key]
 
-    was_https = False
-    if application == 'nanokvm':
-        was_https = config.get('proto') == 'https'
-        config['host'] = '127.0.0.1'
-        config['proto'] = 'http'
-        mapping(config, 'port')['http'] = 8081
-    elif application == 'pikvm':
-        mapping(mapping(config, 'kvmd'), 'auth')['enabled'] = False
-    else:
-        raise ValueError('Unknown application')
+    mapping(mapping(config, 'kvmd'), 'auth')['enabled'] = False
     output = io.StringIO()
     yaml.dump(config, output)
-    return output.getvalue(), was_https
+    return output.getvalue()
 
 
 def migrate_file(path, application):
     path = Path(path)
     content = path.read_text()
-    updated, was_https = migrate(content, application)
+    updated = migrate(content, application)
     if updated != content:
         metadata = path.stat()
         temporary = None
@@ -69,9 +63,6 @@ def migrate_file(path, application):
         finally:
             if temporary and os.path.exists(temporary):
                 os.unlink(temporary)
-    if was_https:
-        print('NanoKVM: switched proto from https to http for the loopback manager backend; '
-              'public access now uses vim4-manager.')
 
 
 if __name__ == '__main__':
