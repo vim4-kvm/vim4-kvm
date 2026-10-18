@@ -21,8 +21,11 @@ JetKVM `384e6d2`，One-KVM `912ca755`（`--auth-mode managed`），PiKVM `955f3c
   首帧 3.3–6.2 s；PiKVM 页面无登录、WebRTC H.265 4K60、MJPEG 3 s 113 MB 数据、`/login` 302 到 `/`。
 - 代理开销：NanoKVM H.264 direct（WebSocket）4K 30 s，经网关与 SSH 转发直连均 1800 帧；vim4-manager CPU 3.0% 对 0.2% 单核，
   NanoKVM 10.7% 对 10.3%（/proc utime+stime，30 s 窗口）。
+- 键鼠（NanoKVM，input-check，经网关对 SSH 转发直连）：按键中位 4.57 对 5.02 ms，移动 3.39 对 3.22 ms，点击 3.29 对 3.71 ms，无多余重复。
+- 端到端延迟（NanoKVM WebRTC H.264 4K，滚动画面，`VIM4_HDMI_DISPLAY=RTK`，各 20 s）：presentation 中位 65.0 对 64.5 ms，
+  p95 74.1 对 73.2 ms，均 60 fps、0 丢帧/丢包。WebRTC 媒体不经网关，预期无差异。
 
-**未验证**：端到端延迟对比（被控机是开发用 Mac，未运行屏幕计时窗口）；键鼠与虚拟介质经网关（PiKVM smoke 会操作 Mac 指针，未运行）；
+**未验证**：虚拟介质上传经网关；PiKVM 键鼠（smoke 会操作 Mac 指针，未运行）；
 JetKVM/NanoKVM 网页中隐藏账户入口的实板截图；Tailscale 来源的短有效期与未加密提示；首次设置流程在新刷镜像上的实际表现；网页更新路径升级各包。
 
 日志：不入库的 `logs/unified-auth/`（board-*.log、perf-*.json、shots-board/）。
