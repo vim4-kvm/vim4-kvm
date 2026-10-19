@@ -17,7 +17,9 @@ HDMI 输入、VDIN、Wave521 编码和 CRG USB 设备端仍需单独适配。
   与现有 `packaging/kernel` 完全独立，不交给 5.15 的打包脚本。
 
 `edge.config` 取自固定 Armbian 提交的 `config/kernel/linux-meson-s4t7-edge.config`，
-仅增加 `CONFIG_LOCALVERSION="-vim4kvm-edge"`。脚本执行 olddefconfig，最终配置写入
+增加 `CONFIG_LOCALVERSION="-vim4kvm-edge"` 及 KVM 所需的 configfs gadget 功能
+（HID、NCM、ECM、RNDIS、mass storage、UAC2）。这些功能不能替代缺失的 CRG UDC。
+脚本执行 olddefconfig，最终配置写入
 外部构建目录并记录校验和；并非复现 Armbian 镜像构建的所有配置钩子。
 
 Armbian 的 `config/sources/mainline-kernel.conf.sh` 为 7.3 选择 rc7；
@@ -121,6 +123,6 @@ GPU、音频输出和显示输出的接入仍需上板验证，不能用编译�
 - `0103/0146`：保持显示及 USB/SDIO/eMMC 电源域，涉及功耗与恢复行为，需测试挂起恢复。
 - `0073–0080`：USB Host 接入，不是 HID/虚拟介质需要的 CRG UDC。
 
-下一步先在保留回退启动项的独占窗口验证基础启动、存储、网络与温控，
-随后独立验证 HDMI 输入采集、硬件编码和 USB 设备端。
+基础启动结果见上述首次启动记录；下一阶段依赖与验收见
+[USB 与音视频适配拆解](kernel-edge-porting.md)。
 新板 `kvim4n` 的硬件差异和启动固件要求也必须核对，不能直接复用厂商 DTB。
