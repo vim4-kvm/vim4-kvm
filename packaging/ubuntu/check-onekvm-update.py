@@ -3,6 +3,8 @@
 import hashlib
 import http.cookiejar
 import http.server
+import importlib.machinery
+import importlib.util
 import json
 import os
 from pathlib import Path
@@ -11,8 +13,10 @@ import subprocess
 import tempfile
 import threading
 import time
+from types import SimpleNamespace
 import urllib.request
 import urllib.error
+from unittest.mock import patch
 
 assert Path('/.dockerenv').exists() and not Path('/run/systemd/system').exists()
 helper = '/tmp/package-check/root/usr/libexec/vim4-onekvm-update'
@@ -47,7 +51,35 @@ new = '0.0.1+vim4.20261014.2'
 package, _ = build(old)
 subprocess.run(['dpkg', '-i', str(package)], check=True, stdout=subprocess.DEVNULL)
 package, checksum = build(new)
-subprocess.run(['python3', helper, str(package), checksum, new], check=True)
+# Coordinate with a real apt-compatible lock holder. Release only after dpkg
+# reports contention, so this regression does not depend on scheduler timing.
+loader = importlib.machinery.SourceFileLoader('update_helper', helper)
+spec = importlib.util.spec_from_loader(loader.name, loader)
+update_helper = importlib.util.module_from_spec(spec)
+loader.exec_module(update_helper)
+holder = subprocess.Popen(['python3', '-c', '''
+import fcntl, sys
+with open('/var/lib/dpkg/lock-frontend', 'a') as lock:
+    fcntl.lockf(lock, fcntl.LOCK_EX)
+    print('locked', flush=True)
+    sys.stdin.readline()
+'''], stdin=subprocess.PIPE, stdout=subprocess.PIPE, text=True)
+try:
+    assert holder.stdout.readline().strip() == 'locked'
+
+    def release_lock(_):
+        holder.stdin.close()
+        holder.wait(timeout=5)
+
+    clock = SimpleNamespace(monotonic=time.monotonic, sleep=release_lock)
+    with patch.object(update_helper, 'time', clock), patch.object(clock, 'sleep', side_effect=release_lock) as wait:
+        update_helper.install(str(package), checksum, new)
+        wait.assert_called_once()
+finally:
+    if holder.poll() is None:
+        holder.kill()
+    holder.wait(timeout=5)
+    holder.stdout.close()
 assert marker.read_text() == 'keep existing settings'
 assert Path('/opt/vim4-onekvm/update-fixture').read_text() == new
 rejected = subprocess.run(['python3', helper, str(package), checksum, new], capture_output=True)
@@ -55,7 +87,11 @@ assert rejected.returncode != 0, 'Same-version installation was accepted'
 package, checksum = build(old)
 rejected = subprocess.run(['python3', helper, str(package), checksum, old], capture_output=True)
 assert rejected.returncode != 0, 'Downgrade was accepted'
-print('PASS: real One-KVM package upgrade, configuration preservation, same-version/downgrade rejection')
+package.write_bytes(b'not a Debian archive')
+checksum = hashlib.sha256(package.read_bytes()).hexdigest()
+rejected = subprocess.run(['python3', helper, str(package), checksum, new], capture_output=True)
+assert rejected.returncode != 0 and b'dpkg-deb: error:' in rejected.stderr, rejected.stderr
+print('PASS: real dpkg lock contention, package upgrade, configuration preservation, same-version/downgrade rejection')
 
 # Exercise the production HTTP update path, including manifest selection,
 # download verification, privileged installation and exec-based restart.
