@@ -5,6 +5,10 @@
 
 新记录：新建 `bringup/YYYY-MM-DD-英文短名.md`，首行 `# YYYY-MM-DD：标题`，并在本页对应日期下追加一行。
 
+## 2026-10-19
+
+- [7.3 edge 首次启动](2026-10-19-edge-firstboot.md) — kernel deployment board
+
 ## 2026-10-12
 
 - [串口、OOWOW 与 Ubuntu 首次启动](2026-10-12-initial-serial-oowow-ubuntu.md) — board

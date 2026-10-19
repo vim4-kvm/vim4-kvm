@@ -104,9 +104,10 @@ Armbian 使用的 `khadas-vims-v2019.01-mainline` 分支包含三项相关修改
 GCC 12 构建 BL33 与 bl33z 成功；厂商代码存在编译警告和 CONFIG_OF_EMBED 提示。
 日志在 VM `~/build/u-boot-edge.log`、`~/build/u-boot-edge-stub.log`。
 
-尚未生成可安装的签名引导镜像。现有 tools/vim4-repack.py 验证 BL31 不变，
-不能直接用于这次 BL31 更新，需先扩展打包与逐段校验，再准备硬件恢复与测试启动。
-不能只安装新 Image 就把主线启动支持视为完成。板上启动项、引导区和运行服务未修改。
+随后扩展 tools/vim4-repack.py，显式 `--update-bl31` 才允许替换 BL31，
+默认模式仍拒绝变化。先重建原厂固件验证 round-trip，再验证新 BL31/BL33 与
+目标载荷一致，保留早期阶段、BL30/BL40/BL32。新工具与候选源码版本已写入锁文件。
+首次上板结果见 [7.3 首次启动](bringup/2026-10-19-edge-firstboot.md)。
 
 ## 审查边界与后续验证
 
