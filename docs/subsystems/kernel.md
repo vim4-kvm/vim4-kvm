@@ -1,5 +1,7 @@
 # 内核与驱动
 
+实验性 Armbian edge 基线及构建见 [新内核基线](../kernel-edge.md)，不替代现有 5.15 发布流程。
+
 构建、安装或回退内核时读 [内核构建、安装与回退](../kernel.md)；需要 VM 中的主内核工作树时读 [工作区](../workspace.md#构建)。
 
 MCU 风扇在 VM 主内核 drivers/misc/khadas-mcu.c，策略验证用 tools/test-fan-policy.sh。

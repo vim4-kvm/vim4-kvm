@@ -1,0 +1,78 @@
+# VIM4 新内核基线
+
+此分支用于复现 Armbian edge 的编译基线，不是可部署的 KVM 内核。
+HDMI 输入、VDIN、Wave521 编码和 CRG USB 设备端仍需单独适配。
+现有 5.15 的工作树、workspace.toml 发布版本和安装流程不变。
+
+## 源码与配置
+
+- Linux 工作树：OrbStack `vim4-build` 的 `/home/deepdream/src/linux-7.3`。
+- 开发分支：`vim4-kvm-7.3`，origin 为 `https://github.com/vim4-kvm/linux.git`；当前仅本地，未推送。
+- 上游：`https://github.com/gregkh/linux.git`，`v7.3-rc7`，完整历史的过滤克隆。
+- Armbian：`https://github.com/armbian/build.git`，固定提交
+  `ecc676bf89af37788f972db9a7ff3f92844a43eb`，VM 中为 `~/src/armbian-build-7.3`。
+- 补丁：`patch/kernel/archive/meson-s4t7-7.3/*.patch`，按文件名排序，共 164 个。
+  这是 S4/T7 共用集合，保留原作者；逐项应用不等于完成硬件正确性审查。
+- 构建配置与源码锁：[packaging/kernel-edge](../packaging/kernel-edge/)。
+  与现有 `packaging/kernel` 完全独立，不交给 5.15 的打包脚本。
+
+`edge.config` 取自固定 Armbian 提交的 `config/kernel/linux-meson-s4t7-edge.config`，
+仅增加 `CONFIG_LOCALVERSION="-vim4kvm-edge"`。脚本执行 olddefconfig，最终配置写入
+外部构建目录并记录校验和；并非复现 Armbian 镜像构建的所有配置钩子。
+
+Armbian 的 `config/sources/mainline-kernel.conf.sh` 为 7.3 选择 rc7；
+不要将目录名 7.3 当作正式稳定版。源码准备使用独立 Linux 大小写敏感文件系统，
+不要切换 Mac 上已有的 `vim4-linux-7.x` 工作树。
+
+重新准备源码时，在新的 Linux 目录执行以下步骤；已有目录不要覆盖。
+提交者沿用开发者现有 Git 身份，不修改 Git 配置；`git am` 保留补丁作者。
+
+```sh
+git clone --filter=blob:none --no-checkout --single-branch --branch v7.3-rc7 https://github.com/gregkh/linux.git linux-7.3
+git -C linux-7.3 switch -c vim4-kvm-7.3 v7.3-rc7
+git -C linux-7.3 remote rename origin upstream
+git -C linux-7.3 remote add origin https://github.com/vim4-kvm/linux.git
+git clone --filter=blob:none --no-checkout https://github.com/armbian/build.git armbian-build-7.3
+git -C armbian-build-7.3 checkout --detach ecc676bf89af37788f972db9a7ff3f92844a43eb
+git -C linux-7.3 am ../armbian-build-7.3/patch/kernel/archive/meson-s4t7-7.3/*.patch
+```
+
+补丁失败时停止审查，不自动跳过或放宽匹配。
+`patches.sha256` 记录排序后的补丁校验和，可在 Armbian 补丁目录用
+`sha256sum -c /path/to/packaging/kernel-edge/patches.sha256` 核验。
+重新 git am 会产生不同提交者时间，HEAD 不一定相同；需对照锁中的 tree 和补丁清单，
+审查后更新本地源码锁。已经发布的开发分支则应直接检出固定 revision。
+
+本次还在主仓库不入库的 `build/kernel-edge/vim4-kvm-7.3.bundle` 保存了 164 个提交，
+已用 git bundle verify 验证。它需要上游 `v7.3-rc7` 提交，可在已有上游对象的新克隆中
+用 `git fetch /path/to/vim4-kvm-7.3.bundle vim4-kvm-7.3:vim4-kvm-7.3` 恢复精确提交。
+
+## 构建
+
+在 Linux ARM64、GCC 13 环境中运行；需要 make、flex、bison、bc、OpenSSL/ELF
+开发库和 pahole。准备阶段不安装到开发机或板子。
+
+```sh
+bash packaging/kernel-edge/build.sh /home/deepdream/src/linux-7.3 /home/deepdream/build/kernel-edge
+```
+
+脚本要求源码 HEAD 与锁一致、工作树干净、输出目录为空且位于源码之外。
+编译 `Image dtbs modules`，成功后生成 `build.json`，记录源码、编译器和产物校验和。
+构建失败时保留日志和输出用于诊断；手工继续 make 或另选新的空目录，不自动清理。
+此入口不生成 deb、不安装模块、不连接板子、不修改启动项。
+
+## 审查边界与后续验证
+
+164 个补丁涉及 108 个文件，未修改 HDMI RX、VDIN、Wave5 或 USB gadget 路径。
+GPU、音频输出和显示输出的接入仍需上板验证，不能用编译成功替代。
+
+- `0097`：GPU 800 MHz、IO coherent；需验证 Panfrost、内存压力和持续负载。
+- `0100/0101/0111`：音频控制器与 HDMI 输出声卡，不代表 HDMI 输入音频采集。
+- `0106`：HDMI TX 驱动声明 TMDS ≤600 MHz、RGB 8-bit、双声道 I²S、无 HDCP；不是完整 HDMI 2.1 能力。
+- `0088`：PCIe DMA 依赖固件 SMC 保护窗口；需验证板上固件兼容性。
+- `0103/0146`：保持显示及 USB/SDIO/eMMC 电源域，涉及功耗与恢复行为，需测试挂起恢复。
+- `0073–0080`：USB Host 接入，不是 HID/虚拟介质需要的 CRG UDC。
+
+下一步先在保留回退启动项的独占窗口验证基础启动、存储、网络与温控，
+随后独立验证 HDMI 输入采集、硬件编码和 USB 设备端。
+新板 `kvim4n` 的硬件差异和启动固件要求也必须核对，不能直接复用厂商 DTB。

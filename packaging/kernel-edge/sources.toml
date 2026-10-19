@@ -1,0 +1,17 @@
+# Experimental local branch; not pushed and not used by the 5.15 image builder.
+[kernel]
+url = "https://github.com/vim4-kvm/linux.git"
+branch = "vim4-kvm-7.3"
+revision = "9c8bb58158d810a38ff37dec7c7d18cb131a3b52"
+tree = "b1692ccbdac4bcde8ff94b0b71369209bf543df3"
+upstream_url = "https://github.com/gregkh/linux.git"
+upstream_tag = "v7.3-rc7"
+upstream_revision = "24a19b953e2a3d0ea5a8c4951a0ab8f32720c907"
+
+[armbian]
+url = "https://github.com/armbian/build.git"
+revision = "ecc676bf89af37788f972db9a7ff3f92844a43eb"
+patch_directory = "patch/kernel/archive/meson-s4t7-7.3"
+patch_count = 164
+config = "config/kernel/linux-meson-s4t7-edge.config"
+config_sha256 = "b603e1fff54f82adb61d769b9e5dcfb314fc94d2e43c6a5e01e91d881d601a6f"
