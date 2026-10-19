@@ -1,7 +1,8 @@
 # VIM4 新内核基线
 
 此分支用于复现 Armbian edge 的编译基线，不是可部署的 KVM 内核。
-HDMI 输入、VDIN、Wave521 编码仍需单独适配；CRG USB 设备端已加入实验驱动，尚未上板验证。
+HDMI 输入、VDIN、Wave521 编码仍需单独适配；CRG USB 设备端已完成最小 HID 上板测试，
+仍不是完整 USB/KVM 验收，范围见 [CRG 实测](bringup/2026-10-19-crg-udc.md)。
 现有 5.15 的工作树、workspace.toml 发布版本和安装流程不变。
 
 ## 源码与配置

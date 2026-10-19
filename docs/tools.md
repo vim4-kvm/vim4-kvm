@@ -98,4 +98,5 @@ PiKVM smoke 可用 `PIKVM_CDP` 接入专用测试 Chrome；结束时关闭测试
 | tools/hdmi-capture.sh | 板（root） | 独占采集 | 经 vfm_cap 抓一帧 PNG | [内核](kernel.md) |
 | tools/hdmi-control-watch.py | 板（root） | 读 | 采样 RX port 1 控制状态 | [HDMI 恢复审查](hdmi-recovery-review.md#控制状态采样工具) |
 | tools/hid-rebind-check.py | 板（root） | 独占，应用停止；旧内核会 panic | HID epoll 跨 UDC 重新绑定 | [内核](kernel.md) |
+| tools/crg-udc-check.py | 板（root） | 独占，仅 7.3 CRG 测试内核 | 空 configfs 中创建最小 HID、连续中性报告与重绑定；可保持 fd/epoll 跨重绑定 | [CRG 实测](bringup/2026-10-19-crg-udc.md) |
 | tools/test-fan-policy.sh | VM | 无 | 编译内核风扇插值函数做断言 | [内核](kernel.md) |
