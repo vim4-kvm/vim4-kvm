@@ -29,7 +29,8 @@ python3 - "$source_dir" "$output" <<'PY'
 import hashlib, json, pathlib, subprocess, sys
 source, output = map(pathlib.Path, sys.argv[1:])
 artifacts = ['.config', 'arch/arm64/boot/Image',
-             'arch/arm64/boot/dts/amlogic/amlogic-t7-a311d2-khadas-vim4.dtb']
+             'arch/arm64/boot/dts/amlogic/amlogic-t7-a311d2-khadas-vim4.dtb',
+             'arch/arm64/boot/dts/amlogic/amlogic-t7-a311d2-khadas-vim4-udc-test.dtb']
 report = {
     'kernel': subprocess.check_output(['git', '-C', str(source), 'rev-parse', 'HEAD'], text=True).strip(),
     'compiler': subprocess.check_output(['gcc', '--version'], text=True).splitlines()[0],

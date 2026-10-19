@@ -1,7 +1,7 @@
 # VIM4 新内核基线
 
 此分支用于复现 Armbian edge 的编译基线，不是可部署的 KVM 内核。
-HDMI 输入、VDIN、Wave521 编码和 CRG USB 设备端仍需单独适配。
+HDMI 输入、VDIN、Wave521 编码仍需单独适配；CRG USB 设备端已加入实验驱动，尚未上板验证。
 现有 5.15 的工作树、workspace.toml 发布版本和安装流程不变。
 
 ## 源码与配置
@@ -18,7 +18,8 @@ HDMI 输入、VDIN、Wave521 编码和 CRG USB 设备端仍需单独适配。
 
 `edge.config` 取自固定 Armbian 提交的 `config/kernel/linux-meson-s4t7-edge.config`，
 增加 `CONFIG_LOCALVERSION="-vim4kvm-edge"` 及 KVM 所需的 configfs gadget 功能
-（HID、NCM、ECM、RNDIS、mass storage、UAC2）。这些功能不能替代缺失的 CRG UDC。
+（HID、NCM、ECM、RNDIS、mass storage、UAC2），并启用实验 CRG UDC 模块。
+CRG 仅由独立的 udc-test DTB 接入，普通 VIM4 DTB 保持 USB host 行为。
 脚本执行 olddefconfig，最终配置写入
 外部构建目录并记录校验和；并非复现 Armbian 镜像构建的所有配置钩子。
 
@@ -113,7 +114,8 @@ GCC 12 构建 BL33 与 bl33z 成功；厂商代码存在编译警告和 CONFIG_O
 
 ## 审查边界与后续验证
 
-164 个补丁涉及 108 个文件，未修改 HDMI RX、VDIN、Wave5 或 USB gadget 路径。
+原始 164 个 Armbian 补丁涉及 108 个文件，未修改 HDMI RX、VDIN、Wave5 或 USB gadget 路径。
+后续本地 CRG 实验驱动及验证范围见 [适配记录](kernel-edge-porting.md#crg-实验驱动2026-10-19)。
 GPU、音频输出和显示输出的接入仍需上板验证，不能用编译成功替代。
 
 - `0097`：GPU 800 MHz、IO coherent；需验证 Panfrost、内存压力和持续负载。
