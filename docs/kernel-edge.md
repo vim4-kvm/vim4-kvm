@@ -79,6 +79,35 @@ bash packaging/kernel-edge/build.sh /home/deepdream/src/linux-7.3 /home/deepdrea
 
 这些结果仅证明本次源码与配置可编译，不能作为硬件回归通过证据。
 
+## 启动固件预检与模块准备
+
+2026-10-19 检查板子仍运行 `5.15.137-vim4kvm`，`/boot` 剩余约 67 MiB。
+Image 已占约 51 MiB，不能假定加入 initramfs 后仍有足够空间。
+最终配置中 eMMC、ext4、串口为内建，以太网为模块，试启动需要对应模块。
+VM 已执行 modules_install、strip、压缩与 depmod，输出在
+`~/build/kernel-edge-stage`（约 31 MiB，2320 个模块）。主仓库
+`build/kernel-edge/modules-7.3.0-rc7-vim4kvm-edge.tar.xz` 为约 24 MiB 的模块归档。
+这是暂存目录归档，不是可直接向系统根目录解压的安装包；其中含 lib/modules 路径和构建链接。
+
+当前板上 U-Boot 对应的源码 `b60ff51ece` 启用 CONFIG_CMD_RSVMEM，
+`common/bootm.c` 无条件运行 rsvmem check；检查器读取
+`/reserved-memory/linux,secmon` 的厂商属性，主线 DTB 没有该节点。
+Armbian 使用的 `khadas-vims-v2019.01-mainline` 分支包含三项相关修改：
+
+- `ee17cc6503`：没有 amlogic-dt-id 时跳过厂商 reserved-memory 检查。
+- `ee291cdb50`：FUSB302 PD 协商修复。
+- `a7b06ca049`：更新 T7 BL31；新旧固件对 SCMI/SMC 的兼容性仍需实机验证。
+
+在 VM `~/src/u-boot-edge` 建立 `vim4-kvm-2019.01-edge` 分支，基于现有安静启动
+版本应用这三个提交，保留取消风扇启动测试的修改。版本见 sources.toml。
+该目录为依赖 `~/src/u-boot` 对象库的 shared clone，不可单独删除原对象库。
+GCC 12 构建 BL33 与 bl33z 成功；厂商代码存在编译警告和 CONFIG_OF_EMBED 提示。
+日志在 VM `~/build/u-boot-edge.log`、`~/build/u-boot-edge-stub.log`。
+
+尚未生成可安装的签名引导镜像。现有 tools/vim4-repack.py 验证 BL31 不变，
+不能直接用于这次 BL31 更新，需先扩展打包与逐段校验，再准备硬件恢复与测试启动。
+不能只安装新 Image 就把主线启动支持视为完成。板上启动项、引导区和运行服务未修改。
+
 ## 审查边界与后续验证
 
 164 个补丁涉及 108 个文件，未修改 HDMI RX、VDIN、Wave5 或 USB gadget 路径。

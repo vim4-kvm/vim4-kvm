@@ -15,3 +15,11 @@ patch_directory = "patch/kernel/archive/meson-s4t7-7.3"
 patch_count = 164
 config = "config/kernel/linux-meson-s4t7-edge.config"
 config_sha256 = "b603e1fff54f82adb61d769b9e5dcfb314fc94d2e43c6a5e01e91d881d601a6f"
+
+# Local preparation only: BL33 builds, but the signed boot image is not packaged.
+[uboot]
+url = "https://github.com/vim4-kvm/u-boot.git"
+branch = "vim4-kvm-2019.01-edge"
+revision = "e6bbce26eced00eacdff11bc228f1804006bec53"
+base_revision = "b60ff51ece0fb05456261b1aabb043db6bd923d5"
+mainline_revision = "a7b06ca0498f2da0faf14e75148b5075c84d7381"
