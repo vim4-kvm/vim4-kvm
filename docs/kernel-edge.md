@@ -61,6 +61,24 @@ bash packaging/kernel-edge/build.sh /home/deepdream/src/linux-7.3 /home/deepdrea
 构建失败时保留日志和输出用于诊断；手工继续 make 或另选新的空目录，不自动清理。
 此入口不生成 deb、不安装模块、不连接板子、不修改启动项。
 
+## 2026-10-19 首轮构建结果
+
+- Linux 提交：`9c8bb58158d810a38ff37dec7c7d18cb131a3b52`，164 个补丁全部 git am 成功。
+- GCC：Ubuntu `13.3.0-6ubuntu2~24.04.1`，8 个并行任务。
+- 发布名：`7.3.0-rc7-vim4kvm-edge+`；末尾 `+` 表示相对上游标签有额外提交。
+- `Image dtbs modules` 成功，Image 53,639,680 字节，生成 2320 个 `.ko`。
+  日志没有 `warning:` 或 `error:`；未运行 dtbs_check，未进行启动或功能测试。
+- Image SHA-256：`56112d751e3ecadcc4972583c4dbbbed396c353be79f313641fdc001d0875a85`。
+- VIM4 DTB SHA-256：`d6d56472c93b2b073fa2e8e80412d4c8d5c0be8eaa391cfc7e4ef07bc8f0d277`。
+- 最终配置 SHA-256：`57163bd7de1cd169dc4b4514fce631b1280469d765572994dbce46b557c16c93`。
+- 完整输出在 VM 的 `~/build/kernel-edge`；主仓库 `build/kernel-edge/` 保存 Image、
+  VIM4 DTB、最终 `.config`、build.json 与 Git bundle。模块留在 VM，未打包安装。
+- 主仓库 `logs/kernel-edge/` 保存编译、补丁导入、补丁校验和单元测试日志。
+- 主仓库离线测试 83 项通过，4 项跳过；新文档加入索引后又通过 5 项文档检查。
+  构建入口在 VM 验证了错误源码、非空输出目录、源码内输出三种拒绝路径。
+
+这些结果仅证明本次源码与配置可编译，不能作为硬件回归通过证据。
+
 ## 审查边界与后续验证
 
 164 个补丁涉及 108 个文件，未修改 HDMI RX、VDIN、Wave5 或 USB gadget 路径。
