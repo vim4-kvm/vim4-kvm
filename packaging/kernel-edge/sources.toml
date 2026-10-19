@@ -1,4 +1,4 @@
-# Experimental local branch; not pushed and not used by the 5.15 image builder.
+# Experimental branch; not used by the 5.15 image builder.
 [kernel]
 url = "https://github.com/vim4-kvm/linux.git"
 branch = "vim4-kvm-7.3"

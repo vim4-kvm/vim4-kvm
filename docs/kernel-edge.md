@@ -8,7 +8,7 @@ HDMI 输入、VDIN、Wave521 编码仍需单独适配；CRG USB 设备端已完�
 ## 源码与配置
 
 - Linux 工作树：OrbStack `vim4-build` 的 `/home/deepdream/src/linux-7.3`。
-- 开发分支：`vim4-kvm-7.3`，origin 为 `https://github.com/vim4-kvm/linux.git`；当前仅本地，未推送。
+- 开发分支：[vim4-kvm-7.3](https://github.com/vim4-kvm/linux/tree/vim4-kvm-7.3)，固定版本见源码锁。
 - 上游：`https://github.com/gregkh/linux.git`，`v7.3-rc7`，完整历史的过滤克隆。
 - Armbian：`https://github.com/armbian/build.git`，固定提交
   `ecc676bf89af37788f972db9a7ff3f92844a43eb`，VM 中为 `~/src/armbian-build-7.3`。
