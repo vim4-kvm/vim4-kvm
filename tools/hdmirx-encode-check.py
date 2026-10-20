@@ -112,6 +112,8 @@ def capture(args):
         controls = Gst.Structure.new_empty('controls')
         controls.set_value('video_bitrate', args.bitrate)
         controls.set_value('video_gop_size', args.gop)
+        if args.intra_refresh_period:
+            controls.set_value('intra_refresh_period', args.intra_refresh_period)
         controls.set_value('frame_level_rate_control_enable', 1)
         controls.set_value('h264_mb_level_rate_control', 1)
         if args.codec == 'h265':
@@ -265,6 +267,7 @@ def capture(args):
     system_cpu = cpu_usage(cpu_before, cpu_counters())
     report = {'encoder': args.encoder, 'codec': args.codec, 'size': args.size,
               'format': args.format, 'bitrate': args.bitrate, 'gop': args.gop,
+              'intra_refresh_period': args.intra_refresh_period,
               'io_mode': 'dmabuf', 'latency_endpoint': 'source pad to parsed access unit',
               'system_cpu_busy_percent': system_cpu,
               'cpu_scope': 'whole board during capture, includes startup and kernel workers',
@@ -356,8 +359,10 @@ def main():
     board.add_argument('--size', choices=('1920x1080', '3840x2160'), default='1920x1080')
     board.add_argument('--bitrate', type=int, default=20000000)
     board.add_argument('--gop', type=int, default=60)
+    board.add_argument('--intra-refresh-period', type=int, default=0,
+                       help='Wave5 cyclic refresh period in frames; requires matched driver')
     board.add_argument('--keyframe-at', type=int, action='append', default=[],
-                       help='request an IDR after this encoded frame; requires Wave5 and GOP > frames')
+                       help='request an IDR after this encoded frame; requires Wave5 and GOP 0 or > frames')
     offline = sub.add_parser('verify', help='offline decode and motion-marker check')
     offline.add_argument('video', type=Path)
     offline.add_argument('--frames', type=int, required=True)
@@ -368,11 +373,16 @@ def main():
         parser.error('frames must be 2..10000')
     if args.action == 'capture' and args.timeout <= 0:
         parser.error('timeout must be positive')
-    if args.action == 'capture' and (not 1 <= args.bitrate <= 700000000 or not 1 <= args.gop <= 1000):
-        parser.error('bitrate must be 1..700000000 and GOP must be 1..1000')
+    if args.action == 'capture' and (not 1 <= args.bitrate <= 700000000 or not 0 <= args.gop <= 1000):
+        parser.error('bitrate must be 1..700000000 and GOP must be 0..1000')
+    if args.action == 'capture':
+        if not 0 <= args.intra_refresh_period <= 4096:
+            parser.error('intra refresh period must be 0..4096')
+        if args.encoder != 'wave5' and (args.gop == 0 or args.intra_refresh_period):
+            parser.error('GOP 0 and cyclic intra refresh require Wave5')
     if args.action == 'capture' and args.keyframe_at:
-        if args.encoder != 'wave5' or args.gop <= args.frames:
-            parser.error('keyframe requests require Wave5 and GOP larger than the capture frame count')
+        if args.encoder != 'wave5' or (args.gop != 0 and args.gop <= args.frames):
+            parser.error('keyframe requests require Wave5 and GOP 0 or larger than the capture frame count')
         if any(not 1 <= point <= args.frames - 30 for point in args.keyframe_at):
             parser.error('keyframe request points must leave at least 30 output frames')
     try:

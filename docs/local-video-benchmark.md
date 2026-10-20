@@ -46,7 +46,8 @@ heap 与 VDIN/VPU 的映射类型可能不同，不能据此认定驱动已提�
 ## 驱动回归与复制候选
 
 为软件 benchmark 增加 `--kernel-source /path/to/linux-7.3` 可先在本机编译运行
-实际 IRQ/环/vb2 C 代码、Wave5 平面偏移检查以及 ASan/UBSan 分配失败/关闭回归。
+实际 IRQ/环/vb2 C 代码、Wave5 平面偏移检查、profile 转换、逐行刷新预算，
+以及 ASan/UBSan 分配失败/关闭回归。
 需要本机 C 编译器；实际 IRQ 和 DMA 由可控桩替代，属于生命周期回归，不是硬件仿真。
 
 Linux ARM64 中另运行内核源码的

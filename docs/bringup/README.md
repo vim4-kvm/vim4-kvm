@@ -15,6 +15,7 @@
 - [7.3 One-KVM HID 接入](2026-10-20-edge-hid-integration.md) — application usb audio board
 - [7.x UHD 清晰度与 Mac 渲染分辨率](2026-10-20-edge-uhd-detail.md) — application video board
 - [7.3 HDMI LPCM 与 One-KVM 音频](2026-10-20-edge-hdmi-audio.md) — kernel audio application board
+- [7.x Wave5 逐行刷新与卡顿对照](2026-10-20-edge-cyclic-refresh.md) — kernel video application board
 
 ## 2026-10-19
 

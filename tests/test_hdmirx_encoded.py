@@ -19,6 +19,23 @@ class FragmentedPipe(io.BytesIO):
 
 
 class DecodePipeTest(unittest.TestCase):
+    def test_recovery_requests_with_cyclic_refresh_reach_capture(self):
+        argv = ['checker', 'capture', '--exclusive', '--encoder=wave5', '--format=nv12',
+                '--output=unused.mkv', '--gop=0', '--intra-refresh-period=45',
+                '--keyframe-at=60', '--keyframe-at=120']
+        with mock.patch('sys.argv', argv), mock.patch.object(checker, 'capture') as capture:
+            checker.main()
+            self.assertEqual(capture.call_args.args[0].keyframe_at, [60, 120])
+
+    def test_short_periodic_gop_cannot_mask_a_recovery_request(self):
+        argv = ['checker', 'capture', '--exclusive', '--encoder=wave5',
+                '--output=unused.mkv', '--gop=60', '--keyframe-at=60']
+        with mock.patch('sys.argv', argv), mock.patch.object(checker, 'capture') as capture, \
+             mock.patch('sys.stderr', new_callable=io.StringIO):
+            with self.assertRaises(SystemExit):
+                checker.main()
+            capture.assert_not_called()
+
     def test_short_reads_still_form_whole_frames(self):
         pipe = FragmentedPipe(b'abcdefghABCDEFGH')
         self.assertEqual(checker.read_frame(pipe, 8), b'abcdefgh')
