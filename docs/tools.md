@@ -88,6 +88,8 @@ PiKVM smoke 可用 `PIKVM_CDP` 接入专用测试 Chrome；结束时关闭测试
 | 入口 | 运行位置 | 影响 | 用途 | 文档 |
 |---|---|---|---|---|
 | tools/latency-source.swift | Mac | 占用 HDMI 画面 | 把帧号画进 HDMI 输出；`--motion` 产生运动网格，`--verify-coherence` 增加三处标记并覆盖该屏弹窗 | [延迟测量](latency.md) |
+| tools/hdmi-resolution-source.swift | Mac | 临时覆盖所选 HDMI 桌面 | 原生 UHD 单像素条纹与参考 PNG；不切模式、不注入输入 | [清晰度复核](bringup/2026-10-20-edge-uhd-detail.md) |
+| tools/hdmi-resolution-check.py | 离线 | 无 | Pillow 检查原生解码帧的亮度空间细节，拒绝 1080p 放大负例 | [清晰度复核](bringup/2026-10-20-edge-uhd-detail.md) |
 | tools/latency-receiver.mjs | Mac | 独占 | 解码像素帧号与呈现节奏；统一管理器登录、专用 CDP 浏览器和无像素回读对照 | [延迟测量](latency.md) |
 | tools/latency-summary.py | Mac | 无 | 匹配两端时间戳，统计呈现间隔、回调漏采和无更新尾段 | [延迟测量](latency.md) |
 | tools/video-timing-summary.py | Mac | 无 | 汇总 VIM4_VIDEO_TIMING 分段计时 | [延迟测量](latency.md) |
