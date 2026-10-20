@@ -4,9 +4,9 @@
 HDMI 输入、VDIN、Wave521 编码仍需单独适配；CRG USB 设备端已完成真实键鼠和
 只读虚拟盘三轮组合测试，仍需扩大 USB 验收，范围见
 [CRG 组合实测](bringup/2026-10-19-crg-composite.md)。
-HDMI RX 已通过 EDID/DDC 源端读回，固定 148.5 MHz 实验路径已测得 PHY PLL 锁定、
-SQO 与接收时钟；TMDS 尚未对齐，没有视频帧，见
-[PHY 实测](bringup/2026-10-19-hdmirx-phy.md)。
+HDMI RX 已通过 EDID/DDC 源端读回，并在固定 148.5 MHz 实验路径中取得真实的
+1920×1080 RGB24 视频快照，三处帧号一致且重复采集推进，见
+[取帧实测](bringup/2026-10-19-hdmirx-frames.md)。尚无 V4L2 连续流、4K 或编码器接入。
 现有 5.15 的工作树、workspace.toml 发布版本和安装流程不变。
 
 ## 源码与配置

@@ -99,14 +99,14 @@ olddefconfig 的结果完全一致。主仓库 83 项离线测试通过、4 项�
 已完成 T7 接收器电源、功能时钟、TOP 资源与源端 5V 读取，
 三轮加载/卸载和旧 debugfs fd 检查通过。后续加入 EDID 校验、RAM 读回和 HPD 请求，
 Mac 发送端已精确读回两份不同的 128 字节 EDID 及一份 256 字节 EDID。
-后续固定 148.5 MHz PHY 实验路径三轮锁定，SQO=1，cable/TMDS 时钟均约 148.5 MHz；
-TMDS 对齐仍为 0，尚无时序检测或视频帧。当前版本与测试边界见
-[HDMI PHY 实测](bringup/2026-10-19-hdmirx-phy.md)。
+后续固定 148.5 MHz PHY 实验路径已扩展至 COR 对齐、1080p60 时序检测及 VDIN
+RGB24 完整快照，三处帧号一致且重复采集推进。当前版本与测试边界见
+[HDMI 取帧实测](bringup/2026-10-19-hdmirx-frames.md)。
 
 | 功能 | 当前厂商实现入口 | 主要依赖 / 新内核缺口 |
 |---|---|---|
-| HDMI RX | drivers/media/vin/tvin/hdmirx/ | EDID/DDC 与固定 PLL 已测；仍缺 COR 对齐／时序、动态 PHY 及标准采集接口；snps_hdmirx 不能直接接入 T7 |
-| VDIN | drivers/media/vin/tvin/vdin/ | codec_mm、VPU、VFM、canvas/帧路由和中断；需先建立连续 DMA 采集 |
+| HDMI RX | drivers/media/vin/tvin/hdmirx/ | EDID/DDC、固定 PLL、COR 对齐与 1080p60 已测；仍缺动态 PHY 及标准采集接口；snps_hdmirx 不能直接接入 T7 |
+| VDIN | drivers/media/vin/tvin/vdin/ | 已有独占 VPU 的有界 DMA 快照；后续建立共享 VPU 与 V4L2/videobuf2 连续采集 |
 | DMA-buf 输出 | drivers/media/vfm_cap/vfm_cap.c | VFM provider/receiver、codec_mm；必须保留缓冲持有和 CPU 同步语义 |
 | Wave521 编码 | drivers/media_modules/frame_sink/encoder/multi/vpu_multi.c | codec_mm、canvas、CPU 检测、厂商电源域及 vdec 电源辅助接口，现有 amvenc_multi 用户态 ABI |
 | HDMI 输入音频 | sound/soc/amlogic/auge/tdm.c | hdmirx/hdmirx_b 输入源、RX 音频状态、TDM DMA 与路由；输出声卡注册不能证明输入可用 |

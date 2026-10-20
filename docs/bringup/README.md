@@ -13,6 +13,7 @@
 - [7.3 HDMI RX 资源与源端 5V 实测](2026-10-19-hdmirx-resources.md) — kernel video board
 - [7.3 HDMI RX EDID 与源端 DDC 读回](2026-10-19-hdmirx-ddc.md) — kernel video usb board
 - [7.3 HDMI RX 固定频率 PHY PLL 实测](2026-10-19-hdmirx-phy.md) — kernel video board
+- [7.3 HDMI RX 1080p 完整视频帧](2026-10-19-hdmirx-frames.md) — kernel video board
 
 ## 2026-10-12
 

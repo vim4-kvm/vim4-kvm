@@ -102,4 +102,5 @@ PiKVM smoke 可用 `PIKVM_CDP` 接入专用测试 Chrome；结束时关闭测试
 | tools/crg-composite-host-check.py | Mac → 板 | 独占，移动光标、临时窗口接收按键、枚举测试盘 | 配合 CRG 板端工具，核对键鼠、只读盘文件哈希、安全弹出与重绑定 | [CRG 组合实测](bringup/2026-10-19-crg-composite.md) |
 | tools/hdmirx-resource-check.py | 板（root） | 独占，仅 7.3 HDMI RX 测试内核；PHY 模式改变 EDID／HPD | 资源回收与旧 fd；`--phy-firmware` 验证固定频率 PLL，`--reject-firmware` 在所选模式验证失败 probe | [HDMI PHY 实测](bringup/2026-10-19-hdmirx-phy.md) |
 | tools/hdmirx-ddc-host-check.py | Mac → 板 | 独占，加载接收模块并改变 EDID／HPD，影响 HDMI 显示连接 | 比较接收器 RAM 与 Mac HDMI 端实际读到的不同 EDID；不验证视频帧 | [HDMI DDC 实测](bringup/2026-10-19-hdmirx-ddc.md) |
+| tools/hdmirx-frame-check.py | Mac / Linux | 无 | 离线校验 1080p RGB24 帧的三处帧号、黑白通道和跨帧推进，输入须来自 `latency-source.swift --verify-coherence` | [HDMI 取帧](bringup/2026-10-19-hdmirx-frames.md) |
 | tools/test-fan-policy.sh | VM | 无 | 编译内核风扇插值函数做断言 | [内核](kernel.md) |

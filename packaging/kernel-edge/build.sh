@@ -31,9 +31,13 @@ source, output = map(pathlib.Path, sys.argv[1:])
 artifacts = ['.config', 'arch/arm64/boot/Image',
              'arch/arm64/boot/dts/amlogic/amlogic-t7-a311d2-khadas-vim4.dtb',
              'arch/arm64/boot/dts/amlogic/amlogic-t7-a311d2-khadas-vim4-udc-test.dtb',
-             'arch/arm64/boot/dts/amlogic/amlogic-t7-a311d2-khadas-vim4-hdmirx-test.dtb']
+             'arch/arm64/boot/dts/amlogic/amlogic-t7-a311d2-khadas-vim4-hdmirx-test.dtb',
+             'drivers/media/platform/amlogic/t7-hdmirx/t7-hdmirx.ko',
+             'drivers/media/platform/amlogic/t7-hdmirx/t7-vdin-test.ko']
 report = {
     'kernel': subprocess.check_output(['git', '-C', str(source), 'rev-parse', 'HEAD'], text=True).strip(),
+    'tree': subprocess.check_output(['git', '-C', str(source), 'rev-parse', 'HEAD^{tree}'], text=True).strip(),
+    'release': (output / 'include/config/kernel.release').read_text().strip(),
     'compiler': subprocess.check_output(['gcc', '--version'], text=True).splitlines()[0],
     'sha256': {p: hashlib.sha256((output / p).read_bytes()).hexdigest() for p in artifacts},
     'validation': 'Image, dtbs and modules built; hardware not tested',
