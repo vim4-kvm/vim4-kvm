@@ -1,0 +1,25 @@
+[Unit]
+Description=One-KVM experimental LAN login gateway
+After=network.target one-kvm-edge.service
+Requires=one-kvm-edge.service
+PartOf=one-kvm-edge.service
+ConditionKernelVersion=7.3.0-rc7-vim4kvm-uhd1+
+ConditionKernelCommandLine=vim4.one_kvm=1
+StartLimitIntervalSec=60
+StartLimitBurst=3
+
+[Service]
+User=khadas
+Group=khadas
+# Reuse the installed manager account and proxy authentication. Its management
+# listener stays local because the production hardware helpers target 5.15.
+StateDirectory=vim4-manager
+StateDirectoryMode=0700
+ExecStart=/opt/vim4-manager/vim4-manager -listen 127.0.0.1:18080 -kvm-listen :8080 -kvm-backend 127.0.0.1:8082
+Restart=on-failure
+RestartSec=3
+TimeoutStopSec=20
+UMask=0077
+
+[Install]
+WantedBy=one-kvm-edge.service
