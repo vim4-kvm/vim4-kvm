@@ -60,6 +60,19 @@ class LatencyView: NSView {
                        width: cell * 15 / 16, height: bounds.height * 80 / 1080).fill()
             }
         }
+        if verifyCoherence {
+            // Fixed primary colours also expose RGB mapping and YUV matrix errors.
+            let colors = [NSColor(deviceRed: 1, green: 0, blue: 0, alpha: 1),
+                          NSColor(deviceRed: 0, green: 1, blue: 0, alpha: 1),
+                          NSColor(deviceRed: 0, green: 0, blue: 1, alpha: 1)]
+            for (index, color) in colors.enumerated() {
+                color.setFill()
+                NSRect(x: bounds.width * CGFloat(240 + index * 480 - 64) / 1920,
+                       y: bounds.height * (1 - 864.0 / 1080),
+                       width: bounds.width * 128 / 1920,
+                       height: bounds.height * 128 / 1080).fill()
+            }
+        }
         print("{\"id\":\(id),\"sourceMs\":\(sourceTime),\"drawEndMs\":\(Date().timeIntervalSince1970 * 1000)}")
     }
 }

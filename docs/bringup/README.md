@@ -17,6 +17,7 @@
 - [7.3 HDMI V4L2 连续取帧](2026-10-19-hdmirx-v4l2.md) — kernel video board
 - [7.3 HDMI 私有 DMA 环与 1080p60](2026-10-19-hdmirx-dma-ring.md) — kernel video board
 - [7.3 HDMI DMA-buf 与软件 H.264](2026-10-19-hdmirx-dmabuf.md) — kernel video board
+- [7.3 Wave521 硬编码与 4K60](2026-10-19-wave521-uhd.md) — kernel video board
 
 ## 2026-10-12
 

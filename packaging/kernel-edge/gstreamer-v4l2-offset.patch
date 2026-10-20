@@ -1,0 +1,12 @@
+--- a/sys/v4l2/gstv4l2allocator.c
++++ b/sys/v4l2/gstv4l2allocator.c
+@@ -1257,7 +1257,8 @@ gst_v4l2_allocator_qbuf (GstV4l2Allocator * allocator,
+   if (V4L2_TYPE_IS_MULTIPLANAR (obj->type)) {
+     for (i = 0; i < group->n_mem; i++)
+       group->planes[i].bytesused =
+-          gst_memory_get_sizes (group->mem[i], NULL, NULL);
++          gst_memory_get_sizes (group->mem[i], NULL, NULL) +
++          group->planes[i].data_offset;
+   } else {
+     group->buffer.bytesused = gst_memory_get_sizes (group->mem[0], NULL, NULL);
+   }

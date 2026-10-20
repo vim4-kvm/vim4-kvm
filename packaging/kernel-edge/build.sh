@@ -33,7 +33,8 @@ artifacts = ['.config', 'arch/arm64/boot/Image',
              'arch/arm64/boot/dts/amlogic/amlogic-t7-a311d2-khadas-vim4-udc-test.dtb',
              'arch/arm64/boot/dts/amlogic/amlogic-t7-a311d2-khadas-vim4-hdmirx-test.dtb',
              'drivers/media/platform/amlogic/t7-hdmirx/t7-hdmirx.ko',
-             'drivers/media/platform/amlogic/t7-hdmirx/t7-vdin-test.ko']
+             'drivers/media/platform/amlogic/t7-hdmirx/t7-vdin-test.ko',
+             'drivers/media/platform/chips-media/wave5/wave5.ko']
 report = {
     'kernel': subprocess.check_output(['git', '-C', str(source), 'rev-parse', 'HEAD'], text=True).strip(),
     'tree': subprocess.check_output(['git', '-C', str(source), 'rev-parse', 'HEAD^{tree}'], text=True).strip(),

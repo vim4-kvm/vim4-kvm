@@ -10,7 +10,9 @@ HDMI RX 已通过 EDID/DDC 源端读回，并在固定 148.5 MHz 实验路径中
 实现稳定段约 60fps，5400 帧运动校验通过，见
 [1080p60 实测](bringup/2026-10-19-hdmirx-dma-ring.md)。后续 DMA-buf 导出也通过 5400 帧检查，
 并完成 180 帧软件 H.264 编解码校验，见
-[DMA-buf 实测](bringup/2026-10-19-hdmirx-dmabuf.md)。4K 和硬件编码器接入仍待完成。
+[DMA-buf 实测](bringup/2026-10-19-hdmirx-dmabuf.md)。固定 RGB8 4K60 输入与
+H.264/H.265 硬编码已取得实验结果，见
+[Wave521 与 4K60](bringup/2026-10-19-wave521-uhd.md)；应用接入和稳定性验收尚未完成。
 现有 5.15 的工作树、workspace.toml 发布版本和安装流程不变。
 
 ## 源码与配置

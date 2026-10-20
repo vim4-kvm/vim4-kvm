@@ -2,7 +2,7 @@
  * Board-only, exclusive 7.3 HDMI capture check. Requires the moving HDMI source:
  * latency-source.swift --motion --verify-coherence
  * gcc -O2 -Wall -Wextra -Werror tools/hdmirx-stream-check.c -o /tmp/hdmirx-stream-check
- * /tmp/hdmirx-stream-check /dev/video0 FRAMES CYCLES OUTPUT_DIRECTORY [--dmabuf [--hold-exports]]
+ * /tmp/hdmirx-stream-check /dev/video0 FRAMES CYCLES OUTPUT_DIRECTORY [--dmabuf [--hold-exports]] [--check-colors]
  * OUTPUT_DIRECTORY must already exist. Each cycle holds all four buffers,
  * verifies their immutability and empty-queue poll, then resumes streaming.
  * Saves the first/last frame of each cycle and prints per-frame JSON evidence.
@@ -25,9 +25,8 @@
 #include <time.h>
 #include <unistd.h>
 
-#define WIDTH 1920
-#define HEIGHT 1080
-#define FRAME_BYTES (WIDTH * HEIGHT * 3U)
+static unsigned int width, height, frame_bytes;
+static int nv12;
 #define BUFFERS 4
 
 struct mapping {
@@ -68,7 +67,22 @@ static unsigned int marker_id(const unsigned char *data)
         uint32_t word = 0;
         for (unsigned int bit = 0; bit < 32; bit++) {
             unsigned int x = 20 + (2 * bit + 1) * 1880 / 64;
-            const unsigned char *pixel = data + (rows[row] * WIDTH + x) * 3;
+            unsigned int y = rows[row] * height / 1080;
+            x = x * width / 1920;
+            unsigned char neutral[3];
+            const unsigned char *pixel;
+            if (nv12) {
+                unsigned int uv = width * height + y / 2 * width + x / 2 * 2;
+                int luma = data[y * width + x];
+                require(data[uv] >= 122 && data[uv] <= 134 &&
+                        data[uv + 1] >= 122 && data[uv + 1] <= 134 &&
+                        ((luma >= 8 && luma <= 24) || (luma >= 227 && luma <= 243)),
+                        "damaged monochrome NV12 marker");
+                memset(neutral, luma >= 227 ? 255 : 0, sizeof(neutral));
+                pixel = neutral;
+            } else {
+                pixel = data + (y * width + x) * 3;
+            }
             unsigned int minimum = pixel[0], maximum = pixel[0];
             unsigned int sum = pixel[0] + pixel[1] + pixel[2];
             for (unsigned int c = 1; c < 3; c++) {
@@ -89,10 +103,30 @@ static unsigned int marker_id(const unsigned char *data)
     return id;
 }
 
+static void check_colors(const unsigned char *data)
+{
+    for (unsigned int c = 0; c < 3; c++) {
+        unsigned int x = (240 + c * 480) * width / 1920, y = 800 * height / 1080;
+        double rgb[3];
+        if (nv12) {
+            unsigned int uv = width * height + y / 2 * width + x / 2 * 2;
+            double luma = (data[y * width + x] - 16) * 1.164384;
+            double u = data[uv] - 128, v = data[uv + 1] - 128;
+            rgb[0] = luma + 1.792741 * v;
+            rgb[1] = luma - .213249 * u - .532909 * v;
+            rgb[2] = luma + 2.112402 * u;
+        } else {
+            for (unsigned int i = 0; i < 3; i++) rgb[i] = data[(y * width + x) * 3 + i];
+        }
+        for (unsigned int i = 0; i < 3; i++)
+            require(i == c ? rgb[i] >= 180 : rgb[i] <= 60, "incorrect primary-colour mapping");
+    }
+}
+
 static uint64_t fingerprint(const unsigned char *data)
 {
     uint64_t value = UINT64_C(14695981039346656037);
-    for (unsigned int i = 0; i < FRAME_BYTES; i++)
+    for (unsigned int i = 0; i < frame_bytes; i++)
         value = (value ^ data[i]) * UINT64_C(1099511628211);
     return value;
 }
@@ -129,7 +163,7 @@ static struct v4l2_buffer dequeue(int fd)
     };
     require(poll(&pollfd, 1, 2500) == 1 && (pollfd.revents & POLLIN), "frame poll");
     require(call(fd, VIDIOC_DQBUF, &buffer) == 0, "DQBUF");
-    require(buffer.index < BUFFERS && buffer.bytesused == FRAME_BYTES &&
+    require(buffer.index < BUFFERS && buffer.bytesused == frame_bytes &&
             !(buffer.flags & V4L2_BUF_FLAG_ERROR), "buffer geometry/error");
     require((buffer.flags & V4L2_BUF_FLAG_TIMESTAMP_MASK) ==
             V4L2_BUF_FLAG_TIMESTAMP_MONOTONIC, "timestamp clock");
@@ -144,18 +178,22 @@ static void save_frame(const char *directory, unsigned int cycle,
     require(length > 0 && (size_t)length < sizeof(path), "output path length");
     FILE *output = fopen(path, "wbx");
     require(output != NULL, "create new output frame");
-    require(fwrite(data, 1, FRAME_BYTES, output) == FRAME_BYTES, "save frame");
+    require(fwrite(data, 1, frame_bytes, output) == frame_bytes, "save frame");
     require(fclose(output) == 0, "close frame");
 }
 
 int main(int argc, char **argv)
 {
-    require(argc >= 5 && argc <= 7,
-            "usage: hdmirx-stream-check DEVICE FRAMES CYCLES OUTPUT_DIRECTORY [--dmabuf [--hold-exports]]");
-    int export_mode = argc >= 6;
-    int hold_exports = argc == 7;
-    require(!export_mode || strcmp(argv[5], "--dmabuf") == 0, "unknown export option");
-    require(!hold_exports || strcmp(argv[6], "--hold-exports") == 0, "unknown hold option");
+    require(argc >= 5 && argc <= 8,
+            "usage: hdmirx-stream-check DEVICE FRAMES CYCLES OUTPUT_DIRECTORY [--dmabuf [--hold-exports]] [--check-colors]");
+    int export_mode = 0, hold_exports = 0, colors = 0;
+    for (int i = 5; i < argc; i++) {
+        if (!export_mode && strcmp(argv[i], "--dmabuf") == 0) export_mode = 1;
+        else if (!hold_exports && strcmp(argv[i], "--hold-exports") == 0) hold_exports = 1;
+        else if (!colors && strcmp(argv[i], "--check-colors") == 0) colors = 1;
+        else require(0, "unknown or repeated option");
+    }
+    require(!hold_exports || export_mode, "--hold-exports requires --dmabuf");
     unsigned int frames = (unsigned int)strtoul(argv[2], NULL, 10);
     unsigned int cycles = (unsigned int)strtoul(argv[3], NULL, 10);
     require(frames >= 8 && frames <= 10000 && cycles >= 1 && cycles <= 100,
@@ -168,11 +206,18 @@ int main(int argc, char **argv)
             (cap.device_caps & (V4L2_CAP_VIDEO_CAPTURE | V4L2_CAP_STREAMING)) ==
             (V4L2_CAP_VIDEO_CAPTURE | V4L2_CAP_STREAMING), "experimental capture device");
     struct v4l2_format format = {.type = V4L2_BUF_TYPE_VIDEO_CAPTURE};
-    require(call(fd, VIDIOC_G_FMT, &format) == 0 &&
-            format.fmt.pix.width == WIDTH && format.fmt.pix.height == HEIGHT &&
-            format.fmt.pix.pixelformat == V4L2_PIX_FMT_RGB24 &&
-            format.fmt.pix.sizeimage == FRAME_BYTES &&
-            format.fmt.pix.bytesperline == WIDTH * 3, "RGB24 format");
+    require(call(fd, VIDIOC_G_FMT, &format) == 0, "G_FMT");
+    width = format.fmt.pix.width;
+    height = format.fmt.pix.height;
+    nv12 = format.fmt.pix.pixelformat == V4L2_PIX_FMT_NV12;
+    require((width == 1920 && height == 1080) || (width == 3840 && height == 2160),
+            "supported capture dimensions");
+    require(nv12 || format.fmt.pix.pixelformat == V4L2_PIX_FMT_RGB24, "NV12 or RGB24 format");
+    frame_bytes = nv12 ? width * height * 3 / 2 : width * height * 3;
+    unsigned int allocation_bytes = nv12 ? width * ((height + 15U) & ~15U) * 3 / 2 : frame_bytes;
+    require(format.fmt.pix.sizeimage == allocation_bytes &&
+            format.fmt.pix.bytesperline == width * (nv12 ? 1U : 3U), "packed capture geometry");
+    printf("{\"width\":%u,\"height\":%u,\"format\":\"%s\"}\n", width, height, nv12 ? "NV12" : "RGB24");
     struct v4l2_requestbuffers request = {
         .count = BUFFERS, .type = V4L2_BUF_TYPE_VIDEO_CAPTURE, .memory = V4L2_MEMORY_MMAP
     };
@@ -229,6 +274,7 @@ int main(int argc, char **argv)
                                  (uint64_t)buffer.timestamp.tv_usec * 1000;
             cpu_access(&mappings[buffer.index], DMA_BUF_SYNC_START);
             unsigned int id = marker_id(mappings[buffer.index].data);
+            if (colors) check_colors(mappings[buffer.index].data);
             unsigned int delta = (id - previous_id) & 0xffff;
             require(!have_id || (delta > 0 && delta < 0x8000), "stale/backward source frame");
             require(buffer.sequence == i && timestamp > previous_timestamp &&
