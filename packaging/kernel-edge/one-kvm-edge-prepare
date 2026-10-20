@@ -16,7 +16,7 @@ if ! printf '%s\n' \
 fi
 
 modprobe t7_hdmirx edid_firmware=vim4-hdmirx-ddc-test/uhd60-edid.bin phy_test=1 core_test=1 uhd60=1
-modprobe t7_vdin_test nv12=1
+modprobe t7_vdin_test nv12=1 direct_dma=1
 modprobe wave5
 for parameter in phy_test core_test uhd60; do
     if [ "$(cat "/sys/module/t7_hdmirx/parameters/$parameter")" != Y ]; then
@@ -24,10 +24,12 @@ for parameter in phy_test core_test uhd60; do
         exit 1
     fi
 done
-if [ "$(cat /sys/module/t7_vdin_test/parameters/nv12)" != Y ]; then
-    echo 'HDMI capture must use NV12 for this experiment' >&2
-    exit 1
-fi
+for parameter in nv12 direct_dma; do
+    if [ "$(cat "/sys/module/t7_vdin_test/parameters/$parameter")" != Y ]; then
+        echo 'HDMI capture must use NV12 and leased direct DMA for this experiment' >&2
+        exit 1
+    fi
+done
 udevadm settle --timeout=15
 if [ ! -d /sys/bus/platform/drivers/t7-hdmirx/fe398000.hdmi-receiver ] ||
    [ ! -d /sys/bus/platform/drivers/t7-vdin-test/ff000000.video-capture ]; then

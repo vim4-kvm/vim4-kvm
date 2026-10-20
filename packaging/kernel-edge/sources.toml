@@ -2,8 +2,8 @@
 [kernel]
 url = "https://github.com/vim4-kvm/linux.git"
 branch = "vim4-kvm-7.3"
-revision = "702421daa1a1efb32ccae5281653c51091bb81fb"
-tree = "40ca49ed80148e89eacb17875b426c94fde9b080"
+revision = "1762175bf43d803edb9ebdfdd25f7263667e9326"
+tree = "30b5286910130747b2c39362809e85115ba35c76"
 upstream_url = "https://github.com/gregkh/linux.git"
 upstream_tag = "v7.3-rc7"
 upstream_revision = "24a19b953e2a3d0ea5a8c4951a0ab8f32720c907"
@@ -12,7 +12,7 @@ upstream_revision = "24a19b953e2a3d0ea5a8c4951a0ab8f32720c907"
 [onekvm]
 url = "https://github.com/vim4-kvm/One-KVM.git"
 branch = "vim4"
-revision = "c6327c3e332f65ce67d2de78402e189dfd07f248"
+revision = "3ef711f365b6bc5c45b675bd38e232a5f0af510c"
 features = ["vim4"]
 
 [armbian]

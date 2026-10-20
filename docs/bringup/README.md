@@ -9,6 +9,7 @@
 
 - [One-KVM 接入 7.3 V4L2/Wave5](2026-10-20-onekvm-wave5.md) — application kernel video board
 - [One-KVM 7.3 CPU 性能定位](2026-10-20-onekvm-performance.md) — application kernel video board
+- [本地基准与 VDIN 直接 DMA](2026-10-20-direct-dma-benchmark.md) — application kernel video board
 
 ## 2026-10-19
 
