@@ -15,6 +15,7 @@
 - [7.3 HDMI RX 固定频率 PHY PLL 实测](2026-10-19-hdmirx-phy.md) — kernel video board
 - [7.3 HDMI RX 1080p 完整视频帧](2026-10-19-hdmirx-frames.md) — kernel video board
 - [7.3 HDMI V4L2 连续取帧](2026-10-19-hdmirx-v4l2.md) — kernel video board
+- [7.3 HDMI 私有 DMA 环与 1080p60](2026-10-19-hdmirx-dma-ring.md) — kernel video board
 
 ## 2026-10-12
 

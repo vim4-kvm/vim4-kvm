@@ -43,7 +43,7 @@ HDMI_LOW_LATENCY=0 恢复厂商自动策略。模式含义、对照结果及帧�
 
 按改动范围读取（只读与任务相关的一项）：
 
-- [7.3 HDMI 连续取帧](../bringup/2026-10-19-hdmirx-v4l2.md)：实验 V4L2 MMAP 队列、约 10fps 及后续持续 DMA 缺口。
+- [7.3 HDMI 1080p60](../bringup/2026-10-19-hdmirx-dma-ring.md)：实验私有 DMA 环、V4L2 MMAP 复制队列及剩余接入缺口。
 - [采集插件](../../gst-plugin-vfmcap/README.md)：格式和 DMA-buf 生命周期。
 - [编码插件](../../gst-plugin-venc/VIM4.md)：帧率预算、安装和测试。
 - [应用与音频](../../NanoKVM/VIM4.md)：功能覆盖和构建。
@@ -69,6 +69,7 @@ HDMI_LOW_LATENCY=0 恢复厂商自动策略。模式含义、对照结果及帧�
 | 触发条件 / 错误 | 原因与正确做法 | 验证入口 |
 |---|---|---|
 | 原始 DMA 采集 60fps，但全帧 CPU 处理只有约 13fps | write-combine 映射下读一帧 4K 需约 55.6ms，SIMD 无法弥补。改为只读可缓存映射并实现 DMA-BUF CPU 访问同步，融合复制与重排，复用输出缓冲；必须逐帧验证动态标记与单像素色度，不能只测重复读取同一帧 | common_drivers/drivers/media/vfm_cap/test_lifecycle.c、gst-plugin-vfmcap/tests/capture-integrity.c |
+| 给 cached DMA 环只做每轮复制同步，遗漏首次交给设备的同步 | dma_alloc_noncoherent 的分配器会通过 CPU 映射清零；首次 DMA 前也必须 sync_for_device，每轮复制保持 CPU／设备所有权交接 | [7.3 私有 DMA 环](../bringup/2026-10-19-hdmirx-dma-ring.md) |
 | 30fps 编码预算配 60fps 输入 | 旧 amlvenc 造成实际码率偏大。修正插件并传入输入帧率；预算不是采集节奏 | gst-plugin-venc/VIM4.md |
 | 用 game_mode 0 当作关闭低延迟的实验对照 | 0 恢复自动策略，实际模式可能是 0xb。核对驱动 state 中的当前模式，不能仅看全局参数；完整帧模式使用 0x3 | [采集延迟对照](../latency.md#board-side-isolation-and-completed-frame-mode) |
 | 把 video71 当 HDMI 输入 | vdin1 是输出回写；无 HDMI 输出时用 vdin0 → vfm_cap，HDMI RX 为 port 1 | [硬件](../hardware.md) |

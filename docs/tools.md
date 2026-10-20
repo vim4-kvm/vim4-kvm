@@ -103,5 +103,5 @@ PiKVM smoke 可用 `PIKVM_CDP` 接入专用测试 Chrome；结束时关闭测试
 | tools/hdmirx-resource-check.py | 板（root） | 独占，仅 7.3 HDMI RX 测试内核；PHY 模式改变 EDID／HPD | 资源回收与旧 fd；`--phy-firmware` 验证固定频率 PLL，`--reject-firmware` 在所选模式验证失败 probe | [HDMI PHY 实测](bringup/2026-10-19-hdmirx-phy.md) |
 | tools/hdmirx-ddc-host-check.py | Mac → 板 | 独占，加载接收模块并改变 EDID／HPD，影响 HDMI 显示连接 | 比较接收器 RAM 与 Mac HDMI 端实际读到的不同 EDID；不验证视频帧 | [HDMI DDC 实测](bringup/2026-10-19-hdmirx-ddc.md) |
 | tools/hdmirx-frame-check.py | Mac / Linux | 无 | 离线校验 1080p RGB24 帧的三处帧号、黑白通道和跨帧推进，输入须来自 `latency-source.swift --verify-coherence` | [HDMI 取帧](bringup/2026-10-19-hdmirx-frames.md) |
-| tools/hdmirx-stream-check.c | 板（root） | 独占，仅 7.3 HDMI 实验内核 | 四缓冲 V4L2 MMAP 运动帧检查、缓冲持有与耗尽恢复、排他及反复开关流；需先编译 | [HDMI 连续取帧](bringup/2026-10-19-hdmirx-v4l2.md) |
+| tools/hdmirx-stream-check.c | 板（root） | 独占，仅 7.3 HDMI 实验内核 | 四缓冲 V4L2 MMAP 运动帧检查、缓冲持有与耗尽恢复、排他及反复开关流；需先编译 | [HDMI 1080p60](bringup/2026-10-19-hdmirx-dma-ring.md) |
 | tools/test-fan-policy.sh | VM | 无 | 编译内核风扇插值函数做断言 | [内核](kernel.md) |
