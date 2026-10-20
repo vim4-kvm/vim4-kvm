@@ -14,6 +14,7 @@
 - [7.3 HDMI RX EDID 与源端 DDC 读回](2026-10-19-hdmirx-ddc.md) — kernel video usb board
 - [7.3 HDMI RX 固定频率 PHY PLL 实测](2026-10-19-hdmirx-phy.md) — kernel video board
 - [7.3 HDMI RX 1080p 完整视频帧](2026-10-19-hdmirx-frames.md) — kernel video board
+- [7.3 HDMI V4L2 连续取帧](2026-10-19-hdmirx-v4l2.md) — kernel video board
 
 ## 2026-10-12
 

@@ -43,6 +43,7 @@ HDMI_LOW_LATENCY=0 恢复厂商自动策略。模式含义、对照结果及帧�
 
 按改动范围读取（只读与任务相关的一项）：
 
+- [7.3 HDMI 连续取帧](../bringup/2026-10-19-hdmirx-v4l2.md)：实验 V4L2 MMAP 队列、约 10fps 及后续持续 DMA 缺口。
 - [采集插件](../../gst-plugin-vfmcap/README.md)：格式和 DMA-buf 生命周期。
 - [编码插件](../../gst-plugin-venc/VIM4.md)：帧率预算、安装和测试。
 - [应用与音频](../../NanoKVM/VIM4.md)：功能覆盖和构建。
