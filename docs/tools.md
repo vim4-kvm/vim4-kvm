@@ -100,5 +100,6 @@ PiKVM smoke 可用 `PIKVM_CDP` 接入专用测试 Chrome；结束时关闭测试
 | tools/hid-rebind-check.py | 板（root） | 独占，应用停止；旧内核会 panic | HID epoll 跨 UDC 重新绑定 | [内核](kernel.md) |
 | tools/crg-udc-check.py | 板（root） | 独占，仅 7.3 CRG 测试内核 | 最小 HID 重绑定；`--storage-image` 增加三种 HID＋只读盘，等待主机弹出确认；可保留旧 fd/epoll | [CRG 实测](bringup/2026-10-19-crg-udc.md) |
 | tools/crg-composite-host-check.py | Mac → 板 | 独占，移动光标、临时窗口接收按键、枚举测试盘 | 配合 CRG 板端工具，核对键鼠、只读盘文件哈希、安全弹出与重绑定 | [CRG 组合实测](bringup/2026-10-19-crg-composite.md) |
-| tools/hdmirx-resource-check.py | 板（root） | 独占，仅 7.3 HDMI RX 测试内核 | 电源／时钟、源端 5V、卸载时旧 debugfs fd 与时钟引用回收；不操作 HPD／EDID | [HDMI RX 资源实测](bringup/2026-10-19-hdmirx-resources.md) |
+| tools/hdmirx-resource-check.py | 板（root） | 独占，仅 7.3 HDMI RX 测试内核 | 电源／六路时钟、源端 5V、旧 debugfs fd；`--reject-firmware` 验证无效 EDID probe 回收 | [HDMI DDC 实测](bringup/2026-10-19-hdmirx-ddc.md) |
+| tools/hdmirx-ddc-host-check.py | Mac → 板 | 独占，加载接收模块并改变 EDID／HPD，影响 HDMI 显示连接 | 比较接收器 RAM 与 Mac HDMI 端实际读到的不同 EDID；不验证视频帧 | [HDMI DDC 实测](bringup/2026-10-19-hdmirx-ddc.md) |
 | tools/test-fan-policy.sh | VM | 无 | 编译内核风扇插值函数做断言 | [内核](kernel.md) |

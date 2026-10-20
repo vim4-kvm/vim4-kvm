@@ -11,6 +11,7 @@
 - [7.3 CRG UDC 与最小 HID 实测](2026-10-19-crg-udc.md) — kernel usb board
 - [7.3 CRG 真实 HID 与只读虚拟盘](2026-10-19-crg-composite.md) — kernel usb board
 - [7.3 HDMI RX 资源与源端 5V 实测](2026-10-19-hdmirx-resources.md) — kernel video board
+- [7.3 HDMI RX EDID 与源端 DDC 读回](2026-10-19-hdmirx-ddc.md) — kernel video usb board
 
 ## 2026-10-12
 
