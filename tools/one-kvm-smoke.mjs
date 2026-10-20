@@ -50,7 +50,7 @@ try {
       }
     };
   });
-  await loginManager(page.context(), url);
+  await loginManager(page.context(), url, { localBackend: args.includes('--local-backend') });
   await page.goto(url);
   const requestedMode = args.find(arg => arg.startsWith('--mode='))?.split('=')[1];
   if (requestedMode) {

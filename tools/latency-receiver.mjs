@@ -16,7 +16,7 @@ const browser = cdp ? await chromium.connectOverCDP(cdp)
   : await chromium.launch({ channel: 'chrome', headless: true });
 const context = await browser.newContext();
 try {
-  await loginManager(context, url);
+  await loginManager(context, url, { localBackend: process.argv.includes('--local-backend') });
   const page = await context.newPage();
   await page.addInitScript(({localIP, remoteIP, pikvm}) => {
     window.peers = [];

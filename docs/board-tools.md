@@ -81,6 +81,10 @@ ONEKVM_TEST_ISO 指向包含测试标记的 ONEKVM_TEST 卷。三套应用切换
 `kvm-switch-check.mjs --exclusive`，结束恢复初始选择。这些实机测试依次运行，
 避免并发占用同一套硬件。
 
+独立 7.x 视频实验可先用 SSH 将板上 `127.0.0.1:8082` 转发到本机，再给
+one-kvm-smoke.mjs 或 latency-receiver.mjs 加 `--local-backend`。此选项只接受
+HTTP loopback 地址，跳过管理器登录，不改变应用认证；普通网关测试仍需管理器密码。
+
 周期卡顿排查可加 `--seconds=120 --warmup=15`，同时在物理 HDMI 桌面运行
 运动标记。输出包含关键帧/丢包/丢帧/freeze 增量，以及呈现回调间隔的
 P50/P95/P99/max、超过 50/100/250ms 的次数、回调漏采和无回调尾段。

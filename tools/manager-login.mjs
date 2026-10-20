@@ -1,5 +1,12 @@
 // BrowserContext.request shares Set-Cookie responses with every page in this context.
-export async function loginManager(context, managerURL) {
+export async function loginManager(context, managerURL, { localBackend = false } = {}) {
+  if (localBackend) {
+    const target = new URL(managerURL);
+    if (target.protocol !== 'http:' || !['127.0.0.1', '[::1]', 'localhost'].includes(target.hostname)) {
+      throw new Error('A direct backend test requires an HTTP loopback URL through SSH');
+    }
+    return;
+  }
   const password = process.env.MANAGER_PASSWORD;
   if (!password) throw new Error('Set MANAGER_PASSWORD to the vim4-manager login password (MANAGER_USERNAME defaults to admin)');
   const origin = new URL(managerURL).origin;

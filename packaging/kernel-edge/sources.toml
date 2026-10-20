@@ -2,11 +2,18 @@
 [kernel]
 url = "https://github.com/vim4-kvm/linux.git"
 branch = "vim4-kvm-7.3"
-revision = "5996ab626cf091e880c55dc33d9db2543042389c"
-tree = "c87b5c3b9cba6448b553c12ca3dc4917c27017b0"
+revision = "702421daa1a1efb32ccae5281653c51091bb81fb"
+tree = "40ca49ed80148e89eacb17875b426c94fde9b080"
 upstream_url = "https://github.com/gregkh/linux.git"
 upstream_tag = "v7.3-rc7"
 upstream_revision = "24a19b953e2a3d0ea5a8c4951a0ab8f32720c907"
+
+# Separate experimental application; does not change workspace.toml production pins.
+[onekvm]
+url = "https://github.com/vim4-kvm/One-KVM.git"
+branch = "vim4"
+revision = "e56c28e3b15269dda0819176ce58df1f2495b80c"
+features = ["vim4"]
 
 [armbian]
 url = "https://github.com/armbian/build.git"

@@ -1,0 +1,29 @@
+--- a/sys/v4l2/gstv4l2bufferpool.c
++++ b/sys/v4l2/gstv4l2bufferpool.c
+@@ -1267,6 +1267,13 @@ gst_v4l2_buffer_pool_dqbuf (GstV4l2BufferPool * pool,
+   if (res != GST_FLOW_OK)
+     goto dqbuf_failed;
+
++  /* Keep the terminal buffer owned by the pool for STREAMOFF to reclaim. */
++  if (group->buffer.flags & V4L2_BUF_FLAG_LAST &&
++      group->planes[0].bytesused == 0) {
++    GST_DEBUG_OBJECT (pool, "Empty last buffer, signalling eos.");
++    goto eos;
++  }
++
+   old_buffer_state =
+       g_atomic_int_and (&pool->buffer_state[group->buffer.index],
+       ~BUFFER_STATE_QUEUED);
+@@ -1280,12 +1287,6 @@ gst_v4l2_buffer_pool_dqbuf (GstV4l2BufferPool * pool,
+         group->buffer.index);
+   }
+
+-  if (group->buffer.flags & V4L2_BUF_FLAG_LAST &&
+-      group->planes[0].bytesused == 0) {
+-    GST_DEBUG_OBJECT (pool, "Empty last buffer, signalling eos.");
+-    goto eos;
+-  }
+-
+   outbuf = pool->buffers[group->buffer.index];
+   if (outbuf == NULL)
+     goto no_buffer;

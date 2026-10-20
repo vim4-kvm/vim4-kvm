@@ -12,7 +12,9 @@ HDMI RX 已通过 EDID/DDC 源端读回，并在固定 148.5 MHz 实验路径中
 并完成 180 帧软件 H.264 编解码校验，见
 [DMA-buf 实测](bringup/2026-10-19-hdmirx-dmabuf.md)。固定 RGB8 4K60 输入与
 H.264/H.265 硬编码已取得实验结果，见
-[Wave521 与 4K60](bringup/2026-10-19-wave521-uhd.md)；应用接入和稳定性验收尚未完成。
+[Wave521 与 4K60](bringup/2026-10-19-wave521-uhd.md)。独立 One-KVM 已在网页播放
+两种格式的 4K60，但重复重配触发的 DMA 回收问题仍在修复和复测，见
+[应用接入记录](bringup/2026-10-20-onekvm-wave5.md)；稳定性验收尚未完成。
 现有 5.15 的工作树、workspace.toml 发布版本和安装流程不变。
 
 ## 源码与配置

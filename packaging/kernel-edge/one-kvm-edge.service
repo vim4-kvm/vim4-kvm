@@ -1,0 +1,25 @@
+[Unit]
+Description=One-KVM experimental V4L2/Wave5 video
+After=network.target
+ConditionKernelVersion=7.3.0-rc7-vim4kvm-uhd1+
+ConditionKernelCommandLine=vim4.one_kvm=1
+StartLimitIntervalSec=60
+StartLimitBurst=3
+
+[Service]
+User=khadas
+Group=khadas
+SupplementaryGroups=video render
+StateDirectory=one-kvm-edge
+RuntimeDirectory=one-kvm-edge
+WorkingDirectory=/var/lib/one-kvm-edge
+ExecStartPre=+/opt/vim4-onekvm-edge/one-kvm-edge-prepare
+ExecStart=/opt/vim4-onekvm-edge/one-kvm-edge
+Restart=on-failure
+RestartSec=3
+TimeoutStopSec=20
+PrivateTmp=true
+UMask=0077
+
+[Install]
+WantedBy=multi-user.target

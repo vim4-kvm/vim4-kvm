@@ -121,7 +121,9 @@ def capture(args):
     pipeline.get_by_name('source').set_property('device', str(device))
     pipeline.get_by_name('source').set_property('num-buffers', args.frames)
     pipeline.get_by_name('output').set_property('location', str(output))
-    state = {'frames': 0, 'encoded_frames': 0, 'pts_ns': [], 'exporter': None, 'error': None}
+    state = {'frames': 0, 'encoded_frames': 0, 'pts_ns': [], 'exporter': None, 'error': None,
+             'keyframes': [], 'keyframe_requests': []}
+    pending_keyframes = list(sorted(args.keyframe_at))
     arrivals = {}
     latencies_ms = []
     steady_latencies_ms = []
@@ -202,6 +204,8 @@ def capture(args):
     def encoded(pad, info, unused):
         buffer = info.get_buffer()
         state['encoded_frames'] += 1
+        if not buffer.has_flags(Gst.BufferFlags.DELTA_UNIT):
+            state['keyframes'].append(state['encoded_frames'])
         arrival = arrivals.pop(buffer.pts, None)
         if arrival is not None:
             index, started_ns = arrival
@@ -224,6 +228,13 @@ def capture(args):
         while time.monotonic() - started < args.timeout:
             if state['error']:
                 raise ValueError(state['error'])
+            if pending_keyframes and state['encoded_frames'] >= pending_keyframes[0]:
+                pending_keyframes.pop(0)
+                after = state['encoded_frames']
+                event = GstVideo.video_event_new_upstream_force_key_unit(Gst.CLOCK_TIME_NONE, True, 0)
+                if not encoder.get_static_pad('src').send_event(event):
+                    raise ValueError('encoder rejected the force-keyframe event')
+                state['keyframe_requests'].append(after)
             message = bus.timed_pop_filtered(100 * Gst.MSECOND,
                                             Gst.MessageType.ERROR | Gst.MessageType.EOS)
             if message is None:
@@ -244,6 +255,10 @@ def capture(args):
         raise ValueError(state['error'] or f'expected {args.frames} frames, got {state["frames"]}')
     if state['encoded_frames'] != args.frames:
         raise ValueError(f'expected {args.frames} encoded frames, got {state["encoded_frames"]}')
+    if pending_keyframes or any(not any(after < frame <= after + 30 for frame in state['keyframes'])
+                                for after in state['keyframe_requests']):
+        raise ValueError('a requested keyframe was not produced within 30 frames: '
+                         f'requests={state["keyframe_requests"]}, keyframes={state["keyframes"]}')
     latencies_ms.sort()
     steady_latencies_ms.sort()
     steady_pts = state['pts_ns'][60:]
@@ -338,6 +353,8 @@ def main():
     board.add_argument('--size', choices=('1920x1080', '3840x2160'), default='1920x1080')
     board.add_argument('--bitrate', type=int, default=20000000)
     board.add_argument('--gop', type=int, default=60)
+    board.add_argument('--keyframe-at', type=int, action='append', default=[],
+                       help='request an IDR after this encoded frame; requires Wave5 and GOP > frames')
     offline = sub.add_parser('verify', help='offline decode and motion-marker check')
     offline.add_argument('video', type=Path)
     offline.add_argument('--frames', type=int, required=True)
@@ -349,6 +366,11 @@ def main():
         parser.error('timeout must be positive')
     if args.action == 'capture' and (not 1 <= args.bitrate <= 700000000 or not 1 <= args.gop <= 1000):
         parser.error('bitrate must be 1..700000000 and GOP must be 1..1000')
+    if args.action == 'capture' and args.keyframe_at:
+        if args.encoder != 'wave5' or args.gop <= args.frames:
+            parser.error('keyframe requests require Wave5 and GOP larger than the capture frame count')
+        if any(not 1 <= point <= args.frames - 30 for point in args.keyframe_at):
+            parser.error('keyframe request points must leave at least 30 output frames')
     try:
         (capture if args.action == 'capture' else verify)(args)
     except (ImportError, OSError, ValueError, subprocess.CalledProcessError) as error:
