@@ -2,8 +2,8 @@
 [kernel]
 url = "https://github.com/vim4-kvm/linux.git"
 branch = "vim4-kvm-7.3"
-revision = "00b37117883df95b707334996cc2b92f97c9feb5"
-tree = "8dc5232c937bbc5585ce5b43642ad122e80ab9f3"
+revision = "c9cd7fdf21415d6b47f0122182ba4bad99b82298"
+tree = "2693415b9cbaa865b6f767f7701a2206fd4d26d7"
 upstream_url = "https://github.com/gregkh/linux.git"
 upstream_tag = "v7.3-rc7"
 upstream_revision = "24a19b953e2a3d0ea5a8c4951a0ab8f32720c907"

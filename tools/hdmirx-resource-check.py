@@ -5,6 +5,8 @@ Run on the board's dedicated 7.3 vim4kvm-hdmirx test kernel as root. Each cycle
 loads the receiver, checks clock rates and cable power, then unloads it while
 holding an old debugfs fd. The driver must initially be unloaded.
 Optional --reject-firmware names must refer to invalid or missing EDID fixtures.
+With --phy-firmware, cycles also publish EDID/HPD and check the fixed-rate PLL;
+reject fixtures use the same PHY mode. TMDS alignment and video are not required.
 """
 import argparse
 import errno
@@ -21,11 +23,15 @@ def main():
     parser.add_argument('--expected-source-5v', type=int, choices=(0, 1), required=True)
     parser.add_argument('--reject-firmware', action='append', default=[],
                         help='EDID firmware name whose failed probe must release all resources')
+    parser.add_argument('--phy-firmware',
+                        help='Enable the 148.5 MHz PLL trial using this installed EDID firmware')
     args = parser.parse_args()
     if os.geteuid() or not platform.release().startswith('7.3.0-rc7-vim4kvm-hdmirx'):
         parser.error('Requires root on the dedicated 7.3 HDMI receiver trial kernel')
     if not 1 <= args.cycles <= 20:
         parser.error('cycles must be 1..20')
+    if args.phy_firmware and args.expected_source_5v != 1:
+        parser.error('The PHY trial requires a powered HDMI source')
     module = Path('/sys/module/t7_hdmirx')
     if module.exists():
         parser.error('Receiver is already loaded; refuse to interrupt its owner')
@@ -48,7 +54,10 @@ def main():
 
     try:
         for firmware in args.reject_firmware:
-            subprocess.run(['modprobe', 't7-hdmirx', f'edid_firmware={firmware}'], check=True)
+            command = ['modprobe', 't7-hdmirx', f'edid_firmware={firmware}']
+            if args.phy_firmware:
+                command += ['phy_test=1']
+            subprocess.run(command, check=True)
             loaded = True
             # Platform probe failure can leave the module loaded successfully.
             if status.exists() or Path('/sys/bus/platform/devices/fe398000.hdmi-receiver/driver').exists():
@@ -57,12 +66,20 @@ def main():
             loaded = False
             print(f'rejected firmware={firmware}; clock references={check_clock_references()}', flush=True)
         for cycle in range(args.cycles):
-            subprocess.run(['modprobe', 't7-hdmirx'], check=True)
+            command = ['modprobe', 't7-hdmirx']
+            if args.phy_firmware:
+                command += ['phy_test=1', f'edid_firmware={args.phy_firmware}']
+            subprocess.run(command, check=True)
             loaded = True
             values = dict(line.split(': ', 1) for line in status.read_text().splitlines())
             print(f'cycle={cycle} status={values}', flush=True)
             if int(values['port']) != 1 or int(values['source_5v']) != args.expected_source_5v:
                 raise RuntimeError('Receiver input port or source 5V differs from the fixture')
+            if args.phy_firmware:
+                if values['phy_active'] != '1' or values['phy_pll_locked'] != '1':
+                    raise RuntimeError('Receiver input PLL did not lock')
+                if not 146500000 <= int(values['cable_hz']) <= 150500000:
+                    raise RuntimeError('Receiver cable clock left the 148.5 MHz trial range')
             for name, expected in [('cfg', 50000000), ('meter', 24000000),
                                    ('2m', 2000000), ('5m', 5000000)]:
                 actual = int(values[f'{name}_hz'])
