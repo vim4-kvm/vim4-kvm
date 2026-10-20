@@ -9,6 +9,7 @@
 
 - [7.3 edge 首次启动](2026-10-19-edge-firstboot.md) — kernel deployment board
 - [7.3 CRG UDC 与最小 HID 实测](2026-10-19-crg-udc.md) — kernel usb board
+- [7.3 CRG 真实 HID 与只读虚拟盘](2026-10-19-crg-composite.md) — kernel usb board
 
 ## 2026-10-12
 
