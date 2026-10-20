@@ -305,6 +305,9 @@ def verify(args):
     if len(streams) != 1:
         raise ValueError('expected one video stream')
     stream = streams[0]
+    if args.expect_profile and stream.get('profile') != args.expect_profile:
+        raise ValueError(f'expected encoded profile {args.expect_profile}, '
+                         f'got {stream.get("profile")}')
     width, height = stream['width'], stream['height']
     if stream['codec_name'] not in ('h264', 'hevc') or (width, height) not in ((1920, 1080), (3840, 2160)):
         raise ValueError('expected H.264/HEVC 1080p or 4K video')
@@ -359,6 +362,7 @@ def main():
     offline.add_argument('video', type=Path)
     offline.add_argument('--frames', type=int, required=True)
     offline.add_argument('--check-colors', action='store_true')
+    offline.add_argument('--expect-profile', help='Reject an actual SPS profile mismatch before decoding')
     args = parser.parse_args()
     if not 2 <= args.frames <= 10000:
         parser.error('frames must be 2..10000')

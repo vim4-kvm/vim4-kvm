@@ -1,8 +1,11 @@
 """Raw-video pipe boundaries must not hide a truncated decoded frame."""
 import importlib.util
 import io
+import json
 from pathlib import Path
+from types import SimpleNamespace
 import unittest
+from unittest import mock
 
 spec = importlib.util.spec_from_file_location('hdmirx_encode',
     Path(__file__).resolve().parents[1] / 'tools/hdmirx-encode-check.py')
@@ -28,3 +31,15 @@ class DecodePipeTest(unittest.TestCase):
 
     def test_empty_clip_has_clean_eof(self):
         self.assertIsNone(checker.read_frame(io.BytesIO(), 8))
+
+    def test_requested_high_cannot_pass_with_high10_sps(self):
+        # The legacy firmware bug produced 8-bit pixels but High 10 profile.
+        result = SimpleNamespace(stdout=json.dumps({'streams': [
+            {'codec_name': 'h264', 'profile': 'High 10', 'width': 3840, 'height': 2160}]}))
+        args = SimpleNamespace(video=Path('unused.h264'), expect_profile='High',
+                               frames=240, check_colors=True)
+        with mock.patch.object(checker.subprocess, 'run', return_value=result), \
+             mock.patch.object(checker.subprocess, 'Popen') as decoder:
+            with self.assertRaisesRegex(ValueError, 'expected encoded profile High, got High 10'):
+                checker.verify(args)
+            decoder.assert_not_called()
