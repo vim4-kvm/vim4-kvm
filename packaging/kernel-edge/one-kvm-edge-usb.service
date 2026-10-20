@@ -1,0 +1,17 @@
+[Unit]
+Description=One-KVM experimental USB HID gadget
+Before=one-kvm-edge.service
+ConditionKernelVersion=7.3.0-rc7-vim4kvm-uhd1+
+ConditionKernelCommandLine=vim4.one_kvm=1
+
+[Service]
+Type=oneshot
+RemainAfterExit=yes
+ExecStart=/opt/vim4-onekvm-edge/one-kvm-edge-usb-prepare
+TimeoutStartSec=30
+# Preserve gadget instances across application restarts and open HID handles.
+# The kernel removes configfs state on reboot; the 5.15 gadget is separate.
+UMask=0077
+
+[Install]
+WantedBy=one-kvm-edge.service

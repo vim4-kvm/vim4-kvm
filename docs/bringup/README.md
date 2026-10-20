@@ -12,6 +12,7 @@
 - [本地基准与 VDIN 直接 DMA](2026-10-20-direct-dma-benchmark.md) — application kernel video board
 - [驱动原生基准、AVC profile 与采集内存](2026-10-20-driver-profile-memory.md) — kernel video board
 - [实验 One-KVM 局域网登录入口](2026-10-20-edge-lan-gateway.md) — application manager board
+- [7.3 One-KVM HID 接入](2026-10-20-edge-hid-integration.md) — application usb audio board
 
 ## 2026-10-19
 

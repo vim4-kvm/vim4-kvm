@@ -12,7 +12,7 @@ upstream_revision = "24a19b953e2a3d0ea5a8c4951a0ab8f32720c907"
 [onekvm]
 url = "https://github.com/vim4-kvm/One-KVM.git"
 branch = "vim4"
-revision = "3ef711f365b6bc5c45b675bd38e232a5f0af510c"
+revision = "9f457566ad789512d762dc3b68eb056c061cbee3"
 features = ["vim4"]
 
 [armbian]
