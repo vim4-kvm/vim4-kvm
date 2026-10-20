@@ -46,6 +46,7 @@ HDMI_LOW_LATENCY=0 恢复厂商自动策略。模式含义、对照结果及帧�
 - [本地视频基准](../local-video-benchmark.md)：容器或板子当前内核的 buffer benchmark、离线驱动回归与复制候选对比。
 - [驱动基准](../driver-benchmark.md)：原生纯采集/硬编码，排除 Python、解析、写盘与网络，支持 7.x 与 5.15。
 - [UHD 清晰度复核](../bringup/2026-10-20-edge-uhd-detail.md)：Mac 实际渲染栅格、原生单像素细节与 1080p 放大负对照。
+- [7.3 HDMI 音频](../bringup/2026-10-20-edge-hdmi-audio.md)：复用已验证 LPCM 能力、独立 ALSA 声卡及网页 Opus。
 - [VDIN 直接 DMA](../bringup/2026-10-20-direct-dma-benchmark.md)：持有/隔离语义、本地回归与 4K60 应用 CPU 对照。
 - [7.3 One-KVM 接入](../bringup/2026-10-20-onekvm-wave5.md)：独立后端、网页 4K60 与重配回收故障。
 - [7.3 CPU 性能定位](../bringup/2026-10-20-onekvm-performance.md)：真实应用基线、压缩码流缓存和剩余原始帧复制开销。

@@ -9,16 +9,16 @@ esac
 # These files are provisioned separately; the licensed codec firmware is not shipped here.
 if ! printf '%s\n' \
     '873103d7520d5cad737cfe4458a2891c065d566ff556a47ab735e60f27acf031  /lib/firmware/amlogic/t7-wave521c-enc.bin' \
-    '3164c2cac27317bfcb698292c3a3f4f12e57ca8f9002619e96fe19e5ccf477c1  /lib/firmware/vim4-hdmirx-ddc-test/uhd60-edid.bin' \
+    '2702ea6f67f82f414047f8f22b38f1eb5ae8a2c6207da5291f0aae40ce8be3d3  /lib/firmware/vim4-hdmirx-ddc-test/uhd60-audio-edid.bin' \
     | sha256sum --check --status; then
     echo 'The matched HDMI EDID or Wave521c firmware is missing or has changed' >&2
     exit 1
 fi
 
-modprobe t7_hdmirx edid_firmware=vim4-hdmirx-ddc-test/uhd60-edid.bin phy_test=1 core_test=1 uhd60=1
+modprobe t7_hdmirx edid_firmware=vim4-hdmirx-ddc-test/uhd60-audio-edid.bin phy_test=1 core_test=1 uhd60=1 audio_test=1
 modprobe t7_vdin_test nv12=1 direct_dma=1
 modprobe wave5
-for parameter in phy_test core_test uhd60; do
+for parameter in phy_test core_test uhd60 audio_test; do
     if [ "$(cat "/sys/module/t7_hdmirx/parameters/$parameter")" != Y ]; then
         echo 'HDMI receiver is already loaded with different experimental settings' >&2
         exit 1
@@ -35,6 +35,12 @@ if [ ! -d /sys/bus/platform/drivers/t7-hdmirx/fe398000.hdmi-receiver ] ||
    [ ! -d /sys/bus/platform/drivers/t7-vdin-test/ff000000.video-capture ]; then
     echo 'Experimental HDMI receiver or capture probe failed; check the fixed UHD60 input' >&2
     exit 1
+fi
+# Only the dedicated capture card is configured; production ALSA state is kept.
+if [ -e /proc/asound/VIM4HDMIRX/id ]; then
+    amixer -q -c VIM4HDMIRX cset name='TODDR_A SRC SEL' 'IN 8'
+else
+    echo 'Experimental HDMI audio card is not ready; video remains available' >&2
 fi
 # V4L2 encoder factories cache their device path; node numbering can change.
 rm -f /run/one-kvm-edge/gstreamer-registry.bin
