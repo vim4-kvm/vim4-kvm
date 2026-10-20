@@ -96,6 +96,10 @@ olddefconfig 的结果完全一致。主仓库 83 项离线测试通过、4 项�
 
 ## HDMI 输入、编码与音频依赖
 
+首阶段已完成 T7 接收器电源、功能时钟、TOP 资源与源端 5V 读取，
+三轮加载/卸载和旧 debugfs fd 检查通过；当前核心仍在复位，没有视频帧。
+源码版本、实测与后续顺序见 [HDMI RX 资源实测](bringup/2026-10-19-hdmirx-resources.md)。
+
 | 功能 | 当前厂商实现入口 | 主要依赖 / 新内核缺口 |
 |---|---|---|
 | HDMI RX | drivers/media/vin/tvin/hdmirx/ | PHY、EDID/HPD、信号检测、时钟及 TVIN 接口；主线 snps_hdmirx 当前匹配 rk3588，并无 T7 接入 |

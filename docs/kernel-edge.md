@@ -4,6 +4,8 @@
 HDMI 输入、VDIN、Wave521 编码仍需单独适配；CRG USB 设备端已完成真实键鼠和
 只读虚拟盘三轮组合测试，仍需扩大 USB 验收，范围见
 [CRG 组合实测](bringup/2026-10-19-crg-composite.md)。
+HDMI RX 已接入电源、功能时钟和源端 5V 检测，尚无视频帧，见
+[资源实测](bringup/2026-10-19-hdmirx-resources.md)。
 现有 5.15 的工作树、workspace.toml 发布版本和安装流程不变。
 
 ## 源码与配置
