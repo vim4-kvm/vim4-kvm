@@ -44,6 +44,7 @@ HDMI_LOW_LATENCY=0 恢复厂商自动策略。模式含义、对照结果及帧�
 按改动范围读取（只读与任务相关的一项）：
 
 - [7.3 One-KVM 接入](../bringup/2026-10-20-onekvm-wave5.md)：独立后端、网页 4K60 与重配回收故障。
+- [7.3 CPU 性能定位](../bringup/2026-10-20-onekvm-performance.md)：真实应用基线、压缩码流缓存和剩余原始帧复制开销。
 - [7.3 HDMI 1080p60](../bringup/2026-10-19-hdmirx-dma-ring.md)：实验私有 DMA 环、V4L2 MMAP 复制队列及剩余接入缺口。
 - [7.3 HDMI DMA-buf](../bringup/2026-10-19-hdmirx-dmabuf.md)：此前的连续导出、缓冲跨驱动重载及软件 H.264 校验。
 - [7.3 Wave521 与 4K60](../bringup/2026-10-19-wave521-uhd.md)：固定 RGB8 输入、NV12、H.264/H.265 硬编码与实测边界。
