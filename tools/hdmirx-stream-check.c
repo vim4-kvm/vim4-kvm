@@ -2,14 +2,18 @@
  * Board-only, exclusive 7.3 HDMI capture check. Requires the moving HDMI source:
  * latency-source.swift --motion --verify-coherence
  * gcc -O2 -Wall -Wextra -Werror tools/hdmirx-stream-check.c -o /tmp/hdmirx-stream-check
- * /tmp/hdmirx-stream-check /dev/video0 FRAMES CYCLES OUTPUT_DIRECTORY
+ * /tmp/hdmirx-stream-check /dev/video0 FRAMES CYCLES OUTPUT_DIRECTORY [--dmabuf [--hold-exports]]
  * OUTPUT_DIRECTORY must already exist. Each cycle holds all four buffers,
  * verifies their immutability and empty-queue poll, then resumes streaming.
  * Saves the first/last frame of each cycle and prints per-frame JSON evidence.
+ * --dmabuf reads exported DMA-buf mappings and tests queue orphaning/reallocation.
+ * --hold-exports waits for one newline after closing capture, allowing a separate
+ * controller to unload the capture module before the exports are remapped/read.
  */
 #define _POSIX_C_SOURCE 200809L
 #include <errno.h>
 #include <fcntl.h>
+#include <linux/dma-buf.h>
 #include <linux/videodev2.h>
 #include <poll.h>
 #include <stdint.h>
@@ -29,6 +33,7 @@
 struct mapping {
     unsigned char *data;
     size_t length;
+    int dma_fd;
 };
 
 static void require(int condition, const char *message)
@@ -92,6 +97,22 @@ static uint64_t fingerprint(const unsigned char *data)
     return value;
 }
 
+static void cpu_access(const struct mapping *mapping, uint64_t phase)
+{
+    if (mapping->dma_fd >= 0) {
+        struct dma_buf_sync sync = {.flags = phase | DMA_BUF_SYNC_READ};
+        require(call(mapping->dma_fd, DMA_BUF_IOCTL_SYNC, &sync) == 0, "DMA-buf CPU sync");
+    }
+}
+
+static uint64_t mapping_fingerprint(const struct mapping *mapping)
+{
+    cpu_access(mapping, DMA_BUF_SYNC_START);
+    uint64_t value = fingerprint(mapping->data);
+    cpu_access(mapping, DMA_BUF_SYNC_END);
+    return value;
+}
+
 static void enqueue(int fd, unsigned int index)
 {
     struct v4l2_buffer buffer = {
@@ -129,7 +150,12 @@ static void save_frame(const char *directory, unsigned int cycle,
 
 int main(int argc, char **argv)
 {
-    require(argc == 5, "usage: hdmirx-stream-check DEVICE FRAMES CYCLES OUTPUT_DIRECTORY");
+    require(argc >= 5 && argc <= 7,
+            "usage: hdmirx-stream-check DEVICE FRAMES CYCLES OUTPUT_DIRECTORY [--dmabuf [--hold-exports]]");
+    int export_mode = argc >= 6;
+    int hold_exports = argc == 7;
+    require(!export_mode || strcmp(argv[5], "--dmabuf") == 0, "unknown export option");
+    require(!hold_exports || strcmp(argv[6], "--hold-exports") == 0, "unknown hold option");
     unsigned int frames = (unsigned int)strtoul(argv[2], NULL, 10);
     unsigned int cycles = (unsigned int)strtoul(argv[3], NULL, 10);
     require(frames >= 8 && frames <= 10000 && cycles >= 1 && cycles <= 100,
@@ -164,8 +190,22 @@ int main(int argc, char **argv)
         };
         require(call(fd, VIDIOC_QUERYBUF, &buffer) == 0, "QUERYBUF");
         mappings[i].length = buffer.length;
-        mappings[i].data = mmap(NULL, buffer.length, PROT_READ | PROT_WRITE,
-                                MAP_SHARED, fd, buffer.m.offset);
+        mappings[i].dma_fd = -1;
+        int map_fd = fd;
+        off_t offset = buffer.m.offset;
+        if (export_mode) {
+            struct v4l2_exportbuffer exported = {
+                .type = request.type, .index = i, .flags = O_CLOEXEC | O_RDONLY
+            };
+            require(call(fd, VIDIOC_EXPBUF, &exported) == 0, "EXPBUF");
+            mappings[i].dma_fd = exported.fd;
+            map_fd = exported.fd;
+            offset = 0;
+            int flags = fcntl(map_fd, F_GETFD);
+            require(flags >= 0 && (flags & FD_CLOEXEC), "export must be close-on-exec");
+        }
+        mappings[i].data = mmap(NULL, buffer.length, export_mode ? PROT_READ : PROT_READ | PROT_WRITE,
+                                MAP_SHARED, map_fd, offset);
         require(mappings[i].data != MAP_FAILED, "MMAP");
     }
     require(call(fd, VIDIOC_S_FMT, &format) < 0 && errno == EBUSY,
@@ -187,6 +227,7 @@ int main(int argc, char **argv)
             struct v4l2_buffer buffer = dequeue(fd);
             uint64_t timestamp = (uint64_t)buffer.timestamp.tv_sec * 1000000000 +
                                  (uint64_t)buffer.timestamp.tv_usec * 1000;
+            cpu_access(&mappings[buffer.index], DMA_BUF_SYNC_START);
             unsigned int id = marker_id(mappings[buffer.index].data);
             unsigned int delta = (id - previous_id) & 0xffff;
             require(!have_id || (delta > 0 && delta < 0x8000), "stale/backward source frame");
@@ -203,11 +244,14 @@ int main(int argc, char **argv)
             if (i < BUFFERS) {
                 held[i] = buffer.index;
                 hashes[i] = fingerprint(mappings[buffer.index].data);
+            }
+            cpu_access(&mappings[buffer.index], DMA_BUF_SYNC_END);
+            if (i < BUFFERS) {
                 if (i == BUFFERS - 1) {
                     struct pollfd empty = {.fd = fd, .events = POLLIN};
                     require(poll(&empty, 1, 200) == 0, "exhausted queue must wait");
                     for (unsigned int j = 0; j < BUFFERS; j++) {
-                        require(fingerprint(mappings[held[j]].data) == hashes[j],
+                        require(mapping_fingerprint(&mappings[held[j]]) == hashes[j],
                                 "dequeued buffer changed while held");
                         enqueue(fd, held[j]);
                     }
@@ -226,6 +270,16 @@ int main(int argc, char **argv)
                (unsigned long long)stop_ns);
         fflush(stdout);
     }
+    uint64_t orphan_hashes[BUFFERS];
+    if (export_mode) {
+        for (unsigned int i = 0; i < BUFFERS; i++)
+            orphan_hashes[i] = mapping_fingerprint(&mappings[i]);
+        request.count = 0;
+        require(call(fd, VIDIOC_REQBUFS, &request) == 0, "orphan exported buffers with REQBUFS(0)");
+        request.count = BUFFERS;
+        require(call(fd, VIDIOC_REQBUFS, &request) == 0 && request.count == BUFFERS,
+                "allocate a fresh queue while old exports survive");
+    }
     /* close() must also stop an active stream without an explicit STREAMOFF. */
     for (unsigned int i = 0; i < BUFFERS; i++) enqueue(fd, i);
     enum v4l2_buf_type type = V4L2_BUF_TYPE_VIDEO_CAPTURE;
@@ -233,10 +287,35 @@ int main(int argc, char **argv)
     (void)dequeue(fd);
     uint64_t close_start = now_ns();
     require(close(fd) == 0, "close streaming file");
+    if (export_mode) {
+        require(now_ns() - close_start < UINT64_C(2000000000), "bounded streaming close");
+        for (unsigned int i = 0; i < BUFFERS; i++)
+            require(mapping_fingerprint(&mappings[i]) == orphan_hashes[i],
+                    "orphaned export changed after fresh queue capture/close");
+        if (hold_exports) {
+            puts("{\"exports_orphaned\":true,\"waiting_for_controller\":true}");
+            fflush(stdout);
+            require(getchar() == '\n', "controller must release held exports with a newline");
+        }
+        for (unsigned int i = 0; i < BUFFERS; i++) {
+            require(munmap(mappings[i].data, mappings[i].length) == 0, "unmap orphaned export");
+            mappings[i].data = mmap(NULL, mappings[i].length, PROT_READ, MAP_SHARED,
+                                    mappings[i].dma_fd, 0);
+            require(mappings[i].data != MAP_FAILED, "remap export after capture file closes");
+            require(mapping_fingerprint(&mappings[i]) == orphan_hashes[i],
+                    "orphaned export changed after remapping");
+        }
+    }
     for (unsigned int i = 0; i < BUFFERS; i++)
         require(munmap(mappings[i].data, mappings[i].length) == 0, "MUNMAP after close");
     /* MMAP retains file references; the final unmap triggers the actual release. */
-    require(now_ns() - close_start < UINT64_C(2000000000), "bounded streaming release");
+    if (!export_mode)
+        require(now_ns() - close_start < UINT64_C(2000000000), "bounded streaming release");
+    if (export_mode) {
+        for (unsigned int i = 0; i < BUFFERS; i++)
+            require(close(mappings[i].dma_fd) == 0, "close orphaned export");
+        puts("{\"dmabuf_export\":true,\"orphan_remap\":true}");
+    }
     puts("{\"closed_while_streaming\":true,\"result\":\"pass\"}");
     return EXIT_SUCCESS;
 }

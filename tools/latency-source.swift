@@ -67,7 +67,8 @@ class LatencyView: NSView {
 let window = NSWindow(contentRect: screen.frame, styleMask: .borderless,
                       backing: .buffered, defer: false, screen: screen)
 window.setFrame(screen.frame, display: false)
-window.level = .floating
+// Coherence checks need all three markers unobscured, including by Dock popovers.
+window.level = verifyCoherence ? .screenSaver : .floating
 window.isReleasedWhenClosed = false
 let view = LatencyView(frame: NSRect(origin: .zero, size: screen.frame.size))
 window.contentView = view

@@ -104,17 +104,21 @@ RGB24 完整快照，三处帧号一致且重复采集推进。当前版本与�
 [HDMI 取帧实测](bringup/2026-10-19-hdmirx-frames.md)。随后通过私有 cached DMA 环实现
 V4L2 MMAP 稳定段约 60fps，5400 帧运动校验通过，见
 [1080p60 实测](bringup/2026-10-19-hdmirx-dma-ring.md)。
+后续通过连续 DMA-buf 导出、跨驱动重载的缓冲持有和 180 帧软件 H.264 编解码，
+见 [DMA-buf 实测](bringup/2026-10-19-hdmirx-dmabuf.md)；尚未验证硬件编码 DMA 导入。
 
 | 功能 | 当前厂商实现入口 | 主要依赖 / 新内核缺口 |
 |---|---|---|
 | HDMI RX | drivers/media/vin/tvin/hdmirx/ | EDID/DDC、固定 PLL、COR 对齐与 1080p60 已测；仍缺动态 PHY 和失锁恢复；snps_hdmirx 不能直接接入 T7 |
-| VDIN | drivers/media/vin/tvin/vdin/ | 私有 cached DMA 多缓冲＋V4L2 复制队列已测 1080p60；仍需共享 VPU、DMA-buf、动态模式和编码接入 |
-| DMA-buf 输出 | drivers/media/vfm_cap/vfm_cap.c | VFM provider/receiver、codec_mm；必须保留缓冲持有和 CPU 同步语义 |
+| VDIN | drivers/media/vin/tvin/vdin/ | 私有 cached DMA 环＋V4L2 coherent 复制队列及 DMA-buf 导出已测 1080p60；仍需共享 VPU、动态模式和硬件编码接入 |
+| DMA-buf 输出 | drivers/media/vfm_cap/vfm_cap.c | 实验路径用 vb2_dma_contig 导出，已测 CPU 同步、队列重建与跨模块重载；未验证硬件消费者 DMA 导入 |
 | Wave521 编码 | drivers/media_modules/frame_sink/encoder/multi/vpu_multi.c | codec_mm、canvas、CPU 检测、厂商电源域及 vdec 电源辅助接口，现有 amvenc_multi 用户态 ABI |
 | HDMI 输入音频 | sound/soc/amlogic/auge/tdm.c | hdmirx/hdmirx_b 输入源、RX 音频状态、TDM DMA 与路由；输出声卡注册不能证明输入可用 |
 
 7.3 已有 chips-media/wave5 编解码驱动，但 wave5-vpu.c 当前 OF 表仅匹配
-ti,j721s2-wave521c。需核实 T7 的寄存器、固件、电源和 DMA 接口后才能决定复用。
+ti,j721s2-wave521c，产品识别接受 WAVE521C，使用 TI 的 wave521c_k3_codec_fw.bin。
+T7 实际产品码尚未读取；需核实寄存器、时钟、复位、电源、固件和 DMA 接口后才能决定复用，
+不能直接套用 TI compatible 或固件。
 若改用标准 V4L2 M2M，还需改现有 amlvenc 用户态接入，不能假定旧 ioctl ABI 可用。
 
 先完成独立 HDMI 输入取帧，再接编码，最后接音频与应用。每一阶段都需要运动画面、

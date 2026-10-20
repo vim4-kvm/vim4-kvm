@@ -44,6 +44,7 @@ HDMI_LOW_LATENCY=0 恢复厂商自动策略。模式含义、对照结果及帧�
 按改动范围读取（只读与任务相关的一项）：
 
 - [7.3 HDMI 1080p60](../bringup/2026-10-19-hdmirx-dma-ring.md)：实验私有 DMA 环、V4L2 MMAP 复制队列及剩余接入缺口。
+- [7.3 HDMI DMA-buf](../bringup/2026-10-19-hdmirx-dmabuf.md)：连续导出、缓冲跨驱动重载及软件 H.264 校验；硬件编码仍待接入。
 - [采集插件](../../gst-plugin-vfmcap/README.md)：格式和 DMA-buf 生命周期。
 - [编码插件](../../gst-plugin-venc/VIM4.md)：帧率预算、安装和测试。
 - [应用与音频](../../NanoKVM/VIM4.md)：功能覆盖和构建。

@@ -8,7 +8,9 @@ HDMI RX 已通过 EDID/DDC 源端读回，并在固定 148.5 MHz 实验路径中
 1920×1080 RGB24 视频快照，三处帧号一致且重复采集推进，见
 [取帧实测](bringup/2026-10-19-hdmirx-frames.md)。V4L2 MMAP 已通过私有 cached DMA 环
 实现稳定段约 60fps，5400 帧运动校验通过，见
-[1080p60 实测](bringup/2026-10-19-hdmirx-dma-ring.md)。DMA-buf、4K 和编码器接入仍待完成。
+[1080p60 实测](bringup/2026-10-19-hdmirx-dma-ring.md)。后续 DMA-buf 导出也通过 5400 帧检查，
+并完成 180 帧软件 H.264 编解码校验，见
+[DMA-buf 实测](bringup/2026-10-19-hdmirx-dmabuf.md)。4K 和硬件编码器接入仍待完成。
 现有 5.15 的工作树、workspace.toml 发布版本和安装流程不变。
 
 ## 源码与配置

@@ -86,7 +86,7 @@ PiKVM smoke 可用 `PIKVM_CDP` 接入专用测试 Chrome；结束时关闭测试
 
 | 入口 | 运行位置 | 影响 | 用途 | 文档 |
 |---|---|---|---|---|
-| tools/latency-source.swift | Mac | 占用 HDMI 画面 | 把帧号画进 HDMI 输出，`--motion` 产生运动网格 | [延迟测量](latency.md) |
+| tools/latency-source.swift | Mac | 占用 HDMI 画面 | 把帧号画进 HDMI 输出；`--motion` 产生运动网格，`--verify-coherence` 增加三处标记并覆盖该屏弹窗 | [延迟测量](latency.md) |
 | tools/latency-receiver.mjs | Mac | 独占 | 解码像素帧号与呈现节奏；统一管理器登录、专用 CDP 浏览器和无像素回读对照 | [延迟测量](latency.md) |
 | tools/latency-summary.py | Mac | 无 | 匹配两端时间戳，统计呈现间隔、回调漏采和无更新尾段 | [延迟测量](latency.md) |
 | tools/video-timing-summary.py | Mac | 无 | 汇总 VIM4_VIDEO_TIMING 分段计时 | [延迟测量](latency.md) |
@@ -103,5 +103,6 @@ PiKVM smoke 可用 `PIKVM_CDP` 接入专用测试 Chrome；结束时关闭测试
 | tools/hdmirx-resource-check.py | 板（root） | 独占，仅 7.3 HDMI RX 测试内核；PHY 模式改变 EDID／HPD | 资源回收与旧 fd；`--phy-firmware` 验证固定频率 PLL，`--reject-firmware` 在所选模式验证失败 probe | [HDMI PHY 实测](bringup/2026-10-19-hdmirx-phy.md) |
 | tools/hdmirx-ddc-host-check.py | Mac → 板 | 独占，加载接收模块并改变 EDID／HPD，影响 HDMI 显示连接 | 比较接收器 RAM 与 Mac HDMI 端实际读到的不同 EDID；不验证视频帧 | [HDMI DDC 实测](bringup/2026-10-19-hdmirx-ddc.md) |
 | tools/hdmirx-frame-check.py | Mac / Linux | 无 | 离线校验 1080p RGB24 帧的三处帧号、黑白通道和跨帧推进，输入须来自 `latency-source.swift --verify-coherence` | [HDMI 取帧](bringup/2026-10-19-hdmirx-frames.md) |
-| tools/hdmirx-stream-check.c | 板（root） | 独占，仅 7.3 HDMI 实验内核 | 四缓冲 V4L2 MMAP 运动帧检查、缓冲持有与耗尽恢复、排他及反复开关流；需先编译 | [HDMI 1080p60](bringup/2026-10-19-hdmirx-dma-ring.md) |
+| tools/hdmirx-stream-check.c | 板（root） | 独占，仅 7.3 HDMI 实验内核 | 四缓冲运动检查、耗尽恢复及反复开关流；`--dmabuf` 验证导出、队列重建和重映射，`--hold-exports` 等待控制端释放；需先编译 | [HDMI DMA-buf](bringup/2026-10-19-hdmirx-dmabuf.md) |
+| tools/hdmirx-encode-check.py | 板（root）/ Linux | capture 独占实验采集；verify 离线 | `capture --exclusive` 经 DMA-buf 采集并用 OpenH264 软件编码；`verify` 解码检查三处运动标记，不验证硬件编码 | [HDMI DMA-buf](bringup/2026-10-19-hdmirx-dmabuf.md) |
 | tools/test-fan-policy.sh | VM | 无 | 编译内核风扇插值函数做断言 | [内核](kernel.md) |
