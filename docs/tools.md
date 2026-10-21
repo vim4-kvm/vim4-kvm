@@ -30,7 +30,7 @@ PiKVM smoke 可用 `PIKVM_CDP` 接入专用测试 Chrome；结束时关闭测试
 | tools/ubuntu-image.py | Mac → OrbStack | 无 | 内核包、候选镜像 assemble/verify/export | [候选镜像](ubuntu-image.md) |
 | packaging/ubuntu/ | 容器 | 无 | Dockerfile、锁文件、fetch.py、build.sh、package.py、verify.sh；manager-config.py 迁移网关配置；check-audio-startup.py、check-onekvm-update.py 与 pikvm/check-janus.py 为打包门禁 | [Ubuntu 构建](ubuntu-build.md) |
 | packaging/kernel/ | VM | 无 | package.sh 构建内核包，vim4.config 为配置 | [内核](kernel.md) |
-| packaging/kernel-edge/ | Linux ARM64 VM | 无 | build.sh 构建实验内核；prepare-wave521c-firmware.py 转换单独取得的匹配固件；附实验 EDID 与 GStreamer 偏移补丁；不安装 | [新内核基线](kernel-edge.md) |
+| packaging/kernel-edge/ | Linux ARM64 VM / 板 | 构建无；Wi-Fi 工具改固件目录 | build.sh 构建实验内核；prepare-wave521c-firmware.py 转换单独取得的匹配固件；prepare-wifi-firmware.py 校验已安装 SDIO 固件并建立主线名称链接，不加载驱动或连接网络 | [新内核基线](kernel-edge.md)、[Wi-Fi](bringup/2026-10-20-edge-wifi.md) |
 | packaging/kernel-edge/one-kvm-edge、one-kvm-edge-prepare、one-kvm-edge.service | 板 | 独占 | 按匹配内核选择独立视频程序；准备器校验固件后加载固定 UHD60 驱动，实验服务另需启动参数显式启用 | [新内核基线](kernel-edge.md) |
 | packaging/image/ | VM（root） | 无 | assemble.sh 组装镜像文件，configure.sh 仅由其调用，verify.sh 只读检查 | [候选镜像](ubuntu-image.md) |
 | tests/ | Mac | 无 | 离线单元测试：`python3 -m unittest discover -s tests -p 'test_*.py'` | 本页 |
