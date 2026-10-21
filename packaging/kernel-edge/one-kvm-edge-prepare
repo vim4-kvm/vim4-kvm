@@ -1,5 +1,5 @@
 #!/bin/sh
-# Fixed UHD60 experiment only; run as root from the separate edge service.
+# RGB8 1080p60/UHD60 experiment; run as root from the separate edge service.
 set -eu
 case "$(uname -r)" in
     7.3.0-rc7-vim4kvm-uhd1+) ;;
@@ -15,10 +15,10 @@ if ! printf '%s\n' \
     exit 1
 fi
 
-modprobe t7_hdmirx edid_firmware=vim4-hdmirx-ddc-test/uhd60-audio-edid.bin phy_test=1 core_test=1 uhd60=1 audio_test=1
+modprobe t7_hdmirx edid_firmware=vim4-hdmirx-ddc-test/uhd60-audio-edid.bin phy_test=1 core_test=1 uhd60=1 dynamic_modes=1 audio_test=1
 modprobe t7_vdin_test nv12=1 direct_dma=1
 modprobe wave5
-for parameter in phy_test core_test uhd60 audio_test; do
+for parameter in phy_test core_test uhd60 dynamic_modes audio_test; do
     if [ "$(cat "/sys/module/t7_hdmirx/parameters/$parameter")" != Y ]; then
         echo 'HDMI receiver is already loaded with different experimental settings' >&2
         exit 1
@@ -33,7 +33,7 @@ done
 udevadm settle --timeout=15
 if [ ! -d /sys/bus/platform/drivers/t7-hdmirx/fe398000.hdmi-receiver ] ||
    [ ! -d /sys/bus/platform/drivers/t7-vdin-test/ff000000.video-capture ]; then
-    echo 'Experimental HDMI receiver or capture probe failed; check the fixed UHD60 input' >&2
+    echo 'Experimental HDMI receiver or capture probe failed; check the supported RGB8 input' >&2
     exit 1
 fi
 # Only the dedicated capture card is configured; production ALSA state is kept.

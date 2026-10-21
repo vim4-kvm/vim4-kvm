@@ -22,6 +22,8 @@ H.264/H.265 硬编码已取得实验结果，见
 [安静风扇与整包验证](bringup/2026-10-20-edge-quiet-fan.md)，旧 Image 加 VDIN 覆盖的
 同连接 30 分钟结果见 [持续延迟](bringup/2026-10-20-edge-status-latency.md#同连接-30-分钟)。
 现有 5.15 的工作树、workspace.toml 发布版本和安装流程不变。
+受支持的 RGB8 1080p60/4K60 自动重配与应用缓冲回收见
+[动态模式记录](bringup/2026-10-20-edge-dynamic-modes.md)。HDR、其他时序及输入格式仍需适配。
 
 ## 源码与配置
 

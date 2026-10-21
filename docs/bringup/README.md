@@ -22,6 +22,7 @@
 - [7.x 启动风扇与 HDMI 恢复](2026-10-20-edge-recovery.md) — kernel video audio application deployment board
 - [7.x HDMI 真实输入时序](2026-10-20-edge-input-timings.md) — kernel video audio application deployment board
 - [7.x 失锁期间的状态查询与队列锁](2026-10-20-edge-queue-lock.md) — kernel video audio deployment board
+- [7.x 1080p60/4K60 自动切换与缓冲回收](2026-10-20-edge-dynamic-modes.md) — kernel video audio application deployment board
 
 ## 2026-10-19
 

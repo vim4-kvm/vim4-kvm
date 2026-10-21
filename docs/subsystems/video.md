@@ -51,6 +51,7 @@ HDMI_LOW_LATENCY=0 恢复厂商自动策略。模式含义、对照结果及帧�
 - [7.x 状态查询与端到端](../bringup/2026-10-20-edge-status-latency.md)：去除实时查询的 20ms 等待、校准时钟与测量开销。
 - [7.x HDMI 真实时序](../bringup/2026-10-20-edge-input-timings.md)：标准 V4L2 查询、测量帧率与动态重配的剩余限制。
 - [7.x 失锁查询与队列锁](../bringup/2026-10-20-edge-queue-lock.md)：状态/停流锁分离，格式与缓冲生命周期回归。
+- [7.x 动态分辨率](../bringup/2026-10-20-edge-dynamic-modes.md)：RGB8 1080p60/4K60 的 PHY、音频、队列和应用重建，以及孤儿缓冲回收。
 - [VDIN 直接 DMA](../bringup/2026-10-20-direct-dma-benchmark.md)：持有/隔离语义、本地回归与 4K60 应用 CPU 对照。
 - [7.3 One-KVM 接入](../bringup/2026-10-20-onekvm-wave5.md)：独立后端、网页 4K60 与重配回收故障。
 - [7.3 CPU 性能定位](../bringup/2026-10-20-onekvm-performance.md)：真实应用基线、压缩码流缓存和剩余原始帧复制开销。
@@ -81,6 +82,7 @@ HDMI_LOW_LATENCY=0 恢复厂商自动策略。模式含义、对照结果及帧�
 
 | 触发条件 / 错误 | 原因与正确做法 | 验证入口 |
 |---|---|---|
+| 切分辨率后没有视频 fd，仍残留一组 CMA 分配 | GStreamer 先停用池，STREAMOFF 后另一个线程归还缓冲仍可 QBUF，随后 orphan 已无流可冲刷。先停止获取，在 QBUF 锁内停流并完成 orphan，再停用池；仅关闭 last-sample 缓存不足以修复 | packaging/kernel-edge/test_gstreamer_orphan.py、[动态模式记录](../bringup/2026-10-20-edge-dynamic-modes.md) |
 | 7.x 无周期 IDR，仍每约 250ms 短顿 | ENUMINPUT 误用双次稳定检查，持有采集 ioctl 锁等待 20ms。实时状态使用即时读取并清除旧状态，STREAMON 保留稳定性资格检查；仅将应用查询移到另一线程仍会争用队列锁 | t7-hdmirx/test_core.py、[状态查询实测](../bringup/2026-10-20-edge-status-latency.md) |
 | 7.3 网页反复重配后 CMA 耗尽，分配失败又触发 Oops | GStreamer 1.24.2 每帧遗漏输入池 unref，空 LAST 缓冲也未归还；另有 Wave5 辅助 DMA 局部副本和实例重复释放。插件和驱动分别修复，SET_FB 后保留 DMA 直到固件停止；每轮检查 fd/CMA，不能只看进程退出后的空闲内存 | tools/wave5-lifecycle-check.py、[应用接入](../bringup/2026-10-20-onekvm-wave5.md) |
 | H.264 第一次强制 IDR 有效，后续请求不再产生 IDR | Wave5 用 HEVC NAL 19/20 判定所有格式，AVC NAL 5 未标为 V4L2 KEYFRAME，GStreamer 保留未完成请求。按编码格式报告帧型；用长于整段测试的 GOP 连续请求并核对输出 | tools/hdmirx-encode-check.py --keyframe-at、[应用接入](../bringup/2026-10-20-onekvm-wave5.md) |

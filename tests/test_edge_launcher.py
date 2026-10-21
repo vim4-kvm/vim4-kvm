@@ -59,6 +59,19 @@ class EdgeLauncherTest(unittest.TestCase):
         self.assertIn('leased direct DMA', result.stderr)
         self.assertNotIn('udevadm', self.trace.read_text())
 
+    def test_prepare_rejects_preloaded_fixed_geometry_before_application_start(self):
+        (self.bin / 'sha256sum').write_text('#!/bin/sh\n/bin/cat >/dev/null; exit 0\n')
+        cat = self.bin / 'cat'
+        cat.write_text('#!/bin/sh\ncase "$1" in\n'
+                       '  */t7_hdmirx/parameters/dynamic_modes) echo N ;;\n'
+                       '  /sys/module/*/parameters/*) echo Y ;;\n'
+                       '  *) exec /bin/cat "$@" ;;\nesac\n')
+        cat.chmod(0o755)
+        result = self.run_script('one-kvm-edge-prepare', '7.3.0-rc7-vim4kvm-uhd1+')
+        self.assertNotEqual(result.returncode, 0)
+        self.assertIn('HDMI receiver is already loaded', result.stderr)
+        self.assertNotIn('udevadm', self.trace.read_text())
+
 
 if __name__ == '__main__':
     unittest.main()

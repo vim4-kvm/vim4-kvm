@@ -8,6 +8,9 @@ app.setActivationPolicy(.accessory)
 let duration = Double(CommandLine.arguments.dropFirst().first ?? "35") ?? 35
 let moving = CommandLine.arguments.contains("--motion")
 let verifyCoherence = CommandLine.arguments.contains("--verify-coherence")
+// Mode-switch fixtures can skip text if CoreText fails during display changes.
+// The pixel markers and moving grid are sufficient for mode recovery tests.
+let drawLabels = !CommandLine.arguments.contains("--no-labels")
 let displayName = ProcessInfo.processInfo.environment["VIM4_HDMI_DISPLAY"] ?? "AML"
 guard let screen = NSScreen.screens.first(where: { $0.localizedName.contains(displayName) }) else {
     fatalError("No HDMI display matching \(displayName) is available")
@@ -21,10 +24,10 @@ class LatencyView: NSView {
         let sourceTime = Date().timeIntervalSince1970 * 1000
         NSColor(calibratedWhite: 0.12, alpha: 1).setFill()
         bounds.fill()
-        let attrs: [NSAttributedString.Key: Any] = [
+        let attrs: [NSAttributedString.Key: Any]? = drawLabels ? [
             .font: NSFont.monospacedSystemFont(ofSize: 22, weight: .regular),
             .foregroundColor: NSColor.white
-        ]
+        ] : nil
         let offset = moving ? CGFloat(sequence * 5 % 48) : 0
         for row in -1...Int(bounds.height / 48) + 1 {
             let y = CGFloat(row * 48) + offset
@@ -33,9 +36,11 @@ class LatencyView: NSView {
                         saturation: 0.65, brightness: 0.6, alpha: 1).setFill()
                 NSRect(x: CGFloat(col) * bounds.width / 8, y: y,
                        width: bounds.width / 8 - 3, height: 45).fill()
-                ("VIM4 4K60 | Row \(row) Column \(col)" as NSString).draw(
-                    at: NSPoint(x: CGFloat(col) * bounds.width / 8 + 8, y: y + 10),
-                    withAttributes: attrs)
+                if let attrs {
+                    ("VIM4 4K60 | Row \(row) Column \(col)" as NSString).draw(
+                        at: NSPoint(x: CGFloat(col) * bounds.width / 8 + 8, y: y + 10),
+                        withAttributes: attrs)
+                }
             }
         }
         // A magic byte and checksum reject partially updated or unrelated frames.

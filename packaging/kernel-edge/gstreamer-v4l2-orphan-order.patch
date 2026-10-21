@@ -1,0 +1,21 @@
+--- a/sys/v4l2/gstv4l2bufferpool.c
++++ b/sys/v4l2/gstv4l2bufferpool.c
+@@ -1050,5 +1050,8 @@ gst_v4l2_buffer_pool_orphan (GstV4l2Object * v4l2object)
+   GST_DEBUG_OBJECT (pool, "orphaning pool");
+-  gst_buffer_pool_set_active (bpool, FALSE);
+-
++  /* Stop acquisition before taking the QBUF lock. Deactivation can call
++   * stop() without this lock; a returning capture buffer could otherwise
++   * queue new memory after STREAMOFF has already flushed the allocator. */
++  gst_buffer_pool_set_flushing (bpool, TRUE);
++
+   /* We lock to prevent racing with a return buffer in QBuf, and has a
+    * workaround of not being able to use the pool hidden activation lock. */
+@@ -1062,4 +1065,6 @@ gst_v4l2_buffer_pool_orphan (GstV4l2Object * v4l2object)
+   GST_OBJECT_UNLOCK (pool);
+-
++
++  gst_buffer_pool_set_active (bpool, FALSE);
++
+   if (ret) {
+     GstBufferPool *old_pool;
