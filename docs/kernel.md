@@ -85,8 +85,11 @@ make ARCH=arm64 CC=gcc-12 M=drivers/misc khadas-mcu.ko -j10
 三个阈值可在 vim4-manager 散热页调节，保存后由管理器开机恢复，不改设备树。
 
 7.x 的 `drivers/thermal/khadas_mcu_fan.c` 已为 VIM4 增加同一默认安静曲线，
-取 CPU、GPU、NNA、VPU、HEVC 六个温区的最高温度。任一读温失败请求全速；
-正常 30 秒采样、5 个百分点调速，首次有效采样直接采用目标，MCU 写入失败 1 秒后重试。
+取 CPU、GPU、NNA、VPU、HEVC 六个温区的最高温度。启动和读温失败默认请求 15%，
+有效温区高温时采用更高曲线输出，100°C 仍全速；读温故障或 MCU 写入失败 1 秒后重试。
+正常 30 秒采样、5 个百分点调速，首次有效采样与故障恢复直接采用目标。
+15% 为控制值，持续读温故障时散热余量低于原全速策略；变更与实板证据见
+[启动风扇与恢复](bringup/2026-10-20-edge-recovery.md)。
 此模式由一个内核任务独占控制，不同时注册给 `step_wise`，CPU 过热保护仍保留。
 状态读 `/sys/bus/platform/devices/khadas-mcu-fan-ctrl/{speed_percent,temperature_millic,sensor_fault}`；
 温度是上次采样值，百分比是最后成功写入值，没有测速反馈。
