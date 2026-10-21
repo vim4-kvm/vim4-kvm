@@ -49,6 +49,7 @@ HDMI_LOW_LATENCY=0 恢复厂商自动策略。模式含义、对照结果及帧�
 - [7.3 HDMI 音频](../bringup/2026-10-20-edge-hdmi-audio.md)：复用已验证 LPCM 能力、独立 ALSA 声卡及网页 Opus。
 - [7.x 逐行刷新](../bringup/2026-10-20-edge-cyclic-refresh.md)：固定 UHD60 的周期关键帧、呈现间隔与重复对照。
 - [7.x 状态查询与端到端](../bringup/2026-10-20-edge-status-latency.md)：去除实时查询的 20ms 等待、校准时钟与测量开销。
+- [7.x HDMI 真实时序](../bringup/2026-10-20-edge-input-timings.md)：标准 V4L2 查询、测量帧率与动态重配的剩余限制。
 - [VDIN 直接 DMA](../bringup/2026-10-20-direct-dma-benchmark.md)：持有/隔离语义、本地回归与 4K60 应用 CPU 对照。
 - [7.3 One-KVM 接入](../bringup/2026-10-20-onekvm-wave5.md)：独立后端、网页 4K60 与重配回收故障。
 - [7.3 CPU 性能定位](../bringup/2026-10-20-onekvm-performance.md)：真实应用基线、压缩码流缓存和剩余原始帧复制开销。

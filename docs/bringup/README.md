@@ -20,6 +20,7 @@
 - [7.x 安静风扇曲线](2026-10-20-edge-quiet-fan.md) — kernel video deployment board
 - [7.x BCM43752 SDIO Wi-Fi](2026-10-20-edge-wifi.md) — kernel deployment board
 - [7.x 启动风扇与 HDMI 恢复](2026-10-20-edge-recovery.md) — kernel video audio application deployment board
+- [7.x HDMI 真实输入时序](2026-10-20-edge-input-timings.md) — kernel video audio application deployment board
 
 ## 2026-10-19
 
