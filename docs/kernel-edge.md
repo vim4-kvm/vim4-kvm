@@ -17,6 +17,9 @@ H.264/H.265 硬编码已取得实验结果，见
 [应用接入记录](bringup/2026-10-20-onekvm-wave5.md)。直接 DMA 的固定 4K60 实验已将
 整机 CPU 降到约 4.2–4.3%，见 [本地基准与直接 DMA](bringup/2026-10-20-direct-dma-benchmark.md)；
 长期稳定性验收尚未完成。
+当前已部署包含 VDIN/Wave5 修复与安静风扇的完整匹配 Image/模块，见
+[安静风扇与整包验证](bringup/2026-10-20-edge-quiet-fan.md)；旧 Image 加 VDIN 覆盖的
+同连接 30 分钟结果见 [持续延迟](bringup/2026-10-20-edge-status-latency.md#同连接-30-分钟)。
 现有 5.15 的工作树、workspace.toml 发布版本和安装流程不变。
 
 ## 源码与配置

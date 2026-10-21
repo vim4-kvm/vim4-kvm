@@ -17,6 +17,7 @@
 - [7.3 HDMI LPCM 与 One-KVM 音频](2026-10-20-edge-hdmi-audio.md) — kernel audio application board
 - [7.x Wave5 逐行刷新与卡顿对照](2026-10-20-edge-cyclic-refresh.md) — kernel video application board
 - [7.x 输入状态等待与端到端延迟](2026-10-20-edge-status-latency.md) — kernel video application board
+- [7.x 安静风扇曲线](2026-10-20-edge-quiet-fan.md) — kernel video deployment board
 
 ## 2026-10-19
 

@@ -5,6 +5,8 @@
 构建、安装或回退内核时读 [内核构建、安装与回退](../kernel.md)；需要 VM 中的主内核工作树时读 [工作区](../workspace.md#构建)。
 
 MCU 风扇在 VM 主内核 drivers/misc/khadas-mcu.c，策略验证用 tools/test-fan-policy.sh。
+7.x 对应 drivers/thermal/khadas_mcu_fan.c，VIM4 默认安静自动调速；验证用同目录
+test_khadas_mcu_fan.py。控制值和回退见 [安静风扇](../bringup/2026-10-20-edge-quiet-fan.md)。
 启动瞬间的风扇测试由 U-Boot board_init 向 MCU 0x96 写 1 触发，早于 Linux 温控；
 禁用与验证见 [U-Boot 风扇记录](../bringup/2026-10-17-uboot-quiet-fan.md)。
 VDIN、vfm_cap、Wave521、CRG USB 驱动在 common_drivers。

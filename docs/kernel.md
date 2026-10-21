@@ -84,6 +84,20 @@ make ARCH=arm64 CC=gcc-12 M=drivers/misc khadas-mcu.ko -j10
 跳至 100%。`/sys/class/fan/speed` 是控制百分比，没有转速计反馈，不是实测 RPM。
 三个阈值可在 vim4-manager 散热页调节，保存后由管理器开机恢复，不改设备树。
 
+7.x 的 `drivers/thermal/khadas_mcu_fan.c` 已为 VIM4 增加同一默认安静曲线，
+取 CPU、GPU、NNA、VPU、HEVC 六个温区的最高温度。任一读温失败请求全速；
+正常 30 秒采样、5 个百分点调速，首次有效采样直接采用目标，MCU 写入失败 1 秒后重试。
+此模式由一个内核任务独占控制，不同时注册给 `step_wise`，CPU 过热保护仍保留。
+状态读 `/sys/bus/platform/devices/khadas-mcu-fan-ctrl/{speed_percent,temperature_millic,sensor_fault}`；
+温度是上次采样值，百分比是最后成功写入值，没有测速反馈。
+当前仅迁移默认曲线，5.15 的阈值调节 sysfs/管理页接口没有迁移。
+
+启动参数 `khadas_mcu_fan.quiet_auto=0` 恢复原 thermal cooling device：50°C 触发、
+2°C 回差，`step_wise` 在 30–100 范围内调节。其他 MCU 型号保持此原实现。
+离线检查用 `python3 drivers/thermal/test_khadas_mcu_fan.py`；驱动为内建，部署须更新
+完整 Image 及同次构建的全部模块，不能仅替换 `.ko`。实测和回退见
+[7.x 安静风扇](bringup/2026-10-20-edge-quiet-fan.md)。
+
 `board/90-vim4-encoder.conf` 将 Wave521 A/B/C 三路设置为 666666666Hz。
 原始 A 已为约 666MHz，B/C 为 500MHz。CPU、总线和电压保持默认。
 `board/install.sh` 安装该配置；已加载的模块需重启系统后生效。

@@ -1,0 +1,92 @@
+# 2026-10-20：7.x 安静风扇曲线
+
+7.x 原有风扇驱动已接入，但采用 50°C 触发、30–100 控制范围的 `step_wise`。
+此前 4K60 测试整机 CPU 约 7.7%，温度约 50°C，风扇控制曾达 72%，不是 CPU 满载。
+Linux `d83b764dd727f35150678779115cfd5e83684619` 为 VIM4 增加安静自动模式，
+已构建整包并重启，运行 build ID 与产物一致；其余 MCU 型号保留原 thermal 控制。
+
+## 策略与所有权
+
+沿用 5.15 的默认曲线：低于 45°C 停转，45/55/60/80/100°C 对应 5/25/35/70/100%，
+区间线性插值。取六个 T7 温区的最高值，覆盖两组 CPU、GPU、NNA、VPU、HEVC。
+30 秒采样一次，正常每次最多调整 5 个百分点；启停和采样到全速条件不受限。
+首次有效采样直接采用目标，不从启动全速缓慢降温；任何温区缺失或读温失败都请求
+100%。MCU 写失败保留最后成功值并在 1 秒后重试。系统启动时传感器尚未齐备，
+曾短暂 sensor_fault=1/100%，下次成功采样后自动恢复。
+
+默认启用的 `quiet_auto` 仅匹配 VIM4 寄存器和 100% 范围，启动后不可动态切换。
+安静模式不向 thermal 核心注册风扇 cooling device，避免 worker 与 `step_wise`
+争用 MCU；CPU 被动降频和 critical/hot trip 保持原配置。解绑同步取消任务并请求
+全速；休眠与关机先取消任务再停风扇，恢复后重新采温，不恢复过时的低输出。
+挂起失败也重新启动自动任务。没有加用户态风扇守护进程。
+
+只读状态位于 `/sys/bus/platform/devices/khadas-mcu-fan-ctrl/`：
+
+- `speed_percent`：最后成功写入的控制百分比，非实测 RPM。
+- `temperature_millic`：上次成功采样的最高温度；故障时返回 ENODATA。
+- `sensor_fault`：上次采样是否存在不可用温区。
+
+未迁移 5.15 的可调阈值和手动控制 UI。传感器故障/100°C 保护、MCU 失败重试和
+休眠失败恢复已通过实际 C 函数的离线夹具，未通过加热或解绑传感器在运行板上注入。
+
+## 构建与安装
+
+`drivers/thermal/test_khadas_mcu_fan.py` 在 Mac Clang 与 Linux GCC 通过。
+Linux 驱动目标编译通过后，构建 `Image dtbs modules`，再 `modules_install`
+并 strip/XZ，共 2333 个模块。驱动内建，单个 `.ko` 无法更新。
+源码锁的 `tested_build` 记录本次完整产物；使用原 UHD1 配置，SHA 保持不变，
+与通用 `edge.config` 的 LOCALVERSION 不同。可从通用配置改
+`CONFIG_LOCALVERSION="-vim4kvm-uhd1"` 后 olddefconfig，需核对最终配置摘要。
+
+- Image SHA256：`93f590c062f37cbc1db4f904219defe00f657b22428e5e25963c36a03b724e55`。
+- 配置 SHA256：`39f2c5c008bba1032913abafdde2a992d9cd2ecf2b4c6f4fc9b27330d0ba9d2c`。
+- 模块归档 SHA256：`ccf541225abb120546ec4f41ad80520b6c173624ad0d69a492f717bfa39626ab`。
+- 运行 build ID：`4c84bb0f640677d09a859a3c25d8db96bf19b0df`。
+
+先确认无观看者，备份实验 Image、整个模块目录和部署清单；停实验应用后确认
+VDIN/Wave5 引用及 DMA-buf 为零，再替换实验 Image 和同次构建的全部模块。
+完整模块保留与新 vmlinux 匹配的 split BTF，不继续混用旧覆盖模块。
+保留已验证音频 DTB `6ccb1ad1...`、One-KVM `414e88b9` 和固件；默认 5.15 Image、
+启动配置、生产应用、准备脚本均有摘要保护。没有改默认启动项或 extlinux 内容。
+
+重启由串口单次选择 OneKvmTest；`/sys/kernel/notes` 的 GNU build ID 与构建一致。
+首次 HDMI PHY 锁定超时，服务启动失败；确认 RX 未绑定、无采集/DMA 后，只卸载
+VDIN 和失败的 RX 再用原参数重载，手动重启实验应用和网关后恢复。
+Mac 自动回到原 mode 16（逻辑 1920×1080，物理 3840×2160@60Hz）。
+并行等待显示器的辅助选择器超时退出，未更改显示模式；不能据此声称自动恢复通过。
+SSH、网口、USB 配置均恢复，taint=0；没有注入键鼠事件。
+
+备份为板上 `/var/backups/vim4-onekvm-edge-20261020/quiet-full/`，含旧 Image、
+含覆盖模块的完整旧目录、清单和保护摘要。若回退 Image，必须一起恢复该模块目录，
+再 depmod/sync/reboot；不能只恢复一个旧模块。仅回退温控可在测试启动项 APPEND
+加入 `khadas_mcu_fan.quiet_auto=0` 后重启；本轮未实际执行此回退启动。
+
+## 上板验证
+
+重启后 44.6°C 时控制为 0%，47.7°C 为 10%，读温故障为 0。
+随后 355 秒、72 次只读观测覆盖实际推流，CPU 温度 50.3–55.2°C、控制值 15–24%，
+零 sensor_fault，两组 cpufreq cooling state 始终为 0。无测速反馈，不能以控制百分比
+证明风扇实际 RPM 或定量噪声降低。
+
+固定 Chrome 156.0.8078.47（快照摘要前后相同），原生 4K60 三条一致帧号运动源、
+请求 30Mbps、音频开启，两种格式分别预热后测 120 秒：
+
+| 编码 | fps | 有效帧号 | 合成器提交 P50/P95/P99 ms | 呈现间隔 P99/max ms | >50ms |
+|---|---:|---:|---|---|---:|
+| H.265 | 60.006 | 1146 | 67.64/76.59/80.19 | 33.4/39.3 | 0 |
+| H.264 | 59.998 | 1089 | 67.88/79.30/83.09 | 33.9/51.1 | 2 |
+
+两轮零丢帧、丢包、freeze、invalid/incoherent marker、时钟跳变；两个 P99 样本数
+均超过 1000。仍是软件合成器提交终点，非光学显示；P50/P95 未达到 60/75ms 目标。
+没有把此短测写为新内核的 30 分钟耐久或 5.15 全场景性能对齐。
+
+另将 20 秒、440Hz 测试信号仅送到命名 HDMI 输出，10 秒 WebRTC 检查解码峰值
+0.10193，播放视频为 3840×2160/H.265；未改系统默认音频输出、没有外放测试音。
+这是非静音连通检查，不证明声画同步、音质或动态恢复均已验收。
+结束后三个实验服务 active、三个 HID 节点存在、UDC configured、taint=0，
+没有新增 BUG/Oops/WARNING 或模块 BTF 校验失败。浏览器关闭后 DMA-buf 归零，
+CMA 恢复 505192KiB，保留 H.265 和音频启用，现场没有残留测试观看者。
+
+此前 Image375 + VDIN 覆盖的 30 分钟测试见
+[延迟记录](2026-10-20-edge-status-latency.md#同连接-30-分钟)，不计为新 Image 的耐久验收。
+日志位于 `logs/kernel-edge/edge-quiet-*`，包含构建、安装、串口、运行 notes、音视频和风扇。

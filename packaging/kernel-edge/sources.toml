@@ -2,8 +2,8 @@
 [kernel]
 url = "https://github.com/vim4-kvm/linux.git"
 branch = "vim4-kvm-7.3"
-revision = "375bfd949dd5fbf6216d66a6b32e6f91d163b049"
-tree = "35799215fd70b3a912f67b489d33e69fdb1e2a63"
+revision = "d83b764dd727f35150678779115cfd5e83684619"
+tree = "cedc0ae7d412acc9ed7b417f6c37580b2b8d2588"
 upstream_url = "https://github.com/gregkh/linux.git"
 upstream_tag = "v7.3-rc7"
 upstream_revision = "24a19b953e2a3d0ea5a8c4951a0ab8f32720c907"
@@ -15,25 +15,18 @@ branch = "vim4"
 revision = "414e88b98b50f8e16c296c58100334ea52e72d18"
 features = ["vim4"]
 
-# The audio-tested Image stays on [kernel]; tested module overlays are listed below.
-# Build without split module BTF, which otherwise depends on its build's vmlinux.
-[wave5_overlay]
-url = "https://github.com/vim4-kvm/linux.git"
-branch = "vim4-kvm-7.3"
-revision = "4f00b3cca175ac5e97bf43f442e1fb08c3cae6ca"
-tree = "a385c1cbbb8253e188692adfe4abf872165853bc"
-path = "drivers/media/platform/chips-media/wave5"
-module_btf = false
-module_sha256 = "210dc9c14772c1bd1c56d36a959e637e39f4c4e7ba569bc51b72d924d4de401a"
-
-[vdin_overlay]
-url = "https://github.com/vim4-kvm/linux.git"
-branch = "vim4-kvm-7.3"
-revision = "1317fcb8746f30f376420dc193d9a15ac4c83fb7"
-tree = "eb88ad7014c3cdc41807fb5299b88c71ecabb84c"
-path = "drivers/media/platform/amlogic/t7-hdmirx/t7-vdin-test.c"
-module_btf = false
-module_sha256 = "f2c5ac54f2edd18188ff9a0d549b648dccb166fe955e9d914412943d629c835c"
+# Complete matched build includes the former Wave5 and VDIN overlays.
+# build.sh uses the general edge.config; this tested profile changes LOCALVERSION.
+[tested_build]
+release = "7.3.0-rc7-vim4kvm-uhd1+"
+localversion = "-vim4kvm-uhd1"
+build_id = "4c84bb0f640677d09a859a3c25d8db96bf19b0df"
+image_sha256 = "93f590c062f37cbc1db4f904219defe00f657b22428e5e25963c36a03b724e55"
+config_sha256 = "39f2c5c008bba1032913abafdde2a992d9cd2ecf2b4c6f4fc9b27330d0ba9d2c"
+modules_sha256 = "ccf541225abb120546ec4f41ad80520b6c173624ad0d69a492f717bfa39626ab"
+module_count = 2333
+module_btf = true
+board_dtb_sha256 = "6ccb1ad1bcefba6cfb119b19e80f870a4c625f63c27b9dc34026735f94a16eb2"
 
 [armbian]
 url = "https://github.com/armbian/build.git"
