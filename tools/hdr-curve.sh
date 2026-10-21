@@ -13,6 +13,7 @@ set -eu
 OOTF=/sys/module/aml_media/parameters/oo_y_lut_hdr_sdr
 OETF=/sys/module/aml_media/parameters/oe_y_lut_sdr
 VDIN=/sys/class/vdin/vdin0/attr
+EDGE_CURVE=/sys/bus/platform/devices/ff000000.video-capture/hdr_curve
 
 usage() {
 	echo "Usage: $0 tables|apply WHITE PEAK (WHITE 160-1000 nits, WHITE < PEAK <= 10000)" >&2
@@ -81,6 +82,13 @@ if [ "$ACTION" = tables ]; then
 	exit 0
 fi
 
+if [ -w "$EDGE_CURVE" ]; then
+	# The edge driver validates and queues both tables atomically. Its capture
+	# IRQ loads them only with the MIF gated at a completed frame boundary.
+	curve=$(tables)
+	printf '%s\n' "$curve" > "$EDGE_CURVE"
+	exit 0
+fi
 if [ ! -w "$OOTF" ] || [ ! -w "$OETF" ]; then
 	echo "HDR to SDR tables not writable; keeping vendor curves" >&2
 	exit 3

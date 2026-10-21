@@ -8,6 +8,7 @@ app.setActivationPolicy(.accessory)
 let duration = Double(CommandLine.arguments.dropFirst().first ?? "35") ?? 35
 let moving = CommandLine.arguments.contains("--motion")
 let verifyCoherence = CommandLine.arguments.contains("--verify-coherence")
+let hdrChart = CommandLine.arguments.contains("--hdr-chart")
 // Mode-switch fixtures can skip text if CoreText fails during display changes.
 // The pixel markers and moving grid are sufficient for mode recovery tests.
 let drawLabels = !CommandLine.arguments.contains("--no-labels")
@@ -41,6 +42,17 @@ class LatencyView: NSView {
                         at: NSPoint(x: CGFloat(col) * bounds.width / 8 + 8, y: y + 10),
                         withAttributes: attrs)
                 }
+            }
+        }
+        if hdrChart {
+            // Explicit sRGB UI values let HDR-to-SDR capture be compared against
+            // the same SDR source. macOS maps this UI into its HDR reference white.
+            for index in 0..<16 {
+                let value = CGFloat(index) / 15
+                NSColor(srgbRed: value, green: value, blue: value, alpha: 1).setFill()
+                NSRect(x: bounds.width * CGFloat(index) / 16,
+                       y: bounds.height * (1 - 450.0 / 1080),
+                       width: bounds.width / 16, height: bounds.height * 280 / 1080).fill()
             }
         }
         // A magic byte and checksum reject partially updated or unrelated frames.

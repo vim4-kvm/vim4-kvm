@@ -21,3 +21,8 @@ hdmi-setup.sh 在打开输入前写入；运行中由 vdin0 attr 的 `reload_hdr
 不重启采集。vim4-manager 的“HDR 转 SDR”滑动条拖动时实时预览，松开后保存。
 `oe_y_lut_sdr` 与 VPP/OSD 的 HDR→SDR 共用，将来接 HDMI 输出时同样生效。
 HLG 输入仍用厂商 HLG 曲线。
+
+7.x 的独立 edge 服务已接通 PQ / BT.2020 / YCbCr420 10bit 4K60，见
+[采集与映射实测](bringup/2026-10-20-edge-hdr-capture.md)；HLG 等其他格式未适配。
+`vim4-hdr-curve` 在此内核向平台设备 `hdr_curve` 一次提交两行表，由 IRQ 在安全帧边界
+重载；5.15 路径保留。参数文件与 helper 的预览/保存接口相同。

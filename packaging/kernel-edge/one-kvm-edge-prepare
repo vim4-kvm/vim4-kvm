@@ -1,5 +1,5 @@
 #!/bin/sh
-# RGB8 1080p60/UHD60 experiment; run as root from the separate edge service.
+# SDR 1080p/UHD60 and HDR10 UHD60 experiment; separate edge service only.
 set -eu
 case "$(uname -r)" in
     7.3.0-rc7-vim4kvm-uhd1+) ;;
@@ -9,16 +9,16 @@ esac
 # These files are provisioned separately; the licensed codec firmware is not shipped here.
 if ! printf '%s\n' \
     '873103d7520d5cad737cfe4458a2891c065d566ff556a47ab735e60f27acf031  /lib/firmware/amlogic/t7-wave521c-enc.bin' \
-    '2702ea6f67f82f414047f8f22b38f1eb5ae8a2c6207da5291f0aae40ce8be3d3  /lib/firmware/vim4-hdmirx-ddc-test/uhd60-audio-edid.bin' \
+    'd54359d8ebfd750684a6a97fc482791ff755b2acab29646773e6104d9c57a47b  /lib/firmware/vim4-hdmirx-ddc-test/uhd60-hdr10-audio-edid.bin' \
     | sha256sum --check --status; then
     echo 'The matched HDMI EDID or Wave521c firmware is missing or has changed' >&2
     exit 1
 fi
 
-modprobe t7_hdmirx edid_firmware=vim4-hdmirx-ddc-test/uhd60-audio-edid.bin phy_test=1 core_test=1 uhd60=1 dynamic_modes=1 audio_test=1
+modprobe t7_hdmirx edid_firmware=vim4-hdmirx-ddc-test/uhd60-hdr10-audio-edid.bin phy_test=1 core_test=1 uhd60=1 dynamic_modes=1 audio_test=1 hdr_probe=1 hdr_capture=1
 modprobe t7_vdin_test nv12=1 direct_dma=1
 modprobe wave5
-for parameter in phy_test core_test uhd60 dynamic_modes audio_test; do
+for parameter in phy_test core_test uhd60 dynamic_modes audio_test hdr_probe hdr_capture; do
     if [ "$(cat "/sys/module/t7_hdmirx/parameters/$parameter")" != Y ]; then
         echo 'HDMI receiver is already loaded with different experimental settings' >&2
         exit 1
@@ -33,7 +33,7 @@ done
 udevadm settle --timeout=15
 if [ ! -d /sys/bus/platform/drivers/t7-hdmirx/fe398000.hdmi-receiver ] ||
    [ ! -d /sys/bus/platform/drivers/t7-vdin-test/ff000000.video-capture ]; then
-    echo 'Experimental HDMI receiver or capture probe failed; check the supported RGB8 input' >&2
+    echo 'Experimental HDMI receiver or capture probe failed; check the supported input profile' >&2
     exit 1
 fi
 # Only the dedicated capture card is configured; production ALSA state is kept.
@@ -42,5 +42,9 @@ if [ -e /proc/asound/VIM4HDMIRX/id ]; then
 else
     echo 'Experimental HDMI audio card is not ready; video remains available' >&2
 fi
+if [ -f /etc/default/vim4-kvm-hdr ]; then
+    . /etc/default/vim4-kvm-hdr
+fi
+/usr/sbin/vim4-hdr-curve apply "${HDR_SDR_WHITE:-203}" "${HDR_SDR_PEAK:-1000}"
 # V4L2 encoder factories cache their device path; node numbering can change.
 rm -f /run/one-kvm-edge/gstreamer-registry.bin

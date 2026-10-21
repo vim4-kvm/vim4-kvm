@@ -19,6 +19,33 @@ def data_blocks(edid):
 
 
 class AudioEdidTest(unittest.TestCase):
+    def test_hdr_profile_bounds_negotiation_to_supported_modes_and_pq(self):
+        sdr = bytes.fromhex((ROOT / 'uhd60-audio-edid.hex').read_text())
+        hdr = bytes.fromhex((ROOT / 'uhd60-hdr10-audio-edid.hex').read_text())
+        self.assertEqual(len(hdr), 256)
+        self.assertTrue(all(sum(hdr[i:i+128]) % 256 == 0 for i in (0, 128)))
+        # Preserve the measured 594-MHz preferred timing, not the stock 4K30 DTD.
+        self.assertEqual(hdr[54:72], sdr[54:72])
+        blocks = data_blocks(hdr)
+        extended = {data[0]: data[1:] for tag, data in blocks if tag == 7}
+        rgb_modes = {vic & 127 for tag, data in blocks if tag == 2 for vic in data}
+        y420_modes = set(extended[14])
+        self.assertEqual(rgb_modes, {16})
+        self.assertEqual(y420_modes, {97})
+        self.assertFalse(hdr[131] & 0x30)  # Do not select unqualified 444/422.
+        # SDR + PQ, static metadata type 1; HLG and dynamic HDR are not qualified.
+        self.assertEqual(extended[6][0] & 0x3f, (1 << 0) | (1 << 2))
+        self.assertEqual(extended[6][1], 1)
+        self.assertNotIn(7, extended)  # No dynamic-HDR extended data block.
+        vendors = [data for tag, data in blocks if tag == 3]
+        self.assertEqual({data[:3] for data in vendors},
+                         {bytes.fromhex('030c00'), bytes.fromhex('d85dc4')})
+        forum = next(data for data in vendors if data[:3] == bytes.fromhex('d85dc4'))
+        self.assertEqual(forum[6] & 7, 1)  # Only 10-bit 420, not 12/16-bit.
+        self.assertLessEqual(forum[4] * 5, 600)
+        self.assertEqual([d for tag, d in blocks if tag in (1, 4)],
+                         [d for tag, d in data_blocks(sdr) if tag in (1, 4)])
+
     def test_audio_capabilities_preserve_video_and_physical_identity(self):
         original = bytes.fromhex((ROOT / 'uhd60-edid.hex').read_text())
         audio = bytes.fromhex((ROOT / 'uhd60-audio-edid.hex').read_text())
