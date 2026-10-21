@@ -39,7 +39,9 @@ JetKVM 的“空闲时隐藏显示器”是用户主动选择的例外，默认�
 生成，参数在 `/etc/default/vim4-kvm-hdr`，管理器可实时调节。改 HDR 映射或曲线时读 [HDR 输入映射](../hdr.md)。
 以上为 5.15 路径；7.x 已接通 [HDR10 4K60 采集与映射](../bringup/2026-10-20-edge-hdr-capture.md)，
 限 PQ / BT.2020 / 420 10bit。专用 `hdr_curve` 原子提交两张表，帧边界重载；
-SDR 420 和 RGB 分别直通、矩阵转换。部分 H.265 HDR 切换会自动重连，HLG/其他格式未验收。
+SDR 420 和 RGB 分别直通、矩阵转换。[高光与连接优化](../bringup/2026-10-20-edge-hdr-optimization.md)
+给 8bit 高光留出层次，并避免重复输入通知重建健康连接；HDR 桌面白略暗。
+H.265 八轮、H.264 四轮 HDR 往返保持同一连接；HLG/其他格式及长期稳定性未验收。
 
 HDMI 启动脚本默认使用完整帧低延迟模式（VDIN mask 0x3）；
 HDMI_LOW_LATENCY=0 恢复厂商自动策略。模式含义、对照结果及帧一致性检查见 [测量文档](../latency.md#board-side-isolation-and-completed-frame-mode)。

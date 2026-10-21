@@ -25,6 +25,7 @@
 - [7.x 1080p60/4K60 自动切换与缓冲回收](2026-10-20-edge-dynamic-modes.md) — kernel video audio application deployment board
 - [7.x HDR10 链路与元数据观测](2026-10-20-edge-hdr-observation.md) — kernel video deployment board
 - [7.x HDR10 采集与 HDR→SDR](2026-10-20-edge-hdr-capture.md) — kernel video audio application deployment board
+- [7.x HDR 高光与连接优化](2026-10-20-edge-hdr-optimization.md) — video audio application deployment board
 
 ## 2026-10-19
 
