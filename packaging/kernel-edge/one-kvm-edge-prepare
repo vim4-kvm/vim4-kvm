@@ -6,6 +6,22 @@ case "$(uname -r)" in
     *) echo 'This video experiment requires its matched 7.3 kernel' >&2; exit 1 ;;
 esac
 
+# The vendor preload unit stays active after exit. Type=simple does not make
+# After= wait for its work to finish, so check completion before JPEG can open.
+attempt=0
+while [ "$(systemctl show -p SubState --value video-firmware-preload-khadas.service)" != exited ]; do
+    attempt=$((attempt + 1))
+    if [ "$attempt" -ge 100 ]; then
+        echo 'The secure video firmware preloader did not finish' >&2
+        exit 1
+    fi
+    sleep 0.1
+done
+if [ "$(systemctl show -p ExecMainStatus --value video-firmware-preload-khadas.service)" != 0 ]; then
+    echo 'The secure video firmware preloader failed' >&2
+    exit 1
+fi
+
 # These files are provisioned separately; the licensed codec firmware is not shipped here.
 if ! printf '%s\n' \
     '873103d7520d5cad737cfe4458a2891c065d566ff556a47ab735e60f27acf031  /lib/firmware/amlogic/t7-wave521c-enc.bin' \
@@ -18,6 +34,7 @@ fi
 modprobe t7_hdmirx edid_firmware=vim4-hdmirx-ddc-test/uhd60-hdr10-audio-edid.bin phy_test=1 core_test=1 uhd60=1 dynamic_modes=1 audio_test=1 hdr_probe=1 hdr_capture=1
 modprobe t7_vdin_test nv12=1 direct_dma=1
 modprobe wave5
+modprobe t7_jpeg
 for parameter in phy_test core_test uhd60 dynamic_modes audio_test hdr_probe hdr_capture; do
     if [ "$(cat "/sys/module/t7_hdmirx/parameters/$parameter")" != Y ]; then
         echo 'HDMI receiver is already loaded with different experimental settings' >&2

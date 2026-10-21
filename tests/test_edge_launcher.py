@@ -18,6 +18,7 @@ class EdgeLauncherTest(unittest.TestCase):
             'sha256sum': 'cat >/dev/null; exit 1',
             'modprobe': 'printf "modprobe\\n" >> "$EDGE_TEST_TRACE"',
             'udevadm': 'printf "udevadm\\n" >> "$EDGE_TEST_TRACE"',
+            'systemctl': 'case "$3" in SubState) echo exited ;; ExecMainStatus) echo 0 ;; esac',
         }.items():
             path = self.bin / name
             path.write_text('#!/bin/sh\n' + body + '\n')
@@ -39,6 +40,24 @@ class EdgeLauncherTest(unittest.TestCase):
     def test_invalid_firmware_prevents_module_loading(self):
         result = self.run_script('one-kvm-edge-prepare', '7.3.0-rc7-vim4kvm-uhd1+')
         self.assertNotEqual(result.returncode, 0)
+        self.assertFalse(self.trace.exists())
+
+    def test_failed_secure_preloader_prevents_module_loading(self):
+        (self.bin / 'systemctl').write_text(
+            '#!/bin/sh\ncase "$3" in SubState) echo exited ;; ExecMainStatus) echo 1 ;; esac\n')
+        result = self.run_script('one-kvm-edge-prepare', '7.3.0-rc7-vim4kvm-uhd1+')
+        self.assertNotEqual(result.returncode, 0)
+        self.assertIn('preloader failed', result.stderr)
+        self.assertFalse(self.trace.exists())
+
+    def test_unfinished_secure_preloader_has_bounded_wait_and_no_hardware_access(self):
+        (self.bin / 'systemctl').write_text('#!/bin/sh\necho running\n')
+        sleep = self.bin / 'sleep'
+        sleep.write_text('#!/bin/sh\nexit 0\n')
+        sleep.chmod(0o755)
+        result = self.run_script('one-kvm-edge-prepare', '7.3.0-rc7-vim4kvm-uhd1+')
+        self.assertNotEqual(result.returncode, 0)
+        self.assertIn('preloader did not finish', result.stderr)
         self.assertFalse(self.trace.exists())
 
     def test_unmatched_kernel_cannot_launch_either_application(self):

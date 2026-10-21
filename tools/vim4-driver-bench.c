@@ -18,7 +18,7 @@
 #include <unistd.h>
 
 typedef struct {
-    guint64 total, idle, vpu_irqs, capture_irqs;
+    guint64 total, idle, vpu_irqs, capture_irqs, jpeg_irqs;
     gint64 at_us, process_us, cma_kib, available_kib;
 } Accounting;
 
@@ -93,6 +93,7 @@ static Accounting accounting(void)
     if (g_file_get_contents("/proc/interrupts", &text, NULL, NULL)) {
         result.vpu_irqs = interrupt_count(text, "vpu_irq");
         result.capture_irqs = interrupt_count(text, "video-capture");
+        result.jpeg_irqs = interrupt_count(text, "t7-jpeg");
         g_free(text);
     }
     struct rusage usage;
@@ -342,11 +343,12 @@ int main(int argc, char **argv)
 {
     gchar *backend = NULL, *codec = NULL, *output = NULL, *device = NULL, *save_bitstream = NULL;
     gint frames = 1800, warmup = 120, bitrate = 20000000, gop = 60, width = 3840, height = 2160;
-    gint timeout = 90;
+    gint timeout = 90, quality = 80;
     gboolean exclusive = FALSE;
     GOptionEntry options[] = {
         {"backend", 0, 0, G_OPTION_ARG_STRING, &backend, "edge or stock", "BACKEND"},
-        {"codec", 0, 0, G_OPTION_ARG_STRING, &codec, "capture, h264 or h265", "CODEC"},
+        {"codec", 0, 0, G_OPTION_ARG_STRING, &codec, "capture, h264, h265 or jpeg", "CODEC"},
+        {"quality", 0, 0, G_OPTION_ARG_INT, &quality, "Hardware JPEG quality", "1..100"},
         {"output", 0, 0, G_OPTION_ARG_FILENAME, &output, "New JSON report", "PATH"},
         {"save-bitstream", 0, 0, G_OPTION_ARG_FILENAME, &save_bitstream, "Separate correctness run; invalidates CPU comparison", "NEW_PATH"},
         {"device", 0, 0, G_OPTION_ARG_FILENAME, &device, "Edge capture device", "PATH"},
@@ -368,12 +370,13 @@ int main(int argc, char **argv)
     }
     if (!exclusive || !backend || !codec || !output ||
         (strcmp(backend, "edge") && strcmp(backend, "stock")) ||
-        (strcmp(codec, "capture") && strcmp(codec, "h264") && strcmp(codec, "h265")) ||
+        (strcmp(codec, "capture") && strcmp(codec, "h264") && strcmp(codec, "h265") && strcmp(codec, "jpeg")) ||
+        quality < 1 || quality > 100 ||
         frames < 2 || frames > 100000 || warmup < 1 || warmup > 10000 ||
         bitrate < 1000000 || bitrate > 60000000 || gop < 1 || gop > 1000 ||
         timeout < 1 || (save_bitstream && codec && !strcmp(codec, "capture")) ||
         !((width == 3840 && height == 2160) || (width == 1920 && height == 1080))) {
-        g_printerr("Require --exclusive --backend=edge|stock --codec=capture|h264|h265 --output=NEW.json and valid limits\n");
+        g_printerr("Require --exclusive --backend=edge|stock --codec=capture|h264|h265|jpeg --output=NEW.json and valid limits\n");
         return 1;
     }
     /* A read-only flock also permits stock's unprivileged application user.
@@ -391,6 +394,7 @@ int main(int argc, char **argv)
     if (report_fd < 0) { g_printerr("Cannot create new report: %s\n", g_strerror(errno)); return 1; }
     gboolean edge = !strcmp(backend, "edge");
     gboolean capture_only = !strcmp(codec, "capture");
+    gboolean jpeg = !strcmp(codec, "jpeg");
     if (save_bitstream) {
         int fd = open(save_bitstream, O_WRONLY | O_CREAT | O_EXCL, 0644);
         if (fd < 0) { g_printerr("Cannot reserve new bitstream: %s\n", g_strerror(errno)); return 1; }
@@ -417,6 +421,7 @@ int main(int argc, char **argv)
                                       edge ? "NV12" : "NV21", width, height);
     gchar *encoding = NULL;
     if (capture_only) encoding = g_strdup("");
+    else if (jpeg) encoding = g_strdup_printf("vim4jpegenc name=encoder quality=%d ! ", quality);
     else if (edge) encoding = g_strdup_printf(
         "appsink name=bridge emit-signals=true sync=false async=false max-buffers=1 "
         "appsrc name=encoder_source is-live=true format=time block=true max-buffers=2 "
@@ -451,7 +456,7 @@ int main(int argc, char **argv)
     add_probe(capture, "src", raw_probe, &bench);
     if (!capture_only) {
         GstElement *encoder = gst_bin_get_by_name(GST_BIN(bench.pipeline), "encoder");
-        if (edge) {
+        if (edge && !jpeg) {
             gchar *encoder_device = NULL;
             g_object_get(encoder, "device", &encoder_device, NULL);
             if (!encoder_device || !video_device_is(encoder_device, "C&M Wave5 VPU encoder")) {
@@ -491,10 +496,15 @@ int main(int argc, char **argv)
     append_file(json, "wave_a_hz", "/sys/kernel/debug/clk/wave_a/clk_rate");
     append_file(json, "wave_b_hz", "/sys/kernel/debug/clk/wave_b/clk_rate");
     append_file(json, "wave_c_hz", "/sys/kernel/debug/clk/wave_c/clk_rate");
+    if (jpeg) {
+        append_file(json, "hcodec_hz", "/sys/kernel/debug/clk/hcodec/clk_rate");
+        g_string_append_printf(json, ",\n  \"jpeg_quality\": %d", quality);
+    }
     append_file(json, "thermal0_millicelsius", "/sys/class/thermal/thermal_zone0/temp");
     append_file(json, "taint_before", "/proc/sys/kernel/tainted");
     g_string_append_printf(json, ",\n  \"width\": %d,\n  \"height\": %d,\n  \"requested_bitrate_bps\": %d,"
-                           "\n  \"gop\": %d,\n  \"intra_refresh_rows\": 0", width, height, bitrate, gop);
+                           "\n  \"gop\": %d,\n  \"intra_refresh_rows\": 0", width, height,
+                           jpeg ? 0 : bitrate, jpeg ? 0 : gop);
     bench.before = accounting();
     gboolean success = gst_element_set_state(bench.pipeline, GST_STATE_PLAYING) != GST_STATE_CHANGE_FAILURE;
     GstBus *bus = gst_element_get_bus(bench.pipeline);
@@ -547,6 +557,8 @@ int main(int argc, char **argv)
     append_distribution(json, "encoder_sink_to_src_ms", bench.encoder_ms);
     append_distribution(json, "source_to_encoded_ms", bench.total_ms);
     append_distribution(json, "capture_pts_gap_ms", bench.gaps_ms);
+    if (jpeg) g_string_append_printf(json, ",\n  \"jpeg_irqs\": %" G_GUINT64_FORMAT,
+                                   bench.end.jpeg_irqs - bench.start.jpeg_irqs);
     g_string_append(json, "\n}\n");
     FILE *report = fdopen(report_fd, "w");
     if (!report) return 1;

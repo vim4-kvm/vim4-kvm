@@ -1,7 +1,7 @@
 # VIM4 驱动基准
 
 摘要：`tools/vim4-driver-bench.c` 用原生 C/GStreamer 分别测纯采集、采集加 H.264、
-采集加 H.265。默认不读取像素、不解析压缩码流、不写录像、不经过网络或应用。
+采集加 H.265、采集加硬件 JPEG。默认不读取像素、不解析压缩码流、不写录像、不经过网络或应用。
 同一入口支持 7.x 的 V4L2/Wave5 与 5.15 的 vfmcapsrc/amlvenc；运行当前内核的
 对应 backend，不会切内核、加载模块或停启服务。需要调用者事先取得板子独占。
 
@@ -47,7 +47,8 @@ done
 
 新报告使用独占创建，不覆盖既有文件。`--device` 默认 /dev/video0；edge 会核对
 采集及编码设备名。默认 4K60，也可同时指定 `--width=1920 --height=1080`，
-但接收驱动与真实 HDMI 模式必须事先匹配，工具不负责切换输入。
+工具不负责切换 HDMI 输入。已支持 VDIN 缩放的驱动允许 4K 输入下请求 1080p 输出；
+其他版本仍要求真实输入模式匹配。
 并发工具实例使用只读 flock 协调；`--exclusive` 仍要求调用者确认没有其他应用占用。
 
 7.x 用 NV12、父缓冲 lease 和两个 DMA 平面视图导入 Wave5，不复制原始帧。
@@ -86,12 +87,26 @@ caps 的 level 请求均为 5.1，这是当前驱动公开的上限；caps 不�
   需另核对 DMA-buf、稍后 CMA 与连续循环，不能凭一次差值认定泄漏。
 - IRQ 只累计含 `vpu_irq` / `video-capture` 标签的计数；stock 未暴露相同标签时
   0 表示没有匹配项，不代表硬件无中断。报告记录内核 build、GStreamer、caps、
-  governor、CPU 频率、Wave 时钟、温度、taint 和直接 DMA 参数。
+  governor、CPU 频率、Wave 时钟、温度、taint 和直接 DMA 参数。JPEG 另记 `t7-jpeg`
+  IRQ、HCODEC 时钟和质量，不使用 GOP 或目标码率。
 - 温度和 CPU 不能代替功耗瓦数；当前没有电功率采样。也不以此证明 runtime PM 已验收。
 
 重复至少三轮，保留源码/二进制/插件/固件 SHA、原始 JSON、运动源日志及恢复状态。
 改变任何配置后独立重测；历史 Python 桥接＋parser＋文件输出结果不是该入口的
 同条件基线。尚未用此入口实测的内核，不得写成已经完成性能对齐。
+
+## 硬件 JPEG
+
+保持上述独占和服务恢复约束，将参数改为 `--codec=jpeg --quality=80`。
+edge 使用 NV12 DMA-buf 直入 `vim4jpegenc` / `/dev/jpegenc`，不经过 Wave5 平面桥接；
+stock 使用现有 NV21 路径。插件和固件须已安装，不自动降级为软件编码。
+连续输出为独立 JPEG；`--save-bitstream` 仅用于另外的图像正确性检查。
+
+[缩放与 MJPEG 验收](bringup/2026-10-21-edge-scaling-jpeg.md) 的 4K60 运动输入、
+质量 80、HCODEC 666.7MHz 单轮原生结果为 46.84fps，编码 sink→src 中位 20.14ms，
+进程 CPU 7.70%（单核 100%）。该耗时包含驱动、插件和压缩输出复制，不是纯硬件耗时。
+1080p/720p 的独立连续帧验收达到 60fps；本轮没有证明 4K MJPEG60，也没有完成多轮
+同条件 5.15 性能对齐。浏览器 MJPEG 按 30fps 请求的验收不能作为其 60fps 证明。
 
 ## 独立验证图像
 
