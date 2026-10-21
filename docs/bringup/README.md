@@ -7,6 +7,7 @@
 
 ## 2026-10-21
 
+- [7.x 音画测量校准与漂移复核](2026-10-21-edge-av-calibration.md) — video audio application board
 - [7.x HDR 切换与稳定性](2026-10-21-edge-hdr-stability.md) — video audio application deployment board
 
 ## 2026-10-20

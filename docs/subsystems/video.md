@@ -45,6 +45,8 @@ H.265 八轮、H.264 四轮 HDR 往返保持同一连接；HLG/其他格式及�
 后续 [切换与稳定性验收](../bringup/2026-10-21-edge-hdr-stability.md) 补齐启动状态查询、
 后台切换和界面遮罩的事件顺序回归；显示休眠与真实 HDMI 拔插能自动恢复。
 整机休眠由用户暂缓，不能与显示休眠混为已通过。
+音画偏差复核使用 [播放输出回环校准](../bringup/2026-10-21-edge-av-calibration.md)，
+先测已知偏移与观察器偏置；旧独立音轨探针的首尾差不能直接判作内核漂移。
 
 HDMI 启动脚本默认使用完整帧低延迟模式（VDIN mask 0x3）；
 HDMI_LOW_LATENCY=0 恢复厂商自动策略。模式含义、对照结果及帧一致性检查见 [测量文档](../latency.md#board-side-isolation-and-completed-frame-mode)。
