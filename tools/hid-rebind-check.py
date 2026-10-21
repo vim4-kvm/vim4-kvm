@@ -15,8 +15,9 @@ import time
 def run(cycles):
     if os.geteuid() != 0:
         raise ValueError('Run as root on the patched board')
-    if subprocess.run(['systemctl', 'is-active', '--quiet', 'nanokvm']).returncode == 0:
-        raise ValueError('Stop NanoKVM and release the board before testing')
+    for service in ('nanokvm', 'jetkvm', 'one-kvm', 'one-kvm-edge', 'vim4-pikvm'):
+        if subprocess.run(['systemctl', 'is-active', '--quiet', service]).returncode == 0:
+            raise ValueError(f'Stop {service} and release the board before testing')
     udc = Path('/sys/kernel/config/usb_gadget/kvm/UDC')
     controller = udc.read_text().strip()
     if not controller:

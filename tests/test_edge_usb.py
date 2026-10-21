@@ -19,6 +19,9 @@ class EdgeUsbTest(unittest.TestCase):
         self.root = root / 'gadgets'
         self.root.mkdir()
         self.marker = root / 'prepared'
+        address = root / 'ethernet-address'
+        address.write_text('c8:63:14:74:70:0d\n')
+        self.enterContext(patch.object(usb, 'ETHERNET_ADDRESS', address))
         self.enterContext(patch.object(usb, 'ROOT', self.root))
         self.enterContext(patch.object(usb, 'MARKER', self.marker))
         self.enterContext(patch.object(usb.os, 'geteuid', return_value=0))
@@ -34,6 +37,7 @@ class EdgeUsbTest(unittest.TestCase):
         (lun / 'file').write_text('\n')
         (gadget / 'UDC').write_text('fdd00000.usb\n')
         self.marker.write_text(usb.SERIAL)
+        usb.prepare_optional_functions(gadget)
         return gadget
 
     def test_repeated_prepare_does_not_rebind_or_modify_open_hid_instances(self):
@@ -56,14 +60,30 @@ class EdgeUsbTest(unittest.TestCase):
                 gadget.rmdir()
         self.run.assert_not_called()
 
-    def test_mounted_media_prevents_bootstrap_without_unbinding(self):
+    def test_mounted_media_survives_repeated_prepare_without_unbinding(self):
         gadget = self.existing()
         backing = gadget / 'functions/mass_storage.disk0/lun.0/file'
         backing.write_text('/user/disk.img\n')
-        with self.assertRaisesRegex(ValueError, 'empty media'):
-            usb.prepare()
+        usb.prepare()
         self.assertEqual(backing.read_text(), '/user/disk.img\n')
         self.assertEqual((gadget / 'UDC').read_text(), 'fdd00000.usb\n')
+        self.run.assert_not_called()
+
+    def test_hid_only_upgrade_adds_unlinked_functions_without_reenumeration(self):
+        gadget = self.existing()
+        for name in ('ncm.usb0', 'uac2.usb0'):
+            function = gadget / 'functions' / name
+            for child in function.iterdir():
+                child.unlink()
+            function.rmdir()
+        usb.prepare()
+        self.assertEqual((gadget / 'UDC').read_text(), 'fdd00000.usb\n')
+        self.assertFalse((gadget / 'configs/c.1').exists())
+        network = gadget / 'functions/ncm.usb0'
+        self.assertEqual((network / 'host_addr').read_text(), '02:63:14:74:70:0d')
+        self.assertEqual((network / 'dev_addr').read_text(), '06:63:14:74:70:0d')
+        self.assertEqual((gadget / 'functions/uac2.usb0/p_srate').read_text(), '48000')
+        self.assertEqual((gadget / 'functions/uac2.usb0/c_chmask').read_text(), '0')
         self.run.assert_not_called()
 
     def test_production_kernel_cannot_touch_gadgets(self):

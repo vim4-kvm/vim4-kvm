@@ -19,6 +19,7 @@ RuntimeDirectory=one-kvm-edge
 WorkingDirectory=/var/lib/one-kvm-edge
 ExecStartPre=+/opt/vim4-onekvm-edge/one-kvm-edge-prepare
 ExecStart=/opt/vim4-onekvm-edge/one-kvm-edge
+ExecStopPost=+/usr/libexec/vim4-onekvm-edge usb-restore
 Restart=on-failure
 RestartSec=3
 TimeoutStopSec=20

@@ -2,8 +2,8 @@
 [kernel]
 url = "https://github.com/vim4-kvm/linux.git"
 branch = "vim4-kvm-7.3"
-revision = "a8cab9050101d224466886591cc221ab951d2906"
-tree = "1d46bfdf4eaef04d6618322972ab05560d387164"
+revision = "694ea2b5ce0ddf9a816c929a75863e42118b4b36"
+tree = "521bca416fef5cf9c0d0bb404f68e5ad71fa9c0c"
 upstream_url = "https://github.com/gregkh/linux.git"
 upstream_tag = "v7.3-rc7"
 upstream_revision = "24a19b953e2a3d0ea5a8c4951a0ab8f32720c907"
@@ -12,19 +12,19 @@ upstream_revision = "24a19b953e2a3d0ea5a8c4951a0ab8f32720c907"
 [onekvm]
 url = "https://github.com/vim4-kvm/One-KVM.git"
 branch = "vim4"
-revision = "c1e7b88d91cf5ff90560cc8a2f832a652da0827b"
+revision = "a8136d9c53c16e05b152199dd6026c567206fabf"
 features = ["vim4"]
-tested_binary_sha256 = "9520b8005a94a553fd544fc36fa0415e0eb71e1fd0c9c40c2bad34f017cf89c7"
+tested_binary_sha256 = "0b537561096ee5dfb5f15839738c8ac4ea87ba0dbb3a5127a25c241de3f99c56"
 
 # Complete matched build includes the former Wave5 and VDIN overlays.
 # build.sh uses the general edge.config; this tested profile changes LOCALVERSION.
 [tested_build]
 release = "7.3.0-rc7-vim4kvm-uhd1+"
 localversion = "-vim4kvm-uhd1"
-build_id = "35304001d6fe5954bb550b8eb7ed2b3b839f0dfb"
-image_sha256 = "4f997c98c9a33c74cb50272be8a0e9156ddc493282ef1d90cf9be124f2e9e192"
+build_id = "a01ed3a5c479be77cfa39caa3decf4f061155db2"
+image_sha256 = "0271ea217e6d676a94ea9e3a5f6c29ca71ad0c329d05119b1b8acccd5b7ec1c5"
 config_sha256 = "610ff17daf5bb40085ca657f40a7436c1ff257c57aabb65367fb2aa3a4709ae9"
-modules_sha256 = "71722326d05ea306580254a6adfcd908947eef44daeeba7a5e913a1204a244ea"
+modules_sha256 = "303b7eb904e362ff34577fcd5d84bc1530beec449e46af101d165ff50a71b045"
 module_count = 2334
 module_btf = true
 board_dtb_sha256 = "471fc2881ed6c83726ac1db85277aaeadbb63eb6b608d821f2e0bc177d96a567"
@@ -49,7 +49,7 @@ firmware_path = "/lib/firmware/video/video_ucode.bin"
 firmware_sha256 = "59e242bd63d6372d6462d2a2d6815e7bdea1a2cd12cd29fac093f38e73294e4b"
 hcodec_clock_hz = 666666656
 hcodec_clock_parent = "hcodec_0"
-tested_module_sha256 = "fb5f2487ca14af509bd9dc2e7bbb7e9fd68a12c08afb9fb61f6a5d993b1f91ae"
+tested_module_sha256 = "22537cb61b113c449d65e31ba1c1df4d57b9743099a86497c5ee9bbd699c0ea0"
 
 # The private edge plugin is separate from the system and 5.15 plugins.
 [gstreamer]

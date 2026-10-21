@@ -3,12 +3,15 @@ import { loginManager } from './manager-login.mjs';
 // then HID input again after USB re-enumeration. Run only with exclusive access.
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
-import { execFileSync } from 'node:child_process';
+import { execFileSync, spawn } from 'node:child_process';
 const { chromium } = await import(process.env.PLAYWRIGHT_MODULE || 'playwright');
 assert(process.argv.includes('--exclusive'), 'Coordinate board access and pass --exclusive');
-assert(process.env.ONEKVM_TEST_ISO, 'Set ONEKVM_TEST_ISO to an ISO containing readme.txt with the test marker');
-const browser = await chromium.launch({ channel: 'chrome', headless: true });
+const hidOnly = process.argv.includes('--hid-only');
+assert(hidOnly || process.env.ONEKVM_TEST_ISO, 'Set ONEKVM_TEST_ISO or pass --hid-only');
+const browser = await chromium.launch({ headless: true,
+  ...(process.env.VIM4_TEST_CHROME ? { executablePath: process.env.VIM4_TEST_CHROME } : { channel: 'chrome' }) });
 const page = await browser.newPage();
+const url = process.env.ONEKVM_URL || 'http://192.168.50.210:8080';
 const pointer = () => execFileSync('osascript', ['-l', 'JavaScript', '-e',
   'ObjC.import("AppKit"); const p=$.NSEvent.mouseLocation; const f=$.NSScreen.screens.objectAtIndex(0).frame; [p.x/f.size.width,1-p.y/f.size.height].join(" ")'], { encoding: 'utf8' }).trim().split(' ').map(Number);
 const original = pointer();
@@ -37,41 +40,91 @@ const checkPointer = async () => {
     assert(actual.every((value, i) => Math.abs(value - target[i]) < 0.02), `Pointer ${actual}, expected ${target}`);
   }
 };
+async function checkNativeInput() {
+  const target = spawn('/tmp/vim4-input-target', ['30']);
+  const events = [];
+  let pending = '';
+  const ready = new Promise((resolve, reject) => {
+    target.on('error', reject);
+    target.stdout.on('data', chunk => {
+      pending += chunk;
+      let end;
+      while ((end = pending.indexOf('\n')) >= 0) {
+        const event = JSON.parse(pending.slice(0, end)); pending = pending.slice(end + 1);
+        events.push(event); if (event.kind === 'ready') resolve();
+      }
+    });
+    target.on('exit', () => reject(new Error('Native input target exited before ready')));
+  });
+  const foreground = () => Number(execFileSync('osascript', ['-l', 'JavaScript', '-e',
+    'ObjC.import("AppKit"); $.NSWorkspace.sharedWorkspace.frontmostApplication.processIdentifier'], { encoding: 'utf8' }).trim());
+  const send = data => page.evaluate(data => window.usbSocket.send(new Uint8Array(data)), data);
+  try {
+    await Promise.race([ready, page.waitForTimeout(10000).then(() => { throw new Error('Native input target timeout'); })]);
+    assert.equal(foreground(), target.pid, 'Only the temporary test window may receive input');
+    await send([1, 0, 0x4f, 0]); await page.waitForTimeout(100); await send([1, 1, 0x4f, 0]);
+    await page.waitForTimeout(200);
+    assert.equal(events.filter(e => e.kind === 'keydown' && e.key === 124).length, 1);
+    assert.equal(events.filter(e => e.kind === 'keyup' && e.key === 124).length, 1);
+    await checkPointer();
+    const before = pointer();
+    await send([2, 0, 24, 0, 16, 0, 0]); await page.waitForTimeout(300);
+    const after = pointer();
+    assert(after[0] > before[0] && after[1] > before[1], 'Relative mouse did not move on the host');
+    assert.equal(foreground(), target.pid);
+    await send([2, 2, 0, 0, 0, 0, 0]); await page.waitForTimeout(80);
+    await send([2, 3, 0, 0, 0, 0, 0]); await send([2, 4, 0, 0, 0, 0, 1]);
+    await page.waitForTimeout(200);
+    assert(events.some(e => e.kind === 'mousedown') && events.some(e => e.kind === 'mouseup'));
+    assert(events.some(e => e.kind === 'wheel' && e.dy !== 0));
+    console.log(JSON.stringify({ kind: 'native-hid', keyboardDown: 1, keyboardUp: 1,
+      absoluteMouse: true, relativeBefore: before, relativeAfter: after, click: true, wheel: true }));
+  } finally {
+    await send([1, 1, 0x4f, 0]).catch(() => {});
+    await send([2, 3, 0, 0, 0, 0, 0]).catch(() => {});
+    target.stdin.end();
+  }
+}
 try {
-  await loginManager(page.context(), 'http://192.168.50.210:8080');
-  await page.goto('http://192.168.50.210:8080/api/setup');
+  await loginManager(page.context(), url);
+  await page.goto(url + '/api/setup');
   await page.evaluate(() => new Promise((resolve, reject) => {
     const socket = window.usbSocket = new WebSocket(`ws://${location.host}/api/ws/hid`);
     socket.binaryType = 'arraybuffer';
     socket.onmessage = event => new Uint8Array(event.data)[0] === 0 ? resolve() : reject(new Error('HID unavailable'));
     socket.onerror = reject;
   }));
-  await checkPointer();
-  await page.evaluate(() => window.usbSocket.send(new Uint8Array([1, 0, 0xe1, 2])));
-  await page.waitForTimeout(300);
-  const flags = Number(execFileSync('osascript', ['-l', 'JavaScript', '-e', 'ObjC.import("AppKit"); $.NSEvent.modifierFlags'], { encoding: 'utf8' }).trim());
-  await page.evaluate(() => window.usbSocket.send(new Uint8Array([1, 1, 0xe1, 0])));
-  assert(flags & (1 << 17), 'Host did not receive Shift key');
-  const encoded = readFileSync(process.env.ONEKVM_TEST_ISO).toString('base64');
-  imageId = await page.evaluate(async encoded => {
-    const form = new FormData();
-    form.append('file', new Blob([Uint8Array.from(atob(encoded), c => c.charCodeAt(0))]), `vim4-smoke-${Date.now()}.iso`);
-    const response = await fetch('/api/msd/images', { method: 'POST', body: form });
-    if (!response.ok) throw new Error('Upload HTTP ' + response.status);
-    return (await response.json()).id;
-  }, encoded);
-  await api(`msd/images/${imageId}/mount`, 'POST', { cdrom: true, read_only: true });
-  let marker;
-  for (let i = 0; i < 30; i++) {
-    try { marker = readFileSync('/Volumes/ONEKVM_TEST/readme.txt', 'utf8'); break; } catch {}
-    await page.waitForTimeout(500);
+  if (hidOnly) {
+    await checkNativeInput();
+  } else {
+    await checkPointer();
+    await page.evaluate(() => window.usbSocket.send(new Uint8Array([1, 0, 0xe1, 2])));
+    await page.waitForTimeout(300);
+    const flags = Number(execFileSync('osascript', ['-l', 'JavaScript', '-e', 'ObjC.import("AppKit"); $.NSEvent.modifierFlags'], { encoding: 'utf8' }).trim());
+    await page.evaluate(() => window.usbSocket.send(new Uint8Array([1, 1, 0xe1, 0])));
+    assert(flags & (1 << 17), 'Host did not receive Shift key');
+    const encoded = readFileSync(process.env.ONEKVM_TEST_ISO).toString('base64');
+    imageId = await page.evaluate(async encoded => {
+      const form = new FormData();
+      form.append('file', new Blob([Uint8Array.from(atob(encoded), c => c.charCodeAt(0))]), `vim4-smoke-${Date.now()}.iso`);
+      const response = await fetch('/api/msd/images', { method: 'POST', body: form });
+      if (!response.ok) throw new Error('Upload HTTP ' + response.status);
+      return (await response.json()).id;
+    }, encoded);
+    await api(`msd/images/${imageId}/mount`, 'POST', { cdrom: true, read_only: true });
+    let marker;
+    for (let i = 0; i < 30; i++) {
+      try { marker = readFileSync('/Volumes/ONEKVM_TEST/readme.txt', 'utf8'); break; } catch {}
+      await page.waitForTimeout(500);
+    }
+    assert.equal(marker?.trim(), 'One-KVM VIM4 virtual media validation', 'Host did not read the ISO');
+    await checkPointer();
+    execFileSync('diskutil', ['eject', '/Volumes/ONEKVM_TEST'], { timeout: 20000 });
+    await api(`msd/images/${imageId}/mount`, 'DELETE');
+    await page.waitForTimeout(1500);
+    await checkPointer();
+    console.log('PASS: host keyboard, pointer, ISO contents, eject and pointer after re-enumeration');
   }
-  assert.equal(marker?.trim(), 'One-KVM VIM4 virtual media validation', 'Host did not read the ISO');
-  await checkPointer();
-  await api(`msd/images/${imageId}/mount`, 'DELETE');
-  await page.waitForTimeout(1500);
-  await checkPointer();
-  console.log('PASS: host keyboard, pointer, ISO contents, eject and pointer after re-enumeration');
 } finally {
   if (imageId) {
     await api(`msd/images/${imageId}/mount`, 'DELETE').catch(() => {});

@@ -82,8 +82,10 @@ PiKVM smoke 可用 `PIKVM_CDP` 接入专用测试 Chrome；结束时关闭测试
 | tools/one-kvm-scaling-check.mjs | One-KVM edge | 独占，改输出尺寸/帧率/质量后恢复；可暂停并恢复空闲 UU | H.264/H.265/MJPEG 往返、完整画面动态标记、输入时序和 DMA 回收；须另启动运动 HDMI 源；--require-hdr 核对 RX，--mjpeg-max-rate 请求 60fps，--mjpeg-only 只测 JPEG，--mjpeg-frames=600 延长每档采样 | 脚本头注释 |
 | tools/one-kvm-features-check.mjs | One-KVM | 独占 | 终端、扩展、看门狗；需本地 FRP 17700 | [板级工具](board-tools.md) |
 | tools/one-kvm-drive-check.mjs | One-KVM | 独占，可能创建虚拟盘 | Ventoy 虚拟盘与文件往返 | [Ubuntu 构建](ubuntu-build.md) |
-| tools/one-kvm-usb-check.mjs | One-KVM | 独占，重新枚举 USB | Mac 主机键鼠、ISO 挂载 | [板级工具](board-tools.md) |
-| tools/one-kvm-usb-profile-check.mjs | One-KVM | 独占，改 USB 组合后恢复 | HID/UAC/网卡组合与超限回滚 | [板级工具](board-tools.md) |
+| tools/one-kvm-usb-check.mjs | One-KVM | 独占，重新枚举 USB；--hid-only 短暂覆盖桌面并恢复指针 | Mac 主机键鼠、ISO 挂载；--hid-only 使用 input-target 验证实际方向键、两种鼠标、点击和滚轮 | [板级工具](board-tools.md) |
+| tools/one-kvm-usb-profile-check.mjs | One-KVM | 独占，改 USB 组合后恢复；录音只选择 USB 输入 | HID/UAC/网卡组合与超限回滚、拒绝内核告警；--audio 原生录音，--browser-audio 指定 USB 设备波形；--output-prefix 保存独立记录 | [板级工具](board-tools.md) |
+| tools/one-kvm-usb-media-check.mjs | Mac / One-KVM | 独占，上传专用 EDGEUSB21 FAT 镜像；主机弹出后删除本次文件并恢复配置 | 只读/可写 USB 盘、1MiB 写回哈希、fsck、五端点组合、挂载期间拒绝配置变化及应用重启保留介质 | 脚本头注释 |
+| tools/one-kvm-usb-network-host.py | Mac → 板 | 独占，只读当前 USB 网卡配置；临时监听器绑定 USB IP，退出终止，不修改主机网络 | 手动启用一种 USB 网卡后，核对 DHCP ACK 并经指定接口双向传输 1MiB、比较哈希；以 SSH 控制板端 | 脚本头注释 |
 | tools/one-kvm-usb-board-check.py | 板（root） | 独占，应用停止 | 板端 USB 助手枚举与恢复 | [板级工具](board-tools.md) |
 | tools/one-kvm-uu-ui-check.mjs | 一次性容器实例 | 无（禁止对板子账户运行） | UU 远程绑定界面 | [上板记录](bringup/2026-10-15-uu-output-controls-identity.md) |
 | tools/pikvm-smoke.mjs | PiKVM | 独占 | 解码、及时截图、MJPEG 重连与可选 Mac USB 输入 | [Ubuntu 构建](ubuntu-build.md#pikvm-组件) |

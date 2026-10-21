@@ -18,8 +18,9 @@ def main():
     gadget = Path('/sys/kernel/config/usb_gadget/kvm')
     if (gadget / 'functions/mass_storage.disk0/lun.0/file').read_text().strip():
         raise RuntimeError('Safely eject and detach virtual media first')
-    if subprocess.run(['systemctl', 'is-active', '--quiet', 'one-kvm']).returncode == 0:
-        raise RuntimeError('Stop One-KVM before changing USB functions')
+    for service in ('one-kvm', 'one-kvm-edge'):
+        if subprocess.run(['systemctl', 'is-active', '--quiet', service]).returncode == 0:
+            raise RuntimeError(f'Stop {service} before changing USB functions')
     keys = ('idVendor', 'idProduct', 'strings/0x409/manufacturer',
             'strings/0x409/product', 'strings/0x409/serialnumber')
     descriptor = {key: (gadget / key).read_text().strip() for key in keys}
