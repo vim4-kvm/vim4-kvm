@@ -24,6 +24,7 @@ H.264/H.265 硬编码已取得实验结果，见
 现有 5.15 的工作树、workspace.toml 发布版本和安装流程不变。
 受支持的 RGB8 1080p60/4K60 自动重配与应用缓冲回收见
 [动态模式记录](bringup/2026-10-20-edge-dynamic-modes.md)。HDR、其他时序及输入格式仍需适配。
+新模块另含默认关闭的 [HDR 链路观测](bringup/2026-10-20-edge-hdr-observation.md)；不能据此宣称 HDR 视频已可用。
 
 ## 源码与配置
 

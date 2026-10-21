@@ -23,6 +23,7 @@
 - [7.x HDMI 真实输入时序](2026-10-20-edge-input-timings.md) — kernel video audio application deployment board
 - [7.x 失锁期间的状态查询与队列锁](2026-10-20-edge-queue-lock.md) — kernel video audio deployment board
 - [7.x 1080p60/4K60 自动切换与缓冲回收](2026-10-20-edge-dynamic-modes.md) — kernel video audio application deployment board
+- [7.x HDR10 链路与元数据观测](2026-10-20-edge-hdr-observation.md) — kernel video deployment board
 
 ## 2026-10-19
 

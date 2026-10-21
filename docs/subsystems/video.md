@@ -37,6 +37,7 @@ JetKVM 的“空闲时隐藏显示器”是用户主动选择的例外，默认�
 
 内核在 vdin0 用 HDR2 核把 HDR10/HLG 输入映射到 SDR，SDR 直通；曲线由 `vim4-hdr-curve`
 生成，参数在 `/etc/default/vim4-kvm-hdr`，管理器可实时调节。改 HDR 映射或曲线时读 [HDR 输入映射](../hdr.md)。
+以上为 5.15 路径；7.x 目前只完成 [HDR10 链路与元数据观测](../bringup/2026-10-20-edge-hdr-observation.md)，尚未完成 HDR 采集和映射。
 
 HDMI 启动脚本默认使用完整帧低延迟模式（VDIN mask 0x3）；
 HDMI_LOW_LATENCY=0 恢复厂商自动策略。模式含义、对照结果及帧一致性检查见 [测量文档](../latency.md#board-side-isolation-and-completed-frame-mode)。
