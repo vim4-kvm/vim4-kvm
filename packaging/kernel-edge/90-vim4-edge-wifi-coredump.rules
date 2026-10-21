@@ -1,0 +1,2 @@
+# The helper filters the kernel and failing driver before reading any data.
+ACTION=="add", SUBSYSTEM=="devcoredump", RUN+="/usr/libexec/vim4-edge-save-wifi-coredump %k"

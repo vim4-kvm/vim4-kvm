@@ -11,6 +11,9 @@ StartLimitBurst=3
 User=khadas
 Group=khadas
 SupplementaryGroups=video render input
+# Keep capture, encoding and delivery on T7's higher-capacity cores.
+# CPUs 0-3 have capacity 1024; CPUs 4-7 have capacity 577.
+CPUAffinity=0-3
 StateDirectory=one-kvm-edge
 RuntimeDirectory=one-kvm-edge
 WorkingDirectory=/var/lib/one-kvm-edge

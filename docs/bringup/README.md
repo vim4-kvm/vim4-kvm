@@ -7,6 +7,7 @@
 
 ## 2026-10-21
 
+- [Wi-Fi 固件排查与 MJPEG 帧率分段](2026-10-21-edge-wifi-fps.md) — kernel video application deployment board
 - [7.x VDIN 缩放与硬件 MJPEG](2026-10-21-edge-scaling-jpeg.md) — kernel video application deployment board
 - [7.x 音画测量校准与漂移复核](2026-10-21-edge-av-calibration.md) — video audio application board
 - [7.x HDR 切换与稳定性](2026-10-21-edge-hdr-stability.md) — video audio application deployment board

@@ -30,7 +30,7 @@ PiKVM smoke 可用 `PIKVM_CDP` 接入专用测试 Chrome；结束时关闭测试
 | tools/ubuntu-image.py | Mac → OrbStack | 无 | 内核包、候选镜像 assemble/verify/export | [候选镜像](ubuntu-image.md) |
 | packaging/ubuntu/ | 容器 | 无 | Dockerfile、锁文件、fetch.py、build.sh、package.py、verify.sh；manager-config.py 迁移网关配置；check-audio-startup.py、check-onekvm-update.py 与 pikvm/check-janus.py 为打包门禁 | [Ubuntu 构建](ubuntu-build.md) |
 | packaging/kernel/ | VM | 无 | package.sh 构建内核包，vim4.config 为配置 | [内核](kernel.md) |
-| packaging/kernel-edge/ | Linux ARM64 VM / 板 | 构建无；Wi-Fi 工具改固件目录 | build.sh 构建实验内核；prepare-wave521c-firmware.py 转换单独取得的匹配固件；prepare-wifi-firmware.py 校验已安装 SDIO 固件并建立主线名称链接，不加载驱动或连接网络 | [新内核基线](kernel-edge.md)、[Wi-Fi](bringup/2026-10-20-edge-wifi.md) |
+| packaging/kernel-edge/ | Linux ARM64 VM / 板 | 构建无；准备工具改固件目录；Wi-Fi 转储保存后释放其内核副本 | build.sh 构建实验内核；prepare-wave521c-firmware.py 转换匹配固件；prepare-wifi-firmware.py 建立主线名称链接；save-wifi-coredump.py 由配套 udev 规则保存至私有目录，最多两份、每份 16MiB | [新内核基线](kernel-edge.md)、[Wi-Fi 排查](bringup/2026-10-21-edge-wifi-fps.md) |
 | packaging/kernel-edge/one-kvm-edge、one-kvm-edge-prepare、one-kvm-edge.service | 板 | 独占 | 按匹配内核选择独立视频程序；准备器校验固件后加载固定 UHD60 驱动，实验服务另需启动参数显式启用 | [新内核基线](kernel-edge.md) |
 | packaging/image/ | VM（root） | 无 | assemble.sh 组装镜像文件，configure.sh 仅由其调用，verify.sh 只读检查 | [候选镜像](ubuntu-image.md) |
 | tests/ | Mac | 无 | 离线单元测试：`python3 -m unittest discover -s tests -p 'test_*.py'` | 本页 |
@@ -78,7 +78,8 @@ PiKVM smoke 可用 `PIKVM_CDP` 接入专用测试 Chrome；结束时关闭测试
 | tools/one-kvm-recording-check.mjs | One-KVM | 独占 | H.264/H.265 带声音录屏、关网页续录、下载、断流与重启；仅清理本次录像 | [板级工具](board-tools.md) |
 | tools/one-kvm-settings-check.mjs | One-KVM | 独占，改 EDID/HDR 后恢复 | 视频设置往返 | [One-KVM](../One-KVM/VIM4.md) |
 | tools/edge-jpeg-check.py | 板（root），7.x | 独占，应用须停止 | VDIN 硬件缩放、JPEG DMA 连续帧、质量、IRQ 与 CMA 回收；需运动 HDMI 源另验内容 | 脚本头注释 |
-| tools/one-kvm-scaling-check.mjs | One-KVM edge | 独占，改输出尺寸/帧率/质量后恢复；可暂停并恢复空闲 UU | H.264/H.265/MJPEG 往返、完整画面动态标记、输入时序和 DMA 回收；须另启动运动 HDMI 源；--require-hdr 核对 RX 状态 | 脚本头注释 |
+| tools/edge-jpeg-profile.py | 板（root），7.x | 独占 JPEG，应用须停止；不采集或改时钟 | 用一帧 NV12 拆分命令、等待、完成 ioctl 和输出复制；可跳过复制，保存新报告及 JPEG | 脚本头注释 |
+| tools/one-kvm-scaling-check.mjs | One-KVM edge | 独占，改输出尺寸/帧率/质量后恢复；可暂停并恢复空闲 UU | H.264/H.265/MJPEG 往返、完整画面动态标记、输入时序和 DMA 回收；须另启动运动 HDMI 源；--require-hdr 核对 RX，--mjpeg-max-rate 请求 60fps，--mjpeg-only 只测 JPEG，--mjpeg-frames=600 延长每档采样 | 脚本头注释 |
 | tools/one-kvm-features-check.mjs | One-KVM | 独占 | 终端、扩展、看门狗；需本地 FRP 17700 | [板级工具](board-tools.md) |
 | tools/one-kvm-drive-check.mjs | One-KVM | 独占，可能创建虚拟盘 | Ventoy 虚拟盘与文件往返 | [Ubuntu 构建](ubuntu-build.md) |
 | tools/one-kvm-usb-check.mjs | One-KVM | 独占，重新枚举 USB | Mac 主机键鼠、ISO 挂载 | [板级工具](board-tools.md) |

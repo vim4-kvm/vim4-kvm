@@ -2,8 +2,8 @@
 [kernel]
 url = "https://github.com/vim4-kvm/linux.git"
 branch = "vim4-kvm-7.3"
-revision = "50e811ce861f0acfc64d788b7627cd5b13569e46"
-tree = "5c7eb68a523d1689c53a483ce85f22e489dd0c11"
+revision = "a8cab9050101d224466886591cc221ab951d2906"
+tree = "1d46bfdf4eaef04d6618322972ab05560d387164"
 upstream_url = "https://github.com/gregkh/linux.git"
 upstream_tag = "v7.3-rc7"
 upstream_revision = "24a19b953e2a3d0ea5a8c4951a0ab8f32720c907"
@@ -21,13 +21,22 @@ tested_binary_sha256 = "9520b8005a94a553fd544fc36fa0415e0eb71e1fd0c9c40c2bad34f0
 [tested_build]
 release = "7.3.0-rc7-vim4kvm-uhd1+"
 localversion = "-vim4kvm-uhd1"
-build_id = "cd02c1e079f4fbdf65395d337677824762e1e121"
-image_sha256 = "f9dacf39dd4cefdb7736fe7c1702fee0cda8e91b670702d8d0855122ebe4a91a"
-config_sha256 = "677d7ef38788898b4012859ab2b5c40a09519537fad2738ec35a30576613f9ec"
-modules_sha256 = "22cc2717b259409d5649eb3c5d196b03eacdbf9090c33ad67d772a64b1a40e54"
+build_id = "35304001d6fe5954bb550b8eb7ed2b3b839f0dfb"
+image_sha256 = "4f997c98c9a33c74cb50272be8a0e9156ddc493282ef1d90cf9be124f2e9e192"
+config_sha256 = "610ff17daf5bb40085ca657f40a7436c1ff257c57aabb65367fb2aa3a4709ae9"
+modules_sha256 = "71722326d05ea306580254a6adfcd908947eef44daeeba7a5e913a1204a244ea"
 module_count = 2334
 module_btf = true
 board_dtb_sha256 = "471fc2881ed6c83726ac1db85277aaeadbb63eb6b608d821f2e0bc177d96a567"
+
+# Diagnostic capability, not proof that the historical firmware crash is fixed.
+[wifi_diagnostics]
+firmware_fwid = "01-16e134aa"
+firmware_sha256 = "af7310c6c44da2690ea9f666eea8477a48e906810a1246a5fa207d3788fdf309"
+brcm_debug = true
+device_coredump = true
+coredump_max_bytes = 16777216
+coredump_retained = 2
 
 # Existing vendor package is provisioned separately; no licensed bytes in Git.
 [jpeg]
@@ -40,6 +49,7 @@ firmware_path = "/lib/firmware/video/video_ucode.bin"
 firmware_sha256 = "59e242bd63d6372d6462d2a2d6815e7bdea1a2cd12cd29fac093f38e73294e4b"
 hcodec_clock_hz = 666666656
 hcodec_clock_parent = "hcodec_0"
+tested_module_sha256 = "fb5f2487ca14af509bd9dc2e7bbb7e9fd68a12c08afb9fb61f6a5d993b1f91ae"
 
 # The private edge plugin is separate from the system and 5.15 plugins.
 [gstreamer]

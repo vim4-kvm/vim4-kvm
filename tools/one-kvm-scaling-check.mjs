@@ -6,6 +6,10 @@ import { execFileSync } from 'node:child_process';
 import { loginManager } from './manager-login.mjs';
 const { chromium } = await import(process.env.PLAYWRIGHT_MODULE || 'playwright');
 const args = process.argv.slice(2);
+const mjpegFps = args.includes('--mjpeg-max-rate') ? 60 : 30;
+const mjpegFrames = Number(args.find(x => x.startsWith('--mjpeg-frames='))?.split('=')[1] || 90);
+assert(Number.isInteger(mjpegFrames) && mjpegFrames >= 90 && mjpegFrames <= 3600,
+  '--mjpeg-frames must be 90..3600');
 assert(args.includes('--exclusive'), 'Requires exclusive board access');
 const url = args.find(x => !x.startsWith('--')) || 'http://192.168.50.210:8080';
 const browser = await chromium.launch({
@@ -81,19 +85,26 @@ async function webRtc(mode, height, fps) {
     return video?.videoWidth === w && video.videoHeight === h && video.readyState >= 2;
   }, [expectedWidth, expectedHeight], { timeout: 45000 });
   await page.waitForTimeout(1500);
-  const sample = () => page.evaluate(async () => {
-    const peer = window.scalingPeers.findLast(p => p.connectionState === 'connected');
-    if (!peer) throw new Error('No connected WebRTC peer');
-    const stats = [...(await peer.getStats()).values()];
-    const videoStats = stats.find(s => s.type === 'inbound-rtp' && s.kind === 'video');
-    const codec = stats.find(s => s.id === videoStats?.codecId);
-    const bitmap = await createImageBitmap(document.querySelector('video'));
-    try {
-      return { time: performance.now(), frames: videoStats.framesDecoded,
-        width: bitmap.width, height: bitmap.height, codec: codec?.mimeType,
-        markers: window.scalingMarkers(bitmap) };
-    } finally { bitmap.close(); }
-  });
+  const sample = async () => {
+    await page.waitForFunction(([w, h]) => {
+      const video = document.querySelector('video');
+      return video?.readyState >= 2 && video.videoWidth === w && video.videoHeight === h &&
+        window.scalingPeers.some(p => p.connectionState === 'connected');
+    }, [expectedWidth, expectedHeight], { timeout: 15000 });
+    return page.evaluate(async () => {
+      const peer = window.scalingPeers.findLast(p => p.connectionState === 'connected');
+      if (!peer) throw new Error('No connected WebRTC peer');
+      const bitmap = await createImageBitmap(document.querySelector('video'));
+      try {
+        const stats = [...(await peer.getStats()).values()];
+        const videoStats = stats.find(s => s.type === 'inbound-rtp' && s.kind === 'video');
+        const codec = stats.find(s => s.id === videoStats?.codecId);
+        return { time: performance.now(), frames: videoStats.framesDecoded,
+          width: bitmap.width, height: bitmap.height, codec: codec?.mimeType,
+          markers: window.scalingMarkers(bitmap) };
+      } finally { bitmap.close(); }
+    });
+  };
   const first = await sample(); verifyMarkers(first.markers);
   await page.waitForTimeout(4000);
   const last = await sample(); verifyMarkers(last.markers);
@@ -107,12 +118,13 @@ async function webRtc(mode, height, fps) {
 
 async function mjpeg(height, quality) {
   const expectedHeight = height || 2160, expectedWidth = expectedHeight * 16 / 9;
-  await configure('mjpeg', { output: { height, fps: 30 }, quality });
+  await configure('mjpeg', { output: { height, fps: mjpegFps }, quality });
   await page.waitForFunction(([w, h]) => [...document.images].some(image =>
     image.src.includes('/stream/mjpeg') && image.naturalWidth === w && image.naturalHeight === h),
   [expectedWidth, expectedHeight], { timeout: 30000 });
-  const result = await page.evaluate(async ({ width, height }) => {
-    const abort = new AbortController(), timer = setTimeout(() => abort.abort(), 15000);
+  const result = await page.evaluate(async ({ width, height, targetFrames }) => {
+    const abort = new AbortController(), timer = setTimeout(() => abort.abort(),
+      Math.max(15000, targetFrames * 1000 / 15));
     const decoder = new TextDecoder();
     let reader;
     try {
@@ -121,7 +133,7 @@ async function mjpeg(height, quality) {
       reader = response.body.getReader();
       let pending = new Uint8Array(), frames = 0, first, last;
       const markers = [];
-      while (frames < 90) {
+      while (frames < targetFrames) {
         const next = await reader.read();
         if (next.done) throw new Error('MJPEG stream ended');
         const combined = new Uint8Array(pending.length + next.value.length);
@@ -148,16 +160,20 @@ async function mjpeg(height, quality) {
             } finally { bitmap.close(); }
           }
           frames++;
-          if (frames >= 90) break;
+          if (frames >= targetFrames) break;
         }
       }
       return { frames, fps: (frames - 1) * 1000 / (last - first), markers };
     } finally { clearTimeout(timer); abort.abort(); if (reader) await reader.cancel().catch(() => {}); }
-  }, { width: expectedWidth, height: expectedHeight });
+  }, { width: expectedWidth, height: expectedHeight, targetFrames: mjpegFrames });
   for (const markers of result.markers) verifyMarkers(markers);
   assert(new Set(result.markers.map(m => m[0].id)).size > 1, 'JPEG content froze');
-  assert(result.fps > 25 && result.fps < 35, `Unexpected MJPEG cadence: ${result.fps}`);
-  console.log(JSON.stringify({ kind: 'mjpeg', height, quality, input: await inputState(), ...result }));
+  // Native 4K JPEG is encoder-limited; scaled outputs must sustain the request.
+  const minimum = mjpegFps === 60 && height === 0 ? 35 : mjpegFps * .85;
+  assert(result.fps > minimum && result.fps < mjpegFps * 1.15,
+    `Unexpected MJPEG cadence: ${result.fps}`);
+  console.log(JSON.stringify({ kind: 'mjpeg', height, quality, requestedFps: mjpegFps,
+    input: await inputState(), ...result }));
 }
 
 try {
@@ -172,12 +188,12 @@ try {
     await api('/api/config/uu-remote', 'patch', { enabled: false });
   }
   await page.goto(url);
-  for (const [mode, height, fps] of [
+  if (!args.includes('--mjpeg-only')) for (const [mode, height, fps] of [
     ['h265', 0, 60], ['h265', 1080, 60], ['h265', 720, 30], ['h265', 0, 60],
     ['h264', 1080, 60], ['h264', 720, 30], ['h264', 0, 60],
   ]) await webRtc(mode, height, fps);
   for (const [height, quality] of [[1080, 80], [720, 50], [0, 80]]) await mjpeg(height, quality);
-  await webRtc('h265', 0, 60);
+  if (!args.includes('--mjpeg-only')) await webRtc('h265', 0, 60);
 } finally {
   try {
     await page.goto('about:blank');
