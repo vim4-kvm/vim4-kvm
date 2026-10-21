@@ -42,6 +42,9 @@ JetKVM 的“空闲时隐藏显示器”是用户主动选择的例外，默认�
 SDR 420 和 RGB 分别直通、矩阵转换。[高光与连接优化](../bringup/2026-10-20-edge-hdr-optimization.md)
 给 8bit 高光留出层次，并避免重复输入通知重建健康连接；HDR 桌面白略暗。
 H.265 八轮、H.264 四轮 HDR 往返保持同一连接；HLG/其他格式及长期稳定性未验收。
+后续 [切换与稳定性验收](../bringup/2026-10-21-edge-hdr-stability.md) 补齐启动状态查询、
+后台切换和界面遮罩的事件顺序回归；显示休眠与真实 HDMI 拔插能自动恢复。
+整机休眠由用户暂缓，不能与显示休眠混为已通过。
 
 HDMI 启动脚本默认使用完整帧低延迟模式（VDIN mask 0x3）；
 HDMI_LOW_LATENCY=0 恢复厂商自动策略。模式含义、对照结果及帧一致性检查见 [测量文档](../latency.md#board-side-isolation-and-completed-frame-mode)。

@@ -5,6 +5,10 @@
 
 新记录：新建 `bringup/YYYY-MM-DD-英文短名.md`，首行 `# YYYY-MM-DD：标题`，并在本页对应日期下追加一行。
 
+## 2026-10-21
+
+- [7.x HDR 切换与稳定性](2026-10-21-edge-hdr-stability.md) — video audio application deployment board
+
 ## 2026-10-20
 
 - [One-KVM 接入 7.3 V4L2/Wave5](2026-10-20-onekvm-wave5.md) — application kernel video board

@@ -72,6 +72,7 @@ PiKVM smoke 可用 `PIKVM_CDP` 接入专用测试 Chrome；结束时关闭测试
 | tools/input-check.mjs | NanoKVM | 独占，移动光标 | 键鼠延迟、长按、滚轮；配 input-target.swift、input-summary.py | [输入验证](input-latency.md) |
 | tools/jetkvm-smoke.mjs | JetKVM | 独占 | 视频、JSON-RPC 调用、网页终端 | [JetKVM](../kvm/VIM4.md) |
 | tools/one-kvm-smoke.mjs | One-KVM | 独占 | H.264/H.265/MJPEG 解码、缓冲与呈现间隔尾部；`--seconds`/`--warmup` 控制测量窗口，`--audio` 检查波形 | [板级工具](board-tools.md) |
+| tools/one-kvm-stability-check.mjs | One-KVM edge | 独占，切编码后恢复 | 4K60 持续解码、同帧标记校验、音画脉冲、温度/CPU/内存；须另启动同步运动源，JSONL 保存每 10 秒窗口 | [音视频](subsystems/video.md) |
 | tools/one-kvm-audio-check.mjs | One-KVM | 独占 | Opus WebSocket 音频，静音判失败 | [板级工具](board-tools.md) |
 | tools/one-kvm-recording-check.mjs | One-KVM | 独占 | H.264/H.265 带声音录屏、关网页续录、下载、断流与重启；仅清理本次录像 | [板级工具](board-tools.md) |
 | tools/one-kvm-settings-check.mjs | One-KVM | 独占，改 EDID/HDR 后恢复 | 视频设置往返 | [One-KVM](../One-KVM/VIM4.md) |
@@ -89,7 +90,7 @@ PiKVM smoke 可用 `PIKVM_CDP` 接入专用测试 Chrome；结束时关闭测试
 
 | 入口 | 运行位置 | 影响 | 用途 | 文档 |
 |---|---|---|---|---|
-| tools/latency-source.swift | Mac | 占用 HDMI 画面 | 把帧号画进 HDMI 输出；`--motion` 产生运动网格，`--verify-coherence` 增加三处标记并覆盖该屏弹窗；`--hdr-chart` 增加 sRGB 灰阶；切模式时可用 `--no-labels` 避免字体绘制 | [延迟测量](latency.md) |
+| tools/latency-source.swift | Mac | 占用 HDMI 画面；可输出 HDMI 音频 | 把帧号画进 HDMI 输出；`--motion` 运动网格，`--verify-coherence` 三处标记，`--hdr-chart` 灰阶，`--no-labels` 避免模式切换时绘制字体；`--sync-audio=设备名` 以同一主机时钟输出两秒一次的闪块和音调，不改系统默认音频设备 | [延迟测量](latency.md) |
 | tools/hdmi-resolution-source.swift | Mac | 临时覆盖所选 HDMI 桌面 | 原生 UHD 单像素条纹与参考 PNG；不切模式、不注入输入 | [清晰度复核](bringup/2026-10-20-edge-uhd-detail.md) |
 | tools/hdmi-resolution-check.py | 离线 | 无 | Pillow 检查原生解码帧的亮度空间细节，拒绝 1080p 放大负例 | [清晰度复核](bringup/2026-10-20-edge-uhd-detail.md) |
 | tools/latency-receiver.mjs | Mac | 独占 | 像素帧号与呈现节奏；GPU 裁剪、`--cpu-readback` 开销对照、逐样本时钟校准；`--stats-interval` 记录长测窗口 | [延迟测量](latency.md) |
