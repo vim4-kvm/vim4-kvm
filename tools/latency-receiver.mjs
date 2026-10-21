@@ -5,15 +5,23 @@ import { loginManager } from './manager-login.mjs';
 const { chromium } = await import(process.env.PLAYWRIGHT_MODULE || 'playwright');
 const url = process.argv[2] || 'http://192.168.50.210:8080';
 const seconds = Number(process.argv[3] || 20);
+const statsInterval = Number(process.argv.find(arg => arg.startsWith('--stats-interval='))?.split('=')[1] || 0);
+if (!Number.isFinite(statsInterval) || statsInterval < 0 || (statsInterval > 0 && statsInterval < 5)) {
+  throw new Error('Invalid --stats-interval (0 disables periodic snapshots; otherwise >=5 seconds)');
+}
 const verifyCoherence = process.argv.includes('--verify-coherence');
 const noPixels = process.argv.includes('--no-pixels');
+// A CPU-backed canvas can read the entire 4K video texture before cropping.
+// Prefer GPU drawing of the tiny marker; keep the old hint for overhead controls.
+const cpuReadback = process.argv.includes('--cpu-readback');
 const pikvm = process.argv.includes('--pikvm');
 const cdp = process.env.LATENCY_CDP;
 const width = Number(process.argv.find(arg => arg.startsWith('--width='))?.split('=')[1] || 3840);
 if (![1280, 1920, 3840].includes(width)) throw new Error('Unsupported --width');
 if (!Number.isFinite(seconds) || seconds <= 0) throw new Error('Invalid duration');
 const browser = cdp ? await chromium.connectOverCDP(cdp)
-  : await chromium.launch({ channel: 'chrome', headless: true });
+  : await chromium.launch({ ...(process.env.VIM4_TEST_CHROME
+    ? { executablePath: process.env.VIM4_TEST_CHROME } : { channel: 'chrome' }), headless: true });
 const context = await browser.newContext();
 try {
   await loginManager(context, url, { localBackend: process.argv.includes('--local-backend') });
@@ -80,15 +88,17 @@ try {
       }
     }
   });
-  await page.evaluate(({verifyCoherence, noPixels}) => {
+  await page.evaluate(({verifyCoherence, noPixels, cpuReadback}) => {
     const video = document.querySelector('video');
     const canvas = document.createElement('canvas');
     canvas.width = 32; canvas.height = verifyCoherence ? 216 : 1;
-    const ctx = canvas.getContext('2d', { willReadFrequently: true });
+    const ctx = canvas.getContext('2d', { willReadFrequently: cpuReadback });
     window.latencyFrames = []; window.invalidMarkers = 0;
     window.incoherentMarkers = 0;
     window.keepLatency = false;
     window.latencyTimeline = [];
+    window.clockDiscontinuities = 0;
+    let previousClockOffset;
     let previous = -1, callbacks = 0;
     window.measureLatency = true;
     const frame = (now, metadata) => {
@@ -102,7 +112,17 @@ try {
         video.requestVideoFrameCallback(frame);
         return;
       }
-      const readStartMs = performance.timeOrigin + performance.now();
+      // timeOrigin is fixed at navigation, while the host wall clock may slew
+      // during a soak. Map each sample back to the source's current Date clock.
+      const clockBefore = performance.timeOrigin + performance.now();
+      const wallClock = Date.now();
+      const clockAfter = performance.timeOrigin + performance.now();
+      const clockOffsetMs = wallClock - (clockBefore + clockAfter) / 2;
+      const clockUncertaintyMs = 1 + (clockAfter - clockBefore) / 2;
+      if (window.keepLatency && previousClockOffset !== undefined &&
+          Math.abs(clockOffsetMs - previousClockOffset) > 2) window.clockDiscontinuities++;
+      previousClockOffset = clockOffsetMs;
+      const readStartMs = performance.timeOrigin + performance.now() + clockOffsetMs;
       // Coordinates are normalized to the source window's logical 1920x1080.
       ctx.drawImage(video, 20 / 1920 * video.videoWidth,
         verifyCoherence ? 0 : 85 / 1080 * video.videoHeight - 2,
@@ -126,18 +146,18 @@ try {
         }
         if (id !== previous && window.keepLatency) {
           window.latencyFrames.push({ id, readStartMs,
-            observedMs: performance.timeOrigin + performance.now(),
-            presentationMs: performance.timeOrigin + metadata.presentationTime,
-            expectedDisplayMs: performance.timeOrigin + metadata.expectedDisplayTime,
+            observedMs: performance.timeOrigin + performance.now() + clockOffsetMs,
+            presentationMs: performance.timeOrigin + metadata.presentationTime + clockOffsetMs,
+            expectedDisplayMs: performance.timeOrigin + metadata.expectedDisplayTime + clockOffsetMs,
             decodeSeconds: metadata.processingDuration,
-            clockOffsetMs: Date.now() - (performance.timeOrigin + performance.now()) });
+            clockOffsetMs, clockUncertaintyMs });
           previous = id;
         }
       } else if (window.keepLatency) { window.invalidMarkers++; }
       video.requestVideoFrameCallback(frame);
     };
     video.requestVideoFrameCallback(frame);
-  }, {verifyCoherence, noPixels});
+  }, {verifyCoherence, noPixels, cpuReadback});
   // Warm up canvas allocation and GPU readback before measuring.
   await page.waitForTimeout(3000);
   const before = await stats();
@@ -145,13 +165,37 @@ try {
     window.keepLatency = true;
     return performance.timeOrigin + performance.now();
   });
-  await page.waitForTimeout(seconds * 1000);
-  const after = await stats();
+  const statsHistory = [];
+  let after;
+  if (statsInterval > 0) {
+    statsHistory.push(before);
+    const deadline = performance.now() + seconds * 1000;
+    while (performance.now() < deadline) {
+      await page.waitForTimeout(Math.min(statsInterval * 1000, deadline - performance.now()));
+      after = await stats();
+      statsHistory.push(after);
+      if (!after || !before || after.ssrc !== before.ssrc || after.framesDecoded < before.framesDecoded) {
+        throw new Error('Video stream changed during measurement; discard this window');
+      }
+      const elapsed = (after.timestamp - before.timestamp) / 1000;
+      const observations = await page.evaluate(() => ({ markers: window.latencyFrames.length,
+        callbacks: window.latencyTimeline.length, invalidMarkers: window.invalidMarkers,
+        incoherentMarkers: window.incoherentMarkers, clockDiscontinuities: window.clockDiscontinuities }));
+      console.error(JSON.stringify({ elapsedSeconds: elapsed, ssrc: after.ssrc,
+        decodedFPS: (after.framesDecoded - before.framesDecoded) / elapsed,
+        framesDropped: after.framesDropped - before.framesDropped,
+        packetsLost: after.packetsLost - before.packetsLost,
+        freezeCount: after.freezeCount - before.freezeCount, ...observations }));
+    }
+  } else {
+    await page.waitForTimeout(seconds * 1000);
+    after = await stats();
+  }
   const result = await page.evaluate(() => {
     window.measureLatency = false;
     return { endedMs: performance.timeOrigin + performance.now(),
       timeline: window.latencyTimeline, frames: window.latencyFrames, invalidMarkers: window.invalidMarkers,
-      incoherentMarkers: window.incoherentMarkers };
+      incoherentMarkers: window.incoherentMarkers, clockDiscontinuities: window.clockDiscontinuities };
   });
   const negotiation = await page.evaluate(async () => {
     const peers = window.peers.filter(p => p.connectionState === 'connected');
@@ -160,7 +204,9 @@ try {
         ['codec', 'transport', 'candidate-pair', 'local-candidate', 'remote-candidate'].includes(s.type))})));
   });
   const streamerAfter = await streamerState();
-  console.log(JSON.stringify({ before, after, startedMs, noPixels, browserVersion: browser.version(),
+  console.log(JSON.stringify({ before, after, startedMs, noPixels, statsInterval, statsHistory,
+    clockMapping: 'per-sample-wall-offset',
+    readbackMode: cpuReadback ? 'cpu-preferred' : 'gpu-preferred', browserVersion: browser.version(),
     streamerBefore, streamerAfter, negotiation, verifyCoherence, ...result }, null, 2));
   if (JSON.stringify(streamerBefore) !== JSON.stringify(streamerAfter)) {
     throw new Error('PiKVM stream configuration changed during measurement');

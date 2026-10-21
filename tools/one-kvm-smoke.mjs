@@ -12,7 +12,8 @@ const warmup = Number(args.find(arg => arg.startsWith('--warmup='))?.split('=')[
 assert(Number.isFinite(seconds) && seconds > 0 && seconds <= 3600, 'Invalid --seconds');
 assert(Number.isFinite(warmup) && warmup >= 0 && warmup <= 300, 'Invalid --warmup');
 const headed = args.includes('--headed');
-const browser = await chromium.launch({ channel: 'chrome', headless: !headed,
+const browser = await chromium.launch({ ...(process.env.VIM4_TEST_CHROME
+  ? { executablePath: process.env.VIM4_TEST_CHROME } : { channel: 'chrome' }), headless: !headed,
   args: ['--autoplay-policy=no-user-gesture-required'] });
 const page = await browser.newPage();
 let originalMode;

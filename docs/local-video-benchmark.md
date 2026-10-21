@@ -46,9 +46,11 @@ heap 与 VDIN/VPU 的映射类型可能不同，不能据此认定驱动已提�
 ## 驱动回归与复制候选
 
 为软件 benchmark 增加 `--kernel-source /path/to/linux-7.3` 可先在本机编译运行
-实际 IRQ/环/vb2 C 代码、Wave5 平面偏移检查、profile 转换、逐行刷新预算，
+实际 IRQ/环/vb2 C 代码、输入状态无等待查询与启动稳定性检查、Wave5 平面偏移、profile 转换、逐行刷新预算，
 以及 ASan/UBSan 分配失败/关闭回归。
-需要本机 C 编译器；实际 IRQ 和 DMA 由可控桩替代，属于生命周期回归，不是硬件仿真。
+这些 C 回归需要本机编译器；profile/刷新测试还需要 Linux V4L2 UAPI 头文件，
+macOS 缺少这些头时在 Linux VM 运行对应脚本，默认 buffer benchmark 仍可从 Mac 发起。
+实际 IRQ 和 DMA 由可控桩替代，属于生命周期回归，不是硬件仿真。
 
 Linux ARM64 中另运行内核源码的
 `drivers/media/platform/amlogic/t7-hdmirx/test_copy.py --output /tmp/vdin-copy-bench`。

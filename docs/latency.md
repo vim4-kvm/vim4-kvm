@@ -133,6 +133,33 @@ missed callbacks separately from browser-reported dropped frames and distinguish
 active-span FPS from progress across the whole observation window. For a cadence
 run an empty source log is sufficient; no marker matching is performed.
 
+The marker canvas now uses `willReadFrequently=false`, preferring GPU drawing
+before reading the small cropped marker. `--cpu-readback` restores the old CPU
+canvas hint for overhead comparisons; the output records `readbackMode`. These
+are browser hints, not a guarantee of canvas placement. Always report
+`readbackCostMs` and use a separate no-pixels run for cadence: a CPU canvas may
+read the full 4K video texture before cropping, perturbing decode and presentation.
+
+`VIM4_TEST_CHROME=/absolute/path/to/browser` selects a fixed browser executable
+for this receiver and `one-kvm-smoke.mjs`; otherwise both use the installed Chrome
+channel. Record the actual version in every run. Automatic updates between runs
+invalidate a matched browser comparison even when the driver change is unchanged.
+
+For a long single-connection run, add `--stats-interval=60` to the receiver.
+Periodic video statistics are stored in `statsHistory`; progress goes to stderr,
+leaving stdout as one JSON document. With a source long enough for startup and
+the full 1800-second measurement, compare the first and last two-minute windows:
+
+```sh
+python3 tools/latency-summary.py source.jsonl receiver.json --window-start=0 --window-seconds=120
+python3 tools/latency-summary.py source.jsonl receiver.json --window-start=1680 --window-seconds=120
+```
+
+Boundaries must match periodic snapshots within two seconds. Source records are
+selected by time before matching IDs, so a 16-bit ID wrapping during the soak
+cannot accidentally match a frame from the other epoch. The full unsliced source
+log still rejects duplicate IDs. Keep the source and browser on the same Mac.
+
 `presentationMs` measures source draw start to browser compositor submission.
 `readStartMs` includes JavaScript callback scheduling; `observedMs` additionally
 includes pixel readback. Readback can perturb playback, so its cost is reported
@@ -142,8 +169,16 @@ for timestamp semantics. Headless Chrome measurements are software endpoint
 latencies, not physical glass-to-glass latency; the latter requires an optical
 measurement. Retain outliers and report static and moving scenes separately.
 
-The summary rejects unmatched IDs, ID wrap, negative latencies and excessive
-browser clock mapping offsets. Raw logs belong in the ignored `logs/` directory.
+New receiver logs bracket `Date.now()` with monotonic samples and apply that
+wall-clock offset to each pixel sample's endpoint timestamps. This accounts for
+wall-clock slewing relative to the fixed navigation `timeOrigin`; it does not
+subtract media or readback time. `clockMapping`, raw `clockOffsetMs` and bounded
+`clockUncertaintyMs` record the method. The uncertainty includes one millisecond
+for Date quantization; uncertainty above 2ms or an observed offset jump above 2ms
+invalidates the run. Legacy logs without this calibration retain the original
+absolute-offset limit of 2ms; they are not silently reinterpreted.
+The summary also rejects unmatched/wrapped IDs and negative latencies. Raw logs
+belong in the ignored `logs/` directory.
 
 ## Chrome baseline, 2026-10-13
 

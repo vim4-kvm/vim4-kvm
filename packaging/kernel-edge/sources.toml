@@ -15,7 +15,7 @@ branch = "vim4"
 revision = "414e88b98b50f8e16c296c58100334ea52e72d18"
 features = ["vim4"]
 
-# The audio-tested Image stays on [kernel]; only this encoder module is overlaid.
+# The audio-tested Image stays on [kernel]; tested module overlays are listed below.
 # Build without split module BTF, which otherwise depends on its build's vmlinux.
 [wave5_overlay]
 url = "https://github.com/vim4-kvm/linux.git"
@@ -25,6 +25,15 @@ tree = "a385c1cbbb8253e188692adfe4abf872165853bc"
 path = "drivers/media/platform/chips-media/wave5"
 module_btf = false
 module_sha256 = "210dc9c14772c1bd1c56d36a959e637e39f4c4e7ba569bc51b72d924d4de401a"
+
+[vdin_overlay]
+url = "https://github.com/vim4-kvm/linux.git"
+branch = "vim4-kvm-7.3"
+revision = "1317fcb8746f30f376420dc193d9a15ac4c83fb7"
+tree = "eb88ad7014c3cdc41807fb5299b88c71ecabb84c"
+path = "drivers/media/platform/amlogic/t7-hdmirx/t7-vdin-test.c"
+module_btf = false
+module_sha256 = "f2c5ac54f2edd18188ff9a0d549b648dccb166fe955e9d914412943d629c835c"
 
 [armbian]
 url = "https://github.com/armbian/build.git"

@@ -187,7 +187,8 @@ def main():
     regressions = []
     if args.kernel_source:
         kernel = args.kernel_source.resolve()
-        for relative in ('amlogic/t7-hdmirx/test_stream.py', 'chips-media/wave5/test_buffers.py',
+        for relative in ('amlogic/t7-hdmirx/test_stream.py', 'amlogic/t7-hdmirx/test_core.py',
+                         'chips-media/wave5/test_buffers.py',
                          'chips-media/wave5/test_encoder_cleanup.py',
                          'chips-media/wave5/test_profiles.py', 'chips-media/wave5/test_intra_refresh.py'):
             script = kernel / 'drivers/media/platform' / relative

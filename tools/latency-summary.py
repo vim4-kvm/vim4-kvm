@@ -52,16 +52,42 @@ def cadence(receiver):
     }
 
 
-def summarize(source_path, receiver_path):
+def select_window(receiver, start_seconds, duration_seconds):
+    if (not math.isfinite(start_seconds) or not math.isfinite(duration_seconds)
+            or start_seconds < 0 or duration_seconds <= 0):
+        raise ValueError('Invalid measurement window')
+    history = receiver.get('statsHistory', [])
+    if len(history) < 2:
+        raise ValueError('Window selection requires periodic video statistics')
+    start = receiver['startedMs'] + start_seconds * 1000
+    end = start + duration_seconds * 1000
+    before = min(history, key=lambda stat: abs(stat['timestamp'] - start))
+    after = min(history, key=lambda stat: abs(stat['timestamp'] - end))
+    if max(abs(before['timestamp'] - start), abs(after['timestamp'] - end)) > 2000:
+        raise ValueError('Window boundaries do not match periodic video statistics')
+    start, end = before['timestamp'], after['timestamp']
+    return {**receiver, 'before': before, 'after': after, 'startedMs': start, 'endedMs': end,
+            'frames': [frame for frame in receiver['frames'] if start <= frame['presentationMs'] < end],
+            'timeline': [frame for frame in receiver['timeline'] if start <= frame['presentationMs'] < end]}
+
+
+def summarize(source_path, receiver_path, *, window_start=None, window_seconds=None):
+    with open(receiver_path) as stream:
+        receiver = json.load(stream)
+    if window_seconds is not None:
+        receiver = select_window(receiver, window_start or 0, window_seconds)
+    elif window_start is not None:
+        raise ValueError('--window-start requires --window-seconds')
     source = {}
     with open(source_path) as stream:
         for line in stream:
             frame = json.loads(line)
+            if window_seconds is not None and not (
+                    receiver['startedMs'] - 1000 <= frame['sourceMs'] <= receiver['endedMs']):
+                continue
             if frame['id'] in source:
                 raise ValueError('Source frame ID wrapped; use a shorter run')
             source[frame['id']] = frame
-    with open(receiver_path) as stream:
-        receiver = json.load(stream)
     before, after = receiver['before'], receiver['after']
     if not before or not after:
         raise ValueError('Missing inbound video statistics')
@@ -88,7 +114,19 @@ def summarize(source_path, receiver_path):
     if any(frame['id'] not in source for frame in frames):
         raise ValueError('Source log does not contain every received marker')
     clocks = [frame['clockOffsetMs'] for frame in frames]
-    if not clocks or max(abs(value) for value in clocks) > 2:
+    if not clocks or not all(math.isfinite(value) for value in clocks):
+        raise ValueError('Missing or invalid browser clock samples')
+    mapping = receiver.get('clockMapping')
+    if mapping == 'per-sample-wall-offset':
+        uncertainty = [frame.get('clockUncertaintyMs', math.inf) for frame in frames]
+        if (any(not math.isfinite(value) or not 0 <= value <= 2 for value in uncertainty)
+                or receiver.get('clockDiscontinuities', 0)):
+            raise ValueError('Browser clock calibration exceeded 2ms or changed abruptly')
+        result['clockUncertaintyMs'] = distribution(uncertainty)
+        result['clockMapping'] = mapping
+    elif mapping is not None:
+        raise ValueError('Unknown browser clock mapping')
+    elif max(abs(value) for value in clocks) > 2:
         raise ValueError('Browser wall/monotonic clock mapping exceeded 2ms')
     for key in ('readStartMs', 'presentationMs', 'expectedDisplayMs', 'observedMs'):
         values = [frame[key] - source[frame['id']]['sourceMs'] for frame in frames]
@@ -118,5 +156,8 @@ if __name__ == '__main__':
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('source')
     parser.add_argument('receiver')
+    parser.add_argument('--window-start', type=float, help='Seconds into the measured interval')
+    parser.add_argument('--window-seconds', type=float, help='Select boundaries recorded with --stats-interval')
     args = parser.parse_args()
-    print(json.dumps(summarize(args.source, args.receiver), indent=2))
+    print(json.dumps(summarize(args.source, args.receiver,
+        window_start=args.window_start, window_seconds=args.window_seconds), indent=2))
