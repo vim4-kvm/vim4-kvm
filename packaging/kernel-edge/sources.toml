@@ -2,8 +2,8 @@
 [kernel]
 url = "https://github.com/vim4-kvm/linux.git"
 branch = "vim4-kvm-7.3"
-revision = "4ca9e36cd498f72e193ec2a10f109dbc46c7bdad"
-tree = "f16b0e5b26d8362633ba5bb9f940fe1f6535298b"
+revision = "0ec62d0120eac8fa05e3b73d3d58d68aefd6264a"
+tree = "eb673813f1a718b2d8d0083c31e4e9c2282563d4"
 upstream_url = "https://github.com/gregkh/linux.git"
 upstream_tag = "v7.3-rc7"
 upstream_revision = "24a19b953e2a3d0ea5a8c4951a0ab8f32720c907"
@@ -23,7 +23,7 @@ localversion = "-vim4kvm-uhd1"
 build_id = "cd0b47762bd10b4c02dbf43b369b57ab182d1fb5"
 image_sha256 = "fc9d524a9f7bd06fd89e98f97effc0e44a3eb05f48ebed4a343ffb906a8b2b33"
 config_sha256 = "39f2c5c008bba1032913abafdde2a992d9cd2ecf2b4c6f4fc9b27330d0ba9d2c"
-modules_sha256 = "4dcf473b87407bea0ee582ed160a15ae5b339e550763e19aebdc104d46905a78"
+modules_sha256 = "138d54ea92af729201d69f4c7f07c0b529ac2ae15c1076aebb361d8e4369b5fd"
 module_count = 2333
 module_btf = true
 board_dtb_sha256 = "6ccb1ad1bcefba6cfb119b19e80f870a4c625f63c27b9dc34026735f94a16eb2"
