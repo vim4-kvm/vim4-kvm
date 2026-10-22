@@ -28,15 +28,17 @@ fi
 if has vim4-kvm-board; then
     dpkg-deb -f ./vim4-kvm-board_*.deb Depends | grep -qw alsa-utils
     dpkg-deb -f ./vim4-kvm-board_*.deb Provides | grep -qw vim4-media-api-1
-    PYTHONPATH=/tmp/package-check/root/usr/lib/vim4-kvm/python python3 -c 'import vim4media'
+    dpkg-deb -f ./vim4-kvm-board_*.deb Provides | grep -qw vim4-runtime-api-1
+    PYTHONPATH=/tmp/package-check/root/usr/lib/vim4-kvm/python python3 -c 'import vim4media, vim4video, vim4boot'
 fi
+if has vim4-amlvenc; then dpkg-deb -f ./vim4-amlvenc_*.deb Provides | grep -qw vim4-wave5-api-1; fi
 for app in vim4-nanokvm vim4-jetkvm vim4-onekvm vim4-manager; do
     if has "$app"; then dpkg-deb -f ./"${app}"_*.deb Depends | grep -qw vim4-media-api-1; fi
 done
 binaries=''
 has vim4-kvm-board && binaries="$binaries usr/sbin/usb-pd-init"
 has vim4-vfmcap && binaries="$binaries usr/lib/aarch64-linux-gnu/gstreamer-1.0/libgstvfmcap.so"
-has vim4-amlvenc && binaries="$binaries usr/lib/vim4-kvm/gstreamer-1.0/libgstamlvenc.so usr/lib/vim4-kvm/gstreamer-1.0/libgstvim4jpegenc.so"
+has vim4-amlvenc && binaries="$binaries usr/lib/vim4-kvm/gstreamer-1.0/libgstamlvenc.so usr/lib/vim4-kvm/gstreamer-1.0/libgstvim4jpegenc.so usr/lib/vim4-kvm/mainline-gstreamer-1.0/libgstvim4wave5.so usr/lib/vim4-kvm/mainline-gstreamer-1.0/libgstvideo4linux2.so"
 has vim4-nanokvm && binaries="$binaries opt/vim4-nanokvm/NanoKVM-Server"
 has vim4-jetkvm && binaries="$binaries opt/vim4-jetkvm/jetkvm"
 has vim4-onekvm && binaries="$binaries opt/vim4-onekvm/one-kvm opt/vim4-onekvm/lib/libgst-aml-dma-allocator.so"

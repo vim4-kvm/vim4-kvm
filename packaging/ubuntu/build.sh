@@ -19,6 +19,13 @@ if has platform || has capture; then
 fi
 if has platform || has encoder; then
     python3 tools/workspace.py build encoder
+    gst_work=$(mktemp -d)
+    trap 'rm -rf "$gst_work"' EXIT
+    python3 packaging/kernel-edge/build-gstreamer.py "$gst_work"
+    mkdir -p build/mainline-gstreamer
+    cp "$gst_work/libgstvideo4linux2.so" build/mainline-gstreamer/
+    rm -rf "$gst_work"
+    trap - EXIT
 fi
 if has nanokvm; then
     python3 -m unittest discover -s NanoKVM/deploy/vim4 -p 'test_*.py'

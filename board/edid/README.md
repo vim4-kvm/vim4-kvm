@@ -34,4 +34,16 @@ NanoKVM 使用板级共享 EDID 配置；One-KVM 通过同一助手修改它，P
 这属于该板保存的自定义配置；没有修改 JetKVM 内置默认预设。同步时 JetKVM
 处于停止状态，先备份配置再原子替换，只改该字段；不要覆盖运行中应用的配置。
 JetKVM 的 edid-apply 助手返回 loaded=false，确认与当前接收端加载的表一致。
-尚未进行应用切换或重启验收。
+应用切换与重启的后续验收见 [双内核集成](../../docs/bringup/2026-10-21-dual-kernel-integration.md)。
+
+## 1080p60 SDR 8-bit
+
+`1080p60-sdr8.bin` derives from the existing Khadas Ubuntu
+`/etc/tvconfig/hdmi/port1_14.bin`. Only the HDMI VSDB deep-colour flags at
+offset `0xb2` are cleared (`0xb8` → `0x80`), then the CTA block checksum is
+recomputed (`0x84` → `0xbc`). Timings, LPCM audio and other capabilities remain.
+
+The vendor table makes the test Mac transmit 1080p60 YUV444 10-bit at
+185.625 MHz, which the current mainline receiver does not support. This separate
+named preset advertises the supported 8-bit path without rewriting the vendor
+table or uploaded EDIDs. Both kernels can use it; the original preset remains.

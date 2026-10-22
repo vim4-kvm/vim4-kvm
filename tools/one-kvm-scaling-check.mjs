@@ -29,6 +29,11 @@ async function api(path, method = 'get', data) {
 function verifyMarkers(markers) {
   assert(markers.every(m => m.valid && m.id === markers[0].id), `Bad scene markers: ${JSON.stringify(markers)}`);
 }
+function verifyColors(colors) {
+  assert(colors.every((rgb, channel) => rgb[channel] > 180 &&
+    rgb.every((value, index) => index === channel || value < 85)),
+  `Primary color mapping is incorrect: ${JSON.stringify(colors)}`);
+}
 async function inputState() {
   const input = await api('/api/video/input-status?device=/dev/video_cap');
   assert.equal(input.state, 'locked');
@@ -61,6 +66,15 @@ await page.addInitScript(() => {
       const id = (word >>> 8) & 65535;
       return { id, valid: (word >>> 24) === 0xa5 && (word & 255) === (((id >>> 8) ^ (id & 255) ^ 0xa5) & 255) };
     });
+  };
+  window.scalingColors = bitmap => {
+    const canvas = document.createElement('canvas'); canvas.width = 3; canvas.height = 1;
+    const ctx = canvas.getContext('2d', { willReadFrequently: true });
+    for (let index = 0; index < 3; index++) ctx.drawImage(bitmap,
+      bitmap.width * (240 + index * 480) / 1920, bitmap.height * 800 / 1080,
+      1, 1, index, 0, 1, 1);
+    const pixels = ctx.getImageData(0, 0, 3, 1).data;
+    return [0, 1, 2].map(index => [...pixels.slice(index * 4, index * 4 + 3)]);
   };
 });
 
@@ -101,13 +115,15 @@ async function webRtc(mode, height, fps) {
         const codec = stats.find(s => s.id === videoStats?.codecId);
         return { time: performance.now(), frames: videoStats.framesDecoded,
           width: bitmap.width, height: bitmap.height, codec: codec?.mimeType,
-          markers: window.scalingMarkers(bitmap) };
+          markers: window.scalingMarkers(bitmap), colors: window.scalingColors(bitmap) };
       } finally { bitmap.close(); }
     });
   };
   const first = await sample(); verifyMarkers(first.markers);
+  verifyColors(first.colors);
   await page.waitForTimeout(4000);
   const last = await sample(); verifyMarkers(last.markers);
+  verifyColors(last.colors);
   assert.notEqual(first.markers[0].id, last.markers[0].id, 'Source content froze');
   const decodedFps = (last.frames - first.frames) * 1000 / (last.time - first.time);
   assert(decodedFps > fps * .9 && decodedFps < fps * 1.1, `Unexpected fps: ${decodedFps}`);
@@ -132,7 +148,7 @@ async function mjpeg(height, quality) {
       if (!response.ok) throw new Error(`MJPEG HTTP ${response.status}`);
       reader = response.body.getReader();
       let pending = new Uint8Array(), frames = 0, first, last;
-      const markers = [];
+      const markers = [], colors = [];
       while (frames < targetFrames) {
         const next = await reader.read();
         if (next.done) throw new Error('MJPEG stream ended');
@@ -157,16 +173,18 @@ async function mjpeg(height, quality) {
             try {
               if (bitmap.width !== width || bitmap.height !== height) throw new Error('Wrong JPEG dimensions');
               markers.push(window.scalingMarkers(bitmap));
+              colors.push(window.scalingColors(bitmap));
             } finally { bitmap.close(); }
           }
           frames++;
           if (frames >= targetFrames) break;
         }
       }
-      return { frames, fps: (frames - 1) * 1000 / (last - first), markers };
+      return { frames, fps: (frames - 1) * 1000 / (last - first), markers, colors };
     } finally { clearTimeout(timer); abort.abort(); if (reader) await reader.cancel().catch(() => {}); }
   }, { width: expectedWidth, height: expectedHeight, targetFrames: mjpegFrames });
   for (const markers of result.markers) verifyMarkers(markers);
+  for (const colors of result.colors) verifyColors(colors);
   assert(new Set(result.markers.map(m => m[0].id)).size > 1, 'JPEG content froze');
   // Native 4K JPEG is encoder-limited; scaled outputs must sustain the request.
   const minimum = mjpegFps === 60 && height === 0 ? 35 : mjpegFps * .85;

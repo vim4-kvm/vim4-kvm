@@ -19,7 +19,11 @@ SSH 为 ssh vim4（khadas@192.168.50.210），串口 /dev/cu.usbserial-100，921
 配置先 scp 到临时位置再 sudo cp，避免密码与 heredoc 共用 stdin。
 长期命令使用 nohup setsid command </dev/null >log 2>&1 &，避免 sudo -b 挂住 SSH。
 
-内核安装用 tools/kernel-install.sh。重装清空 eMMC，须用户明确确认；
+5.15 内核安装用 tools/kernel-install.sh。7.x 独立保留在 `/boot/edge`，安装匹配的
+Image / 完整模块后，用 `packaging/kernel-edge/register-runtime.py` 核对构建清单并登记；
+过程见 [双内核集成](../bringup/2026-10-21-dual-kernel-integration.md)。
+面板切换只保存默认启动项并重启，保留 5.15 Image、Stock 与实验入口，不格式化数据。
+重装清空 eMMC，须用户明确确认；
 优先使用 tools/board.py recover 远程进入 OOWOW；系统无法响应时，按住 FUNCTION、
 短按 RESET、松开 FUNCTION。刷写见板级工具文档，禁止直接用 OOWOW /shell/write。
 

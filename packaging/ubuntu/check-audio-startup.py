@@ -19,8 +19,16 @@ def check(root):
         if 'alsa-restore.service' not in hdmi.get('Unit', option, fallback='').split():
             raise ValueError(f'HDMI startup must order/pull ALSA restoration: missing {option}')
     route = shlex.split(hdmi.get('Service', 'ExecStartPre', fallback=''))
-    if route != ['/usr/bin/amixer', '-q', '-D', 'hw:AMLAUGESOUND', 'cset',
-                 'name=TDMIN_B source select', 'hdmirx']:
+    legacy = ['/usr/bin/amixer', '-q', '-D', 'hw:AMLAUGESOUND', 'cset',
+              'name=TDMIN_B source select', 'hdmirx']
+    dual_kernel = ['/usr/libexec/vim4-board-runtime', 'audio-route']
+    if route == dual_kernel:
+        wrapper = root / 'usr/libexec/vim4-board-runtime'
+        if not wrapper.is_file() or not wrapper.stat().st_mode & 0o111:
+            raise ValueError('HDMI kernel dispatcher is missing or not executable')
+        if hdmi.get('Service', 'Type', fallback='') != 'notify':
+            raise ValueError('HDMI must report readiness after mainline audio initialization')
+    elif route != legacy:
         raise ValueError('HDMI must configure its audio route in ExecStartPre')
     if 'vim4-kvm-hdmi.service' not in app.get('Unit', 'After', fallback='').split():
         raise ValueError('NanoKVM must start after HDMI initialization')

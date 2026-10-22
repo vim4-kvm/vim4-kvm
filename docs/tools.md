@@ -18,13 +18,15 @@ tools/ 与 packaging/ 下每个入口一行。tests/test_docs.py 检查本表与
 默认地址为 http://192.168.50.210:8080（管理器 :80）。同一应用账户的测试依次运行。
 PiKVM smoke 可用 `PIKVM_CDP` 接入专用测试 Chrome；结束时关闭测试 context，
 保留外部浏览器。截图检查包含局域网响应时间，拒绝等待 3 秒超时才返回的 JPEG。
-`latency-receiver.mjs` 与 `one-kvm-smoke.mjs` 可用 `VIM4_TEST_CHROME` 指定固定
+视频 smoke 与 `kvm-switch-check.mjs` 可用 `VIM4_TEST_CHROME` 指定固定
 浏览器可执行文件的绝对路径；配对测试同时核对每轮实际浏览器版本。
 
 ## 工作区、构建与打包
 
 | 入口 | 运行位置 | 影响 | 用途 | 文档 |
 |---|---|---|---|---|
+| packaging/kernel-edge/build-gstreamer.py | 容器/VM | 无 | 校验固定源码、应用 V4L2 生命周期补丁并构建私有插件，不改系统库 | [音视频](subsystems/video.md) |
+| packaging/kernel-edge/register-runtime.py | VM / 板 | inventory 无；register 改启动配置 | 核对完整 Image/模块清单后登记双内核，保留当前默认项；不安装、不重启 | [双内核集成](bringup/2026-10-21-dual-kernel-integration.md) |
 | tools/workspace.py | Mac / CI | 无 | bootstrap/status 子仓库（`--override` 供发布 CI 替换单个仓库提交），build 各目标（kernel 走 OrbStack） | [工作区](workspace.md) |
 | tools/ubuntu-build.py | Mac / CI → Docker | 无 | package/verify 七组件；支持 platform、capture、encoder、nanokvm、jetkvm、onekvm、manager、pikvm、pikvm-app | [Ubuntu 构建](ubuntu-build.md) |
 | tools/ubuntu-image.py | Mac → OrbStack | 无 | 内核包、候选镜像 assemble/verify/export | [候选镜像](ubuntu-image.md) |
@@ -70,13 +72,15 @@ PiKVM smoke 可用 `PIKVM_CDP` 接入专用测试 Chrome；结束时关闭测试
 | tools/usb-switch-check.mjs | NanoKVM | 独占，断开 USB | 麦克风/镜像组合切换与恢复 | [板级工具](board-tools.md#usb-切换回归) |
 | tools/media-upload-check.mjs | NanoKVM | 独占，留下上传文件 | 镜像上传与网页终端 | [板级工具](board-tools.md#工具验证边界) |
 | tools/input-check.mjs | NanoKVM | 独占，移动光标 | 键鼠延迟、长按、滚轮；配 input-target.swift、input-summary.py | [输入验证](input-latency.md) |
-| tools/jetkvm-smoke.mjs | JetKVM | 独占 | 视频、JSON-RPC 调用、网页终端 | [JetKVM](../kvm/VIM4.md) |
+| tools/jetkvm-smoke.mjs | JetKVM | 独占 | 视频、JSON-RPC、网页终端；`--audio` 要求实际 HDMI 声音波形，测试输出静音 | [JetKVM](../kvm/VIM4.md) |
 | tools/one-kvm-smoke.mjs | One-KVM | 独占 | H.264/H.265/MJPEG 解码、缓冲与呈现间隔尾部；`--seconds`/`--warmup` 控制测量窗口，`--audio` 检查波形 | [板级工具](board-tools.md) |
 | tools/one-kvm-stability-check.mjs | One-KVM edge | 独占，切编码后恢复 | 4K60 持续解码、同帧标记校验、音画脉冲、温度/CPU/内存；须另启动同步运动源，JSONL 保存每 10 秒窗口 | [音视频](subsystems/video.md) |
 | tools/one-kvm-av-sync-check.mjs、tools/av-sync-probe.mjs | Mac / One-KVM edge | 校准无；上板独占、切编码后恢复 | 标签页播放输出回环、逐样本音频脉冲与预计视频显示时间；`--calibrate=FILE --expected-ms=120` 校准已知偏移，板端须同步源 | 脚本头注释 |
 | tools/one-kvm-audio-check.mjs | One-KVM | 独占 | Opus WebSocket 音频，静音判失败 | [板级工具](board-tools.md) |
 | tools/one-kvm-recording-check.mjs | One-KVM | 独占 | H.264/H.265 带声音录屏、关网页续录、下载、断流与重启；仅清理本次录像 | [板级工具](board-tools.md) |
 | tools/one-kvm-settings-check.mjs | One-KVM | 独占，改 EDID/HDR 后恢复 | 视频设置往返 | [One-KVM](../One-KVM/VIM4.md) |
+| tools/one-kvm-board-check.mjs | One-KVM | 独占，改 EDID/HDR 后恢复 | 原生板级接口、同一网页的 UHD/FHD 切换与 HDR 曲线；不覆盖自定义 EDID | 脚本头注释 |
+| tools/nanokvm-board-check.mjs | NanoKVM | 独占，改 EDID 后恢复 | 原生 EDID 接口与同一网页的 FHD/UHD 恢复；不覆盖自定义 EDID | 脚本头注释 |
 | tools/edge-jpeg-check.py | 板（root），7.x | 独占，应用须停止 | VDIN 硬件缩放、JPEG DMA 连续帧、质量、IRQ 与 CMA 回收；需运动 HDMI 源另验内容 | 脚本头注释 |
 | tools/edge-jpeg-profile.py | 板（root），7.x | 独占 JPEG，应用须停止；不采集或改时钟 | 用一帧 NV12 拆分命令、等待、完成 ioctl 和输出复制；可跳过复制，保存新报告及 JPEG | 脚本头注释 |
 | tools/one-kvm-scaling-check.mjs | One-KVM edge | 独占，改输出尺寸/帧率/质量后恢复；可暂停并恢复空闲 UU | H.264/H.265/MJPEG 往返、完整画面动态标记、输入时序和 DMA 回收；须另启动运动 HDMI 源；--require-hdr 核对 RX，--mjpeg-max-rate 请求 60fps，--mjpeg-only 只测 JPEG，--mjpeg-frames=600 延长每档采样 | 脚本头注释 |
@@ -84,12 +88,13 @@ PiKVM smoke 可用 `PIKVM_CDP` 接入专用测试 Chrome；结束时关闭测试
 | tools/one-kvm-drive-check.mjs | One-KVM | 独占，可能创建虚拟盘 | Ventoy 虚拟盘与文件往返 | [Ubuntu 构建](ubuntu-build.md) |
 | tools/one-kvm-usb-check.mjs | One-KVM | 独占，重新枚举 USB；--hid-only 短暂覆盖桌面并恢复指针 | Mac 主机键鼠、ISO 挂载；--hid-only 使用 input-target 验证实际方向键、两种鼠标、点击和滚轮 | [板级工具](board-tools.md) |
 | tools/one-kvm-usb-profile-check.mjs | One-KVM | 独占，改 USB 组合后恢复；录音只选择 USB 输入 | HID/UAC/网卡组合与超限回滚、拒绝内核告警；--audio 原生录音，--browser-audio 指定 USB 设备波形；--output-prefix 保存独立记录 | [板级工具](board-tools.md) |
-| tools/one-kvm-usb-media-check.mjs | Mac / One-KVM | 独占，上传专用 EDGEUSB21 FAT 镜像；主机弹出后删除本次文件并恢复配置 | 只读/可写 USB 盘、1MiB 写回哈希、fsck、五端点组合、挂载期间拒绝配置变化及应用重启保留介质 | 脚本头注释 |
+| tools/one-kvm-usb-media-check.mjs | Mac / One-KVM | 独占，上传专用 EDGEUSB21 FAT 镜像；主机弹出后删除本次文件并恢复配置 | 只读/可写、1MiB 哈希、fsck、五端点与挂载保护；`--service=one-kvm` 验正式入口，`--manager-url=URL` 检查内核/应用切换拒绝 | 脚本头注释 |
 | tools/one-kvm-usb-network-host.py | Mac → 板 | 独占，只读当前 USB 网卡配置；临时监听器绑定 USB IP，退出终止，不修改主机网络 | 手动启用一种 USB 网卡后，核对 DHCP ACK 并经指定接口双向传输 1MiB、比较哈希；以 SSH 控制板端 | 脚本头注释 |
 | tools/one-kvm-usb-board-check.py | 板（root） | 独占，应用停止 | 板端 USB 助手枚举与恢复 | [板级工具](board-tools.md) |
 | tools/one-kvm-uu-ui-check.mjs | 一次性容器实例 | 无（禁止对板子账户运行） | UU 远程绑定界面 | [上板记录](bringup/2026-10-15-uu-output-controls-identity.md) |
-| tools/pikvm-smoke.mjs | PiKVM | 独占 | 解码、及时截图、MJPEG 重连与可选 Mac USB 输入 | [Ubuntu 构建](ubuntu-build.md#pikvm-组件) |
-| tools/kvm-switch-check.mjs | 管理器 | 独占，切换应用 | 应用互斥切换并恢复原选择 | [板级工具](board-tools.md#kvm-应用切换回归) |
+| tools/pikvm-smoke.mjs | PiKVM | 独占 | 解码、截图、MJPEG 重连与可选 Mac USB 输入；`--audio --existing-audio` 使用已运行的 HDMI 音源 | [Ubuntu 构建](ubuntu-build.md#pikvm-组件) |
+| tools/kvm-switch-check.mjs | 管理器 | 独占，切换应用 | 四应用互斥与解码，恢复原选择；`VIM4_KVM_URL` 可指定 SSH 转发的网关 | [板级工具](board-tools.md#kvm-应用切换回归) |
+| tools/kernel-switch-check.mjs | Mac → 板 | 独占、重启两次 | `--exclusive --reboot` 验证面板 7→5→7、配置双向保留及临时镜像哈希；`--switch-apps` 在两边跑四应用循环；结束恢复设置并删除本次文件 | 脚本头注释 |
 | tools/manager-login.mjs | 管理器 | 创建登录会话 | 浏览器测试共享统一登录；导出 loginManager(context, managerURL) | 本页 |
 
 ## 诊断与测量

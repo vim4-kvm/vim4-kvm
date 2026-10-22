@@ -6,8 +6,8 @@ Conflicts=usb-gadget-khadas.service
 [Service]
 Type=oneshot
 RemainAfterExit=yes
-ExecStart=/usr/local/sbin/kvm-gadget.sh start
-ExecStop=/usr/local/sbin/kvm-gadget.sh stop
+ExecStart=/usr/libexec/vim4-board-runtime gadget-start
+ExecStop=/usr/libexec/vim4-board-runtime gadget-stop
 
 [Install]
 WantedBy=multi-user.target

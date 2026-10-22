@@ -10,6 +10,9 @@ const { chromium } = await import(process.env.PLAYWRIGHT_MODULE || 'playwright')
 const args = process.argv.slice(2);
 assert(args.includes('--exclusive'), 'Requires exclusive board and USB host access');
 const image = args.find(x => x.startsWith('--image='))?.slice(8);
+const service = args.find(x => x.startsWith('--service='))?.split('=')[1] || 'one-kvm-edge';
+assert(['one-kvm','one-kvm-edge'].includes(service),'Choose the installed One-KVM service');
+const managerURL = args.find(x => x.startsWith('--manager-url='))?.slice('--manager-url='.length);
 assert(image?.endsWith('.img'), '--image requires a dedicated raw FAT .img fixture');
 const volume = '/Volumes/EDGEUSB21';
 assert(!existsSync(volume), 'The dedicated test volume must be absent initially');
@@ -83,7 +86,7 @@ try {
       writeFileSync(volume + '/written.bin', written, { flag: 'wx' });
       assert.equal(digest(readFileSync(volume + '/written.bin')), digest(written));
       const device = info.ParentWholeDisk;
-      ssh('sudo', '-n', 'systemctl', 'restart', 'one-kvm-edge');
+      ssh('sudo', '-n', 'systemctl', 'restart', service);
       await until(async () => {
         try { return (await context.request.get(url + '/api/setup')).ok(); }
         catch { return false; }
@@ -95,6 +98,16 @@ try {
         hid: { otg_descriptor: { ...base.hid.otg_descriptor, product: 'Refused while media is mounted' } } } });
       assert.equal(refused.status(), 400, 'Mounted media must block USB reconfiguration');
       assert.equal(lun(), backing, 'Refused configuration changed the active LUN');
+      if (managerURL) {
+        const before = await (await context.request.get(managerURL + '/api/kernel')).json();
+        for (const [path,data] of [['/api/kernel',{id:'vendor',reboot:false}],['/api/select',{app:'jetkvm'}]]) {
+          const rejected = await context.request.post(managerURL + path,{data,headers:{Origin:managerURL}});
+          assert.equal(rejected.status(),400,`Mounted media must block ${path}`);
+        }
+        const after = await (await context.request.get(managerURL + '/api/kernel')).json();
+        assert.deepEqual(after,before,'Rejected kernel selection changed the default');
+        assert.equal(lun(),backing);
+      }
     }
     await eject();
     await api('msd/status');

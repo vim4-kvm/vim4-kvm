@@ -7,7 +7,8 @@ const { chromium } = await import(process.env.PLAYWRIGHT_MODULE || 'playwright')
 assert(process.argv.includes('--exclusive'), 'Coordinate hardware access and pass --exclusive');
 const url = process.env.PIKVM_URL || 'http://192.168.50.210:8080';
 const browser = process.env.PIKVM_CDP ? await chromium.connectOverCDP(process.env.PIKVM_CDP)
-  : await chromium.launch({ channel: 'chrome', headless: true,
+  : await chromium.launch({ ...(process.env.VIM4_TEST_CHROME
+  ? { executablePath: process.env.VIM4_TEST_CHROME } : { channel: 'chrome' }), headless: true,
   args: ['--autoplay-policy=no-user-gesture-required'] });
 const context = await browser.newContext();
 await context.addInitScript(() => {
@@ -156,14 +157,15 @@ try {
     await sourceBrowser.close(); sourceBrowser = null;
   }
   if (process.argv.includes('--audio')) {
-    assert(process.env.PIKVM_TEST_AUDIO, 'Set PIKVM_TEST_AUDIO to a non-silent WAV played through HDMI');
+    const existingAudio = process.argv.includes('--existing-audio');
+    assert(existingAudio || process.env.PIKVM_TEST_AUDIO, 'Set PIKVM_TEST_AUDIO or use --existing-audio with an HDMI signal fixture');
     await page.evaluate(() => {
       const toggle = document.querySelector('#stream-multimedia-switch');
       if (!toggle.checked) toggle.click();
       document.querySelector('#stream-video').muted = true;
     });
     await page.waitForFunction(() => document.querySelector('#stream-video')?.srcObject?.getAudioTracks().length > 0);
-    sound = spawn('afplay', [process.env.PIKVM_TEST_AUDIO], { stdio: 'ignore' });
+    if (!existingAudio) sound = spawn('afplay', [process.env.PIKVM_TEST_AUDIO], { stdio: 'ignore' });
     const peak = await page.evaluate(async () => {
       const video = document.querySelector('#stream-video'); video.muted = true;
       const audio = new AudioContext(); await audio.resume();
@@ -177,7 +179,7 @@ try {
       }
       source.disconnect(); await audio.close(); return peak;
     });
-    sound.kill(); sound = null;
+    sound?.kill(); sound = null;
     assert(peak > 0.001, `Decoded audio is silent: peak=${peak}`);
     extra.audioPeak = peak;
     console.log('PASS: decoded HDMI audio peak', peak);

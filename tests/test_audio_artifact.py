@@ -16,6 +16,10 @@ class AudioArtifactTests(unittest.TestCase):
             root = Path(folder)
             units = root / 'usr/lib/systemd/system'
             units.mkdir(parents=True)
+            wrapper = root / 'usr/libexec/vim4-board-runtime'
+            wrapper.parent.mkdir(parents=True)
+            wrapper.write_bytes((ROOT / 'board/vim4-board-runtime').read_bytes())
+            wrapper.chmod(0o755)
             hdmi = (ROOT / 'board/vim4-kvm-hdmi.service').read_text()
             (units / 'nanokvm.service').write_text('[Unit]\nAfter=vim4-kvm-hdmi.service\n')
             path = units / 'vim4-kvm-hdmi.service'
@@ -25,7 +29,8 @@ class AudioArtifactTests(unittest.TestCase):
                 '\n'.join(line for line in hdmi.splitlines() if not line.startswith('ExecStartPre=')),
                 hdmi.replace('ExecStartPre=', 'ExecStartPost='),
                 hdmi.replace(' alsa-restore.service', ''),
-                hdmi.replace('" hdmirx', '" tdmin_b'),
+                hdmi.replace('audio-route', 'wrong-route'),
+                hdmi.replace('Type=notify', 'Type=simple'),
             ):
                 with self.subTest(unit=bad):
                     path.write_text(bad)

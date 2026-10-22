@@ -1,17 +1,19 @@
 [Unit]
 Description=vim4-kvm HDMI-in capture path (vdin0 -> vfm_cap)
-After=tvserver.service sound.target alsa-restore.service
-Requires=tvserver.service
-Wants=alsa-restore.service
+After=tvserver.service sound.target alsa-restore.service video-firmware-preload-khadas.service
+Wants=tvserver.service alsa-restore.service video-firmware-preload-khadas.service
 
 [Service]
+Type=notify
+NotifyAccess=all
 EnvironmentFile=-/etc/default/vim4-kvm-hdmi
 # HDR_SDR_WHITE/HDR_SDR_PEAK; kept apart because NanoKVM rewrites the file above
 EnvironmentFile=-/etc/default/vim4-kvm-hdr
 # Set the route before this unit is considered started: NanoKVM is ordered after
 # us and must never open the PCM on the default external TDM pins.
-ExecStartPre=/usr/bin/amixer -q -D hw:AMLAUGESOUND cset "name=TDMIN_B source select" hdmirx
-ExecStart=/usr/local/sbin/hdmi-setup.sh
+ExecStartPre=/usr/libexec/vim4-board-runtime audio-route
+ExecStart=/usr/libexec/vim4-board-runtime hdmi
+TimeoutStartSec=60
 Restart=on-failure
 RestartSec=3
 

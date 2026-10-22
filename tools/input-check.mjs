@@ -12,7 +12,8 @@ const [targetBinary, prefix, url = "http://192.168.50.210:8080"] =
 if (!targetBinary || !prefix)
   throw new Error("Expected TARGET_BINARY LOG_PREFIX [URL]");
 fs.accessSync(targetBinary, fs.constants.X_OK);
-const browser = await chromium.launch({ channel: "chrome", headless: true });
+const browser = await chromium.launch({ ...(process.env.VIM4_TEST_CHROME
+  ? { executablePath: process.env.VIM4_TEST_CHROME } : { channel: "chrome" }), headless: true });
 const page = await browser.newPage();
 await loginManager(page.context(), url);
 const reports = [];

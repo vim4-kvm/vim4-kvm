@@ -12,7 +12,7 @@ const mode = modeIndex >= 0 ? args.splice(modeIndex, 2)[1] : "h264-webrtc";
 const url = args.find((arg) => !arg.startsWith("--")) || "http://192.168.50.210:8080";
 // Direct modes need WebCodecs, which Chrome exposes only to secure contexts.
 const browser = await chromium.launch({
-  channel: "chrome",
+  ...(process.env.VIM4_TEST_CHROME ? { executablePath: process.env.VIM4_TEST_CHROME } : { channel: "chrome" }),
   headless: true,
   args: [`--unsafely-treat-insecure-origin-as-secure=${new URL(url).origin}`],
 });

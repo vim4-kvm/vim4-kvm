@@ -27,6 +27,9 @@ let pointer = CGEvent(source:nil)!.location
 var windows: [NSWindow] = []
 for screen in NSScreen.screens {
     let w = TargetWindow(contentRect:screen.frame, styleMask:[.borderless], backing:.buffered, defer:false)
+    // Keep USB clicks inside this disposable target even while the HDMI motion
+    // fixture occupies the screen-saver layer underneath it.
+    w.level = NSWindow.Level(rawValue: NSWindow.Level.screenSaver.rawValue + 1)
     let view = TargetView(frame:NSRect(origin:.zero, size:screen.frame.size))
     w.contentView = view
     w.makeKeyAndOrderFront(nil)

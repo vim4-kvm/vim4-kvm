@@ -12,7 +12,7 @@ const seconds = Number(args[1] || 15);
 if (!Number.isFinite(seconds) || seconds < 1 || seconds > 300) throw new Error('SECONDS must be 1..300');
 // WebCodecs (Direct modes) is only exposed to secure contexts; the board serves plain HTTP.
 const browser = await chromium.launch({
-  channel: 'chrome', headless: true,
+  ...(process.env.VIM4_TEST_CHROME ? { executablePath: process.env.VIM4_TEST_CHROME } : { channel: 'chrome' }), headless: true,
   args: [`--unsafely-treat-insecure-origin-as-secure=${new URL(url).origin}`],
 });
 try {

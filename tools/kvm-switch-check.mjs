@@ -7,10 +7,11 @@ import { loginManager } from './manager-login.mjs';
 const { chromium } = await import(process.env.PLAYWRIGHT_MODULE || 'playwright');
 const args = process.argv.slice(2);
 if (!args.includes('--exclusive')) throw new Error('Coordinate board access and pass --exclusive');
-const manager = args.find((arg) => arg !== '--exclusive') || 'http://192.168.50.210';
-const appURL = new URL(manager);
-appURL.port = '8080';
-const browser = await chromium.launch({ channel: 'chrome', headless: true });
+const manager = args.find((arg) => !arg.startsWith('--')) || 'http://192.168.50.210';
+const appURL = new URL(process.env.VIM4_KVM_URL || manager);
+if (!process.env.VIM4_KVM_URL) appURL.port = '8080';
+const browser = await chromium.launch({ ...(process.env.VIM4_TEST_CHROME
+  ? { executablePath: process.env.VIM4_TEST_CHROME } : { channel: 'chrome' }), headless: true });
 const context = await browser.newContext();
 const page = await context.newPage();
 const control = await context.newPage();
@@ -45,7 +46,9 @@ const sample = () => page.evaluate(async () => {
 let selected;
 const initial = await managerAPI('/api/status');
 const hasOneKVM = initial.apps.some(entry => entry.id === 'onekvm' && entry.unit.loaded);
-const sequence = hasOneKVM
+const hasPiKVM = initial.apps.some(entry => entry.id === 'pikvm' && entry.unit.loaded);
+const sequence = hasOneKVM && hasPiKVM
+  ? ['onekvm', 'nanokvm', 'jetkvm', 'pikvm', 'onekvm', 'pikvm', 'jetkvm', 'nanokvm'] : hasOneKVM
   ? ['onekvm', 'nanokvm', 'jetkvm', 'onekvm', 'jetkvm', 'nanokvm']
   : ['nanokvm', 'jetkvm', 'nanokvm', 'jetkvm', 'nanokvm'];
 try {
@@ -74,6 +77,11 @@ try {
     assert(loaded, 'application HTTP server did not become ready');
     if (app === 'onekvm') {
       await page.goto(appURL.href);
+    }
+    if (app === 'pikvm') {
+      const target = new URL('/kvm/', appURL);
+      target.searchParams.set('kvm', app);
+      await page.goto(target.href);
     }
     await page.waitForFunction(() => document.querySelector('video')?.videoWidth > 0, {}, { timeout: 45000 });
     const firstFrameMs = Date.now() - begin;

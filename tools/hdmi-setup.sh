@@ -69,4 +69,7 @@ if ! grep -q 'tvpath { vdin0([0-9]*) vfm_cap}' $MAP; then
 fi
 
 # tvserver starts vdin0 once a client opens the HDMI source
+if [ "${VIM4_HDMI_NOTIFY:-0}" = 1 ]; then
+	systemd-notify --ready
+fi
 exec hdmiin-demo </dev/null

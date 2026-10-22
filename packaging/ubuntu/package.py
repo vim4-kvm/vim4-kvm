@@ -44,7 +44,9 @@ def package(name, version, output, populate, depends):
             write(stage, 'DEBIAN/postinst', '#!/bin/sh\nset -eu\n', 0o755)
         with postinst.open('a') as script:
             script.write('sync\n')
-        provides = 'Provides: vim4-media-api-1\n' if name == 'vim4-kvm-board' else ''
+        provides = 'Provides: vim4-media-api-1, vim4-runtime-api-1\n' if name == 'vim4-kvm-board' else ''
+        if name == 'vim4-amlvenc':
+            provides = 'Provides: vim4-wave5-api-1\n'
         if name == 'vim4-manager':
             provides = 'Provides: vim4-nas-api-1\n'
         write(stage, 'DEBIAN/control', f'Package: {name}\nVersion: {version}\nArchitecture: arm64\n'
@@ -66,7 +68,14 @@ def package(name, version, output, populate, depends):
 
 
 def board(stage):
+    copy(ROOT / 'board/edid/1080p60-sdr8.bin', stage, 'usr/share/vim4-kvm/edid/1080p60-sdr8.bin', 0o644)
     copy(ROOT / 'board/vim4media.py', stage, 'usr/lib/vim4-kvm/python/vim4media.py', 0o644)
+    copy(ROOT / 'board/vim4video.py', stage, 'usr/lib/vim4-kvm/python/vim4video.py', 0o644)
+    copy(ROOT / 'board/vim4boot.py', stage, 'usr/lib/vim4-kvm/python/vim4boot.py', 0o644)
+    for name in ('vim4-board-runtime', 'vim4-kvm-run'):
+        copy(ROOT / 'board' / name, stage, 'usr/libexec/' + name, 0o755)
+    copy(ROOT / 'packaging/kernel-edge/one-kvm-edge-prepare', stage, 'usr/libexec/vim4-mainline-prepare', 0o755)
+    copy(ROOT / 'packaging/kernel-edge/one-kvm-edge-usb-prepare', stage, 'usr/libexec/vim4-mainline-gadget-prepare', 0o755)
     copy(ROOT / 'tools/rootfs-policy.py', stage, 'usr/sbin/vim4-rootfs-policy', 0o755)
     copy(ROOT / 'build/usb-pd-init', stage, 'usr/sbin/usb-pd-init', 0o755)
     for name in ('hdmi-setup.sh', 'kvm-gadget.sh'):
@@ -90,6 +99,10 @@ def capture(stage):
 
 
 def encoder(stage):
+    mainline = 'usr/lib/vim4-kvm/mainline-gstreamer-1.0/'
+    copy(ROOT / 'gst-plugin-venc/wave5/libgstvim4wave5.so', stage, mainline + 'libgstvim4wave5.so', 0o644)
+    copy(ROOT / 'build/mainline-gstreamer/libgstvideo4linux2.so', stage, mainline + 'libgstvideo4linux2.so', 0o644)
+    copy(ROOT / 'gst-plugin-venc/jpeg/vim4/libgstvim4jpegenc.so', stage, mainline + 'libgstvim4jpegenc.so', 0o644)
     copy(ROOT / 'gst-plugin-venc/jpeg/vim4/libgstvim4jpegenc.so', stage,
          'usr/lib/vim4-kvm/gstreamer-1.0/libgstvim4jpegenc.so', 0o644)
     copy(ROOT / 'gst-plugin-venc/jpeg/vim4/gstvim4jpegenc.c', stage,
@@ -263,7 +276,7 @@ fi
 GST = 'libc6 (>= 2.38), libglib2.0-0t64, libgstreamer1.0-0 (>= 1.24), libgstreamer-plugins-base1.0-0 (>= 1.24)'
 # Applications state lower bounds only: their web updaters replace one package
 # and refuse any plan that would also upgrade the platform.
-PLATFORM = ('vim4-kvm-board (>= 1.0.3+vim4.20261013.18), vim4-media-api-1, vim4-vfmcap, '
+PLATFORM = ('vim4-kvm-board (>= 1.0.3+vim4.20261013.18), vim4-media-api-1, vim4-runtime-api-1, vim4-wave5-api-1, vim4-vfmcap, '
             'vim4-amlvenc (>= 1.0.3+vim4.20261013.18)')
 PACKAGES = {
     'platform': [
@@ -285,7 +298,7 @@ PACKAGES = {
          'network-manager, dnsmasq-base, openssh-client, ' + PLATFORM + ', vim4-nanokvm (>= 1.0.3+vim4.20261013.18), '
          'vim4-manager (>= 2.5.1+vim4.20261014.4)')],
     'manager': [
-        ('vim4-manager', manager, 'libc6 (>= 2.38), python3, sudo, systemd, fuse3, cifs-utils, nfs-common, vim4-media-api-1, vim4-nanokvm (>= 1.0.3+vim4.20261013.18)')],
+        ('vim4-manager', manager, 'libc6 (>= 2.38), python3, sudo, systemd, fuse3, cifs-utils, nfs-common, vim4-media-api-1, vim4-runtime-api-1, vim4-nanokvm (>= 1.0.3+vim4.20261013.18)')],
 }
 PACKAGES['all'] = [entry for name in ('platform', 'nanokvm', 'jetkvm', 'onekvm', 'manager') for entry in PACKAGES[name]]
 PACKAGES['capture'] = [PACKAGES['platform'][1]]
