@@ -19,7 +19,8 @@ await context.addInitScript(() => {
   };
 });
 const page = await context.newPage();
-page.on('pageerror', error => console.error('Browser:', error.message));
+const pageErrors = [];
+page.on('pageerror', error => { pageErrors.push(error.message); console.error('Browser:', error.message); });
 page.on('console', message => { if (message.type() === 'error') console.error(message.text()); });
 const api = async (path, method = 'GET') => {
   const result = await page.evaluate(async ({ path, method }) => {
@@ -230,7 +231,7 @@ try {
         execFileSync('ssh', [process.env.VIM4_SSH || 'vim4',
           'sudo -n /usr/libexec/vim4-manager-helper select nanokvm'], { stdio: 'pipe' });
       } catch (error) { rejection = error.stderr?.toString(); }
-      assert(rejection?.includes('Eject the PiKVM virtual disk'), 'Manager must refuse a switch with mounted media');
+      assert(rejection && /Eject|安全弹出/.test(rejection), 'Manager must refuse a switch with mounted media');
       assert((await api('msd')).drive.connected, 'Rejected switch changed the running application');
       extra.mountedMediaSwitchGuard = 'passed';
     }
@@ -269,6 +270,7 @@ try {
     }
   }
   await page.screenshot({ path: 'logs/pikvm/browser.png' });
+  assert.deepEqual(pageErrors, [], 'PiKVM raised a browser error');
   console.log(JSON.stringify({ video, framesInTenSeconds: video.frames - first, rtc,
     jpeg: snapshot, usb: original ? 'passed' : 'not requested', ...extra }, null, 2));
 } finally {
@@ -278,6 +280,7 @@ try {
     if (mediaName) {
       try { execFileSync('diskutil', ['eject', '/Volumes/PIKVM_TEST'], { stdio: 'pipe' }); } catch {}
       if ((await api('msd')).drive?.connected) await api('msd/set_connected?connected=false', 'POST');
+      await api('msd/remove?image=' + encodeURIComponent(mediaName), 'POST');
     }
     if (original) await move(original);
   } finally { await context.close(); await browser.close(); }
