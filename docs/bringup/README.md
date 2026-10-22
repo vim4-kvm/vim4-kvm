@@ -7,7 +7,7 @@
 
 ## 2026-10-21
 
-- [双内核完整系统集成（进行中）](2026-10-21-dual-kernel-integration.md) — application kernel video usb deployment
+- [双内核完整系统集成与往返验收](2026-10-21-dual-kernel-integration.md) — application kernel video usb deployment
 - [7.x USB 功能接入与主机传输](2026-10-21-edge-usb-functions.md) — usb application kernel deployment board
 - [Wi-Fi 固件排查与 MJPEG 帧率分段](2026-10-21-edge-wifi-fps.md) — kernel video application deployment board
 - [7.x VDIN 缩放与硬件 MJPEG](2026-10-21-edge-scaling-jpeg.md) — kernel video application deployment board

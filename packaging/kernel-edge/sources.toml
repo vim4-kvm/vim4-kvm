@@ -2,8 +2,8 @@
 [kernel]
 url = "https://github.com/vim4-kvm/linux.git"
 branch = "vim4-kvm-7.3"
-revision = "a32ad9364e1c7bfefb44fd7cf123375b046f6917"
-tree = "c08153a263d8384bb9ddfa60da8810e52debc261"
+revision = "ec7d1869b2aafea7e2c4b075f2e10b1f5133b5dc"
+tree = "92d56723c9ae80d6ec21296d6fbdc6835a020605"
 upstream_url = "https://github.com/gregkh/linux.git"
 upstream_tag = "v7.3-rc7"
 upstream_revision = "24a19b953e2a3d0ea5a8c4951a0ab8f32720c907"
@@ -24,10 +24,22 @@ localversion = "-vim4kvm-uhd1"
 build_id = "7aa593508a6e987e754de0e343498dbbc8c2edd7"
 image_sha256 = "25241ef8c402619e6917e6826129ba301c4b4dfacc4665db365620e9489faa48"
 config_sha256 = "610ff17daf5bb40085ca657f40a7436c1ff257c57aabb65367fb2aa3a4709ae9"
-modules_sha256 = "d20a952a1d0d48def247b7794bc9bcdcb1f22b9ec220c22591babe43553abcbd"
+config_path = "uhd1.config"
+modules_sha256 = "01d58c2f1fc7c68ba7c7757eed79a546919b35b8218506450b466d51495034cf"
 module_count = 2334
 module_btf = true
 board_dtb_sha256 = "471fc2881ed6c83726ac1db85277aaeadbb63eb6b608d821f2e0bc177d96a567"
+
+# Shared application sources are pinned in workspace.toml; the old independent
+# One-KVM and its private plugin above/below remain historical separate inputs.
+[integrated_runtime]
+boot_label = "FullKvm"
+board_packages = "2.5.1+vim4.20261018.44.dev.1.g111d83b.dirty"
+pikvm_package = "2.5.1+vim4.20261018.16.dev.2.g391a6eb"
+manifest_path = "/etc/vim4-kvm/runtime-build.json"
+wave5_plugin_sha256 = "1d90f0d36f0eae0dca3e847663d6c5f16b4c3f02da2a6a128ed62a9746eb6b5f"
+v4l2_plugin_sha256 = "7fea3773c028de64ec7da4e87b2acc28206465e2cb09fb6530fe597c00868443"
+one_kvm_binary_sha256 = "3d0062dd22de50cfdcf7c205c5538102eb07c0504e38fb1724da80f3b0ed1d84"
 
 # Diagnostic capability, not proof that the historical firmware crash is fixed.
 [wifi_diagnostics]

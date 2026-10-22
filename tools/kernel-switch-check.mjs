@@ -83,6 +83,9 @@ async function verifyRuntime(prefix, height) {
     await delay(1500);
   }
   assert(state.hardware.kernel.startsWith(prefix));
+  const failed = execFileSync('ssh', [board,'systemctl','--failed','--no-legend','--plain'],
+    {encoding:'utf8',timeout:10000}).trim();
+  assert.equal(failed,'','Kernel boot left failed services: ' + failed);
   assert.equal(state.active,'onekvm');
   assert(state.hardware.hdmi.signal);
   await waitApp();
@@ -97,7 +100,7 @@ async function verifyRuntime(prefix, height) {
     frames:video.getVideoPlaybackQuality().totalVideoFrames}));
   assert(end.frames > initial + 10);
   console.log(JSON.stringify({test:'kernel-data',running:state.hardware.kernel,
-    video:end,sharedImageHashes:images.map(image => image.sha)}));
+    video:end,failedUnits:0,sharedImageHashes:images.map(image => image.sha)}));
 }
 async function reboot(id) {
   await page.goto(manager + '/#updates');
@@ -125,6 +128,7 @@ async function checkApplications() {
     child.once('error',reject);
     child.once('exit',(code,signal) => code === 0 ? resolve() : reject(new Error(`Application cycle failed: ${code ?? signal}`)));
   });
+  await waitApp();
 }
 try {
   await connect();
@@ -136,6 +140,8 @@ try {
   await waitApp();
   savedVideo = await api(app,'/api/config/video');
   savedMode = await api(app,'/api/stream/mode');
+  console.log(JSON.stringify({test:'kernel-settings-baseline',app:initialApp,
+    output:savedVideo.output,mode:savedMode.mode}));
   await api(app,'/api/stream/mode','POST',{mode:'h264'});
   await api(app,'/api/config/video','PATCH',{output:{height:1080,fps:30}});
   await upload();
@@ -151,7 +157,10 @@ try {
 } finally {
   try {
     await page.goto('about:blank');
-    if (savedVideo) await api(app,'/api/config/video','PATCH',{output:savedVideo.output});
+    if (savedVideo) {
+      await waitApp();
+      await api(app,'/api/config/video','PATCH',{output:savedVideo.output});
+    }
     if (savedMode) await api(app,'/api/stream/mode','POST',{mode:savedMode.mode});
     for (const image of images) await api(app,'/api/msd/images/' + encodeURIComponent(image.id),'DELETE');
     if (initialApp && initialApp !== 'onekvm') await api(manager,'/api/select','POST',{app:initialApp});

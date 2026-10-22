@@ -1,9 +1,11 @@
 #!/bin/bash
-# Compile the experimental kernel into an external directory; never install it.
+# Usage: build.sh SOURCE OUTPUT [CONFIG]; defaults to the generic edge.config.
+# Compile into an external directory; never install or reboot.
 set -euo pipefail
 source_dir=$(realpath "${1:?kernel source directory required}")
 output=$(realpath -m "${2:?external build directory required}")
 recipe=$(cd "$(dirname "$0")" && pwd)
+config=$(realpath "${3:-$recipe/edge.config}")
 [[ $(uname -s) == Linux && $(uname -m) == aarch64 ]] || { echo 'Requires Linux ARM64' >&2; exit 1; }
 python3 - "$recipe" "$source_dir" "$output" <<'PY'
 import pathlib, subprocess, sys, tomllib
@@ -19,7 +21,7 @@ if output.exists() and any(output.iterdir()):
     raise SystemExit('Use a new empty output directory to avoid mixing configurations')
 PY
 mkdir -p "$output"
-cp "$recipe/edge.config" "$output/.config"
+cp "$config" "$output/.config"
 export SOURCE_DATE_EPOCH=$(git -C "$source_dir" show -s --format=%ct HEAD)
 export KBUILD_BUILD_TIMESTAMP=$(date -u -d "@$SOURCE_DATE_EPOCH")
 args=(-C "$source_dir" O="$output" ARCH=arm64 CC=gcc KBUILD_BUILD_VERSION=1 KBUILD_BUILD_USER=vim4-kvm KBUILD_BUILD_HOST=vim4-build)

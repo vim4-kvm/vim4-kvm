@@ -189,6 +189,15 @@ try {
     const response = await page.evaluate(([m, p]) => window.smokeCall(m, p), [method, params]);
     console.log(JSON.stringify({ call: method, params, result: response.result, error: response.error }));
     if (response.error) failed = true;
+    if (!response.error && method === 'reconnectHostDisplay') {
+      const before = await page.$eval('video', video => video.getVideoPlaybackQuality().totalVideoFrames);
+      await page.waitForFunction(before => document.querySelector('video')?.getVideoPlaybackQuality().totalVideoFrames > before + 30,
+        before, {timeout:45000});
+      console.log(JSON.stringify({nativeDisplayReconnect: await page.$eval('video', video => ({
+        width:video.videoWidth,height:video.videoHeight,
+        frames:video.getVideoPlaybackQuality().totalVideoFrames,
+      }))}));
+    }
   }
   if (terminal) {
     const output = await page.evaluate((command) => new Promise((resolve) => {

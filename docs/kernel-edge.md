@@ -1,7 +1,12 @@
 # VIM4 新内核基线
 
-此分支用于复现 Armbian edge 的编译基线，不是可部署的 KVM 内核。
-HDMI 输入、VDIN、Wave521 编码仍需单独适配；CRG USB 设备端已完成真实键鼠和
+当前开发分支已接通 HDMI 输入、VDIN 直接 DMA、Wave5 H.264/H.265、硬件 JPEG 与音频，
+并部署完整 manager 和四种 KVM 的双内核运行时；5.15 可保留启动，共用同一应用的数据。
+当前包、匹配内核、安装/回退与实际验收范围见
+[双内核完整系统集成](bringup/2026-10-21-dual-kernel-integration.md)。
+本页保留 Armbian 编译基线与专项历史记录；通用 edge.config 不等于已验收的整板配置。
+
+CRG USB 设备端早期已完成真实键鼠和
 只读虚拟盘三轮组合测试，仍需扩大 USB 验收，范围见
 [CRG 组合实测](bringup/2026-10-19-crg-composite.md)。
 HDMI RX 已通过 EDID/DDC 源端读回，并在固定 148.5 MHz 实验路径中取得真实的
@@ -21,7 +26,7 @@ H.264/H.265 硬编码已取得实验结果，见
 [启动风扇与 HDMI 恢复](bringup/2026-10-20-edge-recovery.md)；首次安静曲线的性能短测见
 [安静风扇与整包验证](bringup/2026-10-20-edge-quiet-fan.md)，旧 Image 加 VDIN 覆盖的
 同连接 30 分钟结果见 [持续延迟](bringup/2026-10-20-edge-status-latency.md#同连接-30-分钟)。
-现有 5.15 的工作树、workspace.toml 发布版本和安装流程不变。
+现有 5.15 内核工作树和发布版本保留；workspace.toml 的用户态仓库锁随双内核适配更新。
 受支持的 RGB8 1080p60/4K60 自动重配与应用缓冲回收见
 [动态模式记录](bringup/2026-10-20-edge-dynamic-modes.md)。
 有限的 [HDR10 4K60 采集与 HDR→SDR](bringup/2026-10-20-edge-hdr-capture.md) 已接通，
@@ -42,9 +47,15 @@ H.264/H.265 硬编码已取得实验结果，见
 `edge.config` 取自固定 Armbian 提交的 `config/kernel/linux-meson-s4t7-edge.config`，
 增加 `CONFIG_LOCALVERSION="-vim4kvm-edge"` 及 KVM 所需的 configfs gadget 功能
 （HID、NCM、ECM、RNDIS、mass storage、UAC2），并启用实验 CRG UDC 模块。
-CRG 仅由独立的 udc-test DTB 接入，普通 VIM4 DTB 保持 USB host 行为。
+通用基线中 CRG 由 udc-test DTB 接入，普通 VIM4 DTB 保持 USB host 行为；
+当前完整运行时使用 tested_build 记录的匹配专用 DTB，不能直接用通用产物覆盖。
 脚本执行 olddefconfig，最终配置写入
 外部构建目录并记录校验和；并非复现 Armbian 镜像构建的所有配置钩子。
+
+完整运行时的准确配置为 `packaging/kernel-edge/uhd1.config`，Linux ARM64 上可用
+`bash packaging/kernel-edge/build.sh SOURCE NEW_OUTPUT packaging/kernel-edge/uhd1.config`
+重建匹配 release；不传第三参数仍构建通用 edge 基线。该命令不安装、不重启，
+DTB/固件和完整模块的安装与登记按双内核记录执行，保留当前板子的 DTB/MAC 配置。
 
 Armbian 的 `config/sources/mainline-kernel.conf.sh` 为 7.3 选择 rc7；
 不要将目录名 7.3 当作正式稳定版。源码准备使用独立 Linux 大小写敏感文件系统，

@@ -1,8 +1,8 @@
-# 2026-10-21：双内核完整系统集成（验收中）
+# 2026-10-21：双内核完整系统集成
 
 用户要求：7.x 运行完整 vim4-manager 和四种 KVM，在面板切换应用、切换内核，
 同一应用在 5.15 / 7.x 之间继续使用配置与数据。UAC2 实际录音暂缓验收。
-本文为工作进度，不是发布验收结论。
+本次已完成运行时整合、组件包部署与实机双向切换验收，边界见末节。
 
 ## 当前实现
 
@@ -25,7 +25,10 @@ manager 则停止/恢复当前应用。HDR 曲线在线写。风扇默认 60/80/
 ## 启动与回退
 
 `Default` 保留 `5.15.137-vim4kvm`，新 `FullKvm` 使用 `7.3.0-rc7-vim4kvm-uhd1+`。
-FullKvm 只屏蔽厂商 TV/audio 与三个实验单元；原 OneKvmTest、实验目录与 ELF 保留。
+FullKvm 屏蔽厂商 TV/audio、旧 Android binder/串口蓝牙初始化和三个实验单元；
+内核 HCI 与 BlueZ 正常启动。只在 rc.local SHA 与原厂原文一致且已有 SSH 主机密钥时
+屏蔽该旧 LED/权限脚本；自定义 rc.local 不自动屏蔽。5.15 不使用这些新屏蔽项。
+原 OneKvmTest、实验目录与 ELF 保留。
 `vim4boot` 在选择前校验 root 清单、Image/DTB/完整模块 SHA256 和全部启动参数，再
 原子修改 DEFAULT。切换需要重启，没有自动失败启动回退。挂载虚拟盘时拒绝切换。
 
@@ -54,6 +57,38 @@ Stock 和 SPI OOWOW 保留；普通回退在面板选择 5.15 重启。启动失
 | `one-native-board-sdr8-forward` | 原网页 SDR8 FHD→厂商 UHD→RTK UHD 恢复，每轮 1.5s 约 90 帧；HDR 曲线写回恢复 |
 | `one-scaling-yuv444-fix` | 运动 H.264/H.265、UHD/FHD/720p 缩放、MJPEG；三处帧号一致且递增，UHD WebRTC 约 60fps，结束 DMA=0；此轮尚无三原色断言 |
 | `one-scaling-colors-fixed` | 修正最终 Y/Cb/Cr 顺序后，以上全部模式加入 RGB 三原色校验通过，运动标记一致，结束设置恢复、DMA=0 |
+| `kernel-packaged-all-apps-ready` | 正式包 7→5→7，每个内核各 8 次四应用切换，全部零丢包/丢帧；两文件双向哈希一致、两次启动零失败服务；最后恢复 One、2160p/跟随输入帧率、清理两文件 |
+| `one-packaged-h264-final` / `one-packaged-h265-final` | 最终内核与正式入口 3840×2160，分别 59.97 / 60.06fps，零冻结/丢帧/丢包；实际 Opus 解码 peak=0.1012 / 0.1020 |
+| `one-packaged-hid-final` | 最终内核往返后的 One 原生键盘、绝对/相对鼠标、点击与滚轮 |
+
+往返测试中 One 故意设为 1080p30（5.15）和 720p30（7.x）以验证配置互通，
+其余三应用保持 4K60；原始 One 设置为 `{height:2160,fps:0}`，最终已恢复。
+Pi 完整功能测试 10s 解码 600 帧，生命周期累计丢弃 7 帧，不能写成该轮全程零丢帧。
+
+## 构建、部署与最终清单
+
+七组件开发包为 `2.5.1+vim4.20261018.44.dev.1.g111d83b.dirty`；
+PiKVM 为 `2.5.1+vim4.20261018.16.dev.2.g391a6eb`，均在主仓库 `build/packages/`。
+all 包的 dirty 来自 Jet 助手测试生成的 Python 缓存，源码已提交，构建明确排除该缓存；
+该标记保留，未冒充正式发布版本。Pi 修正包源码清单干净。
+
+`ubuntu-build.py package/verify` 完成 ARM64 构建、源码/包哈希、ELF/动态库、sudoers、
+配置保留、损坏包拒绝与更新流程检查；`board.py deploy --exclusive --kernel
+7.3.0-rc7-vim4kvm-uhd1+` 实际安装，记录 `deploy-all-packaged`、`deploy-pikvm-ui-packaged`。
+主仓库最终 146 测试通过、5 项环境跳过；One 730 通过、2 忽略；Go 两目标与 PiKVM
+部署测试、Wave5 平面测试、接收器 13 个回归和风扇策略均通过。
+
+Linux 固定 `ec7d1869b2aafea7e2c4b075f2e10b1f5133b5dc`，Image build ID
+`7aa593508a6e987e754de0e343498dbbc8c2edd7`。完整 2334 模块保留 BTF，
+模块包 SHA256 `01d58c2f1fc7c68ba7c7757eed79a546919b35b8218506450b466d51495034cf`。
+准确配置归档为 `packaging/kernel-edge/uhd1.config`；空目录 olddefconfig 重放后仍为
+`610ff17daf5bb40085ca657f40a7436c1ff257c57aabb65367fb2aa3a4709ae9`。
+应用版本在 workspace.toml，完整运行时插件/ELF 在 sources.toml 的 integrated_runtime。
+
+板上 `/etc/vim4-kvm/kernels.json` 校验两套启动文件；
+`/etc/vim4-kvm/runtime-build.json` 记录最终包、ELF/插件哈希、运行内核、实际 build ID、
+数据库 quick_check=ok、零 taint、空闲 DMA=0、测试介质清零和 One 设置。
+本机副本为 `logs/dual-kernel/runtime-build.json`。独立实验目录的 deploy.json 保留为历史记录。
 
 One 介质测试写回 SHA256：
 `bd8a5183fdafb052402b7f52480145004a781b927f0d376e4fbd922da44f6926`。
@@ -74,6 +109,18 @@ One 介质测试写回 SHA256：
 - Jet 全量编译检出未公开的 NativeInterface 状态方法，改为后端持锁暂停，防止并发
   启动/调参抢占采集；VIM4 全量 Go 测试及两目标 vet 通过。
 - PiKVM 曾对 taskset 执行 --features，改成实际 ustreamer 并补行为测试。
+- PiKVM 挂载 ISO 时暴露已有的前端 `images is not defined`：镜像分组被放进分区
+  更新函数，移回镜像选择器并等待 drive/images 都到齐，新增 Node 行为回归。
+  重新打包后的 `pikvm-packaged-features-fixed` 通过音频、键鼠、主机读盘/弹出、
+  挂盘切换保护、4K MJPEG 和调参/重连，网页无未捕获异常；Janus 调参期间短暂 502 后恢复。
+- Jet `reconnectHostDisplay` 实测暴露 DDC 禁用恢复后丢失 PHY 端口选择；重新启用时
+  明确选择当前单一端口，保持原始卸载快照。实际 DDC MMIO 回归和原网页恢复均通过，
+  记录 `jet-packaged-reconnect-fixed`，不是仅检查 RPC 返回成功。
+- 原 board.py/check 与包验证仍写死厂商设备和旧的两应用互斥；改为内核对应设备检查、
+  四应用互斥和统一启动器。7.x 原厂 binder/蓝牙/rc.local 失败已按启动项修正，重启后零失败单元。
+- 首轮带四应用循环的往返在恢复 One 后过早请求配置，验收脚本收到 502；
+  加入就绪等待与基线记录，按任务前 SQLite 备份恢复原输出并按哈希清理本次文件，
+  再完整往返通过。没有用覆盖数据库恢复用户数据。
 - Jet 首次声音夹具已到时退出；HID 首次是屏保层夹具遮住接收窗口。重建较高层窗口
   并检查前台 PID 后通过，失败日志保留。
 
@@ -83,33 +130,10 @@ UAC2 实际录音、Windows/RNDIS、Wi-Fi 客户端联网未验收；历史 Wi-F
 未证明修复。整机睡眠物理操作此前延期。HDR10 旧路径保留，本次在线曲线测试为 SDR，
 不冒充重新完成 HDR 全部画质/延迟测量。ATX/外接显示屏未连接，仍显示未配置。
 
-## 起点与边界
+## 起点
 
 - 主仓库 `e7f396da275ec3ad216f5dbf1e748e66e227726e`，Linux `694ea2b5ce0ddf9a816c929a75863e42118b4b36`。
-- One-KVM `a8136d9c53c16e05b152199dd6026c567206fabf`；其余应用仍走厂商采集/编码。
-- 7.x 当前为独立 One-KVM 服务与登录网关，完整 manager 和其他应用被测试启动项屏蔽。
-- `/var/lib/one-kvm-edge` 与生产 `/var/lib/one-kvm` 分开；管理器账户已共用。
+- One-KVM 起点 `a8136d9c53c16e05b152199dd6026c567206fabf`；其余应用当时走厂商采集/编码。
 - 5.15 Image、Stock 启动项及恢复环境保留。部署前备份应用、服务、配置与数据库。
 - 不清空 eMMC，不覆盖用户镜像或网络凭据，不强制弹出主机正在使用的虚拟介质。
 
-## 实施顺序
-
-1. 共用 7.x GStreamer 硬件入口：V4L2 采集、NV12 DMA 双平面引用、Wave5 编码及压缩输出缓存。
-   NanoKVM / JetKVM / PiKVM 保留原界面和业务，只选择平台入口和对应 HDMI 音频设备。
-2. 完整 manager：硬件状态、风扇、EDID/HDR、共享介质、网络、应用互斥与网关。
-   内核的可配置风扇与标准 EDID 接口补齐后，再开放相应写操作。
-3. 统一启动服务，按运行内核选择驱动、插件和音频设备；启动缓存与驱动参数分开。
-4. 备份并验证数据库版本，统一同一应用的业务数据；实验镜像按校验和/重名规则导入。
-   不把四种 KVM 的不同数据库合并为一个，不以覆盖目录代替迁移。
-5. 内核选择 API / 面板：核对候选 Image、DTB、模块及启动参数，安全保存默认启动选择。
-   切换需要重启；不把无法保证的自动失败回退写成已有能力。
-6. 上板验证 7.x 四应用循环、实际键鼠/视频/HDMI 音频/介质；5.15 → 7.x → 5.15
-   验证配置与文件哈希、账户和应用选择。完整包与源码锁在验收后更新。
-
-## 完成标准
-
-- 两个内核均能通过 80 访问完整 manager、8080 访问当前所选 KVM。
-- 应用切换释放编码器、采集队列和 HID；异常不误启动两套应用。
-- 共享账户、网络、镜像、数据盘和 NAS 配置保留，内核专属设备配置不互相污染。
-- 从面板选择内核并实际重启成功；切回旧内核后同一数据仍可读写。
-- 最终状态、通过项目、失败记录和未验收功能分别列出；UAC2 不计为通过。
