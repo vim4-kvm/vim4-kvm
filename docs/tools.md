@@ -30,6 +30,8 @@ PiKVM smoke 可用 `PIKVM_CDP` 接入专用测试 Chrome；结束时关闭测试
 | packaging/kernel-edge/package-final.py | VM | 无 | 打包已完成的正式版 UHD 构建、安装完整模块至临时目录并生成哈希/build ID 清单；不编译 Image、不上板 | [正式版部署准备](bringup/2026-10-22-deploy-7-3-final-prep.md) |
 | packaging/kernel-edge/final-window.py、final-board.py | Mac → 板 | stage/dry-run 无；execute 独占、重启 | 双锁备份、安装与回归；支持同 release 替换、kernel-only 保留用户态、正常重启 pstore 读回；关键项失败自动回退，HDMI 恢复最多等 35 秒 | [pstore 部署与回退](bringup/2026-10-22-edge-pstore-deploy.md) |
 | packaging/kernel-edge/final-regression.py、final-manager-check.mjs | Mac → 板 | prepare 无；run 独占、改 HDMI/USB 设置后恢复 | 复制既有 board-window 夹具；默认 19 模式，可用 --sample-modes 抽样；编解码/音频/USB/GPU/管理器检查；仅显式 --wifi-scan 增加扫描并恢复 radio/autoconnect，不操作 P2P；run 仅由双锁窗口调用 | [正式版部署准备](bringup/2026-10-22-deploy-7-3-final-prep.md) |
+| packaging/kernel-edge/package-vdec.py | VM | 无 | 打包干净的 vdec3 独立构建，检查模块 vermagic/BTF 并生成完整哈希清单；不登记应用运行时 | [解码候选](bringup/2026-10-22-vdec-candidate.md) |
+| packaging/kernel-edge/vdec-window.py | Mac → 板 | 默认离线；execute 独占、装内核/加载模块 | 分步安装、预置基线恢复、probe/上电/compliance/短 H.264/Wave 实验；超时或 DMA 隔离失败时停止回收并要求现场复位；不自动重启 | [解码候选](bringup/2026-10-22-vdec-candidate.md) |
 | packaging/kernel-edge/check-wifi-p2p.py | 板 | 独占、临时接管 Wi-Fi 后恢复 | 已保存 SAE 客户端与 P2P 扫描、监听、双频 GO 启停；不代替真实对端传输 | [Wi-Fi Direct](bringup/2026-10-21-edge-wifi-p2p.md) |
 | tools/workspace.py | Mac / CI | 无 | bootstrap/status 子仓库（`--override` 供发布 CI 替换单个仓库提交），build 各目标（kernel 走 OrbStack） | [工作区](workspace.md) |
 | tools/ubuntu-build.py | Mac / CI → Docker | 无 | package/verify 七组件；支持 platform、capture、encoder、nanokvm、jetkvm、onekvm、manager、pikvm、pikvm-app | [Ubuntu 构建](ubuntu-build.md) |
