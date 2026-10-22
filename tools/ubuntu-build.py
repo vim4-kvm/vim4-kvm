@@ -62,6 +62,10 @@ def latest_release(repository, *, allow_cached=True):
 
 def latest_component_release(component, *, allow_cached=True):
     repositories = {OWNERS[component]}
+    if component == 'platform':
+        # Images install the shared platform with the combined set's version.
+        # A later standalone platform build must sort after that baseline.
+        repositories.update(OWNERS.values())
     if component in ('all', 'platform', 'pikvm'):
         # A combined package set must sort after every release it contains.
         repositories.update(set(REPOS[component]) & set(OWNERS.values()))

@@ -77,6 +77,7 @@ class VersionTests(unittest.TestCase):
         tags = {'.': '2.5.1+vim4.20261016.1002', 'vim4-manager': '2.5.1+vim4.20261016.1020'}
         with patch.object(self.build, 'latest_release', side_effect=lambda repo, **kwargs: tags.get(repo, self.build.NO_RELEASE)):
             self.assertEqual(self.build.latest_component_release('all'), tags['vim4-manager'])
+            self.assertEqual(self.build.latest_component_release('platform'), tags['vim4-manager'])
             self.assertEqual(self.build.latest_component_release('pikvm'), tags['vim4-manager'])
 
     def test_dirty_release_fails_before_docker_and_auto_development_records_its_version(self):
