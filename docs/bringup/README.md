@@ -7,6 +7,10 @@
 
 ## 2026-10-21
 
+- [7.3 GPU/IR 合并内核正式部署](2026-10-21-edge-gpu-ir-deploy.md) — kernel deployment board video usb
+- [7.3 IR 开机自动加载 Khadas 键表](2026-10-21-edge-ir-autoload.md) — kernel deployment board
+- [7.3 IR、板载按键与 SPI NOR 节点](2026-10-21-edge-ir-keys-spinor.md) — kernel board
+- [7.x Panfrost 调频与 GPU 供电](2026-10-21-edge-gpu-devfreq.md) — kernel deployment board
 - [7.x Wi-Fi Direct 创建、扫描与并发建组](2026-10-21-edge-wifi-p2p.md) — kernel deployment board
 - [7.x 管理器状态、界面与 WPA3 适配](2026-10-21-manager-mainline-status.md) — manager kernel usb application deployment board
 - [双内核完整系统集成与往返验收](2026-10-21-dual-kernel-integration.md) — application kernel video usb deployment

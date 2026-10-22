@@ -5,6 +5,8 @@
 [vim4-kvm/common_drivers](https://github.com/vim4-kvm/common_drivers) 的同名分支。
 发布名 `5.15.137-vim4kvm`，与原厂 `5.15.137` 的模块目录并存。
 主内核工作树保留在 VM，Mac 不检出内核文件；不要以第三方整套内核替代官方基线。
+板上当前 7.3 FullKvm 为合并 GPU/IR 的 `51307a1cf3a60` 匹配整包，部署与回退备份见
+[正式部署记录](bringup/2026-10-21-edge-gpu-ir-deploy.md)；下方厂商 5.15 构建流程保留。
 
 ## 构建（OrbStack VM `vim4-build`，Ubuntu 24.04 arm64）
 

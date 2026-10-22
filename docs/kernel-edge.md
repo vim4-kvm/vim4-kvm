@@ -5,6 +5,9 @@
 当前包、匹配内核、安装/回退与实际验收范围见
 [双内核完整系统集成](bringup/2026-10-21-dual-kernel-integration.md)。
 本页保留 Armbian 编译基线与专项历史记录；通用 edge.config 不等于已验收的整板配置。
+当前板上 7.3 已正式部署合并后的 `51307a1cf3a60`，使用 UHD 配置、GPU 纯调频及
+模块化 IR；同次完整 Image/模块、哈希、备份和短回归见
+[GPU/IR 合并部署](bringup/2026-10-21-edge-gpu-ir-deploy.md)。
 
 CRG USB 设备端早期已完成真实键鼠和
 只读虚拟盘三轮组合测试，仍需扩大 USB 验收，范围见
@@ -150,7 +153,8 @@ GCC 12 构建 BL33 与 bl33z 成功；厂商代码存在编译警告和 CONFIG_O
 
 原始 164 个 Armbian 补丁涉及 108 个文件，未修改 HDMI RX、VDIN、Wave5 或 USB gadget 路径。
 后续本地 CRG 实验驱动及验证范围见 [适配记录](kernel-edge-porting.md#crg-实验驱动2026-10-19)。
-GPU、音频输出和显示输出的接入仍需上板验证，不能用编译成功替代。
+GPU 纯调频已完成[专项验证](bringup/2026-10-21-edge-gpu-devfreq.md)及上述合并部署；
+音频输出和显示输出仍需上板验证，不能用编译成功替代。
 
 - `0097`：GPU 800 MHz、IO coherent；需验证 Panfrost、内存压力和持续负载。
 - `0100/0101/0111`：音频控制器与 HDMI 输出声卡，不代表 HDMI 输入音频采集。

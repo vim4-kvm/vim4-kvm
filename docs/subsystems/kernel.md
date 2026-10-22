@@ -13,6 +13,7 @@ P2P 已移除能力屏蔽，修正 discovery、扫描版本、ARP/ND 控制和�
 MCU 风扇在 VM 主内核 drivers/misc/khadas-mcu.c，策略验证用 tools/test-fan-policy.sh。
 7.x 对应 drivers/thermal/khadas_mcu_fan.c，VIM4 默认安静自动调速；验证用同目录
 test_khadas_mcu_fan.py。控制值和回退见 [安静风扇](../bringup/2026-10-20-edge-quiet-fan.md)。
+IR/按键注册及 NOR 与 eMMC 引脚限制见 [设备树节点记录](../bringup/2026-10-21-edge-ir-keys-spinor.md)。
 启动瞬间的风扇测试由 U-Boot board_init 向 MCU 0x96 写 1 触发，早于 Linux 温控；
 禁用与验证见 [U-Boot 风扇记录](../bringup/2026-10-17-uboot-quiet-fan.md)。
 VDIN、vfm_cap、Wave521、CRG USB 驱动在 common_drivers。
