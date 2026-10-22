@@ -150,6 +150,7 @@ systemctl restart "$app" vim4-manager.service
 systemctl is-active "$app" vim4-manager.service
 dpkg-query -W -f='${Package} ${Version}\n' "${components[@]}"
 for file in "$stage"/etc/sudoers.d/*; do
+    [[ -f $file ]] || continue
     installed=/etc/sudoers.d/$(basename "$file")
     cmp "$file" "$installed"
     visudo -cf "$installed"
