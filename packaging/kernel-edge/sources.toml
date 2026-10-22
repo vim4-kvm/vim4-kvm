@@ -2,8 +2,8 @@
 [kernel]
 url = "https://github.com/vim4-kvm/linux.git"
 branch = "vim4-kvm-7.3"
-revision = "ec7d1869b2aafea7e2c4b075f2e10b1f5133b5dc"
-tree = "92d56723c9ae80d6ec21296d6fbdc6835a020605"
+revision = "0ac4cd015d46c90ec0df04b2bac166ea7efd940b"
+tree = "5f9f8849101de0c75e8efd101cc05dd74984b987"
 upstream_url = "https://github.com/gregkh/linux.git"
 upstream_tag = "v7.3-rc7"
 upstream_revision = "24a19b953e2a3d0ea5a8c4951a0ab8f32720c907"
@@ -45,6 +45,8 @@ one_kvm_binary_sha256 = "3d0062dd22de50cfdcf7c205c5538102eb07c0504e38fb1724da80f
 [wifi_diagnostics]
 firmware_fwid = "01-16e134aa"
 firmware_sha256 = "af7310c6c44da2690ea9f666eea8477a48e906810a1246a5fa207d3788fdf309"
+external_sae = true
+p2p_disabled_fwid = "01-16e134aa"
 brcm_debug = true
 device_coredump = true
 coredump_max_bytes = 16777216
