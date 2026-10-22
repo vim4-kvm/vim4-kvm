@@ -2,6 +2,7 @@
 Description=VIM4 USB-capable PD contract at boot
 Requires=vim4-kvm-gadget.service
 After=vim4-kvm-gadget.service
+ConditionPathExists=!/run/vim4-kvm-pd-boot.done
 
 [Service]
 Type=oneshot

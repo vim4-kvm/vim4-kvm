@@ -50,6 +50,14 @@ class EdgeLauncherTest(unittest.TestCase):
         self.assertIn('preloader failed', result.stderr)
         self.assertFalse(self.trace.exists())
 
+    def test_final_release_enters_the_same_guarded_preparation_path(self):
+        (self.bin / 'systemctl').write_text(
+            '#!/bin/sh\ncase "$3" in SubState) echo exited ;; ExecMainStatus) echo 1 ;; esac\n')
+        result = self.run_script('one-kvm-edge-prepare', '7.3.0-vim4kvm-uhd1+')
+        self.assertNotEqual(result.returncode, 0)
+        self.assertIn('preloader failed', result.stderr)
+        self.assertFalse(self.trace.exists())
+
     def test_unfinished_secure_preloader_has_bounded_wait_and_no_hardware_access(self):
         (self.bin / 'systemctl').write_text('#!/bin/sh\necho running\n')
         sleep = self.bin / 'sleep'

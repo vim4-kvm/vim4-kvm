@@ -3,7 +3,8 @@ Description=One-KVM experimental LAN login gateway
 After=network.target one-kvm-edge.service
 Requires=one-kvm-edge.service
 PartOf=one-kvm-edge.service
-ConditionKernelVersion=7.3.0-rc7-vim4kvm-uhd1+
+ConditionKernelVersion=|7.3.0-rc7-vim4kvm-uhd1+
+ConditionKernelVersion=|7.3.0-vim4kvm-uhd1+
 ConditionKernelCommandLine=vim4.one_kvm=1
 StartLimitIntervalSec=60
 StartLimitBurst=3

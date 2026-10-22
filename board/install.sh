@@ -17,6 +17,7 @@ pd_binary=$(mktemp)
 trap 'rm -f "$pd_binary"' EXIT HUP INT TERM
 cc -O2 -Wall -Wextra -Werror ../tools/usb-pd-init.c -o "$pd_binary"
 install -m 0755 "$pd_binary" /usr/sbin/usb-pd-init
+install -D -m 0644 vim4pd.py /usr/lib/vim4-kvm/python/vim4pd.py
 install -m 0755 ../tools/hdmi-setup.sh /usr/sbin/hdmi-setup.sh
 install -m 0755 ../tools/hdr-curve.sh /usr/sbin/vim4-hdr-curve
 install -m 0755 ../tools/kvm-gadget.sh /usr/sbin/kvm-gadget.sh

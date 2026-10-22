@@ -33,7 +33,8 @@ def cma_free_kb():
 
 
 def run(args, report):
-    if not args.exclusive or os.uname().release != '7.3.0-rc7-vim4kvm-uhd1+':
+    if not args.exclusive or os.uname().release not in (
+            '7.3.0-rc7-vim4kvm-uhd1+', '7.3.0-vim4kvm-uhd1+'):
         raise ValueError('requires --exclusive and the matched experimental 7.3 kernel')
     import gi
     gi.require_version('Gst', '1.0')

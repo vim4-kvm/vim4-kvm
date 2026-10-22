@@ -1,6 +1,11 @@
 import importlib.util
+import json
 from pathlib import Path
+import sys
+import tempfile
+from types import SimpleNamespace
 import unittest
+from unittest.mock import patch
 
 ROOT = Path(__file__).resolve().parents[1]
 
@@ -17,6 +22,24 @@ boot = load('profile_boot', 'board/vim4boot.py')
 
 
 class BootProfileTest(unittest.TestCase):
+    def test_final_release_still_requires_matching_installed_artifacts(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            (root / 'edge').mkdir()
+            (root / 'edge/Image').write_bytes(b'wrong installed Image')
+            proof = root / 'proof.json'
+            with patch.object(runtime.os, 'geteuid', return_value=0), patch.dict(
+                    sys.modules, {'vim4boot': SimpleNamespace(BOOT=root)}):
+                for release, error in (
+                    ('7.3.0-vim4kvm-uhd1+', 'Image differs'),
+                    ('7.3.0-rc7-vim4kvm-uhd1+', 'Image differs'),
+                    ('7.3.0-unmatched', 'No validated application'),
+                ):
+                    with self.subTest(release=release):
+                        proof.write_text(json.dumps({'release': release, 'image_sha256': '0' * 64}))
+                        with self.assertRaisesRegex(ValueError, error):
+                            runtime.register(SimpleNamespace(proof=proof))
+
     def test_profile_upgrade_preserves_default_and_all_other_entries(self):
         source = {'APPEND': 'root=UUID=test console=ttyAML0 vim4.one_kvm=1 systemd.mask=vim4-manager.service'}
         previous = runtime.boot_profile(source)

@@ -424,7 +424,7 @@ class Board:
         self.ssh("set -eu; uname -r; test \"$(uname -r)\" = " + shlex.quote(self.args.kernel) + "; "
                  "case \"$(uname -r)\" in "
                  "5.15.*) systemctl is-active tvserver; test -e /dev/video_cap ;; "
-                 "7.3.0-rc7-vim4kvm-uhd1+) python3 -c " + shlex.quote(capture) + " ;; "
+                 "7.3.0-rc7-vim4kvm-uhd1+|7.3.0-vim4kvm-uhd1+) python3 -c " + shlex.quote(capture) + " ;; "
                  "*) echo 'Unsupported KVM runtime' >&2; exit 1 ;; esac; "
                  "test -e /dev/hidg0; test -e /dev/hidg1; test -e /dev/hidg2; "
                  "curl -fsS --max-time 10 http://127.0.0.1:8081/ >/dev/null; "

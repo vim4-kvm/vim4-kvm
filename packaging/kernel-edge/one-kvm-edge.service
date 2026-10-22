@@ -2,7 +2,8 @@
 Description=One-KVM experimental V4L2/Wave5 video
 After=network.target one-kvm-edge-usb.service video-firmware-preload-khadas.service
 Wants=one-kvm-edge-usb.service video-firmware-preload-khadas.service
-ConditionKernelVersion=7.3.0-rc7-vim4kvm-uhd1+
+ConditionKernelVersion=|7.3.0-rc7-vim4kvm-uhd1+
+ConditionKernelVersion=|7.3.0-vim4kvm-uhd1+
 ConditionKernelCommandLine=vim4.one_kvm=1
 StartLimitIntervalSec=60
 StartLimitBurst=3

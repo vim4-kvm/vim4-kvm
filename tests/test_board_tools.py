@@ -31,9 +31,9 @@ uart = load('uart-run')
 
 class BoardToolsTests(unittest.TestCase):
     def test_mainline_health_uses_capture_devices_without_vendor_service_or_alias(self):
-        instance = board.Board(SimpleNamespace(kernel='7.3.0-rc7-vim4kvm-uhd1+'), io.StringIO())
+        instance = board.Board(SimpleNamespace(kernel='7.3.0-vim4kvm-uhd1+'), io.StringIO())
         environment = '''
-        uname() { echo '7.3.0-rc7-vim4kvm-uhd1+'; }
+        uname() { echo '7.3.0-vim4kvm-uhd1+'; }
         systemctl() {
             case "$*" in *tvserver*) return 3 ;; --failed*) return 0 ;; *) echo active ;; esac
         }

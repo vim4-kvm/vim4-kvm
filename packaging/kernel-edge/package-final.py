@@ -1,0 +1,98 @@
+#!/usr/bin/env python3
+"""Package an already completed uhd1 build on Linux ARM64; never build Image.
+
+Run inside the Mac vim4-heavy.lock around orb. Output must be a new directory.
+The source and O= directory must be the same pair used for build.sh.
+"""
+import argparse
+import hashlib
+import json
+import lzma
+from pathlib import Path
+import re
+import shutil
+import subprocess
+import tempfile
+
+RELEASE = '7.3.0-vim4kvm-uhd1+'
+
+
+def sha(path):
+    with path.open('rb') as source:
+        return hashlib.file_digest(source, 'sha256').hexdigest()
+
+
+def run(*args):
+    return subprocess.check_output(list(map(str, args)), text=True).strip()
+
+
+def build_id(path):
+    return re.search(r'Build ID: ([0-9a-f]+)', run('readelf', '-n', path))[1]
+
+
+def main():
+    parser = argparse.ArgumentParser(description=__doc__)
+    for name in ('source', 'output', 'destination'):
+        parser.add_argument(name, type=Path)
+    parser.add_argument('--commit', required=True)
+    parser.add_argument('--mac', required=True, help='Board ethernet MAC, xx:xx:xx:xx:xx:xx')
+    args = parser.parse_args()
+    source, output, destination = (p.resolve() for p in (args.source, args.output, args.destination))
+    assert re.fullmatch(r'[0-9a-f]{40}', args.commit), 'Use the full approved kernel commit'
+    assert re.fullmatch(r'(?:[0-9a-fA-F]{2}:){5}[0-9a-fA-F]{2}', args.mac)
+    assert run('git', '-C', source, 'rev-parse', 'HEAD') == args.commit
+    assert not run('git', '-C', source, 'status', '--porcelain')
+    assert output != source and not output.is_relative_to(source)
+    report = json.loads((output / 'build.json').read_text())
+    assert report['kernel'] == args.commit and report['release'] == RELEASE
+    for name, expected in report['sha256'].items():
+        assert sha(output / name) == expected, name
+    assert (output / 'include/config/kernel.release').read_text().strip() == RELEASE
+    destination.mkdir()  # Refuse stale payloads.
+    with tempfile.TemporaryDirectory(dir=destination) as temporary:
+        stage = Path(temporary)
+        subprocess.run(['make', '-C', str(source), 'O=' + str(output), 'ARCH=arm64',
+                        'modules_install', 'INSTALL_MOD_STRIP=1', 'INSTALL_MOD_PATH=' + str(stage)], check=True)
+        modules = stage / 'lib/modules' / RELEASE
+        for name in ('build', 'source'):
+            (modules / name).unlink(missing_ok=True)
+        subprocess.run(['depmod', '-b', str(stage), RELEASE], check=True)
+        shutil.copy2(output / 'arch/arm64/boot/Image', destination / 'Image')
+        dtb = output / 'arch/arm64/boot/dts/amlogic/amlogic-t7-a311d2-khadas-vim4-audio-test.dtb'
+        shutil.copy2(dtb, destination / 'vim4.dtb')
+        for prop in ('mac-address', 'local-mac-address'):
+            subprocess.run(['fdtput', '-t', 'bx', str(destination / 'vim4.dtb'),
+                            '/ethernet@fdc00000', prop, *args.mac.split(':')], check=True)
+        subprocess.run(['tar', '-czf', str(destination / 'modules.tar.gz'), '-C',
+                        str(stage / 'lib/modules'), RELEASE], check=True)
+        ids = {}
+        # Check every module that will be automatically loaded by the baseline.
+        for name, filename in {
+            'meson_ir': 'meson-ir', 'rc_khadas': 'rc-khadas', 'ir_nec_decoder': 'ir-nec-decoder',
+            'dwmac_meson8b': 'dwmac-meson8b', 'panfrost': 'panfrost', 'brcmfmac': 'brcmfmac',
+            'wave5': 'wave5', 't7_hdmirx': 't7-hdmirx', 't7_vdin_test': 't7-vdin-test',
+            't7_jpeg': 't7-jpeg', 'crg_udc': 'crg_udc',
+        }.items():
+            paths = list(modules.rglob(filename + '.ko*'))
+            assert len(paths) == 1, (name, paths)
+            path = paths[0]
+            if path.suffix == '.xz':
+                raw = stage / 'module.ko'
+                raw.write_bytes(lzma.decompress(path.read_bytes()))
+                path = raw
+            ids[name] = build_id(path)
+        files = {str(p.relative_to(modules)): sha(p) for p in sorted(modules.rglob('*')) if p.is_file()}
+        result = dict(source=args.commit, tree=run('git', '-C', source, 'rev-parse', 'HEAD^{tree}'),
+                      release=RELEASE, kernel_build_id=build_id(output / 'vmlinux'),
+                      config_sha256=sha(output / '.config'), modules=files,
+                      module_count=len(list(modules.rglob('*.ko*'))), loaded_module_build_ids=ids,
+                      artifacts={name: sha(destination / name) for name in ('Image', 'vim4.dtb', 'modules.tar.gz')})
+        (destination / 'manifest.json').write_text(json.dumps(result, indent=2) + '\n')
+        subprocess.run(['python3', str(Path(__file__).with_name('register-runtime.py')), 'inventory',
+                        '--image', str(destination / 'Image'), '--modules', str(modules),
+                        '--output', str(destination / 'runtime-proof.json')], check=True)
+    print(json.dumps({k: v for k, v in result.items() if k != 'modules'}, indent=2))
+
+
+if __name__ == '__main__':
+    main()

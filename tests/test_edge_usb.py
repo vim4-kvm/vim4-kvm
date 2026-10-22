@@ -25,7 +25,7 @@ class EdgeUsbTest(unittest.TestCase):
         self.enterContext(patch.object(usb, 'ROOT', self.root))
         self.enterContext(patch.object(usb, 'MARKER', self.marker))
         self.enterContext(patch.object(usb.os, 'geteuid', return_value=0))
-        self.enterContext(patch.object(usb.platform, 'release', return_value='7.3.0-rc7-vim4kvm-uhd1+'))
+        self.enterContext(patch.object(usb.platform, 'release', return_value='7.3.0-vim4kvm-uhd1+'))
         self.run = self.enterContext(patch.object(usb.subprocess, 'run'))
 
     def existing(self):

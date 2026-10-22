@@ -10,6 +10,9 @@ R=$(tar tzf "$TGZ" | sed -n 's#^lib/modules/\([^/]*\)/$#\1#p' | head -1)
 STOCK=5.15.137
 [ -n "$R" ] || { echo "no lib/modules/<release>/ in $TGZ" >&2; exit 1; }
 echo "release: $R"
+case "$R" in
+    7.*) echo 'Use the kernel-edge board window and register-runtime.py for /boot/edge; this installer owns the vendor boot layout' >&2; exit 1 ;;
+esac
 
 # /lib is a symlink to usr/lib on Ubuntu 24.04; without
 # --keep-directory-symlink tar replaces it and breaks the dynamic loader.

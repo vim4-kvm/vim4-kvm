@@ -3,7 +3,7 @@
 set -eu
 case "$(uname -r)" in
     5.15.*) mainline=0 ;;
-    7.3.0-rc7-vim4kvm-uhd1+) mainline=1 ;;
+    7.3.0-rc7-vim4kvm-uhd1+|7.3.0-vim4kvm-uhd1+) mainline=1 ;;
     *) echo 'No validated VIM4 platform for this kernel' >&2; exit 1 ;;
 esac
 case "${1:-}" in
@@ -35,11 +35,8 @@ case "${1:-}" in
         exec /usr/sbin/kvm-gadget.sh stop
         ;;
     pd)
-        # Mainline currently inherits U-Boot's controller state; no TCPM driver
-        # is installed. Do not renegotiate a live link during runtime updates.
         if [ "$mainline" = 1 ]; then
-            echo 'PD state inherited from U-Boot; no Linux bootstrap contract recorded'
-            exit 0
+            exec /usr/bin/python3 /usr/lib/vim4-kvm/python/vim4pd.py
         fi
         exec /usr/sbin/usb-pd-init
         ;;
