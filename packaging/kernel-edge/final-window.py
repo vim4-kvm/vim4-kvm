@@ -140,6 +140,12 @@ def stage(args):
     deployment = dict(commits=dict(kernel=args.kernel_commit, onekvm=args.one_kvm_commit, manager=args.manager_commit),
                       install=install, checks=plan,
                       sha256={p.name: sha(p) for p in args.bundle.iterdir() if p.is_file()})
+    assert re.fullmatch(r'[0-9a-f]{40}', args.baseline_build_id)
+    deployment['baseline'] = dict(release=args.baseline_release, build_id=args.baseline_build_id)
+    deployment['verify_pstore'] = args.verify_pstore
+    if args.kernel_only:
+        deployment['preserve'] = {item['target']: deployment['sha256'][item['file']] for item in install}
+        deployment['install'] = []
     (args.bundle / 'deployment.json').write_text(json.dumps(deployment, indent=2) + '\n')
     validate_bundle(args.bundle)
     print('STAGED', args.bundle)
@@ -237,6 +243,16 @@ class Window:
                 # A peripheral test must not leave HID/capture broken silently.
                 self.action('verify')
             self.action('health')
+            if deployment.get('verify_pstore'):
+                self.action('pstore-mark')
+                self.reboot()
+                self.action('verify')
+                self.action('pstore-verify')
+                # Check actual host input and the current manager after reboot.
+                for item in deployment['checks']:
+                    if item['id'] in ('hid', 'manager'):
+                        self.regression(item)
+                self.action('health')
             self.action('finalize')
             for name in ('health.json', 'warnings-after.txt'):
                 with (self.args.logs / name).open('wb') as output:
@@ -275,6 +291,10 @@ def main():
     for name in ('kernel', 'one-kvm', 'manager'):
         staging.add_argument('--' + name + '-commit', required=True)
     staging.add_argument('--bundle', required=True, type=Path)
+    staging.add_argument('--baseline-release', default='7.3.0-rc7-vim4kvm-uhd1+')
+    staging.add_argument('--baseline-build-id', default='52d5e46fb006230785110a1fa5ba0dd1383b732f')
+    staging.add_argument('--kernel-only', action='store_true', help='Verify staged userspace files without replacing them')
+    staging.add_argument('--verify-pstore', action='store_true', help='Verify console retention across an extra normal reboot')
     for name in ('window', 'rollback'):
         command = commands.add_parser(name)
         command.add_argument('--bundle', required=True, type=Path)

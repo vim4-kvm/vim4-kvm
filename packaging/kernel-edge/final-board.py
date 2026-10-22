@@ -21,6 +21,7 @@ IMAGE = Path('/boot/edge/Image')
 DTB = Path('/boot/edge/vim4.dtb')
 MODULES = Path('/lib/modules') / RELEASE
 LUN = Path('/sys/kernel/config/usb_gadget/kvm/functions/mass_storage.disk0/lun.0/file')
+PSTORE_MASK = Path('/etc/systemd/system/systemd-pstore.service')
 
 
 def sha(path):
@@ -92,14 +93,23 @@ class Board:
         self.payload, self.backup = payload, backup
         self.deployment = json.loads((payload / 'deployment.json').read_text())
         self.report = json.loads((payload / 'manifest.json').read_text())
+        self.baseline = self.deployment.get('baseline', dict(release=BASE_RELEASE, build_id=BASE_ID))
+
+    def preserve(self):
+        for path, expected in self.deployment.get('preserve', {}).items():
+            assert sha(path) == expected, path
 
     def preflight(self):
-        assert os.uname().release == BASE_RELEASE, 'Wait for the audio session to restore the baseline'
-        assert notes('/sys/kernel/notes') == [BASE_ID]
+        assert os.uname().release == self.baseline['release'], 'Unexpected running baseline'
+        assert notes('/sys/kernel/notes') == [self.baseline['build_id']]
+        self.preserve()
         assert run('systemctl', 'is-active', 'vim4-manager') == 'active'
         assert run('systemctl', 'is-active', 'one-kvm') == 'active'
         assert not LUN.read_text().strip(), 'Safely eject active media first'
-        assert not MODULES.exists(), 'Do not overwrite an existing release directory'
+        if self.baseline['release'] != RELEASE:
+            assert not MODULES.exists(), 'Do not overwrite an unrelated release directory'
+        if self.deployment.get('verify_pstore'):
+            assert not PSTORE_MASK.exists() and not PSTORE_MASK.is_symlink()
         assert not self.backup.exists()
         assert Path('/lib').is_symlink() and not IMAGE.is_symlink() and not DTB.is_symlink()
         for name, expected in self.deployment['sha256'].items():
@@ -122,12 +132,14 @@ class Board:
         paths = {str(IMAGE), str(DTB), '/boot/extlinux/extlinux.conf',
                  '/etc/vim4-kvm/kernels.json', '/etc/vim4-kvm/runtime-build.json',
                  *[item['target'] for item in self.deployment['install']]}
+        if self.deployment.get('verify_pstore'):
+            paths.add(str(PSTORE_MASK))
         existing, missing = [], []
         for name in sorted(paths):
             (existing if Path(name).exists() else missing).append(name)
         subprocess.run(['tar', '-cpf', str(self.backup / 'files.tar'), '-C', '/',
                         *[p.lstrip('/') for p in existing]], check=True)
-        subprocess.run(['tar', '-cpf', str(self.backup / 'modules.tar'), '-C', '/lib/modules', BASE_RELEASE], check=True)
+        subprocess.run(['tar', '-cpf', str(self.backup / 'modules.tar'), '-C', '/lib/modules', self.baseline['release']], check=True)
         # SQLite's backup API gives a consistent snapshot while the application
         # is running. Media images are deliberately excluded from this archive.
         app = self.backup / 'application'
@@ -142,7 +154,7 @@ class Board:
         subprocess.run(['tar', '-cpf', str(self.backup / 'application.tar'), '-C', str(app), 'one-kvm.db',
                         '-C', '/var/lib/one-kvm', *directories], check=True)
         state = dict(files={p: sha(p) for p in existing}, missing=missing, firmware_sha256=firmware_hash(),
-                     modules=tree(Path('/lib/modules') / BASE_RELEASE),
+                     modules=tree(Path('/lib/modules') / self.baseline['release']),
                      build_ids=notes('/sys/kernel/notes'), cmdline=Path('/proc/cmdline').read_text(),
                      links={p: os.readlink(p) for p in ('/lib', '/boot/Image', '/boot/dtb', '/boot/initrd.img')},
                      protected={str(p): sha(p) for pattern in ('vmlinuz-5.15*', 'initrd.img-5.15*')
@@ -156,7 +168,6 @@ class Board:
 
     def install(self):
         assert (self.backup / 'COMPLETE').exists()
-        assert not MODULES.exists()
         staging = self.payload / 'staging'
         staging.mkdir()
         with tarfile.open(self.payload / 'modules.tar.gz') as archive:
@@ -169,7 +180,11 @@ class Board:
         assert tree(staging / RELEASE) == {k: {'sha256': v} for k, v in self.report['modules'].items()}
         for name in ('one-kvm', 'vim4-manager'):
             subprocess.run(['systemctl', 'stop', name], check=True, timeout=30)
+        if self.baseline['release'] == RELEASE:
+            MODULES.rename(self.backup / 'original-modules')
         (staging / RELEASE).rename(MODULES)
+        if self.deployment.get('verify_pstore'):
+            PSTORE_MASK.symlink_to('/dev/null')
         for item in self.deployment['install']:
             atomic_copy(self.payload / item['file'], item['target'], item['mode'])
         # PD is intentionally not started or restarted during runtime install.
@@ -187,17 +202,19 @@ class Board:
         print('INSTALLED_REBOOT_REQUIRED', flush=True)
 
     def verify(self):
+        self.preserve()
         assert os.uname().release == RELEASE
         assert notes('/sys/kernel/notes') == [self.report['kernel_build_id']]
+        assert Path('/proc/sys/kernel/tainted').read_text().strip() == '0'
         assert hashlib.sha256(gzip.decompress(Path('/proc/config.gz').read_bytes())).hexdigest() == self.report['config_sha256']
         assert sha(IMAGE) == self.report['artifacts']['Image']
         assert sha(DTB) == self.report['artifacts']['vim4.dtb']
         assert tree(MODULES) == {k: {'sha256': v} for k, v in self.report['modules'].items()}
         for item in self.deployment['install']:
             assert sha(item['target']) == self.deployment['sha256'][item['file']]
-        for service in ('one-kvm', 'vim4-kvm-hdmi', 'vim4-kvm-gadget'):
+        for service in ('one-kvm', 'vim4-manager', 'vim4-kvm-hdmi', 'vim4-kvm-gadget'):
             assert run('systemctl', 'is-active', service) == 'active', service
-        for service, binary in (('one-kvm', 'one-kvm'),):
+        for service, binary in (('one-kvm', 'one-kvm'), ('vim4-manager', 'vim4-manager')):
             pid = run('systemctl', 'show', '-p', 'MainPID', '--value', service)
             assert sha('/proc/' + pid + '/exe') == self.deployment['sha256'][binary]
         assert any(p.read_text().strip() == 'configured' for p in Path('/sys/class/udc').glob('*/state'))
@@ -292,16 +309,28 @@ class Board:
         shutil.chown('/var/lib/one-kvm/one-kvm.db', user='khadas', group='khadas')
         for name in state['missing']:
             Path(name).unlink(missing_ok=True)
-        if MODULES.exists():
-            MODULES.rename(self.backup / 'candidate-modules')
+        self.restore_modules()
         subprocess.run(['systemctl', 'daemon-reload'], check=True)
         os.sync()
         print('RESTORED_REBOOT_REQUIRED', flush=True)
 
+    def restore_modules(self):
+        original = self.backup / 'original-modules'
+        # Before the rename, a partial install still has the baseline in place.
+        if self.baseline['release'] == RELEASE and not original.exists():
+            state = json.loads((self.backup / 'state.json').read_text())
+            assert tree(MODULES) == state['modules']
+            return
+        if MODULES.exists():
+            MODULES.rename(self.backup / 'candidate-modules')
+        if original.exists():
+            original.rename(MODULES)
+
     def verify_restore(self):
         state = json.loads((self.backup / 'state.json').read_text())
-        assert os.uname().release == BASE_RELEASE and notes('/sys/kernel/notes') == [BASE_ID]
-        assert tree(Path('/lib/modules') / BASE_RELEASE) == state['modules']
+        assert os.uname().release == self.baseline['release'] and notes('/sys/kernel/notes') == [self.baseline['build_id']]
+        assert tree(Path('/lib/modules') / self.baseline['release']) == state['modules']
+        self.preserve()
         for name, expected in {**state['files'], **state['protected']}.items():
             assert sha(name) == expected, name
         for name, target in state['links'].items():
@@ -309,7 +338,34 @@ class Board:
         assert Path('/proc/cmdline').read_text() == state['cmdline']
         assert run('systemctl', 'is-active', 'vim4-manager') == 'active'
         assert run('systemctl', 'is-active', 'one-kvm') == 'active'
-        print('BASELINE_RESTORED', BASE_ID, flush=True)
+        print('BASELINE_RESTORED', self.baseline['build_id'], flush=True)
+
+    def pstore_mark(self):
+        assert self.deployment.get('verify_pstore')
+        assert Path('/sys/bus/platform/drivers/ramoops/7400000.ramoops').exists()
+        assert ' /sys/fs/pstore pstore ' in Path('/proc/mounts').read_text()
+        assert Path('/proc/sys/kernel/tainted').read_text().strip() == '0'
+        marker = 'VIM4_PSTORE_DEPLOY_' + Path('/proc/sys/kernel/random/boot_id').read_text().strip()
+        (self.payload / 'pstore-marker').write_text(marker)
+        # Ubuntu's console threshold is 4; info messages only reach dmesg.
+        Path('/dev/kmsg').write_text('<3>' + marker + '\n')
+        os.sync()
+        print('PSTORE_MARKED', marker, flush=True)
+
+    def pstore_verify(self):
+        marker = (self.payload / 'pstore-marker').read_text()
+        assert Path('/proc/sys/kernel/random/boot_id').read_text().strip() not in marker
+        records = {p.name: p.read_bytes() for p in Path('/sys/fs/pstore').glob('console-ramoops-*')}
+        assert any(marker.encode() in data for data in records.values()), 'Previous console marker missing'
+        saved = self.payload / 'pstore-readback'
+        saved.mkdir()
+        for name, data in records.items():
+            (saved / name).write_bytes(data)
+        print('PSTORE_READBACK', marker, {name: len(data) for name, data in records.items()}, flush=True)
+        assert PSTORE_MASK.is_symlink() and os.readlink(PSTORE_MASK) == '/dev/null'
+        PSTORE_MASK.unlink()
+        subprocess.run(['systemctl', 'daemon-reload'], check=True)
+        subprocess.run(['systemctl', 'start', 'systemd-pstore'], check=True)
 
     def finalize(self):
         self.verify()
@@ -321,12 +377,14 @@ class Board:
         path = Path('/etc/vim4-kvm/runtime-build.json')
         runtime = json.loads(path.read_text())
         runtime.update(kernel_source=self.report['source'], kernel_build_id=self.report['kernel_build_id'],
+                       running=RELEASE,
                        module_archive_sha256=self.report['artifacts']['modules.tar.gz'],
                        config_sha256=self.report['config_sha256'], module_count=self.report['module_count'],
                        deployed_components=self.deployment['commits'], deployment_backup=str(self.backup))
         hashes = runtime.setdefault('sha256', {})
         hashes.update({str(IMAGE): sha(IMAGE), str(DTB): sha(DTB)})
         hashes.update({item['target']: sha(item['target']) for item in self.deployment['install']})
+        hashes.update(self.deployment.get('preserve', {}))
         path.write_text(json.dumps(runtime, indent=2) + '\n')
         os.sync()
         print('DEPLOYMENT_RETAINED', json.dumps(self.deployment['commits']), flush=True)
@@ -334,7 +392,7 @@ class Board:
 
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument('action', choices=('preflight', 'save', 'install', 'verify', 'health', 'restore', 'verify-restore', 'finalize'))
+    parser.add_argument('action', choices=('preflight', 'save', 'install', 'verify', 'health', 'restore', 'verify-restore', 'finalize', 'pstore-mark', 'pstore-verify'))
     parser.add_argument('--payload', required=True, type=Path)
     parser.add_argument('--backup', required=True, type=Path)
     args = parser.parse_args()

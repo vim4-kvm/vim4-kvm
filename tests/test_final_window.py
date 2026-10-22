@@ -163,3 +163,12 @@ class FinalWindowTest(unittest.TestCase):
         self.assertEqual(results, [dict(id=self.plan[0]['id'], passed=True)])
         self.assertLess(events.index('diagnostic-board'), events.index('diagnostic-source'))
         self.assertLess(events.index('diagnostic-source'), events.index('restore'))
+
+    def test_pstore_readback_failure_rolls_back_after_extra_reboot(self):
+        self.proof['verify_pstore'] = True
+        self.write_proof()
+        events = self.transaction('pstore-verify')
+        index = events.index('pstore-mark')
+        self.assertEqual(events[index:index + 4], ['pstore-mark', 'reboot', 'verify', 'pstore-verify'])
+        self.assertEqual(events[-3:], ['restore', 'reboot', 'verify-restore'])
+        self.assertNotIn('finalize', events)

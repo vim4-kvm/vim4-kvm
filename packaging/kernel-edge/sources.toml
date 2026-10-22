@@ -2,11 +2,11 @@
 [kernel]
 url = "https://github.com/vim4-kvm/linux.git"
 branch = "vim4-kvm-7.3"
-revision = "e0346697f25035c7eaa77fa44641a54d6e31e327"
-tree = "cd948a7dea18fa4ef124512b3981a650af6e4699"
+revision = "1262da082ba528be27c17adc62a92d90ed18b158"
+tree = "f0ce0a0139240eb56601ce22e7a71def001517b6"
 upstream_url = "https://github.com/gregkh/linux.git"
 # Retained final-release deployment (published).
-# Evidence and known failures: docs/bringup/2026-10-22-edge-7-3-final-retained.md.
+# Evidence and known warnings: docs/bringup/2026-10-22-edge-pstore-deploy.md.
 upstream_tag = "v7.3"
 upstream_revision = "c03c1a14507dfaf8b856c2608f9ac216021fc222"
 
@@ -23,14 +23,14 @@ tested_binary_sha256 = "0b537561096ee5dfb5f15839738c8ac4ea87ba0dbb3a5127a25c241d
 [tested_build]
 release = "7.3.0-vim4kvm-uhd1+"
 localversion = "-vim4kvm-uhd1"
-build_id = "3ed254bfa838ab50732fdce1c5134400a1663fd5"
-image_sha256 = "47c53206718adeaa81961c10d589f3e7cbc40fa6c075fbd4d854918a78df7bc7"
-config_sha256 = "64df2a7789045390e22f06175f084913a4dd0873c75e152cf05ae6ba4c7232ba"
+build_id = "f283ab1f8a001a19bab5247afc4f9b0c00c1da99"
+image_sha256 = "855f0fa8caa49fdb9973bd7cd1cbbfaa2c5f62138574862e651e16eb0fda42b5"
+config_sha256 = "86746fde4d0e6d377264466262a27b4953206ce5e07441c8b870eee5ca05957f"
 config_path = "uhd1.config"
-modules_sha256 = "1bfe777105521c9d6bc8a945b03638b60520f01c2b3c6602048e0b8e7ac1f876"
+modules_sha256 = "523f0a358573a6ca2786cace805c38a698df562a26ff2dc12a5f4f472b7efcbb"
 module_count = 2335
 module_btf = true
-board_dtb_sha256 = "8cd68e30d5c7adf4fa063ae9c2ab9561912c46133ce24f1637fd36d14a2d95d8"
+board_dtb_sha256 = "d2333e962326d0710300b71e758440a94b177eb273921f70e5ba12eb5f640cf6"
 
 # Shared application sources are pinned in workspace.toml; the old independent
 # One-KVM and its private plugin above/below remain historical separate inputs.

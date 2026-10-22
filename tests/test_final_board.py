@@ -2,6 +2,8 @@
 import importlib.util
 from pathlib import Path
 import unittest
+import json
+import tempfile
 from unittest.mock import Mock, patch
 
 spec = importlib.util.spec_from_file_location(
@@ -32,6 +34,32 @@ class StatusRecoveryTest(unittest.TestCase):
                         self.assertRaisesRegex(RuntimeError, 'did not recover within 1s') as error:
                     board.wait_for_status(path, required, timeout=1)
                 self.assertIn(status, str(error.exception))
+
+
+class ModuleRecoveryTest(unittest.TestCase):
+    def test_same_release_partial_install_restores_original_directory(self):
+        for phase in ('before-rename', 'after-rename', 'after-install'):
+            with self.subTest(phase=phase), tempfile.TemporaryDirectory() as temporary:
+                root = Path(temporary)
+                modules, backup = root / 'modules', root / 'backup'
+                modules.mkdir()
+                backup.mkdir()
+                (modules / 'baseline.ko').write_bytes(b'original BTF')
+                (backup / 'state.json').write_text(json.dumps({'modules': board.tree(modules)}))
+                if phase != 'before-rename':
+                    modules.rename(backup / 'original-modules')
+                if phase == 'after-install':
+                    modules.mkdir()
+                    (modules / 'candidate.ko').write_bytes(b'new BTF')
+                instance = object.__new__(board.Board)
+                instance.baseline = {'release': board.RELEASE}
+                instance.backup = backup
+                with patch.object(board, 'MODULES', modules):
+                    instance.restore_modules()
+                self.assertEqual((modules / 'baseline.ko').read_bytes(), b'original BTF')
+                self.assertFalse((modules / 'candidate.ko').exists())
+                if phase == 'after-install':
+                    self.assertEqual((backup / 'candidate-modules/candidate.ko').read_bytes(), b'new BTF')
 
 
 if __name__ == '__main__':

@@ -5,13 +5,14 @@
 当前包、匹配内核、安装/回退与实际验收范围见
 [双内核完整系统集成](bringup/2026-10-21-dual-kernel-integration.md)。
 本页保留 Armbian 编译基线与专项历史记录；通用 edge.config 不等于已验收的整板配置。
-当前板上保留 v7.3 正式版 `e0346697f2503`，release `7.3.0-vim4kvm-uhd1+`、
-build ID `3ed254bfa838ab50732fdce1c5134400a1663fd5`；uhd1.config 同次完整 Image/DTB/
-2335 模块，含 HDMI 输入模式、诊断、动态 LPCM、GPU 纯调频和模块化 IR。
-One-KVM 为 `382efb70e7ebb`，manager 为 `7a69cedb6d526`。第三轮抽样、编解码往返、
-4K60、USB、GPU 与管理页已执行；44.1kHz 单次音频跳变和扫描时 MMC 警告仍记录为遗留，
-不能宣称零警告或长期稳定性通过。哈希、备份、完整结果见
-[正式版保留记录](bringup/2026-10-22-edge-7-3-final-retained.md)。
+当前板上保留 v7.3 pstore 版本 `1262da082ba5`，release `7.3.0-vim4kvm-uhd1+`、
+build ID `f283ab1f8a001a19bab5247afc4f9b0c00c1da99`；uhd1.config 同次完整 Image/DTB/
+2335 模块，新增厂商诊断内存区的 ramoops console，正常重启标记读回通过。
+One-KVM 为 `382efb70e7ebb`，manager 为 `4ea748426935`。九类抽样回归通过，
+含编码往返、4K60、音频、USB、GPU 和管理页；最终有一条 SARADC channel 2 超时警告，
+taint=0。本轮短测通过不推翻历史音频偶发跳变等边界，也不代表长期稳定性验收。
+哈希、备份与回退见 [pstore 正式部署](bringup/2026-10-22-edge-pstore-deploy.md)；
+此前 e0346697 基线见 [历史保留记录](bringup/2026-10-22-edge-7-3-final-retained.md)。
 第二轮 19 模式通过后即时 EDID 检查触发的回退见
 [历史尝试](bringup/2026-10-22-edge-7-3-final-deploy.md)，脚本入口见
 [部署准备](bringup/2026-10-22-deploy-7-3-final-prep.md)。
