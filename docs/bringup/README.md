@@ -7,6 +7,7 @@
 
 ## 2026-10-21
 
+- [7.x Wi-Fi Direct 创建、扫描与并发建组](2026-10-21-edge-wifi-p2p.md) — kernel deployment board
 - [7.x 管理器状态、界面与 WPA3 适配](2026-10-21-manager-mainline-status.md) — manager kernel usb application deployment board
 - [双内核完整系统集成与往返验收](2026-10-21-dual-kernel-integration.md) — application kernel video usb deployment
 - [7.x USB 功能接入与主机传输](2026-10-21-edge-usb-functions.md) — usb application kernel deployment board

@@ -3,8 +3,10 @@
 实验性 Armbian edge 基线及构建见 [新内核基线](../kernel-edge.md)，不替代现有 5.15 发布流程。
 Wi-Fi 固件崩溃的诊断能力、P2P 兼容问题与转储保存见
 [Wi-Fi 排查](../bringup/2026-10-21-edge-wifi-fps.md)；历史崩溃根因尚未确认。
-BCM43752 外部 SAE 的 WCC 协议、AKM 声明及特定固件的 P2P 屏蔽见
-[管理器与 WPA3 适配](../bringup/2026-10-21-manager-mainline-status.md)；能力声明不替代真实联网验收。
+BCM43752 外部 SAE 的 WCC 协议与 AKM 声明见
+[管理器与 WPA3 适配](../bringup/2026-10-21-manager-mainline-status.md)。
+P2P 已移除能力屏蔽，修正 discovery、扫描版本、ARP/ND 控制和并发发送流控，见
+[Wi-Fi Direct 适配](../bringup/2026-10-21-edge-wifi-p2p.md)；尚缺真实对端协商与传输验收。
 
 构建、安装或回退内核时读 [内核构建、安装与回退](../kernel.md)；需要 VM 中的主内核工作树时读 [工作区](../workspace.md#构建)。
 
