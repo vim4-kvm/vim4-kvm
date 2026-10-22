@@ -107,7 +107,7 @@ async function reboot(id) {
   const state = await api(manager,'/api/kernel');
   const index = state.kernels.findIndex(kernel => kernel.id === id);
   assert(index >= 0 && state.kernels[index].available);
-  await page.getByRole('button',{name:'选择并重启'}).nth(index).click();
+  await page.locator('.kernel-panel .app-row').nth(index).getByRole('button').click();
   const response = page.waitForResponse(r => r.url() === manager + '/api/kernel' && r.request().method() === 'POST');
   await page.getByRole('button',{name:'确认重启',exact:true}).click();
   const result = await response;

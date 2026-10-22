@@ -1,6 +1,7 @@
 # USB-C 开机协商
 
-VIM4 的 FUSB302B 位于 `/dev/i2c-6` 的 0x22。U-Boot 初始化 PHY 后，Linux
+VIM4 的 FUSB302B 位于 AO-A I²C 控制器的 0x22；5.15 通常为 `/dev/i2c-6`，
+7.x 为 `/dev/i2c-1`。工具按设备树物理控制器识别，不探测其他总线。U-Boot 初始化 PHY 后，Linux
 的 `usb-pd-init` 请求固定 5V 的 USB 通信供电约定，并处理后续 20 秒内的
 Source_Capabilities 和 Get_Sink_Cap。USB 键鼠描述符由 gadget 服务提供，
 不是由 PD 报文提供。
@@ -31,6 +32,8 @@ VBUSOK 只表示检测到 USB-C 电压，不是电压实测值，也不能判断
 协商日志按 systemd InvocationID 隔离；新工具记录最终请求电流，旧工具若在
 初始化期间收到新的 Source_Capabilities，则不展示无法确认的旧请求额度。
 额度不是实际电流或功耗。当前没有可用的整板电流采样接口。
+7.x 当前没有 Linux TCPM 驱动，沿用 U-Boot 初始化，板级 PD 服务不重新协商。
+因此该内核下只有只读 VBUS 检测，没有新的 Linux 启动协商额度；面板分别显示这两种状态。
 FUSB302B 的比较器粗测电压需要写配置，本实现不启用；完整 TCPM 接管也未验证。
 
 依据：[FUSB302B 手册](https://www.onsemi.com/pdf/datasheet/fusb302b-d.pdf)、

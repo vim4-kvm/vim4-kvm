@@ -5,6 +5,8 @@
  */
 #include <errno.h>
 #include <fcntl.h>
+#include <glob.h>
+#include <limits.h>
 #include <linux/i2c-dev.h>
 #include <linux/i2c.h>
 #include <stdint.h>
@@ -41,6 +43,38 @@ static int txid;
 static int contract_ready;
 static unsigned requested_ma;
 #define LOG(...) do { printf(__VA_ARGS__); fflush(stdout); } while (0)
+
+/* Adapter numbers differ between kernels. Match the board's AO-A controller,
+ * never probe unrelated I2C buses or take ownership from a kernel driver.
+ */
+static int controller_bus(const char *pattern)
+{
+	glob_t paths = { 0 };
+	int bus = -1;
+	if (glob(pattern, 0, NULL, &paths) != 0) {
+		globfree(&paths);
+		return -1;
+	}
+	for (size_t i = 0; i < paths.gl_pathc; i++) {
+		char resolved[PATH_MAX];
+		const char *path = paths.gl_pathv[i];
+		if (!realpath(path, resolved) ||
+		    (!strstr(resolved, "/bus@fe000000/i2c@76000") &&
+		     !strstr(resolved, "/apb4@fe000000/i2c@76000")))
+			continue;
+		const char *name = NULL, *part = path;
+		while ((part = strstr(part, "/i2c-")) != NULL) {
+			name = part++;
+		}
+		int candidate;
+		if (!name || sscanf(name, "/i2c-%d/device/of_node", &candidate) != 1 || candidate < 0)
+			continue;
+		if (bus >= 0) { bus = -1; break; }
+		bus = candidate;
+	}
+	globfree(&paths);
+	return bus;
+}
 
 static void fail(const char *message)
 {
@@ -218,9 +252,14 @@ int main(int argc, char **argv)
 	setvbuf(stdout, NULL, _IONBF, 0);
 	int lock = open("/run/vim4-kvm-pd.lock", O_CREAT | O_RDWR | O_CLOEXEC, 0600);
 	if (lock < 0 || flock(lock, LOCK_EX | LOCK_NB)) fail("Cannot lock PD controller");
-	if (access("/sys/bus/i2c/devices/6-0022/driver", F_OK) == 0)
+	int bus = controller_bus("/sys/class/i2c-dev/i2c-*/device/of_node");
+	if (bus < 0) fail("Cannot identify VIM4 PD I2C controller");
+	char driver[128], device[64];
+	snprintf(driver, sizeof(driver), "/sys/bus/i2c/devices/%d-0022/driver", bus);
+	if (access(driver, F_OK) == 0)
 		fail("PD controller already owned by a kernel driver");
-	fd = open("/dev/i2c-6", O_RDWR);
+	snprintf(device, sizeof(device), "/dev/i2c-%d", bus);
+	fd = open(device, O_RDWR);
 	if (fd < 0) { perror("i2c"); return 1; }
 	if (rd1(0x01) != 0x91) fail("Unexpected FUSB302B device ID");
 	if (status_only) {

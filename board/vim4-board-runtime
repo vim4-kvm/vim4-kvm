@@ -35,9 +35,12 @@ case "${1:-}" in
         exec /usr/sbin/kvm-gadget.sh stop
         ;;
     pd)
-        # Mainline's Type-C driver owns negotiation. The vendor utility writes
-        # different I2C registers and must only run under the vendor kernel.
-        [ "$mainline" = 0 ] || exit 0
+        # Mainline currently inherits U-Boot's controller state; no TCPM driver
+        # is installed. Do not renegotiate a live link during runtime updates.
+        if [ "$mainline" = 1 ]; then
+            echo 'PD state inherited from U-Boot; no Linux bootstrap contract recorded'
+            exit 0
+        fi
         exec /usr/sbin/usb-pd-init
         ;;
     *) echo 'Expected hdmi, gadget-start, gadget-stop or pd' >&2; exit 2 ;;
