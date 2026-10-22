@@ -87,7 +87,10 @@ for source, installed in pairs:
         raise SystemExit(f'Unrecognized override; review before installing: {installed}')
     print(installed)
 PY
-for file in "$stage"/etc/sudoers.d/*; do visudo -cf "$file"; done
+for file in "$stage"/etc/sudoers.d/*; do
+    [[ -f $file ]] || continue
+    visudo -cf "$file"
+done
 apt-get -s --no-remove install "${packages[@]}"
 # A dashboard-only update must preserve capture and display failure evidence.
 # Share the helper lock so an in-flight user operation finishes before upgrade.

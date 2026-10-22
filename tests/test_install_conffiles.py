@@ -14,6 +14,21 @@ from unittest.mock import Mock, patch
 
 
 class SudoersMigrationTest(unittest.TestCase):
+    def test_platform_without_sudoers_and_invalid_app_rule(self):
+        script = (Path(__file__).resolve().parents[1] / 'tools/install-components.sh').read_text()
+        check = script[script.index('for file in "$stage"/etc/sudoers.d/*;'):]
+        check = check.split('\ndone', 1)[0] + '\ndone\n'
+        with tempfile.TemporaryDirectory() as directory:
+            stage = Path(directory)
+            command = 'set -e; stage=$1; visudo() { return 17; }; ' + check
+            result = subprocess.run(['bash', '-c', command, 'check', str(stage)])
+            self.assertEqual(result.returncode, 0)
+            rules = stage / 'etc/sudoers.d'
+            rules.mkdir(parents=True)
+            (rules / 'invalid').write_text('invalid rule\n')
+            result = subprocess.run(['bash', '-c', command, 'check', str(stage)])
+            self.assertEqual(result.returncode, 17)
+
     def setUp(self):
         script = (Path(__file__).resolve().parents[1] / 'tools/install-components.sh').read_text()
         python = script.split("<<'PY'\n", 1)[1].split('\nPY\n', 1)[0]
