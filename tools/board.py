@@ -414,10 +414,19 @@ class Board:
 
     def check(self):
         # is-active with multiple units succeeds if ANY unit is active.
-        self.ssh("set -eu; for service in tvserver vim4-kvm-hdmi vim4-kvm-gadget vim4-manager; do "
+        self.ssh("set -eu; for service in vim4-kvm-hdmi vim4-kvm-gadget vim4-manager; do "
                  "printf '%s: ' \"$service\"; systemctl is-active \"$service\"; done")
+        capture = ("import sys; from pathlib import Path; "
+                   "sys.path.insert(0, '/usr/lib/vim4-kvm/python'); import vim4video; "
+                   "assert vim4video.capture_device().exists(); "
+                   "assert any(p.read_text().strip() == 'C&M Wave5 VPU encoder' "
+                   "for p in Path('/sys/class/video4linux').glob('video*/name'))")
         self.ssh("set -eu; uname -r; test \"$(uname -r)\" = " + shlex.quote(self.args.kernel) + "; "
-                 "test -e /dev/video_cap; test -e /dev/hidg0; test -e /dev/hidg1; test -e /dev/hidg2; "
+                 "case \"$(uname -r)\" in "
+                 "5.15.*) systemctl is-active tvserver; test -e /dev/video_cap ;; "
+                 "7.3.0-rc7-vim4kvm-uhd1+) python3 -c " + shlex.quote(capture) + " ;; "
+                 "*) echo 'Unsupported KVM runtime' >&2; exit 1 ;; esac; "
+                 "test -e /dev/hidg0; test -e /dev/hidg1; test -e /dev/hidg2; "
                  "curl -fsS --max-time 10 http://127.0.0.1:8081/ >/dev/null; "
                  "curl -fsS --max-time 10 http://127.0.0.1:8080/__vim4/api/auth/state >/dev/null; "
                  "cat /sys/class/udc/*/state; systemctl --failed --no-pager; "

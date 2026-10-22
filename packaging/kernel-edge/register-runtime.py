@@ -35,6 +35,35 @@ def modules(root):
             and path.name.endswith(('.ko', '.ko.xz', '.ko.zst'))}
 
 
+def boot_profile(source, legacy_services=()):
+    words = [word for word in source['APPEND'].split()
+             if not word.startswith(('systemd.mask=', 'vim4.one_kvm='))]
+    words += ['vim4.full_kvm=1'] + ['systemd.mask=' + unit for unit in (
+        'tvserver.service', 'audioserver.service', 'one-kvm-edge.service',
+        'one-kvm-edge-gateway.service', 'one-kvm-edge-usb.service', *legacy_services)]
+    return {'LINUX': '/edge/Image', 'FDT': '/edge/vim4.dtb', 'APPEND': ' '.join(words)}
+
+
+def update_boot_entry(text, existing, previous, full):
+    if existing == full:
+        return text
+    if existing is None:
+        return text + '\nLABEL FullKvm\n' + ''.join(f'  {key} {value}\n' for key, value in full.items())
+    if existing != previous:
+        raise ValueError('FullKvm has custom boot arguments; refusing to replace it')
+    # Upgrade only our exact earlier profile, leaving every other label intact.
+    label = None
+    lines = []
+    for line in text.splitlines(keepends=True):
+        fields = line.split(None, 1)
+        if len(fields) == 2 and fields[0].upper() == 'LABEL':
+            label = fields[1].strip()
+        if label == 'FullKvm' and fields and fields[0].upper() == 'APPEND':
+            line = '  APPEND ' + full['APPEND'] + '\n'
+        lines.append(line)
+    return ''.join(lines)
+
+
 def inventory(args):
     version = release(args.image)
     if version != args.modules.name or not version.startswith('7.'):
@@ -74,18 +103,16 @@ def register(args):
     source = entries[args.source_label]
     if source.get('LINUX') != '/edge/Image' or source.get('FDT') != '/edge/vim4.dtb':
         raise ValueError('Expected the previously qualified HDMI test boot entry')
-    words = [word for word in source['APPEND'].split()
-             if not word.startswith(('systemd.mask=', 'vim4.one_kvm='))]
-    words += ['vim4.full_kvm=1'] + ['systemd.mask=' + unit for unit in (
-        'tvserver.service', 'audioserver.service', 'one-kvm-edge.service',
-        'one-kvm-edge-gateway.service', 'one-kvm-edge-usb.service')]
-    full = {'LINUX': '/edge/Image', 'FDT': '/edge/vim4.dtb', 'APPEND': ' '.join(words)}
-    text = original
-    if 'FullKvm' in entries:
-        if entries['FullKvm'] != full:
-            raise ValueError('FullKvm has custom boot arguments; refusing to replace it')
-    else:
-        text += '\nLABEL FullKvm\n' + ''.join(f'  {key} {value}\n' for key, value in full.items())
+    legacy = ['binder.service', 'bluetooth-khadas.service']
+    rc = Path('/etc/rc.local')
+    # This exact vendor script only generates host keys and writes old BSP
+    # sysfs permissions. Preserve administrator scripts rather than masking them.
+    if rc.is_file() and digest(rc) == 'a9e42abf50a4dd729df0459e9d8c18d6773fa3d17415f845bc5d21be3ebb5db8':
+        if not Path('/etc/ssh/ssh_host_ed25519_key').is_file():
+            raise ValueError('Generate SSH host keys before registering the mainline runtime')
+        legacy.append('rc-local.service')
+    full = boot_profile(source, legacy)
+    text = update_boot_entry(original, entries.get('FullKvm'), boot_profile(source), full)
     entries = boot.boot_entries(text)
     vendor = release(boot.BOOT / entries['Default']['LINUX'].lstrip('/'))
     if not vendor.startswith('5.15.'):

@@ -30,6 +30,33 @@ uart = load('uart-run')
 
 
 class BoardToolsTests(unittest.TestCase):
+    def test_mainline_health_uses_capture_devices_without_vendor_service_or_alias(self):
+        instance = board.Board(SimpleNamespace(kernel='7.3.0-rc7-vim4kvm-uhd1+'), io.StringIO())
+        environment = '''
+        uname() { echo '7.3.0-rc7-vim4kvm-uhd1+'; }
+        systemctl() {
+            case "$*" in *tvserver*) return 3 ;; --failed*) return 0 ;; *) echo active ;; esac
+        }
+        test() {
+            if [ "$1" = -e ]; then [ "$2" != /dev/video_cap ]; else command test "$@"; fi
+        }
+        python3() { return "$CAPTURE_STATUS"; }
+        curl() { return 0; }
+        cat() { echo configured; }
+        '''
+        def ssh(command):
+            result = subprocess.run(['sh', '-c', environment + command], capture_output=True,
+                                    text=True, env={**os.environ, 'CAPTURE_STATUS': capture_status})
+            if result.returncode:
+                raise RuntimeError('health failed')
+            return result
+        with patch.object(instance, 'ssh', side_effect=ssh):
+            capture_status = '0'
+            instance.check()
+            capture_status = '1'
+            with self.assertRaisesRegex(RuntimeError, 'health failed'):
+                instance.check()
+
     def test_one_inactive_service_rejects_health_check(self):
         instance = board.Board(SimpleNamespace(kernel='5.15.137-vim4kvm'), io.StringIO())
         # Model systemctl's ANY-active exit status, including an inactive unit

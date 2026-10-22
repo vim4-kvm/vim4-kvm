@@ -52,6 +52,21 @@ for binary in $binaries; do
         exit 1
     fi
 done
+python3 - /tmp/package-check/root <<'PY'
+import configparser
+from pathlib import Path
+import sys
+root = Path(sys.argv[1]) / 'usr/lib/systemd/system'
+units = {'nanokvm.service': 'nanokvm', 'vim4-kvm.service': 'jetkvm',
+         'one-kvm.service': 'onekvm', 'vim4-pikvm.service': 'pikvm'}
+for name, app in units.items():
+    if not (root / name).is_file():
+        continue
+    unit = configparser.ConfigParser(interpolation=None, strict=False)
+    unit.read(root / name)
+    assert set(unit['Unit']['Conflicts'].split()) == units.keys() - {name}, name
+    assert unit['Service']['ExecStart'] == '/usr/libexec/vim4-kvm-run ' + app, name
+PY
 if [ -d /tmp/package-check/root/etc/sudoers.d ]; then
     for file in /tmp/package-check/root/etc/sudoers.d/*; do visudo -cf "$file"; done
     mkdir -p /etc/sudoers.d
@@ -128,7 +143,6 @@ if sh /tmp/package-check/jetkvm-control/postinst configure; then
     exit 1
 fi
 cp -a /tmp/package-check/root/etc/sudoers.d/vim4-jetkvm /etc/sudoers.d/
-grep -qx 'Conflicts=nanokvm.service' /tmp/package-check/root/usr/lib/systemd/system/vim4-kvm.service
 fi
 if has vim4-onekvm; then
 dpkg-deb -e ./vim4-onekvm_*.deb /tmp/package-check/onekvm-control
@@ -163,7 +177,6 @@ if sh /tmp/package-check/onekvm-control/postinst configure; then
     exit 1
 fi
 cp -a /tmp/package-check/root/etc/sudoers.d/vim4-onekvm /etc/sudoers.d/
-grep -qx 'Conflicts=nanokvm.service vim4-kvm.service' /tmp/package-check/root/usr/lib/systemd/system/one-kvm.service
 fi
 if has vim4-manager; then
 dpkg-deb -e ./vim4-manager_*.deb /tmp/package-check/manager-control
