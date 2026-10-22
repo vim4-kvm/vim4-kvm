@@ -33,6 +33,20 @@ VBUSOK 只表示检测到 USB-C 电压，不是电压实测值，也不能判断
 协商日志按 systemd InvocationID 隔离；新工具记录最终请求电流，旧工具若在
 初始化期间收到新的 Source_Capabilities，则不展示无法确认的旧请求额度。
 额度不是实际电流或功耗。当前没有可用的整板电流采样接口。
+
+热重启历史展示（manager `pd-warm-carryover`）由板级 `vim4pd.py` 在合同确认后，
+以同目录临时文件加 rename 原子保存 `/var/lib/vim4-kvm/pd-last-contract.json`。
+记录电压、电流、RDO/USB comm、来源、bootId 与带板端时区的确认时间；Linux 成功初始化
+覆盖更早的固件 PS_RDY 合同，未确认时不写、不删。查询仅给出不同 bootId 的完整记录，
+损坏、缺字段或同次启动的记录不输出 `lastContract`。
+本次 Linux、固件合同仍依次优先。仅固件超时、空 PDO、VBUS 存在时显示
+「5V 3A · 沿用」（按实际额度格式化），detail 保留历史时间；无记录主值为「仅 Type-C」，
+detail 为「本次未重新协商 · Rp …」。≤400px 的 PD 与开机时长各占整行，避免其它状态的
+主值被截断；空趋势图只保留一条占位文案。
+详情说明本次未收到来源能力，保留其他独立错误及历史记录 footer；不测实时合同或功耗，
+不新增 PD 报文。安装 helper 前须先安装配套板级模块，安装时不重启 PD 服务。
+热重启、视觉回归、部署与回退证据见 [热重启卡片记录](bringup/2026-10-22-pd-warm-carryover.md)。
+
 7.x 没有 Linux TCPM 驱动，通常沿用 U-Boot 初始化；仅下面的开机修复条件允许重新协商。
 旧 U-Boot 下该内核只有只读 VBUS 检测，没有新的 Linux 启动协商额度；面板分别显示这两种状态。
 FUSB302B 的比较器粗测电压需要写配置，本实现不启用；完整 TCPM 接管也未验证。
@@ -46,8 +60,8 @@ USB Communications Capable 时，运行一次现有 `usb-pd-init` 请求 USB 可
 单元测试通过；第三轮正式部署已保留，开机实际快照 flags=0xd0、RDO=0，验证了
 超时/Type-C 回退时跳过并记录原因，PD 服务 active、UDC configured。
 本轮没有 PS_RDY 有效合同，未实板触发缺 USB comm 位修复或已有该位的分支，也未测试插拔；
-证据见 [正式版保留记录](bringup/2026-10-22-edge-7.3-final-retained.md)，版本和入口见
-[正式版部署准备](bringup/2026-10-22-deploy-7.3-final-prep.md)。
+证据见 [正式版保留记录](bringup/2026-10-22-edge-7-3-final-retained.md)，版本和入口见
+[正式版部署准备](bringup/2026-10-22-deploy-7-3-final-prep.md)。
 
 启动固件交接候选使用 `/chosen/khadas,usb-pd-boot` 的 v1 快照（16 个大端 u32），
 由最终 Linux DTB 的 board fixup 写入，包含 PS_RDY 完成标记、原始 Source PDO/RDO、

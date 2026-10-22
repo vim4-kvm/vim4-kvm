@@ -6,7 +6,7 @@ revision = "e0346697f25035c7eaa77fa44641a54d6e31e327"
 tree = "cd948a7dea18fa4ef124512b3981a650af6e4699"
 upstream_url = "https://github.com/gregkh/linux.git"
 # Retained final-release deployment (published).
-# Evidence and known failures: docs/bringup/2026-10-22-edge-7.3-final-retained.md.
+# Evidence and known failures: docs/bringup/2026-10-22-edge-7-3-final-retained.md.
 upstream_tag = "v7.3"
 upstream_revision = "c03c1a14507dfaf8b856c2608f9ac216021fc222"
 
@@ -42,7 +42,7 @@ manifest_path = "/etc/vim4-kvm/runtime-build.json"
 wave5_plugin_sha256 = "1d90f0d36f0eae0dca3e847663d6c5f16b4c3f02da2a6a128ed62a9746eb6b5f"
 v4l2_plugin_sha256 = "7fea3773c028de64ec7da4e87b2acc28206465e2cb09fb6530fe597c00868443"
 one_kvm_binary_sha256 = "72db30c07aa2351a27499e06d2ac28ccde3a74e1cb18d0927766a7ba35d37b0d"
-manager_binary_sha256 = "ad7b8aa3e068cb4f5e4ef8e8c2fb6df623c791a1c4ed82949e616cd6fd01f67c"
+manager_binary_sha256 = "3fc215e3de431d1c65e08e62b3179b6329e190d803ab77e89dae3c3d90728eb1"
 
 # Diagnostic capability, not proof that the historical firmware crash is fixed.
 [wifi_diagnostics]

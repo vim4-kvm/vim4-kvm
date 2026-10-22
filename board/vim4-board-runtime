@@ -38,7 +38,7 @@ case "${1:-}" in
         if [ "$mainline" = 1 ]; then
             exec /usr/bin/python3 /usr/lib/vim4-kvm/python/vim4pd.py
         fi
-        exec /usr/sbin/usb-pd-init
+        exec /usr/bin/python3 /usr/lib/vim4-kvm/python/vim4pd.py --vendor
         ;;
     *) echo 'Expected hdmi, gadget-start, gadget-stop or pd' >&2; exit 2 ;;
 esac

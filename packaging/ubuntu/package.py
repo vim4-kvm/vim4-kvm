@@ -68,6 +68,13 @@ def package(name, version, output, populate, depends):
 
 
 def board(stage):
+    copy(ROOT / 'board/60-vim4-journal.conf', stage,
+         'usr/lib/systemd/journald.conf.d/60-vim4-journal.conf')
+    copy(ROOT / 'board/vim4-logging', stage, 'usr/libexec/vim4-logging', 0o755)
+    write(stage, 'DEBIAN/postinst', '''#!/bin/sh
+set -eu
+if [ "${1:-}" = configure ]; then /usr/libexec/vim4-logging; fi
+''', 0o755)
     copy(ROOT / 'board/edid/1080p60-sdr8.bin', stage, 'usr/share/vim4-kvm/edid/1080p60-sdr8.bin', 0o644)
     copy(ROOT / 'board/vim4media.py', stage, 'usr/lib/vim4-kvm/python/vim4media.py', 0o644)
     copy(ROOT / 'board/vim4video.py', stage, 'usr/lib/vim4-kvm/python/vim4video.py', 0o644)

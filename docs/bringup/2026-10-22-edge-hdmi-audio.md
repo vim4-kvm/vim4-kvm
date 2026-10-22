@@ -145,7 +145,7 @@ Mac 重新配置时允许约 3 秒停采，保留音轨/SSRC 后重开，不要�
 ## 上板与恢复
 
 独立输出 `~/build/kernel-hdmi-audio`，完整匹配 Image/DTB/2335 模块。
-临时正式版门禁按 [正式版上板方法](2026-10-22-edge-7.3-final-board.md) 处理。
+临时正式版门禁按 [正式版上板方法](2026-10-22-edge-7-3-final-board.md) 处理。
 SHA256：Image `c6cdcdc9d5e66d305bef08191805f710074c8ade95537fd124025919abc69b8a`，
 DTB `e0ebe345dba968f811136de69412cc58846814775ce4d4f3ac440ee5d32961c5`，
 模块包 `daa5cba82ba244f5d53bd0ff730678a5e8a1bc3d8ae6241ff2cebab311f1f935`，

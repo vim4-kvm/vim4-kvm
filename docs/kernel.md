@@ -8,9 +8,9 @@
 板上当前 FullKvm 为 v7.3 正式版 `e0346697f2503`，release `7.3.0-vim4kvm-uhd1+`、
 build ID `3ed254bfa838ab50732fdce1c5134400a1663fd5`，含 HDMI 模式/音频、GPU 调频与 IR。
 第三轮部署已保留；回归范围、音频单次跳变与 MMC 警告、整包哈希及 rc7 回退备份见
-[正式版保留记录](bringup/2026-10-22-edge-7.3-final-retained.md)。下方厂商 5.15 流程保留。
-正式版持久运行时支持与部署脚本见 [离线准备](bringup/2026-10-22-deploy-7.3-final-prep.md)；
-第二轮即时 EDID 检查触发的回退另见 [历史窗口](bringup/2026-10-22-edge-7.3-final-deploy.md)。
+[正式版保留记录](bringup/2026-10-22-edge-7-3-final-retained.md)。下方厂商 5.15 流程保留。
+正式版持久运行时支持与部署脚本见 [离线准备](bringup/2026-10-22-deploy-7-3-final-prep.md)；
+第二轮即时 EDID 检查触发的回退另见 [历史窗口](bringup/2026-10-22-edge-7-3-final-deploy.md)。
 7.x 使用 `/boot/edge` 与完整匹配模块，不使用下方的厂商 `kernel-install.sh`。
 
 ## 构建（OrbStack VM `vim4-build`，Ubuntu 24.04 arm64）

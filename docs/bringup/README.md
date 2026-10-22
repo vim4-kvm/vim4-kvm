@@ -7,17 +7,33 @@
 
 ## 2026-10-22
 
-- [v7.3 正式版第三轮部署并保留](2026-10-22-edge-7.3-final-retained.md) — kernel video audio usb manager deployment board
+- [P1 浏览器音频观察器复核](2026-10-22-p1-browser-audio.md) — audio application board
+- [PD 热重启历史合同卡片](2026-10-22-pd-warm-carryover.md) — usb manager deployment board
+- [7.3 T7 标准硬件解码可行性调查](2026-10-22-vdec-feasibility.md) — kernel video board
+- [T7 解码硬件、固件与主线差异明细](2026-10-22-vdec-hardware-audit.md) — kernel video
+- [Wave521C GET_VPU_INFO 实机取证](2026-10-22-vdec-wave5-capabilities.md) — kernel video board
+- [T7 stateless 解码离线准备](2026-10-22-vdec-t7-offline.md) — kernel video
+- [P2 PD Request＋KASLR 合并固件候选](2026-10-22-p2-uboot-combined.md) — usb kernel deployment
+- [P2 有界持久 journal 部署并保留](2026-10-22-p2-journal-deploy.md) — deployment board
+- [P2 ramoops 候选与正常重启验证](2026-10-22-p2-pstore.md) — kernel deployment board
+- [P1 HDMI 音频分段定位](2026-10-22-p1-hdmi-audio.md) — kernel audio application board
+- [P1 HDMI 帧率、恢复与 CMA 复核](2026-10-22-p1-hdmi-video.md) — kernel video board
+- [P2 USB 音频、组合与 RNDIS 核对](2026-10-22-p2-usb-audio.md) — usb audio application board
+- [P2 KASLR、随机数与 U-Boot 离线候选](2026-10-22-p2-kaslr.md) — kernel deployment board
+- [P2 GPU 电压表复核](2026-10-22-p2-gpu-voltage.md) — kernel
+- [P2 挂起与唤醒离线审查](2026-10-22-p2-suspend-audit.md) — kernel usb
+- [P2 持久日志与 ramoops 方案](2026-10-22-p2-persistent-logs.md) — kernel deployment
+- [v7.3 正式版第三轮部署并保留](2026-10-22-edge-7-3-final-retained.md) — kernel video audio usb manager deployment board
 - [U-Boot 固定 5V USB PD Request（离线候选）](2026-10-22-uboot-pd-request.md) — usb deployment
 
 - [Wave5 非对齐 HEVC 挂起离线分析与局部修复候选](2026-10-22-wave5-hevc-hang-analysis.md) — kernel video
-- [v7.3 正式部署尝试与自动回退](2026-10-22-edge-7.3-final-deploy.md) — kernel video audio usb manager deployment board
+- [v7.3 正式部署尝试与自动回退](2026-10-22-edge-7-3-final-deploy.md) — kernel video audio usb manager deployment board
 - [BCM43752 固件转储离线分析（原样本缺失）](2026-10-22-wifi-coredump-analysis.md) — kernel
-- [v7.3 正式版运行时、PD-USB 与部署离线准备](2026-10-22-deploy-7.3-final-prep.md) — usb manager deployment kernel
+- [v7.3 正式版运行时、PD-USB 与部署离线准备](2026-10-22-deploy-7-3-final-prep.md) — usb manager deployment kernel
 - [HDMI 动态 LPCM 与无链路恢复](2026-10-22-edge-hdmi-audio.md) — kernel audio application deployment board
 - [7.3 日志分级与 T7 硬件随机数](2026-10-22-edge-diag.md) — kernel usb deployment board
-- [7.3 正式版 rebase 与整包回归](2026-10-22-edge-7.3-final.md) — kernel deployment board video usb
-- [7.3 正式版整包上板回归](2026-10-22-edge-7.3-final-board.md) — kernel deployment board video usb
+- [7.3 正式版 rebase 与整包回归](2026-10-22-edge-7-3-final.md) — kernel deployment board video usb
+- [7.3 正式版整包上板回归](2026-10-22-edge-7-3-final-board.md) — kernel deployment board video usb
 - [PD 热重启原因与主动查询风险审查（未刷写）](2026-10-22-pd-warmboot-audit.md) — usb manager deployment board
 - [U-Boot PD 交接刷写与双内核验证](2026-10-22-pd-firmware-deploy.md) — usb manager deployment board
 - [U-Boot PD 交接与管理器候选（第一轮离线准备）](2026-10-22-pd-firmware-handoff.md) — usb manager deployment board

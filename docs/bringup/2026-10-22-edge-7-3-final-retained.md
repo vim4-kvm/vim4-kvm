@@ -19,7 +19,7 @@ Linux tree `cd948a7dea18fa4ef124512b3981a650af6e4699`，上游 v7.3 提交
 GNU build ID `3ed254bfa838ab50732fdce1c5134400a1663fd5`。uhd1.config 同次构建
 Image/DTB/全部 2335 个模块，保留 split BTF，DTB 保留以太网 MAC。
 源码工作树、O=、构建命令和应用构建检查见
-[第二轮产物记录](2026-10-22-edge-7.3-final-deploy.md#源码与产物)。
+[第二轮产物记录](2026-10-22-edge-7-3-final-deploy.md#源码与产物)。
 
 | 产物 | SHA256 |
 |---|---|

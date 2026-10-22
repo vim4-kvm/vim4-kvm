@@ -19,6 +19,10 @@ SSH 为 ssh vim4（khadas@192.168.50.210），串口 /dev/cu.usbserial-100，921
 配置先 scp 到临时位置再 sudo cp，避免密码与 heredoc 共用 stdin。
 长期命令使用 nohup setsid command </dev/null >log 2>&1 &，避免 sudo -b 挂住 SSH。
 
+板级日志策略由 `board/install-logging.sh` 与 board 组件包共同安装：persistent journal
+上限 256 MiB，停用/mask rsyslog，保留原文本日志。排查前一启动用 `journalctl -b -1`；
+预算、实测和回退见 [持久日志部署](../bringup/2026-10-22-p2-journal-deploy.md)。
+
 5.15 内核安装用 tools/kernel-install.sh。7.x 独立保留在 `/boot/edge`，安装匹配的
 Image / 完整模块后，用 `packaging/kernel-edge/register-runtime.py` 核对构建清单并登记；
 过程见 [双内核集成](../bringup/2026-10-21-dual-kernel-integration.md)。

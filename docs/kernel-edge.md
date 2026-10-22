@@ -11,10 +11,10 @@ build ID `3ed254bfa838ab50732fdce1c5134400a1663fd5`；uhd1.config 同次完整 I
 One-KVM 为 `382efb70e7ebb`，manager 为 `7a69cedb6d526`。第三轮抽样、编解码往返、
 4K60、USB、GPU 与管理页已执行；44.1kHz 单次音频跳变和扫描时 MMC 警告仍记录为遗留，
 不能宣称零警告或长期稳定性通过。哈希、备份、完整结果见
-[正式版保留记录](bringup/2026-10-22-edge-7.3-final-retained.md)。
+[正式版保留记录](bringup/2026-10-22-edge-7-3-final-retained.md)。
 第二轮 19 模式通过后即时 EDID 检查触发的回退见
-[历史尝试](bringup/2026-10-22-edge-7.3-final-deploy.md)，脚本入口见
-[部署准备](bringup/2026-10-22-deploy-7.3-final-prep.md)。
+[历史尝试](bringup/2026-10-22-edge-7-3-final-deploy.md)，脚本入口见
+[部署准备](bringup/2026-10-22-deploy-7-3-final-prep.md)。
 其他会话的临时音频测试可能占用板子；本页的部署基线不代表其测试窗口中的瞬时版本。
 
 CRG USB 设备端早期已完成真实键鼠和

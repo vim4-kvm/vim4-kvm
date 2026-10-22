@@ -1,0 +1,18 @@
+#!/bin/sh
+# Apply the board's journal policy in a live system or an image chroot.
+set -eu
+test -f /usr/lib/systemd/journald.conf.d/60-vim4-journal.conf
+
+# rsyslog also reads /proc/kmsg directly through imklog: turning off journal
+# forwarding alone would leave duplicate kernel writes. Keep old logs intact.
+if systemctl cat rsyslog.service >/dev/null 2>&1; then
+    systemctl disable rsyslog.service
+fi
+systemctl mask rsyslog.service
+if [ -d /run/systemd/system ]; then
+    systemctl stop rsyslog.service
+    systemd-tmpfiles --create --prefix /var/log/journal
+    systemctl restart systemd-journald.service
+    journalctl --flush
+    journalctl --sync
+fi
