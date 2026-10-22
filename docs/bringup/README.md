@@ -5,6 +5,25 @@
 
 新记录：新建 `bringup/YYYY-MM-DD-英文短名.md`，首行 `# YYYY-MM-DD：标题`，并在本页对应日期下追加一行。
 
+## 2026-10-22
+
+- [v7.3 正式版第三轮部署并保留](2026-10-22-edge-7.3-final-retained.md) — kernel video audio usb manager deployment board
+- [U-Boot 固定 5V USB PD Request（离线候选）](2026-10-22-uboot-pd-request.md) — usb deployment
+
+- [Wave5 非对齐 HEVC 挂起离线分析与局部修复候选](2026-10-22-wave5-hevc-hang-analysis.md) — kernel video
+- [v7.3 正式部署尝试与自动回退](2026-10-22-edge-7.3-final-deploy.md) — kernel video audio usb manager deployment board
+- [BCM43752 固件转储离线分析（原样本缺失）](2026-10-22-wifi-coredump-analysis.md) — kernel
+- [v7.3 正式版运行时、PD-USB 与部署离线准备](2026-10-22-deploy-7.3-final-prep.md) — usb manager deployment kernel
+- [HDMI 动态 LPCM 与无链路恢复](2026-10-22-edge-hdmi-audio.md) — kernel audio application deployment board
+- [7.3 日志分级与 T7 硬件随机数](2026-10-22-edge-diag.md) — kernel usb deployment board
+- [7.3 正式版 rebase 与整包回归](2026-10-22-edge-7.3-final.md) — kernel deployment board video usb
+- [7.3 正式版整包上板回归](2026-10-22-edge-7.3-final-board.md) — kernel deployment board video usb
+- [PD 热重启原因与主动查询风险审查（未刷写）](2026-10-22-pd-warmboot-audit.md) — usb manager deployment board
+- [U-Boot PD 交接刷写与双内核验证](2026-10-22-pd-firmware-deploy.md) — usb manager deployment board
+- [U-Boot PD 交接与管理器候选（第一轮离线准备）](2026-10-22-pd-firmware-handoff.md) — usb manager deployment board
+- [7.3 HDMI RX 输入模式泛化](2026-10-22-edge-hdmi-modes.md) — kernel video application deployment board
+- [HDMI 模式最终产物复核](2026-10-22-edge-hdmi-modes-final.md) — kernel video application deployment board
+
 ## 2026-10-21
 
 - [7.3 GPU/IR 合并内核正式部署](2026-10-21-edge-gpu-ir-deploy.md) — kernel deployment board video usb

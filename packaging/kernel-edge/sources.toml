@@ -2,11 +2,13 @@
 [kernel]
 url = "https://github.com/vim4-kvm/linux.git"
 branch = "vim4-kvm-7.3"
-revision = "51307a1cf3a60ea1a9cfc1cd35f159c5373d8f1d"
-tree = "a949e4e664ce9ec1050c95cf6399444483ad80fb"
+revision = "e0346697f25035c7eaa77fa44641a54d6e31e327"
+tree = "cd948a7dea18fa4ef124512b3981a650af6e4699"
 upstream_url = "https://github.com/gregkh/linux.git"
-upstream_tag = "v7.3-rc7"
-upstream_revision = "24a19b953e2a3d0ea5a8c4951a0ab8f32720c907"
+# Retained final-release deployment (published).
+# Evidence and known failures: docs/bringup/2026-10-22-edge-7.3-final-retained.md.
+upstream_tag = "v7.3"
+upstream_revision = "c03c1a14507dfaf8b856c2608f9ac216021fc222"
 
 # Separate experimental application; does not change workspace.toml production pins.
 [onekvm]
@@ -19,16 +21,16 @@ tested_binary_sha256 = "0b537561096ee5dfb5f15839738c8ac4ea87ba0dbb3a5127a25c241d
 # Complete matched build includes the former Wave5 and VDIN overlays.
 # build.sh uses the general edge.config; this tested profile changes LOCALVERSION.
 [tested_build]
-release = "7.3.0-rc7-vim4kvm-uhd1+"
+release = "7.3.0-vim4kvm-uhd1+"
 localversion = "-vim4kvm-uhd1"
-build_id = "52d5e46fb006230785110a1fa5ba0dd1383b732f"
-image_sha256 = "7b8607b2c24b7a1f41a2670770dea07a813a2773c36902e9527dcd4c131bc784"
-config_sha256 = "b67c0feeb849506467984d27fa75c9484d5dbe46073bb33b22bbfd6418d0c298"
+build_id = "3ed254bfa838ab50732fdce1c5134400a1663fd5"
+image_sha256 = "47c53206718adeaa81961c10d589f3e7cbc40fa6c075fbd4d854918a78df7bc7"
+config_sha256 = "64df2a7789045390e22f06175f084913a4dd0873c75e152cf05ae6ba4c7232ba"
 config_path = "uhd1.config"
-modules_sha256 = "ab5e1464d715d2aa45b4e1bae8be527a033d78df54a94102fdb7169344ab7b6e"
+modules_sha256 = "1bfe777105521c9d6bc8a945b03638b60520f01c2b3c6602048e0b8e7ac1f876"
 module_count = 2335
 module_btf = true
-board_dtb_sha256 = "e0ebe345dba968f811136de69412cc58846814775ce4d4f3ac440ee5d32961c5"
+board_dtb_sha256 = "8cd68e30d5c7adf4fa063ae9c2ab9561912c46133ce24f1637fd36d14a2d95d8"
 
 # Shared application sources are pinned in workspace.toml; the old independent
 # One-KVM and its private plugin above/below remain historical separate inputs.
@@ -39,7 +41,8 @@ pikvm_package = "2.5.1+vim4.20261018.16.dev.2.g391a6eb"
 manifest_path = "/etc/vim4-kvm/runtime-build.json"
 wave5_plugin_sha256 = "1d90f0d36f0eae0dca3e847663d6c5f16b4c3f02da2a6a128ed62a9746eb6b5f"
 v4l2_plugin_sha256 = "7fea3773c028de64ec7da4e87b2acc28206465e2cb09fb6530fe597c00868443"
-one_kvm_binary_sha256 = "3d0062dd22de50cfdcf7c205c5538102eb07c0504e38fb1724da80f3b0ed1d84"
+one_kvm_binary_sha256 = "72db30c07aa2351a27499e06d2ac28ccde3a74e1cb18d0927766a7ba35d37b0d"
+manager_binary_sha256 = "ad7b8aa3e068cb4f5e4ef8e8c2fb6df623c791a1c4ed82949e616cd6fd01f67c"
 
 # Diagnostic capability, not proof that the historical firmware crash is fixed.
 [wifi_diagnostics]
@@ -88,7 +91,8 @@ config_sha256 = "b603e1fff54f82adb61d769b9e5dcfb314fc94d2e43c6a5e01e91d881d601a6
 # Experimental firmware candidate; see the bringup record for validation scope.
 [uboot]
 url = "https://github.com/vim4-kvm/u-boot.git"
-branch = "vim4-kvm-2019.01-edge"
-revision = "4317387a6a58f4d42186cbadc24cd3cc52675bc3"
+branch = "vim4-kvm-2019.01-edge-pd-handoff"
+# Flashed on the board; see docs/bringup/2026-10-22-pd-firmware-deploy.md.
+revision = "0d5a3d7848377c0093ecdfb15de80cf2bf83e928"
 base_revision = "b60ff51ece0fb05456261b1aabb043db6bd923d5"
 mainline_revision = "a7b06ca0498f2da0faf14e75148b5075c84d7381"

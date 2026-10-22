@@ -5,8 +5,13 @@
 [vim4-kvm/common_drivers](https://github.com/vim4-kvm/common_drivers) 的同名分支。
 发布名 `5.15.137-vim4kvm`，与原厂 `5.15.137` 的模块目录并存。
 主内核工作树保留在 VM，Mac 不检出内核文件；不要以第三方整套内核替代官方基线。
-板上当前 7.3 FullKvm 为合并 GPU/IR 的 `51307a1cf3a60` 匹配整包，部署与回退备份见
-[正式部署记录](bringup/2026-10-21-edge-gpu-ir-deploy.md)；下方厂商 5.15 构建流程保留。
+板上当前 FullKvm 为 v7.3 正式版 `e0346697f2503`，release `7.3.0-vim4kvm-uhd1+`、
+build ID `3ed254bfa838ab50732fdce1c5134400a1663fd5`，含 HDMI 模式/音频、GPU 调频与 IR。
+第三轮部署已保留；回归范围、音频单次跳变与 MMC 警告、整包哈希及 rc7 回退备份见
+[正式版保留记录](bringup/2026-10-22-edge-7.3-final-retained.md)。下方厂商 5.15 流程保留。
+正式版持久运行时支持与部署脚本见 [离线准备](bringup/2026-10-22-deploy-7.3-final-prep.md)；
+第二轮即时 EDID 检查触发的回退另见 [历史窗口](bringup/2026-10-22-edge-7.3-final-deploy.md)。
+7.x 使用 `/boot/edge` 与完整匹配模块，不使用下方的厂商 `kernel-install.sh`。
 
 ## 构建（OrbStack VM `vim4-build`，Ubuntu 24.04 arm64）
 

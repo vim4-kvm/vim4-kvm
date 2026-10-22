@@ -5,9 +5,17 @@
 当前包、匹配内核、安装/回退与实际验收范围见
 [双内核完整系统集成](bringup/2026-10-21-dual-kernel-integration.md)。
 本页保留 Armbian 编译基线与专项历史记录；通用 edge.config 不等于已验收的整板配置。
-当前板上 7.3 已正式部署合并后的 `51307a1cf3a60`，使用 UHD 配置、GPU 纯调频及
-模块化 IR；同次完整 Image/模块、哈希、备份和短回归见
-[GPU/IR 合并部署](bringup/2026-10-21-edge-gpu-ir-deploy.md)。
+当前板上保留 v7.3 正式版 `e0346697f2503`，release `7.3.0-vim4kvm-uhd1+`、
+build ID `3ed254bfa838ab50732fdce1c5134400a1663fd5`；uhd1.config 同次完整 Image/DTB/
+2335 模块，含 HDMI 输入模式、诊断、动态 LPCM、GPU 纯调频和模块化 IR。
+One-KVM 为 `382efb70e7ebb`，manager 为 `7a69cedb6d526`。第三轮抽样、编解码往返、
+4K60、USB、GPU 与管理页已执行；44.1kHz 单次音频跳变和扫描时 MMC 警告仍记录为遗留，
+不能宣称零警告或长期稳定性通过。哈希、备份、完整结果见
+[正式版保留记录](bringup/2026-10-22-edge-7.3-final-retained.md)。
+第二轮 19 模式通过后即时 EDID 检查触发的回退见
+[历史尝试](bringup/2026-10-22-edge-7.3-final-deploy.md)，脚本入口见
+[部署准备](bringup/2026-10-22-deploy-7.3-final-prep.md)。
+其他会话的临时音频测试可能占用板子；本页的部署基线不代表其测试窗口中的瞬时版本。
 
 CRG USB 设备端早期已完成真实键鼠和
 只读虚拟盘三轮组合测试，仍需扩大 USB 验收，范围见
@@ -39,7 +47,7 @@ H.264/H.265 硬编码已取得实验结果，见
 
 - Linux 工作树：OrbStack `vim4-build` 的 `/home/deepdream/src/linux-7.3`。
 - 开发分支：[vim4-kvm-7.3](https://github.com/vim4-kvm/linux/tree/vim4-kvm-7.3)，固定版本见源码锁。
-- 上游：`https://github.com/gregkh/linux.git`，`v7.3-rc7`，完整历史的过滤克隆。
+- 上游：`https://github.com/gregkh/linux.git`，`v7.3`，完整历史的过滤克隆。
 - Armbian：`https://github.com/armbian/build.git`，固定提交
   `ecc676bf89af37788f972db9a7ff3f92844a43eb`，VM 中为 `~/src/armbian-build-7.3`。
 - 补丁：`patch/kernel/archive/meson-s4t7-7.3/*.patch`，按文件名排序，共 164 个。
@@ -60,8 +68,9 @@ H.264/H.265 硬编码已取得实验结果，见
 重建匹配 release；不传第三参数仍构建通用 edge 基线。该命令不安装、不重启，
 DTB/固件和完整模块的安装与登记按双内核记录执行，保留当前板子的 DTB/MAC 配置。
 
-Armbian 的 `config/sources/mainline-kernel.conf.sh` 为 7.3 选择 rc7；
-不要将目录名 7.3 当作正式稳定版。源码准备使用独立 Linux 大小写敏感文件系统，
+下方是最初 Armbian rc7 导入的历史步骤；当前分支已基于 v7.3 重放并合入板级修复，
+准确复现应检出 sources.toml 的提交，不重新执行这段导入。固定 Armbian 快照为 7.3 选择 rc7，
+不要只凭目录名判断上游版本。源码准备使用独立 Linux 大小写敏感文件系统，
 不要切换 Mac 上已有的 `vim4-linux-7.x` 工作树。
 
 重新准备源码时，在新的 Linux 目录执行以下步骤；已有目录不要覆盖。
@@ -129,7 +138,7 @@ VM 已执行 modules_install、strip、压缩与 depmod，输出在
 `build/kernel-edge/modules-7.3.0-rc7-vim4kvm-edge.tar.xz` 为约 24 MiB 的模块归档。
 这是暂存目录归档，不是可直接向系统根目录解压的安装包；其中含 lib/modules 路径和构建链接。
 
-当前板上 U-Boot 对应的源码 `b60ff51ece` 启用 CONFIG_CMD_RSVMEM，
+最初 2026-10-19 上板时的 U-Boot 源码 `b60ff51ece` 启用 CONFIG_CMD_RSVMEM，
 `common/bootm.c` 无条件运行 rsvmem check；检查器读取
 `/reserved-memory/linux,secmon` 的厂商属性，主线 DTB 没有该节点。
 Armbian 使用的 `khadas-vims-v2019.01-mainline` 分支包含三项相关修改：

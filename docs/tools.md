@@ -27,6 +27,9 @@ PiKVM smoke 可用 `PIKVM_CDP` 接入专用测试 Chrome；结束时关闭测试
 |---|---|---|---|---|
 | packaging/kernel-edge/build-gstreamer.py | 容器/VM | 无 | 校验固定源码、应用 V4L2 生命周期补丁并构建私有插件，不改系统库 | [音视频](subsystems/video.md) |
 | packaging/kernel-edge/register-runtime.py | VM / 板 | inventory 无；register 改启动配置 | 核对完整 Image/模块清单后登记双内核，保留当前默认项；不安装、不重启 | [双内核集成](bringup/2026-10-21-dual-kernel-integration.md) |
+| packaging/kernel-edge/package-final.py | VM | 无 | 打包已完成的正式版 UHD 构建、安装完整模块至临时目录并生成哈希/build ID 清单；不编译 Image、不上板 | [正式版部署准备](bringup/2026-10-22-deploy-7.3-final-prep.md) |
+| packaging/kernel-edge/final-window.py、final-board.py | Mac → 板 | stage/dry-run 无；execute 独占、重启 | 双锁备份、安装与回归；关键项失败先保存板端与 Mac 源模式诊断再恢复并重启核验；HDMI 恢复最多等 35 秒；rollback 单独恢复 | [正式版部署与备份](bringup/2026-10-22-edge-7.3-final-retained.md) |
+| packaging/kernel-edge/final-regression.py、final-manager-check.mjs | Mac → 板 | prepare 无；run 独占、改 HDMI/USB 设置后恢复 | 复制既有 board-window 夹具；默认 19 模式，可用 --sample-modes 抽样；编解码/音频/USB/GPU/管理器检查；仅显式 --wifi-scan 增加扫描并恢复 radio/autoconnect，不操作 P2P；run 仅由双锁窗口调用 | [正式版部署准备](bringup/2026-10-22-deploy-7.3-final-prep.md) |
 | packaging/kernel-edge/check-wifi-p2p.py | 板 | 独占、临时接管 Wi-Fi 后恢复 | 已保存 SAE 客户端与 P2P 扫描、监听、双频 GO 启停；不代替真实对端传输 | [Wi-Fi Direct](bringup/2026-10-21-edge-wifi-p2p.md) |
 | tools/workspace.py | Mac / CI | 无 | bootstrap/status 子仓库（`--override` 供发布 CI 替换单个仓库提交），build 各目标（kernel 走 OrbStack） | [工作区](workspace.md) |
 | tools/ubuntu-build.py | Mac / CI → Docker | 无 | package/verify 七组件；支持 platform、capture、encoder、nanokvm、jetkvm、onekvm、manager、pikvm、pikvm-app | [Ubuntu 构建](ubuntu-build.md) |
@@ -51,7 +54,7 @@ PiKVM smoke 可用 `PIKVM_CDP` 接入专用测试 Chrome；结束时关闭测试
 | tools/uart-run.py | Mac | 取决于命令 | 串口执行命令；超时后命令可能仍在运行 | [部署](subsystems/deployment.md) |
 | tools/uart-log.py | Mac | 读（`--send` 除外） | 只读抓串口日志 | [部署](subsystems/deployment.md) |
 | tools/oowow-flash.sh | Mac（板在 OOWOW） | 破坏 | 手工 URL 刷写，优先用 board.py flash | [板级工具](board-tools.md) |
-| tools/kernel-install.sh | 板（root） | 改启动项 | 安装内核包并保留 Stock 启动项 | [内核](kernel.md) |
+| tools/kernel-install.sh | 板（root） | 改启动项 | 安装厂商内核包并保留 Stock；7.x 在解包前拒绝，走独立 edge 窗口 | [内核](kernel.md) |
 | tools/rootfs-policy.py | 板（root，随包安装） | 改启动项 | 根分区 ordered/commit=5，重启生效 | [Ubuntu 构建](ubuntu-build.md) |
 
 ## 板级服务源码（由 board/install.sh 或组件包安装）

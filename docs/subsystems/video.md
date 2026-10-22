@@ -57,12 +57,13 @@ HDMI_LOW_LATENCY=0 恢复厂商自动策略。模式含义、对照结果及帧�
 - [驱动基准](../driver-benchmark.md)：原生纯采集/硬编码，排除 Python、解析、写盘与网络，支持 7.x 与 5.15。
 - [7.x 缩放与硬件 MJPEG](../bringup/2026-10-21-edge-scaling-jpeg.md)：VDIN 下采样、HCODEC/OP-TEE 接入与 4K 帧率边界。
 - [UHD 清晰度复核](../bringup/2026-10-20-edge-uhd-detail.md)：Mac 实际渲染栅格、原生单像素细节与 1080p 放大负对照。
-- [7.3 HDMI 音频](../bringup/2026-10-20-edge-hdmi-audio.md)：复用已验证 LPCM 能力、独立 ALSA 声卡及网页 Opus。
+- [7.3 HDMI 音频](../bringup/2026-10-20-edge-hdmi-audio.md)：独立 ALSA 声卡及网页 Opus；[动态 LPCM](../bringup/2026-10-22-edge-hdmi-audio.md)记录 ACR/AIF 检测、七档采样率、重采样缓冲与无链路恢复。
 - [7.x 逐行刷新](../bringup/2026-10-20-edge-cyclic-refresh.md)：固定 UHD60 的周期关键帧、呈现间隔与重复对照。
 - [7.x 状态查询与端到端](../bringup/2026-10-20-edge-status-latency.md)：去除实时查询的 20ms 等待、校准时钟与测量开销。
 - [7.x HDMI 真实时序](../bringup/2026-10-20-edge-input-timings.md)：标准 V4L2 查询、测量帧率与动态重配的剩余限制。
 - [7.x 失锁查询与队列锁](../bringup/2026-10-20-edge-queue-lock.md)：状态/停流锁分离，格式与缓冲生命周期回归。
 - [7.x 动态分辨率](../bringup/2026-10-20-edge-dynamic-modes.md)：RGB8 1080p60/4K60 的 PHY、音频、队列和应用重建，以及孤儿缓冲回收。
+- [7.3 HDMI 输入模式覆盖](../bringup/2026-10-22-edge-hdmi-modes.md)：实测时序分档、原生 YUV/深色转换和 DMA 行对齐；[最终复核](../bringup/2026-10-22-edge-hdmi-modes-final.md)记录浏览器覆盖、HEVC 回退与恢复证据。
 - [VDIN 直接 DMA](../bringup/2026-10-20-direct-dma-benchmark.md)：持有/隔离语义、本地回归与 4K60 应用 CPU 对照。
 - [7.3 One-KVM 接入](../bringup/2026-10-20-onekvm-wave5.md)：独立后端、网页 4K60 与重配回收故障。
 - [7.3 CPU 性能定位](../bringup/2026-10-20-onekvm-performance.md)：真实应用基线、压缩码流缓存和剩余原始帧复制开销。
@@ -97,6 +98,7 @@ HDMI_LOW_LATENCY=0 恢复厂商自动策略。模式含义、对照结果及帧�
 | 切分辨率后没有视频 fd，仍残留一组 CMA 分配 | GStreamer 先停用池，STREAMOFF 后另一个线程归还缓冲仍可 QBUF，随后 orphan 已无流可冲刷。先停止获取，在 QBUF 锁内停流并完成 orphan，再停用池；仅关闭 last-sample 缓存不足以修复 | packaging/kernel-edge/test_gstreamer_orphan.py、[动态模式记录](../bringup/2026-10-20-edge-dynamic-modes.md) |
 | 7.x 无周期 IDR，仍每约 250ms 短顿 | ENUMINPUT 误用双次稳定检查，持有采集 ioctl 锁等待 20ms。实时状态使用即时读取并清除旧状态，STREAMON 保留稳定性资格检查；仅将应用查询移到另一线程仍会争用队列锁 | t7-hdmirx/test_core.py、[状态查询实测](../bringup/2026-10-20-edge-status-latency.md) |
 | 7.3 网页反复重配后 CMA 耗尽，分配失败又触发 Oops | GStreamer 1.24.2 每帧遗漏输入池 unref，空 LAST 缓冲也未归还；另有 Wave5 辅助 DMA 局部副本和实例重复释放。插件和驱动分别修复，SET_FB 后保留 DMA 直到固件停止；每轮检查 fd/CMA，不能只看进程退出后的空闲内存 | tools/wave5-lifecycle-check.py、[应用接入](../bringup/2026-10-20-onekvm-wave5.md) |
+| 原始 720×400 正常，Wave5 DMA 导入 QBUF 返回 EINVAL | VDIN 的 16 字节行对齐不足以满足 Wave5 协商得到的 32 字节 RAW 行宽。NV12 采集按 32 字节补行、保留可见宽度，UV 偏移和两平面导入使用实际 stride；同时检查高度补齐后的容量 | [输入模式覆盖](../bringup/2026-10-22-edge-hdmi-modes.md) |
 | H.264 第一次强制 IDR 有效，后续请求不再产生 IDR | Wave5 用 HEVC NAL 19/20 判定所有格式，AVC NAL 5 未标为 V4L2 KEYFRAME，GStreamer 保留未完成请求。按编码格式报告帧型；用长于整段测试的 GOP 连续请求并核对输出 | tools/hdmirx-encode-check.py --keyframe-at、[应用接入](../bringup/2026-10-20-onekvm-wave5.md) |
 | 原始 DMA 采集 60fps，但全帧 CPU 处理只有约 13fps | write-combine 映射下读一帧 4K 需约 55.6ms，SIMD 无法弥补。改为只读可缓存映射并实现 DMA-BUF CPU 访问同步，融合复制与重排，复用输出缓冲；必须逐帧验证动态标记与单像素色度，不能只测重复读取同一帧 | common_drivers/drivers/media/vfm_cap/test_lifecycle.c、gst-plugin-vfmcap/tests/capture-integrity.c |
 | 给 cached DMA 环只做每轮复制同步，遗漏首次交给设备的同步 | dma_alloc_noncoherent 的分配器会通过 CPU 映射清零；首次 DMA 前也必须 sync_for_device，每轮复制保持 CPU／设备所有权交接 | [7.3 私有 DMA 环](../bringup/2026-10-19-hdmirx-dma-ring.md) |
@@ -113,3 +115,4 @@ HDMI_LOW_LATENCY=0 恢复厂商自动策略。模式含义、对照结果及帧�
 | Direct H.264/H.265 平均 60fps，却每个关键帧都停顿 | aiohttp 默认 permessage-deflate 对已压缩视频再次压缩，大关键帧拖慢发送。对照 memsink、无压缩/有压缩 WebSocket 的帧间隔后，仅禁用媒体 WebSocket 压缩；平均帧率与零 freeze 不能替代尾部间隔测量 | kvmd/kvmd/apps/media/server.py、kvmd/deploy/vim4/test_video_stream.py、logs/pikvm/cadence-* |
 | One-KVM WebRTC H.264 每秒短顿，H.265 较顺，统计仍是 60fps/零 freeze | H.264 的一秒 GOP 产生大 IDR，编码和发送峰值使浏览器先停后追。VIM4 两种编码均逐行刷新，保留新订阅与 PLI/FIR 的完整关键帧；验证间隔尾部和恢复能力，不能只延长 GOP 或看平均帧率 | tools/one-kvm-smoke.mjs、[上板记录](../bringup/2026-10-18-onekvm-h264-periodic-stutter.md) |
 | PiKVM HDMI 声音约每 1.37 秒啪一声，网络零丢包，arecord 录音正常 | 采集未设置周期/缓冲，TDM 驱动默认 241 帧周期配 65536 帧缓冲，每次回绕前 16 帧是上一圈旧数据。ALSA 采集显式设置与编码帧对齐的周期和有限缓冲；用应用实际协商的参数复现，arecord 的默认参数不同，不能代表应用路径 | ustreamer/janus/src/acap.c、[上板记录](../bringup/2026-10-16-pikvm-hdmi-audio-pops.md) |
+| HDMI 重采样仍每圈跳变，客户缓冲明明是五周期 | ALSA rate 可给原生环增加插值帧，96kHz 实际为 9602/1920。核对原生 hw_params，T7 约束整数周期；应用原生采集后另做重采样 | [动态 LPCM](../bringup/2026-10-22-edge-hdmi-audio.md) |
