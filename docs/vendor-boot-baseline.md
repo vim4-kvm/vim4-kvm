@@ -1,9 +1,10 @@
-# 厂商 5.15 一次性性能对照启动（离线方案）
+# 厂商 5.15 一次性性能对照启动
 
 结论：可复用 [M1安全网](bringup/2026-10-23-display-m1-safety.md) 的 **U-Boot RAM中
 sysboot选择一次、默认仍为7.3** 原理；不能直接复用绑定7.3 release/build ID的
-display-once.py或静态PID1。5.15使用自己的initrd和独立模块目录。本次没有上板，
-没有证明当前固件能加载该initrd，也没有证明硬挂死能自动复位。
+display-once.py或静态PID1。5.15使用自己的initrd和独立模块目录。
+[2026-10-23短窗口](bringup/2026-10-23-vendor-boot-gpu.md)已验证mmc1:1加载5.15
+Image/initrd/DTB、SSH及正常重启返回默认7.3；硬挂死自动复位仍未验证。
 
 ## 离线生成与下次窗口门禁
 
@@ -32,7 +33,7 @@ init覆盖与命令注入；它**不验证产物存在/匹配、实际分区、A
 plan.json保留原extlinux哈希与完整已解析profile，生成固定路径 `perf-vendor-<hash>.conf`。
 正式部署可能更新7.3；必须以窗口开始的新清单为回退目标，不硬编码7b8372b8旧build。
 
-未来取得双锁后按以下顺序执行，任一门禁失败即停止，当前轮不执行：
+每次取得双锁后按以下顺序执行，任一门禁失败即停止：
 
 1. 核对新7.3 build ID、完整模块清单、Image/DTB/extlinux/uEnv/kernels.json/
    runtime-build.json哈希；保存服务配置、应用数据库一致性备份、USB LUN/PD状态。
@@ -87,4 +88,5 @@ plan.json保留原extlinux哈希与完整已解析profile，生成固定路径 `
 | 网口 | 已有5.15 carrier正常却收不到包、热解绑Oops教训；串口始终保留，正常复位回默认，不热重绑。故障轮次不计性能通过 |
 | 共享用户态 | 只切内核不等于文件系统回滚；写盘/数据库升级不会因RESET撤销。禁升级安装、记录服务/应用设置并恢复；发生D状态时不覆盖打开的SQLite/WAL，回健康基线后处理 |
 
-完整采样方法、指标与15–20小时正式窗口预算见 [性能基线](performance-baseline.md)。
+完整采样方法和指标见 [性能基线](performance-baseline.md)，细化后的窗口预算与排队顺序见
+[整夜执行计划](overnight-performance-plan.md)，开跑时间待用户确认。
