@@ -32,6 +32,7 @@ BASE_FILES = {
 FAILED_SOURCES = {
     '5bf7d6359df9ff68d8746851cf45de40611988a1',
     '34ab72b7fbecaa13347aca58584b4bcb10b1b73e',
+    'e8ebc2e82734739a7ae0f1a91117cebc36ff7b89',
 }
 
 
@@ -50,7 +51,7 @@ def require_candidate(action, proof, once=False):
                                                        '7.3.0-vim4kvm-vdec4'))):
         raise ValueError('Only this separate experimental kernel is accepted')
     if not recovery and proof.get('source') in FAILED_SOURCES:
-        raise ValueError('Known failing candidate: video open caused SError during DOS initialization; '
+        raise ValueError('Known failing candidate: SError during DOS/MDEC initialization; '
                          'prepare a revised offline candidate before another board window')
 
 
@@ -543,7 +544,8 @@ def main():
               '--payload', args.payload, '--backup', args.backup]
     if args.once_baseline:
         remote.extend(['--once-baseline', args.once_baseline])
-    subprocess.run(['ssh', '-o', 'ConnectTimeout=8', 'vim4', shlex.join(remote)],
+    subprocess.run(['ssh', '-o', 'ConnectTimeout=8', '-o', 'ServerAliveInterval=3',
+                    '-o', 'ServerAliveCountMax=2', '-o', 'BatchMode=yes', 'vim4', shlex.join(remote)],
                    input=source, text=True, check=True, timeout=180)
 
 
