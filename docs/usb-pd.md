@@ -95,6 +95,13 @@ Rp 默认档不换算成未经确认的电流；失败回退仅表示退出时�
 
 ## 边界
 
+所有 `usb-pd-init` 成功完成路径（包括手动运行）在最终 PS_RDY 确认及有限服务结束后，
+调用板级 `vim4pd.py --remember-linux RDO` 原子保存最后合同；开机包装器不重复写。
+固件确认路径使用同一写入器，字段与历史含义见
+[合同历史记录](bringup/2026-10-22-pd-warm-carryover.md)。写入失败仅报告错误，
+不重试协商；`--status` 不写历史。部署及真实合同验证见
+[手动协商持久化](bringup/2026-10-22-pd-manual-contract.md)。
+
 以下限压、重试与协议服务边界适用于 Linux `usb-pd-init`；原 U-Boot 的缺口见上面的热重启审查。
 
 新的 [U-Boot Request 离线候选](bringup/2026-10-22-uboot-pd-request.md) 已将选择限制为

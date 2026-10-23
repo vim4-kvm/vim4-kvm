@@ -15,6 +15,7 @@
 #include <string.h>
 #include <sys/ioctl.h>
 #include <sys/file.h>
+#include <sys/wait.h>
 #include <time.h>
 #include <unistd.h>
 
@@ -42,6 +43,7 @@ static int fd;
 static int txid;
 static int contract_ready;
 static unsigned requested_ma;
+static uint32_t requested_rdo;
 #define LOG(...) do { printf(__VA_ARGS__); fflush(stdout); } while (0)
 
 /* Adapter numbers differ between kernels. Match the board's AO-A controller,
@@ -199,7 +201,30 @@ static uint32_t request_5v(uint32_t pdo)
 		fail("First source PDO must be fixed 5V with nonzero current");
 	if (current > 300) current = 300; /* Board policy: at most 3A. */
 	requested_ma = current * 10;
-	return (1u << 28) | (1u << 25) | (1u << 24) | (current << 10) | current;
+	requested_rdo = (1u << 28) | (1u << 25) | (1u << 24) | (current << 10) | current;
+	return requested_rdo;
+}
+
+/* Share the atomic writer with firmware history. A storage/helper failure
+ * must never turn a completed contract into another negotiation attempt.
+ */
+static void remember_contract(const char *python, const char *module, uint32_t rdo)
+{
+	char value[9];
+	int status;
+	snprintf(value, sizeof(value), "%08x", rdo);
+	pid_t child = fork();
+	if (child == 0) {
+		execl(python, python, module, "--remember-linux", value, (char *)NULL);
+		_exit(127);
+	}
+	if (child > 0) {
+		pid_t waited;
+		do { waited = waitpid(child, &status, 0); } while (waited < 0 && errno == EINTR);
+		if (waited == child && WIFEXITED(status) && WEXITSTATUS(status) == 0)
+			return;
+	}
+	fprintf(stderr, "PD contract history unavailable; completed contract retained\n");
 }
 
 static void serve(int secs)
@@ -259,7 +284,7 @@ int main(int argc, char **argv)
 	if (access(driver, F_OK) == 0)
 		fail("PD controller already owned by a kernel driver");
 	snprintf(device, sizeof(device), "/dev/i2c-%d", bus);
-	fd = open(device, O_RDWR);
+	fd = open(device, O_RDWR | O_CLOEXEC);
 	if (fd < 0) { perror("i2c"); return 1; }
 	if (rd1(0x01) != 0x91) fail("Unexpected FUSB302B device ID");
 	if (status_only) {
@@ -314,5 +339,6 @@ int main(int argc, char **argv)
 		       ((caps[k] >> 10) & 0x3ff) * 50, (caps[k] & 0x3ff) * 10,
 		       caps[k] & (1u << 26) ? " usbcomm" : "",
 		       caps[k] & (1u << 25) ? " drswap" : "");
+	remember_contract("/usr/bin/python3", "/usr/lib/vim4-kvm/python/vim4pd.py", requested_rdo);
 	return 0;
 }

@@ -56,9 +56,35 @@ static void rejected(uint32_t pdo)
 	assert(WIFEXITED(status) && WEXITSTATUS(status) == EXIT_FAILURE);
 }
 
+static void contract_history(void)
+{
+	char path[] = "/tmp/vim4-pd-recorder-XXXXXX";
+	int output = mkstemp(path);
+	assert(output >= 0);
+	FILE *script = fdopen(output, "w");
+	assert(script);
+	/* Check the actual exec argument boundary without accessing the controller. */
+	fputs("#!/bin/sh\n[ \"$1\" = recorder ] && [ \"$2\" = --remember-linux ] && [ \"$3\" = 13025896 ] || exit 2\nprintf '%s' \"$3\" > \"$0.result\"\n", script);
+	assert(fclose(script) == 0);
+	assert(chmod(path, 0700) == 0);
+	remember_contract(path, "recorder", request_5v(0x3e019096));
+	/* Missing helper and failed recorder must return without aborting/retrying PD. */
+	remember_contract("/missing-vim4-python", "recorder", requested_rdo);
+	remember_contract(path, "recorder", request_5v(0x3e01912c));
+	char result[PATH_MAX], value[9] = { 0 };
+	snprintf(result, sizeof(result), "%s.result", path);
+	script = fopen(result, "r");
+	assert(script && fread(value, 1, 8, script) == 8);
+	assert(strcmp(value, "13025896") == 0);
+	assert(fclose(script) == 0);
+	assert(unlink(result) == 0);
+	assert(unlink(path) == 0);
+}
+
 int main(void)
 {
 	controller_discovery();
+	contract_history();
 	/* Requests respect source current, cap at 3A, and advertise USB data. */
 	assert(request_5v(0x3e019096) == 0x13025896);
 	assert(request_5v(0x3e01912c) == 0x1304b12c);

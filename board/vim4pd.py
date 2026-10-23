@@ -1,6 +1,7 @@
-"""Persist confirmed boot contracts and repair missing USB data once at boot.
+"""Persist confirmed contracts and repair missing USB data once at boot.
 
-Only vim4-kvm-pd.service calls this entry point. Package installation must not
+The service selects boot repair; usb-pd-init records its completed contracts.
+Package installation must not
 start/restart that service: an active USB link must survive runtime updates.
 The manager imports the read-only decoders and previous-boot record reader.
 Firmware snapshots and persisted contracts are history, never live PD state.
@@ -172,19 +173,21 @@ def remember_contract(contract, rdo, origin, path=LAST_CONTRACT, boot_id=BOOT_ID
 
 
 def linux_bootstrap():
-    # Capture only the existing tool output. Its protocol, arguments and exit
-    # status remain unchanged; persistence failure never starts another attempt.
+    # The protocol tool records success itself, including manual invocations.
     result = subprocess.run(['/usr/sbin/usb-pd-init'], check=False,
                             stdout=subprocess.PIPE, text=True)
     print(result.stdout, end='', flush=True)
-    contract = boot_power_contract(result.stdout)
-    if result.returncode == 0 and contract:
-        # request_5v uses these fixed bits and equal operating/maximum currents,
-        # including later Source_Capabilities handled during the bootstrap.
-        current = round(contract['currentA'] * 100)
-        rdo = (1 << 28) | (1 << 25) | (1 << 24) | (current << 10) | current
-        remember_contract(contract, rdo, 'linux')
     return result.returncode
+
+
+def remember_linux_contract(value):
+    """Record the final RDO supplied by usb-pd-init after completed bootstrap."""
+    rdo = int(value, 16)
+    current = rdo & 0x3ff
+    expected = (1 << 28) | (1 << 25) | (1 << 24) | (current << 10) | current
+    if not 0 < current <= 300 or rdo != expected:
+        raise ValueError('invalid USB-capable fixed 5V bootstrap RDO')
+    remember_contract({'voltageV': 5, 'currentA': current / 100}, rdo, 'linux')
 
 
 def remember_firmware(handoff):
@@ -241,6 +244,9 @@ def bootstrap(handoff=HANDOFF, attempt=ATTEMPT):
 
 
 if __name__ == '__main__':
+    if len(sys.argv) == 3 and sys.argv[1] == '--remember-linux':
+        remember_linux_contract(sys.argv[2])
+        raise SystemExit(0)
     if sys.argv[1:] == ['--vendor']:
         remember_firmware(HANDOFF)
         raise SystemExit(linux_bootstrap())

@@ -98,7 +98,7 @@ class ContractHistoryTest(unittest.TestCase):
 
     def test_confirmed_linux_is_atomic_and_only_visible_across_boots(self):
         with patch.object(pd.os, 'replace', wraps=pd.os.replace) as replace:
-            pd.linux_bootstrap()
+            pd.remember_linux_contract('1304b12c')
         replace.assert_called_once()
         source, destination = replace.call_args.args
         self.assertEqual(Path(source).parent, destination.parent)
@@ -114,9 +114,14 @@ class ContractHistoryTest(unittest.TestCase):
         # Valid PS_RDY firmware request lacking USB comm, followed by Linux repair.
         self.handoff.write_bytes(struct.pack('>16I', 1, 0x41, 0x1061, 0x1042,
             0x1401912c, 1, 3, 5000, 3000, 0x2601912c, 0, 0, 0, 0, 0, 0))
+        def completed_tool(*args, **kwargs):
+            pd.remember_linux_contract('1304b12c')
+            return SimpleNamespace(returncode=0, stdout=self.COMPLETE)
+        self.run.side_effect = completed_tool
         pd.bootstrap(self.handoff, self.attempt)
         self.assertEqual(json.loads(self.record.read_text())['origin'], 'linux')
         self.attempt.unlink()
+        self.run.side_effect = None
         self.run.return_value.returncode = 1
         pd.bootstrap(self.handoff, self.attempt)
         record = json.loads(self.record.read_text())
@@ -125,7 +130,7 @@ class ContractHistoryTest(unittest.TestCase):
         self.assertEqual(record['rdo'], '1401912c')
 
     def test_timeout_failed_or_incomplete_linux_does_not_replace_old_record(self):
-        pd.linux_bootstrap()
+        pd.remember_linux_contract('1304b12c')
         old = self.record.read_bytes()
         self.handoff.write_bytes(snapshot(flags=0xd0))
         self.run.reset_mock()
@@ -146,15 +151,16 @@ class ContractHistoryTest(unittest.TestCase):
         self.run.assert_not_called()
 
     def test_failed_atomic_replace_preserves_history_and_linux_exit_status(self):
-        pd.linux_bootstrap()
+        pd.remember_linux_contract('1304b12c')
         old = self.record.read_bytes()
         with patch.object(pd.os, 'replace', side_effect=OSError(5, 'I/O error')):
+            pd.remember_linux_contract('1304b12c')
             self.assertEqual(pd.linux_bootstrap(), 0)
         self.assertEqual(self.record.read_bytes(), old)
         self.assertEqual(list(self.root.glob('tmp*')), [])
 
     def test_corrupt_incomplete_and_invalid_records_are_absent(self):
-        pd.linux_bootstrap()
+        pd.remember_linux_contract('1304b12c')
         record = json.loads(self.record.read_text())
         self.boot_id.write_text('second-boot')
         for field in record:
@@ -168,3 +174,14 @@ class ContractHistoryTest(unittest.TestCase):
             self.assertIsNone(self.previous())
         self.record.unlink()
         self.assertIsNone(self.previous())
+
+    def test_final_request_current_is_recorded_and_invalid_requests_preserve_history(self):
+        pd.remember_linux_contract('13025896')
+        record = json.loads(self.record.read_text())
+        self.assertEqual(record['currentA'], 1.5)
+        self.assertEqual(record['rdo'], '13025896')
+        old = self.record.read_bytes()
+        for value in ('garbage', '13000000', '1104b12c', '1304b096', '13064190'):
+            with self.subTest(value=value), self.assertRaises(ValueError):
+                pd.remember_linux_contract(value)
+            self.assertEqual(self.record.read_bytes(), old)
