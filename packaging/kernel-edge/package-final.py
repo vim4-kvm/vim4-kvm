@@ -30,6 +30,15 @@ def build_id(path):
     return re.search(r'Build ID: ([0-9a-f]+)', run('readelf', '-n', path))[1]
 
 
+def verify_modules(modules, order):
+    expected = {str(Path(name).with_suffix('.ko')) for name in order.read_text().splitlines() if name}
+    installed = {str(path.relative_to(modules)).removeprefix('kernel/').removesuffix('.xz')
+                 .removesuffix('.zst').removesuffix('.gz') for path in modules.rglob('*.ko*')}
+    if not expected or installed != expected:
+        raise RuntimeError(f'Module inventory mismatch: missing={sorted(expected - installed)}, '
+                           f'unexpected={sorted(installed - expected)}')
+
+
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     for name in ('source', 'output', 'destination'):
@@ -53,11 +62,14 @@ def main():
         assert sha(output / name) == expected, name
     assert (output / 'include/config/kernel.release').read_text().strip() == RELEASE
     destination.mkdir()  # Refuse stale payloads.
-    with tempfile.TemporaryDirectory(dir=destination) as temporary:
+    # Mac shared volumes can fold xt_DSCP/xt_dscp into the same filename.
+    # Install on the Linux VM filesystem before writing the portable tarball.
+    with tempfile.TemporaryDirectory(prefix='vim4-kernel-modules-') as temporary:
         stage = Path(temporary)
         subprocess.run(['make', '-C', str(source), 'O=' + str(output), 'ARCH=arm64',
                         'modules_install', 'INSTALL_MOD_STRIP=1', 'INSTALL_MOD_PATH=' + str(stage)], check=True)
         modules = stage / 'lib/modules' / RELEASE
+        verify_modules(modules, output / 'modules.order')
         for name in ('build', 'source'):
             (modules / name).unlink(missing_ok=True)
         subprocess.run(['depmod', '-b', str(stage), RELEASE], check=True)
