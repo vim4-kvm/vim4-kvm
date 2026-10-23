@@ -14,6 +14,7 @@ from pathlib import Path
 import shutil
 import subprocess
 import sys
+import time
 
 ROOT = Path(__file__).resolve().parents[2]
 REMOTE = '/var/tmp/vim4-deploy-7.3-final'
@@ -22,6 +23,54 @@ IDS = ('hdmi-modes', 'h264', 'h265', '4k60', 'audio', 'hid', 'media', 'gpu', 'ma
 
 def sha(path):
     return hashlib.sha256(path.read_bytes()).hexdigest()
+
+
+def audio_continuity(audio, env):
+    """Measure decoded/rendered AudioData; restore the rate before stopping tone."""
+    env = dict(env)
+    env.setdefault('AUDIO_RATES', '48000,44100,48000')
+    env.setdefault('AUDIO_SECONDS', '15')
+    device = env.get('AUDIO_DEVICE', 'RTK UHD HDR')
+    rate_tool = str(audio / 'mac-audio')
+    env['AUDIO_RATE_TOOL'] = rate_tool
+    # EDID restoration returns before CoreAudio necessarily republishes its
+    # HDMI device. Wait for enumeration before opening our source on that UID.
+    deadline = time.monotonic() + 30
+    while True:
+        device_probe = subprocess.run([rate_tool, device], capture_output=True,
+                                      text=True, timeout=10)
+        if device_probe.returncode == 0:
+            break
+        if device_probe.returncode != 7:
+            device_probe.check_returncode()
+        if time.monotonic() >= deadline:
+            raise RuntimeError('HDMI audio source device did not reappear: ' + device)
+        time.sleep(.25)
+    tone = subprocess.Popen([str(audio / 'tone'), device, '1800'])
+    try:
+        subprocess.run([rate_tool, device, '48000'], check=True, timeout=10)
+        subprocess.run(['node', str(ROOT / 'tools/one-kvm-audio-continuity.mjs'),
+                        '--exclusive', '--headed'], env=env, check=True, timeout=1750)
+    finally:
+        try:
+            # CoreAudio may not propagate the restored nominal rate after the
+            # source stops. Keep it active until HDMI RX confirms 48k LPCM.
+            subprocess.run([rate_tool, device, '48000'], check=True, timeout=10)
+            verify = '''from pathlib import Path
+import time
+for attempt in range(70):
+ fields=dict(line.split(': ',1) for line in Path('/sys/kernel/debug/fe398000.hdmi-receiver/status').read_text().splitlines() if ': ' in line)
+ if all(fields.get(k)==v for k,v in {'link_ready':'1','audio_rate':'48000','audio_channels':'2','audio_pcm':'1'}.items()):
+  print('AUDIO_RESTORED_48000',flush=True)
+  break
+ time.sleep(.5)
+else:raise RuntimeError(fields)
+'''
+            subprocess.run(['ssh', 'vim4', 'sudo python3 -'], input=verify, text=True,
+                           check=True, timeout=45)
+        finally:
+            tone.terminate()
+            tone.wait(timeout=10)
 
 
 def prepare(args):
@@ -109,8 +158,7 @@ def run(args):
     elif identifier == '4k60':
         execute(sys.executable, '-u', video / 'smoke-4k.py')
     elif identifier == 'audio':
-        env.update(AUDIO_RATES='48000,44100,48000', AUDIO_SECONDS='15', AUDIO_COLLECT_ALL='1')
-        execute(sys.executable, '-u', audio / 'browser-rates.py')
+        audio_continuity(audio, env)
     elif identifier in ('hid', 'media'):
         tool = 'one-kvm-usb-check.mjs' if identifier == 'hid' else 'one-kvm-usb-media-check.mjs'
         extra = ['--hid-only'] if identifier == 'hid' else ['--service=one-kvm', '--image=' + str(destination / 'usb-edge-transfer.img')]

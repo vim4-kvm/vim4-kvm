@@ -2,11 +2,11 @@
 [kernel]
 url = "https://github.com/vim4-kvm/linux.git"
 branch = "vim4-kvm-7.3"
-revision = "0196fe22ecf0104d96b7ef0fa497ca2317bd20bb"
-tree = "6d92e84e1d2135e3abf601cf3a5bbfc6c6976f51"
+revision = "47878a0c611d1e1deb3699c4f225963a37a218c0"
+tree = "3c679fdc0a2f3b8fc3c98d5b94966fdc6e4ebf57"
 upstream_url = "https://github.com/gregkh/linux.git"
 # Retained final-release deployment (published).
-# Evidence and limits: docs/bringup/2026-10-22-edge-wave5-deploy.md.
+# Evidence and limits: docs/bringup/2026-10-23-display-m0-r4.md.
 upstream_tag = "v7.3"
 upstream_revision = "c03c1a14507dfaf8b856c2608f9ac216021fc222"
 
@@ -23,30 +23,32 @@ tested_binary_sha256 = "0b537561096ee5dfb5f15839738c8ac4ea87ba0dbb3a5127a25c241d
 [tested_build]
 release = "7.3.0-vim4kvm-uhd1+"
 localversion = "-vim4kvm-uhd1"
-build_id = "3a61b75bccf8c46e9411dee92928999884bbfc7f"
-image_sha256 = "34fcacc47825b82abab0b0ba41e0e3b7bf4f9e93729d2d71e8532ca18b33d2d8"
-config_sha256 = "86746fde4d0e6d377264466262a27b4953206ce5e07441c8b870eee5ca05957f"
+build_id = "f483ea42fee88be39ea67c43478638be67334d6e"
+image_sha256 = "4906f02df730a28d78d2f877542ea2f5611d2d98d2e53bfdfa6e9c9973d8a77d"
+config_sha256 = "bca0e45df6eb43177bd82f251b4133c0468dd05195b7bae8ed8f639ba21f971c"
 config_path = "uhd1.config"
-modules_sha256 = "90ef5b8ea749636ec9453098a93fa2f3b0575bca29919913b249de11574d5412"
-module_count = 2335
+modules_sha256 = "ee7f1c05eb9c8db7bfa794b395649099fc61fdbbfe34c60c8bec4410943f17c5"
+module_count = 2334
 module_btf = true
-board_dtb_sha256 = "d2333e962326d0710300b71e758440a94b177eb273921f70e5ba12eb5f640cf6"
-manifest_sha256 = "f28cee55a24ecc3dbe5d1bebdbbb738d95a47c01891f5a27bb090629bbdbdd62"
-runtime_proof_sha256 = "62fd0ad8fc4ff96bc8d646a95b89d7e1815b410758ae391b23d0d9c85f0cbd96"
-wave5_module_sha256 = "a5e30410968e0026f9252abb64329d957c220344b3badac001dd9e91fb737960"
+board_dtb_path = "arch/arm64/boot/dts/amlogic/amlogic-t7-a311d2-khadas-vim4-display-m0.dtb"
+framebuffer_console = true
+board_dtb_sha256 = "a635f8947ee77f67a43714aaa87276aff70edc0952bf40188d46853e055ce652"
+manifest_sha256 = "d0652ba55bb17347e51a5b5aad71ceecb6e0e0a32f0329cd363df8905fae860f"
+runtime_proof_sha256 = "75a2376233858a8ca980d91cb420d241e9371d8aa0a6599221f56cb85f7ee9f7"
+wave5_module_sha256 = "f6e4bb26e2693cd11047c09de20954722a0e1cc07fbc72a17bcf9dd88bf5bb8e"
 
 [tested_build.loaded_module_build_ids]
-meson_ir = "d7ad2e0be90cde485242e0e5a381c098a4ae75c3"
-rc_khadas = "08eb2ef96cf7d27f220665d86ee443cba580bec9"
-ir_nec_decoder = "5246503bd1f57532d4afbdba876200ce5ca21c2c"
-dwmac_meson8b = "d47164cce6ed5510507f2ea8e76002b241113fe1"
-panfrost = "1d075d5185899051a154138e5d2e3b1a54b864f4"
-brcmfmac = "62d664119c4715cc50a402f29ea2970b97b4eab6"
-wave5 = "e4c1ef1943745fe507cd1b72be2c483b1fe3832c"
-t7_hdmirx = "e538a758d6296898f02df0e5d1b60b5e00af1a56"
-t7_vdin_test = "219663e157771807d9b3c2fb44d75c0e559c616e"
-t7_jpeg = "4818064e1ec6fb56f218feb8789e66d2ab9999bb"
-crg_udc = "8846476045893e6ef6fe8f0ba08d357d5bb7b61f"
+meson_ir = "8a8eafe4b3e64fcabb15d705aba630f876787ef0"
+rc_khadas = "42a594300a5d9a3fc56885d2dfd784e8669c70fe"
+ir_nec_decoder = "8c0d7a84b3ebbde946ce31d1aa86d193648ee596"
+dwmac_meson8b = "cac097cf03f0335ac764b923a65a317d7132d6f0"
+panfrost = "50bc62e3e401f1772530aaf3814681cdd0352b5e"
+brcmfmac = "90e1d87f82444847930160f784dc83e4e5446e4f"
+wave5 = "032cfdf0c90e381072d44bb32423039b9ca91df4"
+t7_hdmirx = "f5f81a0597833037476cfbba7bb8441159a5aa41"
+t7_vdin_test = "a0463eb8a080600fb9c4a393517cb647862f25fa"
+t7_jpeg = "e5ab13dc87d3f14ef3227cb587cf9a3202233285"
+crg_udc = "8147e2bec6e11503ce8fc33490d19121bc52579c"
 
 # Shared application sources are pinned in workspace.toml; the old independent
 # One-KVM and its private plugin above/below remain historical separate inputs.

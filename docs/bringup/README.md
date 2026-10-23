@@ -7,6 +7,10 @@
 
 ## 2026-10-23
 
+- [M0 第四轮音频归因与发布](2026-10-23-display-m0-r4.md) — kernel video audio usb manager deployment board
+- [HDMI RX 音频 ENOLINK 基线对照](2026-10-23-hdmirx-audio-enolink.md) — kernel audio application board
+- [M0 音频复核与正式部署回退](2026-10-23-display-m0-deploy.md) — kernel video audio usb manager deployment board
+- [U-Boot framebuffer 的 simpledrm 接管实验](2026-10-23-display-m0.md) — kernel video audio usb manager deployment board
 - [7.3 T7 HDMI 显示输出可行性调查](2026-10-23-display-feasibility.md) — kernel video audio board
 - [T7 显示硬件与源码明细](2026-10-23-display-hardware-audit.md) — kernel video audio
 

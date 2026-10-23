@@ -65,3 +65,16 @@ class BootProfileTest(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, 'custom boot arguments'):
             runtime.update_boot_entry('DEFAULT FullKvm\n', custom, previous,
                                       runtime.boot_profile({'APPEND': 'root=test'}, ['binder.service']))
+
+    def test_framebuffer_console_upgrade_keeps_serial_preferred_and_other_entries(self):
+        source = {'APPEND': 'root=test console=ttyS0,921600n8'}
+        previous = runtime.boot_profile(source, ['binder.service'])
+        full = runtime.boot_profile(source, ['binder.service'], framebuffer_console=True)
+        text = 'DEFAULT FullKvm\nLABEL Other\n APPEND administrator=keep\nLABEL FullKvm\n'
+        text += ''.join(f' {key} {value}\n' for key, value in previous.items())
+        result = runtime.update_boot_entry(text, previous, previous, full)
+        fields = boot.boot_entries(result)
+        self.assertEqual(fields['Other']['APPEND'], 'administrator=keep')
+        consoles = [word for word in fields['FullKvm']['APPEND'].split() if word.startswith('console=')]
+        self.assertEqual(consoles, ['console=tty0', 'console=ttyS0,921600n8'])
+        self.assertEqual(runtime.update_boot_entry(result, full, previous, full), result)

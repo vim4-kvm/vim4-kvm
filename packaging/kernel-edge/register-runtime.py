@@ -2,7 +2,7 @@
 """Inventory a matched build, then register its installed dual-kernel runtime.
 
 inventory --image Image --modules STAGE/lib/modules/RELEASE --output build.json
-register build.json [--source-label OneKvmTest]
+register build.json [--source-label OneKvmTest] [--framebuffer-console]
 
 Registration requires root on the board after installing the matching Image,
 DTB and complete module set. It preserves the current default and data. It does
@@ -35,12 +35,15 @@ def modules(root):
             and path.name.endswith(('.ko', '.ko.xz', '.ko.zst'))}
 
 
-def boot_profile(source, legacy_services=()):
+def boot_profile(source, legacy_services=(), *, framebuffer_console=False):
     words = [word for word in source['APPEND'].split()
              if not word.startswith(('systemd.mask=', 'vim4.one_kvm='))]
     words += ['vim4.full_kvm=1'] + ['systemd.mask=' + unit for unit in (
         'tvserver.service', 'audioserver.service', 'one-kvm-edge.service',
         'one-kvm-edge-gateway.service', 'one-kvm-edge-usb.service', *legacy_services)]
+    if framebuffer_console and 'console=tty0' not in words:
+        # Serial remains the last console and therefore /dev/console's target.
+        words.insert(0, 'console=tty0')
     return {'LINUX': '/edge/Image', 'FDT': '/edge/vim4.dtb', 'APPEND': ' '.join(words)}
 
 
@@ -111,8 +114,12 @@ def register(args):
         if not Path('/etc/ssh/ssh_host_ed25519_key').is_file():
             raise ValueError('Generate SSH host keys before registering the mainline runtime')
         legacy.append('rc-local.service')
-    full = boot_profile(source, legacy)
-    text = update_boot_entry(original, entries.get('FullKvm'), boot_profile(source), full)
+    previous = boot_profile(source)
+    framebuffer_console = getattr(args, 'framebuffer_console', False)
+    if framebuffer_console and entries.get('FullKvm') == boot_profile(source, legacy):
+        previous = boot_profile(source, legacy)
+    full = boot_profile(source, legacy, framebuffer_console=framebuffer_console)
+    text = update_boot_entry(original, entries.get('FullKvm'), previous, full)
     entries = boot.boot_entries(text)
     vendor = release(boot.BOOT / entries['Default']['LINUX'].lstrip('/'))
     if not vendor.startswith('5.15.'):
@@ -159,6 +166,8 @@ def main():
     build.add_argument('--modules', type=Path, required=True)
     build.add_argument('--output', type=Path, required=True)
     installed = commands.add_parser('register')
+    installed.add_argument('--framebuffer-console', action='store_true',
+                           help='Register tty0 output for a qualified simpledrm handoff')
     installed.add_argument('proof', type=Path)
     installed.add_argument('--source-label', default='OneKvmTest')
     args = parser.parse_args()

@@ -1,0 +1,6 @@
+# Apply to uhd1.config with scripts/kconfig/merge_config.sh before olddefconfig.
+# Requires the experimental vim4-display-m0 DTB and matching U-Boot logo layout.
+CONFIG_DRM_SIMPLEDRM=y
+CONFIG_FRAMEBUFFER_CONSOLE=y
+# Keep the full BTF-enabled build small enough for an isolated tmpfs output.
+CONFIG_DEBUG_INFO_COMPRESSED_ZLIB=y

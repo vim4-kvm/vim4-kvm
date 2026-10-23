@@ -119,7 +119,8 @@ class FinalWindowTest(unittest.TestCase):
                 patch.object(controller, 'reboot', side_effect=lambda: events.append('reboot')), \
                 patch.object(controller, 'regression', side_effect=regression), \
                 patch.object(window, 'run', side_effect=process), patch.object(window.subprocess, 'check_output', return_value=digest):
-            if failure and failure not in window.REQUIRED_CHECKS - window.CRITICAL_CHECKS:
+            if failure and (self.proof.get('require_all_checks') or
+                            failure not in window.REQUIRED_CHECKS - window.CRITICAL_CHECKS):
                 with self.assertRaises(RuntimeError):
                     controller.deploy()
             else:
@@ -155,6 +156,15 @@ class FinalWindowTest(unittest.TestCase):
                 results = json.loads((self.args.logs / 'regression-results.json').read_text())
                 self.assertFalse(next(item for item in results if item['id'] == failure)['passed'])
                 self.assertEqual(len(results), len(window.REQUIRED_CHECKS))
+
+    def test_strict_window_rolls_back_on_audio_failure(self):
+        self.proof['require_all_checks'] = True
+        self.write_proof()
+        # "audio" remains noncritical for older bundles, but this deployment
+        # must not be retained after any category fails.
+        events = self.transaction('audio')
+        self.assertEqual(events[-3:], ['restore', 'reboot', 'verify-restore'])
+        self.assertNotIn('finalize', events)
 
     def test_post_regression_failure_preserves_passed_result_before_rollback(self):
         events = self.transaction('after-first-regression')

@@ -5,10 +5,10 @@
 [vim4-kvm/common_drivers](https://github.com/vim4-kvm/common_drivers) 的同名分支。
 发布名 `5.15.137-vim4kvm`，与原厂 `5.15.137` 的模块目录并存。
 主内核工作树保留在 VM，Mac 不检出内核文件；不要以第三方整套内核替代官方基线。
-板上当前 FullKvm 为 v7.3 正式版 `e0346697f2503`，release `7.3.0-vim4kvm-uhd1+`、
-build ID `3ed254bfa838ab50732fdce1c5134400a1663fd5`，含 HDMI 模式/音频、GPU 调频与 IR。
-第三轮部署已保留；回归范围、音频单次跳变与 MMC 警告、整包哈希及 rc7 回退备份见
-[正式版保留记录](bringup/2026-10-22-edge-7-3-final-retained.md)。下方厂商 5.15 流程保留。
+板上当前 FullKvm 为v7.3 M0 `47878a0c611d`，release `7.3.0-vim4kvm-uhd1+`、
+build ID `f483ea42fee88be39ea67c43478638be67334d6e`，含simpledrm控制台和既有Wave5防护。
+九类完整回归、音频ENOLINK基线对照、专用DTB限制、整包哈希与3a61b75b回退备份见
+[M0正式部署](bringup/2026-10-23-display-m0-r4.md)。下方厂商5.15流程保留。
 正式版持久运行时支持与部署脚本见 [离线准备](bringup/2026-10-22-deploy-7-3-final-prep.md)；
 第二轮即时 EDID 检查触发的回退另见 [历史窗口](bringup/2026-10-22-edge-7-3-final-deploy.md)。
 7.x 使用 `/boot/edge` 与完整匹配模块，不使用下方的厂商 `kernel-install.sh`。

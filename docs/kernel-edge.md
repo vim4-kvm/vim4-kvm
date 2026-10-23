@@ -5,13 +5,15 @@
 当前包、匹配内核、安装/回退与实际验收范围见
 [双内核完整系统集成](bringup/2026-10-21-dual-kernel-integration.md)。
 本页保留 Armbian 编译基线与专项历史记录；通用 edge.config 不等于已验收的整板配置。
-当前板上保留 v7.3 Wave5 防护版本 `0196fe22ecf0`，release `7.3.0-vim4kvm-uhd1+`、
-build ID `3a61b75bccf8c46e9411dee92928999884bbfc7f`；uhd1.config 同次完整 Image/DTB/
-2335 模块，包含尺寸保护、正常关闭顺序修复及 ramoops console，正常重启标记读回通过。
-One-KVM 为 `382efb70e7ebb`，manager 为 `4ea748426935`。九类抽样回归通过，
-含编码往返、4K60、音频、USB、GPU 和管理页；最终 taint=0、无新增警告。
-短测通过不推翻历史音频偶发跳变等边界，也不代表长期稳定性验收。
-哈希、备份与回退见 [Wave5 正式部署](bringup/2026-10-22-edge-wave5-deploy.md)；
+当前板上保留 v7.3 显示M0版本 `47878a0c611d`，release `7.3.0-vim4kvm-uhd1+`、
+build ID `f483ea42fee88be39ea67c43478638be67334d6e`；uhd1.config 同次完整 Image/DTB/
+2334模块，继承Wave5防护及ramoops console，增加专用DTB的simpledrm/tty0接管。
+One-KVM为 `382efb70e7ebb`，manager为 `4ea748426935`。全19档、编码往返、4K60、
+48/44.1/32k音频、USB、GPU和管理页九类通过；最终taint=0、无新增警告。
+静态显示布局只匹配当前pd-handoff/HDMI/无MIPI，4K显示器、原生模式切换未验收。
+哈希、备份、音频ENOLINK对照与回退见 [M0正式部署](bringup/2026-10-23-display-m0-r4.md)；
+短测不代表长期稳定性；此前 [Wave5正式部署](bringup/2026-10-22-edge-wave5-deploy.md)
+含正常重启pstore标记读回，本轮没有另做该重启检查。
 此前 pstore 启动的 SARADC channel 2 超时见[专项取证与离线候选](bringup/2026-10-22-saradc-timeout-audit.md)，
 此前 e0346697 基线见 [历史保留记录](bringup/2026-10-22-edge-7-3-final-retained.md)。
 第二轮 19 模式通过后即时 EDID 检查触发的回退见
@@ -51,7 +53,7 @@ H.264/H.265 硬编码已取得实验结果，见
 
 | 优先级 | 方向 | 当前边界与下一步 |
 |---|---|---|
-| 1 | 本地显示输出（含 HDMI 音频输出） | 接通标准 DRM/KMS 显示与 HDMI 声音，再做实机模式、热插拔和音画验收 |
+| 1 | 本地显示输出（含 HDMI 音频输出） | simpledrm接管已通过；继续标准DRM/KMS模式、HDMI声音、热插拔和音画验收 |
 | 2 | 硬件解码（进行中） | 标准 V4L2 路线；[VDEC 候选与门禁](bringup/2026-10-22-vdec-mdec-offline.md)仍待分级现场验证，尚无硬件解码帧验收 |
 | 3 | 板载音频输出 | 单独接通板载输出路由与声卡；已部署的 HDMI 输入采集不代表输出可用 |
 | 4 | 挂起唤醒 | 先补齐驱动与固件恢复约束，见[离线审查](bringup/2026-10-22-p2-suspend-audit.md)；暂不做整机挂起上板测试 |

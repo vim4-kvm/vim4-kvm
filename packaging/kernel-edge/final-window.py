@@ -4,6 +4,7 @@
 stage is offline. window/rollback default to dry-run; --execute takes both Mac
 lockf locks for backup, install, regression and recovery. Success retains the
 candidate. Critical failures trigger recovery; other failures are recorded.
+Bundles staged with --require-all-checks recover on any regression/health failure.
 SSH/serial failure is reported
 without claiming recovery. Never builds kernels, pushes, or updates source pins.
 """
@@ -143,6 +144,8 @@ def stage(args):
     assert re.fullmatch(r'[0-9a-f]{40}', args.baseline_build_id)
     deployment['baseline'] = dict(release=args.baseline_release, build_id=args.baseline_build_id)
     deployment['verify_pstore'] = args.verify_pstore
+    deployment['framebuffer_console'] = args.framebuffer_console
+    deployment['require_all_checks'] = args.require_all_checks
     if args.kernel_only:
         deployment['preserve'] = {item['target']: deployment['sha256'][item['file']] for item in install}
         deployment['install'] = []
@@ -235,7 +238,7 @@ class Window:
                     results.append(dict(id=item['id'], passed=True))
                 except (RuntimeError, subprocess.TimeoutExpired, subprocess.CalledProcessError) as error:
                     results.append(dict(id=item['id'], passed=False, error=str(error)))
-                    if item['id'] in CRITICAL_CHECKS:
+                    if deployment.get('require_all_checks') or item['id'] in CRITICAL_CHECKS:
                         (self.args.logs / 'regression-results.json').write_text(json.dumps(results, indent=2) + '\n')
                         raise
                     print('NONCRITICAL_FAILURE', item['id'], str(error), flush=True)
@@ -253,6 +256,10 @@ class Window:
                     if item['id'] in ('hid', 'manager'):
                         self.regression(item)
                 self.action('health')
+            if deployment.get('require_all_checks'):
+                self.remote('sudo python3 -c ' + shlex.quote(
+                    'import json; p=json.load(open("' + REMOTE + '/health.json")); '
+                    'assert all(item["passed"] for item in p.values()), p'))
             self.action('finalize')
             for name in ('health.json', 'warnings-after.txt'):
                 with (self.args.logs / name).open('wb') as output:
@@ -295,6 +302,8 @@ def main():
     staging.add_argument('--baseline-build-id', default='52d5e46fb006230785110a1fa5ba0dd1383b732f')
     staging.add_argument('--kernel-only', action='store_true', help='Verify staged userspace files without replacing them')
     staging.add_argument('--verify-pstore', action='store_true', help='Verify console retention across an extra normal reboot')
+    staging.add_argument('--framebuffer-console', action='store_true', help='Register tty0 for a qualified simpledrm DTB')
+    staging.add_argument('--require-all-checks', action='store_true', help='Roll back if any regression fails')
     for name in ('window', 'rollback'):
         command = commands.add_parser(name)
         command.add_argument('--bundle', required=True, type=Path)

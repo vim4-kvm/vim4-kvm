@@ -192,8 +192,11 @@ class Board:
         shutil.copy2(self.payload / 'Image', IMAGE)
         shutil.copy2(self.payload / 'vim4.dtb', DTB)
         subprocess.run(['systemctl', 'daemon-reload'], check=True)
-        subprocess.run(['python3', str(self.payload / 'register-runtime.py'), 'register',
-                        str(self.payload / 'runtime-proof.json')], check=True)
+        registration = ['python3', str(self.payload / 'register-runtime.py'), 'register',
+                        str(self.payload / 'runtime-proof.json')]
+        if self.deployment.get('framebuffer_console'):
+            registration.append('--framebuffer-console')
+        subprocess.run(registration, check=True)
         import sys
         sys.path.insert(0, '/usr/lib/vim4-kvm/python')
         import vim4boot
