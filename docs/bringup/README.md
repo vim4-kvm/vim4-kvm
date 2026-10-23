@@ -5,6 +5,11 @@
 
 新记录：新建 `bringup/YYYY-MM-DD-英文短名.md`，首行 `# YYYY-MM-DD：标题`，并在本页对应日期下追加一行。
 
+## 2026-10-23
+
+- [7.3 T7 HDMI 显示输出可行性调查](2026-10-23-display-feasibility.md) — kernel video audio board
+- [T7 显示硬件与源码明细](2026-10-23-display-hardware-audit.md) — kernel video audio
+
 ## 2026-10-22
 
 - [Wave5 尺寸与关闭路径防护正式部署](2026-10-22-edge-wave5-deploy.md) — kernel video audio usb manager deployment board
