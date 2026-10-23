@@ -36,11 +36,11 @@ FAILED_SOURCES = {
     'c6fc96a347d0929a9385c09b408c333a50834091',
 }
 REGISTER_STEPS = (
-    'clocks + NIC3 on; require VDEC off',
+    'CPU APB + DOS clocks + NIC3 on; require VDEC off',
     'DOS_GCLK_EN0 read (VDEC off)',
     'DOS_GCLK_EN0 write (preserve HCODEC)',
     'DOS_GCLK_EN0 verify',
-    '800MHz + VDEC on + secure policy; verify domains',
+    '800MHz + VDEC on + secure policy; verify domains and physical CLKCTRL',
     'DOS_GCLK_EN0 verify after secure power-on',
     'DOS_SW_RESET0 read',
     'DOS_MEM_PD_VDEC read',
