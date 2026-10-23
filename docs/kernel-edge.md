@@ -11,7 +11,9 @@ build ID `3a3cd15ca69e6084238d3bda54e41c56f6a16776`；uhd1.config 同次完整 I
 以及最新正式分支的Wave5恢复。M1驱动编译启用，M0 DTB不启用其接管。
 One-KVM为 `672b8fd9fdec`，manager为 `9b141c5833c0`。一次性采样率切换、四次HPD恢复及
 300秒冒烟通过；正式19档、编码往返、4K60、音频、USB、GPU和管理页九类通过。
-最终taint=0、无新增警告或ASoC错误；可恢复物理失锁与画面停顿仍存在，未做长期零中断验收。
+最终taint=0、无新增警告或ASoC错误；可恢复RX资格撤销与画面停顿仍存在，未做长期零中断验收。
+[同链路对照](bringup/2026-10-23-hdmirx-vendor-comparison.md)为7.3十分钟12次冻结、厂商5.15零次，
+应先定位7.3 RX差异，不能将恢复期间状态直接归因为源/线缆物理失锁。
 静态显示布局只匹配当前pd-handoff/HDMI/无MIPI，4K显示器、原生模式切换未验收。
 当前哈希、备份与门禁见 [PCM与SARADC正式窗口](bringup/2026-10-23-kvm-audio-capture-stability-deploy.md)；
 M0布局、音频ENOLINK对照与原基线回退见 [M0正式部署](bringup/2026-10-23-display-m0-r4.md)。
