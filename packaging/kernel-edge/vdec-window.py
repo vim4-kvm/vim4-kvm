@@ -26,7 +26,10 @@ BASE_FILES = {
     'Image': '855f0fa8caa49fdb9973bd7cd1cbbfaa2c5f62138574862e651e16eb0fda42b5',
     'vim4.dtb': 'd2333e962326d0710300b71e758440a94b177eb273921f70e5ba12eb5f640cf6',
 }
-FAILED_SOURCE = '5bf7d6359df9ff68d8746851cf45de40611988a1'
+FAILED_SOURCES = {
+    '5bf7d6359df9ff68d8746851cf45de40611988a1',
+    '34ab72b7fbecaa13347aca58584b4bcb10b1b73e',
+}
 
 
 def require_candidate(action, proof):
@@ -34,8 +37,8 @@ def require_candidate(action, proof):
     if not proof['release'].startswith('7.3.0-vim4kvm-vdec4') and not (
             recovery and proof['release'].startswith('7.3.0-vim4kvm-vdec3')):
         raise ValueError('Only this separate experimental kernel is accepted')
-    if action not in ('arm-baseline', 'verify-baseline') and proof.get('source') == FAILED_SOURCE:
-        raise ValueError('Known failing candidate: udev v4l_id caused SError during DOS power-up; '
+    if not recovery and proof.get('source') in FAILED_SOURCES:
+        raise ValueError('Known failing candidate: video open caused SError during DOS initialization; '
                          'prepare a revised offline candidate before another board window')
 
 

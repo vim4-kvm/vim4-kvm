@@ -18,6 +18,7 @@
 - [T7 H.264 完整离线候选与现场恢复脚本](2026-10-22-vdec-candidate.md) — kernel video deployment
 - [T7 解码候选现场分级验证与恢复](2026-10-22-vdec-field.md) — kernel video usb deployment board
 - [T7 VDEC SError 离线修正与分级上电门禁](2026-10-22-vdec-power-fix.md) — kernel video deployment
+- [T7 VDEC 第二次现场：单读通过、compliance panic与恢复](2026-10-22-vdec-field2.md) — kernel video usb deployment board
 - [P2 PD Request＋KASLR 合并固件候选](2026-10-22-p2-uboot-combined.md) — usb kernel deployment
 - [P2 有界持久 journal 部署并保留](2026-10-22-p2-journal-deploy.md) — deployment board
 - [P2 ramoops 候选与正常重启验证](2026-10-22-p2-pstore.md) — kernel deployment board

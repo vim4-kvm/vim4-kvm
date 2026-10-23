@@ -53,19 +53,21 @@ class DecoderWindowTests(unittest.TestCase):
             run.assert_not_called()
 
     def test_known_panicking_candidate_is_blocked_before_ssh_but_allows_recovery(self):
-        proof = {'release': '7.3.0-vim4kvm-vdec3+', 'source': window.FAILED_SOURCE}
         with tempfile.TemporaryDirectory() as directory:
             manifest = Path(directory) / 'manifest.json'
-            manifest.write_text(json.dumps(proof))
-            for action in set(window.ACTIONS) - {'arm-baseline', 'verify-baseline'}:
-                with self.subTest(action=action), \
-                        patch.object(sys, 'argv', [str(SOURCE), action, '--execute', '--at-board',
-                                                   '--manifest', str(manifest)]), \
-                        patch.object(window.subprocess, 'run') as run, self.assertRaises(ValueError):
-                    window.main()
-                run.assert_not_called()
-        for action in ('arm-baseline', 'verify-baseline'):
-            window.require_candidate(action, proof)
+            for source in window.FAILED_SOURCES:
+                for release in ('7.3.0-vim4kvm-vdec3+', '7.3.0-vim4kvm-vdec4+'):
+                    proof = {'release': release, 'source': source}
+                    manifest.write_text(json.dumps(proof))
+                    for action in set(window.ACTIONS) - {'arm-baseline', 'verify-baseline'}:
+                        with self.subTest(source=source, release=release, action=action), \
+                                patch.object(sys, 'argv', [str(SOURCE), action, '--execute', '--at-board',
+                                                           '--manifest', str(manifest)]), \
+                                patch.object(window.subprocess, 'run') as run, self.assertRaises(ValueError):
+                            window.main()
+                        run.assert_not_called()
+                    for action in ('arm-baseline', 'verify-baseline'):
+                        window.require_candidate(action, proof)
 
     def test_timeout_is_not_retried(self):
         with patch.object(window.subprocess, 'run', side_effect=subprocess.TimeoutExpired('test', 10)) as run, \
