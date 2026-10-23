@@ -34,6 +34,7 @@ FAILED_SOURCES = {
     '34ab72b7fbecaa13347aca58584b4bcb10b1b73e',
     'e8ebc2e82734739a7ae0f1a91117cebc36ff7b89',
     'c6fc96a347d0929a9385c09b408c333a50834091',
+    'a915603f5efb795afc72b5d92aa2c72e0e939a14',
 }
 REGISTER_STEPS = (
     'CPU APB + DOS clocks + NIC3 on; require VDEC off',
@@ -393,16 +394,21 @@ def board_window(args):
         require_baseline_files()
     print('CANDIDATE_RUNNING', args.build_id, args.action, flush=True)
     full_hd = args.action == 'h264-1080p'
-    width, height = (1920, 1080) if full_hd else (320, 256)
-    stem = '1080p' if full_hd else 'small'
+    width, height, frame_count = ((1920, 1080, 6) if full_hd else
+                                  (320, 256, 6) if args.action == 'wave' else
+                                  (640, 368, 600))
+    stem = '1080p' if full_hd else 'wave' if args.action == 'wave' else 'small'
     clip = Path(args.fixtures) / (stem + '.h264')
     reference = Path(args.fixtures) / (stem + '.i420')
     if args.action in ('h264', 'h264-1080p', 'wave'):
         info = json.loads(run('ffprobe', '-v', 'error', '-count_frames', '-show_streams',
                               '-of', 'json', str(clip)))['streams'][0]
         if (info['codec_name'], info['width'], info['height'], info['pix_fmt'],
-                info['nb_read_frames']) != ('h264', width, height, 'yuv420p', '6'):
-            raise ValueError('Expected the six-frame single-instance 8-bit fixture')
+                info['nb_read_frames']) != ('h264', width, height, 'yuv420p', str(frame_count)):
+            raise ValueError('Unexpected single-instance 8-bit fixture dimensions or frame count')
+        if args.action == 'h264' and sha(clip) != (
+                '449bf8a077c6b4a9d2b356c644f373042ee0c7a0842e34e15e3f15acddcce9f8'):
+            raise ValueError('Expected the identical vendor live-comparison H.264 sample')
         hashes = json.loads((Path(args.fixtures) / 'fixtures.json').read_text())
         for name in (clip.name, reference.name):
             if hashlib.sha256((Path(args.fixtures) / name).read_bytes()).hexdigest() != hashes[name]:
@@ -467,7 +473,8 @@ def board_window(args):
             run('gst-launch-1.0', '-q', 'filesrc', 'location=' + str(clip), '!',
                 'h264parse', '!', factory, '!', 'videoconvert', '!',
                 f'video/x-raw,format=I420,width={width},height={height}', '!',
-                'filesink', 'location=' + str(output), timeout=15 if full_hd else 10)
+                'filesink', 'location=' + str(output),
+                timeout=30 if args.action == 'h264' else 15 if full_hd else 10)
             elapsed = time.monotonic() - started
             finished = resource.getrusage(resource.RUSAGE_CHILDREN)
             cpu = finished.ru_utime + finished.ru_stime - usage.ru_utime - usage.ru_stime
@@ -476,14 +483,14 @@ def board_window(args):
             print('EXACT_FRAMES_MATCH', hashlib.sha256(output.read_bytes()).hexdigest(), flush=True)
             frame_size = width * height * 3 // 2
             frames = output.read_bytes()
-            if len(frames) != frame_size * 6:
-                raise ValueError('Expected exactly six complete I420 frames')
-            for index in range(6):
+            if len(frames) != frame_size * frame_count:
+                raise ValueError('Unexpected number of complete I420 frames')
+            for index in range(frame_count):
                 digest = hashlib.md5(frames[index * frame_size:(index + 1) * frame_size]).hexdigest()
                 print('FRAME_MD5', index, digest, flush=True)
             print('SHORT_CLIP_SECONDS', elapsed, 'including pipeline startup', flush=True)
             print('SHORT_CLIP_CPU_SECONDS', cpu, 'ONE_CORE_PERCENT', 100 * cpu / elapsed,
-                  'FRAMES_PER_SECOND', 6 / elapsed, flush=True)
+                  'FRAMES_PER_SECOND', frame_count / elapsed, flush=True)
             if args.action in ('h264', 'h264-1080p'):
                 require_suspended(t7_device())
         if faulted():

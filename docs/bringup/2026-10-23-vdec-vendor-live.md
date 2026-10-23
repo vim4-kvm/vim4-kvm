@@ -4,6 +4,7 @@
 `fe32260c=3ff`、`fe322638=2a008`，退出解码后两处读取均返回0，没有SError。
 两个CPU/APB门控厂商开启、7.3基线关闭；候选显式持有并核验CLKCTRL。
 **尚未证明这就是SError根因**。本轮排除只写寄存器/每次SMC代理假设，未验证7.3解码。
+后续[c7e7候选窗口](2026-10-23-vdec-apb-window.md)仍在第9步失败，不能把本轮假设当作修复。
 
 前次失败见[GCLK窗口](2026-10-23-vdec-gclk-window.md)，厂商出处与十三步接口见
 [离线审计](2026-10-23-vdec-gclk-offline.md)，启动依据为
@@ -18,13 +19,7 @@
 临时配置另建`/boot/perf-vendor-vdec-live-20261023.conf`，不覆盖已有启动文件。
 
 每窗口全程持heavy→board双锁，完整构建在窗口释放后开始，不干扰采样。
-
-```sh
-/usr/bin/lockf /tmp/vim4-heavy.lock /usr/bin/lockf /tmp/vim4-board.lock \
-  python3 -u build/vdec-vendor-live/field.py
-/usr/bin/lockf /tmp/vim4-heavy.lock /usr/bin/lockf /tmp/vim4-board.lock \
-  python3 -u build/vdec-vendor-live/field-second.py
-```
+两轮入口分别为`field.py`与`field-second.py`，脚本已随日志归档。
 
 预置缺ffmpeg已清理；码流在板上7.3生成，640×368、30fps、20秒。第一窗口硬件输出成功，但`CONFIG_DEVMEM=n`，
 open `/dev/mem` 得ENOENT，**未执行MMIO**。回基线冒烟后第二窗口改debugfs，完整解码、
@@ -120,12 +115,8 @@ SYS_DOS bit1、04c bit19/20开启，实际选中的p0或p1 gate bit8开启、sou
 
 Mac/VM实际C函数各12项通过，覆盖桥时钟生命周期、错误门控/选源/分频、读取失败回收且无DOS事务。
 三个提交分别strict checkpatch为0/0/0。
-独立O目录`~/build/kernel-vim4-vdec-vendor-live`，持heavy构建完整Image、两个DTB和模块：
-
-```sh
-/usr/bin/lockf /tmp/vim4-heavy.lock orb -m vim4-build sh \
-  /mnt/mac/Users/deepdream/Developer/github/localhost-copilot/vim4-kvm/build/vdec-vendor-live-candidate/build-vm.sh
-```
+独立O目录`~/build/kernel-vim4-vdec-vendor-live`，持heavy构建完整Image、两个DTB和模块；
+命令入口`build/vdec-vendor-live-candidate/build-vm.sh`，构建脚本已归档。
 
 完整构建和`package-vdec.py --once`通过；build
 `c7e7e28f315cbadd4846ea975e27255e5a985472`，release仍为uhd1+，2335模块。
@@ -135,13 +126,9 @@ VM包`~/build/vim4-vdec-vendor-live-bundle`，Mac副本
 Mac哈希、静态init、候选门禁、debug stamp已核验。
 主仓离线全套232项，226通过、6项跳过；没有把跳过项记成硬件验收。
 
-| 产物 | SHA256 |
-|---|---|
-| Image | 32a7367b265f829c89abe05488c5c7b8fb0a087dad7aa8f858161a80e65ddff8 |
-| vim4.dtb | 871e931bb4d901c563ffa292577664a8bdeb2d6c2dcc32f4e93ada36165b59c9 |
-| baseline-layout.dtb | b2e99a0efb250a102bc69585b89dc5c2871ae654b822eef928b8566bd0625564 |
-| modules.tar.gz | 2e898d3b4182d8a4b7bd202ff856219255c7078da5850b7d3f624503d7eebe9d |
-| config | fa46af2fa8213cd91d24dcad70b16a92b6b1b34f76394919951dce75cf5cadb6 |
+五项产物的完整SHA256在当前bundle的`manifest.json`；同份清单归档于
+`logs/vdec-vendor-live-candidate/manifest.json`。Image为`32a7367b265f…`、
+DTB为`871e931bb4d9…`，以完整清单逐项核验为准。
 
 新包等用户安排上板，每次重新抓取入场基线。
 下次仍按probe→power→十三步→compliance→小H.264→1080p逐帧比较推进，任一步失败即停。

@@ -8,6 +8,7 @@
 ## 2026-10-23
 
 - [M3 多层退休、SRAM 所有权与 OSD overlay/cursor（离线）](2026-10-23-display-m3-layers.md) — kernel video audio deployment
+- [VDEC APB 候选第九步仍失败，看门狗恢复](2026-10-23-vdec-apb-window.md) — kernel video usb deployment board
 - [厂商 H.264 活体对照与物理时钟检查候选](2026-10-23-vdec-vendor-live.md) — kernel video usb deployment board
 - [Wave5 E01 动态参数、LTR 与多层 GOP（离线）](2026-10-23-wave5-e01-runtime-gop.md) — kernel video
 - [Wave5 E01 ROI、任意 GOP 与 VUI/SEI 剩余合同](2026-10-23-wave5-e01-metadata-abi.md) — kernel video

@@ -171,6 +171,24 @@ class DecoderWindowTests(unittest.TestCase):
         self.assertEqual([call.args[:2] for call in run.call_args_list],
                          [('systemctl', 'stop'), ('modprobe', 'aml-vdec-drv')])
 
+    def test_different_vendor_sample_is_rejected_before_any_hardware_window(self):
+        args = SimpleNamespace(action='h264', build_id='candidate', fixtures='/fixtures')
+        metadata = {'streams': [{'codec_name': 'h264', 'width': 640, 'height': 368,
+                                 'pix_fmt': 'yuv420p', 'nb_read_frames': '600'}]}
+        with patch.object(window.os, 'geteuid', return_value=0), \
+                patch.object(window.Path, 'exists', return_value=False), \
+                patch.object(window, 'build_id', return_value='candidate'), \
+                patch.object(window, 'require_baseline_files'), \
+                patch.object(window, 'sha', return_value='different sample'), \
+                patch.object(window, 'begin_stage') as stage, \
+                patch.object(window.subprocess, 'run') as service, \
+                patch.object(window, 'run', return_value=json.dumps(metadata)) as run, \
+                self.assertRaisesRegex(ValueError, 'identical vendor'):
+            window.board_window(args)
+        stage.assert_not_called()
+        service.assert_not_called()
+        self.assertEqual([call.args[0] for call in run.call_args_list], ['ffprobe'])
+
     def test_unsuspended_close_preserves_recovery_marker_without_unloading(self):
         args = SimpleNamespace(action='power', build_id='candidate', fixtures='/fixtures')
         with tempfile.TemporaryDirectory() as directory:
