@@ -8,6 +8,8 @@
 ## 2026-10-23
 
 - [厂商 H.264 活体对照与物理时钟检查候选](2026-10-23-vdec-vendor-live.md) — kernel video usb deployment board
+- [Wave5 E01 动态参数、LTR 与多层 GOP（离线）](2026-10-23-wave5-e01-runtime-gop.md) — kernel video
+- [Wave5 E01 ROI、任意 GOP 与 VUI/SEI 剩余合同](2026-10-23-wave5-e01-metadata-abi.md) — kernel video
 - [T7 GCLK 十三步远程窗口：首次读失败、看门狗恢复](2026-10-23-vdec-gclk-window.md) — kernel video usb deployment board
 - [M3 首批离线实现：OSD 原子属性与标准 CEC，其余显示层待开发](2026-10-23-display-m3.md) — kernel video audio deployment
 - [T7 GCLK_EN 访问条件与分步候选（离线）](2026-10-23-vdec-gclk-offline.md) — kernel video deployment
