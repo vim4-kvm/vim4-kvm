@@ -7,9 +7,10 @@
 硬件能力与退出条件继续以[厂商能力对照](vendor-parity.md)为准。
 
 后续独立音频候选 `vim4-audio-routes` 基于正式远端 `cb3b9f1a69051`，
-12 个提交至 `e934ed1e3b87f`，不混入下方固定审计的 580/291 计数。
-[音频离线记录](parity/audio-routes-offline.md)给出逐提交、寄存器差异、DT/schema 与测试证据；
-未合入正式分支、未部署，ASRC/VAD/DSP 等仍有实现欠账。
+38 个提交至 `e3eb8eb1e400e`，不混入下方固定审计的 580/291 计数。
+[基础记录](parity/audio-routes-offline.md)与[处理续篇](parity/audio-processing-offline.md)
+给出逐提交、寄存器差异、DT/schema、实际C测试与完整Image/DTB/modules构建证据。
+未合入正式分支、未部署；低功耗VAD、DSP与真实板级端点仍有交付缺口。
 
 ## 计数口径与全部提交
 

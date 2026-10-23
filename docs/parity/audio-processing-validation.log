@@ -1,0 +1,368 @@
+T7 audio continuation: offline validation at e3eb8eb1e400e549a6e82b6500118004415822f0
+All command exit codes were observed as zero. Complete original logs remain in /home/deepdream/build/kernel-audio-routes.
+The full-build section is its last 20 lines only; SHA256 of the complete log is in the JSON.
+
+=== checkpatch-41be1f202bdb ===
+Command: scripts/checkpatch.pl --strict --no-tree -
+Exit: 0; PASS; complete-log SHA256: 5ad1d56d63da5d78cb3d1407f97d260f14411985965ad43958fbfebc7908c344
+total: 0 errors, 0 warnings, 0 checks, 52 lines checked
+
+"[PATCH] ASoC: dt-bindings: meson: describe T7 output gain bank" has no obvious style problems and is ready for submission.
+
+
+=== checkpatch-62483506ca46 ===
+Command: scripts/checkpatch.pl --strict --no-tree -
+Exit: 0; PASS; complete-log SHA256: 1f70297f74220170f8a84ea0e9cb280cb105a65d72bbeac72ad91f8f459339d1
+total: 0 errors, 0 warnings, 0 checks, 349 lines checked
+
+"[PATCH] ASoC: meson: support T7 output gain registers and reset" has no obvious style problems and is ready for submission.
+
+
+=== checkpatch-f0c268a2e20a ===
+Command: scripts/checkpatch.pl --strict --no-tree -
+Exit: 0; PASS; complete-log SHA256: 554e6e26c7a4b4135cf6a0f60ef0bde4b2f46120976c2ebdb7afdea078e4c8de
+total: 0 errors, 0 warnings, 0 checks, 81 lines checked
+
+"[PATCH] dt-bindings: clock: meson: describe T7 audio clock extensions" has no obvious style problems and is ready for submission.
+
+
+=== checkpatch-42c0a01e92c8 ===
+Command: scripts/checkpatch.pl --strict --no-tree -
+Exit: 0; PASS; complete-log SHA256: f51eb933b4a04e47b7c6131c7e8559d20df38f481e7fd169a94c54885e874504
+total: 0 errors, 0 warnings, 0 checks, 243 lines checked
+
+"[PATCH] clk: meson: support T7 audio clocks and separate MCLK pad" has no obvious style problems and is ready for submission.
+
+
+=== checkpatch-40b055d33e90 ===
+Command: scripts/checkpatch.pl --strict --no-tree -
+Exit: 0; PASS; complete-log SHA256: a007b2b895cc448b6b1affc37d0b1eb136d3d50cdb53f53ba80b40ee495c093c
+total: 0 errors, 0 warnings, 0 checks, 21 lines checked
+
+"[PATCH] reset: amlogic: expose the T7 audio output D reset line" has no obvious style problems and is ready for submission.
+
+
+=== checkpatch-737aca498b9a ===
+Command: scripts/checkpatch.pl --strict --no-tree -
+Exit: 0; PASS; complete-log SHA256: 8256129491d52cb27bf440780273febc88b9afb225d6e81009a9e1b4db66b765
+total: 0 errors, 0 warnings, 0 checks, 7 lines checked
+
+"[PATCH] ASoC: dt-bindings: meson: describe the T7 D input formatter" has no obvious style problems and is ready for submission.
+
+
+=== checkpatch-cc507c62eec7 ===
+Command: scripts/checkpatch.pl --strict --no-tree -
+Exit: 0; PASS; complete-log SHA256: e6b049acea5e4d664369d96eb4be684e6508594c36277da9f7451698eba7c55d
+total: 0 errors, 0 warnings, 0 checks, 94 lines checked
+
+"[PATCH] ASoC: meson: connect the T7 D formatter and capture source" has no obvious style problems and is ready for submission.
+
+
+=== checkpatch-cc67271633cd ===
+Command: scripts/checkpatch.pl --strict --no-tree -
+Exit: 0; PASS; complete-log SHA256: 11c8bcb0ca195faed95c188f02a053d6bf921f9e599e1dd8ced103dc26d466bc
+total: 0 errors, 0 warnings, 0 checks, 35 lines checked
+
+"[PATCH] clk: meson: use the MCLK and slave clock parents for T7 ASRC" has no obvious style problems and is ready for submission.
+
+
+=== checkpatch-270c4efe5add ===
+Command: scripts/checkpatch.pl --strict --no-tree -
+Exit: 0; PASS; complete-log SHA256: 7476ddd0c80cc9055aa514a2cc74067752fc6533c777b247bf88607618c072bc
+total: 0 errors, 0 warnings, 0 checks, 75 lines checked
+
+"[PATCH] ASoC: dt-bindings: meson: describe T7 ASRC engines" has no obvious style problems and is ready for submission.
+
+
+=== checkpatch-ce8bb2837067 ===
+Command: scripts/checkpatch.pl --strict --no-tree -
+Exit: 0; PASS; complete-log SHA256: e664719fd5a14635e358c272bbd123d19dd6a1f452a70347522b9cbdc080168d
+total: 0 errors, 0 warnings, 0 checks, 82 lines checked
+
+"[PATCH] clk: meson: restrict T7 audio accesses to claimed register" has no obvious style problems and is ready for submission.
+
+
+=== checkpatch-5496b7c3eac6 ===
+Command: scripts/checkpatch.pl --strict --no-tree -
+Exit: 0; PASS; complete-log SHA256: 25393d73ad6ff978b134743de840f0aa9a9a6162da764a45112c7fbe5ff314c6
+total: 0 errors, 0 warnings, 0 checks, 2722 lines checked
+
+"[PATCH] ASoC: meson: add T7 asynchronous sample rate converters" has no obvious style problems and is ready for submission.
+
+
+=== checkpatch-2b8cbdf5b2c6 ===
+Command: scripts/checkpatch.pl --strict --no-tree -
+Exit: 0; PASS; complete-log SHA256: 2f31668374509f8359a9eea3b9716564e0cc69febf65d0f24075bd26697a6309
+total: 0 errors, 0 warnings, 0 checks, 65 lines checked
+
+"[PATCH] ASoC: dt-bindings: describe T7 hardware loopback combiners" has no obvious style problems and is ready for submission.
+
+
+=== checkpatch-ea4c6aa76d87 ===
+Command: scripts/checkpatch.pl --strict --no-tree -
+Exit: 0; PASS; complete-log SHA256: 6a2edfb131b7f6df35130755d1392e0f78f5dc70ab41f96a1c3bce5606290d2c
+total: 0 errors, 0 warnings, 0 checks, 479 lines checked
+
+"[PATCH] ASoC: meson: add T7 microphone and reference combiners" has no obvious style problems and is ready for submission.
+
+
+=== checkpatch-7f778393d8b9 ===
+Command: scripts/checkpatch.pl --strict --no-tree -
+Exit: 0; PASS; complete-log SHA256: b276a94c11ce9a094381b578c7eefb1d8e4a2bf71ddb41c3488a35914b8bc7c8
+total: 0 errors, 0 warnings, 0 checks, 52 lines checked
+
+"[PATCH] ASoC: dt-bindings: describe T7 audio effects engine" has no obvious style problems and is ready for submission.
+
+
+=== checkpatch-596188c3be11 ===
+Command: scripts/checkpatch.pl --strict --no-tree -
+Exit: 0; PASS; complete-log SHA256: cde63cab806a0bcba3aa872bacd716cc7ed2e63d81eb9e9af0e5b6a3d5246dbf
+total: 0 errors, 0 warnings, 0 checks, 724 lines checked
+
+"[PATCH] ASoC: meson: add T7 stereo EQ and dynamics processor" has no obvious style problems and is ready for submission.
+
+
+=== checkpatch-3c08ee991e71 ===
+Command: scripts/checkpatch.pl --strict --no-tree -
+Exit: 0; PASS; complete-log SHA256: b9b8d438bf6ff6b589cd1a44cba4b9dae1a94a7c037a49be860f74305406b50e
+total: 0 errors, 0 warnings, 0 checks, 66 lines checked
+
+"[PATCH] ASoC: dt-bindings: describe T7 voice activity detector" has no obvious style problems and is ready for submission.
+
+
+=== checkpatch-f4d46cd3333c ===
+Command: scripts/checkpatch.pl --strict --no-tree -
+Exit: 0; PASS; complete-log SHA256: fad066a6645d69279257ade5e216a316334a1bbb72f9a4a5b0342d4cfaf011b1
+total: 0 errors, 0 warnings, 0 checks, 517 lines checked
+
+"[PATCH] ASoC: meson: add T7 hardware voice activity detector" has no obvious style problems and is ready for submission.
+
+
+=== checkpatch-8c775c947844 ===
+Command: scripts/checkpatch.pl --strict --no-tree -
+Exit: 0; PASS; complete-log SHA256: 56706a6ccd40fad5b451d510e29f54e8b7f3f973c40c07a74cdb78fd980dd782
+total: 0 errors, 0 warnings, 0 checks, 14 lines checked
+
+"[PATCH] ASoC: dt-bindings: distinguish T7 reference input formatter" has no obvious style problems and is ready for submission.
+
+
+=== checkpatch-a056f94380b6 ===
+Command: scripts/checkpatch.pl --strict --no-tree -
+Exit: 0; PASS; complete-log SHA256: 58a79ef0adaa1017710054cdf1823c75147c06b861e0f67f7dbbf81fed2d967b
+total: 0 errors, 0 warnings, 0 checks, 87 lines checked
+
+"[PATCH] ASoC: meson: respect the T7 reference input slot field width" has no obvious style problems and is ready for submission.
+
+
+=== checkpatch-65b631b619e3 ===
+Command: scripts/checkpatch.pl --strict --no-tree -
+Exit: 0; PASS; complete-log SHA256: a028c697e803d547c34914de9058967d4d1a285a3b55697afa9a85d944e7cd67
+total: 0 errors, 0 warnings, 0 checks, 24 lines checked
+
+"[PATCH] ASoC: dt-bindings: allow fixed AXG converter backend" has no obvious style problems and is ready for submission.
+
+
+=== checkpatch-a44dae7d097d ===
+Command: scripts/checkpatch.pl --strict --no-tree -
+Exit: 0; PASS; complete-log SHA256: a650c50397db1bb85252427f171b7c69b478e8be2bf06319ecf5278e79f5aabb
+total: 0 errors, 0 warnings, 0 checks, 208 lines checked
+
+"[PATCH] ASoC: meson: support independent converter backend parameters" has no obvious style problems and is ready for submission.
+
+
+=== checkpatch-4e51f238962e ===
+Command: scripts/checkpatch.pl --strict --no-tree -
+Exit: 0; PASS; complete-log SHA256: c377c061c97f9d01de843a5f4eb916743e0b13e2e2ab21c7c3bd6bcb349190bf
+total: 0 errors, 0 warnings, 0 checks, 107 lines checked
+
+"[PATCH] ASoC: meson: unwind partial TDM starts and propagate trigger" has no obvious style problems and is ready for submission.
+
+
+=== checkpatch-52cd26e05be2 ===
+Command: scripts/checkpatch.pl --strict --no-tree -
+Exit: 0; PASS; complete-log SHA256: c6f3af7462d3e37d15a41a13169d1492f33f3daac5a74e1f49c3054073774c87
+total: 0 errors, 0 warnings, 0 checks, 108 lines checked
+
+"[PATCH] ASoC: meson: apply T7 output silence before disabling the" has no obvious style problems and is ready for submission.
+
+
+=== checkpatch-5d6b68ef18bf ===
+Command: scripts/checkpatch.pl --strict --no-tree -
+Exit: 0; PASS; complete-log SHA256: e2d156859133f45fb2f6a506f99f449e1689325ab58b200ab837dca997f5876d
+total: 0 errors, 0 warnings, 0 checks, 183 lines checked
+
+"[PATCH] arm64: dts: amlogic: describe T7 audio processing and D" has no obvious style problems and is ready for submission.
+
+
+=== checkpatch-df6b5e826698 ===
+Command: scripts/checkpatch.pl --strict --no-tree -
+Exit: 0; PASS; complete-log SHA256: 62d15df945aa7f0c0a0601adc649e5393f15673a0deb4555786fbbe78c1f1636
+total: 0 errors, 0 warnings, 0 checks, 208 lines checked
+
+"[PATCH] ASoC: meson: check compiled T7 processing and D route" has no obvious style problems and is ready for submission.
+
+
+=== checkpatch-e3eb8eb1e400 ===
+Command: scripts/checkpatch.pl --strict --no-tree -
+Exit: 0; PASS; complete-log SHA256: ffcfa6d8ae2ab70de0b748eddaae39a204b3821e9b2e6775d39b31395826053e
+total: 0 errors, 0 warnings, 0 checks, 249 lines checked
+
+"[PATCH] ASoC: meson: make T7 processing shutdown safe after failed" has no obvious style problems and is ready for submission.
+
+
+=== test_t7_aed ===
+Command: python3 sound/soc/meson/test_t7_aed.py
+Exit: 0; PASS; complete-log SHA256: a2fe8b40b6da2a20a9ca28ac2df65fd95ec67b287768cc130f089bb971eefd1b
+AED dual SRAM, stable biquads, FIFO source isolation and every failure passed
+
+
+=== test_t7_asrc ===
+Command: python3 sound/soc/meson/test_t7_asrc.py
+Exit: 0; PASS; complete-log SHA256: 78155d07ff58c4e751fc63d3a99f8245518b037571075d64f626b0660177c4f4
+ASRC phase, AA, loopback restriction, timeout and every write failure passed
+
+
+=== test_t7_audio_windows ===
+Command: python3 sound/soc/meson/test_t7_audio_windows.py
+Exit: 0; PASS; complete-log SHA256: 5b276acf0421280b156538771136aca61e29b9af5ae905a67478ebb68a191233
+t7_audio: bounded core/secondary bank isolation passed
+t7_asrc: bounded core/secondary bank isolation passed
+t7_vad: bounded core/secondary bank isolation passed
+
+
+=== test_t7_card ===
+Command: python3 sound/soc/meson/test_t7_card.py
+Exit: 0; PASS; complete-log SHA256: 8c8949bdf2d4a41133ab58f5f842a767398c451c301c45095acf9a713eb0599b
+Card unchanged legacy negotiation and 16k/6ch -> 16k/4ch + 48k/2ch fixups passed
+
+
+=== test_t7_frddr ===
+Command: python3 sound/soc/meson/test_t7_frddr.py
+Exit: 0; PASS; complete-log SHA256: ba4e19225b2b95813fbd2394baee8f9bd407c51d9308986b98de2f0636f18a51
+FRDDR channel count, route preservation, depth and write failures passed
+
+
+=== test_t7_loopback ===
+Command: python3 sound/soc/meson/test_t7_loopback.py
+Exit: 0; PASS; complete-log SHA256: 5252806d33b337e1cf6565c30e98c5df8a67f4a88aa3e54629ca4987bf8ea64b
+Loopback PDM/reference packing, channel boundaries and fault cleanup passed
+
+
+=== test_t7_processing_power ===
+Command: python3 sound/soc/meson/test_t7_processing_power.py
+Exit: 0; PASS; complete-log SHA256: f9a85e8249539fc16a74e9a9ae602c0d0078305e3ce67ccfb6317ab71e1b08dd
+asrc: each power-up failure, repeated power-down and successful retry passed
+loopback: each power-up failure, repeated power-down and successful retry passed
+aed: each power-up failure, repeated power-down and successful retry passed
+vad: each power-up failure, repeated power-down and successful retry passed
+
+
+=== test_t7_spdifin ===
+Command: python3 sound/soc/meson/test_t7_spdifin.py
+Exit: 0; PASS; complete-log SHA256: 1619827b06bea5c838c2cd20b73fecda7a77c62322cf4d63a97f94c43c16fb0f
+SPDIF seven-rate timers, filter isolation and clock unwind passed
+
+
+=== test_t7_spdifout ===
+Command: python3 sound/soc/meson/test_t7_spdifout.py
+Exit: 0; PASS; complete-log SHA256: b88b402cf74d17c0cd5495c06258bd4f13c9e8e0af9338f0cf0617f37a5b1589
+SPDIF lane clearing, mono/stereo and PCM packing passed
+
+
+=== test_t7_tdm_stream ===
+Command: python3 sound/soc/meson/test_t7_tdm_stream.py
+Exit: 0; PASS; complete-log SHA256: d58e82f493b969a05342e885e897cf16edbdf0f47d8bf1b1717bc610d61f03c1
+TDM multi-formatter rollback, successful retry and PCM trigger errors passed
+
+
+=== test_t7_tdmin ===
+Command: python3 sound/soc/meson/test_t7_tdmin.py
+Exit: 0; PASS; complete-log SHA256: b28057367ac48a71685394bb437d331a22c9e63fbfcb36b423b1b1fe1726cfa8
+TDM slots, mux isolation, legacy layout and channel distribution passed
+
+
+=== test_t7_tdmout ===
+Command: python3 sound/soc/meson/test_t7_tdmout.py
+Exit: 0; PASS; complete-log SHA256: 3ec76ffef3fdb2893aab4a79d6302905d3f1bb88d533aeb11f3eb2a010145906
+T7 output windows, four-lane masks and reset/sync failure passed
+
+
+=== test_t7_toddr ===
+Command: python3 sound/soc/meson/test_t7_toddr.py
+Exit: 0; PASS; complete-log SHA256: c310febed9900bc5a870dacd04915fb241e6d9641707828c5bb56e695571c5d8
+T7 selector isolation, S16 cropping and channel sync passed
+
+
+=== test_t7_vad ===
+Command: python3 sound/soc/meson/test_t7_vad.py
+Exit: 0; PASS; complete-log SHA256: a1e01a18bb1a558ce896b017631d5c8b2f7b21c715c42416941aa7811b9c577e
+VAD FIR/LUT, PDM feed, reset sequencing and every failure cleanup passed
+
+
+=== rx-audio ===
+Command: python3 drivers/media/platform/amlogic/t7-hdmirx/test_audio.py
+Exit: 0; PASS; complete-log SHA256: 308c1d21ccf93b3fc80f779ccc38e584f865bbae5b98cc09e0b25cdebf5decbf
+seven rates, packet races, native constraints, XRUN-before/after START, PLL unwind passed
+
+
+=== routes-digital ===
+Command: python3 sound/soc/meson/test_t7_audio_routes.py --baseline /home/deepdream/build/kernel-audio-routes/baseline.dtb --output /home/deepdream/build/kernel-audio-routes/digital-fixture.dtb
+Exit: 0; PASS; complete-log SHA256: 37732db4aca7159eaf1fc88fa5f34dc59ac1c0e9ea4b10ef2a392c787ac9a5d2
+T7 audio DT: RX contract, MMIO ownership and digital route graph passed
+
+
+=== routes-processing ===
+Command: python3 sound/soc/meson/test_t7_audio_routes.py --baseline /home/deepdream/build/kernel-audio-routes/baseline.dtb --output /home/deepdream/build/kernel-audio-routes/processing-fixture.dtb --processing
+Exit: 0; PASS; complete-log SHA256: 37732db4aca7159eaf1fc88fa5f34dc59ac1c0e9ea4b10ef2a392c787ac9a5d2
+T7 audio DT: RX contract, MMIO ownership and digital route graph passed
+
+
+=== binding-schema ===
+Command: make O=/home/deepdream/build/kernel-audio-routes ARCH=arm64 -j1 dt_binding_check DT_SCHEMA_FILES=sound/amlogic,axg-fifo.yaml:sound/amlogic,axg-pdm.yaml:sound/amlogic,axg-spdifin.yaml:sound/amlogic,axg-spdifout.yaml:sound/amlogic,axg-tdm-formatters.yaml:sound/amlogic,axg-sound-card.yaml:sound/amlogic,t7-asrc.yaml:sound/amlogic,t7-loopback.yaml:sound/amlogic,t7-aed.yaml:sound/amlogic,t7-vad.yaml:clock/amlogic,axg-audio-clkc.yaml
+Exit: 0; PASS; complete-log SHA256: a01a82460bf3d34635399becad859ea585ac19cc91a09b360e141faa17d4940c
+make[1]: Entering directory '/home/deepdream/build/kernel-audio-routes'
+  SCHEMA  Documentation/devicetree/bindings/processed-schema.json
+  CHKDT   /home/deepdream/src/linux-7.3-audio-routes/Documentation/devicetree/bindings
+  LINT    /home/deepdream/src/linux-7.3-audio-routes/Documentation/devicetree/bindings
+  STYLE   /home/deepdream/src/linux-7.3-audio-routes/Documentation/devicetree/bindings
+  DTC [C] Documentation/devicetree/bindings/clock/amlogic,axg-audio-clkc.example.dtb
+  DTC [C] Documentation/devicetree/bindings/sound/amlogic,axg-spdifout.example.dtb
+  DTEX    Documentation/devicetree/bindings/sound/amlogic,axg-pdm.example.dts
+  DTC [C] Documentation/devicetree/bindings/sound/amlogic,axg-pdm.example.dtb
+  DTEX    Documentation/devicetree/bindings/sound/amlogic,axg-spdifin.example.dts
+  DTC [C] Documentation/devicetree/bindings/sound/amlogic,axg-spdifin.example.dtb
+  DTEX    Documentation/devicetree/bindings/sound/amlogic,axg-fifo.example.dts
+  DTC [C] Documentation/devicetree/bindings/sound/amlogic,axg-fifo.example.dtb
+  DTEX    Documentation/devicetree/bindings/sound/amlogic,axg-sound-card.example.dts
+  DTC [C] Documentation/devicetree/bindings/sound/amlogic,axg-sound-card.example.dtb
+  DTC [C] Documentation/devicetree/bindings/sound/amlogic,axg-tdm-formatters.example.dtb
+make[1]: Leaving directory '/home/deepdream/build/kernel-audio-routes'
+
+=== dt-instances ===
+Command: dt-validate -s /home/deepdream/build/kernel-audio-routes/Documentation/devicetree/bindings/processed-schema.json -l sound/amlogic,:clock/amlogic,axg-audio-clkc:sound/dmic:sound/linux,spdif /home/deepdream/build/kernel-audio-routes/processing-fixture.dtb /home/deepdream/build/kernel-audio-routes/digital-fixture.dtb /home/deepdream/build/kernel-audio-routes/arch/arm64/boot/dts/amlogic/amlogic-t7-a311d2-khadas-vim4.dtb /home/deepdream/build/kernel-audio-routes/arch/arm64/boot/dts/amlogic/amlogic-t7-a311d2-khadas-vim4-audio-test.dtb
+Exit: 0; PASS; complete-log SHA256: e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855
+
+
+=== full-image-dtbs-modules ===
+Command: flock /tmp/vim4-heavy.lock make O=/home/deepdream/build/kernel-audio-routes ARCH=arm64 -j4 Image dtbs modules
+Exit: 0; PASS; complete-log SHA256: bfaa5c12f1bf20d06d28110c743d8d73d8ec65434aedc1caedf66dc2369b2cf8
+  LD [M]  net/vmw_vsock/vmw_vsock_virtio_transport_common.ko
+  BTF [M] net/vmw_vsock/vmw_vsock_virtio_transport_common.ko
+  LD [M]  net/vmw_vsock/vsock_loopback.ko
+  LD [M]  net/nsh/nsh.ko
+  BTF [M] net/openvswitch/openvswitch.ko
+  BTF [M] net/vmw_vsock/vsock_loopback.ko
+  BTF [M] net/nsh/nsh.ko
+  CC [M]  sound/soc/meson/t7-asrc.mod.o
+  CC [M]  sound/soc/meson/t7-loopback.mod.o
+  CC [M]  sound/soc/meson/t7-aed.mod.o
+  CC [M]  sound/soc/meson/t7-vad.mod.o
+  LD [M]  sound/soc/meson/t7-asrc.ko
+  LD [M]  sound/soc/meson/t7-loopback.ko
+  LD [M]  sound/soc/meson/t7-aed.ko
+  LD [M]  sound/soc/meson/t7-vad.ko
+  BTF [M] sound/soc/meson/t7-vad.ko
+  BTF [M] sound/soc/meson/t7-aed.ko
+  BTF [M] sound/soc/meson/t7-loopback.ko
+  BTF [M] sound/soc/meson/t7-asrc.ko
+make[1]: Leaving directory '/home/deepdream/build/kernel-audio-routes'

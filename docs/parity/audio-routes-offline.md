@@ -1,5 +1,8 @@
 # T7 音频全路由离线审计与基础驱动系列
 
+本页固定前轮 `e934ed1e3b87f` 的历史交付范围；后续 TDMD/处理组件、完整构建与当前
+剩余项见[第二轮离线记录](audio-processing-offline.md)。下文“未实现/未运行”均指该前轮。
+
 本轮仅操作开发机和 `vim4-build`，没有访问、占用或部署板子。
 **交付的是基础驱动候选，不是全路由追平完成**：ASRC、VAD、AED、DSP、TDMD 等仍有
 代码实现欠账，不能将它们统称为“只待上板”。[能力表](audio.md)的 16 项统计仍为
@@ -61,8 +64,8 @@
 | TODDR | T7 source 位于 CTRL1[30:26]，原驱动已有正确五位 mux；增加非 RX 的 type 0 PCM/type 4 S24；SPDIF raw 为 type 3、MSB27/LSB4；排除不支持的 S20_LE 能力位 | 当前只暴露前 16 个源；TDMD=18、PDM_B、ASRC_C 等不因字段五位就自动可用 |
 | TODDR channel-sync | A/B/C/D 分别使用音频基址相对偏移 `0xc3c/0xc7c/0xcbc/0xcfc`，独立 4 字节资源 | 与真实 FIFO 启停、通道同步的联合验收 |
 | RX source 8 | 保持 S16、MSB27/LSB12/type 0 和现有 CHSYNC 行为；不改动态链路资格检查 | A01 的失锁/变率恢复仍由已有稳定性任务验收 |
-| TDMIN | CTRL[12:8] 写 slots−1，保留原来的 source/复位位和低四 lane 的 AXG 组织 | T7 八 lane 的高 bank、TDMIN_D、额外时钟选择尚未支持；不可承诺八 lane 全功能 |
-| TDMOUT | 尚保留原 SM1 节点，不新增假兼容 | T7 是 GAIN_VER3：gain enable 在独立扩展 bank，不能把 SM1 CTRL1[7] 当 T7 全通道 gain；需处理八 lane、增益与 MMIO 所有权 |
+| TDMIN | CTRL[12:8] 写 slots−1，保留原来的 source/复位位和四 lane 的 AXG 组织 | 当时尚缺 TDMIN_D、额外时钟选择；更正：T7 match table 为 LANE_MAX1=4，通用寄存器头不能证明八 lane |
+| TDMOUT | 尚保留原 SM1 节点，不新增假兼容 | T7 是 GAIN_VER3：gain enable 在独立扩展 bank，不能把 SM1 CTRL1[7] 当 T7 全通道 gain；需处理增益与 MMIO 所有权，T7 为四 lane |
 | SPDIFOUT | T7 通道掩码是 CTRL0[15:0]，AXG 是 [11:4]；按变体分别清旧通道位 | IEC958 通道状态、独立引脚与 TX 同时输出、真实采样率测量 |
 | SPDIFIN | T7 refclk=500 MHz；配置 CTRL6[12] filter，复用七档检测窗口 | 主线驱动原有检测抖动/无信号→32k 通知限制仍存在；本系列没有完成 loss-of-lock/XRUN 协议 |
 | PDM | 正常采集寄存器与主线 AXG filter 路径可复用，添加 T7 compatible + AXG fallback | 主线范围 S24/S32、最高 48k、最多八声道；未支持厂商所有低功耗/training/VAD 模式 |

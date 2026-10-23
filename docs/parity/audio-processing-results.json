@@ -1,0 +1,673 @@
+{
+  "base": "e934ed1e3b87f098e7af6de256b7eb002f3297fe",
+  "head": "e3eb8eb1e400e549a6e82b6500118004415822f0",
+  "checks": [
+    {
+      "name": "checkpatch-41be1f202bdb",
+      "command": [
+        "scripts/checkpatch.pl",
+        "--strict",
+        "--no-tree",
+        "-"
+      ],
+      "exit_code": 0,
+      "passed": true,
+      "log_sha256": "5ad1d56d63da5d78cb3d1407f97d260f14411985965ad43958fbfebc7908c344"
+    },
+    {
+      "name": "checkpatch-62483506ca46",
+      "command": [
+        "scripts/checkpatch.pl",
+        "--strict",
+        "--no-tree",
+        "-"
+      ],
+      "exit_code": 0,
+      "passed": true,
+      "log_sha256": "1f70297f74220170f8a84ea0e9cb280cb105a65d72bbeac72ad91f8f459339d1"
+    },
+    {
+      "name": "checkpatch-f0c268a2e20a",
+      "command": [
+        "scripts/checkpatch.pl",
+        "--strict",
+        "--no-tree",
+        "-"
+      ],
+      "exit_code": 0,
+      "passed": true,
+      "log_sha256": "554e6e26c7a4b4135cf6a0f60ef0bde4b2f46120976c2ebdb7afdea078e4c8de"
+    },
+    {
+      "name": "checkpatch-42c0a01e92c8",
+      "command": [
+        "scripts/checkpatch.pl",
+        "--strict",
+        "--no-tree",
+        "-"
+      ],
+      "exit_code": 0,
+      "passed": true,
+      "log_sha256": "f51eb933b4a04e47b7c6131c7e8559d20df38f481e7fd169a94c54885e874504"
+    },
+    {
+      "name": "checkpatch-40b055d33e90",
+      "command": [
+        "scripts/checkpatch.pl",
+        "--strict",
+        "--no-tree",
+        "-"
+      ],
+      "exit_code": 0,
+      "passed": true,
+      "log_sha256": "a007b2b895cc448b6b1affc37d0b1eb136d3d50cdb53f53ba80b40ee495c093c"
+    },
+    {
+      "name": "checkpatch-737aca498b9a",
+      "command": [
+        "scripts/checkpatch.pl",
+        "--strict",
+        "--no-tree",
+        "-"
+      ],
+      "exit_code": 0,
+      "passed": true,
+      "log_sha256": "8256129491d52cb27bf440780273febc88b9afb225d6e81009a9e1b4db66b765"
+    },
+    {
+      "name": "checkpatch-cc507c62eec7",
+      "command": [
+        "scripts/checkpatch.pl",
+        "--strict",
+        "--no-tree",
+        "-"
+      ],
+      "exit_code": 0,
+      "passed": true,
+      "log_sha256": "e6b049acea5e4d664369d96eb4be684e6508594c36277da9f7451698eba7c55d"
+    },
+    {
+      "name": "checkpatch-cc67271633cd",
+      "command": [
+        "scripts/checkpatch.pl",
+        "--strict",
+        "--no-tree",
+        "-"
+      ],
+      "exit_code": 0,
+      "passed": true,
+      "log_sha256": "11c8bcb0ca195faed95c188f02a053d6bf921f9e599e1dd8ced103dc26d466bc"
+    },
+    {
+      "name": "checkpatch-270c4efe5add",
+      "command": [
+        "scripts/checkpatch.pl",
+        "--strict",
+        "--no-tree",
+        "-"
+      ],
+      "exit_code": 0,
+      "passed": true,
+      "log_sha256": "7476ddd0c80cc9055aa514a2cc74067752fc6533c777b247bf88607618c072bc"
+    },
+    {
+      "name": "checkpatch-ce8bb2837067",
+      "command": [
+        "scripts/checkpatch.pl",
+        "--strict",
+        "--no-tree",
+        "-"
+      ],
+      "exit_code": 0,
+      "passed": true,
+      "log_sha256": "e664719fd5a14635e358c272bbd123d19dd6a1f452a70347522b9cbdc080168d"
+    },
+    {
+      "name": "checkpatch-5496b7c3eac6",
+      "command": [
+        "scripts/checkpatch.pl",
+        "--strict",
+        "--no-tree",
+        "-"
+      ],
+      "exit_code": 0,
+      "passed": true,
+      "log_sha256": "25393d73ad6ff978b134743de840f0aa9a9a6162da764a45112c7fbe5ff314c6"
+    },
+    {
+      "name": "checkpatch-2b8cbdf5b2c6",
+      "command": [
+        "scripts/checkpatch.pl",
+        "--strict",
+        "--no-tree",
+        "-"
+      ],
+      "exit_code": 0,
+      "passed": true,
+      "log_sha256": "2f31668374509f8359a9eea3b9716564e0cc69febf65d0f24075bd26697a6309"
+    },
+    {
+      "name": "checkpatch-ea4c6aa76d87",
+      "command": [
+        "scripts/checkpatch.pl",
+        "--strict",
+        "--no-tree",
+        "-"
+      ],
+      "exit_code": 0,
+      "passed": true,
+      "log_sha256": "6a2edfb131b7f6df35130755d1392e0f78f5dc70ab41f96a1c3bce5606290d2c"
+    },
+    {
+      "name": "checkpatch-7f778393d8b9",
+      "command": [
+        "scripts/checkpatch.pl",
+        "--strict",
+        "--no-tree",
+        "-"
+      ],
+      "exit_code": 0,
+      "passed": true,
+      "log_sha256": "b276a94c11ce9a094381b578c7eefb1d8e4a2bf71ddb41c3488a35914b8bc7c8"
+    },
+    {
+      "name": "checkpatch-596188c3be11",
+      "command": [
+        "scripts/checkpatch.pl",
+        "--strict",
+        "--no-tree",
+        "-"
+      ],
+      "exit_code": 0,
+      "passed": true,
+      "log_sha256": "cde63cab806a0bcba3aa872bacd716cc7ed2e63d81eb9e9af0e5b6a3d5246dbf"
+    },
+    {
+      "name": "checkpatch-3c08ee991e71",
+      "command": [
+        "scripts/checkpatch.pl",
+        "--strict",
+        "--no-tree",
+        "-"
+      ],
+      "exit_code": 0,
+      "passed": true,
+      "log_sha256": "b9b8d438bf6ff6b589cd1a44cba4b9dae1a94a7c037a49be860f74305406b50e"
+    },
+    {
+      "name": "checkpatch-f4d46cd3333c",
+      "command": [
+        "scripts/checkpatch.pl",
+        "--strict",
+        "--no-tree",
+        "-"
+      ],
+      "exit_code": 0,
+      "passed": true,
+      "log_sha256": "fad066a6645d69279257ade5e216a316334a1bbb72f9a4a5b0342d4cfaf011b1"
+    },
+    {
+      "name": "checkpatch-8c775c947844",
+      "command": [
+        "scripts/checkpatch.pl",
+        "--strict",
+        "--no-tree",
+        "-"
+      ],
+      "exit_code": 0,
+      "passed": true,
+      "log_sha256": "56706a6ccd40fad5b451d510e29f54e8b7f3f973c40c07a74cdb78fd980dd782"
+    },
+    {
+      "name": "checkpatch-a056f94380b6",
+      "command": [
+        "scripts/checkpatch.pl",
+        "--strict",
+        "--no-tree",
+        "-"
+      ],
+      "exit_code": 0,
+      "passed": true,
+      "log_sha256": "58a79ef0adaa1017710054cdf1823c75147c06b861e0f67f7dbbf81fed2d967b"
+    },
+    {
+      "name": "checkpatch-65b631b619e3",
+      "command": [
+        "scripts/checkpatch.pl",
+        "--strict",
+        "--no-tree",
+        "-"
+      ],
+      "exit_code": 0,
+      "passed": true,
+      "log_sha256": "a028c697e803d547c34914de9058967d4d1a285a3b55697afa9a85d944e7cd67"
+    },
+    {
+      "name": "checkpatch-a44dae7d097d",
+      "command": [
+        "scripts/checkpatch.pl",
+        "--strict",
+        "--no-tree",
+        "-"
+      ],
+      "exit_code": 0,
+      "passed": true,
+      "log_sha256": "a650c50397db1bb85252427f171b7c69b478e8be2bf06319ecf5278e79f5aabb"
+    },
+    {
+      "name": "checkpatch-4e51f238962e",
+      "command": [
+        "scripts/checkpatch.pl",
+        "--strict",
+        "--no-tree",
+        "-"
+      ],
+      "exit_code": 0,
+      "passed": true,
+      "log_sha256": "c377c061c97f9d01de843a5f4eb916743e0b13e2e2ab21c7c3bd6bcb349190bf"
+    },
+    {
+      "name": "checkpatch-52cd26e05be2",
+      "command": [
+        "scripts/checkpatch.pl",
+        "--strict",
+        "--no-tree",
+        "-"
+      ],
+      "exit_code": 0,
+      "passed": true,
+      "log_sha256": "c6f3af7462d3e37d15a41a13169d1492f33f3daac5a74e1f49c3054073774c87"
+    },
+    {
+      "name": "checkpatch-5d6b68ef18bf",
+      "command": [
+        "scripts/checkpatch.pl",
+        "--strict",
+        "--no-tree",
+        "-"
+      ],
+      "exit_code": 0,
+      "passed": true,
+      "log_sha256": "e2d156859133f45fb2f6a506f99f449e1689325ab58b200ab837dca997f5876d"
+    },
+    {
+      "name": "checkpatch-df6b5e826698",
+      "command": [
+        "scripts/checkpatch.pl",
+        "--strict",
+        "--no-tree",
+        "-"
+      ],
+      "exit_code": 0,
+      "passed": true,
+      "log_sha256": "62d15df945aa7f0c0a0601adc649e5393f15673a0deb4555786fbbe78c1f1636"
+    },
+    {
+      "name": "checkpatch-e3eb8eb1e400",
+      "command": [
+        "scripts/checkpatch.pl",
+        "--strict",
+        "--no-tree",
+        "-"
+      ],
+      "exit_code": 0,
+      "passed": true,
+      "log_sha256": "ffcfa6d8ae2ab70de0b748eddaae39a204b3821e9b2e6775d39b31395826053e"
+    },
+    {
+      "name": "test_t7_aed",
+      "command": [
+        "python3",
+        "sound/soc/meson/test_t7_aed.py"
+      ],
+      "exit_code": 0,
+      "passed": true,
+      "log_sha256": "a2fe8b40b6da2a20a9ca28ac2df65fd95ec67b287768cc130f089bb971eefd1b"
+    },
+    {
+      "name": "test_t7_asrc",
+      "command": [
+        "python3",
+        "sound/soc/meson/test_t7_asrc.py"
+      ],
+      "exit_code": 0,
+      "passed": true,
+      "log_sha256": "78155d07ff58c4e751fc63d3a99f8245518b037571075d64f626b0660177c4f4"
+    },
+    {
+      "name": "test_t7_audio_windows",
+      "command": [
+        "python3",
+        "sound/soc/meson/test_t7_audio_windows.py"
+      ],
+      "exit_code": 0,
+      "passed": true,
+      "log_sha256": "5b276acf0421280b156538771136aca61e29b9af5ae905a67478ebb68a191233"
+    },
+    {
+      "name": "test_t7_card",
+      "command": [
+        "python3",
+        "sound/soc/meson/test_t7_card.py"
+      ],
+      "exit_code": 0,
+      "passed": true,
+      "log_sha256": "8c8949bdf2d4a41133ab58f5f842a767398c451c301c45095acf9a713eb0599b"
+    },
+    {
+      "name": "test_t7_frddr",
+      "command": [
+        "python3",
+        "sound/soc/meson/test_t7_frddr.py"
+      ],
+      "exit_code": 0,
+      "passed": true,
+      "log_sha256": "ba4e19225b2b95813fbd2394baee8f9bd407c51d9308986b98de2f0636f18a51"
+    },
+    {
+      "name": "test_t7_loopback",
+      "command": [
+        "python3",
+        "sound/soc/meson/test_t7_loopback.py"
+      ],
+      "exit_code": 0,
+      "passed": true,
+      "log_sha256": "5252806d33b337e1cf6565c30e98c5df8a67f4a88aa3e54629ca4987bf8ea64b"
+    },
+    {
+      "name": "test_t7_processing_power",
+      "command": [
+        "python3",
+        "sound/soc/meson/test_t7_processing_power.py"
+      ],
+      "exit_code": 0,
+      "passed": true,
+      "log_sha256": "f9a85e8249539fc16a74e9a9ae602c0d0078305e3ce67ccfb6317ab71e1b08dd"
+    },
+    {
+      "name": "test_t7_spdifin",
+      "command": [
+        "python3",
+        "sound/soc/meson/test_t7_spdifin.py"
+      ],
+      "exit_code": 0,
+      "passed": true,
+      "log_sha256": "1619827b06bea5c838c2cd20b73fecda7a77c62322cf4d63a97f94c43c16fb0f"
+    },
+    {
+      "name": "test_t7_spdifout",
+      "command": [
+        "python3",
+        "sound/soc/meson/test_t7_spdifout.py"
+      ],
+      "exit_code": 0,
+      "passed": true,
+      "log_sha256": "b88b402cf74d17c0cd5495c06258bd4f13c9e8e0af9338f0cf0617f37a5b1589"
+    },
+    {
+      "name": "test_t7_tdm_stream",
+      "command": [
+        "python3",
+        "sound/soc/meson/test_t7_tdm_stream.py"
+      ],
+      "exit_code": 0,
+      "passed": true,
+      "log_sha256": "d58e82f493b969a05342e885e897cf16edbdf0f47d8bf1b1717bc610d61f03c1"
+    },
+    {
+      "name": "test_t7_tdmin",
+      "command": [
+        "python3",
+        "sound/soc/meson/test_t7_tdmin.py"
+      ],
+      "exit_code": 0,
+      "passed": true,
+      "log_sha256": "b28057367ac48a71685394bb437d331a22c9e63fbfcb36b423b1b1fe1726cfa8"
+    },
+    {
+      "name": "test_t7_tdmout",
+      "command": [
+        "python3",
+        "sound/soc/meson/test_t7_tdmout.py"
+      ],
+      "exit_code": 0,
+      "passed": true,
+      "log_sha256": "3ec76ffef3fdb2893aab4a79d6302905d3f1bb88d533aeb11f3eb2a010145906"
+    },
+    {
+      "name": "test_t7_toddr",
+      "command": [
+        "python3",
+        "sound/soc/meson/test_t7_toddr.py"
+      ],
+      "exit_code": 0,
+      "passed": true,
+      "log_sha256": "c310febed9900bc5a870dacd04915fb241e6d9641707828c5bb56e695571c5d8"
+    },
+    {
+      "name": "test_t7_vad",
+      "command": [
+        "python3",
+        "sound/soc/meson/test_t7_vad.py"
+      ],
+      "exit_code": 0,
+      "passed": true,
+      "log_sha256": "a1e01a18bb1a558ce896b017631d5c8b2f7b21c715c42416941aa7811b9c577e"
+    },
+    {
+      "name": "rx-audio",
+      "command": [
+        "python3",
+        "drivers/media/platform/amlogic/t7-hdmirx/test_audio.py"
+      ],
+      "exit_code": 0,
+      "passed": true,
+      "log_sha256": "308c1d21ccf93b3fc80f779ccc38e584f865bbae5b98cc09e0b25cdebf5decbf"
+    },
+    {
+      "name": "routes-digital",
+      "command": [
+        "python3",
+        "sound/soc/meson/test_t7_audio_routes.py",
+        "--baseline",
+        "/home/deepdream/build/kernel-audio-routes/baseline.dtb",
+        "--output",
+        "/home/deepdream/build/kernel-audio-routes/digital-fixture.dtb"
+      ],
+      "exit_code": 0,
+      "passed": true,
+      "log_sha256": "37732db4aca7159eaf1fc88fa5f34dc59ac1c0e9ea4b10ef2a392c787ac9a5d2"
+    },
+    {
+      "name": "routes-processing",
+      "command": [
+        "python3",
+        "sound/soc/meson/test_t7_audio_routes.py",
+        "--baseline",
+        "/home/deepdream/build/kernel-audio-routes/baseline.dtb",
+        "--output",
+        "/home/deepdream/build/kernel-audio-routes/processing-fixture.dtb",
+        "--processing"
+      ],
+      "exit_code": 0,
+      "passed": true,
+      "log_sha256": "37732db4aca7159eaf1fc88fa5f34dc59ac1c0e9ea4b10ef2a392c787ac9a5d2"
+    },
+    {
+      "name": "binding-schema",
+      "command": [
+        "make",
+        "O=/home/deepdream/build/kernel-audio-routes",
+        "ARCH=arm64",
+        "-j1",
+        "dt_binding_check",
+        "DT_SCHEMA_FILES=sound/amlogic,axg-fifo.yaml:sound/amlogic,axg-pdm.yaml:sound/amlogic,axg-spdifin.yaml:sound/amlogic,axg-spdifout.yaml:sound/amlogic,axg-tdm-formatters.yaml:sound/amlogic,axg-sound-card.yaml:sound/amlogic,t7-asrc.yaml:sound/amlogic,t7-loopback.yaml:sound/amlogic,t7-aed.yaml:sound/amlogic,t7-vad.yaml:clock/amlogic,axg-audio-clkc.yaml"
+      ],
+      "exit_code": 0,
+      "passed": true,
+      "log_sha256": "a01a82460bf3d34635399becad859ea585ac19cc91a09b360e141faa17d4940c",
+      "log_path": "/home/deepdream/build/kernel-audio-routes/final-schema.log"
+    },
+    {
+      "name": "dt-instances",
+      "command": [
+        "dt-validate",
+        "-s",
+        "/home/deepdream/build/kernel-audio-routes/Documentation/devicetree/bindings/processed-schema.json",
+        "-l",
+        "sound/amlogic,:clock/amlogic,axg-audio-clkc:sound/dmic:sound/linux,spdif",
+        "/home/deepdream/build/kernel-audio-routes/processing-fixture.dtb",
+        "/home/deepdream/build/kernel-audio-routes/digital-fixture.dtb",
+        "/home/deepdream/build/kernel-audio-routes/arch/arm64/boot/dts/amlogic/amlogic-t7-a311d2-khadas-vim4.dtb",
+        "/home/deepdream/build/kernel-audio-routes/arch/arm64/boot/dts/amlogic/amlogic-t7-a311d2-khadas-vim4-audio-test.dtb"
+      ],
+      "exit_code": 0,
+      "passed": true,
+      "log_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "log_path": "/home/deepdream/build/kernel-audio-routes/final-instances.log"
+    },
+    {
+      "name": "full-image-dtbs-modules",
+      "command": [
+        "flock",
+        "/tmp/vim4-heavy.lock",
+        "make",
+        "O=/home/deepdream/build/kernel-audio-routes",
+        "ARCH=arm64",
+        "-j4",
+        "Image",
+        "dtbs",
+        "modules"
+      ],
+      "exit_code": 0,
+      "passed": true,
+      "log_sha256": "bfaa5c12f1bf20d06d28110c743d8d73d8ec65434aedc1caedf66dc2369b2cf8",
+      "log_path": "/home/deepdream/build/kernel-audio-routes/final-full-build.log"
+    }
+  ],
+  "commits": [
+    "41be1f202bdb12969d413deed015985d71191ea4",
+    "62483506ca46cb027d9136fab394f78c9576607a",
+    "f0c268a2e20a9dfc5ac7be71b636def1c358162f",
+    "42c0a01e92c83c9dc8fd4fba556c725c82d85a6b",
+    "40b055d33e9023ea76abfd2e9a7c407353e702c4",
+    "737aca498b9a3de4cadff99a41a466affc517033",
+    "cc507c62eec75cc996dfca971336737429151bb6",
+    "cc67271633cd8deda300a1afed59a1b4fa48b8e7",
+    "270c4efe5addb951c8a644f6f1846fd2559185de",
+    "ce8bb28370676f4c8ba8a1daddbaee897192a033",
+    "5496b7c3eac6b8e018dfed6f9267d6f882236e5d",
+    "2b8cbdf5b2c63e7b84da26ec3f181bca3270fa68",
+    "ea4c6aa76d875b8898e3b8d538688407d622e326",
+    "7f778393d8b97ff523367ffb7ad9ee6866dfef84",
+    "596188c3be1163d226113e00d3bbe59dfbc816bd",
+    "3c08ee991e715072a68bbe6729351ba0a999fb15",
+    "f4d46cd3333c8ff299ebe2a315944da6e4e20a7d",
+    "8c775c9478446151dcc2d3d3a5e5ef7c21a2d696",
+    "a056f94380b62f53f9e3100a0a4948931b7d6fea",
+    "65b631b619e32cbf632230be6b4e9e1525929926",
+    "a44dae7d097d3808d928c6b71fcd2fc3e7d7e64e",
+    "4e51f238962e7cf00e8082655b1cc57748c0a7ef",
+    "52cd26e05be2ffe20b9a82af0bd8c8d16dcd6f81",
+    "5d6b68ef18bf5adf30a235b59173f7dd3d7b2033",
+    "df6b5e8266988c47387feae006cd5898d87be80a",
+    "e3eb8eb1e400e549a6e82b6500118004415822f0"
+  ],
+  "config_sha256": "aa70d6eda4ab49f699cb553ddba4678c464a8cb67b7e0c4f1b44a29634c9139c",
+  "scope": "Offline only; no board connection, installation or boot. Hardware parity is unverified.",
+  "vendor": {
+    "linux": "80a07ad5406d57855c996285ae75a50a1b9147ae",
+    "common_drivers": "4cfb128d36f8511b2db1bd13c08d5704347ded49"
+  },
+  "kernel_tree_sha": "de2cbe855877215f67a6a25354fc02e82a52ea57",
+  "tools": {
+    "compiler": "gcc (Ubuntu 13.3.0-6ubuntu2~24.04.1) 13.3.0",
+    "dt_schema": "2026.9"
+  },
+  "schema_environment": "PATH=$HOME/build/dt-schema-venv/bin:$PATH; serialized by /tmp/vim4-heavy.lock",
+  "config_changes": [
+    "SND_MESON_T7_ASRC=m",
+    "SND_MESON_T7_LOOPBACK=m",
+    "SND_MESON_T7_AED=m",
+    "SND_MESON_T7_VAD=m",
+    "DEBUG_INFO_COMPRESSED_ZLIB=y; DEBUG_INFO_BTF remains y"
+  ],
+  "module_count": 2338,
+  "module_manifest": "modules.order; every listed module exists in the complete build output",
+  "artifacts": [
+    {
+      "path": ".config",
+      "bytes": 251959,
+      "sha256": "aa70d6eda4ab49f699cb553ddba4678c464a8cb67b7e0c4f1b44a29634c9139c"
+    },
+    {
+      "path": "vmlinux",
+      "bytes": 318670816,
+      "sha256": "9d93244827c2e5592d9ee4a0646cf0e8aedea037127ff38225edfb413d13b171"
+    },
+    {
+      "path": "arch/arm64/boot/Image",
+      "bytes": 53852672,
+      "sha256": "f60b8f2435ee0923f2e42569c17957832d84c8daecc8feba0c51e8b399689bf0"
+    },
+    {
+      "path": "modules.order",
+      "bytes": 78304,
+      "sha256": "ceafeacbe4ba8f2d436c07b97f62d6e02392685778a64336a936e3ec8b2eb39e"
+    },
+    {
+      "path": "processing-fixture.dtb",
+      "bytes": 50440,
+      "sha256": "65e87106272983e1bddd88519b3a36d0516996adc05a7230ed05f5173b979068"
+    },
+    {
+      "path": "digital-fixture.dtb",
+      "bytes": 48678,
+      "sha256": "5b3a0b440312b5237e2da1f15f89a9436c2cd3c7bf16c0cf6b1aa049f384fe50"
+    },
+    {
+      "path": "arch/arm64/boot/dts/amlogic/amlogic-t7-a311d2-khadas-vim4.dtb",
+      "bytes": 47717,
+      "sha256": "4bc36e3b3dec09301d1b24847980ad39213686d471171d4d675cda848c0b62d6"
+    },
+    {
+      "path": "arch/arm64/boot/dts/amlogic/amlogic-t7-a311d2-khadas-vim4-audio-test.dtb",
+      "bytes": 47475,
+      "sha256": "58c9df22be29370fe0d0e375c9f5a10cfe90ce1d2e87ea52cd9a8c3bb1bd1ca8"
+    },
+    {
+      "path": "sound/soc/meson/t7-asrc.ko",
+      "bytes": 372440,
+      "sha256": "272079f8f96ef88c0ccc8fd13718df1a4b4c32215e2081f47a4faf494785f35a"
+    },
+    {
+      "path": "sound/soc/meson/t7-loopback.ko",
+      "bytes": 323840,
+      "sha256": "cad24e5d898ee64828e42f94a91dcaa7ba5a40d0814c5a052e3462361753a6c9"
+    },
+    {
+      "path": "sound/soc/meson/t7-aed.ko",
+      "bytes": 340656,
+      "sha256": "3696dd0e29e96b0142a4b682597d2ee52a740ba83519c0d068cd491adea56408"
+    },
+    {
+      "path": "sound/soc/meson/t7-vad.ko",
+      "bytes": 320568,
+      "sha256": "a8fd8af8a8f544265be7d27ed10f31bb77cfa47262a7ea851947120ff1360519"
+    }
+  ],
+  "hardware_statistics": {
+    "required": 16,
+    "complete": 0,
+    "partial": 5,
+    "missing": 11,
+    "optional_earc": true
+  },
+  "remaining_implementation_gaps": [
+    "VAD low-power PDM retention, SRAM/DDR handoff and system suspend/resume are not implemented.",
+    "DSP firmware, loader dependencies, remote IPC/shared-memory protocol and ASR implementation are absent from the fixed inputs.",
+    "AED is limited to 48 kHz stereo TDMOUT B first lane; no live coefficient update or other destination/multichannel/noise-detection implementation.",
+    "ASRC input rate is configured while stopped; dedicated RX automatic rate/resource sharing is not integrated; SRAM power-domain contract needs hardware proof.",
+    "Real board pinmux/codecs/endpoints and UCM await wiring evidence; processing DT is a non-deployable compilation fixture."
+  ]
+}
