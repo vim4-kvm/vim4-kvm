@@ -39,6 +39,19 @@ def verify_modules(modules, order):
                            f'unexpected={sorted(installed - expected)}')
 
 
+def verify_display_profile(output, profile):
+    if profile != 'amlogic-t7-a311d2-khadas-vim4-display-m1.dtb':
+        return
+    if 'CONFIG_DRM_MESON_T7_HANDOFF=y' not in (output / '.config').read_text().splitlines():
+        raise RuntimeError('M1 DT requires the built-in T7 handoff driver')
+    dtb = output / 'arch/arm64/boot/dts/amlogic' / profile
+    for node in ('/chosen/framebuffer@3fdeec00', '/vpu@ff000000'):
+        if run('fdtget', dtb, node, 'status') != 'disabled':
+            raise RuntimeError(f'M1 requires {node} disabled')
+    if run('fdtget', dtb, '/display@ff006840', 'compatible') != 'amlogic,t7-display-handoff':
+        raise RuntimeError('M1 DT must use the qualified handoff compatible')
+
+
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     for name in ('source', 'output', 'destination'):
@@ -47,8 +60,9 @@ def main():
     parser.add_argument('--mac', required=True, help='Board ethernet MAC, xx:xx:xx:xx:xx:xx')
     parser.add_argument('--dtb', default='amlogic-t7-a311d2-khadas-vim4-audio-test.dtb',
                         choices=('amlogic-t7-a311d2-khadas-vim4-audio-test.dtb',
-                                 'amlogic-t7-a311d2-khadas-vim4-display-m0.dtb'),
-                        help='Qualified board profile; display-m0 requires matching U-Boot logo layout')
+                                 'amlogic-t7-a311d2-khadas-vim4-display-m0.dtb',
+                                 'amlogic-t7-a311d2-khadas-vim4-display-m1.dtb'),
+                        help='Qualified profile; display-m0/m1 require matching U-Boot logo layout')
     args = parser.parse_args()
     source, output, destination = (p.resolve() for p in (args.source, args.output, args.destination))
     assert re.fullmatch(r'[0-9a-f]{40}', args.commit), 'Use the full approved kernel commit'
@@ -61,6 +75,7 @@ def main():
     for name, expected in report['sha256'].items():
         assert sha(output / name) == expected, name
     assert (output / 'include/config/kernel.release').read_text().strip() == RELEASE
+    verify_display_profile(output, args.dtb)
     destination.mkdir()  # Refuse stale payloads.
     # Mac shared volumes can fold xt_DSCP/xt_dscp into the same filename.
     # Install on the Linux VM filesystem before writing the portable tarball.

@@ -3,6 +3,7 @@ import importlib.util
 from pathlib import Path
 import tempfile
 import unittest
+from unittest.mock import patch
 
 spec = importlib.util.spec_from_file_location(
     'final_package', Path(__file__).resolve().parents[1] / 'packaging/kernel-edge/package-final.py')
@@ -34,3 +35,32 @@ class ModuleInventoryTest(unittest.TestCase):
             order = root / 'modules.order'
             order.write_text('encoder.o\ncapture.o\n')
             package.verify_modules(modules, order)
+
+
+class DisplayProfileTest(unittest.TestCase):
+    def test_m1_without_driver_is_refused_before_reading_dtb(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            output = Path(temporary)
+            (output / '.config').write_text('# CONFIG_DRM_MESON_T7_HANDOFF is not set\n')
+            with patch.object(package, 'run') as read_dtb:
+                with self.assertRaisesRegex(RuntimeError, 'built-in T7 handoff'):
+                    package.verify_display_profile(output, 'amlogic-t7-a311d2-khadas-vim4-display-m1.dtb')
+                read_dtb.assert_not_called()
+
+    def test_m1_rejects_concurrent_framebuffer_or_vpu_and_experimental_profile(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            output = Path(temporary)
+            (output / '.config').write_text('CONFIG_DRM_MESON_T7_HANDOFF=y\n')
+            for framebuffer, vpu, compatible, error in (
+                ('okay', 'disabled', 'amlogic,t7-display-handoff', 'framebuffer'),
+                ('disabled', 'okay', 'amlogic,t7-display-handoff', 'vpu'),
+                ('disabled', 'disabled', 'amlogic,t7-display-linear', 'qualified handoff'),
+                ('disabled', 'disabled', 'amlogic,t7-display-handoff', None),
+            ):
+                with self.subTest(framebuffer=framebuffer, vpu=vpu, compatible=compatible):
+                    with patch.object(package, 'run', side_effect=[framebuffer, vpu, compatible]):
+                        if error:
+                            with self.assertRaisesRegex(RuntimeError, error):
+                                package.verify_display_profile(output, 'amlogic-t7-a311d2-khadas-vim4-display-m1.dtb')
+                        else:
+                            package.verify_display_profile(output, 'amlogic-t7-a311d2-khadas-vim4-display-m1.dtb')

@@ -27,8 +27,8 @@ PiKVM smoke 可用 `PIKVM_CDP` 接入专用测试 Chrome；结束时关闭测试
 |---|---|---|---|---|
 | packaging/kernel-edge/build-gstreamer.py | 容器/VM | 无 | 校验固定源码、应用 V4L2 生命周期补丁并构建私有插件，不改系统库 | [音视频](subsystems/video.md) |
 | packaging/kernel-edge/register-runtime.py | VM / 板 | inventory 无；register 改启动配置 | 核对完整 Image/模块清单后登记双内核，保留当前默认项；不安装、不重启 | [双内核集成](bringup/2026-10-21-dual-kernel-integration.md) |
-| packaging/kernel-edge/package-final.py | VM | 无 | 打包已完成的 UHD 构建和完整模块，生成哈希/build ID 清单；--dtb 显式选择 audio-test/display-m0；不编译 Image、不上板 | [M0 正式部署](bringup/2026-10-23-display-m0-deploy.md) |
-| packaging/kernel-edge/display-once.py、display-once-init.c | VM / 板 | prepare 无；stage 独占；串口选择后重启 | M1 私有归档与静态 PID 1 模块 bind；不改默认启动项，RESET 回基线；仅离线验证 | [M1 安全网](bringup/2026-10-23-display-m1-safety.md) |
+| packaging/kernel-edge/package-final.py | VM | 无 | 打包 UHD 完整构建，生成哈希/build ID 清单；--dtb 显式选择 audio-test/display-m0/display-m1；M1 检查驱动与 DT 互斥；不编译 Image、不上板 | [M1 合入](bringup/2026-10-23-display-m2.md) |
+| packaging/kernel-edge/display-once.py、display-once-init.c | VM / 板 | prepare 无；stage 独占；串口选择后重启 | 私有归档与静态 PID 1 模块 bind；保留默认启动项；一次性启动、预检失败回退及重启回默认已实测，物理 RESET 未测 | [M1 安全网](bringup/2026-10-23-display-m1-safety.md) |
 | packaging/kernel-edge/final-window.py、final-board.py | Mac → 板 | stage/dry-run 无；execute 独占、重启 | 双锁备份、安装与回归；kernel-only 保留用户态；--require-all-checks 任一失败回退，--framebuffer-console 登记 tty0；支持正常重启 pstore 读回，HDMI 恢复最多等 35 秒 | [pstore 部署与回退](bringup/2026-10-22-edge-pstore-deploy.md) |
 | packaging/kernel-edge/final-regression.py、final-manager-check.mjs | Mac → 板 | prepare 无；run 独占、改 HDMI/USB 设置后恢复 | 默认19模式，可用 --sample-modes 抽样；编解码/USB/GPU/管理器检查；音频等待CoreAudio枚举、直接AudioData检查、恢复48k后停音；仅显式 --wifi-scan 扫描并恢复 radio/autoconnect，不操作P2P；run仅由双锁窗口调用 | [正式版部署准备](bringup/2026-10-22-deploy-7-3-final-prep.md) |
 | packaging/kernel-edge/package-vdec.py | VM | 无 | 打包干净的 vdec5 独立构建，检查模块 vermagic/BTF 并生成完整哈希清单；不登记应用运行时 | [MDEC 离线排查](bringup/2026-10-22-vdec-mdec-offline.md) |
