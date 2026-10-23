@@ -7,7 +7,8 @@
 
 ## 2026-10-23
 
-- [HDMI 音频与采集稳定性：27轮3失败，已恢复基线](2026-10-23-kvm-audio-capture-stability.md) — kernel audio video application deployment board
+- [HDMI 音频与采集稳定性：27轮自动恢复与EAGAIN残留](2026-10-23-kvm-audio-capture-stability.md) — kernel audio video application deployment board
+- [HDMI 自动恢复验收：修复EAGAIN后的部署窗口](2026-10-23-kvm-audio-capture-stability-deploy.md) — kernel audio video application deployment board
 - [T7 DRM M1 固定输出、RMFB 崩溃与离线修复](2026-10-23-display-m1.md) — kernel video audio usb deployment board
 - [M1 一次性启动与恢复安全网（仅离线）](2026-10-23-display-m1-safety.md) — kernel deployment
 - [T7 DRM M1 共存接管设计](2026-10-23-display-m1-design.md) — kernel video audio
