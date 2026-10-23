@@ -19,7 +19,7 @@ import tarfile
 
 
 BOOT_ACTIONS = ('boot-install', 'arm-baseline', 'verify-baseline')
-ACTIONS = (*BOOT_ACTIONS, 'probe', 'power', 'compliance', 'h264', 'wave')
+ACTIONS = (*BOOT_ACTIONS, 'probe', 'power', 'mdec', 'compliance', 'h264', 'wave')
 BASE_ID = 'f283ab1f8a001a19bab5247afc4f9b0c00c1da99'
 BASE_RELEASE = '7.3.0-vim4kvm-uhd1+'
 BASE_FILES = {
@@ -34,8 +34,9 @@ FAILED_SOURCES = {
 
 def require_candidate(action, proof):
     recovery = action in ('arm-baseline', 'verify-baseline')
-    if not proof['release'].startswith('7.3.0-vim4kvm-vdec4') and not (
-            recovery and proof['release'].startswith('7.3.0-vim4kvm-vdec3')):
+    if not proof['release'].startswith('7.3.0-vim4kvm-vdec5') and not (
+            recovery and proof['release'].startswith(('7.3.0-vim4kvm-vdec3',
+                                                       '7.3.0-vim4kvm-vdec4'))):
         raise ValueError('Only this separate experimental kernel is accepted')
     if not recovery and proof.get('source') in FAILED_SOURCES:
         raise ValueError('Known failing candidate: video open caused SError during DOS initialization; '
@@ -199,7 +200,8 @@ def begin_stage(args, path=Path('/tmp/vim4-vdec-stages.json')):
     state = json.loads(path.read_text()) if path.exists() else {}
     if state.get('identity') != identity:
         state = {'identity': identity, 'passed': []}
-    previous = {'power': 'probe', 'compliance': 'power', 'h264': 'compliance', 'wave': 'h264'}
+    previous = {'power': 'probe', 'mdec': 'power', 'compliance': 'mdec',
+                'h264': 'compliance', 'wave': 'h264'}
     if state.get('pending') or state.get('failed'):
         raise ValueError('Previous stage did not finish; collect evidence and restore baseline')
     if args.action in previous and previous[args.action] not in state['passed']:
@@ -287,6 +289,25 @@ def power_cycle():
     set_power_permission(False)
 
 
+def mdec_cycle():
+    """Complete prerequisites, read PIC_DC once, verify power-off; no video open."""
+    power_cycle()
+    device = t7_device()
+    set_power_permission(True)
+    run('python3', '-c', 'from pathlib import Path; '
+        f'Path({str(device / "mdec_test")!r}).write_text("1")', timeout=8)
+    result = (device / 'mdec_test').read_text().strip()
+    print('MDEC_TEST', result, flush=True)
+    if not result.startswith('passed=1 '):
+        raise RuntimeError('MDEC single-read test did not pass')
+    state = (device / 'power_state').read_text().strip()
+    print('POST_MDEC_STATE', state, flush=True)
+    if not state.startswith('VDEC[4]=1 '):
+        raise RuntimeError('Secure VDEC domain did not power off after MDEC test')
+    require_suspended(device)
+    set_power_permission(False)
+
+
 def board_window(args):
     if os.geteuid() != 0:
         raise ValueError('Board subprocess requires root')
@@ -351,14 +372,16 @@ def board_window(args):
                 raise RuntimeError('Fault reported at probe')
         elif args.action == 'power':
             power_cycle()
+        elif args.action == 'mdec':
+            mdec_cycle()
         elif args.action == 'compliance':
-            power_cycle()
+            mdec_cycle()
             set_power_permission(True)
             run('v4l2-compliance', '-d', video_node('h264'), timeout=20)
             require_suspended(t7_device())
         else:
             if args.action == 'h264':
-                power_cycle()
+                mdec_cycle()
                 set_power_permission(True)
             video_node('wave' if args.action == 'wave' else 'h264')
             output = Path('/tmp/vim4-vdec-' + args.action + '.i420')
@@ -410,8 +433,8 @@ def main():
     parser.add_argument('action', choices=ACTIONS)
     parser.add_argument('--manifest', type=Path)
     parser.add_argument('--fixtures', default='/var/tmp/vim4-vdec-fixtures')
-    parser.add_argument('--payload', default='/var/tmp/vim4-vdec-power-fix')
-    parser.add_argument('--backup', default='/var/backups/vim4-vdec-power-fix-20261022')
+    parser.add_argument('--payload', default='/var/tmp/vim4-vdec-mdec')
+    parser.add_argument('--backup', default='/var/backups/vim4-vdec-mdec-20261022')
     parser.add_argument('--execute', action='store_true')
     parser.add_argument('--at-board', action='store_true')
     parser.add_argument('--locked', action='store_true', help=argparse.SUPPRESS)
@@ -431,7 +454,8 @@ def main():
                           'order': ['board + heavy locks', 'boot-install, reboot, arm-baseline',
                                     'probe: gate off, EPERM, read-only SMC status',
                                     'power: explicit opt-in, one DOS read, verified power off',
-                                    'compliance only after probe + power receipts',
+                                    'mdec: secure policy + verified prerequisites, one PIC_DC read, power off',
+                                    'compliance only after probe + power + mdec receipts',
                                     'stop clients', 'exclusive codec lease', args.action,
                                     'safe unload or RESET_REQUIRED', 'restore boot baseline',
                                     'encoding + HDMI + services + UDC + actual HID verification']}, indent=2))

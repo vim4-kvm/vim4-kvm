@@ -156,7 +156,7 @@ class DecoderWindowTests(unittest.TestCase):
             args.action = 'power'
             state = window.begin_stage(args, path)
             window.finish_stage(state, False, path)
-            for action in ('probe', 'power', 'compliance', 'h264', 'wave'):
+            for action in ('probe', 'power', 'mdec', 'compliance', 'h264', 'wave'):
                 args.action = action
                 with self.subTest(action=action), self.assertRaises(ValueError):
                     window.begin_stage(args, path)
@@ -178,6 +178,44 @@ class DecoderWindowTests(unittest.TestCase):
                 state.write_text('VDEC[4]=0 NIC3[39]=0 (0=on 1=off)\n')
                 with self.assertRaises(RuntimeError):
                     window.power_cycle()
+
+    def test_compliance_requires_mdec_receipt_even_after_power_passed(self):
+        with tempfile.TemporaryDirectory() as directory, \
+                patch.object(window.Path, 'read_text', return_value='boot-test'):
+            path = Path(directory) / 'stages.json'
+            path.touch()
+            identity = {'boot': 'boot-test', 'build': 'test'}
+            state = {'identity': identity, 'passed': ['probe', 'power']}
+            with patch.object(window.json, 'loads', return_value=state):
+                args = SimpleNamespace(action='compliance', build_id='test')
+                with self.assertRaisesRegex(ValueError, 'Required previous stage: mdec'):
+                    window.begin_stage(args, path)
+
+    def test_mdec_cycle_blocks_open_on_read_or_power_off_failure(self):
+        with tempfile.TemporaryDirectory() as directory:
+            device = Path(directory)
+            result = device / 'mdec_test'
+            state = device / 'power_state'
+            for passed, off in ((False, True), (True, False), (True, True)):
+                result.write_text(f'passed={int(passed)} MDEC_PIC_DC_CTRL=0x0\n')
+                state.write_text(f'VDEC[4]={int(off)} NIC3[39]=0\n')
+                with self.subTest(passed=passed, off=off), \
+                        patch.object(window, 'power_cycle') as power, \
+                        patch.object(window, 't7_device', return_value=device), \
+                        patch.object(window, 'run') as run, \
+                        patch.object(window, 'set_power_permission') as permission, \
+                        patch.object(window, 'require_suspended'), \
+                        contextlib.redirect_stdout(io.StringIO()):
+                    if passed and off:
+                        window.mdec_cycle()
+                    else:
+                        with self.assertRaises(RuntimeError):
+                            window.mdec_cycle()
+                    power.assert_called_once()
+                    self.assertIn('mdec_test', run.call_args.args[-1])
+                    self.assertEqual(run.call_args.kwargs['timeout'], 8)
+                    self.assertEqual([c.args[0] for c in permission.call_args_list],
+                                     [True, False] if passed and off else [True])
 
 
 if __name__ == '__main__':
