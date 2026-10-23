@@ -1,0 +1,100 @@
+From 6fd0d0c9ec6c0e846219f18f72f48312cd757827 Mon Sep 17 00:00:00 2001
+From: localhost-copilot <318096335+localhost-copilot@users.noreply.github.com>
+Date: Wed, 21 Oct 2026 17:09:22 -0700
+Subject: [PATCH] media: map native YUV444 components independently of expanded
+ YUV420
+
+---
+ drivers/media/platform/amlogic/t7-hdmirx/t7-hdmirx.c    | 8 ++++++++
+ drivers/media/platform/amlogic/t7-hdmirx/t7-hdmirx.h    | 1 +
+ drivers/media/platform/amlogic/t7-hdmirx/t7-vdin-test.c | 5 +++++
+ drivers/media/platform/amlogic/t7-hdmirx/test_stream.py | 1 +
+ drivers/media/platform/amlogic/t7-hdmirx/test_vdin.py   | 8 +++++++-
+ 5 files changed, 22 insertions(+), 1 deletion(-)
+
+diff --git a/drivers/media/platform/amlogic/t7-hdmirx/t7-hdmirx.c b/drivers/media/platform/amlogic/t7-hdmirx/t7-hdmirx.c
+index 64f854b9e36ce..f717d253ac847 100644
+--- a/drivers/media/platform/amlogic/t7-hdmirx/t7-hdmirx.c
++++ b/drivers/media/platform/amlogic/t7-hdmirx/t7-hdmirx.c
+@@ -1270,6 +1270,14 @@ bool t7_hdmirx_stream_is_yuv(struct device *dev)
+ }
+ EXPORT_SYMBOL_GPL(t7_hdmirx_stream_is_yuv);
+ 
++bool t7_hdmirx_stream_is_yuv444(struct device *dev)
++{
++	struct t7_hdmirx *rx = dev_get_drvdata(dev);
++
++	return READ_ONCE(rx->lease_yuv) && !READ_ONCE(rx->lease_420);
++}
++EXPORT_SYMBOL_GPL(t7_hdmirx_stream_is_yuv444);
++
+ void t7_hdmirx_stream_put(struct device *dev)
+ {
+ 	struct t7_hdmirx *rx = dev_get_drvdata(dev);
+diff --git a/drivers/media/platform/amlogic/t7-hdmirx/t7-hdmirx.h b/drivers/media/platform/amlogic/t7-hdmirx/t7-hdmirx.h
+index 7ae07d481737e..2575ca90aa50f 100644
+--- a/drivers/media/platform/amlogic/t7-hdmirx/t7-hdmirx.h
++++ b/drivers/media/platform/amlogic/t7-hdmirx/t7-hdmirx.h
+@@ -31,5 +31,6 @@ void t7_hdmirx_stream_put(struct device *dev);
+ /* Stable input classification for the held stream lease, until stream_put. */
+ bool t7_hdmirx_stream_is_hdr(struct device *dev);
+ bool t7_hdmirx_stream_is_yuv(struct device *dev);
++bool t7_hdmirx_stream_is_yuv444(struct device *dev);
+ 
+ #endif
+diff --git a/drivers/media/platform/amlogic/t7-hdmirx/t7-vdin-test.c b/drivers/media/platform/amlogic/t7-hdmirx/t7-vdin-test.c
+index c9d718ddfc9d0..eecdbb7e2a183 100644
+--- a/drivers/media/platform/amlogic/t7-hdmirx/t7-vdin-test.c
++++ b/drivers/media/platform/amlogic/t7-hdmirx/t7-vdin-test.c
+@@ -366,6 +366,11 @@ static void t7_vdin_configure(struct t7_vdin *vdin)
+ 	t7_vdin_write(vdin, VDIN_GCLK_CTRL2, 0);
+ 	/* The core supplies R/G/B; the packed MIF emits components 2/1/0. */
+ 	t7_vdin_write(vdin, VDIN_COM_CTRL0, vdin->nv12 ? 0x915 : 0x195);
++	/* Native 4:4:4 arrives as Cr/Y/Cb with this RX core mapping. Expanded
++	 * 4:2:0 already arrives as Y/Cb/Cr; keep its qualified HDR path intact.
++	 */
++	if (t7_hdmirx_stream_is_yuv444(vdin->receiver))
++		t7_vdin_write(vdin, VDIN_COM_CTRL0, 0x255);
+ 	t7_vdin_write(vdin, VDIN_ASFIFO_CTRL1, 0xe40000);
+ 	t7_vdin_update(vdin, VPU_SW_RESET, BIT(26), BIT(26));
+ 	t7_vdin_update(vdin, VPU_SW_RESET, BIT(26), 0);
+diff --git a/drivers/media/platform/amlogic/t7-hdmirx/test_stream.py b/drivers/media/platform/amlogic/t7-hdmirx/test_stream.py
+index 55dd7f47dc686..87bdc810b96e1 100644
+--- a/drivers/media/platform/amlogic/t7-hdmirx/test_stream.py
++++ b/drivers/media/platform/amlogic/t7-hdmirx/test_stream.py
+@@ -194,6 +194,7 @@ static int t7_hdmirx_check_video(void *dev) { return fail_timing?-ENOLINK:0; }
+ static unsigned int receiver_users;
+ static bool t7_hdmirx_stream_is_hdr(void *dev) { (void)dev; return false; }
+ static bool t7_hdmirx_stream_is_yuv(void *dev) { (void)dev; return false; }
++static bool t7_hdmirx_stream_is_yuv444(void *dev) { (void)dev; return false; }
+ static int t7_hdmirx_stream_get(void *dev, unsigned int width, unsigned int height) {
+     int ret=t7_hdmirx_check_video(dev);
+     if (!ret) receiver_users++;
+diff --git a/drivers/media/platform/amlogic/t7-hdmirx/test_vdin.py b/drivers/media/platform/amlogic/t7-hdmirx/test_vdin.py
+index 76e68db48367b..c40ad6267e44c 100644
+--- a/drivers/media/platform/amlogic/t7-hdmirx/test_vdin.py
++++ b/drivers/media/platform/amlogic/t7-hdmirx/test_vdin.py
+@@ -58,9 +58,10 @@ static struct t7_vdin_buffer *t7_vdin_next_buffer(struct t7_vdin *vdin)
+ { assert(!vdin->direct_dma); return NULL; }
+ static unsigned int pins, requests, timing_checks, receiver_users;
+ static unsigned int pq_writes, gain_writes, oetf_writes;
+-static bool hdr_input, yuv_input;
++static bool hdr_input, yuv_input, yuv444_input;
+ static bool t7_hdmirx_stream_is_hdr(struct device *dev) { (void)dev; return hdr_input; }
+ static bool t7_hdmirx_stream_is_yuv(struct device *dev) { (void)dev; return hdr_input || yuv_input; }
++static bool t7_hdmirx_stream_is_yuv444(struct device *dev) { (void)dev; return yuv444_input; }
+ static bool timeout, busy, bad_timing, change_timing;
+ static u32 readl(void *address)
+ {
+@@ -203,6 +204,11 @@ int main(void)
+     hdr_input=false;yuv_input=true;t7_vdin_configure(&receiver);
+     assert(readl(registers+VDIN_HDR_CTRL*4)==0);
+     assert(readl(registers+VDIN_MATRIX_CTRL*4)==0);
++    yuv444_input=true;t7_vdin_configure(&receiver);
++    assert(readl(registers+VDIN_COM_CTRL0*4)==0x255);
++    assert(readl(registers+VDIN_MATRIX_CTRL*4)==0);
++    yuv444_input=false;t7_vdin_configure(&receiver);
++    assert(readl(registers+VDIN_COM_CTRL0*4)==0x915);
+     yuv_input=false;t7_vdin_configure(&receiver);
+     assert(readl(registers+VDIN_HDR_CTRL*4)==BIT(16));
+     assert(readl(registers+VDIN_HDR_MATRIX_OUT*4)==0);

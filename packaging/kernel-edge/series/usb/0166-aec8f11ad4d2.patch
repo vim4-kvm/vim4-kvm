@@ -1,0 +1,103 @@
+From aec8f11ad4d2641500a39ed9ea243c54ffeb7b2d Mon Sep 17 00:00:00 2001
+From: localhost-copilot <318096335+localhost-copilot@users.noreply.github.com>
+Date: Mon, 19 Oct 2026 19:04:35 +0800
+Subject: [PATCH] usb: crg: clear gadget state after disconnect
+
+---
+ drivers/usb/gadget/udc/crg/crg_udc.c          |  7 +++--
+ .../usb/gadget/udc/crg/test_probe_failures.py | 27 +++++++++++++++++--
+ 2 files changed, 30 insertions(+), 4 deletions(-)
+
+diff --git a/drivers/usb/gadget/udc/crg/crg_udc.c b/drivers/usb/gadget/udc/crg/crg_udc.c
+index 40a823ae9e59b..dd2e553d4229a 100644
+--- a/drivers/usb/gadget/udc/crg/crg_udc.c
++++ b/drivers/usb/gadget/udc/crg/crg_udc.c
+@@ -3039,8 +3039,11 @@ static int crg_gadget_pullup(struct usb_gadget *g, int is_on)
+ 		g_dnl_board_usb_cable_connected();
+ 	}
+ 	spin_unlock_irqrestore(&udc->udc_lock, flags);
+-	if (!is_on && !crg_stop_controller(udc))
+-		return -ETIMEDOUT;
++	if (!is_on) {
++		if (!crg_stop_controller(udc))
++			return -ETIMEDOUT;
++		usb_gadget_set_state(g, USB_STATE_NOTATTACHED);
++	}
+ 	return 0;
+ }
+ 
+diff --git a/drivers/usb/gadget/udc/crg/test_probe_failures.py b/drivers/usb/gadget/udc/crg/test_probe_failures.py
+index b07b81dcddb56..8228899446a6f 100644
+--- a/drivers/usb/gadget/udc/crg/test_probe_failures.py
++++ b/drivers/usb/gadget/udc/crg/test_probe_failures.py
+@@ -14,6 +14,7 @@ def function(name):
+ 
+ harness = r"""
+ #include <assert.h>
++#include <stdbool.h>
+ #include <errno.h>
+ #include <stddef.h>
+ #include <stdint.h>
+@@ -31,23 +32,35 @@ typedef uint32_t u32;
+ #define CRG_DEBUG(...) do {} while (0)
+ #define CRG_ERROR(...) do {} while (0)
+ #define container_of(p, t, m) ((t *)((char *)(p) - offsetof(t, m)))
++enum { USB_STATE_NOTATTACHED, USB_STATE_CONFIGURED };
+ enum { USB_SPEED_UNKNOWN, USB_SPEED_FULL, USB_SPEED_HIGH,
+        USB_SPEED_SUPER, USB_SPEED_SUPER_PLUS };
+ struct usb_request { int unused; };
+ struct usb_ep { int unused; };
+ struct crg_udc_request { struct usb_request usb_req; };
+ struct crg_uccr { u32 control, capability, config0; };
++struct usb_gadget { int max_speed, irq, state; };
+ struct crg_gadget_dev {
+     struct crg_uccr *uccr;
+-    struct { int max_speed, irq; } gadget;
++    struct usb_gadget gadget;
+     struct { struct usb_ep usb_ep; } udc_ep[1];
+     struct crg_udc_request *status_req;
+     int irq;
++    int udc_lock;
++    bool pullup_enabled;
+ };
+ struct platform_device { int unused; };
+ static struct crg_gadget_dev crg_udc_dev;
+ static int fail_at, stage, irq_result, request_result, irq_requests;
+ static struct crg_udc_request status_request;
++static bool stop_ok = true;
++static int starts;
++#define spin_lock_irqsave(lock, flags) do { (void)(lock); (flags) = 0; } while (0)
++#define spin_unlock_irqrestore(lock, flags) do { (void)(lock); (void)(flags); } while (0)
++static void crg_udc_start(struct crg_gadget_dev *d) { (void)d; starts++; }
++static int g_dnl_board_usb_cable_connected(void) { return 1; }
++static bool crg_stop_controller(struct crg_gadget_dev *d) { (void)d; return stop_ok; }
++static void usb_gadget_set_state(struct usb_gadget *g, int state) { g->state = state; }
+ static u32 reg_read(u32 *p) { return *p; }
+ static void reg_write(u32 *p, u32 v) { *p = v; }
+ static int init_event_ring(struct crg_gadget_dev *d, int i)
+@@ -100,6 +113,15 @@ int main(void)
+     assert(crg_gadget_irq_init(&device) == -ENOMEM && irq_requests == 1);
+     request_result = 0;
+     assert(crg_gadget_irq_init(&device) == 0 && irq_requests == 2);
++    udc.gadget.state = USB_STATE_CONFIGURED;
++    assert(crg_gadget_pullup(&udc.gadget, 0) == 0);
++    assert(!udc.pullup_enabled && udc.gadget.state == USB_STATE_NOTATTACHED);
++    assert(crg_gadget_pullup(&udc.gadget, 1) == 0);
++    assert(udc.pullup_enabled && starts == 1);
++    /* Binding again must not expose the previous connection's configured state. */
++    assert(udc.gadget.state == USB_STATE_NOTATTACHED);
++    stop_ok = false;
++    assert(crg_gadget_pullup(&udc.gadget, 0) == -ETIMEDOUT);
+     puts("CRG allocation and IRQ failure regressions passed");
+     return 0;
+ }
+@@ -108,7 +130,8 @@ int main(void)
+ with tempfile.TemporaryDirectory(prefix="crg-probe-test-") as directory:
+     path = pathlib.Path(directory)
+     (path / "test.c").write_text(harness + function("reset_data_struct")
+-                                 + function("crg_gadget_irq_init") + checks)
++                                 + function("crg_gadget_irq_init")
++                                 + function("crg_gadget_pullup") + checks)
+     subprocess.run(["cc", "-std=c11", "-Wall", "-Wextra", "-Werror",
+                     str(path / "test.c"), "-o", str(path / "test")], check=True)
+     subprocess.run([str(path / "test")], check=True)

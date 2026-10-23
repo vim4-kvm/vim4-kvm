@@ -1,0 +1,23 @@
+From d5fff4595899b6c73f68769e24973bad6556a094 Mon Sep 17 00:00:00 2001
+From: localhost-copilot <318096335+localhost-copilot@users.noreply.github.com>
+Date: Thu, 22 Oct 2026 18:28:38 +0800
+Subject: [PATCH] thermal: khadas: align the unavailable-temperature diagnostic
+
+---
+ drivers/thermal/khadas_mcu_fan.c | 3 ++-
+ 1 file changed, 2 insertions(+), 1 deletion(-)
+
+diff --git a/drivers/thermal/khadas_mcu_fan.c b/drivers/thermal/khadas_mcu_fan.c
+index 3404439134c86..3c016bb49c0e6 100644
+--- a/drivers/thermal/khadas_mcu_fan.c
++++ b/drivers/thermal/khadas_mcu_fan.c
+@@ -160,7 +160,8 @@ static void khadas_vim4_fan_work(struct work_struct *work)
+ 				 "Waiting for fan thermal zones; requesting %u%% output\n", target);
+ 		else
+ 			dev_warn_ratelimited(ctx->dev,
+-				"Fan temperature unavailable; requesting %u%% output\n", target);
++					     "Fan temperature unavailable; requesting %u%% output\n",
++					     target);
+ 	}
+ 	ctx->quiet_sampled = true;
+ 

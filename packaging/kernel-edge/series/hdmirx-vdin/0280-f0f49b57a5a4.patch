@@ -1,0 +1,140 @@
+From f0f49b57a5a458d58419ba5b747c1a76e4731506 Mon Sep 17 00:00:00 2001
+From: localhost-copilot <318096335+localhost-copilot@users.noreply.github.com>
+Date: Fri, 23 Oct 2026 16:51:26 +0800
+Subject: [PATCH] media: t7-hdmirx: retry invalid live timing query snapshots
+
+---
+ .../platform/amlogic/t7-hdmirx/t7-hdmirx.c    | 28 ++++++++++++-------
+ .../platform/amlogic/t7-hdmirx/t7-vdin-test.c |  4 ++-
+ .../amlogic/t7-hdmirx/test_source_events.py   |  4 +--
+ .../amlogic/t7-hdmirx/test_timings.py         | 13 +++++++++
+ 4 files changed, 36 insertions(+), 13 deletions(-)
+
+diff --git a/drivers/media/platform/amlogic/t7-hdmirx/t7-hdmirx.c b/drivers/media/platform/amlogic/t7-hdmirx/t7-hdmirx.c
+index 94da6dd4e34e9..3b0b9717d81c5 100644
+--- a/drivers/media/platform/amlogic/t7-hdmirx/t7-hdmirx.c
++++ b/drivers/media/platform/amlogic/t7-hdmirx/t7-hdmirx.c
+@@ -1014,6 +1014,22 @@ static bool t7_hdmirx_same_measurement(const struct t7_hdmirx_measurement *a,
+ 	return !memcmp(&left, &right, sizeof(left)) && delta <= a->ticks / 2000;
+ }
+ 
++static int t7_hdmirx_measure_live(struct t7_hdmirx *rx, bool yuv420,
++				struct t7_hdmirx_measurement *measured)
++{
++	int ret = t7_hdmirx_measure(rx, yuv420, measured);
++
++	/* A coherent FDET can briefly saturate or report zero height. Every
++	 * measurement in a live timing query must classify this as retry, or
++	 * its middle read can publish a false SOURCE_CHANGE despite passing
++	 * the surrounding status checks. Persistent retries remain bounded by
++	 * the link worker; no invalid measurement is published.
++	 */
++	if (ret == -ERANGE && rx->link && READ_ONCE(rx->link->users))
++		return -EAGAIN;
++	return ret;
++}
++
+ static int t7_hdmirx_video_error(const char **reason, const char *value, int error)
+ {
+ 	if (reason)
+@@ -1060,15 +1076,7 @@ static int t7_hdmirx_video_status_reason(struct t7_hdmirx *rx, const char **reas
+ 	    (hdr != rx->lease_hdr || yuv != rx->lease_yuv || yuv420 != rx->lease_420))
+ 		return t7_hdmirx_video_error(reason, "lease-encoding", -ENOLINK);
+ 	if (rx->dynamic_modes) {
+-		ret = t7_hdmirx_measure(rx, yuv420, &measured);
+-		/* An aligned FDET can briefly saturate at 0xffffff or report zero
+-		 * height even when both reads agree. Discard that frame under a
+-		 * live lease. The link worker bounds EAGAIN to one second before
+-		 * clearing ready; genuine loss and valid mode changes still stop
+-		 * capture immediately, and no malformed frame is published.
+-		 */
+-		if (ret == -ERANGE && rx->link && READ_ONCE(rx->link->users))
+-			ret = -EAGAIN;
++		ret = t7_hdmirx_measure_live(rx, yuv420, &measured);
+ 		if (!ret && rx->link && rx->link->users &&
+ 		    !t7_hdmirx_same_measurement(&measured, &rx->lease_mode))
+ 			return t7_hdmirx_video_error(reason, "lease-timing", -ENOLINK);
+@@ -1170,7 +1178,7 @@ int t7_hdmirx_query_timings(struct device *dev, struct v4l2_dv_timings *timings,
+ 		if (ret)
+ 			return ret;
+ 		scale = color.space == 3 ? 2 : 1;
+-		ret = t7_hdmirx_measure(rx, scale == 2, &m);
++		ret = t7_hdmirx_measure_live(rx, scale == 2, &m);
+ 		if (ret)
+ 			return ret;
+ 		mode = (struct v4l2_dv_timings) { .type = V4L2_DV_BT_656_1120 };
+diff --git a/drivers/media/platform/amlogic/t7-hdmirx/t7-vdin-test.c b/drivers/media/platform/amlogic/t7-hdmirx/t7-vdin-test.c
+index eec98627d5689..aa290b27d52ca 100644
+--- a/drivers/media/platform/amlogic/t7-hdmirx/t7-vdin-test.c
++++ b/drivers/media/platform/amlogic/t7-hdmirx/t7-vdin-test.c
+@@ -166,7 +166,7 @@ struct t7_vdin {
+ 	u32 ring_pauses;
+ 	u64 copied_bytes;
+ 	/* Last failed worker remains visible across close and the next STREAMON. */
+-	u32 stream_stops, last_stop_sequence;
++	u32 stream_stops, last_stop_sequence, source_changes;
+ 	u64 invalid_frames;
+ 	int last_stop_error;
+ 	const char *last_stop_reason;
+@@ -999,6 +999,7 @@ static void t7_vdin_source_work(struct work_struct *work)
+ 				timings.bt.height != vdin->source_height ||
+ 				delta > vdin->source_period / 2000)))) {
+ 			event.u.src_change.changes = V4L2_EVENT_SRC_CH_RESOLUTION;
++			vdin->source_changes++;
+ 			v4l2_event_queue(&vdin->video, &event);
+ 		}
+ 		vdin->source_seen = true;
+@@ -1362,6 +1363,7 @@ static int t7_vdin_status(struct seq_file *s, void *unused)
+ 	seq_printf(s, "stream_pauses: %u\n", vdin->ring_pauses);
+ 	seq_printf(s, "stream_error: %d\n", vdin->ring_error);
+ 	seq_printf(s, "stream_stops: %u\n", READ_ONCE(vdin->stream_stops));
++	seq_printf(s, "source_changes: %u\n", READ_ONCE(vdin->source_changes));
+ 	seq_printf(s, "invalid_frames: %llu\n", READ_ONCE(vdin->invalid_frames));
+ 	seq_printf(s, "last_stop_error: %d\n", READ_ONCE(vdin->last_stop_error));
+ 	seq_printf(s, "last_stop_reason: %s\n", vdin->last_stop_reason ?: "none");
+diff --git a/drivers/media/platform/amlogic/t7-hdmirx/test_source_events.py b/drivers/media/platform/amlogic/t7-hdmirx/test_source_events.py
+index ffd299b6ea836..3034c69ced870 100644
+--- a/drivers/media/platform/amlogic/t7-hdmirx/test_source_events.py
++++ b/drivers/media/platform/amlogic/t7-hdmirx/test_source_events.py
+@@ -26,7 +26,7 @@ struct t7_vdin {
+     struct delayed_work source_work; struct mutex video_lock;
+     struct device *receiver; struct video_device video;
+     bool source_seen,source_locked; unsigned int source_width,source_height;
+-    unsigned int source_period;
++    unsigned int source_period,source_changes;
+ };
+ #define container_of(p,t,m) ((t *)((char *)(p)-offsetof(t,m)))
+ #define to_delayed_work(p) container_of(p,struct delayed_work,work)
+@@ -75,7 +75,7 @@ int main(void) {
+     frame_period=33333; t7_vdin_source_work(&receiver.source_work.work); assert(events==5);
+     frame_period=41667; t7_vdin_source_work(&receiver.source_work.work); assert(events==6);
+     frame_period=16667; t7_vdin_source_work(&receiver.source_work.work); assert(events==7);
+-    assert(!receiver.video_lock.held);
++    assert(!receiver.video_lock.held && receiver.source_changes==events);
+     t7_vdin_source_stop(&receiver); assert(canceled==1);
+     puts("Source monitor: real mode/loss/recovery events, stable input and torn-counter retry passed");
+ }
+diff --git a/drivers/media/platform/amlogic/t7-hdmirx/test_timings.py b/drivers/media/platform/amlogic/t7-hdmirx/test_timings.py
+index ac59c7270b3af..85732235e19b0 100644
+--- a/drivers/media/platform/amlogic/t7-hdmirx/test_timings.py
++++ b/drivers/media/platform/amlogic/t7-hdmirx/test_timings.py
+@@ -215,6 +215,19 @@ int main(void) {
+     assert(t7_hdmirx_check_video_now(&dev)==-ENOLINK);
+     link.ready=true; measured_mode(&modes[0]);
+     assert(!t7_hdmirx_check_video_now(&dev));
++    /* The ioctl takes a fresh measurement between its status checks.
++     * Saturation at that middle read must not become a false source loss.
++     */
++    for (unsigned int read=3;read<=5;read+=2) {
++        measured_mode(&modes[0]); period_reads=0; change_read=read;
++        changed_period=0xffffff; timing=untouched;
++        interval=(struct v4l2_fract){123,456};
++        assert(t7_hdmirx_query_timings(&dev,&timing,&interval)==-EAGAIN);
++        assert(!memcmp(&timing,&untouched,sizeof(timing)));
++        assert(interval.numerator==123 && interval.denominator==456);
++    }
++    change_read=0; measured_mode(&modes[0]);
++    assert(!t7_hdmirx_query_timings(&dev,&timing,&interval));
+     measured_mode(&modes[1]);
+     assert(t7_hdmirx_check_video_now(&dev)==-ENOLINK);
+     link.users=0; measured_mode(&modes[0]); period(0xffffff);

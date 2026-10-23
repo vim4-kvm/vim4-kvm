@@ -1,0 +1,149 @@
+From 9fd256468fb01fccd869b1ed597f33fe35630d2b Mon Sep 17 00:00:00 2001
+From: deepdream <deepdream@deepdremsMinim4.lan>
+Date: Tue, 20 Oct 2026 20:46:35 -0700
+Subject: [PATCH] media: amlogic: drain capture without requiring a final frame
+ interrupt
+
+---
+ .../media/platform/amlogic/t7-hdmirx/README.md |  5 +++++
+ .../platform/amlogic/t7-hdmirx/t7-vdin-test.c  | 12 ++++++++++--
+ .../platform/amlogic/t7-hdmirx/test_stream.py  | 13 +++++++++++++
+ .../platform/amlogic/t7-hdmirx/test_vdin.py    | 18 ++++++++++++++++--
+ 4 files changed, 44 insertions(+), 4 deletions(-)
+
+diff --git a/drivers/media/platform/amlogic/t7-hdmirx/README.md b/drivers/media/platform/amlogic/t7-hdmirx/README.md
+index 089647c7f15d5..d864a0cd61295 100644
+--- a/drivers/media/platform/amlogic/t7-hdmirx/README.md
++++ b/drivers/media/platform/amlogic/t7-hdmirx/README.md
+@@ -18,6 +18,11 @@ Capture holds a receiver lease from before DMA starts until the MIF is stopped.
+ The worker never reconfigures a PHY with outstanding leases. Stop quarantine
+ retains that lease until reboot. Audio PLL and DDC registers are not part of the
+ video relock sequence. Status exposes `link_ready` and `capture_users`.
++Stopping first gates write requests and synchronizes the IRQ, then polls the
++MIF's final-AXI-response write-done flag. A source can stop before an IRQ arrives;
++hardware-confirmed drain releases its lease without publishing that partial
++frame. A genuinely busy MIF still quarantines buffers until reboot, and a faulted
++queue rejects new buffer allocation before it can consume more CMA memory.
+ `python3 test_link.py` covers delayed/absent source, PLL failure, late alignment,
+ source changes during qualification and DMA lease exclusion using actual code.
+ 
+diff --git a/drivers/media/platform/amlogic/t7-hdmirx/t7-vdin-test.c b/drivers/media/platform/amlogic/t7-hdmirx/t7-vdin-test.c
+index d7ea9d83ad526..29a97352f0e53 100644
+--- a/drivers/media/platform/amlogic/t7-hdmirx/t7-vdin-test.c
++++ b/drivers/media/platform/amlogic/t7-hdmirx/t7-vdin-test.c
+@@ -277,10 +277,15 @@ static int t7_vdin_stop_dma(struct t7_vdin *vdin)
+ 	t7_vdin_read(vdin, VDIN_WR_CTRL);
+ 	spin_unlock_irqrestore(&vdin->irq_lock, flags);
+ 	synchronize_irq(vdin->irq);
+-	/* T7's integrated MIF uses write-done, not the older VPU arbiter bits. */
++	/* With requests gated, T7's final-AXI-response write-done proves drain.
++	 * Source loss may suppress the IRQ: software completion is required to
++	 * publish a frame, but must not veto hardware-confirmed DMA shutdown.
++	 */
+ 	ret = readl_poll_timeout(vdin->regs + VDIN_WR_STATUS * 4, idle,
+-				 vdin->dma_idle && (idle & BIT(0)),
++				 idle & BIT(0),
+ 				 10, 100000);
++	if (!ret)
++		vdin->dma_idle = true;
+ 	if (ret) {
+ 		/* Keep DMA memory, clocks and binding alive until a hardware reboot. */
+ 		if (!vdin->faulted)
+@@ -708,6 +713,9 @@ static int t7_vdin_queue_setup(struct vb2_queue *queue, unsigned int *buffers,
+ {
+ 	struct t7_vdin *vdin = vb2_get_drv_priv(queue);
+ 
++	/* Reject retries before vb2 can allocate a new CMA-backed buffer pool. */
++	if (vdin->faulted)
++		return -EIO;
+ 	if (*planes)
+ 		return *planes == 1 && sizes[0] >= vdin->allocation_size ? 0 : -EINVAL;
+ 	*planes = 1;
+diff --git a/drivers/media/platform/amlogic/t7-hdmirx/test_stream.py b/drivers/media/platform/amlogic/t7-hdmirx/test_stream.py
+index c5641be343f7e..ed81a4cd57293 100644
+--- a/drivers/media/platform/amlogic/t7-hdmirx/test_stream.py
++++ b/drivers/media/platform/amlogic/t7-hdmirx/test_stream.py
+@@ -319,6 +319,16 @@ static void check_direct(void) {
+     assert(!pthread_create(&stop,NULL,stop_stream,NULL)); await(&stop_waiting,1);
+     assert(!completed); step(1,false); pthread_join(stop,NULL);
+     assert(completed==4 && !pins); teardown(b); assert(!live_leases);
++    /* Source loss may suppress the IRQ even after the final AXI response. */
++    setup_direct(b); assert(!t7_vdin_start_streaming(&receiver.queue,4)); await(&started,1);
++    u32 drained = BIT(0);
++    memcpy(registers+VDIN_WR_STATUS*4,&drained,4);
++    assert(!receiver.dma_idle);
++    __atomic_store_n(&expire,true,__ATOMIC_RELEASE); wake_up(&receiver.buffer_wait);
++    await(&completed,4); t7_vdin_stop_streaming(&receiver.queue);
++    assert(!receiver.faulted && !pins && !receiver.receiver_lease);
++    for (int i=0;i<4;i++) assert(b[i].vb.vb2_buf.state==VB2_BUF_STATE_ERROR);
++    teardown(b); assert(!live_leases);
+     /* Busy IRQ / missing IRQ: retain used allocator memory despite vb2 cleanup. */
+     for (int missing=0;missing<2;missing++) {
+         setup_direct(b); assert(!t7_vdin_start_streaming(&receiver.queue,4)); await(&started,1);
+@@ -326,6 +336,9 @@ static void check_direct(void) {
+         else step(1,true);
+         await(&completed,4); t7_vdin_stop_streaming(&receiver.queue);
+         assert(receiver.faulted && pins==1 && receiver.queue.error);
++        unsigned int buffers=4, planes=0, sizes[1]={0};
++        for (int retry=0;retry<16;retry++)
++            assert(t7_vdin_queue_setup(&receiver.queue,&buffers,&planes,sizes,NULL)==-EIO);
+         struct dma_buf *quarantined=b[0].lease;
+         for (int i=0;i<4;i++) assert(b[i].vb.vb2_buf.state==VB2_BUF_STATE_ERROR);
+         teardown(b); assert(live_leases==1 && quarantined->allocation->refs==1);
+diff --git a/drivers/media/platform/amlogic/t7-hdmirx/test_vdin.py b/drivers/media/platform/amlogic/t7-hdmirx/test_vdin.py
+index 5618ea9171c55..e137af5ee344d 100644
+--- a/drivers/media/platform/amlogic/t7-hdmirx/test_vdin.py
++++ b/drivers/media/platform/amlogic/t7-hdmirx/test_vdin.py
+@@ -53,7 +53,7 @@ static uint8_t registers[0x40000], frame[3840U * 2160U * 3U + 16];
+ static struct t7_vdin receiver;
+ static struct t7_vdin_buffer *t7_vdin_next_buffer(struct t7_vdin *vdin)
+ { assert(!vdin->direct_dma); return NULL; }
+-static unsigned int pins, requests, timing_checks;
++static unsigned int pins, requests, timing_checks, receiver_users;
+ static bool timeout, busy, bad_timing, change_timing;
+ static u32 readl(void *address)
+ {
+@@ -100,6 +100,18 @@ static int t7_hdmirx_check_video(struct device *dev)
+     timing_checks++;
+     return bad_timing || (change_timing && timing_checks == 2) ? -ERANGE : 0;
+ }
++static int t7_hdmirx_stream_get(struct device *dev)
++{
++    int ret = t7_hdmirx_check_video(dev);
++    if (!ret) receiver_users++;
++    return ret;
++}
++static void t7_hdmirx_stream_put(struct device *dev)
++{
++    (void)dev;
++    assert(receiver_users && !receiver.armed && receiver.dma_idle);
++    receiver_users--;
++}
+ static unsigned long wait_for_completion_timeout(struct completion *done, unsigned long limit);
+ '''
+ checks = r'''
+@@ -131,7 +143,7 @@ static void reset(void)
+     receiver = (struct t7_vdin) { .regs = registers, .frame = frame,
+                                .frame_dma = 0x10000000, .width = 1920, .height = 1080,
+                                .stride = VDIN_STRIDE, .frame_size = VDIN_FRAME_SIZE };
+-    pins = requests = timing_checks = 0;
++    pins = requests = timing_checks = receiver_users = 0;
+     timeout = busy = bad_timing = change_timing = false;
+ }
+ int main(void)
+@@ -141,6 +153,7 @@ int main(void)
+     assert(!t7_vdin_capture(&receiver));
+     assert((readl(registers + VDIN_LFIFO_CTRL * 4) & 0xc0000000) == 0xc0000000);
+     assert(receiver.snapshots == 1 && receiver.frame_irqs == 2 && !receiver.armed);
++    assert(!receiver_users);
+     assert(requests == 1 && timing_checks == 2 && frame[receiver.frame_size - 1] == 0x5a);
+     assert(frame[receiver.frame_size] == 0xa5);
+     assert(!t7_vdin_capture(&receiver) && receiver.snapshots == 2);
+@@ -158,6 +171,7 @@ int main(void)
+     reset(); timeout = true;
+     assert(t7_vdin_capture(&receiver) == -ETIMEDOUT);
+     assert(!receiver.armed && receiver.faulted && pins == 1 && !receiver.snapshots);
++    assert(receiver_users == 1);
+     assert(!(readl(registers + VDIN_WR_CTRL * 4) & VDIN_WR_REQ));
+     reset(); change_timing = true;
+     assert(t7_vdin_capture(&receiver) == -ERANGE && !receiver.snapshots);

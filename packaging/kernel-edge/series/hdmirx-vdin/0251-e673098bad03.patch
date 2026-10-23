@@ -1,0 +1,93 @@
+From e673098bad0343edcd788fb64d17887717b7d6ed Mon Sep 17 00:00:00 2001
+From: localhost-copilot <318096335+localhost-copilot@users.noreply.github.com>
+Date: Thu, 22 Oct 2026 19:02:38 +0800
+Subject: [PATCH] media: amlogic: qualify incoherent audio snapshots before
+ stopping PCM
+
+---
+ .../platform/amlogic/t7-hdmirx/t7-hdmirx.c      | 15 ++++++++++++++-
+ .../platform/amlogic/t7-hdmirx/test_audio.py    | 17 +++++++++++++++++
+ 2 files changed, 31 insertions(+), 1 deletion(-)
+
+diff --git a/drivers/media/platform/amlogic/t7-hdmirx/t7-hdmirx.c b/drivers/media/platform/amlogic/t7-hdmirx/t7-hdmirx.c
+index 4e57bb3d0ab63..0a5a1e754f61f 100644
+--- a/drivers/media/platform/amlogic/t7-hdmirx/t7-hdmirx.c
++++ b/drivers/media/platform/amlogic/t7-hdmirx/t7-hdmirx.c
+@@ -294,6 +294,7 @@ struct t7_hdmirx {
+ 	struct t7_hdmirx_audio_format audio_format, audio_pending;
+ 	u32 audio_generation;
+ 	unsigned int audio_stable_samples;
++	unsigned int audio_read_retries;
+ 	u32 audio_pll_saved[3];
+ 	u32 audio_fifo_saved;
+ 	u8 audio_core_saved[3];
+@@ -1285,7 +1286,7 @@ static int t7_hdmirx_read_audio(struct t7_hdmirx *rx,
+ 				clk_get_rate(rx->clocks[T7_RX_METER].clk));
+ 	format->rate = t7_hdmirx_audio_rate(tmds, n, cts);
+ 	if (!format->rate)
+-		return -ENOLINK;
++		return -EAGAIN;
+ 	declared = aif_rates[(aif[5] >> 2) & 7];
+ 	if (declared && declared != format->rate)
+ 		return -EAGAIN;
+@@ -1520,6 +1521,17 @@ static void t7_hdmirx_audio_work(struct work_struct *work)
+ 
+ 	mutex_lock(&rx->audio_lock);
+ 	ret = t7_hdmirx_read_audio(rx, &format);
++	/* ACR counters can update between byte reads. One incoherent snapshot
++	 * is not a source change; bound retries so a persistently invalid packet
++	 * still stops capture. A real video/link loss remains immediate.
++	 */
++	if (ret == -EAGAIN) {
++		rx->audio_stable_samples = 0;
++		if (++rx->audio_read_retries < 3)
++			goto out;
++	} else {
++		rx->audio_read_retries = 0;
++	}
+ 	if (ret) {
+ 		memset(&format, 0, sizeof(format));
+ 		rx->audio_stable_samples = 0;
+@@ -1549,6 +1561,7 @@ static void t7_hdmirx_audio_work(struct work_struct *work)
+ 				       SNDRV_CTL_EVENT_MASK_VALUE, &id);
+ 		}
+ 	}
++out:
+ 	mutex_unlock(&rx->audio_lock);
+ 	/* ALSA takes the stream lock here. Do not invert it with hw_free's
+ 	 * audio mutex; component removal joins this worker before freeing PCMs.
+diff --git a/drivers/media/platform/amlogic/t7-hdmirx/test_audio.py b/drivers/media/platform/amlogic/t7-hdmirx/test_audio.py
+index 927a3c31549a4..c2ad63294f0e0 100644
+--- a/drivers/media/platform/amlogic/t7-hdmirx/test_audio.py
++++ b/drivers/media/platform/amlogic/t7-hdmirx/test_audio.py
+@@ -209,6 +209,13 @@ int main(void) {
+     t7_hdmirx_audio_work((struct work_struct *)&rx.audio_work);
+     assert(rx.audio_format.rate==48000 && notifications==4 && rx.audio_generation==1);
+     assert(!t7_hdmirx_audio_hw_params(&stream,&params,&dai));
++    before=rx.audio_generation;
++    core[T7_RX_COR_AUDIO_AIF+3]++;
++    t7_hdmirx_audio_work((struct work_struct *)&rx.audio_work);
++    assert(rx.audio_generation==before && !rx.audio_invalid && !xruns);
++    core[T7_RX_COR_AUDIO_AIF+3]--;
++    t7_hdmirx_audio_work((struct work_struct *)&rx.audio_work);
++    assert(!rx.audio_read_retries);
+     acr(T7_RX_COR_N,6272); acr(T7_RX_COR_CTS,660000); aif(2,2);
+     t7_hdmirx_audio_work((struct work_struct *)&rx.audio_work);
+     assert(!rx.audio_format.rate && xruns==1 && !(readl(fifo)&BIT(31)));
+@@ -230,6 +237,16 @@ int main(void) {
+     before=notifications;
+     t7_hdmirx_audio_work((struct work_struct *)&rx.audio_work);
+     assert(before==notifications); /* no repeated events on a stable source */
++    assert(!t7_hdmirx_audio_hw_params(&stream,&params,&dai));
++    before=xruns;
++    core[T7_RX_COR_AUDIO_AIF+3]++;
++    for(unsigned int i=0;i<2;i++) {
++        t7_hdmirx_audio_work((struct work_struct *)&rx.audio_work);
++        assert(rx.audio_format.rate==44100 && before==xruns);
++    }
++    t7_hdmirx_audio_work((struct work_struct *)&rx.audio_work);
++    assert(!rx.audio_format.rate && xruns==before+1);
++    assert(!t7_hdmirx_audio_hw_free(&stream,&dai));
+     puts("seven ACR/AIF rates, malformed/unsupported packets, native constraints, stale PCM, PLL unwind passed");
+ }
+ '''

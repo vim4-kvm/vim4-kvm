@@ -1,0 +1,78 @@
+From eb59bbfe95d9958c480838ff478aeb0ebc8b69d8 Mon Sep 17 00:00:00 2001
+From: localhost-copilot <318096335+localhost-copilot@users.noreply.github.com>
+Date: Thu, 22 Oct 2026 15:47:05 +0800
+Subject: [PATCH] Keep HDMI capture streaming across isolated torn measurements
+
+---
+ .../platform/amlogic/t7-hdmirx/t7-vdin-test.c  |  7 +++++--
+ .../platform/amlogic/t7-hdmirx/test_stream.py  | 18 ++++++++++++++++++
+ 2 files changed, 23 insertions(+), 2 deletions(-)
+
+diff --git a/drivers/media/platform/amlogic/t7-hdmirx/t7-vdin-test.c b/drivers/media/platform/amlogic/t7-hdmirx/t7-vdin-test.c
+index b6d370957be10..2db74b151e440 100644
+--- a/drivers/media/platform/amlogic/t7-hdmirx/t7-vdin-test.c
++++ b/drivers/media/platform/amlogic/t7-hdmirx/t7-vdin-test.c
+@@ -762,7 +762,10 @@ static int t7_vdin_thread(void *data)
+ 		}
+ 		if (!vdin->direct_dma)
+ 			dma_sync_single_for_device(vdin->dev, slot->dma, vdin->frame_size, DMA_FROM_DEVICE);
+-		if (ret) {
++		/* A torn RX measurement invalidates this frame, not the stream.
++		 * Persistent instability is bounded by the receiver recovery worker.
++		 */
++		if (ret && ret != -EAGAIN) {
+ 			unsigned long flags;
+ 
+ 			spin_lock_irqsave(&vdin->irq_lock, flags);
+@@ -773,7 +776,7 @@ static int t7_vdin_thread(void *data)
+ 		mutex_unlock(&vdin->lock);
+ 		vb2_buffer_done(&buffer->vb.vb2_buf,
+ 				ret ? VB2_BUF_STATE_ERROR : VB2_BUF_STATE_DONE);
+-		if (ret)
++		if (ret && ret != -EAGAIN)
+ 			break;
+ 	}
+ 	if (t7_vdin_ring_stop(vdin))
+diff --git a/drivers/media/platform/amlogic/t7-hdmirx/test_stream.py b/drivers/media/platform/amlogic/t7-hdmirx/test_stream.py
+index 9a5447e229d68..b237984ef8d0c 100644
+--- a/drivers/media/platform/amlogic/t7-hdmirx/test_stream.py
++++ b/drivers/media/platform/amlogic/t7-hdmirx/test_stream.py
+@@ -108,6 +108,7 @@ static pthread_mutex_t gate=PTHREAD_MUTEX_INITIALIZER;
+ static pthread_cond_t changed=PTHREAD_COND_INITIALIZER;
+ static unsigned int started,entered,permits,completed,pins,stop_waiting;
+ static bool stopping,fail_timing,cpu_owned[VDIN_DMA_SLOTS];
++static unsigned int transient_after;
+ static unsigned int live_leases;
+ static bool fail_lease;
+ static void allocation_put(struct allocation *memory) {
+@@ -208,6 +209,8 @@ static void t7_hdmirx_stream_put(void *dev) {
+     receiver_users--;
+ }
+ static int t7_hdmirx_check_video_now(void *dev) {
++    if (__atomic_load_n(&transient_after,__ATOMIC_ACQUIRE) &&
++        !__atomic_sub_fetch(&transient_after,1,__ATOMIC_ACQ_REL)) return -EAGAIN;
+     bool copying=false;
+     for (int i=0;i<VDIN_DMA_SLOTS;i++) copying|=cpu_owned[i];
+     if (!copying && !receiver.direct_dma) {
+@@ -313,6 +316,21 @@ static void setup_direct(struct t7_vdin_buffer b[4]) {
+ }
+ static void check_direct(void) {
+     struct t7_vdin_buffer b[4]; pthread_t stop;
++    /* A torn measurement before or after the DMA handoff drops one frame.
++     * The next frame completes without restarting the queue or PHY lease.
++     */
++    for (unsigned int check=1;check<=2;check++) {
++        setup_direct(b); assert(!t7_vdin_start_streaming(&receiver.queue,4)); await(&started,1);
++        step(1,false); __atomic_store_n(&transient_after,check,__ATOMIC_RELEASE);
++        step(2,false); await(&completed,1);
++        assert(b[0].vb.vb2_buf.state==VB2_BUF_STATE_ERROR);
++        assert(!receiver.queue.error && !receiver.ring_stopping && receiver.receiver_lease);
++        for (unsigned int i=1;i<4;i++) { step(i+2,false); await(&completed,i+1); }
++        for (unsigned int i=1;i<4;i++) assert(b[i].vb.vb2_buf.state==VB2_BUF_STATE_DONE);
++        t7_vdin_stop_streaming(&receiver.queue);
++        assert(!receiver.faulted && !pins);
++        teardown(b); assert(!live_leases);
++    }
+     /* Held/exported buffers are never selected again until explicitly queued. */
+     setup_direct(b); assert(!t7_vdin_start_streaming(&receiver.queue,4)); await(&started,1);
+     step(1,false); step(2,false); await(&completed,1);

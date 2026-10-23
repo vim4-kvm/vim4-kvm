@@ -1,0 +1,29 @@
+From 9f24052abf9965716caac9e166474253bb39c4fe Mon Sep 17 00:00:00 2001
+From: localhost-copilot <318096335+localhost-copilot@users.noreply.github.com>
+Date: Tue, 20 Oct 2026 10:36:28 +0800
+Subject: [PATCH] clk: meson: t7: manage receiver system clock gate
+
+---
+ drivers/clk/meson/t7-peripherals.c | 2 ++
+ 1 file changed, 2 insertions(+)
+
+diff --git a/drivers/clk/meson/t7-peripherals.c b/drivers/clk/meson/t7-peripherals.c
+index 6a182629c55fe..8ec56fed4ea7c 100644
+--- a/drivers/clk/meson/t7-peripherals.c
++++ b/drivers/clk/meson/t7-peripherals.c
+@@ -1034,6 +1034,7 @@ static T7_SYS_PCLK(sys_i2c_m_f,		SYS_CLK_EN0_REG2, 3,	0);
+ static T7_SYS_PCLK(sys_hdmitx_apb,	SYS_CLK_EN0_REG2, 4,	0);
+ static T7_SYS_PCLK(sys_i2c_s_a,		SYS_CLK_EN0_REG2, 5,	0);
+ static T7_SYS_PCLK(sys_hdmirx_pclk,	SYS_CLK_EN0_REG2, 8,	0);
++static T7_SYS_PCLK(sys_hdmirx,		SYS_CLK_EN0_REG2, 9,	0);
+ static T7_SYS_PCLK(sys_mmc_apb,		SYS_CLK_EN0_REG2, 11,	CLK_IGNORE_UNUSED);
+ static T7_SYS_PCLK(sys_mipi_isp_pclk,	SYS_CLK_EN0_REG2, 17,	0);
+ static T7_SYS_PCLK(sys_rsa,		SYS_CLK_EN0_REG2, 18,	0);
+@@ -1303,6 +1304,7 @@ static struct clk_hw *t7_peripherals_hw_clks[] = {
+ 	[CLKID_HDMIRX_METER_SEL]		= &t7_hdmirx_meter_sel.hw,
+ 	[CLKID_HDMIRX_METER_DIV]		= &t7_hdmirx_meter_div.hw,
+ 	[CLKID_HDMIRX_METER]		= &t7_hdmirx_meter.hw,
++	[CLKID_SYS_HDMIRX]		= &t7_sys_hdmirx.hw,
+ };
+ 
+ static const struct meson_clkc_data t7_peripherals_data = {

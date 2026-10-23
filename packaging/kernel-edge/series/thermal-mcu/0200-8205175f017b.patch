@@ -1,0 +1,480 @@
+From 8205175f017bab852dddf5362c56bc4d78683be9 Mon Sep 17 00:00:00 2001
+From: deepdream <deepdream@deepdremsMinim4.lan>
+Date: Tue, 20 Oct 2026 19:27:47 -0700
+Subject: [PATCH] thermal: khadas-mcu-fan: add quiet automatic cooling for VIM4
+
+---
+ .../ABI/testing/sysfs-platform-khadas-mcu-fan |  31 +++
+ drivers/thermal/khadas_mcu_fan.c              | 180 +++++++++++++++++-
+ drivers/thermal/test_khadas_mcu_fan.py        | 165 ++++++++++++++++
+ 3 files changed, 372 insertions(+), 4 deletions(-)
+ create mode 100644 Documentation/ABI/testing/sysfs-platform-khadas-mcu-fan
+ create mode 100644 drivers/thermal/test_khadas_mcu_fan.py
+
+diff --git a/Documentation/ABI/testing/sysfs-platform-khadas-mcu-fan b/Documentation/ABI/testing/sysfs-platform-khadas-mcu-fan
+new file mode 100644
+index 0000000000000..dbe591233e9f7
+--- /dev/null
++++ b/Documentation/ABI/testing/sysfs-platform-khadas-mcu-fan
+@@ -0,0 +1,31 @@
++What:           /sys/bus/platform/devices/khadas-mcu-fan-ctrl*/speed_percent
++Date:           October 2026
++Contact:        https://github.com/vim4-kvm/linux/issues
++Description:
++                Read-only requested VIM4 fan output, 0 through 100 percent.
++                This is the last successful MCU write, not a measured RPM.
++                Available in quiet automatic mode only. The worker samples
++                all six T7 thermal zones every 30 seconds, uses the hottest
++                reading, and applies the quiet curve with a 5 percentage
++                point slew limit. Starting, stopping, and full speed bypass
++                the slew limit. Any unavailable sensor requests full speed.
++                Failed MCU writes retry after one second.
++                khadas_mcu_fan.quiet_auto=0 selects the original thermal
++                cooling device instead. Other MCU variants are unaffected.
++
++What:           /sys/bus/platform/devices/khadas-mcu-fan-ctrl*/sensor_fault
++Date:           October 2026
++Contact:        https://github.com/vim4-kvm/linux/issues
++Description:
++                Read-only boolean: one or more required thermal zones were
++                unavailable in the last automatic sample. An unavailable
++                sensor requests full speed; it cannot prove fan rotation.
++
++What:           /sys/bus/platform/devices/khadas-mcu-fan-ctrl*/temperature_millic
++Date:           October 2026
++Contact:        https://github.com/vim4-kvm/linux/issues
++Description:
++                Read-only maximum temperature in millidegrees Celsius from
++                the last successful automatic sample. Returns ENODATA while
++                any required thermal zone is unavailable. Not an immediate
++                reading; the normal automatic sampling interval is 30 seconds.
+diff --git a/drivers/thermal/khadas_mcu_fan.c b/drivers/thermal/khadas_mcu_fan.c
+index 2a14717d869ef..88a16e664ac37 100644
+--- a/drivers/thermal/khadas_mcu_fan.c
++++ b/drivers/thermal/khadas_mcu_fan.c
+@@ -14,6 +14,17 @@
+ #include <linux/sysfs.h>
+ #include <linux/thermal.h>
+ #include <linux/regulator/consumer.h>
++#include <linux/limits.h>
++#include <linux/workqueue.h>
++
++static bool quiet_auto = true;
++module_param(quiet_auto, bool, 0444);
++MODULE_PARM_DESC(quiet_auto, "Use the VIM4 quiet automatic fan curve instead of thermal cooling states");
++
++static const char * const khadas_vim4_fan_sensors[] = {
++	"a73-thermal", "a53-thermal", "gpu-thermal",
++	"nna-thermal", "vpu-thermal", "hevc-thermal",
++};
+ 
+ struct khadas_mcu_fan_ctx {
+ 	struct khadas_mcu *mcu;
+@@ -22,8 +33,49 @@ struct khadas_mcu_fan_ctx {
+ 	unsigned int max_level;
+ 	struct thermal_cooling_device *cdev;
+ 	struct regulator *power;
++	struct device *dev;
++	struct delayed_work quiet_work;
++	bool quiet;
++	bool sensor_fault;
++	bool quiet_started;
++	int temperature;
+ };
+ 
++static int khadas_vim4_fan_lerp(int temp, int low, int high,
++			       int low_speed, int high_speed)
++{
++	return low_speed + (temp - low) * (high_speed - low_speed) /
++		(high - low);
++}
++
++static int khadas_vim4_fan_target(int temp, bool sensor_fault)
++{
++	if (sensor_fault || temp >= 100000)
++		return 100;
++	if (temp < 45000)
++		return 0;
++	if (temp < 55000)
++		return khadas_vim4_fan_lerp(temp, 45000, 55000, 5, 25);
++	if (temp < 60000)
++		return khadas_vim4_fan_lerp(temp, 55000, 60000, 25, 35);
++	if (temp < 80000)
++		return khadas_vim4_fan_lerp(temp, 60000, 80000, 35, 70);
++	return khadas_vim4_fan_lerp(temp, 80000, 100000, 70, 100);
++}
++
++static unsigned int khadas_vim4_fan_next(unsigned int current_speed,
++				       unsigned int target)
++{
++	/* Stop/start and emergency cooling bypass the normal 5% ramp. */
++	if (!target || target == 100 || !current_speed)
++		return target;
++	if (target > current_speed + 5)
++		return current_speed + 5;
++	if (current_speed > target + 5)
++		return current_speed - 5;
++	return target;
++}
++
+ static int khadas_mcu_fan_set_level(struct khadas_mcu_fan_ctx *ctx,
+ 				    unsigned int level)
+ {
+@@ -33,11 +85,97 @@ static int khadas_mcu_fan_set_level(struct khadas_mcu_fan_ctx *ctx,
+ 	if (ret)
+ 		return ret;
+ 
+-	ctx->level = level;
++	WRITE_ONCE(ctx->level, level);
+ 
+ 	return 0;
+ }
+ 
++static void khadas_vim4_fan_work(struct work_struct *work)
++{
++	struct khadas_mcu_fan_ctx *ctx = container_of(to_delayed_work(work),
++					struct khadas_mcu_fan_ctx, quiet_work);
++	int hottest = INT_MIN;
++	bool fault = false;
++	unsigned int target;
++	int i, ret;
++
++	/* T7's built-in sensors cover CPU and media workloads independently. */
++	for (i = 0; i < ARRAY_SIZE(khadas_vim4_fan_sensors); i++) {
++		struct thermal_zone_device *zone;
++		int temperature;
++
++		zone = thermal_zone_get_zone_by_name(khadas_vim4_fan_sensors[i]);
++		if (IS_ERR(zone) || thermal_zone_get_temp(zone, &temperature)) {
++			fault = true;
++			break;
++		}
++		hottest = max(hottest, temperature);
++	}
++	WRITE_ONCE(ctx->temperature, hottest);
++	WRITE_ONCE(ctx->sensor_fault, fault);
++	target = khadas_vim4_fan_target(hottest, fault);
++	if (ctx->quiet_started)
++		target = khadas_vim4_fan_next(ctx->level, target);
++	ret = khadas_mcu_fan_set_level(ctx, target);
++	if (ret)
++		dev_err_ratelimited(ctx->dev, "Failed to set fan speed: %d\n", ret);
++	else if (!fault)
++		ctx->quiet_started = true;
++	if (fault)
++		dev_warn_ratelimited(ctx->dev, "Fan temperature unavailable; requesting full speed\n");
++
++	schedule_delayed_work(&ctx->quiet_work,
++			      msecs_to_jiffies(ret ? 1000 : 30000));
++}
++
++static void khadas_vim4_fan_stop(void *data)
++{
++	struct khadas_mcu_fan_ctx *ctx = data;
++
++	cancel_delayed_work_sync(&ctx->quiet_work);
++	/* Leave cooling available if this driver is detached while running. */
++	khadas_mcu_fan_set_level(ctx, ctx->max_level);
++}
++
++static ssize_t speed_percent_show(struct device *dev,
++				 struct device_attribute *attr, char *buf)
++{
++	struct khadas_mcu_fan_ctx *ctx = dev_get_drvdata(dev);
++
++	return sysfs_emit(buf, "%u\n", READ_ONCE(ctx->level));
++}
++static DEVICE_ATTR_RO(speed_percent);
++
++static ssize_t sensor_fault_show(struct device *dev,
++				struct device_attribute *attr, char *buf)
++{
++	struct khadas_mcu_fan_ctx *ctx = dev_get_drvdata(dev);
++
++	return sysfs_emit(buf, "%u\n", READ_ONCE(ctx->sensor_fault));
++}
++static DEVICE_ATTR_RO(sensor_fault);
++
++static ssize_t temperature_millic_show(struct device *dev,
++				      struct device_attribute *attr, char *buf)
++{
++	struct khadas_mcu_fan_ctx *ctx = dev_get_drvdata(dev);
++
++	if (READ_ONCE(ctx->sensor_fault))
++		return -ENODATA;
++	return sysfs_emit(buf, "%d\n", READ_ONCE(ctx->temperature));
++}
++static DEVICE_ATTR_RO(temperature_millic);
++
++static struct attribute *khadas_vim4_fan_attrs[] = {
++	&dev_attr_speed_percent.attr,
++	&dev_attr_sensor_fault.attr,
++	&dev_attr_temperature_millic.attr,
++	NULL,
++};
++static const struct attribute_group khadas_vim4_fan_group = {
++	.attrs = khadas_vim4_fan_attrs,
++};
++
+ static int khadas_mcu_fan_get_max_state(struct thermal_cooling_device *cdev,
+ 					unsigned long *state)
+ {
+@@ -100,6 +238,9 @@ static int khadas_mcu_fan_probe(struct platform_device *pdev)
+ 	ctx->mcu = mcu;
+ 	ctx->fan_reg   = pdata->fan_reg;
+ 	ctx->max_level = pdata->max_level;
++	ctx->dev = dev;
++	ctx->quiet = quiet_auto && pdata->fan_reg == KHADAS_MCU_VIM4_FAN_CTRL_REG &&
++		pdata->max_level == 100;
+ 
+ 	ctx->power = devm_regulator_get_optional(dev->parent, "fan");
+ 	if (IS_ERR(ctx->power)) {
+@@ -124,6 +265,23 @@ static int khadas_mcu_fan_probe(struct platform_device *pdev)
+ 
+ 	platform_set_drvdata(pdev, ctx);
+ 
++	if (ctx->quiet) {
++		/* The quiet worker is the sole owner; do not bind step_wise too. */
++		INIT_DELAYED_WORK(&ctx->quiet_work, khadas_vim4_fan_work);
++		ctx->sensor_fault = true;
++		ret = khadas_mcu_fan_set_level(ctx, ctx->max_level);
++		if (ret)
++			return ret;
++		ret = devm_add_action_or_reset(dev, khadas_vim4_fan_stop, ctx);
++		if (ret)
++			return ret;
++		ret = devm_device_add_group(dev, &khadas_vim4_fan_group);
++		if (ret)
++			return ret;
++		schedule_delayed_work(&ctx->quiet_work, 0);
++		return 0;
++	}
++
+ 	cdev = devm_thermal_of_child_cooling_device_register(dev->parent,
+ 							     dev->parent->of_node,
+ 							     "khadas-mcu-fan", ctx,
+@@ -143,6 +301,8 @@ static void khadas_mcu_fan_shutdown(struct platform_device *pdev)
+ {
+ 	struct khadas_mcu_fan_ctx *ctx = platform_get_drvdata(pdev);
+ 
++	if (ctx->quiet)
++		cancel_delayed_work_sync(&ctx->quiet_work);
+ 	khadas_mcu_fan_set_level(ctx, 0);
+ }
+ 
+@@ -150,22 +310,30 @@ static void khadas_mcu_fan_shutdown(struct platform_device *pdev)
+ static int khadas_mcu_fan_suspend(struct device *dev)
+ {
+ 	struct khadas_mcu_fan_ctx *ctx = dev_get_drvdata(dev);
+-	unsigned int level_save = ctx->level;
++	unsigned int level_save;
+ 	int ret;
+ 
++	if (ctx->quiet)
++		cancel_delayed_work_sync(&ctx->quiet_work);
++	level_save = ctx->level;
+ 	ret = khadas_mcu_fan_set_level(ctx, 0);
+ 	if (ret)
+-		return ret;
++		goto restart_work;
+ 
+ 	ctx->level = level_save;
+ 
+ 	if (ctx->power) {
+ 		ret = regulator_disable(ctx->power);
+ 		if (ret)
+-			return ret;
++			goto restart_work;
+ 	}
+ 
+ 	return 0;
++
++restart_work:
++	if (ctx->quiet)
++		schedule_delayed_work(&ctx->quiet_work, 0);
++	return ret;
+ }
+ 
+ static int khadas_mcu_fan_resume(struct device *dev)
+@@ -179,6 +347,10 @@ static int khadas_mcu_fan_resume(struct device *dev)
+ 			return ret;
+ 	}
+ 
++	if (ctx->quiet) {
++		schedule_delayed_work(&ctx->quiet_work, 0);
++		return 0;
++	}
+ 	return khadas_mcu_fan_set_level(ctx, ctx->level);
+ }
+ #endif
+diff --git a/drivers/thermal/test_khadas_mcu_fan.py b/drivers/thermal/test_khadas_mcu_fan.py
+new file mode 100644
+index 0000000000000..bffa16cf0b5f8
+--- /dev/null
++++ b/drivers/thermal/test_khadas_mcu_fan.py
+@@ -0,0 +1,165 @@
++#!/usr/bin/env python3
++"""Exercise the driver's actual quiet policy, fault handling and work lifecycle."""
++from pathlib import Path
++import os
++import subprocess
++import tempfile
++
++source = Path(__file__).with_name('khadas_mcu_fan.c').read_text()
++
++
++def function(signature):
++    start = source.index(signature)
++    return source[start:source.index('\n}', start) + 2]
++
++
++prefix = r'''
++#include <assert.h>
++#include <stdbool.h>
++#include <stddef.h>
++#include <limits.h>
++#include <stdio.h>
++#define ARRAY_SIZE(a) ((int)(sizeof(a) / sizeof((a)[0])))
++#define WRITE_ONCE(a, b) ((a) = (b))
++#define max(a, b) ((a) > (b) ? (a) : (b))
++#define IS_ERR(p) ((p) == NULL)
++#define container_of(p, t, m) ((t *)((char *)(p) - offsetof(t, m)))
++#define to_delayed_work(p) container_of(p, struct delayed_work, work)
++#define msecs_to_jiffies(ms) (ms)
++#define dev_err_ratelimited(...) ((void)0)
++#define dev_warn_ratelimited(...) ((void)0)
++struct work_struct { int unused; };
++struct delayed_work { struct work_struct work; };
++struct device { void *data; };
++struct regulator { int unused; };
++struct khadas_mcu { void *regmap; };
++struct thermal_zone_device { int index; };
++static int temperatures[6], missing = -1, unreadable = -1;
++static int write_error, regulator_error, requested, reads, canceled, queued;
++static int sequence, cancel_order, write_order, delay;
++static struct thermal_zone_device zones[6];
++/* SENSOR_NAMES */
++static struct thermal_zone_device *thermal_zone_get_zone_by_name(const char *name)
++{
++    for (int i = 0; i < 6; i++)
++        if (name == khadas_vim4_fan_sensors[i]) {
++            zones[i].index = i;
++            return i == missing ? NULL : &zones[i];
++        }
++    assert(false); return NULL;
++}
++static int thermal_zone_get_temp(struct thermal_zone_device *zone, int *temp)
++{
++    reads++; *temp = temperatures[zone->index];
++    return zone->index == unreadable ? -1 : 0;
++}
++static int regmap_write(void *map, unsigned int reg, unsigned int value)
++{
++    (void)map; (void)reg; requested = value; write_order = ++sequence;
++    return write_error;
++}
++static void schedule_delayed_work(struct delayed_work *work, int milliseconds)
++{
++    (void)work; queued++; delay = milliseconds;
++}
++static void cancel_delayed_work_sync(struct delayed_work *work)
++{
++    (void)work; canceled++; cancel_order = ++sequence;
++}
++static void *dev_get_drvdata(struct device *dev) { return dev->data; }
++static int regulator_enable(struct regulator *power) { (void)power; return regulator_error; }
++static int regulator_disable(struct regulator *power) { (void)power; return regulator_error; }
++'''
++start = source.index('static const char * const khadas_vim4_fan_sensors[]')
++prefix = prefix.replace('/* SENSOR_NAMES */',
++                        source[start:source.index('\n};', start) + 3])
++start = source.index('struct khadas_mcu_fan_ctx {')
++context = source[start:source.index('\n};', start) + 3]
++functions = '\n'.join(function(signature) for signature in (
++    'static int khadas_vim4_fan_lerp(', 'static int khadas_vim4_fan_target(',
++    'static unsigned int khadas_vim4_fan_next(', 'static int khadas_mcu_fan_set_level(',
++    'static void khadas_vim4_fan_work(', 'static void khadas_vim4_fan_stop(',
++    'static int khadas_mcu_fan_suspend(', 'static int khadas_mcu_fan_resume(',
++))
++checks = r'''
++int main(void)
++{
++    int previous = 0;
++    for (int temp = -20000; temp <= 130000; temp += 1000) {
++        int speed = khadas_vim4_fan_target(temp, false);
++        assert(speed >= previous && speed <= 100);
++        assert(khadas_vim4_fan_target(temp, true) == 100);
++        if (temp < 45000) assert(speed == 0);
++        if (temp >= 100000) assert(speed == 100);
++        previous = speed;
++    }
++    assert(khadas_vim4_fan_target(45000, false) == 5);
++    assert(khadas_vim4_fan_target(50000, false) == 15);
++    assert(khadas_vim4_fan_target(55000, false) == 25);
++    assert(khadas_vim4_fan_target(60000, false) == 35);
++    assert(khadas_vim4_fan_target(80000, false) == 70);
++    for (int current = 0; current <= 100; current++)
++        for (int target = 0; target <= 100; target++) {
++            int next = khadas_vim4_fan_next(current, target);
++            if (!target || target == 100 || !current) assert(next == target);
++            else {
++                assert(next - current <= 5 && current - next <= 5);
++                assert((next >= current && next <= target) ||
++                       (next <= current && next >= target));
++            }
++        }
++    struct khadas_mcu mcu = {0};
++    struct khadas_mcu_fan_ctx ctx = {.mcu = &mcu, .quiet = true,
++                                    .max_level = 100, .level = 100};
++    struct device dev = {.data = &ctx};
++    struct regulator power = {0};
++    for (int i = 0; i < 6; i++) temperatures[i] = 50000;
++    missing = 5;
++    khadas_vim4_fan_work(&ctx.quiet_work.work);
++    assert(ctx.level == 100 && ctx.sensor_fault && !ctx.quiet_started);
++    missing = -1; reads = 0;
++    khadas_vim4_fan_work(&ctx.quiet_work.work);
++    assert(ctx.level == 15 && !ctx.sensor_fault && ctx.quiet_started);
++    assert(reads == 6 && delay == 30000);
++    temperatures[5] = 90000;
++    khadas_vim4_fan_work(&ctx.quiet_work.work);
++    assert(ctx.level == 20 && ctx.temperature == 90000);
++    unreadable = 5;
++    khadas_vim4_fan_work(&ctx.quiet_work.work);
++    assert(ctx.level == 100 && ctx.sensor_fault);
++    unreadable = -1; temperatures[5] = 50000;
++    khadas_vim4_fan_work(&ctx.quiet_work.work);
++    assert(ctx.level == 95 && !ctx.sensor_fault);
++    write_error = -1;
++    khadas_vim4_fan_work(&ctx.quiet_work.work);
++    assert(ctx.level == 95 && requested == 90 && delay == 1000);
++    write_error = 0; temperatures[2] = 100000;
++    khadas_vim4_fan_work(&ctx.quiet_work.work);
++    assert(ctx.level == 100);
++    ctx.level = 20;
++    khadas_vim4_fan_stop(&ctx);
++    assert(ctx.level == 100 && cancel_order < write_order);
++    int before = canceled;
++    write_error = -1;
++    assert(khadas_mcu_fan_suspend(&dev) == -1);
++    assert(canceled == before + 1 && delay == 0);
++    write_error = 0; ctx.power = &power; regulator_error = -1;
++    assert(khadas_mcu_fan_suspend(&dev) == -1 && delay == 0);
++    regulator_error = 0;
++    assert(khadas_mcu_fan_suspend(&dev) == 0);
++    int pending = queued;
++    assert(khadas_mcu_fan_resume(&dev) == 0 && queued == pending + 1 && delay == 0);
++    khadas_vim4_fan_work(&ctx.quiet_work.work);
++    assert(ctx.level == 100);
++    ctx.quiet = false; ctx.power = NULL; ctx.level = 42;
++    assert(khadas_mcu_fan_suspend(&dev) == 0);
++    assert(khadas_mcu_fan_resume(&dev) == 0 && requested == 42);
++    puts("Khadas quiet fan policy, faults and lifecycle: PASS");
++}
++'''
++with tempfile.TemporaryDirectory(prefix='khadas-fan-test-') as directory:
++    path = Path(directory)
++    (path / 'test.c').write_text(prefix + context + functions + checks)
++    subprocess.run([os.environ.get('CC', 'cc'), '-std=gnu11', '-Wall', '-Wextra',
++                    '-Werror', str(path / 'test.c'), '-o', str(path / 'test')], check=True)
++    subprocess.run([str(path / 'test')], check=True)

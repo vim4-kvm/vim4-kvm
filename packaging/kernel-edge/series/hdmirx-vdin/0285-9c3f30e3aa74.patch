@@ -1,0 +1,145 @@
+From 9c3f30e3aa74e760ffe21141ace9d3f5b160a5fb Mon Sep 17 00:00:00 2001
+From: localhost-copilot <318096335+localhost-copilot@users.noreply.github.com>
+Date: Fri, 23 Oct 2026 19:41:00 +0800
+Subject: [PATCH] media: t7-hdmirx: use vendor TMDS validity for live admission
+
+The vendor T7 ready FSM tests SQO, cable/TMDS clock agreement within 2 MHz, and alignment. Match that qualification instead of revoking a running lease from the analog APLL lock bit alone. Keep initial PLL acquisition and actual loss checks intact.
+---
+ .../platform/amlogic/t7-hdmirx/t7-hdmirx.c    | 23 +++++++++++++--
+ .../platform/amlogic/t7-hdmirx/test_core.py   |  7 +++++
+ .../amlogic/t7-hdmirx/test_timings.py         | 28 +++++++++++++++++++
+ 3 files changed, 56 insertions(+), 2 deletions(-)
+
+diff --git a/drivers/media/platform/amlogic/t7-hdmirx/t7-hdmirx.c b/drivers/media/platform/amlogic/t7-hdmirx/t7-hdmirx.c
+index 7d4bd1cf1db31..24995a0c2ee08 100644
+--- a/drivers/media/platform/amlogic/t7-hdmirx/t7-hdmirx.c
++++ b/drivers/media/platform/amlogic/t7-hdmirx/t7-hdmirx.c
+@@ -1037,6 +1037,25 @@ static int t7_hdmirx_video_error(const char **reason, const char *value, int err
+ 	return error;
+ }
+ 
++static bool t7_hdmirx_tmds_valid(struct t7_hdmirx *rx)
++{
++	unsigned long reference = clk_get_rate(rx->clocks[T7_RX_METER].clk);
++	u64 cable, tmds, delta;
++
++	/* Vendor T7 aml_get_tmds_valid_t7 uses SQO, matching recovered clocks
++	 * and alignment (checked by the caller), not the APLL lock bit. Keep
++	 * that bit for initial PLL acquisition, not ongoing source admission.
++	 */
++	if (!(readl(rx->top + T7_RX_TOP_MISC_STAT0) & BIT(0)))
++		return false;
++	cable = t7_hdmirx_meter_hz(readl(rx->top + T7_RX_TOP_METER_CABLE_STAT), reference);
++	tmds = t7_hdmirx_meter_hz(readl(rx->top + T7_RX_TOP_METER_HDMI_STAT), reference);
++	if (rx->uhd60)
++		cable *= 4;
++	delta = cable > tmds ? cable - tmds : tmds - cable;
++	return cable && tmds && delta <= 2000000;
++}
++
+ static int t7_hdmirx_video_status_reason(struct t7_hdmirx *rx, const char **reason)
+ {
+ 	struct t7_hdmirx_measurement measured;
+@@ -1050,8 +1069,8 @@ static int t7_hdmirx_video_status_reason(struct t7_hdmirx *rx, const char **reas
+ 	if (rx->dynamic_modes &&
+ 	    (!!(readb(rx->cor + T7_RX_COR_TMDS_CONFIG) & BIT(1)) != READ_ONCE(rx->uhd60)))
+ 		return t7_hdmirx_video_error(reason, "clock-ratio", -ENOLINK);
+-	if (rx->link && !(readl(rx->phy + T7_RX_PHY_APLL0) & T7_RX_PHY_PLL_LOCK))
+-		return t7_hdmirx_video_error(reason, "pll-unlocked", -ENOLINK);
++	if (rx->link && !t7_hdmirx_tmds_valid(rx))
++		return t7_hdmirx_video_error(reason, "tmds-invalid", -ENOLINK);
+ 	if (!(readl(rx->top + T7_RX_TOP_HPD_PWR5V) & BIT(20 + rx->port)) ||
+ 	    !(readl(rx->top + T7_RX_TOP_TMDS_ALIGN_STAT) & BIT(0)))
+ 		return t7_hdmirx_video_error(reason, "5v-or-align", -ENOLINK);
+diff --git a/drivers/media/platform/amlogic/t7-hdmirx/test_core.py b/drivers/media/platform/amlogic/t7-hdmirx/test_core.py
+index d23c461fb881a..7e91fa0dd500b 100644
+--- a/drivers/media/platform/amlogic/t7-hdmirx/test_core.py
++++ b/drivers/media/platform/amlogic/t7-hdmirx/test_core.py
+@@ -10,6 +10,8 @@ types = source[source.index('static const u32 t7_hdmirx_phy_top_regs'):
+                source.index('static int t7_hdmirx_validate_edid')]
+ functions = source[source.index('static void t7_hdmirx_core_stop'):
+                    source.index('int t7_hdmirx_query_timings')]
++functions = source[source.index('static u32 t7_hdmirx_meter_hz'):
++                   source.index('static u32 t7_hdmirx_sample_cable')] + functions
+ vdin = Path(__file__).with_name('t7-vdin-test.c').read_text()
+ status_api = vdin[vdin.index('static int t7_vdin_enum_input'):
+                   vdin.index('static int t7_vdin_get_input')]
+@@ -28,6 +30,8 @@ struct delayed_work { int unused; };
+ #define WRITE_ONCE(place, value) ((place) = (value))
+ typedef uint64_t u64;
+ #define div_u64(a,b) ((a)/(b))
++#define FIELD_GET(mask,value) (((value)&(mask)) >> __builtin_ctz(mask))
++#define U32_MAX UINT32_MAX
+ static u64 now_ns = 1000000000ULL;
+ static u64 ktime_get_ns(void) { return now_ns; }
+ #ifdef __clang__
+@@ -220,6 +224,9 @@ int main(void)
+     memcpy(core+0x1140,sdravi,sizeof(sdravi));
+     assert(t7_hdmirx_sdr420_input(&rx) && !t7_hdmirx_video_status(&rx));
+     struct t7_hdmirx_link lease={.users=1};
++    writel(1,top+T7_RX_TOP_MISC_STAT0);
++    writel(T7_RX_METER_VALID|4096,top+T7_RX_TOP_METER_CABLE_STAT);
++    writel(T7_RX_METER_VALID|16384,top+T7_RX_TOP_METER_HDMI_STAT);
+     u32 pll=T7_RX_PHY_PLL_LOCK;rx.phy=core;memcpy(core+T7_RX_PHY_APLL0,&pll,4);
+     rx.link=&lease;rx.lease_yuv=true;rx.lease_hdr=true;rx.lease_420=true;
+     assert(t7_hdmirx_video_status(&rx)==-ENOLINK); /* HDR -> SDR, same geometry */
+diff --git a/drivers/media/platform/amlogic/t7-hdmirx/test_timings.py b/drivers/media/platform/amlogic/t7-hdmirx/test_timings.py
+index f6e6caf600f54..056ab1d808f52 100644
+--- a/drivers/media/platform/amlogic/t7-hdmirx/test_timings.py
++++ b/drivers/media/platform/amlogic/t7-hdmirx/test_timings.py
+@@ -14,6 +14,8 @@ types = source[source.index('static const u32 t7_hdmirx_phy_top_regs'):
+                source.index('static int t7_hdmirx_validate_edid')]
+ functions = source[source.index('static u32 t7_hdmirx_core_read16'):
+                    source.index('static u32 t7_hdmirx_audio_word')]
++functions = source[source.index('static u32 t7_hdmirx_meter_hz'):
++                   source.index('static u32 t7_hdmirx_sample_cable')] + functions
+ ioctls = vdin[vdin.index('static int t7_vdin_query_dv_timings'):
+              vdin.index('static int t7_vdin_set_input')]
+ prefix = r'''
+@@ -38,6 +40,8 @@ typedef uint64_t u64;
+ #define WRITE_ONCE(place, value) ((place) = (value))
+ static u64 ktime_get_ns(void) { return 1000000000ULL; }
+ #define EXPORT_SYMBOL_GPL(name)
++#define FIELD_GET(mask,value) (((value)&(mask)) >> __builtin_ctz(mask))
++#define U32_MAX UINT32_MAX
+ struct mutex { int unused; };
+ struct delayed_work { int unused; };
+ struct clk_bulk_data { void *clk; };
+@@ -119,6 +123,9 @@ static void setup(bool uhd, unsigned int ticks) {
+     memset(core,0,sizeof(core)); memset(top,0,sizeof(top));
+     u32 value = BIT(21); memcpy(top + T7_RX_TOP_HPD_PWR5V,&value,4);
+     value = 1; memcpy(top + T7_RX_TOP_TMDS_ALIGN_STAT,&value,4);
++    memcpy(top + T7_RX_TOP_MISC_STAT0,&value,4);
++    value = T7_RX_METER_VALID|4096; memcpy(top + T7_RX_TOP_METER_CABLE_STAT,&value,4);
++    value = T7_RX_METER_VALID|(uhd?16384:4096); memcpy(top + T7_RX_TOP_METER_HDMI_STAT,&value,4);
+     value = T7_RX_PHY_PLL_LOCK; memcpy(phy + T7_RX_PHY_APLL0,&value,4);
+     word(T7_RX_COR_WIDTH, uhd ? 3840 : 1920);
+     word(T7_RX_COR_HEIGHT, uhd ? 2160 : 1080);
+@@ -155,6 +162,27 @@ int main(void) {
+             assert(parm.parm.capture.timeperframe.denominator==166666664);
+             assert(!parm.parm.capture.capability);
+         }
++        /* An APLL status dip must not revoke a valid vendor-qualified link. */
++        u32 value = 0;
++        memcpy(phy+T7_RX_PHY_APLL0,&value,4);
++        assert(!t7_hdmirx_query_timings(&dev,&timing,&interval));
++        memcpy(top+T7_RX_TOP_MISC_STAT0,&value,4);
++        assert(t7_hdmirx_query_timings(&dev,&timing,&interval)==-ENOLINK);
++        value=1;memcpy(top+T7_RX_TOP_MISC_STAT0,&value,4);
++        value=4096;memcpy(top+T7_RX_TOP_METER_CABLE_STAT,&value,4);
++        assert(t7_hdmirx_query_timings(&dev,&timing,&interval)==-ENOLINK);
++        value=T7_RX_METER_VALID|4096;memcpy(top+T7_RX_TOP_METER_CABLE_STAT,&value,4);
++        for (int sign=-1;sign<=1;sign+=2) {
++            value=T7_RX_METER_VALID|((uhd?16384:4096)+sign*98);
++            memcpy(top+T7_RX_TOP_METER_HDMI_STAT,&value,4);
++            assert(!t7_hdmirx_query_timings(&dev,&timing,&interval));
++            value=T7_RX_METER_VALID|((uhd?16384:4096)+sign*99);
++            memcpy(top+T7_RX_TOP_METER_HDMI_STAT,&value,4);
++            assert(t7_hdmirx_query_timings(&dev,&timing,&interval)==-ENOLINK);
++        }
++        setup(uhd,2777778);
++        value=0;memcpy(top+T7_RX_TOP_TMDS_ALIGN_STAT,&value,4);
++        assert(t7_hdmirx_query_timings(&dev,&timing,&interval)==-ENOLINK);
+     }
+     setup(true,2777778);
+     struct v4l2_dv_timings untouched; memset(&untouched,0xa5,sizeof(untouched));

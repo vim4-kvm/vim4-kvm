@@ -1,0 +1,50 @@
+From 0e65271f2cbdad85681953351477a2c157937229 Mon Sep 17 00:00:00 2001
+From: localhost-copilot <318096335+localhost-copilot@users.noreply.github.com>
+Date: Thu, 22 Oct 2026 19:13:18 +0800
+Subject: [PATCH] media: amlogic: notify HDMI audio controls with their
+ assigned IDs
+
+---
+ drivers/media/platform/amlogic/t7-hdmirx/t7-hdmirx.c   | 6 ++----
+ drivers/media/platform/amlogic/t7-hdmirx/test_audio.py | 4 ++--
+ 2 files changed, 4 insertions(+), 6 deletions(-)
+
+diff --git a/drivers/media/platform/amlogic/t7-hdmirx/t7-hdmirx.c b/drivers/media/platform/amlogic/t7-hdmirx/t7-hdmirx.c
+index 0a5a1e754f61f..db3d8c8900e92 100644
+--- a/drivers/media/platform/amlogic/t7-hdmirx/t7-hdmirx.c
++++ b/drivers/media/platform/amlogic/t7-hdmirx/t7-hdmirx.c
+@@ -1515,7 +1515,6 @@ static void t7_hdmirx_audio_work(struct work_struct *work)
+ 	struct t7_hdmirx *rx = container_of(to_delayed_work(work), struct t7_hdmirx, audio_work);
+ 	struct t7_hdmirx_audio_format format = { 0 };
+ 	struct snd_pcm_substream *stop = NULL;
+-	struct snd_ctl_elem_id id = { .iface = SNDRV_CTL_ELEM_IFACE_MIXER };
+ 	unsigned int i;
+ 	int ret;
+ 
+@@ -1556,9 +1555,8 @@ static void t7_hdmirx_audio_work(struct work_struct *work)
+ 			stop = rx->audio_substream;
+ 		}
+ 		for (i = 0; i < ARRAY_SIZE(t7_hdmirx_audio_control_names); i++) {
+-			strscpy(id.name, t7_hdmirx_audio_control_names[i], sizeof(id.name));
+-			snd_ctl_notify(rx->audio_component->card->snd_card,
+-				       SNDRV_CTL_EVENT_MASK_VALUE, &id);
++			snd_soc_component_notify_control(rx->audio_component,
++						 t7_hdmirx_audio_control_names[i]);
+ 		}
+ 	}
+ out:
+diff --git a/drivers/media/platform/amlogic/t7-hdmirx/test_audio.py b/drivers/media/platform/amlogic/t7-hdmirx/test_audio.py
+index c2ad63294f0e0..398bb637d4ecf 100644
+--- a/drivers/media/platform/amlogic/t7-hdmirx/test_audio.py
++++ b/drivers/media/platform/amlogic/t7-hdmirx/test_audio.py
+@@ -99,8 +99,8 @@ struct snd_ctl_elem_id { int iface; char name[44]; };
+ #define strscpy(dst,src,size) snprintf(dst,size,"%s",src)
+ static unsigned int notifications, xruns;
+ static struct t7_hdmirx *watched;
+-static void snd_ctl_notify(void *card, unsigned int mask, struct snd_ctl_elem_id *id) {
+-    assert(mask==1 && id->name[0]); notifications++;
++static int snd_soc_component_notify_control(struct snd_soc_component *component, const char *name) {
++    assert(component && !strncmp(name,"HDMI RX Audio ",14)); notifications++; return 0;
+ }
+ static void snd_pcm_stop_xrun(struct snd_pcm_substream *stream) {
+     assert(stream && watched && !watched->audio_lock.held); xruns++;

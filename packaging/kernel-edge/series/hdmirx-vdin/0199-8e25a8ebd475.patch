@@ -1,0 +1,25 @@
+From 8e25a8ebd475404a217792595f07a041b141efd3 Mon Sep 17 00:00:00 2001
+From: deepdream <deepdream@deepdremsMinim4.lan>
+Date: Tue, 20 Oct 2026 17:56:55 -0700
+Subject: [PATCH] media: amlogic: allow core status regression fixtures on
+ Clang
+
+---
+ drivers/media/platform/amlogic/t7-hdmirx/test_core.py | 4 ++++
+ 1 file changed, 4 insertions(+)
+
+diff --git a/drivers/media/platform/amlogic/t7-hdmirx/test_core.py b/drivers/media/platform/amlogic/t7-hdmirx/test_core.py
+index 07cffbee36f88..395094364f8f3 100644
+--- a/drivers/media/platform/amlogic/t7-hdmirx/test_core.py
++++ b/drivers/media/platform/amlogic/t7-hdmirx/test_core.py
+@@ -20,6 +20,10 @@ prefix = r'''
+ #include <string.h>
+ #include <errno.h>
+ #include <stdio.h>
++#ifdef __clang__
++/* The extracted register tables size real struct fields; core-only paths do not read them. */
++#pragma clang diagnostic ignored "-Wunneeded-internal-declaration"
++#endif
+ typedef uint8_t u8;
+ typedef uint32_t u32;
+ #define __iomem

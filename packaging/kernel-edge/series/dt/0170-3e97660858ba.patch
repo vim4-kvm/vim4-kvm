@@ -1,0 +1,65 @@
+From 3e97660858baae9bc08753106dd9c25c724ce7c9 Mon Sep 17 00:00:00 2001
+From: localhost-copilot <318096335+localhost-copilot@users.noreply.github.com>
+Date: Tue, 20 Oct 2026 10:36:28 +0800
+Subject: [PATCH] dt-bindings: media: describe T7 receiver system clock
+
+---
+ .../devicetree/bindings/media/amlogic,t7-hdmirx.yaml | 12 +++++++-----
+ .../dt-bindings/clock/amlogic,t7-peripherals-clkc.h  |  1 +
+ 2 files changed, 8 insertions(+), 5 deletions(-)
+
+diff --git a/Documentation/devicetree/bindings/media/amlogic,t7-hdmirx.yaml b/Documentation/devicetree/bindings/media/amlogic,t7-hdmirx.yaml
+index cb580627c66a4..12e298a943b9e 100644
+--- a/Documentation/devicetree/bindings/media/amlogic,t7-hdmirx.yaml
++++ b/Documentation/devicetree/bindings/media/amlogic,t7-hdmirx.yaml
+@@ -10,9 +10,9 @@ maintainers:
+   - localhost-copilot <318096335+localhost-copilot@users.noreply.github.com>
+ 
+ description: |
+-  Initial receiver resource and cable detection interface. The TOP register
+-  window includes the input 5V and HPD request registers. PHY initialization,
+-  EDID programming and VDIN capture are separate bring-up stages.
++  The receiver TOP window contains input 5V/HPD controls and per-port EDID RAM.
++  The APB and receiver system gates are separate clocks; both are required for
++  access to the DDC controller.
+ 
+ properties:
+   compatible:
+@@ -26,11 +26,12 @@ properties:
+       - const: top
+ 
+   clocks:
+-    maxItems: 5
++    maxItems: 6
+ 
+   clock-names:
+     items:
+       - const: pclk
++      - const: sys
+       - const: cfg
+       - const: meter
+       - const: 2m
+@@ -66,10 +67,11 @@ examples:
+         reg-names = "top";
+         power-domains = <&pwrc PWRC_T7_HDMIRX_ID>;
+         clocks = <&clkc_periphs CLKID_SYS_HDMIRX_PCLK>,
++                 <&clkc_periphs CLKID_SYS_HDMIRX>,
+                  <&clkc_periphs CLKID_HDMIRX_CFG>,
+                  <&clkc_periphs CLKID_HDMIRX_METER>,
+                  <&clkc_periphs CLKID_HDMIRX_2M>,
+                  <&clkc_periphs CLKID_HDMIRX_5M>;
+-        clock-names = "pclk", "cfg", "meter", "2m", "5m";
++        clock-names = "pclk", "sys", "cfg", "meter", "2m", "5m";
+         amlogic,input-port = <1>;
+     };
+diff --git a/include/dt-bindings/clock/amlogic,t7-peripherals-clkc.h b/include/dt-bindings/clock/amlogic,t7-peripherals-clkc.h
+index 47130d0a49973..58f769ccfb10e 100644
+--- a/include/dt-bindings/clock/amlogic,t7-peripherals-clkc.h
++++ b/include/dt-bindings/clock/amlogic,t7-peripherals-clkc.h
+@@ -245,5 +245,6 @@
+ #define CLKID_HDMIRX_METER_SEL		236
+ #define CLKID_HDMIRX_METER_DIV		237
+ #define CLKID_HDMIRX_METER			238
++#define CLKID_SYS_HDMIRX			239
+ 
+ #endif /* __T7_PERIPHERALS_CLKC_H */

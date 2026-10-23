@@ -1,0 +1,41 @@
+From 4fcdfb7ef674d5820369eb610ec818e78fe05f81 Mon Sep 17 00:00:00 2001
+From: deepdream <deepdream@deepdremsMinim4.lan>
+Date: Tue, 20 Oct 2026 07:45:52 -0700
+Subject: [PATCH] media: t7-vdin: omit the private copy ring for direct DMA
+
+---
+ drivers/media/platform/amlogic/t7-hdmirx/t7-vdin-test.c | 5 ++++-
+ drivers/media/platform/amlogic/t7-hdmirx/test_stream.py | 4 ++++
+ 2 files changed, 8 insertions(+), 1 deletion(-)
+
+diff --git a/drivers/media/platform/amlogic/t7-hdmirx/t7-vdin-test.c b/drivers/media/platform/amlogic/t7-hdmirx/t7-vdin-test.c
+index 08a261f5ee930..7b87a469394a6 100644
+--- a/drivers/media/platform/amlogic/t7-hdmirx/t7-vdin-test.c
++++ b/drivers/media/platform/amlogic/t7-hdmirx/t7-vdin-test.c
+@@ -1164,7 +1164,10 @@ static int t7_vdin_probe(struct platform_device *pdev)
+ 	ret = devm_add_action_or_reset(dev, t7_vdin_free_frame, vdin);
+ 	if (ret)
+ 		return ret;
+-	for (i = 0; i < VDIN_DMA_SLOTS; i++) {
++	/* Direct capture uses queued vb2 allocations; the private copy ring has
++	 * no DMA or CPU consumer in that mode. Keep the separate snapshot frame.
++	 */
++	for (i = 0; !vdin->direct_dma && i < VDIN_DMA_SLOTS; i++) {
+ 		vdin->slots[i].data = dma_alloc_noncoherent(dev, vdin->frame_size,
+ 							    &vdin->slots[i].dma, DMA_FROM_DEVICE,
+ 							    GFP_KERNEL);
+diff --git a/drivers/media/platform/amlogic/t7-hdmirx/test_stream.py b/drivers/media/platform/amlogic/t7-hdmirx/test_stream.py
+index eb7646a1750fa..0010945ad7902 100644
+--- a/drivers/media/platform/amlogic/t7-hdmirx/test_stream.py
++++ b/drivers/media/platform/amlogic/t7-hdmirx/test_stream.py
+@@ -277,6 +277,10 @@ static void teardown(struct t7_vdin_buffer b[4]) {
+ }
+ static void setup_direct(struct t7_vdin_buffer b[4]) {
+     setup(b); receiver.direct_dma=true;
++    for (int i=0;i<VDIN_DMA_SLOTS;i++) {
++        free(receiver.slots[i].data); receiver.slots[i].data=NULL;
++        receiver.slots[i].dma=0;
++    }
+     for (int i=0;i<4;i++) {
+         b[i].vb.vb2_buf.dma=0x20000000+i*0x1000000;
+         assert(!t7_vdin_buffer_init(&b[i].vb.vb2_buf));

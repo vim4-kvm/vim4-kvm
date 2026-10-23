@@ -1,0 +1,68 @@
+From 3f8ebc26bfa8ee19794bab48f89b80c191121353 Mon Sep 17 00:00:00 2001
+From: deepdream <deepdream@deepdremsMinim4.lan>
+Date: Tue, 20 Oct 2026 20:23:51 -0700
+Subject: [PATCH] thermal: khadas: retry unavailable fan sensors promptly
+
+---
+ Documentation/ABI/testing/sysfs-platform-khadas-mcu-fan | 5 ++++-
+ drivers/thermal/khadas_mcu_fan.c                        | 3 ++-
+ drivers/thermal/test_khadas_mcu_fan.py                  | 5 +++++
+ 3 files changed, 11 insertions(+), 2 deletions(-)
+
+diff --git a/Documentation/ABI/testing/sysfs-platform-khadas-mcu-fan b/Documentation/ABI/testing/sysfs-platform-khadas-mcu-fan
+index dbe591233e9f7..ec9b05a8f9152 100644
+--- a/Documentation/ABI/testing/sysfs-platform-khadas-mcu-fan
++++ b/Documentation/ABI/testing/sysfs-platform-khadas-mcu-fan
+@@ -9,7 +9,10 @@ Description:
+                 reading, and applies the quiet curve with a 5 percentage
+                 point slew limit. Starting, stopping, and full speed bypass
+                 the slew limit. Any unavailable sensor requests full speed.
+-                Failed MCU writes retry after one second.
++                Unavailable sensors and failed MCU writes retry after one
++                second; normal sampling resumes after a successful sample
++                and MCU write. The first valid sample adopts the quiet
++                target directly instead of slewing down from full speed.
+                 khadas_mcu_fan.quiet_auto=0 selects the original thermal
+                 cooling device instead. Other MCU variants are unaffected.
+ 
+diff --git a/drivers/thermal/khadas_mcu_fan.c b/drivers/thermal/khadas_mcu_fan.c
+index 88a16e664ac37..aa0651e1897b3 100644
+--- a/drivers/thermal/khadas_mcu_fan.c
++++ b/drivers/thermal/khadas_mcu_fan.c
+@@ -124,8 +124,9 @@ static void khadas_vim4_fan_work(struct work_struct *work)
+ 	if (fault)
+ 		dev_warn_ratelimited(ctx->dev, "Fan temperature unavailable; requesting full speed\n");
+ 
++	/* Thermal zones may register after the first boot-time sample. */
+ 	schedule_delayed_work(&ctx->quiet_work,
+-			      msecs_to_jiffies(ret ? 1000 : 30000));
++			      msecs_to_jiffies(ret || fault ? 1000 : 30000));
+ }
+ 
+ static void khadas_vim4_fan_stop(void *data)
+diff --git a/drivers/thermal/test_khadas_mcu_fan.py b/drivers/thermal/test_khadas_mcu_fan.py
+index bffa16cf0b5f8..5b2cf336bcbe1 100644
+--- a/drivers/thermal/test_khadas_mcu_fan.py
++++ b/drivers/thermal/test_khadas_mcu_fan.py
+@@ -117,6 +117,9 @@ int main(void)
+     missing = 5;
+     khadas_vim4_fan_work(&ctx.quiet_work.work);
+     assert(ctx.level == 100 && ctx.sensor_fault && !ctx.quiet_started);
++    assert(delay == 1000);
++    khadas_vim4_fan_work(&ctx.quiet_work.work);
++    assert(ctx.level == 100 && !ctx.quiet_started && delay == 1000);
+     missing = -1; reads = 0;
+     khadas_vim4_fan_work(&ctx.quiet_work.work);
+     assert(ctx.level == 15 && !ctx.sensor_fault && ctx.quiet_started);
+@@ -127,9 +130,11 @@ int main(void)
+     unreadable = 5;
+     khadas_vim4_fan_work(&ctx.quiet_work.work);
+     assert(ctx.level == 100 && ctx.sensor_fault);
++    assert(delay == 1000);
+     unreadable = -1; temperatures[5] = 50000;
+     khadas_vim4_fan_work(&ctx.quiet_work.work);
+     assert(ctx.level == 95 && !ctx.sensor_fault);
++    assert(delay == 30000);
+     write_error = -1;
+     khadas_vim4_fan_work(&ctx.quiet_work.work);
+     assert(ctx.level == 95 && requested == 90 && delay == 1000);

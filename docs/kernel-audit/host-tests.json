@@ -1,0 +1,212 @@
+{
+  "revision": "0a775305f0ad81475f65d33b15f79099c8445c75",
+  "dirty": true,
+  "tests": [
+    {
+      "test": "drivers/gpu/drm/meson/test_t7_handoff.py",
+      "exit": 0,
+      "seconds": 0.075,
+      "log": "drivers__gpu__drm__meson__test_t7_handoff.py.log"
+    },
+    {
+      "test": "drivers/media/platform/amlogic/t7-hdmirx/test_audio.py",
+      "exit": 0,
+      "seconds": 0.22,
+      "log": "drivers__media__platform__amlogic__t7-hdmirx__test_audio.py.log"
+    },
+    {
+      "test": "drivers/media/platform/amlogic/t7-hdmirx/test_copy.py",
+      "exit": 0,
+      "seconds": 0.177,
+      "log": "drivers__media__platform__amlogic__t7-hdmirx__test_copy.py.log"
+    },
+    {
+      "test": "drivers/media/platform/amlogic/t7-hdmirx/test_core.py",
+      "exit": 0,
+      "seconds": 0.123,
+      "log": "drivers__media__platform__amlogic__t7-hdmirx__test_core.py.log"
+    },
+    {
+      "test": "drivers/media/platform/amlogic/t7-hdmirx/test_ddc.py",
+      "exit": 0,
+      "seconds": 0.064,
+      "log": "drivers__media__platform__amlogic__t7-hdmirx__test_ddc.py.log"
+    },
+    {
+      "test": "drivers/media/platform/amlogic/t7-hdmirx/test_edid_runtime.py",
+      "exit": 0,
+      "seconds": 0.12,
+      "log": "drivers__media__platform__amlogic__t7-hdmirx__test_edid_runtime.py.log"
+    },
+    {
+      "test": "drivers/media/platform/amlogic/t7-hdmirx/test_hdr_curve.py",
+      "exit": 0,
+      "seconds": 0.067,
+      "log": "drivers__media__platform__amlogic__t7-hdmirx__test_hdr_curve.py.log"
+    },
+    {
+      "test": "drivers/media/platform/amlogic/t7-hdmirx/test_ioctl_locks.py",
+      "exit": 0,
+      "seconds": 0.182,
+      "log": "drivers__media__platform__amlogic__t7-hdmirx__test_ioctl_locks.py.log"
+    },
+    {
+      "test": "drivers/media/platform/amlogic/t7-hdmirx/test_link.py",
+      "exit": 0,
+      "seconds": 0.067,
+      "log": "drivers__media__platform__amlogic__t7-hdmirx__test_link.py.log"
+    },
+    {
+      "test": "drivers/media/platform/amlogic/t7-hdmirx/test_phy.py",
+      "exit": 0,
+      "seconds": 0.069,
+      "log": "drivers__media__platform__amlogic__t7-hdmirx__test_phy.py.log"
+    },
+    {
+      "test": "drivers/media/platform/amlogic/t7-hdmirx/test_source_events.py",
+      "exit": 0,
+      "seconds": 0.115,
+      "log": "drivers__media__platform__amlogic__t7-hdmirx__test_source_events.py.log"
+    },
+    {
+      "test": "drivers/media/platform/amlogic/t7-hdmirx/test_stream.py",
+      "exit": 0,
+      "seconds": 0.817,
+      "log": "drivers__media__platform__amlogic__t7-hdmirx__test_stream.py.log"
+    },
+    {
+      "test": "drivers/media/platform/amlogic/t7-hdmirx/test_timings.py",
+      "exit": 0,
+      "seconds": 0.271,
+      "log": "drivers__media__platform__amlogic__t7-hdmirx__test_timings.py.log"
+    },
+    {
+      "test": "drivers/media/platform/amlogic/t7-hdmirx/test_vdin.py",
+      "exit": 0,
+      "seconds": 0.116,
+      "log": "drivers__media__platform__amlogic__t7-hdmirx__test_vdin.py.log"
+    },
+    {
+      "test": "drivers/media/platform/amlogic/t7-jpeg/test_import.py",
+      "exit": 0,
+      "seconds": 0.118,
+      "log": "drivers__media__platform__amlogic__t7-jpeg__test_import.py.log"
+    },
+    {
+      "test": "drivers/media/platform/amlogic/t7-jpeg/test_jpeg.py",
+      "exit": 0,
+      "seconds": 0.529,
+      "log": "drivers__media__platform__amlogic__t7-jpeg__test_jpeg.py.log"
+    },
+    {
+      "test": "drivers/media/platform/chips-media/wave5/test_buffers.py",
+      "exit": 0,
+      "seconds": 0.071,
+      "log": "drivers__media__platform__chips-media__wave5__test_buffers.py.log"
+    },
+    {
+      "test": "drivers/media/platform/chips-media/wave5/test_encoder_cleanup.py",
+      "exit": 0,
+      "seconds": 0.364,
+      "log": "drivers__media__platform__chips-media__wave5__test_encoder_cleanup.py.log"
+    },
+    {
+      "test": "drivers/media/platform/chips-media/wave5/test_geometry.py",
+      "exit": 0,
+      "seconds": 0.065,
+      "log": "drivers__media__platform__chips-media__wave5__test_geometry.py.log"
+    },
+    {
+      "test": "drivers/media/platform/chips-media/wave5/test_hang.py",
+      "exit": 0,
+      "seconds": 0.166,
+      "log": "drivers__media__platform__chips-media__wave5__test_hang.py.log"
+    },
+    {
+      "test": "drivers/media/platform/chips-media/wave5/test_hang_observer.py",
+      "exit": 0,
+      "seconds": 0.215,
+      "log": "drivers__media__platform__chips-media__wave5__test_hang_observer.py.log"
+    },
+    {
+      "test": "drivers/media/platform/chips-media/wave5/test_intra_refresh.py",
+      "exit": 0,
+      "seconds": 0.117,
+      "log": "drivers__media__platform__chips-media__wave5__test_intra_refresh.py.log"
+    },
+    {
+      "test": "drivers/media/platform/chips-media/wave5/test_isolation.py",
+      "exit": 0,
+      "seconds": 0.223,
+      "log": "drivers__media__platform__chips-media__wave5__test_isolation.py.log"
+    },
+    {
+      "test": "drivers/media/platform/chips-media/wave5/test_profiles.py",
+      "exit": 0,
+      "seconds": 0.066,
+      "log": "drivers__media__platform__chips-media__wave5__test_profiles.py.log"
+    },
+    {
+      "test": "drivers/media/platform/chips-media/wave5/test_recovery.py",
+      "exit": 0,
+      "seconds": 0.114,
+      "log": "drivers__media__platform__chips-media__wave5__test_recovery.py.log"
+    },
+    {
+      "test": "drivers/media/platform/chips-media/wave5/test_reset.py",
+      "exit": 0,
+      "seconds": 0.172,
+      "log": "drivers__media__platform__chips-media__wave5__test_reset.py.log"
+    },
+    {
+      "test": "drivers/net/wireless/broadcom/brcm80211/brcmfmac/test_p2p.py",
+      "exit": 0,
+      "seconds": 0.167,
+      "log": "drivers__net__wireless__broadcom__brcm80211__brcmfmac__test_p2p.py.log"
+    },
+    {
+      "test": "drivers/pmdomain/amlogic/test_secure_pwrc.py",
+      "exit": 0,
+      "seconds": 0.12,
+      "log": "drivers__pmdomain__amlogic__test_secure_pwrc.py.log"
+    },
+    {
+      "test": "drivers/thermal/test_khadas_mcu_fan.py",
+      "exit": 0,
+      "seconds": 0.118,
+      "log": "drivers__thermal__test_khadas_mcu_fan.py.log"
+    },
+    {
+      "test": "drivers/usb/gadget/function/test_hid_request_lifecycle.py",
+      "exit": 0,
+      "seconds": 0.065,
+      "log": "drivers__usb__gadget__function__test_hid_request_lifecycle.py.log"
+    },
+    {
+      "test": "drivers/usb/gadget/function/test_uac2_controls.py",
+      "exit": 0,
+      "seconds": 0.115,
+      "log": "drivers__usb__gadget__function__test_uac2_controls.py.log"
+    },
+    {
+      "test": "drivers/usb/gadget/udc/crg/test_probe_failures.py",
+      "exit": 0,
+      "seconds": 0.067,
+      "log": "drivers__usb__gadget__udc__crg__test_probe_failures.py.log"
+    },
+    {
+      "test": "drivers/usb/gadget/udc/crg/test_setup_events.py",
+      "exit": 0,
+      "seconds": 0.069,
+      "log": "drivers__usb__gadget__udc__crg__test_setup_events.py.log"
+    },
+    {
+      "test": "sound/soc/meson/test_t7_toddr.py",
+      "exit": 0,
+      "seconds": 0.117,
+      "log": "sound__soc__meson__test_t7_toddr.py.log"
+    }
+  ],
+  "kunit_exit": null,
+  "hardware_tested": false
+}

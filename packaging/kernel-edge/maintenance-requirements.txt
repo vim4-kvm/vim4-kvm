@@ -1,0 +1,5 @@
+dtschema==2026.9
+yamllint==1.38.0
+ply==3.11
+GitPython==3.2.1
+Pillow==10.2.0

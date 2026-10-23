@@ -1,0 +1,150 @@
+From 91312b1d10535b1e686df57395e58d0fa97ecfc0 Mon Sep 17 00:00:00 2001
+From: localhost-copilot <318096335+localhost-copilot@users.noreply.github.com>
+Date: Thu, 22 Oct 2026 12:44:21 +0800
+Subject: [PATCH] Describe VIM4 IR, board keys and shared SPI NOR wiring
+
+---
+ .../amlogic/amlogic-t7-a311d2-khadas-vim4.dts | 52 +++++++++++++++++++
+ arch/arm64/boot/dts/amlogic/amlogic-t7.dtsi   | 45 ++++++++++++++++
+ 2 files changed, 97 insertions(+)
+
+diff --git a/arch/arm64/boot/dts/amlogic/amlogic-t7-a311d2-khadas-vim4.dts b/arch/arm64/boot/dts/amlogic/amlogic-t7-a311d2-khadas-vim4.dts
+index 14779b33f9e24..43ad8eaffe603 100644
+--- a/arch/arm64/boot/dts/amlogic/amlogic-t7-a311d2-khadas-vim4.dts
++++ b/arch/arm64/boot/dts/amlogic/amlogic-t7-a311d2-khadas-vim4.dts
+@@ -8,6 +8,7 @@
+ #include "amlogic-t7.dtsi"
+ #include <dt-bindings/gpio/amlogic,t7-periphs-pinctrl.h>
+ #include <dt-bindings/gpio/gpio.h>
++#include <dt-bindings/input/input.h>
+ 
+ / {
+ 	model = "Khadas VIM4";
+@@ -22,6 +23,32 @@ aliases {
+ 		rtc1 = &vrtc;
+ 	};
+ 
++	adc-keys {
++		compatible = "adc-keys";
++		io-channels = <&saradc 2>;
++		io-channel-names = "buttons";
++		keyup-threshold-microvolt = <1800000>;
++		poll-interval = <20>;
++
++		button-function {
++			label = "Function";
++			linux,code = <KEY_ENTER>;
++			/* Vendor nominal ADC value: 90 / 1023 * 1.8 V. */
++			press-threshold-microvolt = <158000>;
++		};
++	};
++
++	polled-keys {
++		compatible = "gpio-keys-polled";
++		poll-interval = <20>;
++
++		button-power {
++			label = "Power";
++			linux,code = <KEY_POWER>;
++			gpios = <&gpio GPIOD_4 GPIO_ACTIVE_LOW>;
++		};
++	};
++
+ 	memory@0 {
+ 		device_type = "memory";
+ 		reg = <0x0 0x0 0x0 0xE0000000
+@@ -700,6 +727,31 @@ &pwm_ao_ab {
+ 	status = "okay";
+ };
+ 
++&ir {
++	status = "okay";
++	pinctrl-names = "default";
++	pinctrl-0 = <&ir_pins>;
++	linux,rc-map-name = "rc-khadas";
++};
++
++&saradc {
++	status = "okay";
++	vref-supply = <&vddao_1v8>;
++};
++
++/* GPIOB_3..7 are shared with the active 8-bit eMMC root device. */
++&spifc {
++	pinctrl-names = "default";
++	pinctrl-0 = <&spifc_pins>;
++	status = "disabled";
++
++	flash@0 {
++		compatible = "jedec,spi-nor";
++		reg = <0>;
++		spi-max-frequency = <16000000>;
++	};
++};
++
+ /* SDIO */
+ &sd_emmc_a {
+ 	status = "okay";
+diff --git a/arch/arm64/boot/dts/amlogic/amlogic-t7.dtsi b/arch/arm64/boot/dts/amlogic/amlogic-t7.dtsi
+index 4c6c51dd261b0..db72fec2c9d21 100644
+--- a/arch/arm64/boot/dts/amlogic/amlogic-t7.dtsi
++++ b/arch/arm64/boot/dts/amlogic/amlogic-t7.dtsi
+@@ -580,6 +580,35 @@ watchdog@2100 {
+ 				clocks = <&xtal>;
+ 			};
+ 
++			saradc: adc@26000 {
++				compatible = "amlogic,meson-g12a-saradc",
++					     "amlogic,meson-saradc";
++				reg = <0x0 0x26000 0x0 0x48>;
++				interrupts = <GIC_SPI 181 IRQ_TYPE_EDGE_RISING>;
++				#io-channel-cells = <1>;
++				clocks = <&xtal>, <&clkc_periphs CLKID_SYS_SAR_ADC>,
++					 <&clkc_periphs CLKID_SARADC>,
++					 <&clkc_periphs CLKID_SARADC_SEL>;
++				clock-names = "clkin", "core", "adc_clk", "adc_sel";
++				status = "disabled";
++			};
++
++			spifc: spi@56000 {
++				compatible = "amlogic,meson-gxbb-spifc";
++				reg = <0x0 0x56000 0x0 0x80>;
++				clocks = <&clkc_periphs CLKID_SYS_SPIFC>;
++				#address-cells = <1>;
++				#size-cells = <0>;
++				status = "disabled";
++			};
++
++			ir: ir-receiver@84040 {
++				compatible = "amlogic,meson-gxbb-ir";
++				reg = <0x0 0x84040 0x0 0xa4>;
++				interrupts = <GIC_SPI 22 IRQ_TYPE_EDGE_RISING>;
++				status = "disabled";
++			};
++
+ 			periphs_pinctrl: pinctrl@4000 {
+ 				compatible = "amlogic,t7-periphs-pinctrl";
+ 				#address-cells = <2>;
+@@ -2015,6 +2044,22 @@ hdmi_tx_tmds_out: endpoint {
+ };
+ 
+ &periphs_pinctrl {
++	ir_pins: ir-pins {
++		mux {
++			groups = "remote_in";
++			function = "remote_in";
++			bias-disable;
++		};
++	};
++
++	spifc_pins: spifc-pins {
++		mux {
++			groups = "nor_hold", "nor_d", "nor_q", "nor_c",
++				 "nor_wp", "nor_cs";
++			function = "nor";
++		};
++	};
++
+ 	hdmitx_hpd_pins: hdmitx-hpd {
+ 		mux {
+ 			groups = "hdmitx_hpd_in";

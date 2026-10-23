@@ -1,0 +1,91 @@
+From 82aecb1fd87d85923392d1a8ce9348d8b3cf74aa Mon Sep 17 00:00:00 2001
+From: deepdream <deepdream@deepdremsMinim4.lan>
+Date: Wed, 21 Oct 2026 00:35:01 -0700
+Subject: [PATCH] media: t7-hdmirx: requalify SDR clocks after HDR observation
+
+---
+ .../platform/amlogic/t7-hdmirx/t7-hdmirx.c    | 32 +++++++++++++------
+ .../platform/amlogic/t7-hdmirx/test_link.py   |  4 ++-
+ 2 files changed, 26 insertions(+), 10 deletions(-)
+
+diff --git a/drivers/media/platform/amlogic/t7-hdmirx/t7-hdmirx.c b/drivers/media/platform/amlogic/t7-hdmirx/t7-hdmirx.c
+index 047a5118488e2..716e257f31588 100644
+--- a/drivers/media/platform/amlogic/t7-hdmirx/t7-hdmirx.c
++++ b/drivers/media/platform/amlogic/t7-hdmirx/t7-hdmirx.c
+@@ -1059,9 +1059,14 @@ void t7_hdmirx_stream_put(struct device *dev)
+ }
+ EXPORT_SYMBOL_GPL(t7_hdmirx_stream_put);
+ 
++static bool t7_hdmirx_sdr_cable(u32 cable)
++{
++	return cable >= 146500000 && cable <= 150500000;
++}
++
+ static bool t7_hdmirx_cable_supported(struct t7_hdmirx *rx, u32 cable, bool hdmi2)
+ {
+-	if (cable >= 146500000 && cable <= 150500000)
++	if (t7_hdmirx_sdr_cable(cable))
+ 		return true;
+ 	/* 4K60 YCbCr420 10-bit uses a 371.25 MHz character clock at 1:40.
+ 	 * Its PHY_BW_4 coefficients and PLL divider match the UHD RGB8 trial.
+@@ -1082,7 +1087,8 @@ static void t7_hdmirx_link_work(struct work_struct *work)
+ 
+ 	mutex_lock(&link->lock);
+ 	ret = t7_hdmirx_video_status(rx);
+-	if (!ret && link->configured) {
++	if (!ret && link->configured &&
++	    (!rx->hdr_probe || t7_hdmirx_sdr_cable(link->previous_cable))) {
+ 		if (!READ_ONCE(link->ready)) {
+ 			usleep_range(20000, 21000);
+ 			ret = t7_hdmirx_video_status(rx);
+@@ -1094,13 +1100,9 @@ static void t7_hdmirx_link_work(struct work_struct *work)
+ 	/* A live or quarantined MIF owns its receiver until DMA is safe. */
+ 	if (link->users)
+ 		goto out;
+-	/* Keep an unsupported but aligned probe signal intact for packet reads.
+-	 * Repeated PLL/PCS resets would otherwise destroy the metadata under test.
+-	 */
+-	if (rx->hdr_probe && ret == -ERANGE && link->configured &&
+-	    (readl(rx->phy + T7_RX_PHY_APLL0) & T7_RX_PHY_PLL_LOCK) &&
+-	    (readl(rx->top + T7_RX_TOP_TMDS_ALIGN_STAT) & BIT(0)))
+-		goto out;
++	/* SDR pixels after observation still need a newly qualified clock. */
++	if (!ret)
++		link->configured = false;
+ 	cable = t7_hdmirx_sample_cable(rx, clk_get_rate(rx->clocks[T7_RX_METER].clk));
+ 	rx->cable_hz = cable;
+ 	next_uhd = !!(readb(rx->cor + T7_RX_COR_TMDS_CONFIG) & BIT(1));
+@@ -1112,6 +1114,18 @@ static void t7_hdmirx_link_work(struct work_struct *work)
+ 		link->configured = false;
+ 		goto out;
+ 	}
++	/* Keep an unsupported but aligned probe signal intact for packet reads.
++	 * Remember its reference clock so returning SDR is requalified, including
++	 * fresh TMDS meter counts for the subsequent ALSA N/CTS validation.
++	 */
++	if (rx->hdr_probe && ret == -ERANGE && link->configured &&
++	    (readl(rx->phy + T7_RX_PHY_APLL0) & T7_RX_PHY_PLL_LOCK) &&
++	    (readl(rx->top + T7_RX_TOP_TMDS_ALIGN_STAT) & BIT(0))) {
++		link->previous_cable = cable;
++		link->previous_uhd = next_uhd;
++		link->stable_samples = 0;
++		goto out;
++	}
+ 	if (link->previous_cable && link->previous_uhd == next_uhd &&
+ 	    abs((int)cable - (int)link->previous_cable) <= 500000)
+ 		link->stable_samples++;
+diff --git a/drivers/media/platform/amlogic/t7-hdmirx/test_link.py b/drivers/media/platform/amlogic/t7-hdmirx/test_link.py
+index 910263ff8bda8..e7bf685067efb 100644
+--- a/drivers/media/platform/amlogic/t7-hdmirx/test_link.py
++++ b/drivers/media/platform/amlogic/t7-hdmirx/test_link.py
+@@ -184,7 +184,9 @@ int main(void)
+     tick(&link,100);
+     assert(!link.ready && pll_calls==before_probe+1);
+     assert(t7_hdmirx_stream_get(&dev,3840,2160)==-ENOLINK && !link.users);
+-    unsupported_signal=false; tick(&link,1); assert(link.ready);
++    unsupported_signal=false;cable_hz=148500000;
++    tick(&link,3);assert(!link.ready && pll_calls==before_probe+1);
++    tick(&link,1);assert(link.ready && pll_calls==before_probe+2);
+     t7_hdmirx_link_stop(&link);
+     assert(canceled == 1 && !link.ready);
+     puts("Receiver recovery: absent/delayed source, DMA leases, PLL failure and late alignment passed");

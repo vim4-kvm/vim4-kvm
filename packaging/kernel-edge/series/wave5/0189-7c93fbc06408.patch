@@ -1,0 +1,100 @@
+From 7c93fbc06408bee6db10afbaab933e468c5359d5 Mon Sep 17 00:00:00 2001
+From: localhost-copilot <318096335+localhost-copilot@users.noreply.github.com>
+Date: Tue, 20 Oct 2026 18:33:43 +0800
+Subject: [PATCH] media: wave5: support on-demand encoder IDR requests
+
+---
+ drivers/media/platform/chips-media/wave5/wave5-hw.c  |  4 +++-
+ .../media/platform/chips-media/wave5/wave5-vpu-enc.c | 12 ++++++++++++
+ .../media/platform/chips-media/wave5/wave5-vpuapi.h  |  3 +++
+ 3 files changed, 18 insertions(+), 1 deletion(-)
+
+diff --git a/drivers/media/platform/chips-media/wave5/wave5-hw.c b/drivers/media/platform/chips-media/wave5/wave5-hw.c
+index d79590e8cd700..a728f8f444e68 100644
+--- a/drivers/media/platform/chips-media/wave5/wave5-hw.c
++++ b/drivers/media/platform/chips-media/wave5/wave5-hw.c
+@@ -2221,7 +2221,9 @@ int wave5_vpu_encode(struct vpu_instance *inst, struct enc_param *option, u32 *f
+ 			      (option->code_option.encode_eos << 6) |
+ 			      (option->code_option.encode_eob << 7));
+ 
+-	vpu_write_reg(inst->dev, W5_CMD_ENC_PIC_PIC_PARAM, 0);
++	/* Forced picture code 3 selects IDR; it differs from the result type 5. */
++	vpu_write_reg(inst->dev, W5_CMD_ENC_PIC_PIC_PARAM,
++		      option->force_keyframe ? BIT(20) | (3 << 21) : 0);
+ 
+ 	if (option->src_end_flag)
+ 		/* no more source images. */
+diff --git a/drivers/media/platform/chips-media/wave5/wave5-vpu-enc.c b/drivers/media/platform/chips-media/wave5/wave5-vpu-enc.c
+index 0145244dd275e..02a1fc6fe589d 100644
+--- a/drivers/media/platform/chips-media/wave5/wave5-vpu-enc.c
++++ b/drivers/media/platform/chips-media/wave5/wave5-vpu-enc.c
+@@ -219,8 +219,13 @@ static int start_encode(struct vpu_instance *inst, u32 *fail_res)
+ 	pic_param.source_frame = &frame_buf;
+ 	pic_param.code_option.implicit_header_encode = 1;
+ 	pic_param.code_option.encode_aud = inst->encode_aud;
++	if (src_buf)
++		pic_param.force_keyframe = atomic_xchg(&inst->force_keyframe, 0);
+ 	ret = wave5_vpu_enc_start_one_frame(inst, &pic_param, fail_res);
+ 	if (ret) {
++		/* A command which was not accepted must not consume the request. */
++		if (pic_param.force_keyframe)
++			atomic_set(&inst->force_keyframe, 1);
+ 		if (*fail_res == WAVE5_SYSERR_QUEUEING_FAIL)
+ 			return -EINVAL;
+ 
+@@ -786,6 +791,9 @@ static int wave5_vpu_enc_s_ctrl(struct v4l2_ctrl *ctrl)
+ 	case V4L2_CID_MPEG_VIDEO_GOP_SIZE:
+ 		inst->enc_param.avc_idr_period = ctrl->val;
+ 		break;
++	case V4L2_CID_MPEG_VIDEO_FORCE_KEY_FRAME:
++		atomic_set(&inst->force_keyframe, 1);
++		break;
+ 	case V4L2_CID_MPEG_VIDEO_MULTI_SLICE_MODE:
+ 		inst->enc_param.independ_slice_mode = ctrl->val;
+ 		inst->enc_param.avc_slice_mode = ctrl->val;
+@@ -1639,6 +1647,7 @@ static int wave5_vpu_open_enc(struct file *filp)
+ 	v4l2_fh_add(&inst->v4l2_fh, filp);
+ 
+ 	INIT_LIST_HEAD(&inst->list);
++	atomic_set(&inst->force_keyframe, 0);
+ 
+ 	inst->v4l2_m2m_dev = inst->dev->v4l2_m2m_enc_dev;
+ 	inst->v4l2_fh.m2m_ctx =
+@@ -1774,6 +1783,9 @@ static int wave5_vpu_open_enc(struct file *filp)
+ 	v4l2_ctrl_new_std(v4l2_ctrl_hdl, &wave5_vpu_enc_ctrl_ops,
+ 			  V4L2_CID_MPEG_VIDEO_GOP_SIZE,
+ 			  0, 2047, 1, 0);
++	v4l2_ctrl_new_std(v4l2_ctrl_hdl, &wave5_vpu_enc_ctrl_ops,
++			  V4L2_CID_MPEG_VIDEO_FORCE_KEY_FRAME,
++			  0, 0, 0, 0);
+ 	v4l2_ctrl_new_std_menu(v4l2_ctrl_hdl, &wave5_vpu_enc_ctrl_ops,
+ 			       V4L2_CID_MPEG_VIDEO_MULTI_SLICE_MODE,
+ 			       V4L2_MPEG_VIDEO_MULTI_SLICE_MODE_MAX_MB, 0,
+diff --git a/drivers/media/platform/chips-media/wave5/wave5-vpuapi.h b/drivers/media/platform/chips-media/wave5/wave5-vpuapi.h
+index 57456c970cae8..c271d47192504 100644
+--- a/drivers/media/platform/chips-media/wave5/wave5-vpuapi.h
++++ b/drivers/media/platform/chips-media/wave5/wave5-vpuapi.h
+@@ -8,6 +8,7 @@
+ #ifndef VPUAPI_H_INCLUDED
+ #define VPUAPI_H_INCLUDED
+ 
++#include <linux/atomic.h>
+ #include <linux/kfifo.h>
+ #include <linux/idr.h>
+ #include <linux/genalloc.h>
+@@ -621,6 +622,7 @@ struct enc_param {
+ 	struct enc_code_opt code_option;
+ 	u64 pts; /* presentation timestamp (PTS) of the input source */
+ 	bool src_end_flag;
++	bool force_keyframe;
+ };
+ 
+ struct enc_output_info {
+@@ -845,6 +847,7 @@ struct vpu_instance {
+ 	unsigned int rc_enable;
+ 	unsigned int bit_rate;
+ 	unsigned int encode_aud;
++	atomic_t force_keyframe;
+ 	struct enc_wave_param enc_param;
+ };
+ 

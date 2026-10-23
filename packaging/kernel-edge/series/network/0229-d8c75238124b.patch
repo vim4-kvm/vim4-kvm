@@ -1,0 +1,295 @@
+From d8c75238124b28cf0db8918f1c083f32b85f67e6 Mon Sep 17 00:00:00 2001
+From: localhost-copilot <318096335+localhost-copilot@users.noreply.github.com>
+Date: Wed, 21 Oct 2026 21:06:20 -0700
+Subject: [PATCH] Keep BCM43752 concurrent channels flowing with firmware TX
+ credits
+
+---
+ .../broadcom/brcm80211/brcmfmac/common.c      |  5 +-
+ .../broadcom/brcm80211/brcmfmac/core.c        | 20 +++----
+ .../broadcom/brcm80211/brcmfmac/feature.h     |  4 +-
+ .../broadcom/brcm80211/brcmfmac/fwsignal.c    | 10 +---
+ .../broadcom/brcm80211/brcmfmac/fwsignal.h    |  7 +++
+ .../broadcom/brcm80211/brcmfmac/test_p2p.py   | 57 +++++++++++++++++--
+ .../broadcom/brcm80211/brcmfmac/wcc/core.c    | 12 +++-
+ 7 files changed, 87 insertions(+), 28 deletions(-)
+
+diff --git a/drivers/net/wireless/broadcom/brcm80211/brcmfmac/common.c b/drivers/net/wireless/broadcom/brcm80211/brcmfmac/common.c
+index b6027d83e6ab5..8493da9180e1c 100644
+--- a/drivers/net/wireless/broadcom/brcm80211/brcmfmac/common.c
++++ b/drivers/net/wireless/broadcom/brcm80211/brcmfmac/common.c
+@@ -20,6 +20,7 @@
+ #include "of.h"
+ #include "firmware.h"
+ #include "chip.h"
++#include "fwsignal.h"
+ 
+ MODULE_AUTHOR("Broadcom Corporation");
+ MODULE_DESCRIPTION("Broadcom 802.11 wireless LAN fullmac driver.");
+@@ -55,9 +56,9 @@ module_param_string(alternative_fw_path, brcmf_firmware_path,
+ 		    BRCMF_FW_ALTPATH_LEN, 0400);
+ MODULE_PARM_DESC(alternative_fw_path, "Alternative firmware path");
+ 
+-static int brcmf_fcmode;
++static int brcmf_fcmode = BRCMF_FWS_FCMODE_AUTO;
+ module_param_named(fcmode, brcmf_fcmode, int, 0);
+-MODULE_PARM_DESC(fcmode, "Mode of firmware signalled flow control");
++MODULE_PARM_DESC(fcmode, "Firmware flow control: -1=auto, 0=off, 1=implied, 2=explicit");
+ 
+ static int brcmf_roamoff;
+ module_param_named(roamoff, brcmf_roamoff, int, 0400);
+diff --git a/drivers/net/wireless/broadcom/brcm80211/brcmfmac/core.c b/drivers/net/wireless/broadcom/brcm80211/brcmfmac/core.c
+index ca9741952cb27..cb1e4c3e885ce 100644
+--- a/drivers/net/wireless/broadcom/brcm80211/brcmfmac/core.c
++++ b/drivers/net/wireless/broadcom/brcm80211/brcmfmac/core.c
+@@ -95,7 +95,6 @@ struct brcmf_if *brcmf_get_ifp(struct brcmf_pub *drvr, int ifidx)
+ 
+ void brcmf_configure_arp_nd_offload(struct brcmf_if *ifp, bool enable)
+ {
+-	struct brcmf_if *nd_ifp = ifp;
+ 	s32 err;
+ 	u32 mode;
+ 
+@@ -104,6 +103,15 @@ void brcmf_configure_arp_nd_offload(struct brcmf_if *ifp, bool enable)
+ 		return;
+ 	}
+ 
++	/* ARP/ND enable and mode are radio-wide controls in this firmware.
++	 * Address tables may be per-BSS; their notifiers keep those indices.
++	 * Sending the enable controls on a group interface can trap firmware.
++	 */
++	if (brcmf_feat_is_quirk_enabled(ifp, BRCMF_FEAT_QUIRK_ARP_ND_PRIMARY))
++		ifp = ifp->drvr->iflist[0];
++	if (!ifp)
++		return;
++
+ 	if (enable)
+ 		mode = BRCMF_ARP_OL_AGENT | BRCMF_ARP_OL_PEER_AUTO_REPLY;
+ 	else
+@@ -126,15 +134,7 @@ void brcmf_configure_arp_nd_offload(struct brcmf_if *ifp, bool enable)
+ 		}
+ 	}
+ 
+-	/* This firmware's ND enable belongs to the primary control interface,
+-	 * even when a P2P group changes the radio's offload policy. Sending it
+-	 * on a group interface traps the firmware before AP startup.
+-	 */
+-	if (brcmf_feat_is_quirk_enabled(ifp, BRCMF_FEAT_QUIRK_NDOE_PRIMARY))
+-		nd_ifp = ifp->drvr->iflist[0];
+-	if (!nd_ifp)
+-		return;
+-	err = brcmf_fil_iovar_int_set(nd_ifp, "ndoe", enable);
++	err = brcmf_fil_iovar_int_set(ifp, "ndoe", enable);
+ 	if (err) {
+ 		brcmf_dbg(TRACE, "failed to configure (%d) ND offload err = %d\n",
+ 			  enable, err);
+diff --git a/drivers/net/wireless/broadcom/brcm80211/brcmfmac/feature.h b/drivers/net/wireless/broadcom/brcm80211/brcmfmac/feature.h
+index 81c5fa25f795a..8a0b5484b6da4 100644
+--- a/drivers/net/wireless/broadcom/brcm80211/brcmfmac/feature.h
++++ b/drivers/net/wireless/broadcom/brcm80211/brcmfmac/feature.h
+@@ -67,13 +67,13 @@
+  * AUTO_AUTH: workaround needed for automatic authentication type.
+  * NEED_MPC: driver needs to disable MPC during scanning operation.
+  * P2P_DEV_NO_IF_EVT: discovery BSS shares the primary firmware interface.
+- * NDOE_PRIMARY: IPv6 ND offload enable is a primary-interface control.
++ * ARP_ND_PRIMARY: ARP/ND mode and enable use the primary control interface.
+  */
+ #define BRCMF_QUIRK_LIST \
+ 	BRCMF_QUIRK_DEF(AUTO_AUTH) \
+ 	BRCMF_QUIRK_DEF(NEED_MPC) \
+ 	BRCMF_QUIRK_DEF(P2P_DEV_NO_IF_EVT) \
+-	BRCMF_QUIRK_DEF(NDOE_PRIMARY)
++	BRCMF_QUIRK_DEF(ARP_ND_PRIMARY)
+ 
+ #define BRCMF_FEAT_DEF(_f) \
+ 	BRCMF_FEAT_ ## _f,
+diff --git a/drivers/net/wireless/broadcom/brcm80211/brcmfmac/fwsignal.c b/drivers/net/wireless/broadcom/brcm80211/brcmfmac/fwsignal.c
+index a43f1a38b0e30..f9c39b8043647 100644
+--- a/drivers/net/wireless/broadcom/brcm80211/brcmfmac/fwsignal.c
++++ b/drivers/net/wireless/broadcom/brcm80211/brcmfmac/fwsignal.c
+@@ -339,13 +339,6 @@ enum brcmf_fws_txstatus {
+ 	BRCMF_FWS_TXSTATUS_FW_SUPPRESS_ACKED,
+ 	BRCMF_FWS_TXSTATUS_HOST_TOSSED
+ };
+-
+-enum brcmf_fws_fcmode {
+-	BRCMF_FWS_FCMODE_NONE,
+-	BRCMF_FWS_FCMODE_IMPLIED_CREDIT,
+-	BRCMF_FWS_FCMODE_EXPLICIT_CREDIT
+-};
+-
+ enum brcmf_fws_mac_desc_state {
+ 	BRCMF_FWS_STATE_OPEN = 1,
+ 	BRCMF_FWS_STATE_CLOSE
+@@ -2352,7 +2345,8 @@ struct brcmf_fws_info *brcmf_fws_attach(struct brcmf_pub *drvr)
+ 
+ 	/* store drvr reference */
+ 	fws->drvr = drvr;
+-	fws->fcmode = drvr->settings->fcmode;
++	fws->fcmode = drvr->settings->fcmode == BRCMF_FWS_FCMODE_AUTO ?
++		      BRCMF_FWS_FCMODE_NONE : drvr->settings->fcmode;
+ 
+ 	if (!drvr->bus_if->always_use_fws_queue &&
+ 	    (fws->fcmode == BRCMF_FWS_FCMODE_NONE)) {
+diff --git a/drivers/net/wireless/broadcom/brcm80211/brcmfmac/fwsignal.h b/drivers/net/wireless/broadcom/brcm80211/brcmfmac/fwsignal.h
+index f9c36cd8f1de1..73c8554d0720a 100644
+--- a/drivers/net/wireless/broadcom/brcm80211/brcmfmac/fwsignal.h
++++ b/drivers/net/wireless/broadcom/brcm80211/brcmfmac/fwsignal.h
+@@ -29,6 +29,13 @@ enum brcmf_fws_fifo {
+ 	BRCMF_FWS_FIFO_COUNT
+ };
+ 
++enum brcmf_fws_fcmode {
++	BRCMF_FWS_FCMODE_AUTO = -1,
++	BRCMF_FWS_FCMODE_NONE,
++	BRCMF_FWS_FCMODE_IMPLIED_CREDIT,
++	BRCMF_FWS_FCMODE_EXPLICIT_CREDIT
++};
++
+ struct brcmf_fws_info *brcmf_fws_attach(struct brcmf_pub *drvr);
+ void brcmf_fws_detach(struct brcmf_fws_info *fws);
+ void brcmf_fws_debugfs_create(struct brcmf_pub *drvr);
+diff --git a/drivers/net/wireless/broadcom/brcm80211/brcmfmac/test_p2p.py b/drivers/net/wireless/broadcom/brcm80211/brcmfmac/test_p2p.py
+index d55744c81dcb3..91a029d795e5c 100644
+--- a/drivers/net/wireless/broadcom/brcm80211/brcmfmac/test_p2p.py
++++ b/drivers/net/wireless/broadcom/brcm80211/brcmfmac/test_p2p.py
+@@ -44,7 +44,11 @@ typedef uint32_t __le32;
+ #define BRCMF_SCAN_PARAMS_COUNT_MASK 0xffff
+ #define BRCMF_SCAN_PARAMS_NSSID_SHIFT 16
+ #define BRCMF_FEAT_SCAN_V2 0
+-#define BRCMF_FEAT_QUIRK_NDOE_PRIMARY 0
++#define BRCMF_FEAT_QUIRK_ARP_ND_PRIMARY 0
++#define BRCMF_FEAT_QUIRK_P2P_DEV_NO_IF_EVT 1
++#define BRCMF_FEAT_SAE_EXT 2
++#define BRCM_CC_43752_CHIP_ID 43752
++#define BIT(n) (1UL << (n))
+ #define BRCMF_VIF_STATUS_CONNECTED 0
+ #define BRCMF_SCAN_STATUS_BUSY 0
+ #define BRCMF_P2P_STATUS_ENABLED 0
+@@ -58,7 +62,11 @@ static void *kzalloc(size_t n, int flags) {
+     return allocations++ == fail_alloc ? NULL : calloc(1, n);
+ }
+ struct brcmf_if;
+-struct brcmf_pub { void *wiphy; struct brcmf_if *iflist[16]; };
++struct brcmf_bus { unsigned int chip; };
++struct brcmf_mp_device { int fcmode; unsigned long feature_disable; };
++struct brcmf_pub { void *wiphy; struct brcmf_if *iflist[16];
++    struct brcmf_bus *bus_if; struct brcmf_mp_device *settings;
++    const char *fwver; unsigned long chip_quirks, feat_flags; };
+ struct brcmf_if { struct brcmf_pub *drvr; int ifidx; bool v2, primary_nd; };
+ struct brcmf_cfg80211_vif { struct brcmf_if *ifp; };
+ struct brcmf_cfg80211_info { struct brcmf_pub *pub; unsigned long scan_status; };
+@@ -88,6 +96,15 @@ static int brcmf_fil_iovar_data_set(struct brcmf_if *ifp, const char *name,
+                                    const void *data, size_t n) {
+     (void)data; return record(ifp, name, n);
+ }
++static int caps_error;
++static const char *firmware_caps = "p2p proptxstatus extsae ";
++static int brcmf_fil_iovar_data_get(struct brcmf_if *ifp, const char *name,
++                                   void *data, size_t n) {
++    (void)ifp; assert(!strcmp(name, "cap"));
++    assert(strlen(firmware_caps) < n);
++    if (!caps_error) memcpy(data, firmware_caps, strlen(firmware_caps));
++    return caps_error;
++}
+ static unsigned char request[1024];
+ static size_t request_len;
+ static int scan_error, scan_calls;
+@@ -134,6 +151,7 @@ for line in p2p.splitlines():
+         constants.append(line)
+ constants += ['#define DOT11_BSSTYPE_ANY 2', '#define WL_ESCAN_ACTION_START 1']
+ layouts = '\n'.join([
++    block('fwsignal.h', 'enum brcmf_fws_fcmode {', '\n};'),
+     block('fwil_types.h', 'struct brcmf_ssid_le {', '\n};'),
+     block('fwil_types.h', 'struct brcmf_scan_params_le {', '\n};'),
+     block('fwil_types.h', 'struct brcmf_scan_params_v2_le {', '\n};'),
+@@ -142,6 +160,7 @@ layouts = '\n'.join([
+     block('p2p.c', 'enum brcmf_p2p_disc_state {', '\n};'),
+ ])
+ functions = '\n'.join([
++    block('wcc/core.c', 'static void brcmf_wcc_feat_attach('),
+     block('cfg80211.c', 'void brcmf_scan_params_v2_to_v1('),
+     block('p2p.c', 'static int brcmf_p2p_set_firmware('),
+     block('p2p.c', 'static s32 brcmf_p2p_escan('),
+@@ -221,11 +240,11 @@ int main(void) {
+     assert(brcmf_p2p_escan(&p2p,1,&channel,WL_P2P_DISC_ST_SCAN,
+                            P2PAPI_BSSCFG_DEVICE) == -EBUSY);
+     assert(!cfg.scan_status);
+-    /* Group policy controls ND on the primary; ARP keeps its group index. */
++    /* Radio-wide offload controls use primary, without losing group data. */
+     group.primary_nd=true; op_count=0;
+     brcmf_configure_arp_nd_offload(&group,false);
+     assert(op_count == 3);
+-    assert(ops[0].ifidx == 1 && ops[1].ifidx == 1);
++    assert(ops[0].ifidx == 0 && ops[1].ifidx == 0);
+     assert(!strcmp(ops[2].name,"ndoe") && ops[2].ifidx == 0);
+     group.primary_nd=false; op_count=0;
+     brcmf_configure_arp_nd_offload(&group,false);
+@@ -233,7 +252,35 @@ int main(void) {
+     ap_running=true; op_count=0;
+     brcmf_configure_arp_nd_offload(&group,true);
+     assert(!op_count);
+-    puts("P2P scan ABI, linked STA setup, errors and ND interface routing passed");
++    /* Automatic flow control is scoped to the qualified radio/firmware.
++     * Explicit module parameter values remain authoritative.
++     */
++    struct brcmf_bus bus = {.chip=BRCM_CC_43752_CHIP_ID};
++    struct brcmf_mp_device settings = {.fcmode=BRCMF_FWS_FCMODE_AUTO};
++    pub.bus_if=&bus; pub.settings=&settings; pub.fwver="01-16e134aa";
++    brcmf_wcc_feat_attach(&primary);
++    assert(settings.fcmode == BRCMF_FWS_FCMODE_EXPLICIT_CREDIT);
++    assert(pub.chip_quirks & BIT(BRCMF_FEAT_QUIRK_P2P_DEV_NO_IF_EVT));
++    assert(pub.chip_quirks & BIT(BRCMF_FEAT_QUIRK_ARP_ND_PRIMARY));
++    assert(pub.feat_flags & BIT(BRCMF_FEAT_SAE_EXT));
++    for (int mode=0; mode<=2; mode++) {
++        settings.fcmode=mode;
++        brcmf_wcc_feat_attach(&primary);
++        assert(settings.fcmode == mode);
++    }
++    for (int failure=0; failure<4; failure++) {
++        settings.fcmode=BRCMF_FWS_FCMODE_AUTO;
++        bus.chip=failure == 0 ? 1234 : BRCM_CC_43752_CHIP_ID;
++        pub.fwver=failure == 1 ? "unknown" : "01-16e134aa";
++        caps_error=failure == 2 ? -EIO : 0;
++        firmware_caps=failure == 3 ? "p2p extsae " : "p2p proptxstatus extsae ";
++        brcmf_wcc_feat_attach(&primary);
++        assert(settings.fcmode == BRCMF_FWS_FCMODE_AUTO);
++    }
++    settings.feature_disable=BIT(BRCMF_FEAT_SAE_EXT); pub.feat_flags=0;
++    brcmf_wcc_feat_attach(&primary);
++    assert(!(pub.feat_flags & BIT(BRCMF_FEAT_SAE_EXT)));
++    puts("P2P scan ABI, lifecycle, offload routing and TX credit policy passed");
+ }
+ '''
+ with tempfile.TemporaryDirectory(prefix='brcmf-p2p-') as tmp:
+diff --git a/drivers/net/wireless/broadcom/brcm80211/brcmfmac/wcc/core.c b/drivers/net/wireless/broadcom/brcm80211/brcmfmac/wcc/core.c
+index f99800555c904..b3a554eafaa6e 100644
+--- a/drivers/net/wireless/broadcom/brcm80211/brcmfmac/wcc/core.c
++++ b/drivers/net/wireless/broadcom/brcm80211/brcmfmac/wcc/core.c
+@@ -15,6 +15,7 @@
+ #include <fwil.h>
+ #include <fwil_types.h>
+ #include <fweh.h>
++#include <fwsignal.h>
+ 
+ #include "vops.h"
+ 
+@@ -68,8 +69,17 @@ static void brcmf_wcc_feat_attach(struct brcmf_if *ifp)
+ 	 */
+ 	if (!strcmp(ifp->drvr->fwver, "01-16e134aa"))
+ 		ifp->drvr->chip_quirks |= BIT(BRCMF_FEAT_QUIRK_P2P_DEV_NO_IF_EVT) |
+-					 BIT(BRCMF_FEAT_QUIRK_NDOE_PRIMARY);
++					 BIT(BRCMF_FEAT_QUIRK_ARP_ND_PRIMARY);
+ 	err = brcmf_fil_iovar_data_get(ifp, "cap", caps, sizeof(caps) - 1);
++	/*
++	 * Concurrent channels need firmware TX credits instead of blindly
++	 * queueing frames for an interface whose radio context is absent.
++	 * Keep an explicit fcmode=0/1/2 request and other firmware defaults.
++	 */
++	if (!err && !strcmp(ifp->drvr->fwver, "01-16e134aa") &&
++	    strstr(caps, "proptxstatus ") &&
++	    ifp->drvr->settings->fcmode == BRCMF_FWS_FCMODE_AUTO)
++		ifp->drvr->settings->fcmode = BRCMF_FWS_FCMODE_EXPLICIT_CREDIT;
+ 	if (!err && strstr(caps, "extsae ") &&
+ 	    !(ifp->drvr->settings->feature_disable & BIT(BRCMF_FEAT_SAE_EXT)))
+ 		ifp->drvr->feat_flags |= BIT(BRCMF_FEAT_SAE_EXT);

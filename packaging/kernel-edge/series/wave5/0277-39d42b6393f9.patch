@@ -1,0 +1,1268 @@
+From 39d42b6393f92c4a5bc4bf6d73877dcb83c7d257 Mon Sep 17 00:00:00 2001
+From: localhost-copilot <318096335+localhost-copilot@users.noreply.github.com>
+Date: Fri, 23 Oct 2026 22:19:56 +0800
+Subject: [PATCH] media: wave5: recover T7 encoders through a drained power
+ cycle
+
+Fail old M2M contexts before serializing a checked bus drain, dedicated-domain OFF/ON and cold firmware initialization. Require genpd notifications and a reset VCPU, retaining all DMA ownership if any stage fails. Keep old file handles failed and permit new contexts only after recovery.
+
+Retain the probe firmware to avoid filesystem dependencies during recovery. Defer queue allocator releases and closed-context cleanup until recovery succeeds, balance close PM references, synchronize IRQ readers and expose one-shot recovery fault injection. Exercise production C recovery and ownership paths with deterministic fault models.
+
+Signed-off-by: localhost-copilot <318096335+localhost-copilot@users.noreply.github.com>
+---
+ .../ABI/testing/sysfs-devices-platform-wave5  |  29 +++-
+ .../chips-media/wave5/test_encoder_cleanup.py |  11 +-
+ .../platform/chips-media/wave5/test_hang.py   |   1 +
+ .../chips-media/wave5/test_isolation.py       | 115 +++++++++++--
+ .../chips-media/wave5/test_recovery.py        | 123 ++++++++++++++
+ .../platform/chips-media/wave5/test_reset.py  |   2 +-
+ .../platform/chips-media/wave5/wave5-helper.c |  15 ++
+ .../platform/chips-media/wave5/wave5-hw.c     |   6 +-
+ .../chips-media/wave5/wave5-isolation.c       | 154 ++++++++++++++++--
+ .../platform/chips-media/wave5/wave5-vdi.c    |   2 +-
+ .../chips-media/wave5/wave5-vpu-enc.c         |  31 ++--
+ .../platform/chips-media/wave5/wave5-vpu.c    | 117 ++++++++++++-
+ .../platform/chips-media/wave5/wave5-vpu.h    |   4 +
+ .../platform/chips-media/wave5/wave5-vpuapi.c |  39 +++--
+ .../platform/chips-media/wave5/wave5-vpuapi.h |  13 +-
+ 15 files changed, 593 insertions(+), 69 deletions(-)
+ create mode 100644 drivers/media/platform/chips-media/wave5/test_recovery.py
+
+diff --git a/Documentation/ABI/testing/sysfs-devices-platform-wave5 b/Documentation/ABI/testing/sysfs-devices-platform-wave5
+index e5187d4a2a5e5..bdf547284104a 100644
+--- a/Documentation/ABI/testing/sysfs-devices-platform-wave5
++++ b/Documentation/ABI/testing/sysfs-devices-platform-wave5
+@@ -3,25 +3,40 @@ Date:           October 2026
+ Contact:        linux-media@vger.kernel.org
+ Description:
+                 Read-only quarantine state for the Amlogic T7 encoder. 0 is
+-                usable, 1 means that command/frame completion or cancellation
+-                failed. All open encoder queues report errors and new opens
++                not quarantined (also check recovering), 1 means that recovery
++                from a command/frame/cancellation failure failed. All old queues
++                report errors and new opens
+                 and hardware jobs are rejected. DMA memory and mappings are
+                 retained because stopping DMA has not been established. The
+                 module cannot be unloaded and userspace unbind is disabled.
+-                Only a board reboot clears this state. No runtime reset or
+-                firmware reload is attempted. A KOBJ_CHANGE uevent carries
++                Only a board reboot clears a failed recovery. A KOBJ_CHANGE
++                uevent carries
+                 WAVE5_ISOLATED=1 when quarantine is published.
+ 
++What:           /sys/bus/platform/drivers/vdec/.../recovering
++Date:           October 2026
++Contact:        linux-media@vger.kernel.org
++Description:
++                Read-only recovery state for the Amlogic T7 encoder. 1 means
++                new opens and hardware jobs are blocked while all old queues
++                are failed and the driver attempts a drained power cycle of
++                the dedicated domain followed by a cold firmware reload.
++                Success clears recovering and emits WAVE5_RECOVERED=1 in a
++                KOBJ_CHANGE uevent; old file handles remain failed and must be
++                closed and reopened. Failure sets isolated to 1, keeps DMA
++                storage pinned and emits WAVE5_ISOLATED=1 instead.
++
+ What:           /sys/bus/platform/drivers/vdec/.../isolation_reason
+ Date:           October 2026
+ Contact:        linux-media@vger.kernel.org
+ Description:
+-                Read-only human-readable first failure, or "none" before a
+-                failure. Later failures do not replace the original cause.
++                Read-only human-readable initiating failure, or "none" before
++                a failure. Retained after successful recovery; updated on the
++                next recovery attempt. Nested failures do not replace it.
+ 
+ What:           /sys/bus/platform/drivers/vdec/.../isolation_time_ns
+ Date:           October 2026
+ Contact:        linux-media@vger.kernel.org
+ Description:
+-                Read-only decimal CLOCK_BOOTTIME nanoseconds at the first
++                Read-only decimal CLOCK_BOOTTIME nanoseconds at the initiating
+                 failure, or 0 before failure. This is not wall-clock time.
+diff --git a/drivers/media/platform/chips-media/wave5/test_encoder_cleanup.py b/drivers/media/platform/chips-media/wave5/test_encoder_cleanup.py
+index c8cc6c11d04ad..5523dcb9a2409 100644
+--- a/drivers/media/platform/chips-media/wave5/test_encoder_cleanup.py
++++ b/drivers/media/platform/chips-media/wave5/test_encoder_cleanup.py
+@@ -11,7 +11,7 @@ hardware = (root / 'wave5-hw.c').read_text()
+ register = hardware[hardware.index('static u32 calculate_luma_stride'):
+                     hardware.index('static u32 wave5_vpu_enc_validate_sec_axi')]
+ api = (root / 'wave5-vpuapi.c').read_text()
+-close = api[api.index('int wave5_vpu_enc_close('):
++close = api[api.index('void wave5_vpu_enc_free_buffers('):
+             api.index('int wave5_vpu_enc_register_frame_buffer(')]
+ # Register values and buffer sizing do not affect allocation ownership.
+ registers = sorted(set(re.findall(r'\bW5_[A-Z_0-9]+', register)))
+@@ -59,13 +59,14 @@ struct vpu_device { struct device *dev; int hw_lock; bool legacy_firmware; };
+ struct vpu_instance { struct vpu_device *dev; struct codec_info *codec_info; int std; };
+ struct frame_buffer { uintptr_t buf_y, buf_cb; };
+ static unsigned attempts, fail_at, live, commands;
++static unsigned pm_refs;
+ static bool firmware_owns, fail_command, fail_queue, fail_close;
+ static void *dev_get_drvdata(struct device *dev) { return dev->data; }
+ static int mutex_lock_interruptible(int *lock) { (void)lock; return 0; }
+ static void mutex_unlock(int *lock) { (void)lock; }
+-static void pm_runtime_resume_and_get(struct device *dev) { (void)dev; }
+-static void pm_runtime_put_sync(struct device *dev) { (void)dev; }
+-static void pm_runtime_put_autosuspend(struct device *dev) { (void)dev; }
++static int pm_runtime_resume_and_get(struct device *dev) { (void)dev; pm_refs++; return 0; }
++static void pm_runtime_put_sync(struct device *dev) { (void)dev; assert(pm_refs); pm_refs--; }
++static void pm_runtime_put_autosuspend(struct device *dev) { pm_runtime_put_sync(dev); }
+ static void wave5_vpu_isolate(struct vpu_device *dev, const char *reason, u32 command)
+ { (void)dev; (void)reason; (void)command; }
+ static void vpu_write_reg(struct vpu_device *dev, u32 reg, uintptr_t value)
+@@ -143,12 +144,14 @@ int main(void)
+             // A failed destroy must retain every DMA allocation for hardware.
+             fail_close = true;
+             assert(wave5_vpu_enc_close(&inst, &reason) == -ETIMEDOUT);
++            assert(!pm_refs);
+             assert(live == 5);
+         } else {
+             assert(live == (unsigned)existing_task);
+         }
+         fail_close = false;
+         assert(!wave5_vpu_enc_close(&inst, &reason));
++        assert(!pm_refs);
+         assert(!live);
+     }
+     puts("Wave5 allocation rollback, firmware ownership and close passed (32 cases)");
+diff --git a/drivers/media/platform/chips-media/wave5/test_hang.py b/drivers/media/platform/chips-media/wave5/test_hang.py
+index 8df81f80bd359..68985c772daa8 100644
+--- a/drivers/media/platform/chips-media/wave5/test_hang.py
++++ b/drivers/media/platform/chips-media/wave5/test_hang.py
+@@ -47,6 +47,7 @@ struct vpu_attr { bool support_hevc10bit_enc, support_avc10bit_enc; };
+ struct vpu_device { int product, dev_lock; struct vpu_attr attr; bool isolated, legacy_firmware; };
+ struct v4l2_m2m_ctx { bool running, linked, output, capture; };
+ struct vpu_instance {
++    bool released;
+     struct vpu_device *dev;
+     int std, id, state;
+     struct { unsigned width, height; } dst_fmt;
+diff --git a/drivers/media/platform/chips-media/wave5/test_isolation.py b/drivers/media/platform/chips-media/wave5/test_isolation.py
+index 68985db19eda8..e8aeb7027c4c1 100644
+--- a/drivers/media/platform/chips-media/wave5/test_isolation.py
++++ b/drivers/media/platform/chips-media/wave5/test_isolation.py
+@@ -27,6 +27,7 @@ typedef uint64_t u64;
+ #define READ_ONCE(v) (v)
+ #define WRITE_ONCE(v, x) ((v) = (x))
+ #define smp_store_release(p, value) (*(p) = (value))
++#define smp_load_acquire(p) (*(p))
+ #define cmpxchg(p, old, value) ({ unsigned _was = *(p); if (_was == (old)) *(p) = (value); _was; })
+ #define container_of(p, type, member) ((type *)((char *)(p) - offsetof(type, member)))
+ #define WAVE5_JOB_TIMEOUT_MS 5000
+@@ -39,6 +40,12 @@ typedef uint64_t u64;
+ #define ERR_PTR(x) ((void *)(intptr_t)(x))
+ #define IS_ERR(x) ((uintptr_t)(x) > (uintptr_t)-4096)
+ #define dev_err(...) ((void)0)
++#define dev_info(...) ((void)0)
++#define VPU_INST_STATE_NONE 0
++#define NSEC_PER_MSEC 1000000
++#define HRTIMER_MODE_REL_PINNED 0
++#define ns_to_ktime(x) (x)
++static void *current = (void *)1;
+ struct device { unsigned refs; int kobj; };
+ struct work_struct { void (*fn)(struct work_struct *); bool pending; };
+ struct delayed_work { struct work_struct work; unsigned long delay; };
+@@ -53,35 +60,78 @@ struct vb2_queue { bool error; void *priv; };
+ struct vb2_buffer { struct vb2_queue *vb2_queue; };
+ struct v4l2_m2m_ctx { struct { struct vb2_queue q; } out_q_ctx, cap_q_ctx; };
+ struct m2m_dev { struct vpu_instance *current; };
+-struct list_head { struct vpu_instance *first; };
++struct list_head { struct list_head *next, *prev; };
++static void INIT_LIST_HEAD(struct list_head *h) { h->next=h->prev=h; }
++static bool list_empty(struct list_head *h) { return h->next==h; }
++static void list_add_tail(struct list_head *n, struct list_head *h)
++{ n->prev=h->prev; n->next=h; h->prev->next=n; h->prev=n; }
++static void list_del_init(struct list_head *n)
++{ n->next->prev=n->prev; n->prev->next=n->next; INIT_LIST_HEAD(n); }
++#define list_for_each_entry(p,h,m) \
++    for (p=container_of((h)->next,typeof(*p),m); &p->m!=(h); \
++         p=container_of(p->m.next,typeof(*p),m))
++#define list_for_each_entry_safe(p,t,h,m) \
++    for (p=container_of((h)->next,typeof(*p),m),t=container_of(p->m.next,typeof(*p),m); \
++         &p->m!=(h); p=t,t=container_of(t->m.next,typeof(*t),m))
+ struct vpu_device {
+     unsigned isolated;
+     bool isolation_ready, legacy_firmware;
++    bool recovery_failed, shutting_down;
++    void *recovery_owner;
+     const char *isolation_reason;
+     u32 isolation_command;
+     u64 isolation_time_ns;
+     struct work_struct isolation_work;
+     struct delayed_work job_timeout_work;
+     unsigned long job_deadline;
+-    int irq_lock, irq;
++    int irq_lock, dev_lock, hw_lock, irq;
++    int hrtimer, work, vpu_poll_interval;
+     struct device *dev;
+-    struct list_head instances;
++    struct list_head instances, retained_planes;
+     struct m2m_dev *v4l2_m2m_enc_dev;
+ };
+ struct vpu_instance {
+     struct vpu_device *dev;
+     struct m2m_dev *v4l2_m2m_dev;
+     struct { struct v4l2_m2m_ctx *m2m_ctx; } v4l2_fh;
+-    struct vpu_instance *next;
++    struct list_head list;
++    bool recovery_error, released;
++    int state, irq_status;
+     unsigned irq_done, job_wait;
+ };
+-#define list_for_each_entry(p, head, member) for ((p) = (head)->first; (p); (p) = (p)->next)
+ static void mutex_lock(int *lock) { assert(!*lock); *lock = 1; }
+ static void mutex_unlock(int *lock) { assert(*lock); *lock = 0; }
+ #define lockdep_assert_held(lock) assert(*(lock))
+ static u64 ktime_get_boottime_ns(void) { return 123456789; }
+ static void __module_get(void *module) { (void)module; pins++; }
+ static void get_device(struct device *dev) { dev->refs++; }
++static void put_device(struct device *dev) { assert(dev->refs); dev->refs--; }
++static void module_put(void *module) { (void)module; assert(pins); pins--; }
++static unsigned enables, recoveries, freed_contexts, freed_aux;
++static unsigned irq_syncs, poll_flushes;
++static int recovery_ret = -EIO;
++static bool repeat_timeout;
++static void enable_irq(int irq) { assert(irq >= 0); enables++; }
++static void synchronize_irq(int irq) { assert(irq>=0); irq_syncs++; }
++static void hrtimer_cancel(int *timer) { *timer=0; }
++static void kthread_flush_work(int *work) { (void)work; poll_flushes++; }
++static void hrtimer_start(int *timer, unsigned long ns, int mode)
++{ (void)ns; (void)mode; *timer=1; }
++static void kfifo_reset(int *fifo) { *fifo=0; }
++static void wave5_vpu_isolate(struct vpu_device *, const char *, u32);
++static int wave5_vpu_recover_hardware(struct vpu_device *dev)
++{
++    assert(dev->dev_lock && dev->irq_lock && dev->hw_lock);
++    assert(dev->recovery_owner==current && dev->isolated==3);
++    assert(dev->irq>=0 ? irq_syncs>0 : poll_flushes>0);
++    recoveries++;
++    if (repeat_timeout) wave5_vpu_isolate(dev, "reload timeout", 1);
++    return recovery_ret;
++}
++static void wave5_vpu_enc_free_buffers(struct vpu_instance *inst)
++{ assert(!inst->dev->isolated && inst->recovery_error); freed_aux++; }
++static void wave5_vpu_release_retained(struct vpu_instance *inst)
++{ assert(inst->released && !inst->state); list_del_init(&inst->list); freed_contexts++; }
+ static void disable_irq_nosync(int irq) { assert(irq >= 0); disables++; }
+ static void schedule_work(struct work_struct *work) { work->pending = true; }
+ static void cancel_delayed_work(struct delayed_work *work) { work->work.pending = false; }
+@@ -151,7 +201,8 @@ int main(void)
+     struct v4l2_m2m_ctx contexts[2] = {};
+     struct vpu_instance a = {.dev=&dev, .v4l2_m2m_dev=&scheduler, .v4l2_fh={&contexts[0]}};
+     struct vpu_instance b = {.dev=&dev, .v4l2_m2m_dev=&scheduler, .v4l2_fh={&contexts[1]}};
+-    a.next=&b; dev.instances.first=&a;
++    INIT_LIST_HEAD(&dev.instances);
++    list_add_tail(&a.list, &dev.instances); list_add_tail(&b.list, &dev.instances);
+     wave5_vpu_isolation_init(&dev);
+     timeout_command=8;
+     assert(!wave5_vpu_inject_timeout(&dev, 9));
+@@ -173,7 +224,7 @@ int main(void)
+     wave5_vpu_job_abort(&a);
+     assert(dev.isolated && finishes==1 && wakes==1 && pins==1 && disables==1);
+     wave5_vpu_isolate(&dev, "second error must not overwrite first", 123);
+-    assert(pins==1 && !dev.isolation_command);
++    assert(pins==1 && !dev.isolation_command && !dev.recovery_failed);
+     dev.isolation_work.fn(&dev.isolation_work);
+     assert(events==1 && finishes==1 && contexts[0].out_q_ctx.q.error &&
+            contexts[0].cap_q_ctx.q.error && contexts[1].out_q_ctx.q.error &&
+@@ -190,6 +241,7 @@ int main(void)
+ 
+     /* MMAP/export references may disappear after quarantine, but ours stays. */
+     dev.isolated=0;
++    mutex_lock(&dev.dev_lock);
+     struct vb2_queue q={.priv=&a}; struct vb2_buffer vb={.vb2_queue=&q};
+     struct wave5_plane *m=wave5_plane_alloc(&vb, &device, 4096);
+     assert(!IS_ERR(m));
+@@ -199,7 +251,7 @@ int main(void)
+     dev.isolated=1;
+     wave5_plane_put(m); put_plane(original); put_plane(original);
+     assert(!frees && original->refs==1);
+-    dev.isolated=0; wave5_plane_put(m); assert(frees==1);
++    dev.isolated=0; wave5_release_planes(&dev); assert(frees==1);
+ 
+     struct dma_buf buf={.refs=1};
+     m=wave5_plane_attach(&vb, &device, &buf, 4096);
+@@ -211,9 +263,52 @@ int main(void)
+     dma_buf_put(&buf); /* vb2 drops its own import ref; the independent ref stays. */
+     assert(buf.refs==1 && original->maps==1 && !unmaps && !detaches && !syncs);
+     assert(wave5_plane_map(m)==-EIO && prepares==1);
+-    dev.isolated=0; wave5_plane_unmap(m); wave5_plane_detach(m);
++    dev.isolated=0; wave5_release_planes(&dev);
+     assert(!buf.refs && frees==2 && unmaps==1 && detaches==1);
+-    puts("Wave5 isolation: scheduler cancel races, all-instance errors, late IRQ, MMAP/export/import retention passed");
++    mutex_unlock(&dev.dev_lock);
++
++    /* Repeated timeout cannot recursively recover or free old mappings. */
++    unsigned attempts=recoveries, saved_pins=pins;
++    recovery_ret=0; repeat_timeout=true;
++    wave5_vpu_isolate(&dev, "first timeout", 256);
++    dev.isolation_work.fn(&dev.isolation_work);
++    assert(dev.isolated==2 && recoveries==attempts+1 && !enables);
++    assert(pins==saved_pins+1 && !freed_contexts && !freed_aux);
++
++    /* Reboot-model reset, then cold reload retires every old context. */
++    dev.isolated=0; repeat_timeout=false; b.released=true;
++    a.state=b.state=5; a.irq_status=b.irq_status=9;
++    m=wave5_plane_alloc(&vb,&device,4096); original=m->memory;
++    wave5_plane_mmap(m,NULL);
++    struct dma_buf recovery_buf={.refs=1};
++    struct wave5_plane *import=wave5_plane_attach(&vb,&device,&recovery_buf,4096);
++    assert(!wave5_plane_map(import));
++    wave5_vpu_isolate(&dev, "recoverable timeout", 256);
++    mutex_lock(&dev.dev_lock);
++    wave5_plane_put(m); wave5_plane_unmap(import); wave5_plane_detach(import);
++    mutex_unlock(&dev.dev_lock);
++    dma_buf_put(&recovery_buf);
++    assert(recovery_buf.refs==1 && frees==2);
++    saved_pins=pins;
++    dev.isolation_work.fn(&dev.isolation_work);
++    assert(!dev.isolated && !dev.recovery_owner && enables==1);
++    assert(a.recovery_error && b.recovery_error && !a.state && !a.irq_status);
++    assert(freed_contexts==1 && freed_aux==2 && pins==saved_pins-1);
++    assert(dev.instances.next==&a.list && a.list.next==&dev.instances);
++    assert(!recovery_buf.refs && frees==3 && original->refs==1);
++    put_plane(original); assert(frees==4 && list_empty(&dev.retained_planes));
++
++    dev.irq=-1; dev.hrtimer=1;
++    wave5_vpu_isolate(&dev, "polled timeout", 256);
++    dev.isolation_work.fn(&dev.isolation_work);
++    assert(!dev.isolated && poll_flushes==1 && dev.hrtimer==1);
++
++    /* Pending shutdown does not start a power cycle. */
++    dev.shutting_down=true; attempts=recoveries;
++    wave5_vpu_isolate(&dev, "timeout before shutdown", 256);
++    dev.isolation_work.fn(&dev.isolation_work);
++    assert(dev.isolated==2 && recoveries==attempts);
++    puts("Wave5 isolation/recovery: cancel races, all-instance errors, late IRQ, MMAP/export/import retention and reclamation, repeat timeout and shutdown passed");
+ }
+ '''
+ with tempfile.TemporaryDirectory(prefix='wave5-isolation-') as directory:
+diff --git a/drivers/media/platform/chips-media/wave5/test_recovery.py b/drivers/media/platform/chips-media/wave5/test_recovery.py
+new file mode 100644
+index 0000000000000..68f2c728aa867
+--- /dev/null
++++ b/drivers/media/platform/chips-media/wave5/test_recovery.py
+@@ -0,0 +1,123 @@
++#!/usr/bin/env python3
++# SPDX-License-Identifier: GPL-2.0-only
++"""Exercise the production power-cycle/reload sequence with faulted PM callbacks.
++
++The model verifies ownership and ordering, not the secure firmware or DMA bus.
++"""
++from pathlib import Path
++import subprocess
++import tempfile
++
++root = Path(__file__).resolve().parent
++source = (root / 'wave5-vpu.c').read_text()
++sequence = source[source.index('static int wave5_power_notify('):
++                  source.index('static __maybe_unused int wave5_pm_suspend(')]
++prefix = r'''
++#include <assert.h>
++#include <errno.h>
++#include <stdbool.h>
++#include <stddef.h>
++#include <stdint.h>
++#include <stdio.h>
++#include <string.h>
++typedef uint8_t u8;
++#define container_of(p,t,m) ((t *)((char *)(p)-offsetof(t,m)))
++#define READ_ONCE(v) (v)
++#define WRITE_ONCE(v,x) ((v)=(x))
++#define lockdep_assert_held(p) assert(*(p))
++#define NOTIFY_OK 0
++#define GENPD_NOTIFY_OFF 1
++#define GENPD_NOTIFY_ON 2
++#define SW_RESET_ON_BOOT 2
++#define U32_MAX UINT32_MAX
++#define W5_VPU_VINT_REASON_CLR 1
++#define W5_VPU_VINT_REASON_USR 2
++#define W5_VPU_VINT_CLEAR 3
++#define W5_INIT_VPU 1
++#define xchg(p,v) ({ unsigned old=*(p); *(p)=(v); old; })
++static unsigned recovery_fail_step;
++struct notifier_block { int unused; };
++struct firmware { const u8 *data; size_t size; };
++struct vpu_device {
++    int hw_lock;
++    struct vpu_device *dev;
++    const struct firmware *firmware;
++    bool power_off_seen, power_on_seen;
++    struct notifier_block power_notifier;
++};
++static int stage, refs, resets, offs, ons, inits, nested;
++static bool powered;
++static const u8 code[] = {1,2,3,4};
++static const struct firmware firmware = {code,sizeof(code)};
++static int wave5_power_notify(struct notifier_block *, unsigned long, void *);
++static void wave5_vpu_isolate(struct vpu_device *dev, const char *reason, unsigned cmd)
++{ (void)dev; (void)reason; assert(cmd==W5_INIT_VPU); nested++; }
++static int wave5_vpu_reset(struct vpu_device *dev, int mode)
++{ (void)dev; assert(powered && mode==SW_RESET_ON_BOOT); resets++; return stage==2 ? -ETIMEDOUT : 0; }
++static int pm_runtime_put_sync_suspend(struct vpu_device *dev)
++{
++    assert(resets==1 && refs==1 && powered); refs--; offs++;
++    if (stage==3) return -EBUSY;
++    if (stage==4) return 0; /* genpd governor declined power-off. */
++    powered=false;
++    wave5_power_notify(&dev->power_notifier,GENPD_NOTIFY_OFF,NULL);
++    return 0;
++}
++static void pm_runtime_get_noresume(struct vpu_device *dev) { (void)dev; refs++; }
++static int pm_runtime_resume_and_get(struct vpu_device *dev)
++{
++    assert(offs==1 && dev->power_off_seen && !powered && !refs); ons++;
++    if (stage==5) return -EIO;
++    powered=true; refs++;
++    if (stage!=6) wave5_power_notify(&dev->power_notifier,GENPD_NOTIFY_ON,NULL);
++    return 0;
++}
++static bool wave5_vpu_is_init(struct vpu_device *dev)
++{ (void)dev; assert(powered && ons==1); return stage==7; }
++static int wave5_vpu_init(struct vpu_device *dev, u8 *data, size_t size)
++{
++    assert(powered && dev->power_off_seen && dev->power_on_seen && refs==1);
++    assert(data==code && size==sizeof(code)); inits++;
++    return stage==8 ? -ETIMEDOUT : 0;
++}
++static void vpu_write_reg(struct vpu_device *dev, unsigned reg, unsigned value)
++{ (void)dev; (void)reg; (void)value; assert(inits==1 && !stage); }
++'''
++checks = r'''
++int main(void)
++{
++    const int expected[] = {0,-EINVAL,-ETIMEDOUT,-EBUSY,-EBUSY,-EIO,-EIO,-EIO,-ETIMEDOUT};
++    for (stage=0; stage<9; stage++) {
++        struct vpu_device dev={.hw_lock=1,.firmware=stage==1 ? NULL : &firmware};
++        dev.dev=&dev; refs=1; powered=true;
++        resets=offs=ons=inits=0;
++        /* Stale notifier observations must never authorize a fresh cycle. */
++        dev.power_off_seen=dev.power_on_seen=true;
++        assert(wave5_vpu_recover_hardware(&dev)==expected[stage]);
++        assert(refs==1);
++        assert(inits==(stage==0 || stage==8));
++        if (stage==1) assert(!resets && !offs && !ons);
++        if (stage==2) assert(!offs && !ons);
++        if (stage==3 || stage==4) assert(!ons);
++    }
++    for (unsigned fault=1; fault<=5; fault++) {
++        struct vpu_device dev={.hw_lock=1,.firmware=&firmware};
++        dev.dev=&dev; refs=1; powered=true; stage=0;
++        resets=offs=ons=inits=nested=0; recovery_fail_step=fault;
++        assert(wave5_vpu_recover_hardware(&dev)<0);
++        assert(refs==1 && !inits && !recovery_fail_step);
++        assert(nested==(fault==5));
++        if (fault==1) assert(!resets);
++        if (fault<=2) assert(!offs);
++        if (fault==3) assert(!ons && !powered);
++    }
++    puts("Wave5 recovery: cold reload, 8 failure boundaries and 5 one-shot injections passed");
++}
++'''
++with tempfile.TemporaryDirectory(prefix='wave5-recovery-') as directory:
++    path = Path(directory)
++    (path / 'recovery.c').write_text(prefix + sequence + checks)
++    subprocess.run(['cc', '-std=gnu11', '-Wall', '-Wextra', '-Werror',
++                    '-Wno-unused-parameter', '-fsanitize=address,undefined',
++                    str(path / 'recovery.c'), '-o', str(path / 'recovery')], check=True)
++    subprocess.run([str(path / 'recovery')], check=True, timeout=10)
+diff --git a/drivers/media/platform/chips-media/wave5/test_reset.py b/drivers/media/platform/chips-media/wave5/test_reset.py
+index 4ec39f309b0fc..9b17cb7cc6b93 100644
+--- a/drivers/media/platform/chips-media/wave5/test_reset.py
++++ b/drivers/media/platform/chips-media/wave5/test_reset.py
+@@ -79,7 +79,7 @@ static bool ktime_before(ktime_t a, ktime_t b) { return a < b; }
+ static void usleep_range(unsigned a, unsigned b) { (void)b; hw.now += a; }
+ static void *dev_get_drvdata(struct device *dev) { return dev->data; }
+ /* Runtime isolation is disabled during initial probe/reset. */
+-static bool wave5_vpu_isolated(struct vpu_device *dev) { (void)dev; return false; }
++static bool wave5_vpu_hw_blocked(struct vpu_device *dev) { (void)dev; return false; }
+ static bool wave5_vpu_inject_timeout(struct vpu_device *dev, u32 command)
+ { (void)dev; (void)command; return false; }
+ static void wave5_vpu_isolate(struct vpu_device *dev, const char *reason, u32 command)
+diff --git a/drivers/media/platform/chips-media/wave5/wave5-helper.c b/drivers/media/platform/chips-media/wave5/wave5-helper.c
+index e04cbd6f0babe..55d53d9512346 100644
+--- a/drivers/media/platform/chips-media/wave5/wave5-helper.c
++++ b/drivers/media/platform/chips-media/wave5/wave5-helper.c
+@@ -60,6 +60,21 @@ void wave5_cleanup_instance(struct vpu_instance *inst, struct file *filp)
+ 	kfree(inst);
+ }
+ 
++void wave5_vpu_release_retained(struct vpu_instance *inst)
++{
++	unsigned long flags;
++
++	lockdep_assert_held(&inst->dev->dev_lock);
++	mutex_lock(&inst->dev->irq_lock);
++	spin_lock_irqsave(&inst->dev->irq_spinlock, flags);
++	list_del_init(&inst->list);
++	spin_unlock_irqrestore(&inst->dev->irq_spinlock, flags);
++	mutex_unlock(&inst->dev->irq_lock);
++	v4l2_m2m_ctx_release(inst->v4l2_fh.m2m_ctx);
++	/* release already removed the file handle before retaining this context. */
++	wave5_cleanup_instance(inst, NULL);
++}
++
+ int wave5_vpu_release_device(struct file *filp,
+ 			     int (*close_func)(struct vpu_instance *inst, u32 *fail_res),
+ 			     char *name)
+diff --git a/drivers/media/platform/chips-media/wave5/wave5-hw.c b/drivers/media/platform/chips-media/wave5/wave5-hw.c
+index 2184f84e26a3b..a3103d6c0fca8 100644
+--- a/drivers/media/platform/chips-media/wave5/wave5-hw.c
++++ b/drivers/media/platform/chips-media/wave5/wave5-hw.c
+@@ -211,7 +211,7 @@ static int wave5_wait_vpu_busy(struct vpu_device *vpu_dev, unsigned int addr)
+ 	u32 data;
+ 	int ret;
+ 
+-	if (wave5_vpu_isolated(vpu_dev))
++	if (wave5_vpu_hw_blocked(vpu_dev))
+ 		return -EIO;
+ 	ret = read_poll_timeout(wave5_vdi_read_register, data, data == 0,
+ 				10, VPU_BUSY_CHECK_TIMEOUT, false, vpu_dev, addr);
+@@ -316,7 +316,7 @@ static int send_firmware_command(struct vpu_instance *inst, u32 cmd, bool check_
+ {
+ 	int ret;
+ 
+-	if (wave5_vpu_isolated(inst->dev))
++	if (wave5_vpu_isolated(inst->dev) || inst->recovery_error)
+ 		return -EIO;
+ 	wave5_bit_issue_command(inst->dev, inst, cmd);
+ 	ret = wave5_wait_vpu_busy(inst->dev, W5_VPU_BUSY_STATUS);
+@@ -343,7 +343,7 @@ static int wave5_send_query(struct vpu_device *vpu_dev, struct vpu_instance *ins
+ {
+ 	int ret;
+ 
+-	if (wave5_vpu_isolated(vpu_dev))
++	if (wave5_vpu_hw_blocked(vpu_dev) || (inst && inst->recovery_error))
+ 		return -EIO;
+ 	vpu_write_reg(vpu_dev, W5_QUERY_OPTION, query_opt);
+ 	vpu_write_reg(vpu_dev, W5_VPU_BUSY_STATUS, 1);
+diff --git a/drivers/media/platform/chips-media/wave5/wave5-isolation.c b/drivers/media/platform/chips-media/wave5/wave5-isolation.c
+index d9634863e6f07..21c067456ee49 100644
+--- a/drivers/media/platform/chips-media/wave5/wave5-isolation.c
++++ b/drivers/media/platform/chips-media/wave5/wave5-isolation.c
+@@ -1,7 +1,8 @@
+ // SPDX-License-Identifier: (GPL-2.0 OR BSD-3-Clause)
+-/* Fail closed when the T7 encoder no longer acknowledges commands or frames. */
++/* Recover the T7 encoder, retaining DMA ownership if recovery fails. */
+ #include <linux/dma-buf.h>
+ #include <linux/interrupt.h>
++#include <linux/kthread.h>
+ #include <linux/module.h>
+ #include <linux/ktime.h>
+ #include "wave5-vpu.h"
+@@ -16,7 +17,14 @@ MODULE_PARM_DESC(timeout_command, "One-shot T7 command timeout injection (comman
+ 
+ bool wave5_vpu_isolated(struct vpu_device *dev)
+ {
+-	return READ_ONCE(dev->isolated);
++	/* Observe retired contexts before allowing access after recovery. */
++	return smp_load_acquire(&dev->isolated);
++}
++
++bool wave5_vpu_hw_blocked(struct vpu_device *dev)
++{
++	/* Only the worker holding dev_lock, irq_lock and hw_lock may recover MMIO. */
++	return wave5_vpu_isolated(dev) && READ_ONCE(dev->recovery_owner) != current;
+ }
+ 
+ bool wave5_vpu_inject_timeout(struct vpu_device *dev, u32 command)
+@@ -31,18 +39,22 @@ void wave5_vpu_isolate(struct vpu_device *dev, const char *reason, u32 command)
+ 	/* Decoder and other integrations have different buffer lifetimes. */
+ 	if (!dev->isolation_ready || !dev->legacy_firmware)
+ 		return;
+-	if (cmpxchg(&dev->isolated, 0, 1))
++	if (cmpxchg(&dev->isolated, 0, 1)) {
++		if (READ_ONCE(dev->recovery_owner))
++			WRITE_ONCE(dev->recovery_failed, true);
+ 		return;
++	}
+ 	WRITE_ONCE(dev->isolation_reason, reason);
++	WRITE_ONCE(dev->recovery_failed, false);
+ 	WRITE_ONCE(dev->isolation_command, command);
+ 	WRITE_ONCE(dev->isolation_time_ns, ktime_get_boottime_ns());
+-	/* Keep callbacks, DMA mappings, clocks and firmware storage until reboot. */
++	/* Keep callbacks and DMA storage until recovery succeeds or the board reboots. */
+ 	__module_get(THIS_MODULE);
+ 	get_device(dev->dev);
+ 	if (dev->irq >= 0)
+ 		disable_irq_nosync(dev->irq);
+-	/* DMA guards see state 1 immediately; sysfs publishes complete metadata. */
+-	smp_store_release(&dev->isolated, 2);
++	/* Publish metadata before the sysfs recovering reader's acquire load. */
++	smp_store_release(&dev->isolated, 3);
+ 	schedule_work(&dev->isolation_work);
+ }
+ 
+@@ -67,27 +79,94 @@ void wave5_vpu_job_start(struct vpu_instance *inst)
+ 			 msecs_to_jiffies(WAVE5_JOB_TIMEOUT_MS));
+ }
+ 
++static void wave5_release_planes(struct vpu_device *dev);
++
++static int wave5_recover(struct vpu_device *dev)
++{
++	struct vpu_instance *inst, *tmp;
++	int ret;
++
++	/* Scheduler waits have been completed before acquiring the ioctl lock. */
++	mutex_lock(&dev->dev_lock);
++	mutex_lock(&dev->irq_lock);
++	mutex_lock(&dev->hw_lock);
++	WRITE_ONCE(dev->recovery_owner, current);
++	ret = READ_ONCE(dev->shutting_down) ? -ESHUTDOWN : wave5_vpu_recover_hardware(dev);
++	WRITE_ONCE(dev->recovery_owner, NULL);
++	mutex_unlock(&dev->hw_lock);
++	if (!ret && READ_ONCE(dev->recovery_failed))
++		ret = -EIO;
++	if (ret) {
++		dev_err(dev->dev, "power-cycle recovery failed: %d\n", ret);
++		/* Publish the final state to the sysfs isolated reader. */
++		smp_store_release(&dev->isolated, 2);
++		goto unlock;
++	}
++	/* Old contexts never submit again, even after the device becomes usable. */
++	list_for_each_entry(inst, &dev->instances, list) {
++		inst->state = VPU_INST_STATE_NONE;
++		kfifo_reset(&inst->irq_status);
++	}
++	/* Publish retired instances before sysfs reports the device usable. */
++	smp_store_release(&dev->isolated, 0);
++	mutex_unlock(&dev->irq_lock);
++	wave5_release_planes(dev);
++	list_for_each_entry_safe(inst, tmp, &dev->instances, list) {
++		wave5_vpu_enc_free_buffers(inst);
++		if (inst->released)
++			wave5_vpu_release_retained(inst);
++	}
++	if (dev->irq >= 0)
++		enable_irq(dev->irq);
++	else
++		hrtimer_start(&dev->hrtimer, ns_to_ktime(dev->vpu_poll_interval * NSEC_PER_MSEC),
++			      HRTIMER_MODE_REL_PINNED);
++	mutex_unlock(&dev->dev_lock);
++	return 0;
++unlock:
++	mutex_unlock(&dev->irq_lock);
++	mutex_unlock(&dev->dev_lock);
++	return ret;
++}
++
+ static void wave5_isolation_work(struct work_struct *work)
+ {
+ 	struct vpu_device *dev = container_of(work, struct vpu_device, isolation_work);
+ 	struct vpu_instance *inst;
+ 	char event[] = "WAVE5_ISOLATED=1";
++	char recovered[] = "WAVE5_RECOVERED=1";
+ 	char *envp[2];
+ 
+ 	envp[0] = event;
+ 	envp[1] = NULL;
+ 
+-	/* Never take dev_lock: STREAMOFF may hold it while awaiting job_abort. */
++	/* Drain a handler that passed the guard before the timeout was claimed. */
++	if (dev->irq >= 0) {
++		synchronize_irq(dev->irq);
++	} else {
++		hrtimer_cancel(&dev->hrtimer);
++		kthread_flush_work(&dev->work);
++	}
++	/* Complete scheduler waits before taking dev_lock in wave5_recover(). */
+ 	mutex_lock(&dev->irq_lock);
+ 	list_for_each_entry(inst, &dev->instances, list) {
+ 		struct v4l2_m2m_ctx *ctx = inst->v4l2_fh.m2m_ctx;
+ 
++		WRITE_ONCE(inst->recovery_error, true);
+ 		vb2_queue_error(&ctx->out_q_ctx.q);
+ 		vb2_queue_error(&ctx->cap_q_ctx.q);
+ 		complete_all(&inst->irq_done);
+ 		wave5_vpu_job_finish(inst);
+ 	}
+ 	mutex_unlock(&dev->irq_lock);
++	if (!wave5_recover(dev)) {
++		envp[0] = recovered;
++		dev_info(dev->dev, "power cycle and firmware reload complete; reopen old instances\n");
++		kobject_uevent_env(&dev->dev->kobj, KOBJ_CHANGE, envp);
++		put_device(dev->dev);
++		module_put(THIS_MODULE);
++		return;
++	}
+ 	dev_err(dev->dev, "isolated: %s, command %#x; DMA storage retained until reboot\n",
+ 		dev->isolation_reason, dev->isolation_command);
+ 	kobject_uevent_env(&dev->dev->kobj, KOBJ_CHANGE, envp);
+@@ -130,6 +209,7 @@ void wave5_vpu_job_abort(void *priv)
+ 
+ void wave5_vpu_isolation_init(struct vpu_device *dev)
+ {
++	INIT_LIST_HEAD(&dev->retained_planes);
+ 	INIT_WORK(&dev->isolation_work, wave5_isolation_work);
+ 	INIT_DELAYED_WORK(&dev->job_timeout_work, wave5_job_timeout_work);
+ }
+@@ -143,6 +223,15 @@ static ssize_t isolated_show(struct device *device, struct device_attribute *att
+ }
+ static DEVICE_ATTR_RO(isolated);
+ 
++static ssize_t recovering_show(struct device *device, struct device_attribute *attr, char *buf)
++{
++	struct vpu_device *dev = dev_get_drvdata(device);
++
++	/* Pair with the metadata publication before recovery is queued. */
++	return sysfs_emit(buf, "%u\n", smp_load_acquire(&dev->isolated) == 3);
++}
++static DEVICE_ATTR_RO(recovering);
++
+ static ssize_t isolation_reason_show(struct device *device, struct device_attribute *attr,
+ 				     char *buf)
+ {
+@@ -164,6 +253,7 @@ static DEVICE_ATTR_RO(isolation_time_ns);
+ 
+ static struct attribute *wave5_isolation_attrs[] = {
+ 	&dev_attr_isolated.attr,
++	&dev_attr_recovering.attr,
+ 	&dev_attr_isolation_reason.attr,
+ 	&dev_attr_isolation_time_ns.attr,
+ 	NULL,
+@@ -183,8 +273,18 @@ struct wave5_plane {
+ 	struct vpu_device *dev;
+ 	void *memory;
+ 	struct dma_buf *dbuf;
++	struct list_head retained;
++	bool release_pending;
++	bool unmap_pending;
+ };
+ 
++static void wave5_retain_plane(struct wave5_plane *plane)
++{
++	lockdep_assert_held(&plane->dev->dev_lock);
++	if (list_empty(&plane->retained))
++		list_add_tail(&plane->retained, &plane->dev->retained_planes);
++}
++
+ static void *wave5_plane_alloc(struct vb2_buffer *vb, struct device *dev, unsigned long size)
+ {
+ 	struct vpu_instance *inst = vb2_get_drv_priv(vb->vb2_queue);
+@@ -193,6 +293,7 @@ static void *wave5_plane_alloc(struct vb2_buffer *vb, struct device *dev, unsign
+ 	if (!plane)
+ 		return ERR_PTR(-ENOMEM);
+ 	plane->dev = inst->dev;
++	INIT_LIST_HEAD(&plane->retained);
+ 	plane->memory = vb2_dma_contig_memops.alloc(vb, dev, size);
+ 	if (IS_ERR(plane->memory)) {
+ 		void *error = plane->memory;
+@@ -207,8 +308,11 @@ static void wave5_plane_put(void *priv)
+ {
+ 	struct wave5_plane *plane = priv;
+ 
+-	if (wave5_vpu_isolated(plane->dev))
++	if (wave5_vpu_isolated(plane->dev)) {
++		plane->release_pending = true;
++		wave5_retain_plane(plane);
+ 		return;
++	}
+ 	vb2_dma_contig_memops.put(plane->memory);
+ 	kfree(plane);
+ }
+@@ -222,6 +326,7 @@ static void *wave5_plane_attach(struct vb2_buffer *vb, struct device *dev,
+ 	if (!plane)
+ 		return ERR_PTR(-ENOMEM);
+ 	plane->dev = inst->dev;
++	INIT_LIST_HEAD(&plane->retained);
+ 	plane->memory = vb2_dma_contig_memops.attach_dmabuf(vb, dev, dbuf, size);
+ 	if (IS_ERR(plane->memory)) {
+ 		void *error = plane->memory;
+@@ -238,8 +343,11 @@ static void wave5_plane_detach(void *priv)
+ {
+ 	struct wave5_plane *plane = priv;
+ 
+-	if (wave5_vpu_isolated(plane->dev))
++	if (wave5_vpu_isolated(plane->dev)) {
++		plane->release_pending = true;
++		wave5_retain_plane(plane);
+ 		return;
++	}
+ 	vb2_dma_contig_memops.detach_dmabuf(plane->memory);
+ 	dma_buf_put(plane->dbuf);
+ 	kfree(plane);
+@@ -258,8 +366,32 @@ static void wave5_plane_unmap(void *priv)
+ {
+ 	struct wave5_plane *plane = priv;
+ 
+-	if (!wave5_vpu_isolated(plane->dev))
+-		vb2_dma_contig_memops.unmap_dmabuf(plane->memory);
++	if (wave5_vpu_isolated(plane->dev)) {
++		plane->unmap_pending = true;
++		wave5_retain_plane(plane);
++		return;
++	}
++	vb2_dma_contig_memops.unmap_dmabuf(plane->memory);
++}
++
++static void wave5_release_planes(struct vpu_device *dev)
++{
++	struct wave5_plane *plane, *tmp;
++
++	lockdep_assert_held(&dev->dev_lock);
++	list_for_each_entry_safe(plane, tmp, &dev->retained_planes, retained) {
++		list_del_init(&plane->retained);
++		if (plane->unmap_pending) {
++			plane->unmap_pending = false;
++			wave5_plane_unmap(plane);
++		}
++		if (plane->release_pending) {
++			if (plane->dbuf)
++				wave5_plane_detach(plane);
++			else
++				wave5_plane_put(plane);
++		}
++	}
+ }
+ 
+ static void wave5_plane_prepare(void *priv)
+diff --git a/drivers/media/platform/chips-media/wave5/wave5-vdi.c b/drivers/media/platform/chips-media/wave5/wave5-vdi.c
+index f286bd4618a12..4df850afbafa8 100644
+--- a/drivers/media/platform/chips-media/wave5/wave5-vdi.c
++++ b/drivers/media/platform/chips-media/wave5/wave5-vdi.c
+@@ -78,7 +78,7 @@ int wave5_vdi_release(struct device *dev)
+ 
+ void wave5_vdi_write_register(struct vpu_device *vpu_dev, u32 addr, u32 data)
+ {
+-	if (wave5_vpu_isolated(vpu_dev))
++	if (wave5_vpu_hw_blocked(vpu_dev))
+ 		return;
+ 	if (addr == W5_COMMAND)
+ 		WRITE_ONCE(vpu_dev->last_command, data);
+diff --git a/drivers/media/platform/chips-media/wave5/wave5-vpu-enc.c b/drivers/media/platform/chips-media/wave5/wave5-vpu-enc.c
+index 775fd2f5f0416..1e23ca4838ca3 100644
+--- a/drivers/media/platform/chips-media/wave5/wave5-vpu-enc.c
++++ b/drivers/media/platform/chips-media/wave5/wave5-vpu-enc.c
+@@ -280,7 +280,7 @@ static void wave5_vpu_enc_finish_encode(struct vpu_instance *inst)
+ 	struct vb2_v4l2_buffer *src_buf = NULL;
+ 	struct vb2_v4l2_buffer *dst_buf = NULL;
+ 
+-	if (wave5_vpu_isolated(inst->dev))
++	if (wave5_vpu_isolated(inst->dev) || inst->recovery_error)
+ 		return;
+ 	/* STREAMOFF drains reports itself after M2M cancellation has finished. */
+ 	if (inst->dev->legacy_firmware &&
+@@ -1428,7 +1428,7 @@ static int wave5_vpu_enc_start_streaming(struct vb2_queue *q, unsigned int count
+ 	struct v4l2_m2m_ctx *m2m_ctx = inst->v4l2_fh.m2m_ctx;
+ 	int ret = 0;
+ 
+-	if (wave5_vpu_isolated(inst->dev)) {
++	if (wave5_vpu_isolated(inst->dev) || inst->recovery_error) {
+ 		wave5_return_bufs(q, VB2_BUF_STATE_QUEUED);
+ 		return -EIO;
+ 	}
+@@ -1542,10 +1542,10 @@ static void wave5_vpu_enc_stop_streaming(struct vb2_queue *q)
+ 	dev_dbg(inst->dev->dev, "%s: type: %u\n", __func__, q->type);
+ 	pm_runtime_resume_and_get(inst->dev->dev);
+ 
+-	if (wave5_vpu_both_queues_are_streaming(inst))
++	if (!inst->recovery_error && wave5_vpu_both_queues_are_streaming(inst))
+ 		switch_state(inst, VPU_INST_STATE_STOP);
+ 
+-	while (!wave5_vpu_isolated(inst->dev)) {
++	while (!wave5_vpu_isolated(inst->dev) && !inst->recovery_error) {
+ 		struct queue_status_info q_status;
+ 		struct enc_output_info enc_output_info;
+ 
+@@ -1613,10 +1613,19 @@ static void wave5_vpu_enc_device_run(void *priv)
+ 	u32 fail_res = 0;
+ 	int ret = 0;
+ 
+-	pm_runtime_resume_and_get(inst->dev->dev);
+ 	mutex_lock(&inst->dev->irq_lock);
+-	if (wave5_vpu_isolated(inst->dev))
+-		goto finish;
++	if (wave5_vpu_isolated(inst->dev) || inst->recovery_error) {
++		wave5_vpu_job_finish(inst);
++		mutex_unlock(&inst->dev->irq_lock);
++		return;
++	}
++	ret = pm_runtime_resume_and_get(inst->dev->dev);
++	if (ret < 0) {
++		wave5_vpu_isolate(inst->dev, "job runtime resume failed", 0);
++		wave5_vpu_job_finish(inst);
++		mutex_unlock(&inst->dev->irq_lock);
++		return;
++	}
+ 	wave5_vpu_job_start(inst);
+ 	switch (inst->state) {
+ 	case VPU_INST_STATE_PIC_RUN:
+@@ -1639,7 +1648,6 @@ static void wave5_vpu_enc_device_run(void *priv)
+ 		     state_to_str(inst->state));
+ 		break;
+ 	}
+-finish:
+ 	dev_dbg(inst->dev->dev, "%s: leave and finish job", __func__);
+ 	pm_runtime_put_autosuspend(inst->dev->dev);
+ 	wave5_vpu_job_finish(inst);
+@@ -1651,7 +1659,7 @@ static int wave5_vpu_enc_job_ready(void *priv)
+ 	struct vpu_instance *inst = priv;
+ 	struct v4l2_m2m_ctx *m2m_ctx = inst->v4l2_fh.m2m_ctx;
+ 
+-	if (wave5_vpu_isolated(inst->dev))
++	if (wave5_vpu_isolated(inst->dev) || READ_ONCE(inst->recovery_error))
+ 		return false;
+ 	switch (inst->state) {
+ 	case VPU_INST_STATE_NONE:
+@@ -1979,6 +1987,7 @@ static int wave5_vpu_enc_release(struct file *filp)
+ 	return ret;
+ retain:
+ 	/* Keep the queues, imported DMA refs, instance and auxiliary allocations. */
++	inst->released = true;
+ 	v4l2_fh_del(&inst->v4l2_fh, filp);
+ 	v4l2_fh_exit(&inst->v4l2_fh);
+ 	filp->private_data = NULL;
+@@ -1990,7 +1999,7 @@ static long wave5_vpu_enc_ioctl(struct file *filp, unsigned int cmd, unsigned lo
+ {
+ 	struct vpu_instance *inst = file_to_vpu_inst(filp);
+ 
+-	if (wave5_vpu_isolated(inst->dev))
++	if (wave5_vpu_isolated(inst->dev) || READ_ONCE(inst->recovery_error))
+ 		return -EIO;
+ 	return video_ioctl2(filp, cmd, arg);
+ }
+@@ -1999,7 +2008,7 @@ static __poll_t wave5_vpu_enc_poll(struct file *filp, struct poll_table_struct *
+ {
+ 	struct vpu_instance *inst = file_to_vpu_inst(filp);
+ 
+-	if (wave5_vpu_isolated(inst->dev))
++	if (wave5_vpu_isolated(inst->dev) || READ_ONCE(inst->recovery_error))
+ 		return EPOLLERR;
+ 	return v4l2_m2m_fop_poll(filp, wait);
+ }
+diff --git a/drivers/media/platform/chips-media/wave5/wave5-vpu.c b/drivers/media/platform/chips-media/wave5/wave5-vpu.c
+index 28727a2cd6565..8d471676ddd52 100644
+--- a/drivers/media/platform/chips-media/wave5/wave5-vpu.c
++++ b/drivers/media/platform/chips-media/wave5/wave5-vpu.c
+@@ -11,6 +11,7 @@
+ #include <linux/firmware.h>
+ #include <linux/interrupt.h>
+ #include <linux/pm_runtime.h>
++#include <linux/pm_domain.h>
+ #include <linux/reset.h>
+ #include "wave5-vpu.h"
+ #include "wave5-regdefine.h"
+@@ -37,6 +38,11 @@ struct wave5_match_data {
+ static int vpu_poll_interval = 5;
+ module_param(vpu_poll_interval, int, 0644);
+ 
++/* One-shot failures: drain, domain off, domain on, reload, nested timeout. */
++static unsigned int recovery_fail_step;
++module_param(recovery_fail_step, uint, 0600);
++MODULE_PARM_DESC(recovery_fail_step, "One-shot T7 recovery failure injection (1-5)");
++
+ int wave5_vpu_wait_interrupt(struct vpu_instance *inst, unsigned int timeout)
+ {
+ 	int ret;
+@@ -206,10 +212,16 @@ static int irq_thread(void *data)
+ 	return 0;
+ }
+ 
++static void wave5_release_firmware(void *data)
++{
++	release_firmware(data);
++}
++
+ static int wave5_vpu_load_firmware(struct device *dev, const char *fw_name,
+ 				   u32 *revision)
+ {
+ 	const struct firmware *fw;
++	struct vpu_device *vpu = dev_get_drvdata(dev);
+ 	int ret;
+ 	unsigned int product_id;
+ 
+@@ -225,13 +237,21 @@ static int wave5_vpu_load_firmware(struct device *dev, const char *fw_name,
+ 		release_firmware(fw);
+ 		return ret;
+ 	}
+-	release_firmware(fw);
+-
+ 	ret = wave5_vpu_get_version_info(dev, revision, &product_id);
+ 	if (ret) {
+ 		dev_err(dev, "vpu_get_version_info fail: %d\n", ret);
++		release_firmware(fw);
+ 		return ret;
+ 	}
++	if (vpu->legacy_firmware) {
++		/* Recovery must not wait for userspace or filesystem firmware loading. */
++		ret = devm_add_action_or_reset(dev, wave5_release_firmware, (void *)fw);
++		if (ret)
++			return ret;
++		vpu->firmware = fw;
++	} else {
++		release_firmware(fw);
++	}
+ 
+ 	dev_dbg(dev, "%s: enum product_id: %08x, fw revision: %u\n",
+ 		__func__, product_id, *revision);
+@@ -239,11 +259,87 @@ static int wave5_vpu_load_firmware(struct device *dev, const char *fw_name,
+ 	return 0;
+ }
+ 
++static int wave5_power_notify(struct notifier_block *nb, unsigned long action, void *data)
++{
++	struct vpu_device *vpu = container_of(nb, struct vpu_device, power_notifier);
++
++	if (action == GENPD_NOTIFY_OFF)
++		WRITE_ONCE(vpu->power_off_seen, true);
++	else if (action == GENPD_NOTIFY_ON)
++		WRITE_ONCE(vpu->power_on_seen, true);
++	return NOTIFY_OK;
++}
++
++int wave5_vpu_recover_hardware(struct vpu_device *vpu)
++{
++	const struct firmware *fw = vpu->firmware;
++	unsigned int fail_step = xchg(&recovery_fail_step, 0);
++	int ret;
++
++	lockdep_assert_held(&vpu->hw_lock);
++	if (!fw)
++		return -EINVAL;
++	if (fail_step == 1) {
++		ret = -ETIMEDOUT;
++		goto out;
++	}
++	/* Keep functional clocks running through secure domain power-off. */
++	ret = wave5_vpu_reset(vpu->dev, SW_RESET_ON_BOOT);
++	if (ret)
++		goto out;
++	if (fail_step == 2) {
++		ret = -EIO;
++		goto out;
++	}
++	WRITE_ONCE(vpu->power_off_seen, false);
++	ret = pm_runtime_put_sync_suspend(vpu->dev);
++	if (ret < 0 || !READ_ONCE(vpu->power_off_seen)) {
++		/* put_sync_suspend consumes our reference even on failure. */
++		pm_runtime_get_noresume(vpu->dev);
++		ret = ret < 0 ? ret : -EBUSY;
++		goto out;
++	}
++	if (fail_step == 3) {
++		pm_runtime_get_noresume(vpu->dev);
++		ret = -EIO;
++		goto out;
++	}
++	WRITE_ONCE(vpu->power_on_seen, false);
++	ret = pm_runtime_resume_and_get(vpu->dev);
++	if (ret < 0) {
++		pm_runtime_get_noresume(vpu->dev);
++		goto out;
++	}
++	if (!READ_ONCE(vpu->power_on_seen)) {
++		ret = -EIO;
++		goto out;
++	}
++	if (wave5_vpu_is_init(vpu)) {
++		ret = -EIO;
++		goto out;
++	}
++	if (fail_step == 4 || fail_step == 5) {
++		if (fail_step == 5)
++			wave5_vpu_isolate(vpu, "injected recovery timeout", W5_INIT_VPU);
++		ret = -ETIMEDOUT;
++		goto out;
++	}
++	/* Cold INIT copies the firmware; WAKEUP would reuse destroyed contexts. */
++	ret = wave5_vpu_init(vpu->dev, (u8 *)fw->data, fw->size);
++	if (!ret) {
++		vpu_write_reg(vpu, W5_VPU_VINT_REASON_CLR, U32_MAX);
++		vpu_write_reg(vpu, W5_VPU_VINT_REASON_USR, 0);
++		vpu_write_reg(vpu, W5_VPU_VINT_CLEAR, 1);
++	}
++out:
++	return ret;
++}
++
+ static __maybe_unused int wave5_pm_suspend(struct device *dev)
+ {
+ 	struct vpu_device *vpu = dev_get_drvdata(dev);
+ 
+-	if (wave5_vpu_isolated(vpu))
++	if (wave5_vpu_hw_blocked(vpu))
+ 		return -EBUSY;
+ 	/* T7 keeps clocks running until genpd completes its power-off sequence. */
+ 	if (vpu->legacy_firmware)
+@@ -265,7 +361,7 @@ static __maybe_unused int wave5_pm_resume(struct device *dev)
+ 	struct vpu_device *vpu = dev_get_drvdata(dev);
+ 	int ret = 0;
+ 
+-	if (wave5_vpu_isolated(vpu))
++	if (wave5_vpu_hw_blocked(vpu))
+ 		return -EIO;
+ 	/* T7 probe owns the clocks before asking genpd to power the block on. */
+ 	if (vpu->legacy_firmware)
+@@ -459,6 +555,12 @@ static int wave5_vpu_probe(struct platform_device *pdev)
+ 		wave5_vpu_sleep_wake(&pdev->dev, true, NULL, 0);
+ 	}
+ 
++	if (dev->legacy_firmware) {
++		dev->power_notifier.notifier_call = wave5_power_notify;
++		ret = dev_pm_genpd_add_notifier(&pdev->dev, &dev->power_notifier);
++		if (ret)
++			goto err_enc_unreg;
++	}
+ 	dev->isolation_ready = true;
+ 	return 0;
+ 
+@@ -518,6 +620,8 @@ static void wave5_vpu_remove(struct platform_device *pdev)
+ 	dev->isolation_ready = false;
+ 	cancel_delayed_work_sync(&dev->job_timeout_work);
+ 	cancel_work_sync(&dev->isolation_work);
++	if (dev->legacy_firmware)
++		dev_pm_genpd_remove_notifier(&pdev->dev);
+ 	wave5_vpu_enc_unregister_device(dev);
+ 	wave5_vpu_dec_unregister_device(dev);
+ 	v4l2_device_unregister(&dev->v4l2_dev);
+@@ -567,7 +671,10 @@ static void wave5_vpu_shutdown(struct platform_device *pdev)
+ {
+ 	struct vpu_device *dev = dev_get_drvdata(&pdev->dev);
+ 
+-	/* No firmware waits, power collapse or reset on the quarantine path. */
++	WRITE_ONCE(dev->shutting_down, true);
++	cancel_delayed_work_sync(&dev->job_timeout_work);
++	flush_work(&dev->isolation_work);
++	/* Quarantine never attempts another firmware command or power cycle. */
+ 	if (wave5_vpu_isolated(dev))
+ 		dev_info(dev->dev, "shutdown: retaining quarantined DMA storage\n");
+ }
+diff --git a/drivers/media/platform/chips-media/wave5/wave5-vpu.h b/drivers/media/platform/chips-media/wave5/wave5-vpu.h
+index aedfc7b93c755..f1f4558a34c0d 100644
+--- a/drivers/media/platform/chips-media/wave5/wave5-vpu.h
++++ b/drivers/media/platform/chips-media/wave5/wave5-vpu.h
+@@ -69,6 +69,10 @@ static inline struct vpu_dst_buffer *wave5_to_vpu_dst_buf(struct vb2_v4l2_buffer
+ int wave5_vpu_wait_interrupt(struct vpu_instance *inst, unsigned int timeout);
+ 
+ bool wave5_vpu_isolated(struct vpu_device *dev);
++bool wave5_vpu_hw_blocked(struct vpu_device *dev);
++int wave5_vpu_recover_hardware(struct vpu_device *dev);
++void wave5_vpu_enc_free_buffers(struct vpu_instance *inst);
++void wave5_vpu_release_retained(struct vpu_instance *inst);
+ void wave5_vpu_isolate(struct vpu_device *dev, const char *reason, u32 command);
+ bool wave5_vpu_inject_timeout(struct vpu_device *dev, u32 command);
+ void wave5_vpu_job_finish(struct vpu_instance *inst);
+diff --git a/drivers/media/platform/chips-media/wave5/wave5-vpuapi.c b/drivers/media/platform/chips-media/wave5/wave5-vpuapi.c
+index 58ebe6e47fc09..cf2bae0fec03b 100644
+--- a/drivers/media/platform/chips-media/wave5/wave5-vpuapi.c
++++ b/drivers/media/platform/chips-media/wave5/wave5-vpuapi.c
+@@ -740,9 +740,25 @@ int wave5_vpu_enc_open(struct vpu_instance *inst, struct enc_open_param *open_pa
+ 	return ret;
+ }
+ 
++void wave5_vpu_enc_free_buffers(struct vpu_instance *inst)
++{
++	struct enc_info *info;
++
++	if (!inst->codec_info)
++		return;
++	info = &inst->codec_info->enc_info;
++	wave5_vdi_free_dma_memory(inst->dev, &info->vb_work);
++	if (inst->std == W_HEVC_ENC || inst->std == W_AVC_ENC) {
++		wave5_vdi_free_dma_memory(inst->dev, &info->vb_sub_sam_buf);
++		wave5_vdi_free_dma_memory(inst->dev, &info->vb_mv);
++		wave5_vdi_free_dma_memory(inst->dev, &info->vb_fbc_y_tbl);
++		wave5_vdi_free_dma_memory(inst->dev, &info->vb_fbc_c_tbl);
++	}
++	wave5_vdi_free_dma_memory(inst->dev, &info->vb_task);
++}
++
+ int wave5_vpu_enc_close(struct vpu_instance *inst, u32 *fail_res)
+ {
+-	struct enc_info *p_enc_info = &inst->codec_info->enc_info;
+ 	int ret;
+ 	int retry = 0;
+ 	struct vpu_device *vpu_dev = inst->dev;
+@@ -751,11 +767,13 @@ int wave5_vpu_enc_close(struct vpu_instance *inst, u32 *fail_res)
+ 	if (!inst->codec_info)
+ 		return -EINVAL;
+ 
+-	pm_runtime_resume_and_get(inst->dev->dev);
++	ret = pm_runtime_resume_and_get(inst->dev->dev);
++	if (ret < 0)
++		return ret;
+ 
+ 	ret = mutex_lock_interruptible(&vpu_dev->hw_lock);
+ 	if (ret) {
+-		pm_runtime_resume_and_get(inst->dev->dev);
++		pm_runtime_put_autosuspend(inst->dev->dev);
+ 		return ret;
+ 	}
+ 
+@@ -763,7 +781,7 @@ int wave5_vpu_enc_close(struct vpu_instance *inst, u32 *fail_res)
+ 		ret = wave5_vpu_enc_finish_seq(inst, fail_res);
+ 		if (ret < 0 && *fail_res != WAVE5_SYSERR_VPU_STILL_RUNNING) {
+ 			dev_warn(inst->dev->dev, "enc_finish_seq timed out\n");
+-			pm_runtime_resume_and_get(inst->dev->dev);
++			pm_runtime_put_autosuspend(inst->dev->dev);
+ 			mutex_unlock(&vpu_dev->hw_lock);
+ 			return ret;
+ 		}
+@@ -778,7 +796,7 @@ int wave5_vpu_enc_close(struct vpu_instance *inst, u32 *fail_res)
+ 
+ 		if (*fail_res == WAVE5_SYSERR_VPU_STILL_RUNNING &&
+ 		    retry++ >= MAX_FIRMWARE_CALL_RETRY) {
+-			pm_runtime_resume_and_get(inst->dev->dev);
++			pm_runtime_put_autosuspend(inst->dev->dev);
+ 			mutex_unlock(&vpu_dev->hw_lock);
+ 			return -ETIMEDOUT;
+ 		}
+@@ -786,16 +804,7 @@ int wave5_vpu_enc_close(struct vpu_instance *inst, u32 *fail_res)
+ 
+ 	dev_dbg(inst->dev->dev, "%s: enc_finish_seq complete\n", __func__);
+ 
+-	wave5_vdi_free_dma_memory(vpu_dev, &p_enc_info->vb_work);
+-
+-	if (inst->std == W_HEVC_ENC || inst->std == W_AVC_ENC) {
+-		wave5_vdi_free_dma_memory(vpu_dev, &p_enc_info->vb_sub_sam_buf);
+-		wave5_vdi_free_dma_memory(vpu_dev, &p_enc_info->vb_mv);
+-		wave5_vdi_free_dma_memory(vpu_dev, &p_enc_info->vb_fbc_y_tbl);
+-		wave5_vdi_free_dma_memory(vpu_dev, &p_enc_info->vb_fbc_c_tbl);
+-	}
+-
+-	wave5_vdi_free_dma_memory(vpu_dev, &p_enc_info->vb_task);
++	wave5_vpu_enc_free_buffers(inst);
+ 	mutex_unlock(&vpu_dev->hw_lock);
+ 	pm_runtime_put_sync(inst->dev->dev);
+ 
+diff --git a/drivers/media/platform/chips-media/wave5/wave5-vpuapi.h b/drivers/media/platform/chips-media/wave5/wave5-vpuapi.h
+index 90b3000b84264..0fd73109bfb5d 100644
+--- a/drivers/media/platform/chips-media/wave5/wave5-vpuapi.h
++++ b/drivers/media/platform/chips-media/wave5/wave5-vpuapi.h
+@@ -11,6 +11,7 @@
+ #include <linux/atomic.h>
+ #include <linux/kfifo.h>
+ #include <linux/idr.h>
++#include <linux/notifier.h>
+ #include <linux/genalloc.h>
+ #include <media/v4l2-device.h>
+ #include <media/v4l2-mem2mem.h>
+@@ -778,8 +779,16 @@ struct vpu_device {
+ 	struct semaphore irq_sem; /* signal to irq_thread when interrupt happens*/
+ 	struct reset_control *resets;
+ 	spinlock_t irq_spinlock; /* protect instances list */
+-	/* 0: normal, 1: claimed, 2: metadata published; irreversible until boot. */
++	/* 0: running, 1: claimed, 2: isolated, 3: recovering. */
+ 	unsigned int isolated;
++	struct task_struct *recovery_owner;
++	bool recovery_failed;
++	bool shutting_down;
++	bool power_off_seen;
++	bool power_on_seen;
++	struct notifier_block power_notifier;
++	const struct firmware *firmware;
++	struct list_head retained_planes;
+ 	u32 isolation_command;
+ 	u32 last_command;
+ 	const char *isolation_reason;
+@@ -797,6 +806,8 @@ struct vpu_instance_ops {
+ };
+ 
+ struct vpu_instance {
++	bool recovery_error;
++	bool released;
+ 	struct list_head list;
+ 	struct v4l2_fh v4l2_fh;
+ 	struct v4l2_m2m_dev *v4l2_m2m_dev;

@@ -1,0 +1,39 @@
+From 4afe6d8f8ecfad3a47d0ff82e60b982067654b23 Mon Sep 17 00:00:00 2001
+From: localhost-copilot <318096335+localhost-copilot@users.noreply.github.com>
+Date: Fri, 23 Oct 2026 16:09:20 +0800
+Subject: [PATCH] dt-bindings: display: describe the T7 ENC2 firmware handoff
+
+Match the firmware encoder instance and require its existing VIU1 edge
+interrupt. The handoff writes only the OSD address and must preserve
+VENC interrupt control and the global VIU routing.
+
+Signed-off-by: localhost-copilot <318096335+localhost-copilot@users.noreply.github.com>
+---
+ .../bindings/display/amlogic,t7-display-handoff.yaml       | 7 ++++---
+ 1 file changed, 4 insertions(+), 3 deletions(-)
+
+diff --git a/Documentation/devicetree/bindings/display/amlogic,t7-display-handoff.yaml b/Documentation/devicetree/bindings/display/amlogic,t7-display-handoff.yaml
+index 3c1e919e698d9..a5837f4d2045b 100644
+--- a/Documentation/devicetree/bindings/display/amlogic,t7-display-handoff.yaml
++++ b/Documentation/devicetree/bindings/display/amlogic,t7-display-handoff.yaml
+@@ -13,8 +13,9 @@ description: |
+   Dedicated 1080p60 RGB888 OSD1 handoff. Firmware must have initialized the
+   complete display path and reserved both logo frames at 3f800000/c00000.
+   The normal VPU and simple-framebuffer nodes must remain disabled. VDIN
+-  must use disjoint capture resources. Only OSD1 address and VENC interrupt
+-  control may be written; clocks, reset, VPP, timing and PHY stay unchanged.
++  must use disjoint capture resources. Only the OSD1 address may be written;
++  VENC, VIU interrupt routing, clocks, reset, VPP, timing and PHY stay unchanged.
++  The firmware must select ENC2 and supply the VIU1 vsync edge interrupt.
+ 
+ properties:
+   compatible:
+@@ -22,7 +23,7 @@ properties:
+   reg:
+     items:
+       - description: OSD1 control and linear MIF, ff006840/80
+-      - description: VENC interrupt and timing readback, ff006db8/108
++      - description: ENC2 timing readback, ff008db8/108
+   reg-names:
+     items:
+       - const: osd1

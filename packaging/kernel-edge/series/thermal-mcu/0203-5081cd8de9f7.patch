@@ -1,0 +1,204 @@
+From 5081cd8de9f7839d8d30a9e45dc46ebe73f93265 Mon Sep 17 00:00:00 2001
+From: deepdream <deepdream@deepdremsMinim4.lan>
+Date: Tue, 20 Oct 2026 20:27:27 -0700
+Subject: [PATCH] thermal: khadas: use quiet output while temperature is
+ unknown
+
+---
+ .../ABI/testing/sysfs-platform-khadas-mcu-fan | 13 ++++--
+ drivers/thermal/khadas_mcu_fan.c              | 40 ++++++++++++-------
+ drivers/thermal/test_khadas_mcu_fan.py        | 33 +++++++++++----
+ 3 files changed, 60 insertions(+), 26 deletions(-)
+
+diff --git a/Documentation/ABI/testing/sysfs-platform-khadas-mcu-fan b/Documentation/ABI/testing/sysfs-platform-khadas-mcu-fan
+index ec9b05a8f9152..b39115d5f7af6 100644
+--- a/Documentation/ABI/testing/sysfs-platform-khadas-mcu-fan
++++ b/Documentation/ABI/testing/sysfs-platform-khadas-mcu-fan
+@@ -7,12 +7,15 @@ Description:
+                 Available in quiet automatic mode only. The worker samples
+                 all six T7 thermal zones every 30 seconds, uses the hottest
+                 reading, and applies the quiet curve with a 5 percentage
+-                point slew limit. Starting, stopping, and full speed bypass
+-                the slew limit. Any unavailable sensor requests full speed.
++                point slew limit. Starting, stopping, full speed, sensor
++                faults and the first valid sample after a fault bypass the
++                slew limit. Startup and unavailable sensors request at least
++                15 percent. Valid readings from other sensors can request a
++                higher output, including full speed at 100 degrees Celsius.
+                 Unavailable sensors and failed MCU writes retry after one
+                 second; normal sampling resumes after a successful sample
+                 and MCU write. The first valid sample adopts the quiet
+-                target directly instead of slewing down from full speed.
++                target directly.
+                 khadas_mcu_fan.quiet_auto=0 selects the original thermal
+                 cooling device instead. Other MCU variants are unaffected.
+ 
+@@ -22,7 +25,9 @@ Contact:        https://github.com/vim4-kvm/linux/issues
+ Description:
+                 Read-only boolean: one or more required thermal zones were
+                 unavailable in the last automatic sample. An unavailable
+-                sensor requests full speed; it cannot prove fan rotation.
++                sensor requests at least 15 percent output, while valid
++                readings from other sensors can request more cooling.
++                This flag cannot prove fan rotation.
+ 
+ What:           /sys/bus/platform/devices/khadas-mcu-fan-ctrl*/temperature_millic
+ Date:           October 2026
+diff --git a/drivers/thermal/khadas_mcu_fan.c b/drivers/thermal/khadas_mcu_fan.c
+index aa0651e1897b3..26b23f940b066 100644
+--- a/drivers/thermal/khadas_mcu_fan.c
++++ b/drivers/thermal/khadas_mcu_fan.c
+@@ -50,17 +50,23 @@ static int khadas_vim4_fan_lerp(int temp, int low, int high,
+ 
+ static int khadas_vim4_fan_target(int temp, bool sensor_fault)
+ {
+-	if (sensor_fault || temp >= 100000)
+-		return 100;
+-	if (temp < 45000)
+-		return 0;
+-	if (temp < 55000)
+-		return khadas_vim4_fan_lerp(temp, 45000, 55000, 5, 25);
+-	if (temp < 60000)
+-		return khadas_vim4_fan_lerp(temp, 55000, 60000, 25, 35);
+-	if (temp < 80000)
+-		return khadas_vim4_fan_lerp(temp, 60000, 80000, 35, 70);
+-	return khadas_vim4_fan_lerp(temp, 80000, 100000, 70, 100);
++	int target;
++
++	if (temp >= 100000)
++		target = 100;
++	else if (temp < 45000)
++		target = 0;
++	else if (temp < 55000)
++		target = khadas_vim4_fan_lerp(temp, 45000, 55000, 5, 25);
++	else if (temp < 60000)
++		target = khadas_vim4_fan_lerp(temp, 55000, 60000, 25, 35);
++	else if (temp < 80000)
++		target = khadas_vim4_fan_lerp(temp, 60000, 80000, 35, 70);
++	else
++		target = khadas_vim4_fan_lerp(temp, 80000, 100000, 70, 100);
++
++	/* Unknown sensors must not override another sensor's valid hot reading. */
++	return sensor_fault ? max(target, 15) : target;
+ }
+ 
+ static unsigned int khadas_vim4_fan_next(unsigned int current_speed,
+@@ -96,6 +102,7 @@ static void khadas_vim4_fan_work(struct work_struct *work)
+ 					struct khadas_mcu_fan_ctx, quiet_work);
+ 	int hottest = INT_MIN;
+ 	bool fault = false;
++	bool was_fault = ctx->sensor_fault;
+ 	unsigned int target;
+ 	int i, ret;
+ 
+@@ -107,14 +114,15 @@ static void khadas_vim4_fan_work(struct work_struct *work)
+ 		zone = thermal_zone_get_zone_by_name(khadas_vim4_fan_sensors[i]);
+ 		if (IS_ERR(zone) || thermal_zone_get_temp(zone, &temperature)) {
+ 			fault = true;
+-			break;
++			continue;
+ 		}
+ 		hottest = max(hottest, temperature);
+ 	}
+ 	WRITE_ONCE(ctx->temperature, hottest);
+ 	WRITE_ONCE(ctx->sensor_fault, fault);
+ 	target = khadas_vim4_fan_target(hottest, fault);
+-	if (ctx->quiet_started)
++	/* Fault handling and its first valid sample bypass the normal ramp. */
++	if (ctx->quiet_started && !fault && !was_fault)
+ 		target = khadas_vim4_fan_next(ctx->level, target);
+ 	ret = khadas_mcu_fan_set_level(ctx, target);
+ 	if (ret)
+@@ -122,7 +130,8 @@ static void khadas_vim4_fan_work(struct work_struct *work)
+ 	else if (!fault)
+ 		ctx->quiet_started = true;
+ 	if (fault)
+-		dev_warn_ratelimited(ctx->dev, "Fan temperature unavailable; requesting full speed\n");
++		dev_warn_ratelimited(ctx->dev,
++			"Fan temperature unavailable; requesting %u%% output\n", target);
+ 
+ 	/* Thermal zones may register after the first boot-time sample. */
+ 	schedule_delayed_work(&ctx->quiet_work,
+@@ -270,7 +279,8 @@ static int khadas_mcu_fan_probe(struct platform_device *pdev)
+ 		/* The quiet worker is the sole owner; do not bind step_wise too. */
+ 		INIT_DELAYED_WORK(&ctx->quiet_work, khadas_vim4_fan_work);
+ 		ctx->sensor_fault = true;
+-		ret = khadas_mcu_fan_set_level(ctx, ctx->max_level);
++		ret = khadas_mcu_fan_set_level(ctx,
++					    khadas_vim4_fan_target(INT_MIN, true));
+ 		if (ret)
+ 			return ret;
+ 		ret = devm_add_action_or_reset(dev, khadas_vim4_fan_stop, ctx);
+diff --git a/drivers/thermal/test_khadas_mcu_fan.py b/drivers/thermal/test_khadas_mcu_fan.py
+index 5b2cf336bcbe1..d9327637447be 100644
+--- a/drivers/thermal/test_khadas_mcu_fan.py
++++ b/drivers/thermal/test_khadas_mcu_fan.py
+@@ -51,7 +51,7 @@ static struct thermal_zone_device *thermal_zone_get_zone_by_name(const char *nam
+ static int thermal_zone_get_temp(struct thermal_zone_device *zone, int *temp)
+ {
+     reads++; *temp = temperatures[zone->index];
+-    return zone->index == unreadable ? -1 : 0;
++    return unreadable == -2 || zone->index == unreadable ? -1 : 0;
+ }
+ static int regmap_write(void *map, unsigned int reg, unsigned int value)
+ {
+@@ -88,7 +88,7 @@ int main(void)
+     for (int temp = -20000; temp <= 130000; temp += 1000) {
+         int speed = khadas_vim4_fan_target(temp, false);
+         assert(speed >= previous && speed <= 100);
+-        assert(khadas_vim4_fan_target(temp, true) == 100);
++        assert(khadas_vim4_fan_target(temp, true) == max(speed, 15));
+         if (temp < 45000) assert(speed == 0);
+         if (temp >= 100000) assert(speed == 100);
+         previous = speed;
+@@ -116,10 +116,10 @@ int main(void)
+     for (int i = 0; i < 6; i++) temperatures[i] = 50000;
+     missing = 5;
+     khadas_vim4_fan_work(&ctx.quiet_work.work);
+-    assert(ctx.level == 100 && ctx.sensor_fault && !ctx.quiet_started);
++    assert(ctx.level == 15 && ctx.sensor_fault && !ctx.quiet_started);
+     assert(delay == 1000);
+     khadas_vim4_fan_work(&ctx.quiet_work.work);
+-    assert(ctx.level == 100 && !ctx.quiet_started && delay == 1000);
++    assert(ctx.level == 15 && !ctx.quiet_started && delay == 1000);
+     missing = -1; reads = 0;
+     khadas_vim4_fan_work(&ctx.quiet_work.work);
+     assert(ctx.level == 15 && !ctx.sensor_fault && ctx.quiet_started);
+@@ -129,15 +129,34 @@ int main(void)
+     assert(ctx.level == 20 && ctx.temperature == 90000);
+     unreadable = 5;
+     khadas_vim4_fan_work(&ctx.quiet_work.work);
+-    assert(ctx.level == 100 && ctx.sensor_fault);
++    assert(ctx.level == 15 && ctx.sensor_fault);
+     assert(delay == 1000);
++    /* A missing early sensor must not hide another zone's valid hot sample. */
++    unreadable = -1; missing = 0;
++    khadas_vim4_fan_work(&ctx.quiet_work.work);
++    assert(ctx.level == 85 && ctx.sensor_fault && delay == 1000);
++    temperatures[5] = 100000;
++    khadas_vim4_fan_work(&ctx.quiet_work.work);
++    assert(ctx.level == 100 && ctx.sensor_fault);
++    /* All temperatures unknown: use the requested fallback and keep retrying. */
++    missing = -1; unreadable = -2;
++    khadas_vim4_fan_work(&ctx.quiet_work.work);
++    assert(ctx.level == 15 && ctx.sensor_fault && delay == 1000);
++    /* Recovery adopts a valid hot target immediately, without a 30s ramp. */
++    unreadable = -1; temperatures[5] = 90000;
++    khadas_vim4_fan_work(&ctx.quiet_work.work);
++    assert(ctx.level == 85 && !ctx.sensor_fault && delay == 30000);
++    unreadable = 5;
++    khadas_vim4_fan_work(&ctx.quiet_work.work);
++    assert(ctx.level == 15 && ctx.sensor_fault && delay == 1000);
+     unreadable = -1; temperatures[5] = 50000;
+     khadas_vim4_fan_work(&ctx.quiet_work.work);
+-    assert(ctx.level == 95 && !ctx.sensor_fault);
++    assert(ctx.level == 15 && !ctx.sensor_fault);
+     assert(delay == 30000);
++    temperatures[5] = 90000;
+     write_error = -1;
+     khadas_vim4_fan_work(&ctx.quiet_work.work);
+-    assert(ctx.level == 95 && requested == 90 && delay == 1000);
++    assert(ctx.level == 15 && requested == 20 && delay == 1000);
+     write_error = 0; temperatures[2] = 100000;
+     khadas_vim4_fan_work(&ctx.quiet_work.work);
+     assert(ctx.level == 100);

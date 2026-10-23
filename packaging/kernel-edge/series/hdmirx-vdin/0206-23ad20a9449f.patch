@@ -1,0 +1,344 @@
+From 23ad20a9449fb19e5d949823ff423c7e39a942ff Mon Sep 17 00:00:00 2001
+From: deepdream <deepdream@deepdremsMinim4.lan>
+Date: Tue, 20 Oct 2026 21:19:32 -0700
+Subject: [PATCH] media: t7-hdmirx: expose measured input timings through V4L2
+
+---
+ .../platform/amlogic/t7-hdmirx/README.md      |  12 ++
+ .../platform/amlogic/t7-hdmirx/t7-hdmirx.c    |  51 ++++++
+ .../platform/amlogic/t7-hdmirx/t7-hdmirx.h    |   6 +
+ .../platform/amlogic/t7-hdmirx/t7-vdin-test.c |  31 ++++
+ .../platform/amlogic/t7-hdmirx/test_core.py   |   2 +-
+ .../amlogic/t7-hdmirx/test_timings.py         | 145 ++++++++++++++++++
+ 6 files changed, 246 insertions(+), 1 deletion(-)
+ create mode 100644 drivers/media/platform/amlogic/t7-hdmirx/test_timings.py
+
+diff --git a/drivers/media/platform/amlogic/t7-hdmirx/README.md b/drivers/media/platform/amlogic/t7-hdmirx/README.md
+index d864a0cd61295..61a0a83149bfe 100644
+--- a/drivers/media/platform/amlogic/t7-hdmirx/README.md
++++ b/drivers/media/platform/amlogic/t7-hdmirx/README.md
+@@ -8,6 +8,18 @@ SCDC ratio, then configures the video PLL/PCS. Loss does not withdraw HPD or
+ rewrite EDID. The supported profile is still selected by `uhd60`; automatic
+ timings and format negotiation are a separate change.
+ 
++`VIDIOC_QUERY_DV_TIMINGS` and `VIDIOC_G_PARM` report a live measurement for the
++qualified profile, including fractional rates near 60 Hz. Frame period comes
++from the RX reference-clock counter, not from the capture buffer dimensions.
++The query rejects loss, unsupported sync widths and a counter changing during
++its byte reads; it never returns cached timing while unlocked. The fixed CEA
++profile supplies porches only after its totals and sync widths have matched.
++Queries do not wait for another frame or reconfigure PHY, DMA, EDID or HPD.
++`G_PARM` does not advertise `S_PARM` capability: capture cannot set the HDMI
++source clock. `test_timings.py` exercises the actual query and VDIN handlers
++with Linux UAPI headers, fractional rates and source transitions. Arbitrary
++input modes, source-change events and queue resizing are still separate work.
++
+ Cable qualification reads the completed meter count and rearms the cable/TMDS
+ meters for the next sample. The counters latch completed measurements; repeatedly
+ reading a startup count cannot detect a delayed source. Only the meter reset bits
+diff --git a/drivers/media/platform/amlogic/t7-hdmirx/t7-hdmirx.c b/drivers/media/platform/amlogic/t7-hdmirx/t7-hdmirx.c
+index 9f36a6ac75f7e..3fa81a9392c61 100644
+--- a/drivers/media/platform/amlogic/t7-hdmirx/t7-hdmirx.c
++++ b/drivers/media/platform/amlogic/t7-hdmirx/t7-hdmirx.c
+@@ -17,6 +17,8 @@
+ #include <linux/property.h>
+ #include <linux/seq_file.h>
+ #include <linux/workqueue.h>
++#include <linux/videodev2.h>
++#include <linux/v4l2-dv-timings.h>
+ #include <sound/pcm_params.h>
+ #include <sound/soc.h>
+ 
+@@ -712,6 +714,55 @@ int t7_hdmirx_get_size(struct device *dev, unsigned int *width, unsigned int *he
+ }
+ EXPORT_SYMBOL_GPL(t7_hdmirx_get_size);
+ 
++int t7_hdmirx_query_timings(struct device *dev, struct v4l2_dv_timings *timings,
++			  struct v4l2_fract *interval)
++{
++	struct t7_hdmirx *rx = dev_get_drvdata(dev);
++	struct v4l2_dv_timings mode;
++	u32 ticks, reference, before, after;
++	u32 hsync, vsync;
++	int ret;
++
++	ret = t7_hdmirx_check_video_now(dev);
++	if (ret)
++		return ret;
++	/* Byte-addressed counters can roll over between bus reads. Retry through
++	 * userspace rather than publishing a torn period as a different frame rate.
++	 * No frame wait here: status polling shares the capture queue lock.
++	 */
++	before = t7_hdmirx_core_read16(rx, T7_RX_COR_FRAME_TICKS) |
++		 (readb(rx->cor + T7_RX_COR_FRAME_TICKS + 2) << 16);
++	after = t7_hdmirx_core_read16(rx, T7_RX_COR_FRAME_TICKS) |
++		(readb(rx->cor + T7_RX_COR_FRAME_TICKS + 2) << 16);
++	if (before != after)
++		return -EAGAIN;
++	ticks = after;
++	reference = clk_get_rate(rx->clocks[T7_RX_PCLK].clk);
++	if (!ticks || ticks < reference / 61 || ticks > reference / 59)
++		return -ERANGE;
++	mode = rx->uhd60 ? (struct v4l2_dv_timings)V4L2_DV_BT_CEA_3840X2160P60 :
++			  (struct v4l2_dv_timings)V4L2_DV_BT_CEA_1920X1080P60;
++	hsync = t7_hdmirx_core_read16(rx, T7_RX_COR_HSYNC);
++	vsync = t7_hdmirx_core_read16(rx, T7_RX_COR_VSYNC);
++	/* Only these CEA profiles have qualified porch/polarity settings. Do not
++	 * fabricate DV timings for arbitrary modes with the same active area.
++	 */
++	if (hsync != mode.bt.hsync || vsync != mode.bt.vsync)
++		return -ERANGE;
++	ret = t7_hdmirx_check_video_now(dev);
++	if (ret)
++		return ret;
++	mode.bt.pixelclock = div_u64((u64)reference *
++		(mode.bt.width + mode.bt.hfrontporch + mode.bt.hsync + mode.bt.hbackporch) *
++		(mode.bt.height + mode.bt.vfrontporch + mode.bt.vsync + mode.bt.vbackporch), ticks);
++	/* The measured clock is authoritative, not an exact 60/1 or 60000/1001. */
++	mode.bt.flags &= ~(V4L2_DV_FL_CAN_REDUCE_FPS | V4L2_DV_FL_REDUCED_FPS);
++	*timings = mode;
++	*interval = (struct v4l2_fract) { .numerator = ticks, .denominator = reference };
++	return 0;
++}
++EXPORT_SYMBOL_GPL(t7_hdmirx_query_timings);
++
+ static u32 t7_hdmirx_audio_word(struct t7_hdmirx *rx, unsigned int reg)
+ {
+ 	return ((readb(rx->cor + reg) & 0xf) << 16) |
+diff --git a/drivers/media/platform/amlogic/t7-hdmirx/t7-hdmirx.h b/drivers/media/platform/amlogic/t7-hdmirx/t7-hdmirx.h
+index b30ba9cd4e24a..c9e5f2794dcc6 100644
+--- a/drivers/media/platform/amlogic/t7-hdmirx/t7-hdmirx.h
++++ b/drivers/media/platform/amlogic/t7-hdmirx/t7-hdmirx.h
+@@ -3,6 +3,8 @@
+ #define __T7_HDMIRX_H
+ 
+ struct device;
++struct v4l2_dv_timings;
++struct v4l2_fract;
+ 
+ /* Require two stable samples matching the receiver's selected RGB8 profile. */
+ int t7_hdmirx_check_video(struct device *dev);
+@@ -13,6 +15,10 @@ int t7_hdmirx_check_video_now(struct device *dev);
+ /* Profile dimensions are immutable for the lifetime of the bound receiver. */
+ int t7_hdmirx_get_size(struct device *dev, unsigned int *width, unsigned int *height);
+ 
++/* Measured timing of a locked, supported RGB8 input; never a cached mode. */
++int t7_hdmirx_query_timings(struct device *dev, struct v4l2_dv_timings *timings,
++			  struct v4l2_fract *interval);
++
+ /* Hold the video PHY configuration until the consumer has stopped all DMA. */
+ int t7_hdmirx_stream_get(struct device *dev);
+ void t7_hdmirx_stream_put(struct device *dev);
+diff --git a/drivers/media/platform/amlogic/t7-hdmirx/t7-vdin-test.c b/drivers/media/platform/amlogic/t7-hdmirx/t7-vdin-test.c
+index 29a97352f0e53..30d9dcc9a1c8c 100644
+--- a/drivers/media/platform/amlogic/t7-hdmirx/t7-vdin-test.c
++++ b/drivers/media/platform/amlogic/t7-hdmirx/t7-vdin-test.c
+@@ -899,6 +899,35 @@ static int t7_vdin_get_input(struct file *file, void *priv, unsigned int *input)
+ 	return 0;
+ }
+ 
++static int t7_vdin_query_dv_timings(struct file *file, void *priv,
++				    struct v4l2_dv_timings *timings)
++{
++	struct t7_vdin *vdin = video_drvdata(file);
++	struct v4l2_fract interval;
++
++	return t7_hdmirx_query_timings(vdin->receiver, timings, &interval);
++}
++
++static int t7_vdin_get_parm(struct file *file, void *priv, struct v4l2_streamparm *parm)
++{
++	struct t7_vdin *vdin = video_drvdata(file);
++	struct v4l2_dv_timings timings;
++	struct v4l2_fract interval;
++	int ret;
++
++	if (parm->type != V4L2_BUF_TYPE_VIDEO_CAPTURE)
++		return -EINVAL;
++	ret = t7_hdmirx_query_timings(vdin->receiver, &timings, &interval);
++	if (ret)
++		return ret;
++	/* Capture cannot change the source clock; TIMEPERFRAME capability would
++	 * incorrectly promise S_PARM support. This is a measured, read-only value.
++	 */
++	memset(&parm->parm, 0, sizeof(parm->parm));
++	parm->parm.capture.timeperframe = interval;
++	return 0;
++}
++
+ static int t7_vdin_set_input(struct file *file, void *priv, unsigned int input)
+ {
+ 	return input ? -EINVAL : 0;
+@@ -913,6 +942,8 @@ static const struct v4l2_ioctl_ops t7_vdin_ioctl_ops = {
+ 	.vidioc_enum_input = t7_vdin_enum_input,
+ 	.vidioc_g_input = t7_vdin_get_input,
+ 	.vidioc_s_input = t7_vdin_set_input,
++	.vidioc_query_dv_timings = t7_vdin_query_dv_timings,
++	.vidioc_g_parm = t7_vdin_get_parm,
+ 	.vidioc_reqbufs = vb2_ioctl_reqbufs,
+ 	.vidioc_create_bufs = vb2_ioctl_create_bufs,
+ 	.vidioc_prepare_buf = vb2_ioctl_prepare_buf,
+diff --git a/drivers/media/platform/amlogic/t7-hdmirx/test_core.py b/drivers/media/platform/amlogic/t7-hdmirx/test_core.py
+index 6ba5af6966c40..6552d08397966 100644
+--- a/drivers/media/platform/amlogic/t7-hdmirx/test_core.py
++++ b/drivers/media/platform/amlogic/t7-hdmirx/test_core.py
+@@ -9,7 +9,7 @@ defines = '\n'.join(line for line in source.splitlines() if line.startswith('#de
+ types = source[source.index('static const u32 t7_hdmirx_phy_top_regs'):
+                source.index('static int t7_hdmirx_validate_edid')]
+ functions = source[source.index('static void t7_hdmirx_core_stop'):
+-                   source.index('static u32 t7_hdmirx_audio_word')]
++                   source.index('int t7_hdmirx_query_timings')]
+ vdin = Path(__file__).with_name('t7-vdin-test.c').read_text()
+ status_api = vdin[vdin.index('static int t7_vdin_enum_input'):
+                   vdin.index('static int t7_vdin_get_input')]
+diff --git a/drivers/media/platform/amlogic/t7-hdmirx/test_timings.py b/drivers/media/platform/amlogic/t7-hdmirx/test_timings.py
+new file mode 100644
+index 0000000000000..103ba699575d0
+--- /dev/null
++++ b/drivers/media/platform/amlogic/t7-hdmirx/test_timings.py
+@@ -0,0 +1,145 @@
++#!/usr/bin/env python3
++"""Run the actual RX timing query and VDIN ioctls against register transitions.
++
++Requires Linux UAPI headers, but no board, kernel modules or privileges.
++"""
++from pathlib import Path
++import subprocess
++import tempfile
++
++source = Path(__file__).with_name('t7-hdmirx.c').read_text()
++vdin = Path(__file__).with_name('t7-vdin-test.c').read_text()
++defines = '\n'.join(line for line in source.splitlines() if line.startswith('#define T7_RX_'))
++types = source[source.index('static const u32 t7_hdmirx_phy_top_regs'):
++               source.index('static int t7_hdmirx_validate_edid')]
++functions = source[source.index('static u32 t7_hdmirx_core_read16'):
++                   source.index('static u32 t7_hdmirx_audio_word')]
++ioctls = vdin[vdin.index('static int t7_vdin_query_dv_timings'):
++             vdin.index('static int t7_vdin_set_input')]
++prefix = r'''
++#include <assert.h>
++#include <errno.h>
++#include <stdbool.h>
++#include <stdint.h>
++#include <stdio.h>
++#include <string.h>
++#include <linux/videodev2.h>
++#include <linux/v4l2-dv-timings.h>
++typedef uint8_t u8;
++typedef uint32_t u32;
++typedef uint64_t u64;
++#define __iomem
++#define BIT(n) (1U << (n))
++#define GENMASK(h,l) ((~0U >> (31-(h))) & (~0U << (l)))
++#define ARRAY_SIZE(a) (sizeof(a)/sizeof((a)[0]))
++#define READ_ONCE(value) (value)
++#define EXPORT_SYMBOL_GPL(name)
++struct mutex { int unused; };
++struct delayed_work { int unused; };
++struct clk_bulk_data { void *clk; };
++struct debugfs_blob_wrapper { void *data; unsigned long size; };
++struct device { void *data; };
++'''
++stubs = r'''
++static u8 core[0x8000], top[0x4000], phy[0x100];
++static unsigned int period_reads, change_read, changed_period;
++static bool lose_signal;
++static void word(unsigned int reg, unsigned int value) {
++    core[reg] = value; core[reg+1] = value >> 8;
++}
++static void period(unsigned int value) {
++    word(T7_RX_COR_FRAME_TICKS, value);
++    core[T7_RX_COR_FRAME_TICKS+2] = value >> 16;
++}
++static u8 readb(void *address) {
++    if (address == core + T7_RX_COR_FRAME_TICKS && ++period_reads == change_read) {
++        period(changed_period);
++        if (lose_signal) memset(top + T7_RX_TOP_TMDS_ALIGN_STAT, 0, 4);
++    }
++    return *(u8 *)address;
++}
++static u32 readl(void *address) { u32 value; memcpy(&value,address,4); return value; }
++static unsigned long clk_get_rate(void *clk) { (void)clk; return 166666664; }
++static u64 div_u64(u64 a, u32 b) { assert(b); return a/b; }
++static void *dev_get_drvdata(struct device *dev) { return dev->data; }
++static void usleep_range(unsigned int low, unsigned int high) {
++    (void)low; (void)high; assert(!"timing ioctls must not sleep for a frame");
++}
++struct t7_vdin { struct device *receiver; };
++struct file { void *data; };
++static void *video_drvdata(struct file *file) { return file->data; }
++'''
++checks = r'''
++static void setup(bool uhd, unsigned int ticks) {
++    memset(core,0,sizeof(core)); memset(top,0,sizeof(top));
++    u32 value = BIT(21); memcpy(top + T7_RX_TOP_HPD_PWR5V,&value,4);
++    value = 1; memcpy(top + T7_RX_TOP_TMDS_ALIGN_STAT,&value,4);
++    value = T7_RX_PHY_PLL_LOCK; memcpy(phy + T7_RX_PHY_APLL0,&value,4);
++    word(T7_RX_COR_WIDTH, uhd ? 3840 : 1920);
++    word(T7_RX_COR_HEIGHT, uhd ? 2160 : 1080);
++    word(T7_RX_COR_HSYNC, uhd ? 88 : 44);
++    word(T7_RX_COR_HFRONT_BACK, uhd ? 4312 : 2156);
++    word(T7_RX_COR_VSYNC, uhd ? 10 : 5);
++    word(T7_RX_COR_VFRONT_BACK, uhd ? 2240 : 1120);
++    period(ticks); period_reads = change_read = 0; lose_signal = false;
++}
++int main(void) {
++    struct t7_hdmirx_link link = {.ready = true};
++    struct t7_hdmirx rx = {.link=&link,.core_active=true,.port=1,
++                           .top=top,.phy=phy,.cor=core};
++    struct device dev = {.data=&rx};
++    struct t7_vdin capture = {.receiver=&dev};
++    struct file file = {.data=&capture};
++    struct v4l2_dv_timings timing;
++    struct v4l2_fract interval;
++    struct v4l2_streamparm parm = {.type=V4L2_BUF_TYPE_VIDEO_CAPTURE};
++    for (int uhd=0; uhd<2; uhd++) {
++        rx.uhd60 = uhd;
++        for (int fractional=0; fractional<2; fractional++) {
++            unsigned int ticks = fractional ? 2780556 : 2777778;
++            setup(uhd,ticks);
++            assert(!t7_vdin_query_dv_timings(&file,NULL,&timing));
++            assert(!t7_vdin_get_parm(&file,NULL,&parm));
++            assert(timing.bt.width==(uhd?3840:1920) && timing.bt.height==(uhd?2160:1080));
++            unsigned int ht=timing.bt.width+timing.bt.hfrontporch+timing.bt.hsync+timing.bt.hbackporch;
++            unsigned int vt=timing.bt.height+timing.bt.vfrontporch+timing.bt.vsync+timing.bt.vbackporch;
++            double fps=(double)timing.bt.pixelclock/ht/vt;
++            assert(fractional ? (fps>59.939 && fps<59.941) : (fps>59.999 && fps<60.001));
++            assert(parm.parm.capture.timeperframe.numerator==ticks);
++            assert(parm.parm.capture.timeperframe.denominator==166666664);
++            assert(!parm.parm.capture.capability);
++        }
++    }
++    setup(true,2777778);
++    struct v4l2_dv_timings untouched; memset(&untouched,0xa5,sizeof(untouched));
++    timing=untouched;
++    /* A changed middle/low byte with an unchanged high byte is still torn. */
++    change_read=3; changed_period=2780556;
++    assert(t7_hdmirx_query_timings(&dev,&timing,&interval)==-EAGAIN);
++    assert(!memcmp(&timing,&untouched,sizeof(timing)));
++    setup(true,2777778); change_read=2; changed_period=2777778; lose_signal=true;
++    assert(t7_hdmirx_query_timings(&dev,&timing,&interval)==-ENOLINK);
++    assert(!memcmp(&timing,&untouched,sizeof(timing)));
++    setup(true,5555556); /* 30 fps is not a qualified capture profile. */
++    assert(t7_vdin_get_parm(&file,NULL,&parm)==-ERANGE);
++    setup(true,0); assert(t7_vdin_query_dv_timings(&file,NULL,&timing)==-ERANGE);
++    setup(true,2777778); core[T7_RX_COR_FRAME_STATUS]=BIT(2);
++    assert(t7_vdin_query_dv_timings(&file,NULL,&timing)==-ERANGE);
++    setup(true,2777778); core[T7_RX_COR_COLOR_DEPTH]=5;
++    assert(t7_vdin_query_dv_timings(&file,NULL,&timing)==-ERANGE);
++    setup(true,2777778); word(T7_RX_COR_HSYNC,80); word(T7_RX_COR_HFRONT_BACK,4320);
++    assert(t7_vdin_query_dv_timings(&file,NULL,&timing)==-ERANGE);
++    setup(true,2777778); link.ready=false;
++    assert(t7_vdin_get_parm(&file,NULL,&parm)==-ENOLINK);
++    parm.type=V4L2_BUF_TYPE_VIDEO_OUTPUT;
++    assert(t7_vdin_get_parm(&file,NULL,&parm)==-EINVAL);
++    puts("Measured timing ioctls: UHD/FHD, fractional rate, torn counter, loss, unsupported modes passed");
++}
++'''
++with tempfile.TemporaryDirectory(prefix='t7-timings-') as directory:
++    path = Path(directory)
++    (path/'test.c').write_text(prefix + defines + '\n' + types + stubs + functions + ioctls + checks)
++    subprocess.run(['cc', '-std=gnu11', '-Wall', '-Wextra', '-Werror',
++                    '-Wno-unused-parameter', '-Wno-unused-function',
++                    '-fsanitize=undefined,address', str(path/'test.c'), '-o', str(path/'test')], check=True)
++    subprocess.run([str(path/'test')], check=True)

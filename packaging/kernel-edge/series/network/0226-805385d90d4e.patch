@@ -1,0 +1,113 @@
+From 805385d90d4e3008e367d9c0fdfc35c2312ab235 Mon Sep 17 00:00:00 2001
+From: localhost-copilot <318096335+localhost-copilot@users.noreply.github.com>
+Date: Wed, 21 Oct 2026 19:37:14 -0700
+Subject: [PATCH] Advertise external SAE AKMs after firmware capability
+ discovery
+
+---
+ .../broadcom/brcm80211/brcmfmac/cfg80211.c    |  1 +
+ .../broadcom/brcm80211/brcmfmac/fwvid.h       |  7 +++
+ .../broadcom/brcm80211/brcmfmac/wcc/core.c    | 44 ++++++++++++++++++-
+ 3 files changed, 51 insertions(+), 1 deletion(-)
+
+diff --git a/drivers/net/wireless/broadcom/brcm80211/brcmfmac/cfg80211.c b/drivers/net/wireless/broadcom/brcm80211/brcmfmac/cfg80211.c
+index 57bdb21525302..d40670c9b5fcf 100644
+--- a/drivers/net/wireless/broadcom/brcm80211/brcmfmac/cfg80211.c
++++ b/drivers/net/wireless/broadcom/brcm80211/brcmfmac/cfg80211.c
+@@ -7733,6 +7733,7 @@ static int brcmf_setup_wiphy(struct wiphy *wiphy, struct brcmf_if *ifp)
+ 	}
+ 	if (brcmf_feat_is_enabled(ifp, BRCMF_FEAT_SAE_EXT))
+ 		wiphy->features |= NL80211_FEATURE_SAE;
++	brcmf_fwvid_setup_wiphy(ifp->drvr, wiphy);
+ 	wiphy->mgmt_stypes = brcmf_txrx_stypes;
+ 	wiphy->max_remain_on_channel_duration = 5000;
+ 	if (brcmf_feat_is_enabled(ifp, BRCMF_FEAT_PNO)) {
+diff --git a/drivers/net/wireless/broadcom/brcm80211/brcmfmac/fwvid.h b/drivers/net/wireless/broadcom/brcm80211/brcmfmac/fwvid.h
+index f3e011d090f29..0f7704f34ce68 100644
+--- a/drivers/net/wireless/broadcom/brcm80211/brcmfmac/fwvid.h
++++ b/drivers/net/wireless/broadcom/brcm80211/brcmfmac/fwvid.h
+@@ -17,6 +17,7 @@ struct brcmf_fwvid_ops {
+ 	int (*alloc_fweh_info)(struct brcmf_pub *drvr);
+ 	int (*activate_events)(struct brcmf_if *ifp);
+ 	void (*get_cfg80211_ops)(struct brcmf_pub *drvr);
++	void (*setup_wiphy)(struct brcmf_pub *drvr, struct wiphy *wiphy);
+ 	void (*register_event_handlers)(struct brcmf_pub *drvr);
+ };
+ 
+@@ -85,4 +86,10 @@ static inline void brcmf_fwvid_register_event_handlers(struct brcmf_pub *drvr)
+ 	drvr->vops->register_event_handlers(drvr);
+ }
+ 
++static inline void brcmf_fwvid_setup_wiphy(struct brcmf_pub *drvr, struct wiphy *wiphy)
++{
++	if (drvr->vops && drvr->vops->setup_wiphy)
++		drvr->vops->setup_wiphy(drvr, wiphy);
++}
++
+ #endif /* FWVID_H_ */
+diff --git a/drivers/net/wireless/broadcom/brcm80211/brcmfmac/wcc/core.c b/drivers/net/wireless/broadcom/brcm80211/brcmfmac/wcc/core.c
+index 5bc2dc3c7b33f..110d1c6e5553e 100644
+--- a/drivers/net/wireless/broadcom/brcm80211/brcmfmac/wcc/core.c
++++ b/drivers/net/wireless/broadcom/brcm80211/brcmfmac/wcc/core.c
+@@ -204,12 +204,53 @@ static s32 brcmf_wcc_auth_rx(struct brcmf_if *ifp,
+ 
+ static void brcmf_wcc_get_cfg80211_ops(struct brcmf_pub *drvr)
+ {
+-	if (!brcmf_wcc_extsae(drvr))
++	/* Called before firmware capability discovery. The callbacks themselves
++	 * check extsae before accepting authentication operations.
++	 */
++	if (drvr->bus_if->chip != BRCM_CC_43752_CHIP_ID)
+ 		return;
+ 	drvr->ops->external_auth = brcmf_wcc_external_auth;
+ 	drvr->ops->mgmt_tx = brcmf_wcc_mgmt_tx;
+ }
+ 
++/* SAE is the final entry so the other interface types can retain the shared
++ * WPA AKMs without advertising the station-only external authentication path.
++ */
++static const u32 brcmf_wcc_akms[] = {
++	WLAN_AKM_SUITE_8021X,
++	WLAN_AKM_SUITE_PSK,
++	WLAN_AKM_SUITE_FT_8021X,
++	WLAN_AKM_SUITE_FT_PSK,
++	WLAN_AKM_SUITE_8021X_SHA256,
++	WLAN_AKM_SUITE_PSK_SHA256,
++	WLAN_AKM_SUITE_WFA_DPP,
++	WLAN_AKM_SUITE_SAE,
++};
++
++static const struct wiphy_iftype_akm_suites brcmf_wcc_iftype_akms[] = {
++	{
++		.iftypes_mask = BIT(NL80211_IFTYPE_STATION),
++		.akm_suites = brcmf_wcc_akms,
++		.n_akm_suites = ARRAY_SIZE(brcmf_wcc_akms),
++	}, {
++		.iftypes_mask = BIT(NL80211_IFTYPE_AP) | BIT(NL80211_IFTYPE_ADHOC) |
++				BIT(NL80211_IFTYPE_P2P_GO) | BIT(NL80211_IFTYPE_P2P_CLIENT),
++		.akm_suites = brcmf_wcc_akms,
++		.n_akm_suites = ARRAY_SIZE(brcmf_wcc_akms) - 1,
++	},
++};
++
++static void brcmf_wcc_setup_wiphy(struct brcmf_pub *drvr, struct wiphy *wiphy)
++{
++	if (!brcmf_wcc_extsae(drvr))
++		return;
++	/* Older supplicants do not infer SAE AKM support from the SAE feature
++	 * flag for a fullmac device using the CONNECT command.
++	 */
++	wiphy->iftype_akm_suites = brcmf_wcc_iftype_akms;
++	wiphy->num_iftype_akm_suites = ARRAY_SIZE(brcmf_wcc_iftype_akms);
++}
++
+ static void brcmf_wcc_register_events(struct brcmf_pub *drvr)
+ {
+ 	if (!brcmf_wcc_extsae(drvr))
+@@ -243,5 +284,6 @@ const struct brcmf_fwvid_ops brcmf_wcc_ops = {
+ 	.set_sae_password = brcmf_wcc_set_sae_pwd,
+ 	.alloc_fweh_info = brcmf_wcc_alloc_fweh_info,
+ 	.get_cfg80211_ops = brcmf_wcc_get_cfg80211_ops,
++	.setup_wiphy = brcmf_wcc_setup_wiphy,
+ 	.register_event_handlers = brcmf_wcc_register_events,
+ };

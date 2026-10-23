@@ -1,0 +1,51 @@
+From c66b3637b078d6f1904ecac8922fd2403e4322e1 Mon Sep 17 00:00:00 2001
+From: localhost-copilot <318096335+localhost-copilot@users.noreply.github.com>
+Date: Thu, 22 Oct 2026 15:04:15 +0800
+Subject: [PATCH] Reset the T7 deep color FIFO during video relock
+
+---
+ drivers/media/platform/amlogic/t7-hdmirx/t7-hdmirx.c  | 9 +++++++++
+ drivers/media/platform/amlogic/t7-hdmirx/test_core.py | 2 ++
+ 2 files changed, 11 insertions(+)
+
+diff --git a/drivers/media/platform/amlogic/t7-hdmirx/t7-hdmirx.c b/drivers/media/platform/amlogic/t7-hdmirx/t7-hdmirx.c
+index 3c9b3c236f903..c24960a87df33 100644
+--- a/drivers/media/platform/amlogic/t7-hdmirx/t7-hdmirx.c
++++ b/drivers/media/platform/amlogic/t7-hdmirx/t7-hdmirx.c
+@@ -667,12 +667,21 @@ static void t7_hdmirx_core_stop(void *data)
+ 
+ static void t7_hdmirx_reset_pcs(struct t7_hdmirx *rx)
+ {
++	u8 reset;
++
+ 	/* Re-align the PCS after the input PLL and equalizer have settled. */
+ 	writel(BIT(13) | BIT(7), rx->top + T7_RX_TOP_SW_RESET);
+ 	readl(rx->top + T7_RX_TOP_SW_RESET);
+ 	usleep_range(1, 5);
+ 	writel(0, rx->top + T7_RX_TOP_SW_RESET);
+ 	readl(rx->top + T7_RX_TOP_SW_RESET);
++	/* T7 rx_cor_reset also pulses the deep-colour FIFO after TMDS relock.
++	 * PCS alignment alone can leave FDET at width+2/height zero.
++	 */
++	reset = readb(rx->cor + T7_RX_COR_POWER_RESET) & ~BIT(4);
++	writeb(reset | BIT(4), rx->cor + T7_RX_COR_POWER_RESET);
++	usleep_range(1, 5);
++	writeb(reset, rx->cor + T7_RX_COR_POWER_RESET);
+ }
+ 
+ static int t7_hdmirx_core_start(struct t7_hdmirx *rx)
+diff --git a/drivers/media/platform/amlogic/t7-hdmirx/test_core.py b/drivers/media/platform/amlogic/t7-hdmirx/test_core.py
+index 8e4ae8fcc3c8d..1bde2cedd9e0f 100644
+--- a/drivers/media/platform/amlogic/t7-hdmirx/test_core.py
++++ b/drivers/media/platform/amlogic/t7-hdmirx/test_core.py
+@@ -126,8 +126,10 @@ int main(void)
+     t7_hdmirx_core_stop(&rx); readback_error = false;
+     assert(!t7_hdmirx_core_start(&rx)); timing();
+     assert(!pcs_resets);
++    core[T7_RX_COR_POWER_RESET] = BIT(6);
+     t7_hdmirx_reset_pcs(&rx);
+     assert(pcs_resets == 1 && !readl(top + T7_RX_TOP_SW_RESET));
++    assert(core[T7_RX_COR_POWER_RESET] == BIT(6));
+     assert(rx.core_active && !t7_hdmirx_check_video(&dev));
+     core[T7_RX_COR_COLOR_DEPTH] = 5;
+     assert(t7_hdmirx_check_video(&dev) == -ERANGE);

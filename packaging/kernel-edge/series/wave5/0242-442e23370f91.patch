@@ -1,0 +1,89 @@
+From 442e23370f915d2142afde152c08dbfaf191dbfe Mon Sep 17 00:00:00 2001
+From: localhost-copilot <318096335+localhost-copilot@users.noreply.github.com>
+Date: Thu, 22 Oct 2026 15:26:37 +0800
+Subject: [PATCH] Preserve even visible dimensions in Wave5 codec negotiation
+
+---
+ .../chips-media/wave5/test_geometry.py        | 54 +++++++++++++++++++
+ .../chips-media/wave5/wave5-vpuconfig.h       |  7 ++-
+ 2 files changed, 59 insertions(+), 2 deletions(-)
+ create mode 100644 drivers/media/platform/chips-media/wave5/test_geometry.py
+
+diff --git a/drivers/media/platform/chips-media/wave5/test_geometry.py b/drivers/media/platform/chips-media/wave5/test_geometry.py
+new file mode 100644
+index 0000000000000..8376c4e0515f2
+--- /dev/null
++++ b/drivers/media/platform/chips-media/wave5/test_geometry.py
+@@ -0,0 +1,54 @@
++#!/usr/bin/env python3
++# SPDX-License-Identifier: GPL-2.0-only
++"""Check visible encoder geometry against the actual block crop calculation."""
++from pathlib import Path
++import subprocess
++import tempfile
++
++hardware = Path(__file__).with_name('wave5-hw.c').read_text()
++crop = hardware[hardware.index('static void wave5_set_enc_crop_info('):
++                hardware.index('static u32 wave5_enc_sps_profile(')]
++prefix = r'''
++#include <assert.h>
++#include <stdint.h>
++#include <stdio.h>
++typedef uint32_t u32;
++#define W_AVC_ENC 1
++#define W_HEVC_ENC 2
++#define ALIGN(value, alignment) (((value) + (alignment) - 1) & ~((alignment) - 1))
++#define WARN(condition, ...) assert(!(condition))
++struct enc_wave_param {
++    int conf_win_top, conf_win_bot, conf_win_left, conf_win_right;
++};
++'''
++checks = r'''
++int main(void)
++{
++    const int modes[][2] = {
++        {640,480}, {720,400}, {800,600}, {1024,768}, {1280,720},
++        {1280,1024}, {1366,768}, {1440,900}, {1600,900}, {1680,1050},
++        {1920,1080}, {1920,1200}, {2560,1440}, {3840,2160}
++    };
++    for (unsigned i=0; i<sizeof(modes)/sizeof(modes[0]); i++) {
++        int width=modes[i][0], height=modes[i][1];
++        struct enc_wave_param p={0};
++        wave5_set_enc_crop_info(W_AVC_ENC,&p,0,width,height);
++        assert(ALIGN(width,16)-p.conf_win_left-p.conf_win_right==width);
++        assert(ALIGN(height,16)-p.conf_win_top-p.conf_win_bot==height);
++        assert(!(p.conf_win_right%2) && !(p.conf_win_bot%2));
++        /* Rotation swaps axes, including the non-block-aligned crop. */
++        p=(struct enc_wave_param){0};
++        wave5_set_enc_crop_info(W_AVC_ENC,&p,3,width,height);
++        assert(ALIGN(height,16)-p.conf_win_left-p.conf_win_right==height);
++        assert(ALIGN(width,16)-p.conf_win_top-p.conf_win_bot==width);
++    }
++    puts("Wave5 AVC visible geometry, even crop units and rotated padding passed");
++}
++'''
++with tempfile.TemporaryDirectory(prefix='wave5-geometry-') as directory:
++    source = Path(directory) / 'geometry.c'
++    executable = Path(directory) / 'geometry'
++    source.write_text(prefix + crop + checks)
++    subprocess.run(['cc', '-std=gnu11', '-Wall', '-Wextra', '-Werror',
++                    str(source), '-o', str(executable)], check=True)
++    subprocess.run([str(executable)], check=True)
+diff --git a/drivers/media/platform/chips-media/wave5/wave5-vpuconfig.h b/drivers/media/platform/chips-media/wave5/wave5-vpuconfig.h
+index e04f2dbf3b655..59e607a817adb 100644
+--- a/drivers/media/platform/chips-media/wave5/wave5-vpuconfig.h
++++ b/drivers/media/platform/chips-media/wave5/wave5-vpuconfig.h
+@@ -51,8 +51,11 @@
+ #define W5_MIN_ENC_PIC_HEIGHT           128U
+ #define W5_MAX_ENC_PIC_WIDTH            8192U
+ #define W5_MAX_ENC_PIC_HEIGHT           8192U
+-#define W5_ENC_CODEC_STEP_WIDTH         8U
+-#define W5_ENC_CODEC_STEP_HEIGHT        8U
++/* Visible 4:2:0 dimensions use two-pixel crop units. The hardware command
++ * handles codec block padding separately from the aligned raw DMA layout.
++ */
++#define W5_ENC_CODEC_STEP_WIDTH         2U
++#define W5_ENC_CODEC_STEP_HEIGHT        2U
+ #define W5_ENC_RAW_STEP_WIDTH           32U
+ #define W5_ENC_RAW_STEP_HEIGHT          16U
+ 

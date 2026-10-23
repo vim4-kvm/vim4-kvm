@@ -1,0 +1,379 @@
+From 0c79ce01a3db94a019d3a28f34f6ddfbee7223ae Mon Sep 17 00:00:00 2001
+From: deepdream <deepdream@deepdremsMinim4.lan>
+Date: Wed, 21 Oct 2026 01:26:46 -0700
+Subject: [PATCH] media: t7-hdmirx: track each DRM receipt and reload curves at
+ frame boundaries
+
+---
+ .../platform/amlogic/t7-hdmirx/README.md      | 23 +++++
+ .../platform/amlogic/t7-hdmirx/t7-hdmirx.c    | 15 ++++
+ .../platform/amlogic/t7-hdmirx/t7-vdin-hdr.h  | 26 ++++--
+ .../platform/amlogic/t7-hdmirx/t7-vdin-test.c | 83 ++++++++++++++++++-
+ .../amlogic/t7-hdmirx/test_hdr_curve.py       | 62 ++++++++++++++
+ .../platform/amlogic/t7-hdmirx/test_stream.py |  2 +
+ .../platform/amlogic/t7-hdmirx/test_vdin.py   |  2 +
+ 7 files changed, 202 insertions(+), 11 deletions(-)
+ create mode 100644 drivers/media/platform/amlogic/t7-hdmirx/test_hdr_curve.py
+
+diff --git a/drivers/media/platform/amlogic/t7-hdmirx/README.md b/drivers/media/platform/amlogic/t7-hdmirx/README.md
+index d182f11f3ba7f..ec9d8c74883b8 100644
+--- a/drivers/media/platform/amlogic/t7-hdmirx/README.md
++++ b/drivers/media/platform/amlogic/t7-hdmirx/README.md
+@@ -19,6 +19,29 @@ Debugfs exposes raw AVI/DRM candidates, without a freshness or HDR-readiness
+ claim. YCbCr/deep-colour frames remain rejected before a capture lease is
+ acquired. This is receiver characterization, not HDR capture or tone mapping.
+ 
++With the additional `hdr_capture=1`, HDR10 PQ / BT.2020 limited YCbCr420
++10-bit VIC97 can acquire an NV12 capture lease. The RX output mapper performs
++420/deep-colour unpacking; its half-width timing counters are normalized to
++3840x2160. Other YUV/deep formats still fail qualification. A valid DRM packet
++must have arrived through the new-packet latch within one second; packet IRQ
++mode bit 4 requests every receipt rather than only content changes. Both the
++packet selection and IRQ mode are restored on shutdown. AVI/DRM checksums and
++double reads reject malformed/torn packets; link loss clears metadata.
++
++The stream lease also records HDR/SDR classification. A change invalidates
++capture even at unchanged geometry, allowing the existing loss/recovery path
++to rebuild without publishing PQ bytes as SDR. VDIN HDR2 performs PQ EOTF,
++BT.2020-to-709 gamut conversion, 203/1000-nit tone mapping and sRGB OETF before
++limited BT.709 NV12 output. Packed RGB HDR, HLG, HDR10+ dynamic metadata and
++Dolby Vision are unsupported. The default options remain off.
++
++The platform device's write-only `hdr_curve` accepts the gain and OETF as two
++149-value CSV lines in one write. Invalid or incomplete transactions keep the
++previous curve. The IRQ applies a pending pair with write requests gated at
++an AXI-complete frame boundary and discards the following frame. SDR bypass
++does not load pending curves. This reuses vim4-hdr-curve and the existing
++manager white/peak controls without shared writable vendor globals.
++
+ `VIDIOC_QUERY_DV_TIMINGS` and `VIDIOC_G_PARM` report a live measurement for the
+ qualified profile, including fractional rates near 60 Hz. Frame period comes
+ from the RX reference-clock counter, not from the capture buffer dimensions.
+diff --git a/drivers/media/platform/amlogic/t7-hdmirx/t7-hdmirx.c b/drivers/media/platform/amlogic/t7-hdmirx/t7-hdmirx.c
+index f76ad7f56ed42..35d860db5760b 100644
+--- a/drivers/media/platform/amlogic/t7-hdmirx/t7-hdmirx.c
++++ b/drivers/media/platform/amlogic/t7-hdmirx/t7-hdmirx.c
+@@ -137,6 +137,7 @@
+ #define T7_RX_COR_UNREC_CTRL	0x115e
+ #define T7_RX_COR_UNREC_TYPE	0x115f
+ #define T7_RX_COR_UNREC_PACKET	0x11c0
++#define T7_RX_COR_PACKET_IRQ_MODE	0x1120
+ 
+ static char *edid_firmware;
+ module_param(edid_firmware, charp, 0400);
+@@ -232,6 +233,7 @@ struct t7_hdmirx {
+ 	bool lease_hdr;
+ 	unsigned long long drm_received_ns;
+ 	u8 saved_unrec_ctrl, saved_unrec_type;
++	u8 saved_packet_irq_mode;
+ 	struct mutex audio_lock;
+ 	u8 saved_ddc_switch, saved_sink_version, saved_tmds_config;
+ 	void __iomem *top;
+@@ -596,6 +598,9 @@ static void t7_hdmirx_core_stop(void *data)
+ 		writeb(rx->saved_unrec_type, rx->cor + T7_RX_COR_UNREC_TYPE);
+ 		writeb(rx->saved_unrec_ctrl, rx->cor + T7_RX_COR_UNREC_CTRL);
+ 	}
++	if (rx->hdr_capture)
++		writeb(rx->saved_packet_irq_mode, rx->cor + T7_RX_COR_PACKET_IRQ_MODE);
++	WRITE_ONCE(rx->drm_received_ns, 0);
+ 	rx->core_active = false;
+ }
+ 
+@@ -631,6 +636,8 @@ static int t7_hdmirx_core_start(struct t7_hdmirx *rx)
+ 		rx->saved_unrec_ctrl = readb(rx->cor + T7_RX_COR_UNREC_CTRL);
+ 		rx->saved_unrec_type = readb(rx->cor + T7_RX_COR_UNREC_TYPE);
+ 	}
++	if (rx->hdr_capture)
++		rx->saved_packet_irq_mode = readb(rx->cor + T7_RX_COR_PACKET_IRQ_MODE);
+ 	rx->core_active = true;
+ 	/* Hold AON reset while removing TMDS isolation and selecting PHY lanes. */
+ 	writeb(1, rx->cor + T7_RX_COR_AON_RESET);
+@@ -682,6 +689,14 @@ static int t7_hdmirx_core_start(struct t7_hdmirx *rx)
+ 		writeb(0x87, rx->cor + T7_RX_COR_UNREC_TYPE);
+ 		writeb(1, rx->cor + T7_RX_COR_UNREC_CTRL);
+ 	}
++	if (rx->hdr_capture) {
++		/* Default is content-change IRQs. Freshness needs every DRM receipt,
++		 * including identical static metadata. This does not unmask an IRQ.
++		 */
++		writeb(rx->saved_packet_irq_mode | BIT(4),
++		       rx->cor + T7_RX_COR_PACKET_IRQ_MODE);
++		writeb(BIT(4), rx->cor + 0x1134);
++	}
+ 	if (rx->uhd60)
+ 		t7_hdmirx_set_hpd(rx, true);
+ 	return 0;
+diff --git a/drivers/media/platform/amlogic/t7-hdmirx/t7-vdin-hdr.h b/drivers/media/platform/amlogic/t7-hdmirx/t7-vdin-hdr.h
+index 894f63fd83618..c5e5cbc4147a1 100644
+--- a/drivers/media/platform/amlogic/t7-hdmirx/t7-vdin-hdr.h
++++ b/drivers/media/platform/amlogic/t7-hdmirx/t7-vdin-hdr.h
+@@ -67,6 +67,22 @@ static const u32 t7_hdr_srgb[149] = {
+ 	3861, 3921, 3980, 4038, 4095,
+ };
+ 
++static void t7_vdin_hdr_reload(struct t7_vdin *vdin)
++{
++	unsigned int i;
++
++	t7_vdin_write(vdin, 0x12a6, 0);
++	for (i = 0; i < 148; i += 2)
++		t7_vdin_write(vdin, 0x12a7, vdin->hdr_gain[i] | (vdin->hdr_gain[i + 1] << 16));
++	t7_vdin_write(vdin, 0x12a7, vdin->hdr_gain[148]);
++	t7_vdin_write(vdin, 0x12a0, 0);
++	for (i = 0; i < 148; i += 2)
++		t7_vdin_write(vdin, 0x12a1,
++			      (vdin->hdr_oetf[i] >> 2) | ((vdin->hdr_oetf[i + 1] >> 2) << 16));
++	t7_vdin_write(vdin, 0x12a1, vdin->hdr_oetf[148] >> 2);
++	vdin->hdr_curve_pending = false;
++}
++
+ static void t7_vdin_hdr_matrix(struct t7_vdin *vdin, u32 base, const int *coef)
+ {
+ 	unsigned int i;
+@@ -115,15 +131,7 @@ static void t7_vdin_hdr_configure(struct t7_vdin *vdin)
+ 	t7_vdin_write(vdin, 0x129e, 0);
+ 	for (i = 0; i < 143; i++)
+ 		t7_vdin_write(vdin, 0x129f, t7_hdr_pq[i]);
+-	t7_vdin_write(vdin, 0x12a6, 0);
+-	for (i = 0; i < 148; i += 2)
+-		t7_vdin_write(vdin, 0x12a7, t7_hdr_gain[i] | (t7_hdr_gain[i + 1] << 16));
+-	t7_vdin_write(vdin, 0x12a7, t7_hdr_gain[148]);
+-	t7_vdin_write(vdin, 0x12a0, 0);
+-	for (i = 0; i < 148; i += 2)
+-		t7_vdin_write(vdin, 0x12a1,
+-			      (t7_hdr_srgb[i] >> 2) | ((t7_hdr_srgb[i + 1] >> 2) << 16));
+-	t7_vdin_write(vdin, 0x12a1, t7_hdr_srgb[148] >> 2);
++	t7_vdin_hdr_reload(vdin);
+ 	t7_vdin_write(vdin, VDIN_HDR_MATRIX_IN, 1);
+ 	t7_vdin_write(vdin, VDIN_HDR_MATRIX_OUT, 1);
+ 	t7_vdin_write(vdin, VDIN_HDR_CTRL, BIT(15) | BIT(14) | BIT(13) |
+diff --git a/drivers/media/platform/amlogic/t7-hdmirx/t7-vdin-test.c b/drivers/media/platform/amlogic/t7-hdmirx/t7-vdin-test.c
+index 59a780c191d73..0a9a77ef8f5e8 100644
+--- a/drivers/media/platform/amlogic/t7-hdmirx/t7-vdin-test.c
++++ b/drivers/media/platform/amlogic/t7-hdmirx/t7-vdin-test.c
+@@ -153,6 +153,8 @@ struct t7_vdin {
+ 	u32 ring_sequence;
+ 	u32 ring_pauses;
+ 	u64 copied_bytes;
++	u32 hdr_gain[149], hdr_oetf[149];
++	bool hdr_curve_pending;
+ };
+ 
+ static u32 t7_vdin_read(struct t7_vdin *vdin, u32 reg)
+@@ -170,6 +172,8 @@ static void t7_vdin_update(struct t7_vdin *vdin, u32 reg, u32 mask, u32 value)
+ 	t7_vdin_write(vdin, reg, (t7_vdin_read(vdin, reg) & ~mask) | (value & mask));
+ }
+ 
++#include "t7-vdin-hdr.h"
++
+ static struct t7_vdin_buffer *t7_vdin_next_buffer(struct t7_vdin *vdin);
+ 
+ /* Caller holds irq_lock and has proved that no request targets the old slot. */
+@@ -194,6 +198,13 @@ static void t7_vdin_ring_arm(struct t7_vdin *vdin, unsigned int index)
+ 			      (address + vdin->stride * vdin->height) >> 4);
+ 	vdin->dma_idle = false;
+ 	vdin->ring_running = true;
++	if (vdin->hdr_curve_pending && t7_hdmirx_stream_is_hdr(vdin->receiver)) {
++		/* Requests are gated at an AXI-complete frame boundary. Ignore the
++		 * first frame after a LUT change if programming crosses blanking.
++		 */
++		t7_vdin_hdr_reload(vdin);
++		vdin->ring_discard = true;
++	}
+ 	t7_vdin_update(vdin, VDIN_WR_CTRL, VDIN_WR_REQ | VDIN_VCP_WR,
+ 		       VDIN_WR_REQ | VDIN_VCP_WR);
+ }
+@@ -302,8 +313,6 @@ static int t7_vdin_stop_dma(struct t7_vdin *vdin)
+ 	return ret;
+ }
+ 
+-#include "t7-vdin-hdr.h"
+-
+ static void t7_vdin_configure(struct t7_vdin *vdin)
+ {
+ 	t7_vdin_write(vdin, VDIN_WR_CTRL, 0);
+@@ -1226,6 +1235,71 @@ static void t7_vdin_free_frame(void *data)
+ 	dma_free_coherent(vdin->dev, vdin->frame_capacity, vdin->frame, vdin->frame_dma);
+ }
+ 
++/* Both tables form one transaction. Never expose partially replaced LUTs to
++ * the IRQ; malformed input leaves the previous curve completely intact.
++ */
++static int t7_vdin_parse_hdr_curve(char *text, u32 *tables)
++{
++	char *token;
++	unsigned int i;
++	int ret;
++
++	text = strim(text);
++	for (i = 0; i < 298; i++) {
++		token = strsep(&text, ",\n");
++		if (!token || !*token)
++			return -EINVAL;
++		ret = kstrtou32(token, 10, &tables[i]);
++		if (ret || tables[i] > 4095)
++			return -EINVAL;
++		if (i < 149 && (!tables[i] || (i && tables[i] > tables[i - 1])))
++			return -EINVAL;
++		if (i > 149 && tables[i] < tables[i - 1])
++			return -EINVAL;
++	}
++	return text || tables[149] || tables[297] != 4095 ? -EINVAL : 0;
++}
++
++static ssize_t hdr_curve_store(struct device *dev, struct device_attribute *attr,
++			       const char *buffer, size_t count)
++{
++	struct t7_vdin *vdin = dev_get_drvdata(dev);
++	unsigned long flags;
++	u32 *tables;
++	char *text;
++	int ret;
++
++	tables = kmalloc_array(298, sizeof(*tables), GFP_KERNEL);
++	text = kmemdup_nul(buffer, count, GFP_KERNEL);
++	if (!tables || !text) {
++		ret = -ENOMEM;
++		goto free;
++	}
++	ret = t7_vdin_parse_hdr_curve(text, tables);
++	if (ret)
++		goto free;
++	mutex_lock(&vdin->lock);
++	spin_lock_irqsave(&vdin->irq_lock, flags);
++	memcpy(vdin->hdr_gain, tables, sizeof(vdin->hdr_gain));
++	memcpy(vdin->hdr_oetf, tables + 149, sizeof(vdin->hdr_oetf));
++	vdin->hdr_curve_pending = true;
++	spin_unlock_irqrestore(&vdin->irq_lock, flags);
++	mutex_unlock(&vdin->lock);
++free:
++	kfree(text);
++	kfree(tables);
++	return ret ? ret : count;
++}
++static DEVICE_ATTR_WO(hdr_curve);
++
++static struct attribute *t7_vdin_attrs[] = {
++	&dev_attr_hdr_curve.attr,
++	NULL,
++};
++static const struct attribute_group t7_vdin_group = {
++	.attrs = t7_vdin_attrs,
++};
++
+ static void t7_vdin_debugfs_remove(void *data)
+ {
+ 	debugfs_remove_recursive(data);
+@@ -1256,6 +1330,8 @@ static int t7_vdin_probe(struct platform_device *pdev)
+ 	if (ret)
+ 		return ret;
+ 	vdin->dev = dev;
++	memcpy(vdin->hdr_gain, t7_hdr_gain, sizeof(vdin->hdr_gain));
++	memcpy(vdin->hdr_oetf, t7_hdr_srgb, sizeof(vdin->hdr_oetf));
+ 	mutex_init(&vdin->lock);
+ 	mutex_init(&vdin->video_lock);
+ 	mutex_init(&vdin->queue_mutex);
+@@ -1368,6 +1444,9 @@ static int t7_vdin_probe(struct platform_device *pdev)
+ 	if (vdin->irq < 0)
+ 		return vdin->irq;
+ 	ret = devm_request_irq(dev, vdin->irq, t7_vdin_write_done, 0, dev_name(dev), vdin);
++	if (ret)
++		return ret;
++	ret = devm_device_add_group(dev, &t7_vdin_group);
+ 	if (ret)
+ 		return ret;
+ 	debugfs = debugfs_create_dir(dev_name(dev), NULL);
+diff --git a/drivers/media/platform/amlogic/t7-hdmirx/test_hdr_curve.py b/drivers/media/platform/amlogic/t7-hdmirx/test_hdr_curve.py
+new file mode 100644
+index 0000000000000..5eb12e00d954f
+--- /dev/null
++++ b/drivers/media/platform/amlogic/t7-hdmirx/test_hdr_curve.py
+@@ -0,0 +1,62 @@
++#!/usr/bin/env python3
++"""Compile the real curve parser against malformed and boundary transactions."""
++from pathlib import Path
++import subprocess
++import tempfile
++
++source = Path(__file__).with_name('t7-vdin-test.c').read_text()
++parser = source[source.index('static int t7_vdin_parse_hdr_curve'):
++                source.index('static ssize_t hdr_curve_store')]
++header = Path(__file__).with_name('t7-vdin-hdr.h').read_text()
++tables = header[:header.index('static void t7_vdin_hdr_reload')]
++prefix = r'''
++#include <assert.h>
++#include <stdint.h>
++#include <stdio.h>
++#include <stdlib.h>
++#include <string.h>
++#include <ctype.h>
++#include <errno.h>
++typedef uint32_t u32;
++static char *strim(char *s) {
++    while (isspace((unsigned char)*s)) s++;
++    char *end=s+strlen(s);
++    while (end>s && isspace((unsigned char)end[-1])) *--end=0;
++    return s;
++}
++static int kstrtou32(const char *s, int base, u32 *v) {
++    char *end;errno=0;
++    unsigned long x=strtoul(s,&end,base);
++    if (!*s || *s=='-' || *end || errno || x>UINT32_MAX) return -EINVAL;
++    *v=x;return 0;
++}
++'''
++checks = r'''
++int main(void) {
++    u32 parsed[298];
++    char valid[4096],text[4096];
++    unsigned int len=0;
++    for (int i=0;i<298;i++) len+=snprintf(valid+len,sizeof(valid)-len,
++        "%u%c",i<149?t7_hdr_gain[i]:t7_hdr_srgb[i-149],i==148?'\n':i==297?'\n':',');
++    strcpy(text,valid);assert(!t7_vdin_parse_hdr_curve(text,parsed));
++    assert(!memcmp(parsed,t7_hdr_gain,sizeof(t7_hdr_gain)));
++    assert(!memcmp(parsed+149,t7_hdr_srgb,sizeof(t7_hdr_srgb)));
++    assert(t7_hdr_pq[142]==524287);
++    for (unsigned int n=0;n<len-1;n++) {
++        memcpy(text,valid,n);text[n]=0;
++        assert(t7_vdin_parse_hdr_curve(text,parsed)==-EINVAL);
++    }
++    strcpy(text,valid);strcat(text,"1");assert(t7_vdin_parse_hdr_curve(text,parsed)==-EINVAL);
++    strcpy(text,valid);text[0]='x';assert(t7_vdin_parse_hdr_curve(text,parsed)==-EINVAL);
++    strcpy(text,valid);text[0]='9';assert(t7_vdin_parse_hdr_curve(text,parsed)==-EINVAL);
++    strcpy(text,valid);text[0]='-';assert(t7_vdin_parse_hdr_curve(text,parsed)==-EINVAL);
++    strcpy(text,valid);text[len-2]='4';assert(t7_vdin_parse_hdr_curve(text,parsed)==-EINVAL);
++    puts("HDR curve transactions: valid pair, truncation, excess, range and endpoint guards passed");
++}
++'''
++with tempfile.TemporaryDirectory(prefix='t7-hdr-curve-') as directory:
++    path = Path(directory)
++    (path/'test.c').write_text(prefix + tables + parser + checks)
++    subprocess.run(['cc', '-std=gnu11', '-Wall', '-Wextra', '-Werror',
++                    str(path/'test.c'), '-o', str(path/'test')], check=True)
++    subprocess.run([str(path/'test')], check=True)
+diff --git a/drivers/media/platform/amlogic/t7-hdmirx/test_stream.py b/drivers/media/platform/amlogic/t7-hdmirx/test_stream.py
+index c0d092a11b573..037dad8146e13 100644
+--- a/drivers/media/platform/amlogic/t7-hdmirx/test_stream.py
++++ b/drivers/media/platform/amlogic/t7-hdmirx/test_stream.py
+@@ -255,6 +255,8 @@ static void destroy_wait(wait_queue_head_t *w) {
+ static void setup(struct t7_vdin_buffer b[4]) {
+     receiver_users=0;
+     memset(&receiver,0,sizeof(receiver)); memset(b,0,4*sizeof(*b));
++    memcpy(receiver.hdr_gain,t7_hdr_gain,sizeof(t7_hdr_gain));
++    memcpy(receiver.hdr_oetf,t7_hdr_srgb,sizeof(t7_hdr_srgb));
+     memset(registers,0,sizeof(registers)); memset(cpu_owned,0,sizeof(cpu_owned));
+     pthread_mutex_init(&receiver.lock.native,NULL); pthread_mutex_init(&receiver.queue_lock,NULL);
+     pthread_mutex_init(&receiver.irq_lock,NULL);
+diff --git a/drivers/media/platform/amlogic/t7-hdmirx/test_vdin.py b/drivers/media/platform/amlogic/t7-hdmirx/test_vdin.py
+index 2c217f6f306a6..eca2077010929 100644
+--- a/drivers/media/platform/amlogic/t7-hdmirx/test_vdin.py
++++ b/drivers/media/platform/amlogic/t7-hdmirx/test_vdin.py
+@@ -146,6 +146,8 @@ static unsigned long wait_for_completion_timeout(struct completion *done, unsign
+ }
+ static void reset(void)
+ {
++    memcpy(receiver.hdr_gain,t7_hdr_gain,sizeof(t7_hdr_gain));
++    memcpy(receiver.hdr_oetf,t7_hdr_srgb,sizeof(t7_hdr_srgb));
+     memset(registers, 0, sizeof(registers));
+     memset(frame, 0xa5, sizeof(frame));
+     receiver = (struct t7_vdin) { .regs = registers, .frame = frame,

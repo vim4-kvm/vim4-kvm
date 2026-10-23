@@ -1,0 +1,48 @@
+From 83bf2086a366a79ef592f2b8fbc0d81a93d0d0f8 Mon Sep 17 00:00:00 2001
+From: localhost-copilot <318096335+localhost-copilot@users.noreply.github.com>
+Date: Fri, 23 Oct 2026 22:12:12 +0800
+Subject: [PATCH] media: t7-hdmirx: allow same-rate PCM prepare after XRUN
+
+Recheck the qualified source and rebuild the gated audio path on prepare after a discontinuity. This also supports standard ALSA XRUN recovery without requiring hw_params when the native rate remains unchanged. Keep a mismatched or absent source gated and report another XRUN after START.
+---
+ drivers/media/platform/amlogic/t7-hdmirx/t7-hdmirx.c   | 6 ++++--
+ drivers/media/platform/amlogic/t7-hdmirx/test_audio.py | 9 +++++++++
+ 2 files changed, 13 insertions(+), 2 deletions(-)
+
+diff --git a/drivers/media/platform/amlogic/t7-hdmirx/t7-hdmirx.c b/drivers/media/platform/amlogic/t7-hdmirx/t7-hdmirx.c
+index a1274fddb4b9f..b8794cf09f821 100644
+--- a/drivers/media/platform/amlogic/t7-hdmirx/t7-hdmirx.c
++++ b/drivers/media/platform/amlogic/t7-hdmirx/t7-hdmirx.c
+@@ -1430,8 +1430,10 @@ static int t7_hdmirx_audio_prepare_locked(struct snd_soc_dai *dai)
+ 	unsigned int i;
+ 	int ret;
+ 
+-	if (rx->audio_invalid)
+-		return 0;
++	if (rx->audio_invalid) {
++		t7_hdmirx_audio_stop_locked(rx);
++		rx->audio_invalid = false;
++	}
+ 	ret = t7_hdmirx_read_audio(rx, &format);
+ 	if (ret || !format.pcm || format.rate != rx->audio_rate ||
+ 	    !t7_hdmirx_audio_same(&format, &rx->audio_format))
+diff --git a/drivers/media/platform/amlogic/t7-hdmirx/test_audio.py b/drivers/media/platform/amlogic/t7-hdmirx/test_audio.py
+index 3058f0df87c45..417cb8329afff 100644
+--- a/drivers/media/platform/amlogic/t7-hdmirx/test_audio.py
++++ b/drivers/media/platform/amlogic/t7-hdmirx/test_audio.py
+@@ -213,6 +213,15 @@ int main(void) {
+     pll_locked=true;
+     assert(!t7_hdmirx_audio_hw_params(&stream,&params,&dai));
+     assert(!t7_hdmirx_audio_prepare(&stream,&dai));
++    core[T7_RX_COR_AUDIO_AIF+3]++;
++    assert(!t7_hdmirx_audio_prepare(&stream,&dai) && rx.audio_invalid);
++    assert(!(readl(fifo)&BIT(31)));
++    core[T7_RX_COR_AUDIO_AIF+3]--;
++    /* Standard XRUN recovery may prepare the same-rate PCM again, without
++     * hw_params. A single torn packet must not latch it off forever.
++     */
++    assert(!t7_hdmirx_audio_prepare(&stream,&dai) && !rx.audio_invalid);
++    assert(clocks && (readl(fifo)&BIT(31)));
+     rx.audio_invalid=true;
+     assert(!t7_hdmirx_audio_prepare(&stream,&dai));
+     assert(clocks && rx.audio_active && (readl(fifo)&BIT(31)));

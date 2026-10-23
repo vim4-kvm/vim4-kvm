@@ -1,0 +1,935 @@
+From bf939a87558875b8f2e3f38c39168ea352bd2eb7 Mon Sep 17 00:00:00 2001
+From: localhost-copilot <318096335+localhost-copilot@users.noreply.github.com>
+Date: Tue, 20 Oct 2026 16:49:35 +0800
+Subject: [PATCH] media: t7-hdmirx: capture RGB8 UHD60 and BT.709 NV12 frames
+
+---
+ .../platform/amlogic/t7-hdmirx/t7-hdmirx.c    | 114 ++++++++++---
+ .../platform/amlogic/t7-hdmirx/t7-hdmirx.h    |   9 +-
+ .../platform/amlogic/t7-hdmirx/t7-vdin-test.c | 159 ++++++++++++------
+ .../platform/amlogic/t7-hdmirx/test_core.py   |  26 ++-
+ .../platform/amlogic/t7-hdmirx/test_phy.py    |  23 ++-
+ .../platform/amlogic/t7-hdmirx/test_stream.py |   9 +-
+ .../platform/amlogic/t7-hdmirx/test_vdin.py   |  33 +++-
+ 7 files changed, 273 insertions(+), 100 deletions(-)
+
+diff --git a/drivers/media/platform/amlogic/t7-hdmirx/t7-hdmirx.c b/drivers/media/platform/amlogic/t7-hdmirx/t7-hdmirx.c
+index 81b13987add2f..676d4b5a7a440 100644
+--- a/drivers/media/platform/amlogic/t7-hdmirx/t7-hdmirx.c
++++ b/drivers/media/platform/amlogic/t7-hdmirx/t7-hdmirx.c
+@@ -73,6 +73,9 @@
+ 
+ /* Receiver core registers are byte-addressed and require byte accesses. */
+ #define T7_RX_COR_AON_RESET	0x0005
++#define T7_RX_COR_DDC_SWITCH	0x0009
++#define T7_RX_COR_SINK_VERSION	0x0301
++#define T7_RX_COR_TMDS_CONFIG	0x0320
+ #define T7_RX_COR_HDMI2_MODE	0x0040
+ #define T7_RX_COR_INT_CTRL		0x0079
+ #define T7_RX_COR_HPD_CTRL		0x00f5
+@@ -121,6 +124,10 @@ static bool core_test;
+ module_param(core_test, bool, 0400);
+ MODULE_PARM_DESC(core_test, "Initialize the TMDS video core; requires phy_test=1");
+ 
++static bool uhd60;
++module_param(uhd60, bool, 0400);
++MODULE_PARM_DESC(uhd60, "Opt-in RGB8 3840x2160p60 HDMI 2.0 trial; requires matching EDID");
++
+ static const u32 t7_hdmirx_phy_top_regs[] = {
+ 	T7_RX_TOP_CLK_CNTL, T7_RX_TOP_PORT_SEL, T7_RX_TOP_PHYIF_CNTL0,
+ 	T7_RX_TOP_CHAN_SWITCH_0, T7_RX_TOP_CHAN_SWITCH_1,
+@@ -139,6 +146,8 @@ enum t7_hdmirx_clock {
+ };
+ 
+ struct t7_hdmirx {
++	bool uhd60;
++	u8 saved_ddc_switch, saved_sink_version, saved_tmds_config;
+ 	void __iomem *top;
+ 	void __iomem *phy;
+ 	void __iomem *cor;
+@@ -209,6 +218,19 @@ static int t7_hdmirx_validate_phy_edid(const u8 *edid, size_t size)
+ 	return 0;
+ }
+ 
++static int t7_hdmirx_validate_uhd_edid(const u8 *edid, size_t size)
++{
++	int ret = t7_hdmirx_validate_edid(edid, size);
++
++	if (ret)
++		return ret;
++	/* The opt-in profile requires a 594 MHz preferred timing and CTA block. */
++	if (size != 256 || !(edid[20] & BIT(7)) ||
++	    (edid[54] | (edid[55] << 8)) != 59400 || edid[128] != 2)
++		return -EOPNOTSUPP;
++	return 0;
++}
++
+ static void t7_hdmirx_ddc_stop(void *data)
+ {
+ 	struct t7_hdmirx *rx = data;
+@@ -263,7 +285,9 @@ static int t7_hdmirx_ddc_start(struct t7_hdmirx *rx, const u8 *edid, size_t size
+ 	memcpy(rx->edid, edid, size);
+ 	rx->edid_blob.data = rx->edid;
+ 	rx->edid_blob.size = size;
+-	t7_hdmirx_set_hpd(rx, true);
++	/* UHD sources must see SCDC enabled before the first HPD rising edge. */
++	if (!rx->uhd60)
++		t7_hdmirx_set_hpd(rx, true);
+ 	return 0;
+ }
+ 
+@@ -329,7 +353,7 @@ static void t7_hdmirx_phy_prepare(struct t7_hdmirx *rx)
+ 	writel(BIT(5) | BIT(6), rx->top + T7_RX_TOP_SW_RESET);
+ 	readl(rx->top + T7_RX_TOP_SW_RESET);
+ 	writel(0, rx->top + T7_RX_TOP_SW_RESET);
+-	/* Fixed PHY_BW_2 analog settings; other input rates must not program APLL. */
++	/* Fixed PHY_BW_2 or PHY_BW_5; qualify the cable and SCDC ratio before APLL. */
+ 	writel(0x200773f8, rx->phy + T7_RX_PHY_MISC0);
+ 	usleep_range(5, 10);
+ 	if (trim & BIT(0))
+@@ -340,12 +364,13 @@ static void t7_hdmirx_phy_prepare(struct t7_hdmirx *rx)
+ 	writel(trim, rx->phy + T7_RX_PHY_MISC1);
+ 	writel(0, rx->phy + T7_RX_PHY_MISC2);
+ 	writel(0x817, rx->phy + T7_RX_PHY_MISC3);
+-	writel(0x17270fff, rx->phy + T7_RX_PHY_DCHA0);
++	writel(rx->uhd60 ? 0x10210fff : 0x17270fff, rx->phy + T7_RX_PHY_DCHA0);
+ 	writel(0x45ff4b58, rx->phy + T7_RX_PHY_DCHA1);
+-	writel(0x01ff28c9, rx->phy + T7_RX_PHY_DCHA2);
+-	writel(0x630, rx->phy + T7_RX_PHY_DCHA3);
+-	writel(0xe3372103 & ~(BIT(28) | GENMASK(25, 24)), rx->phy + T7_RX_PHY_DCHD0);
+-	writel(0x40009000, rx->phy + T7_RX_PHY_DCHD1);
++	writel(rx->uhd60 ? 0x01ff2a21 : 0x01ff28c9, rx->phy + T7_RX_PHY_DCHA2);
++	writel(rx->uhd60 ? 0x1080 : 0x630, rx->phy + T7_RX_PHY_DCHA3);
++	writel((rx->uhd60 ? 0xe3372903 : 0xe3372103) &
++	       ~(BIT(28) | GENMASK(25, 24)), rx->phy + T7_RX_PHY_DCHD0);
++	writel(rx->uhd60 ? 0x4004f000 : 0x40009000, rx->phy + T7_RX_PHY_DCHD1);
+ 	writel(0x0d422222 & ~BIT(26), rx->phy + T7_RX_PHY_DCHD2);
+ 	writel(0x10000000, rx->phy + T7_RX_PHY_DCHD3);
+ 	writel(0x3001, rx->phy + T7_RX_PHY_DCHD4);
+@@ -369,8 +394,9 @@ static int t7_hdmirx_wait_cable(struct t7_hdmirx *rx, unsigned long reference_hz
+ 		status = readl(rx->top + T7_RX_TOP_METER_CABLE_STAT);
+ 		sample_hz = t7_hdmirx_meter_hz(status, reference_hz);
+ 		rx->cable_hz = sample_hz;
+-		/* This trial only supports 1080p60 RGB 8-bit's 148.5 MHz TMDS clock. */
+-		if (sample_hz >= 146500000 && sample_hz <= 150500000 && previous &&
++		/* Both profiles have a 148.5 MHz cable clock; SCDC distinguishes 1:40. */
++		if ((!!(readb(rx->cor + T7_RX_COR_TMDS_CONFIG) & BIT(1)) == rx->uhd60) &&
++		    sample_hz >= 146500000 && sample_hz <= 150500000 && previous &&
+ 		    abs((int)sample_hz - (int)previous) <= 500000)
+ 			stable++;
+ 		else
+@@ -387,7 +413,7 @@ static int t7_hdmirx_phy_pll(struct t7_hdmirx *rx)
+ {
+ 	unsigned int attempt;
+ 
+-	/* PHY_BW_2 / PLL_BW_2: M=40, N=1, TMDS output divide by 8. */
++	/* M=40, N=1; output divide by 8 for 1080p or by 2 for UHD's 1:40 link. */
+ 	for (attempt = 0; attempt < 3; attempt++) {
+ 		writel(0x20090428, rx->phy + T7_RX_PHY_APLL0);
+ 		usleep_range(5, 10);
+@@ -396,10 +422,10 @@ static int t7_hdmirx_phy_pll(struct t7_hdmirx *rx)
+ 		writel(0, rx->phy + T7_RX_PHY_APLL1);
+ 		writel(0x00001118, rx->phy + T7_RX_PHY_APLL2);
+ 		usleep_range(5, 10);
+-		writel(0x10058f30, rx->phy + T7_RX_PHY_APLL3);
+-		writel(0x0b0130c0, rx->phy + T7_RX_PHY_APLL4);
++		writel(rx->uhd60 ? 0x10058f00 : 0x10058f30, rx->phy + T7_RX_PHY_APLL3);
++		writel(rx->uhd60 ? 0x090130c0 : 0x0b0130c0, rx->phy + T7_RX_PHY_APLL4);
+ 		usleep_range(5, 10);
+-		writel(0x0b8130c0, rx->phy + T7_RX_PHY_APLL4);
++		writel(rx->uhd60 ? 0x098130c0 : 0x0b8130c0, rx->phy + T7_RX_PHY_APLL4);
+ 		usleep_range(5, 10);
+ 		writel(0x34090428, rx->phy + T7_RX_PHY_APLL0);
+ 		usleep_range(5, 10);
+@@ -425,7 +451,10 @@ static void t7_hdmirx_phy_equalize(struct t7_hdmirx *rx)
+ 	usleep_range(100, 110);
+ 	t7_hdmirx_phy_update(rx, T7_RX_PHY_DCHD0, BIT(30), BIT(30));
+ 	usleep_range(10000, 10100);
+-	t7_hdmirx_phy_update(rx, T7_RX_PHY_DCHD2, BIT(27), BIT(27));
++	t7_hdmirx_phy_update(rx, T7_RX_PHY_DCHD0, BIT(27), BIT(27));
++	if (rx->uhd60)
++		t7_hdmirx_phy_update(rx, T7_RX_PHY_DCHD0, BIT(29), 0);
++	t7_hdmirx_phy_update(rx, T7_RX_PHY_DCHD2, BIT(26), 0);
+ 	usleep_range(10, 20);
+ 	t7_hdmirx_phy_update(rx, T7_RX_PHY_DCHD2, BIT(26), BIT(26));
+ 	usleep_range(100, 110);
+@@ -450,6 +479,9 @@ static void t7_hdmirx_core_stop(void *data)
+ 	writeb(rx->core_saved_power, rx->cor + T7_RX_COR_POWER_CTRL);
+ 	writeb(rx->core_saved_aon_reset, rx->cor + T7_RX_COR_AON_RESET);
+ 	readb(rx->cor + T7_RX_COR_PHY_CLOCK3);
++	writeb(rx->saved_ddc_switch, rx->cor + T7_RX_COR_DDC_SWITCH);
++	writeb(rx->saved_sink_version, rx->cor + T7_RX_COR_SINK_VERSION);
++	writeb(rx->saved_tmds_config, rx->cor + T7_RX_COR_TMDS_CONFIG);
+ 	rx->core_active = false;
+ }
+ 
+@@ -472,6 +504,9 @@ static int t7_hdmirx_core_start(struct t7_hdmirx *rx)
+ 	rx->core_smc_result = res.a0;
+ 	if (res.a0)
+ 		return -EIO;
++	rx->saved_ddc_switch = readb(rx->cor + T7_RX_COR_DDC_SWITCH);
++	rx->saved_sink_version = readb(rx->cor + T7_RX_COR_SINK_VERSION);
++	rx->saved_tmds_config = readb(rx->cor + T7_RX_COR_TMDS_CONFIG);
+ 	rx->core_saved_aon_reset = readb(rx->cor + T7_RX_COR_AON_RESET);
+ 	rx->core_saved_power = readb(rx->cor + T7_RX_COR_POWER_CTRL);
+ 	rx->core_saved_sys = readb(rx->cor + T7_RX_COR_SYS_CTRL);
+@@ -482,6 +517,10 @@ static int t7_hdmirx_core_start(struct t7_hdmirx *rx)
+ 	/* Hold AON reset while removing TMDS isolation and selecting PHY lanes. */
+ 	writeb(1, rx->cor + T7_RX_COR_AON_RESET);
+ 	writeb(0x11, rx->cor + T7_RX_COR_HDMI2_MODE);
++	/* Start a fresh SCDC handshake while HPD is low. */
++	writeb(0x86, rx->cor + T7_RX_COR_DDC_SWITCH);
++	writeb(1, rx->cor + T7_RX_COR_SINK_VERSION);
++	writeb(0, rx->cor + T7_RX_COR_TMDS_CONFIG);
+ 	writeb(0, rx->cor + T7_RX_COR_INT_CTRL);
+ 	writeb(0, rx->cor + T7_RX_COR_POWER_CTRL);
+ 	writeb(3, rx->cor + T7_RX_COR_SYS_CTRL);
+@@ -499,8 +538,8 @@ static int t7_hdmirx_core_start(struct t7_hdmirx *rx)
+ 	writeb(4, rx->cor + T7_RX_COR_HDMI_MODE);
+ 	writeb(1, rx->cor + T7_RX_COR_HPD_CTRL);
+ 	writeb(0, rx->cor + T7_RX_COR_CLAMP);
+-	/* DVI sources have no HDMI guard-band preamble. */
+-	writeb(0, rx->cor + T7_RX_COR_PREAMBLE);
++	/* The UHD CTA profile is HDMI; the base-block 1080p profile is DVI. */
++	writeb(rx->uhd60 ? 6 : 0, rx->cor + T7_RX_COR_PREAMBLE);
+ 	writeb(0xff, rx->cor + T7_RX_COR_PHY_CLOCK1);
+ 	writeb(0x3f, rx->cor + T7_RX_COR_PHY_CLOCK2);
+ 	writeb(1, rx->cor + T7_RX_COR_PHY_CLOCK3);
+@@ -520,6 +559,8 @@ static int t7_hdmirx_core_start(struct t7_hdmirx *rx)
+ 	if (readb(rx->cor + T7_RX_COR_SYS_CTRL) != 3 ||
+ 	    readb(rx->cor + T7_RX_COR_PHY_CLOCK1) != 0xff)
+ 		return -EIO;
++	if (rx->uhd60)
++		t7_hdmirx_set_hpd(rx, true);
+ 	return 0;
+ }
+ 
+@@ -528,7 +569,7 @@ static u32 t7_hdmirx_core_read16(struct t7_hdmirx *rx, u32 offset)
+ 	return readb(rx->cor + offset) | (readb(rx->cor + offset + 1) << 8);
+ }
+ 
+-int t7_hdmirx_check_1080p_now(struct device *dev)
++int t7_hdmirx_check_video_now(struct device *dev)
+ {
+ 	struct t7_hdmirx *rx = dev_get_drvdata(dev);
+ 	u32 ticks, reference;
+@@ -543,12 +584,12 @@ int t7_hdmirx_check_1080p_now(struct device *dev)
+ 	if (readl(rx->top + T7_RX_TOP_VID_STAT) & GENMASK(23, 20) ||
+ 	    readb(rx->cor + T7_RX_COR_COLOR_DEPTH) > 4)
+ 		return -ERANGE;
+-	if (t7_hdmirx_core_read16(rx, T7_RX_COR_WIDTH) != 1920 ||
+-	    t7_hdmirx_core_read16(rx, T7_RX_COR_HEIGHT) != 1080 ||
++	if (t7_hdmirx_core_read16(rx, T7_RX_COR_WIDTH) != (rx->uhd60 ? 3840 : 1920) ||
++	    t7_hdmirx_core_read16(rx, T7_RX_COR_HEIGHT) != (rx->uhd60 ? 2160 : 1080) ||
+ 	    t7_hdmirx_core_read16(rx, T7_RX_COR_HSYNC) +
+-	    t7_hdmirx_core_read16(rx, T7_RX_COR_HFRONT_BACK) != 2200 ||
++	    t7_hdmirx_core_read16(rx, T7_RX_COR_HFRONT_BACK) != (rx->uhd60 ? 4400 : 2200) ||
+ 	    t7_hdmirx_core_read16(rx, T7_RX_COR_VSYNC) +
+-	    t7_hdmirx_core_read16(rx, T7_RX_COR_VFRONT_BACK) != 1125)
++	    t7_hdmirx_core_read16(rx, T7_RX_COR_VFRONT_BACK) != (rx->uhd60 ? 2250 : 1125))
+ 		return -ERANGE;
+ 	ticks = t7_hdmirx_core_read16(rx, T7_RX_COR_FRAME_TICKS) |
+ 		(readb(rx->cor + T7_RX_COR_FRAME_TICKS + 2) << 16);
+@@ -557,18 +598,30 @@ int t7_hdmirx_check_1080p_now(struct device *dev)
+ 		return -ERANGE;
+ 	return 0;
+ }
+-EXPORT_SYMBOL_GPL(t7_hdmirx_check_1080p_now);
++EXPORT_SYMBOL_GPL(t7_hdmirx_check_video_now);
+ 
+-int t7_hdmirx_check_1080p(struct device *dev)
++int t7_hdmirx_check_video(struct device *dev)
+ {
+-	int ret = t7_hdmirx_check_1080p_now(dev);
++	int ret = t7_hdmirx_check_video_now(dev);
+ 
+ 	if (ret)
+ 		return ret;
+ 	usleep_range(20000, 21000);
+-	return t7_hdmirx_check_1080p_now(dev);
++	return t7_hdmirx_check_video_now(dev);
++}
++EXPORT_SYMBOL_GPL(t7_hdmirx_check_video);
++
++int t7_hdmirx_get_size(struct device *dev, unsigned int *width, unsigned int *height)
++{
++	struct t7_hdmirx *rx = dev_get_drvdata(dev);
++
++	if (!rx || !rx->core_active)
++		return -ENOLINK;
++	*width = rx->uhd60 ? 3840 : 1920;
++	*height = rx->uhd60 ? 2160 : 1080;
++	return 0;
+ }
+-EXPORT_SYMBOL_GPL(t7_hdmirx_check_1080p);
++EXPORT_SYMBOL_GPL(t7_hdmirx_get_size);
+ 
+ static int t7_hdmirx_status(struct seq_file *s, void *unused)
+ {
+@@ -663,6 +716,9 @@ static int t7_hdmirx_probe(struct platform_device *pdev)
+ 	unsigned int i;
+ 	int ret;
+ 
++	if (uhd60 && !core_test)
++		return dev_err_probe(dev, -EINVAL,
++				     "UHD trial requires video core initialization\n");
+ 	if (phy_test && !edid_firmware)
+ 		return dev_err_probe(dev, -EINVAL, "PHY trial requires an EDID firmware\n");
+ 	if (core_test && !phy_test)
+@@ -673,6 +729,7 @@ static int t7_hdmirx_probe(struct platform_device *pdev)
+ 	ret = device_property_read_u32(dev, "amlogic,input-port", &rx->port);
+ 	if (ret || rx->port > 2)
+ 		return dev_err_probe(dev, -EINVAL, "Require input port 0..2\n");
++	rx->uhd60 = uhd60;
+ 	rx->top = devm_platform_ioremap_resource_byname(pdev, "top");
+ 	if (IS_ERR(rx->top))
+ 		return PTR_ERR(rx->top);
+@@ -717,7 +774,10 @@ static int t7_hdmirx_probe(struct platform_device *pdev)
+ 		ret = request_firmware(&firmware, edid_firmware, dev);
+ 		if (ret)
+ 			return dev_err_probe(dev, ret, "Cannot load EDID firmware\n");
+-		ret = phy_test ? t7_hdmirx_validate_phy_edid(firmware->data, firmware->size) : 0;
++		ret = 0;
++		if (phy_test)
++			ret = uhd60 ? t7_hdmirx_validate_uhd_edid(firmware->data, firmware->size) :
++				      t7_hdmirx_validate_phy_edid(firmware->data, firmware->size);
+ 		if (!ret)
+ 			ret = t7_hdmirx_ddc_start(rx, firmware->data, firmware->size);
+ 		release_firmware(firmware);
+diff --git a/drivers/media/platform/amlogic/t7-hdmirx/t7-hdmirx.h b/drivers/media/platform/amlogic/t7-hdmirx/t7-hdmirx.h
+index c6ee6b65c37b4..00dc2fca956ca 100644
+--- a/drivers/media/platform/amlogic/t7-hdmirx/t7-hdmirx.h
++++ b/drivers/media/platform/amlogic/t7-hdmirx/t7-hdmirx.h
+@@ -4,10 +4,13 @@
+ 
+ struct device;
+ 
+-/* Require two stable progressive 1080p60 samples on the bound receiver. */
+-int t7_hdmirx_check_1080p(struct device *dev);
++/* Require two stable samples matching the receiver's selected RGB8 profile. */
++int t7_hdmirx_check_video(struct device *dev);
+ 
+ /* One process-context sample, without the stable check's inter-sample delay. */
+-int t7_hdmirx_check_1080p_now(struct device *dev);
++int t7_hdmirx_check_video_now(struct device *dev);
++
++/* Profile dimensions are immutable for the lifetime of the bound receiver. */
++int t7_hdmirx_get_size(struct device *dev, unsigned int *width, unsigned int *height);
+ 
+ #endif
+diff --git a/drivers/media/platform/amlogic/t7-hdmirx/t7-vdin-test.c b/drivers/media/platform/amlogic/t7-hdmirx/t7-vdin-test.c
+index 041df0ed408cb..e46a86f81a1a2 100644
+--- a/drivers/media/platform/amlogic/t7-hdmirx/t7-vdin-test.c
++++ b/drivers/media/platform/amlogic/t7-hdmirx/t7-vdin-test.c
+@@ -27,6 +27,10 @@
+ 
+ #include "t7-hdmirx.h"
+ 
++static bool nv12;
++module_param(nv12, bool, 0400);
++MODULE_PARM_DESC(nv12, "Capture BT.709 limited-range NV12 instead of RGB24");
++
+ /* VCBUS word indices; the accessors alone convert them to byte offsets. */
+ #define VDIN_COM_CTRL0		0x1202
+ #define VDIN_ACTIVE_PIXELS	0x1203
+@@ -50,7 +54,9 @@
+ #define VDIN_HDR_MATRIX_IN	0x12bb
+ #define VDIN_HDR_MATRIX_OUT	0x12bc
+ #define VDIN_WR_BADDR		0x12cc
++#define VDIN_WR_CHROMA		0x12cd
+ #define VDIN_WR_STRIDE		0x12ce
++#define VDIN_WR_CHROMA_STRIDE	0x12cf
+ #define VDIN_DOUBLE_CTRL		0x410b
+ #define VDIN_TOP_MISC		0x410d
+ #define VPU_SW_RESET		0x2720
+@@ -59,10 +65,6 @@
+ #define VDIN_WR_REQ		BIT(8)
+ #define VDIN_VCP_WR		BIT(25)
+ #define VDIN_DONE_CLEAR		BIT(21)
+-#define VDIN_WIDTH		1920
+-#define VDIN_HEIGHT		1080
+-#define VDIN_STRIDE		(VDIN_WIDTH * 3)
+-#define VDIN_FRAME_SIZE		(VDIN_STRIDE * VDIN_HEIGHT)
+ #define VDIN_DMA_SLOTS		3
+ 
+ enum t7_vdin_slot_state {
+@@ -85,7 +87,15 @@ struct t7_vdin_buffer {
+ 	struct list_head list;
+ };
+ 
++struct t7_vdin_snapshot {
++	size_t size;
++	unsigned char data[];
++};
++
+ struct t7_vdin {
++	unsigned int width, height, stride, frame_size;
++	u32 pixel_format;
++	bool nv12;
+ 	struct kref ref;
+ 	struct device *dev;
+ 	struct device *receiver;
+@@ -148,6 +158,9 @@ static void t7_vdin_ring_arm(struct t7_vdin *vdin, unsigned int index)
+ 	vdin->slots[index].state = VDIN_SLOT_WRITING;
+ 	vdin->active_slot = index;
+ 	t7_vdin_write(vdin, VDIN_WR_BADDR, vdin->slots[index].dma >> 4);
++	if (vdin->nv12)
++		t7_vdin_write(vdin, VDIN_WR_CHROMA,
++			      (vdin->slots[index].dma + vdin->stride * vdin->height) >> 4);
+ 	vdin->dma_idle = false;
+ 	vdin->ring_running = true;
+ 	t7_vdin_update(vdin, VDIN_WR_CTRL, VDIN_WR_REQ | VDIN_VCP_WR,
+@@ -261,30 +274,52 @@ static void t7_vdin_configure(struct t7_vdin *vdin)
+ 	t7_vdin_update(vdin, VDIN_TOP_MISC, BIT(26) | BIT(29), 0);
+ 	t7_vdin_write(vdin, VDIN_GCLK_CTRL, 0);
+ 	t7_vdin_write(vdin, VDIN_GCLK_CTRL2, 0);
+-	/* HDMI input; components G/B/R pass through with no colour matrix. */
+-	t7_vdin_write(vdin, VDIN_COM_CTRL0, 0x915);
++	/* The core supplies R/G/B; the packed MIF emits components 2/1/0. */
++	t7_vdin_write(vdin, VDIN_COM_CTRL0, vdin->nv12 ? 0x915 : 0x195);
+ 	t7_vdin_write(vdin, VDIN_ASFIFO_CTRL1, 0xe40000);
+ 	t7_vdin_update(vdin, VPU_SW_RESET, BIT(26), BIT(26));
+ 	t7_vdin_update(vdin, VPU_SW_RESET, BIT(26), 0);
+-	t7_vdin_write(vdin, VDIN_WIDTHS, ((VDIN_WIDTH - 1) << 16) | (VDIN_WIDTH - 1));
+-	t7_vdin_write(vdin, VDIN_INTF_WIDTH, VDIN_WIDTH - 1);
++	t7_vdin_write(vdin, VDIN_WIDTHS, ((vdin->width - 1) << 16) | (vdin->width - 1));
++	t7_vdin_write(vdin, VDIN_INTF_WIDTH, vdin->width - 1);
+ 	t7_vdin_write(vdin, VDIN_SC_MISC_CTRL, 0);
+ 	t7_vdin_write(vdin, VDIN_VSHRK_CTRL, 0);
+ 	t7_vdin_write(vdin, VDIN_MATRIX_CTRL, 0);
+ 	t7_vdin_write(vdin, VDIN_HDR_CTRL, 0);
+ 	t7_vdin_write(vdin, VDIN_HDR_MATRIX_IN, 0);
+ 	t7_vdin_write(vdin, VDIN_HDR_MATRIX_OUT, 0);
++	if (vdin->nv12) {
++		/* Full-range RGB to limited BT.709 before 4:2:0 subsampling. */
++		t7_vdin_write(vdin, 0x128c, 0);
++		t7_vdin_write(vdin, 0x128d, 0);
++		t7_vdin_write(vdin, 0x1282, 0x00bb0275);
++		t7_vdin_write(vdin, 0x1283, 0x003f1f99);
++		t7_vdin_write(vdin, 0x1284, 0x1ea601c2);
++		t7_vdin_write(vdin, 0x1285, 0x01c21e67);
++		t7_vdin_write(vdin, 0x1286, 0x00001fd7);
++		t7_vdin_write(vdin, 0x128a, 0x00400200);
++		t7_vdin_write(vdin, 0x128b, 0x00000200);
++		t7_vdin_write(vdin, VDIN_HDR_CTRL, BIT(16));
++		t7_vdin_write(vdin, VDIN_HDR_MATRIX_IN, 1);
++		t7_vdin_write(vdin, VDIN_MATRIX_CTRL, 1);
++	}
+ 	t7_vdin_update(vdin, VDIN_LFIFO_CTRL, GENMASK(13, 0) | BIT(17) | BIT(18),
+ 		       BIT(17) | 0x780);
+ 	t7_vdin_write(vdin, VDIN_WR_CTRL2, BIT(18) | (2 << 12));
+-	t7_vdin_write(vdin, VDIN_WR_H_WIN, BIT(30) | (VDIN_WIDTH - 1));
+-	t7_vdin_write(vdin, VDIN_WR_V_WIN, VDIN_HEIGHT - 1);
++	t7_vdin_write(vdin, VDIN_WR_H_WIN, BIT(30) | (vdin->width - 1));
++	t7_vdin_write(vdin, VDIN_WR_V_WIN, vdin->height - 1);
+ 	/* Packed 24-bit output; use EOL to reset the packer on every line. */
+ 	t7_vdin_write(vdin, VDIN_WR_CTRL,
+-		      (3U << 30) | BIT(29) | BIT(27) | BIT(24) | BIT(23) | BIT(22) | (3 << 16) |
+-		      BIT(12) | BIT(10) | BIT(9));
++		      ((vdin->nv12 ? 2U : 3U) << 30) | BIT(29) | BIT(27) |
++		      BIT(24) | BIT(23) | BIT(22) |
++		      (vdin->nv12 ? BIT(18) : (3 << 16)) |
++		      (vdin->nv12 ? (2 << 12) : BIT(12)) | BIT(10) | BIT(9));
+ 	t7_vdin_write(vdin, VDIN_WR_BADDR, vdin->frame_dma >> 4);
+-	t7_vdin_write(vdin, VDIN_WR_STRIDE, VDIN_STRIDE >> 4);
++	t7_vdin_write(vdin, VDIN_WR_STRIDE, vdin->stride >> 4);
++	if (vdin->nv12) {
++		t7_vdin_write(vdin, VDIN_WR_CHROMA,
++			      (vdin->frame_dma + vdin->stride * vdin->height) >> 4);
++		t7_vdin_write(vdin, VDIN_WR_CHROMA_STRIDE, vdin->stride >> 4);
++	}
+ 	/* MIF0 takes normal VDIN0; done waits for the final AXI write response. */
+ 	t7_vdin_update(vdin, VDIN_DOUBLE_CTRL, GENMASK(7, 0) | BIT(20),
+ 		       BIT(4) | BIT(20));
+@@ -301,10 +336,10 @@ static int t7_vdin_capture(struct t7_vdin *vdin)
+ 
+ 	if (vdin->faulted)
+ 		return -EIO;
+-	ret = t7_hdmirx_check_1080p(vdin->receiver);
++	ret = t7_hdmirx_check_video(vdin->receiver);
+ 	if (ret)
+ 		return ret;
+-	memset(vdin->frame, 0xa5, VDIN_FRAME_SIZE);
++	memset(vdin->frame, 0xa5, vdin->frame_size);
+ 	dma_wmb();
+ 	t7_vdin_configure(vdin);
+ 	t7_vdin_update(vdin, VDIN_WR_CTRL, VDIN_DONE_CLEAR, VDIN_DONE_CLEAR);
+@@ -328,7 +363,7 @@ static int t7_vdin_capture(struct t7_vdin *vdin)
+ 		return -ETIMEDOUT;
+ 	}
+ 	dma_rmb();
+-	ret = t7_hdmirx_check_1080p(vdin->receiver);
++	ret = t7_hdmirx_check_video(vdin->receiver);
+ 	if (!ret)
+ 		vdin->snapshots++;
+ 	return ret;
+@@ -337,13 +372,13 @@ static int t7_vdin_capture(struct t7_vdin *vdin)
+ static int t7_vdin_frame_open(struct inode *inode, struct file *file)
+ {
+ 	struct t7_vdin *vdin = inode->i_private;
+-	void *snapshot;
++	struct t7_vdin_snapshot *snapshot;
+ 	int ret;
+ 
+ 	ret = debugfs_file_get(file->f_path.dentry);
+ 	if (ret)
+ 		return ret;
+-	snapshot = kvmalloc(VDIN_FRAME_SIZE, GFP_KERNEL);
++	snapshot = kvmalloc(struct_size(snapshot, data, vdin->frame_size), GFP_KERNEL);
+ 	if (!snapshot) {
+ 		ret = -ENOMEM;
+ 		goto put_file;
+@@ -352,8 +387,10 @@ static int t7_vdin_frame_open(struct inode *inode, struct file *file)
+ 	if (ret)
+ 		goto free_snapshot;
+ 	ret = vdin->streaming ? -EBUSY : t7_vdin_capture(vdin);
+-	if (!ret)
+-		memcpy(snapshot, vdin->frame, VDIN_FRAME_SIZE);
++	if (!ret) {
++		snapshot->size = vdin->frame_size;
++		memcpy(snapshot->data, vdin->frame, snapshot->size);
++	}
+ 	mutex_unlock(&vdin->lock);
+ 	if (ret)
+ 		goto free_snapshot;
+@@ -371,7 +408,9 @@ static int t7_vdin_frame_open(struct inode *inode, struct file *file)
+ static ssize_t t7_vdin_frame_read(struct file *file, char __user *buffer,
+ 				  size_t size, loff_t *offset)
+ {
+-	return simple_read_from_buffer(buffer, size, offset, file->private_data, VDIN_FRAME_SIZE);
++	struct t7_vdin_snapshot *snapshot = file->private_data;
++
++	return simple_read_from_buffer(buffer, size, offset, snapshot->data, snapshot->size);
+ }
+ 
+ static int t7_vdin_frame_release(struct inode *inode, struct file *file)
+@@ -549,20 +588,20 @@ static int t7_vdin_thread(void *data)
+ 			continue;
+ 		buffer = t7_vdin_next_buffer(vdin);
+ 		mutex_lock(&vdin->lock);
+-		ret = t7_hdmirx_check_1080p_now(vdin->receiver);
+-		dma_sync_single_for_cpu(vdin->dev, slot->dma, VDIN_FRAME_SIZE, DMA_FROM_DEVICE);
++		ret = t7_hdmirx_check_video_now(vdin->receiver);
++		dma_sync_single_for_cpu(vdin->dev, slot->dma, vdin->frame_size, DMA_FROM_DEVICE);
+ 		if (!ret) {
+ 			/* Hardware never addresses vb2 memory, even on a stop timeout. */
+ 			memcpy(vb2_plane_vaddr(&buffer->vb.vb2_buf, 0),
+-			       slot->data, VDIN_FRAME_SIZE);
++			       slot->data, vdin->frame_size);
+ 			/* Publish CPU writes to the coherent output before handing it off. */
+ 			dma_wmb();
+-			ret = t7_hdmirx_check_1080p_now(vdin->receiver);
++			ret = t7_hdmirx_check_video_now(vdin->receiver);
+ 			buffer->vb.vb2_buf.timestamp = slot->timestamp;
+ 			buffer->vb.sequence = slot->sequence;
+ 			buffer->vb.field = V4L2_FIELD_NONE;
+ 		}
+-		dma_sync_single_for_device(vdin->dev, slot->dma, VDIN_FRAME_SIZE, DMA_FROM_DEVICE);
++		dma_sync_single_for_device(vdin->dev, slot->dma, vdin->frame_size, DMA_FROM_DEVICE);
+ 		if (ret) {
+ 			unsigned long flags;
+ 
+@@ -592,18 +631,22 @@ static int t7_vdin_queue_setup(struct vb2_queue *queue, unsigned int *buffers,
+ 			       unsigned int *planes, unsigned int sizes[],
+ 			       struct device *alloc_devs[])
+ {
++	struct t7_vdin *vdin = vb2_get_drv_priv(queue);
++
+ 	if (*planes)
+-		return *planes == 1 && sizes[0] >= VDIN_FRAME_SIZE ? 0 : -EINVAL;
++		return *planes == 1 && sizes[0] >= vdin->frame_size ? 0 : -EINVAL;
+ 	*planes = 1;
+-	sizes[0] = VDIN_FRAME_SIZE;
++	sizes[0] = vdin->frame_size;
+ 	return 0;
+ }
+ 
+ static int t7_vdin_buffer_prepare(struct vb2_buffer *vb)
+ {
+-	if (vb2_plane_size(vb, 0) < VDIN_FRAME_SIZE)
++	struct t7_vdin *vdin = vb2_get_drv_priv(vb->vb2_queue);
++
++	if (vb2_plane_size(vb, 0) < vdin->frame_size)
+ 		return -EINVAL;
+-	vb2_set_plane_payload(vb, 0, VDIN_FRAME_SIZE);
++	vb2_set_plane_payload(vb, 0, vdin->frame_size);
+ 	return 0;
+ }
+ 
+@@ -626,7 +669,7 @@ static int t7_vdin_start_streaming(struct vb2_queue *queue, unsigned int count)
+ 	int ret;
+ 
+ 	mutex_lock(&vdin->lock);
+-	ret = vdin->faulted ? -EIO : t7_hdmirx_check_1080p(vdin->receiver);
++	ret = vdin->faulted ? -EIO : t7_hdmirx_check_video(vdin->receiver);
+ 	if (!ret) {
+ 		vdin->streaming = true;
+ 		vdin->thread = kthread_run(t7_vdin_thread, vdin, "t7-vdin-capture");
+@@ -672,24 +715,30 @@ static int t7_vdin_querycap(struct file *file, void *priv, struct v4l2_capabilit
+ 
+ static int t7_vdin_enum_fmt(struct file *file, void *priv, struct v4l2_fmtdesc *fmt)
+ {
++	struct t7_vdin *vdin = video_drvdata(file);
++
+ 	if (fmt->index)
+ 		return -EINVAL;
+-	fmt->pixelformat = V4L2_PIX_FMT_RGB24;
++	fmt->pixelformat = vdin->pixel_format;
+ 	return 0;
+ }
+ 
+ static int t7_vdin_get_fmt(struct file *file, void *priv, struct v4l2_format *fmt)
+ {
++	struct t7_vdin *vdin = video_drvdata(file);
++
+ 	fmt->fmt.pix = (struct v4l2_pix_format) {
+-		.width = VDIN_WIDTH,
+-		.height = VDIN_HEIGHT,
+-		.pixelformat = V4L2_PIX_FMT_RGB24,
++		.width = vdin->width,
++		.height = vdin->height,
++		.pixelformat = vdin->pixel_format,
+ 		.field = V4L2_FIELD_NONE,
+-		.bytesperline = VDIN_STRIDE,
+-		.sizeimage = VDIN_FRAME_SIZE,
+-		.colorspace = V4L2_COLORSPACE_SRGB,
+-		.xfer_func = V4L2_XFER_FUNC_SRGB,
+-		.quantization = V4L2_QUANTIZATION_FULL_RANGE,
++		.bytesperline = vdin->stride,
++		.sizeimage = vdin->frame_size,
++		.colorspace = vdin->nv12 ? V4L2_COLORSPACE_REC709 : V4L2_COLORSPACE_SRGB,
++		.xfer_func = vdin->nv12 ? V4L2_XFER_FUNC_709 : V4L2_XFER_FUNC_SRGB,
++		.ycbcr_enc = vdin->nv12 ? V4L2_YCBCR_ENC_709 : V4L2_YCBCR_ENC_DEFAULT,
++		.quantization = vdin->nv12 ? V4L2_QUANTIZATION_LIM_RANGE :
++					   V4L2_QUANTIZATION_FULL_RANGE,
+ 	};
+ 	return 0;
+ }
+@@ -712,7 +761,7 @@ static int t7_vdin_enum_input(struct file *file, void *priv, struct v4l2_input *
+ 	strscpy(input->name, "HDMI", sizeof(input->name));
+ 	input->type = V4L2_INPUT_TYPE_CAMERA;
+ 	input->capabilities = 0;
+-	if (t7_hdmirx_check_1080p(vdin->receiver))
++	if (t7_hdmirx_check_video(vdin->receiver))
+ 		input->status = V4L2_IN_ST_NO_SYNC;
+ 	return 0;
+ }
+@@ -882,9 +931,9 @@ static void t7_vdin_free_frame(void *data)
+ 		return;
+ 	for (i = 0; i < VDIN_DMA_SLOTS; i++)
+ 		if (vdin->slots[i].data)
+-			dma_free_noncoherent(vdin->dev, VDIN_FRAME_SIZE, vdin->slots[i].data,
++			dma_free_noncoherent(vdin->dev, vdin->frame_size, vdin->slots[i].data,
+ 					     vdin->slots[i].dma, DMA_FROM_DEVICE);
+-	dma_free_coherent(vdin->dev, VDIN_FRAME_SIZE, vdin->frame, vdin->frame_dma);
++	dma_free_coherent(vdin->dev, vdin->frame_size, vdin->frame, vdin->frame_dma);
+ }
+ 
+ static void t7_vdin_debugfs_remove(void *data)
+@@ -937,6 +986,15 @@ static int t7_vdin_probe(struct platform_device *pdev)
+ 		return -EPROBE_DEFER;
+ 	if (!device_link_add(dev, vdin->receiver, DL_FLAG_AUTOREMOVE_CONSUMER))
+ 		return -EINVAL;
++	ret = t7_hdmirx_get_size(vdin->receiver, &vdin->width, &vdin->height);
++	if (ret)
++		return ret;
++	vdin->nv12 = nv12;
++	vdin->pixel_format = nv12 ? V4L2_PIX_FMT_NV12 : V4L2_PIX_FMT_RGB24;
++	vdin->stride = vdin->width * (nv12 ? 1 : 3);
++	vdin->frame_size = vdin->stride * vdin->height;
++	if (nv12)
++		vdin->frame_size += vdin->frame_size / 2;
+ 	vdin->regs = devm_platform_ioremap_resource(pdev, 0);
+ 	if (IS_ERR(vdin->regs))
+ 		return PTR_ERR(vdin->regs);
+@@ -963,13 +1021,13 @@ static int t7_vdin_probe(struct platform_device *pdev)
+ 		}
+ 		vdin->domains[vdin->domain_count++] = domain;
+ 	}
+-	ret = clk_set_rate(vdin->clocks[1].clk, 400000000);
++	ret = clk_set_rate(vdin->clocks[1].clk, vdin->width > 1920 ? 666666666 : 400000000);
+ 	if (ret)
+ 		return ret;
+-	ret = clk_set_rate(vdin->clocks[2].clk, 250000000);
++	ret = clk_set_rate(vdin->clocks[2].clk, vdin->width > 1920 ? 500000000 : 250000000);
+ 	if (ret)
+ 		return ret;
+-	ret = clk_set_rate(vdin->clocks[3].clk, 400000000);
++	ret = clk_set_rate(vdin->clocks[3].clk, vdin->width > 1920 ? 666666666 : 400000000);
+ 	if (ret)
+ 		return ret;
+ 	ret = clk_set_rate(vdin->clocks[4].clk, 50000000);
+@@ -990,21 +1048,21 @@ static int t7_vdin_probe(struct platform_device *pdev)
+ 	ret = dma_set_mask_and_coherent(dev, DMA_BIT_MASK(32));
+ 	if (ret)
+ 		return ret;
+-	vdin->frame = dma_alloc_coherent(dev, VDIN_FRAME_SIZE, &vdin->frame_dma, GFP_KERNEL);
++	vdin->frame = dma_alloc_coherent(dev, vdin->frame_size, &vdin->frame_dma, GFP_KERNEL);
+ 	if (!vdin->frame)
+ 		return -ENOMEM;
+ 	ret = devm_add_action_or_reset(dev, t7_vdin_free_frame, vdin);
+ 	if (ret)
+ 		return ret;
+ 	for (i = 0; i < VDIN_DMA_SLOTS; i++) {
+-		vdin->slots[i].data = dma_alloc_noncoherent(dev, VDIN_FRAME_SIZE,
++		vdin->slots[i].data = dma_alloc_noncoherent(dev, vdin->frame_size,
+ 							    &vdin->slots[i].dma, DMA_FROM_DEVICE,
+ 							    GFP_KERNEL);
+ 		if (!vdin->slots[i].data)
+ 			return -ENOMEM;
+ 		/* Allocation zeroes the cached mapping; transfer initial ownership too. */
+ 		dma_sync_single_for_device(dev, vdin->slots[i].dma,
+-					   VDIN_FRAME_SIZE, DMA_FROM_DEVICE);
++					   vdin->frame_size, DMA_FROM_DEVICE);
+ 	}
+ 	vdin->irq = platform_get_irq(pdev, 0);
+ 	if (vdin->irq < 0)
+@@ -1023,7 +1081,8 @@ static int t7_vdin_probe(struct platform_device *pdev)
+ 	ret = t7_vdin_video_register(vdin);
+ 	if (ret)
+ 		return ret;
+-	dev_info(dev, "exclusive 1080p RGB24 capture ready at /dev/video%d\n", vdin->video.num);
++	dev_info(dev, "exclusive %ux%u %s capture ready at /dev/video%d\n",
++		 vdin->width, vdin->height, nv12 ? "NV12" : "RGB24", vdin->video.num);
+ 	return 0;
+ }
+ 
+diff --git a/drivers/media/platform/amlogic/t7-hdmirx/test_core.py b/drivers/media/platform/amlogic/t7-hdmirx/test_core.py
+index c6ac646e8f717..2496e69269bc6 100644
+--- a/drivers/media/platform/amlogic/t7-hdmirx/test_core.py
++++ b/drivers/media/platform/amlogic/t7-hdmirx/test_core.py
+@@ -93,7 +93,7 @@ int main(void)
+     struct t7_hdmirx rx = { .top = top, .cor = core, .port = 1 };
+     struct device dev = { .data = &rx };
+     unsigned int before;
+-    assert(t7_hdmirx_check_1080p(&dev) == -ENOLINK);
++    assert(t7_hdmirx_check_video(&dev) == -ENOLINK);
+     smc_error = true;
+     assert(t7_hdmirx_core_start(&rx) == -EIO && !writes && !rx.core_active);
+     smc_error = false; readback_error = true;
+@@ -103,23 +103,23 @@ int main(void)
+     assert(!pcs_resets);
+     t7_hdmirx_reset_pcs(&rx);
+     assert(pcs_resets == 1 && !readl(top + T7_RX_TOP_SW_RESET));
+-    assert(rx.core_active && !t7_hdmirx_check_1080p(&dev));
++    assert(rx.core_active && !t7_hdmirx_check_video(&dev));
+     core[T7_RX_COR_COLOR_DEPTH] = 5;
+-    assert(t7_hdmirx_check_1080p(&dev) == -ERANGE);
++    assert(t7_hdmirx_check_video(&dev) == -ERANGE);
+     core[T7_RX_COR_COLOR_DEPTH] = 4;
+     writel(BIT(20), top + T7_RX_TOP_VID_STAT);
+-    assert(t7_hdmirx_check_1080p(&dev) == -ERANGE);
++    assert(t7_hdmirx_check_video(&dev) == -ERANGE);
+     writel(0, top + T7_RX_TOP_VID_STAT);
+     core[0x1881] |= BIT(2);
+-    assert(t7_hdmirx_check_1080p(&dev) == -ERANGE); timing();
++    assert(t7_hdmirx_check_video(&dev) == -ERANGE); timing();
+     word(0x188c, 1280);
+-    assert(t7_hdmirx_check_1080p(&dev) == -ERANGE); timing();
++    assert(t7_hdmirx_check_video(&dev) == -ERANGE); timing();
+     word(0x1888, 0); core[0x188a] = 0;
+-    assert(t7_hdmirx_check_1080p(&dev) == -ERANGE); timing();
++    assert(t7_hdmirx_check_video(&dev) == -ERANGE); timing();
+     changed = true;
+-    assert(t7_hdmirx_check_1080p(&dev) == -ERANGE); timing(); changed = false;
++    assert(t7_hdmirx_check_video(&dev) == -ERANGE); timing(); changed = false;
+     memset(top + T7_RX_TOP_TMDS_ALIGN_STAT, 0, 4);
+-    assert(t7_hdmirx_check_1080p(&dev) == -ENOLINK); timing();
++    assert(t7_hdmirx_check_video(&dev) == -ENOLINK); timing();
+     t7_hdmirx_core_stop(&rx); before = writes;
+     assert(!rx.core_active && !core[0x20a3] && !core[0x20a4] && !core[0x20a5]);
+     t7_hdmirx_core_stop(&rx); assert(writes == before);
+@@ -131,6 +131,14 @@ int main(void)
+     t7_hdmirx_core_stop(&rx);
+     assert(core[T7_RX_COR_SYS_CTRL] == 3 && core[T7_RX_COR_PHY_CLOCK1] == 255);
+     assert(core[T7_RX_COR_PHY_CLOCK2] == 63 && core[T7_RX_COR_PHY_CLOCK3] == 1);
++    rx.core_active = true; timing(); rx.uhd60 = true;
++    assert(t7_hdmirx_check_video(&dev) == -ERANGE);
++    word(0x188c, 3840); word(0x188e, 2160);
++    word(0x1890, 88); word(0x1892, 4312);
++    word(0x1898, 10); word(0x189a, 2240);
++    assert(!t7_hdmirx_check_video(&dev));
++    word(0x188e, 1080);
++    assert(t7_hdmirx_check_video(&dev) == -ERANGE);
+     puts("Core access, stable progressive timing, signal loss and idempotent cleanup passed");
+ }
+ '''
+diff --git a/drivers/media/platform/amlogic/t7-hdmirx/test_phy.py b/drivers/media/platform/amlogic/t7-hdmirx/test_phy.py
+index 12b48bd5364ad..536d98bc655b4 100644
+--- a/drivers/media/platform/amlogic/t7-hdmirx/test_phy.py
++++ b/drivers/media/platform/amlogic/t7-hdmirx/test_phy.py
+@@ -36,7 +36,11 @@ struct clk_bulk_data { int unused; };
+ struct debugfs_blob_wrapper { void *data; unsigned long size; };
+ '''
+ mmio = r'''
+-static u8 top[0x4000], phy[0x50];
++static u8 top[0x4000], phy[0x50], core[0x8000];
++static u8 readb(void *address) {
++    assert((u8 *)address >= core && (u8 *)address < core + sizeof(core));
++    return *(u8 *)address;
++}
+ static struct t7_hdmirx receiver;
+ static bool lock_pll, jitter, delayed_source;
+ static unsigned int delays, meter_reads, pll_attempts, writes;
+@@ -88,7 +92,8 @@ static void reset(void)
+ {
+     memset(top, 0, sizeof(top));
+     memset(phy, 0, sizeof(phy));
+-    receiver = (struct t7_hdmirx) { .top = top, .phy = phy, .port = 1 };
++    memset(core, 0, sizeof(core));
++    receiver = (struct t7_hdmirx) { .top = top, .phy = phy, .cor = core, .port = 1 };
+     lock_pll = jitter = delayed_source = false;
+     delays = meter_reads = pll_attempts = writes = 0;
+     writel(BIT(21) | BIT(1), top + T7_RX_TOP_HPD_PWR5V);
+@@ -132,6 +137,7 @@ int main(void)
+     assert(!t7_hdmirx_phy_pll(&receiver) && pll_attempts == 1);
+     t7_hdmirx_phy_equalize(&receiver);
+     assert(readl(phy + T7_RX_PHY_DCHD0) & BIT(28));
++    assert(readl(phy + T7_RX_PHY_DCHD0) & BIT(27));
+     assert(readl(phy + T7_RX_PHY_DCHD2) & BIT(26));
+     t7_hdmirx_phy_stop(&receiver);
+     assert(!receiver.phy_active);
+@@ -162,7 +168,18 @@ int main(void)
+     assert(t7_hdmirx_phy_pll(&receiver) == -ETIMEDOUT && pll_attempts == 3);
+     t7_hdmirx_phy_stop(&receiver);
+     assert(!receiver.phy_active && !(readl(top + T7_RX_TOP_HPD_PWR5V) & BIT(1)));
+-    puts("PHY clock qualification, trim, bounded PLL timeout and cleanup passed");
++    reset(); receiver.uhd60 = true;
++    writel(BIT(31) | 50688, top + T7_RX_TOP_METER_CABLE_STAT);
++    assert(t7_hdmirx_wait_cable(&receiver, 24000000) == -ETIMEDOUT);
++    assert(!pll_attempts);
++    reset(); receiver.uhd60 = true; core[T7_RX_COR_TMDS_CONFIG] = 3;
++    writel(BIT(31) | 50688, top + T7_RX_TOP_METER_CABLE_STAT);
++    assert(!t7_hdmirx_wait_cable(&receiver, 24000000));
++    lock_pll = true;
++    t7_hdmirx_phy_prepare(&receiver);
++    assert(!t7_hdmirx_phy_pll(&receiver));
++    assert((raw_read(phy + T7_RX_PHY_APLL4) & (7U << 24)) == (1U << 24));
++    puts("PHY clock/SCDC qualification, trim, bounded PLL timeout and cleanup passed");
+ }
+ '''
+ with tempfile.TemporaryDirectory() as directory:
+diff --git a/drivers/media/platform/amlogic/t7-hdmirx/test_stream.py b/drivers/media/platform/amlogic/t7-hdmirx/test_stream.py
+index 0f906466a7f79..0d6de4894815f 100644
+--- a/drivers/media/platform/amlogic/t7-hdmirx/test_stream.py
++++ b/drivers/media/platform/amlogic/t7-hdmirx/test_stream.py
+@@ -27,6 +27,9 @@ typedef uint64_t u64;
+ typedef uint64_t dma_addr_t;
+ typedef pthread_mutex_t spinlock_t;
+ typedef int irqreturn_t;
++#define VDIN_FRAME_SIZE (1920U*1080U*3U)
++#define module_param(...)
++#define MODULE_PARM_DESC(...)
+ #define __iomem
+ #define BIT(n) (1U<<(n))
+ #define GENMASK(h,l) ((~0U>>(31-(h))) & (~0U<<(l)))
+@@ -154,8 +157,8 @@ static void vb2_queue_error(struct vb2_queue *q) {
+     pthread_mutex_lock(&gate); q->error=true; pthread_cond_broadcast(&changed);
+     pthread_mutex_unlock(&gate);
+ }
+-static int t7_hdmirx_check_1080p(void *dev) { return fail_timing?-ENOLINK:0; }
+-static int t7_hdmirx_check_1080p_now(void *dev) {
++static int t7_hdmirx_check_video(void *dev) { return fail_timing?-ENOLINK:0; }
++static int t7_hdmirx_check_video_now(void *dev) {
+     bool copying=false;
+     for (int i=0;i<VDIN_DMA_SLOTS;i++) copying|=cpu_owned[i];
+     if (!copying) {
+@@ -212,6 +215,8 @@ static void setup(struct t7_vdin_buffer b[4]) {
+     init_wait(&receiver.buffer_wait); init_wait(&receiver.done.wait);
+     receiver.queued.next=receiver.queued.prev=&receiver.queued;
+     receiver.queue.priv=&receiver; receiver.regs=registers;
++    receiver.width=1920; receiver.height=1080; receiver.stride=5760;
++    receiver.frame_size=VDIN_FRAME_SIZE;
+     started=entered=permits=completed=pins=stop_waiting=0;
+     stopping=fail_timing=expire=false;
+     for (int i=0;i<VDIN_DMA_SLOTS;i++) {
+diff --git a/drivers/media/platform/amlogic/t7-hdmirx/test_vdin.py b/drivers/media/platform/amlogic/t7-hdmirx/test_vdin.py
+index 654d0a0895907..ab25d4b2decd3 100644
+--- a/drivers/media/platform/amlogic/t7-hdmirx/test_vdin.py
++++ b/drivers/media/platform/amlogic/t7-hdmirx/test_vdin.py
+@@ -22,6 +22,8 @@ typedef uint64_t u64;
+ typedef int spinlock_t;
+ typedef int wait_queue_head_t;
+ typedef int irqreturn_t;
++#define VDIN_FRAME_SIZE (1920U*1080U*3U)
++#define VDIN_STRIDE (1920U*3U)
+ #define __iomem
+ #define BIT(n) (1U << (n))
+ #define GENMASK(h, l) ((~0U >> (31 - (h))) & (~0U << (l)))
+@@ -47,7 +49,7 @@ static u64 ktime_get_ns(void) { return 123456789; }
+ static void wake_up(wait_queue_head_t *w) { (void)w; }
+ '''
+ mmio = r'''
+-static uint8_t registers[0x40000], frame[VDIN_FRAME_SIZE];
++static uint8_t registers[0x40000], frame[3840U * 2160U * 3U + 16];
+ static struct t7_vdin receiver;
+ static unsigned int pins, requests, timing_checks;
+ static bool timeout, busy, bad_timing, change_timing;
+@@ -64,9 +66,16 @@ static void writel(u32 value, void *address)
+     assert((uint8_t *)address >= registers &&
+            (uint8_t *)address + 4 <= registers + sizeof(registers));
+     if (address == registers + VDIN_WR_CTRL * 4 && value & VDIN_WR_REQ) {
++        /* Every format must feed the MIF, not just program its addresses. */
++        assert(readl(registers + VDIN_COM_CTRL0 * 4) & BIT(4));
+         /* Never start DMA before its bounded address/stride have been installed. */
+         assert(readl(registers + VDIN_WR_BADDR * 4) == receiver.frame_dma >> 4);
+-        assert(readl(registers + VDIN_WR_STRIDE * 4) == VDIN_STRIDE >> 4);
++        assert(readl(registers + VDIN_WR_STRIDE * 4) == receiver.stride >> 4);
++        if (receiver.nv12) {
++            assert(readl(registers + VDIN_WR_CHROMA * 4) ==
++                   (receiver.frame_dma + receiver.stride * receiver.height) >> 4);
++            assert(receiver.frame_size == receiver.stride * receiver.height * 3 / 2);
++        }
+         if (!(readl(address) & VDIN_WR_REQ)) requests++;
+     }
+     memcpy(address, &value, 4);
+@@ -83,7 +92,7 @@ static void complete(struct completion *done)
+ }
+ static void reinit_completion(struct completion *done) { done->done = false; }
+ static void udelay(unsigned int delay) { assert(delay == 1); }
+-static int t7_hdmirx_check_1080p(struct device *dev)
++static int t7_hdmirx_check_video(struct device *dev)
+ {
+     (void)dev;
+     timing_checks++;
+@@ -103,7 +112,7 @@ static unsigned long wait_for_completion_timeout(struct completion *done, unsign
+     t7_vdin_write_done(1, &receiver);
+     assert(receiver.armed && receiver.frame_irqs == 1 && !done->done);
+     assert(readl(registers + VDIN_WR_CTRL * 4) & VDIN_WR_REQ);
+-    memset(frame, 0x5a, sizeof(frame));
++    memset(frame, 0x5a, receiver.frame_size);
+     if (!busy) writel(BIT(0), registers + VDIN_WR_STATUS * 4);
+     t7_vdin_write_done(1, &receiver);
+     assert(!receiver.armed && receiver.frame_irqs == 2 && done->done);
+@@ -116,8 +125,10 @@ static unsigned long wait_for_completion_timeout(struct completion *done, unsign
+ static void reset(void)
+ {
+     memset(registers, 0, sizeof(registers));
++    memset(frame, 0xa5, sizeof(frame));
+     receiver = (struct t7_vdin) { .regs = registers, .frame = frame,
+-                               .frame_dma = 0x10000000 };
++                               .frame_dma = 0x10000000, .width = 1920, .height = 1080,
++                               .stride = VDIN_STRIDE, .frame_size = VDIN_FRAME_SIZE };
+     pins = requests = timing_checks = 0;
+     timeout = busy = bad_timing = change_timing = false;
+ }
+@@ -128,8 +139,18 @@ int main(void)
+     assert(!t7_vdin_capture(&receiver));
+     assert((readl(registers + VDIN_LFIFO_CTRL * 4) & 0xc0000000) == 0xc0000000);
+     assert(receiver.snapshots == 1 && receiver.frame_irqs == 2 && !receiver.armed);
+-    assert(requests == 1 && timing_checks == 2 && frame[sizeof(frame) - 1] == 0x5a);
++    assert(requests == 1 && timing_checks == 2 && frame[receiver.frame_size - 1] == 0x5a);
++    assert(frame[receiver.frame_size] == 0xa5);
+     assert(!t7_vdin_capture(&receiver) && receiver.snapshots == 2);
++    reset(); receiver.nv12 = true;
++    receiver.width = 3840; receiver.height = 2160; receiver.stride = 3840;
++    receiver.frame_size = 3840U * 2160U * 3U / 2;
++    assert(!t7_vdin_capture(&receiver));
++    assert(frame[receiver.frame_size - 1] == 0x5a && frame[receiver.frame_size] == 0xa5);
++    /* T7's physical FIFO is 1920 words, independently of the input width. */
++    assert((readl(registers + VDIN_LFIFO_CTRL * 4) & 0x3fff) == 0x780);
++    assert((readl(registers + VDIN_WR_CTRL * 4) >> 12 & 3) == 2);
++    assert(readl(registers + VDIN_WR_CHROMA_STRIDE * 4) == 3840U / 16);
+     reset(); bad_timing = true;
+     assert(t7_vdin_capture(&receiver) == -ERANGE && !requests && !receiver.armed);
+     reset(); timeout = true;

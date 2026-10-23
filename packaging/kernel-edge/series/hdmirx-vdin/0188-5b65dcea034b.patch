@@ -1,0 +1,117 @@
+From 5b65dcea034b3eced92ff8e96bd599bca2e37f28 Mon Sep 17 00:00:00 2001
+From: localhost-copilot <318096335+localhost-copilot@users.noreply.github.com>
+Date: Tue, 20 Oct 2026 17:13:12 +0800
+Subject: [PATCH] media: t7-vdin-test: reserve NV12 import capacity without
+ changing payload
+
+---
+ .../media/platform/amlogic/t7-hdmirx/t7-vdin-test.c | 13 ++++++++-----
+ .../media/platform/amlogic/t7-hdmirx/test_stream.py | 12 ++++++++++++
+ .../platform/chips-media/wave5/test_buffers.py      | 11 +++++++++++
+ 3 files changed, 31 insertions(+), 5 deletions(-)
+
+diff --git a/drivers/media/platform/amlogic/t7-hdmirx/t7-vdin-test.c b/drivers/media/platform/amlogic/t7-hdmirx/t7-vdin-test.c
+index e46a86f81a1a2..48379a221382e 100644
+--- a/drivers/media/platform/amlogic/t7-hdmirx/t7-vdin-test.c
++++ b/drivers/media/platform/amlogic/t7-hdmirx/t7-vdin-test.c
+@@ -93,7 +93,7 @@ struct t7_vdin_snapshot {
+ };
+ 
+ struct t7_vdin {
+-	unsigned int width, height, stride, frame_size;
++	unsigned int width, height, stride, frame_size, allocation_size;
+ 	u32 pixel_format;
+ 	bool nv12;
+ 	struct kref ref;
+@@ -634,9 +634,9 @@ static int t7_vdin_queue_setup(struct vb2_queue *queue, unsigned int *buffers,
+ 	struct t7_vdin *vdin = vb2_get_drv_priv(queue);
+ 
+ 	if (*planes)
+-		return *planes == 1 && sizes[0] >= vdin->frame_size ? 0 : -EINVAL;
++		return *planes == 1 && sizes[0] >= vdin->allocation_size ? 0 : -EINVAL;
+ 	*planes = 1;
+-	sizes[0] = vdin->frame_size;
++	sizes[0] = vdin->allocation_size;
+ 	return 0;
+ }
+ 
+@@ -644,7 +644,7 @@ static int t7_vdin_buffer_prepare(struct vb2_buffer *vb)
+ {
+ 	struct t7_vdin *vdin = vb2_get_drv_priv(vb->vb2_queue);
+ 
+-	if (vb2_plane_size(vb, 0) < vdin->frame_size)
++	if (vb2_plane_size(vb, 0) < vdin->allocation_size)
+ 		return -EINVAL;
+ 	vb2_set_plane_payload(vb, 0, vdin->frame_size);
+ 	return 0;
+@@ -733,7 +733,7 @@ static int t7_vdin_get_fmt(struct file *file, void *priv, struct v4l2_format *fm
+ 		.pixelformat = vdin->pixel_format,
+ 		.field = V4L2_FIELD_NONE,
+ 		.bytesperline = vdin->stride,
+-		.sizeimage = vdin->frame_size,
++		.sizeimage = vdin->allocation_size,
+ 		.colorspace = vdin->nv12 ? V4L2_COLORSPACE_REC709 : V4L2_COLORSPACE_SRGB,
+ 		.xfer_func = vdin->nv12 ? V4L2_XFER_FUNC_709 : V4L2_XFER_FUNC_SRGB,
+ 		.ycbcr_enc = vdin->nv12 ? V4L2_YCBCR_ENC_709 : V4L2_YCBCR_ENC_DEFAULT,
+@@ -995,6 +995,9 @@ static int t7_vdin_probe(struct platform_device *pdev)
+ 	vdin->frame_size = vdin->stride * vdin->height;
+ 	if (nv12)
+ 		vdin->frame_size += vdin->frame_size / 2;
++	/* Keep NV12 tightly packed, with tail room for aligned encoder plane views. */
++	vdin->allocation_size = nv12 ? vdin->stride * ALIGN(vdin->height, 16) * 3 / 2 :
++				       vdin->frame_size;
+ 	vdin->regs = devm_platform_ioremap_resource(pdev, 0);
+ 	if (IS_ERR(vdin->regs))
+ 		return PTR_ERR(vdin->regs);
+diff --git a/drivers/media/platform/amlogic/t7-hdmirx/test_stream.py b/drivers/media/platform/amlogic/t7-hdmirx/test_stream.py
+index 0d6de4894815f..bb796b39cf443 100644
+--- a/drivers/media/platform/amlogic/t7-hdmirx/test_stream.py
++++ b/drivers/media/platform/amlogic/t7-hdmirx/test_stream.py
+@@ -217,6 +217,7 @@ static void setup(struct t7_vdin_buffer b[4]) {
+     receiver.queue.priv=&receiver; receiver.regs=registers;
+     receiver.width=1920; receiver.height=1080; receiver.stride=5760;
+     receiver.frame_size=VDIN_FRAME_SIZE;
++    receiver.allocation_size=VDIN_FRAME_SIZE;
+     started=entered=permits=completed=pins=stop_waiting=0;
+     stopping=fail_timing=expire=false;
+     for (int i=0;i<VDIN_DMA_SLOTS;i++) {
+@@ -240,6 +241,17 @@ static void teardown(struct t7_vdin_buffer b[4]) {
+ }
+ int main(void) {
+     struct t7_vdin_buffer b[4]; pthread_t stop;
++    /* Import tail capacity must not enlarge the visible bytesused payload. */
++    receiver.queue.priv=&receiver;
++    receiver.frame_size=1920*1080*3/2;
++    receiver.allocation_size=1920*1088*3/2;
++    struct vb2_buffer padded={.vb2_queue=&receiver.queue,.size=receiver.frame_size};
++    assert(t7_vdin_buffer_prepare(&padded)==-EINVAL);
++    padded.size=receiver.allocation_size;
++    assert(!t7_vdin_buffer_prepare(&padded) && padded.payload==receiver.frame_size);
++    unsigned int planes=0,count=4,sizes[1]={0};
++    assert(!t7_vdin_queue_setup(&receiver.queue,&count,&planes,sizes,NULL));
++    assert(planes==1 && sizes[0]==receiver.allocation_size);
+     /* Hardware fills the ring while CPU copy is blocked, without reusing COPYING. */
+     setup(b); assert(!t7_vdin_start_streaming(&receiver.queue,4)); await(&started,1);
+     step(1,false); step(2,false); await(&entered,1);
+diff --git a/drivers/media/platform/chips-media/wave5/test_buffers.py b/drivers/media/platform/chips-media/wave5/test_buffers.py
+index d3d87541c9980..8e9b6147375dc 100644
+--- a/drivers/media/platform/chips-media/wave5/test_buffers.py
++++ b/drivers/media/platform/chips-media/wave5/test_buffers.py
+@@ -52,6 +52,17 @@ int main(void)
+     assert(wave5_vpu_enc_buf_prepare(&vb) == -EINVAL);
+     vb.planes[1].data_offset = UINT32_MAX;
+     assert(wave5_vpu_enc_buf_prepare(&vb) == -EINVAL);
++    /* 1080 visible rows need 1088-row capacity, but UV stays after active Y. */
++    inst.src_fmt.plane_fmt[0].sizeimage = 1920 * 1088;
++    inst.src_fmt.plane_fmt[1].sizeimage = 1920 * 1088 / 2;
++    vb.planes[0].size = vb.planes[1].size = 1920 * 1080 * 3 / 2;
++    vb.planes[0].payload = 1920 * 1088;
++    vb.planes[1].data_offset = 1920 * 1080;
++    vb.planes[1].payload = 1920 * 1080 + 1920 * 1088 / 2;
++    assert(wave5_vpu_enc_buf_prepare(&vb) == -EINVAL);
++    vb.planes[0].size = vb.planes[1].size = 1920 * 1088 * 3 / 2;
++    assert(!wave5_vpu_enc_buf_prepare(&vb));
++    assert(wave5_vpu_enc_source_addr(&vb, 1) == 0x40000000 + 1920 * 1080);
+     vb.type = 9;
+     assert(!wave5_vpu_enc_buf_prepare(&vb));
+     puts("Wave5 shared DMA plane offsets and bounds passed");

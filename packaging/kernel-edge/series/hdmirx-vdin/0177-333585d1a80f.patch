@@ -1,0 +1,1198 @@
+From 333585d1a80f5e7ccac1fe37fe1d75e8805dfff9 Mon Sep 17 00:00:00 2001
+From: localhost-copilot <318096335+localhost-copilot@users.noreply.github.com>
+Date: Tue, 20 Oct 2026 12:39:14 +0800
+Subject: [PATCH] media: amlogic: capture bounded T7 1080p snapshots
+
+---
+ ...ogic-t7-a311d2-khadas-vim4-hdmirx-test.dts |  19 +
+ arch/arm64/boot/dts/amlogic/amlogic-t7.dtsi   |   5 +-
+ .../media/platform/amlogic/t7-hdmirx/Kconfig  |  15 +-
+ .../media/platform/amlogic/t7-hdmirx/Makefile |   1 +
+ .../platform/amlogic/t7-hdmirx/t7-hdmirx.c    | 219 ++++++++-
+ .../platform/amlogic/t7-hdmirx/t7-hdmirx.h    |  10 +
+ .../platform/amlogic/t7-hdmirx/t7-vdin-test.c | 458 ++++++++++++++++++
+ .../platform/amlogic/t7-hdmirx/test_core.py   | 133 +++++
+ .../platform/amlogic/t7-hdmirx/test_phy.py    |   2 +-
+ .../platform/amlogic/t7-hdmirx/test_vdin.py   | 145 ++++++
+ 10 files changed, 1001 insertions(+), 6 deletions(-)
+ create mode 100644 drivers/media/platform/amlogic/t7-hdmirx/t7-hdmirx.h
+ create mode 100644 drivers/media/platform/amlogic/t7-hdmirx/t7-vdin-test.c
+ create mode 100644 drivers/media/platform/amlogic/t7-hdmirx/test_core.py
+ create mode 100644 drivers/media/platform/amlogic/t7-hdmirx/test_vdin.py
+
+diff --git a/arch/arm64/boot/dts/amlogic/amlogic-t7-a311d2-khadas-vim4-hdmirx-test.dts b/arch/arm64/boot/dts/amlogic/amlogic-t7-a311d2-khadas-vim4-hdmirx-test.dts
+index 07556af3e250a..cb1fcfca2f5bc 100644
+--- a/arch/arm64/boot/dts/amlogic/amlogic-t7-a311d2-khadas-vim4-hdmirx-test.dts
++++ b/arch/arm64/boot/dts/amlogic/amlogic-t7-a311d2-khadas-vim4-hdmirx-test.dts
+@@ -19,3 +19,22 @@ &hdmirx {
+ 	pinctrl-names = "default";
+ 	status = "okay";
+ };
++
++/ {
++	vdin_test: video-capture@ff000000 {
++		compatible = "amlogic,t7-vdin-test";
++		reg = <0x0 0xff000000 0x0 0x40000>;
++		interrupts = <GIC_SPI 213 IRQ_TYPE_EDGE_RISING>;
++		power-domains = <&pwrc PWRC_T7_VPU_HDMI_ID>,
++				<&pwrc PWRC_T7_VI_CLK1_ID>, <&pwrc PWRC_T7_VI_CLK2_ID>;
++		clocks = <&clkc_periphs CLKID_SYS_VPU_INTR>,
++			 <&clkc_periphs CLKID_VPU>, <&clkc_periphs CLKID_VAPB>,
++			 <&clkc_periphs CLKID_VPU_CLKB>, <&clkc_periphs CLKID_VDIN_MEAS>;
++		clock-names = "pclk", "vpu", "vapb", "clkb", "measure";
++		amlogic,receiver = <&hdmirx>;
++	};
++};
++
++&vpu {
++	status = "disabled";
++};
+diff --git a/arch/arm64/boot/dts/amlogic/amlogic-t7.dtsi b/arch/arm64/boot/dts/amlogic/amlogic-t7.dtsi
+index 3b4894e755ec2..4c6c51dd261b0 100644
+--- a/arch/arm64/boot/dts/amlogic/amlogic-t7.dtsi
++++ b/arch/arm64/boot/dts/amlogic/amlogic-t7.dtsi
+@@ -1961,8 +1961,9 @@ hdmirx: hdmi-receiver@398000 {
+ 		compatible = "amlogic,t7-hdmirx";
+ 		amlogic,input-port = <0>;
+ 		reg = <0x0 0x398000 0x0 0x4000>,
+-		      <0x0 0x39c000 0x0 0x50>;
+-		reg-names = "top", "phy";
++		      <0x0 0x39c000 0x0 0x50>,
++		      <0x0 0x3a0000 0x0 0x8000>;
++		reg-names = "top", "phy", "cor";
+ 		power-domains = <&pwrc PWRC_T7_HDMIRX_ID>;
+ 		clocks = <&clkc_periphs CLKID_SYS_HDMIRX_PCLK>,
+ 			 <&clkc_periphs CLKID_SYS_HDMIRX>,
+diff --git a/drivers/media/platform/amlogic/t7-hdmirx/Kconfig b/drivers/media/platform/amlogic/t7-hdmirx/Kconfig
+index 2dc81d5c210c7..2d4cab901b68f 100644
+--- a/drivers/media/platform/amlogic/t7-hdmirx/Kconfig
++++ b/drivers/media/platform/amlogic/t7-hdmirx/Kconfig
+@@ -7,7 +7,18 @@ config VIDEO_MESON_T7_HDMIRX
+ 	  Manage the T7 HDMI receiver power domain and clocks, and expose
+ 	  read-only cable and register status through debugfs. This initial
+ 	  driver supports resource, cable detection and firmware EDID/DDC/HPD
+-	  bring-up, plus an opt-in fixed-rate input PLL trial. Automatic PHY
+-	  tuning and VDIN capture require further implementation.
++	  bring-up, plus opt-in fixed-rate PHY and TMDS core initialization.
++	  Automatic PHY tuning and production V4L2 capture need further work;
++	  the separate VDIN experiment can obtain progressive 1080p60 snapshots.
+ 
+ 	  To compile this driver as a module, choose M here.
++
++config VIDEO_MESON_T7_VDIN_TEST
++	tristate "Amlogic T7 VDIN snapshot experiment"
++	depends on VIDEO_MESON_T7_HDMIRX
++	depends on OF && HAS_DMA
++	help
++	  Exclusive 1080p60 RGB snapshot experiment for the dedicated VIM4
++	  receiver DTB. Owns the VPU register window while DRM is disabled.
++	  Exposes a read-only debugfs frame after write completion and DMA idle;
++	  this is not a production V4L2 capture interface.
+diff --git a/drivers/media/platform/amlogic/t7-hdmirx/Makefile b/drivers/media/platform/amlogic/t7-hdmirx/Makefile
+index 178b6ff7ccb08..c45731bb78c5e 100644
+--- a/drivers/media/platform/amlogic/t7-hdmirx/Makefile
++++ b/drivers/media/platform/amlogic/t7-hdmirx/Makefile
+@@ -1,2 +1,3 @@
+ # SPDX-License-Identifier: GPL-2.0-only
+ obj-$(CONFIG_VIDEO_MESON_T7_HDMIRX) += t7-hdmirx.o
++obj-$(CONFIG_VIDEO_MESON_T7_VDIN_TEST) += t7-vdin-test.o
+diff --git a/drivers/media/platform/amlogic/t7-hdmirx/t7-hdmirx.c b/drivers/media/platform/amlogic/t7-hdmirx/t7-hdmirx.c
+index 46b5def735d0b..5d36c19f5aef8 100644
+--- a/drivers/media/platform/amlogic/t7-hdmirx/t7-hdmirx.c
++++ b/drivers/media/platform/amlogic/t7-hdmirx/t7-hdmirx.c
+@@ -2,6 +2,7 @@
+ /* Amlogic T7 HDMI receiver resource and cable detection bring-up. */
+ /* Copyright (c) 2019 Amlogic, Inc. All rights reserved. */
+ #include <linux/bitfield.h>
++#include <linux/arm-smccc.h>
+ #include <linux/clk.h>
+ #include <linux/debugfs.h>
+ #include <linux/delay.h>
+@@ -14,6 +15,8 @@
+ #include <linux/property.h>
+ #include <linux/seq_file.h>
+ 
++#include "t7-hdmirx.h"
++
+ /* TOP register indices use 32-bit words; EDID RAM uses byte offsets. */
+ #define T7_RX_TOP_SW_RESET	(0x000 * 4)
+ #define T7_RX_TOP_CLK_CNTL	(0x001 * 4)
+@@ -22,6 +25,10 @@
+ #define T7_RX_TOP_EDID_GEN_CNTL	(0x004 * 4)
+ #define T7_RX_TOP_EDID_GEN_STAT	(0x008 * 4)
+ #define T7_RX_TOP_INTR_MASKN	(0x009 * 4)
++#define T7_RX_TOP_VID_CNTL		(0x00c * 4)
++#define T7_RX_TOP_VID_CNTL2	(0x013 * 4)
++#define T7_RX_TOP_VID_STAT		(0x00d * 4)
++#define T7_RX_TOP_OUTPUT_OVERRIDE	(0x090 * 4)
+ #define T7_RX_TOP_METER_HDMI_CNTL	(0x011 * 4)
+ #define T7_RX_TOP_METER_HDMI_STAT	(0x012 * 4)
+ #define T7_RX_TOP_CHAN_SWITCH_0	(0x028 * 4)
+@@ -64,6 +71,44 @@
+ #define T7_RX_EDID_CAPACITY	512
+ #define T7_RX_EDID_BLOCK_SIZE	128
+ 
++/* Receiver core registers are byte-addressed and require byte accesses. */
++#define T7_RX_COR_AON_RESET	0x0005
++#define T7_RX_COR_HDMI2_MODE	0x0040
++#define T7_RX_COR_INT_CTRL		0x0079
++#define T7_RX_COR_HPD_CTRL		0x00f5
++#define T7_RX_COR_POWER_CTRL	0x1001
++#define T7_RX_COR_POWER_RESET	0x1005
++#define T7_RX_COR_STATE		0x1006
++#define T7_RX_COR_SYS_CTRL		0x1007
++#define T7_RX_COR_CHANNEL_MAP	0x100e
++#define T7_RX_COR_DATA_INVERT	0x100f
++#define T7_RX_COR_TMDS_CLOCK	0x1013
++#define T7_RX_COR_HDMI_MODE	0x1022
++#define T7_RX_COR_PREAMBLE		0x1023
++#define T7_RX_COR_COLOR_DEPTH	0x1027
++#define T7_RX_COR_FRL_CTRL		0x1028
++#define T7_RX_COR_TEST_CLOCK	0x103b
++#define T7_RX_COR_PWD_INT_CTRL	0x105f
++#define T7_RX_COR_VIDEO_DIV	0x10c1
++#define T7_RX_COR_CLAMP		0x10c4
++#define T7_RX_COR_AV_MUTE		0x1122
++#define T7_RX_COR_INPUT_FORMAT	0x1814
++#define T7_RX_COR_INPUT_MAP	0x1816
++#define T7_RX_COR_OUTPUT_SYNC	0x1842
++#define T7_RX_COR_FRAME_STATUS	0x1881
++#define T7_RX_COR_FRAME_TICKS	0x1888
++#define T7_RX_COR_WIDTH		0x188c
++#define T7_RX_COR_HEIGHT		0x188e
++#define T7_RX_COR_HSYNC		0x1890
++#define T7_RX_COR_HFRONT_BACK	0x1892
++#define T7_RX_COR_VSYNC		0x1898
++#define T7_RX_COR_VFRONT_BACK	0x189a
++#define T7_RX_COR_DPLL_CONFIG	0x1f15
++#define T7_RX_COR_DPLL_HDMI2	0x1f52
++#define T7_RX_COR_PHY_CLOCK1	0x20a3
++#define T7_RX_COR_PHY_CLOCK2	0x20a4
++#define T7_RX_COR_PHY_CLOCK3	0x20a5
++
+ static char *edid_firmware;
+ module_param(edid_firmware, charp, 0400);
+ MODULE_PARM_DESC(edid_firmware, "Optional validated EDID file in /lib/firmware for DDC bring-up");
+@@ -72,10 +117,15 @@ static bool phy_test;
+ module_param(phy_test, bool, 0400);
+ MODULE_PARM_DESC(phy_test, "Opt-in 148.5 MHz input PLL/equalizer trial; requires EDID firmware");
+ 
++static bool core_test;
++module_param(core_test, bool, 0400);
++MODULE_PARM_DESC(core_test, "Initialize the TMDS video core; requires phy_test=1");
++
+ static const u32 t7_hdmirx_phy_top_regs[] = {
+ 	T7_RX_TOP_CLK_CNTL, T7_RX_TOP_PORT_SEL, T7_RX_TOP_PHYIF_CNTL0,
+ 	T7_RX_TOP_CHAN_SWITCH_0, T7_RX_TOP_CHAN_SWITCH_1,
+ 	T7_RX_TOP_METER_HDMI_CNTL, T7_RX_TOP_METER_CABLE_CNTL,
++	T7_RX_TOP_VID_CNTL, T7_RX_TOP_VID_CNTL2, T7_RX_TOP_OUTPUT_OVERRIDE,
+ };
+ 
+ enum t7_hdmirx_clock {
+@@ -91,12 +141,15 @@ enum t7_hdmirx_clock {
+ struct t7_hdmirx {
+ 	void __iomem *top;
+ 	void __iomem *phy;
++	void __iomem *cor;
+ 	struct clk_bulk_data clocks[T7_RX_NUM_CLOCKS];
+ 	u32 port;
+ 	u32 saved_reset;
+ 	u32 saved_port_sel;
+ 	bool ddc_active;
+ 	bool phy_active;
++	bool core_active;
++	unsigned long core_smc_result;
+ 	u32 phy_top_saved[ARRAY_SIZE(t7_hdmirx_phy_top_regs)];
+ 	u32 cable_hz;
+ 	u8 edid[T7_RX_EDID_CAPACITY];
+@@ -374,6 +427,124 @@ static void t7_hdmirx_phy_equalize(struct t7_hdmirx *rx)
+ 	t7_hdmirx_phy_update(rx, T7_RX_PHY_DCHD0, BIT(28), BIT(28));
+ }
+ 
++static void t7_hdmirx_core_stop(void *data)
++{
++	struct t7_hdmirx *rx = data;
++
++	if (!rx->core_active)
++		return;
++	t7_hdmirx_set_hpd(rx, false);
++	writeb(0x1a, rx->cor + 0x1005);
++	writeb(1, rx->cor + T7_RX_COR_AON_RESET);
++	writeb(1, rx->cor + T7_RX_COR_POWER_CTRL);
++	writeb(0, rx->cor + T7_RX_COR_SYS_CTRL);
++	writeb(0, rx->cor + T7_RX_COR_PHY_CLOCK1);
++	writeb(0, rx->cor + T7_RX_COR_PHY_CLOCK2);
++	writeb(0, rx->cor + T7_RX_COR_PHY_CLOCK3);
++	readb(rx->cor + T7_RX_COR_PHY_CLOCK3);
++	rx->core_active = false;
++}
++
++static int t7_hdmirx_core_start(struct t7_hdmirx *rx)
++{
++	struct arm_smccc_res res;
++
++	/* T7's firmware owns TOP_SECURE_MODE, including non-secure core access. */
++	arm_smccc_smc(0x8200008c, 0xa2, 0x1f, 0, 0, 0, 0, 0, &res);
++	rx->core_smc_result = res.a0;
++	if (res.a0)
++		return -EIO;
++	rx->core_active = true;
++	/* Hold AON reset while removing TMDS isolation and selecting PHY lanes. */
++	writeb(1, rx->cor + T7_RX_COR_AON_RESET);
++	writeb(0x11, rx->cor + T7_RX_COR_HDMI2_MODE);
++	writeb(0, rx->cor + T7_RX_COR_INT_CTRL);
++	writeb(0, rx->cor + T7_RX_COR_POWER_CTRL);
++	writeb(3, rx->cor + T7_RX_COR_SYS_CTRL);
++	writeb(0x12, rx->cor + T7_RX_COR_CHANNEL_MAP);
++	writeb(0x52, rx->cor + T7_RX_COR_DATA_INVERT);
++	writeb(0x20, rx->cor + T7_RX_COR_TMDS_CLOCK);
++	writeb(0x80, rx->cor + T7_RX_COR_TEST_CLOCK);
++	writeb(1, rx->cor + T7_RX_COR_VIDEO_DIV);
++	/* Native single-rate RGB input and video component mapping. */
++	writeb(0, rx->cor + T7_RX_COR_INPUT_FORMAT);
++	writeb(0, rx->cor + T7_RX_COR_INPUT_FORMAT + 1);
++	writeb(0x40, rx->cor + T7_RX_COR_INPUT_MAP);
++	writeb(4, rx->cor + T7_RX_COR_INPUT_MAP + 1);
++	writeb(0, rx->cor + T7_RX_COR_OUTPUT_SYNC);
++	writeb(4, rx->cor + T7_RX_COR_HDMI_MODE);
++	writeb(1, rx->cor + T7_RX_COR_HPD_CTRL);
++	writeb(0, rx->cor + T7_RX_COR_CLAMP);
++	/* DVI sources have no HDMI guard-band preamble. */
++	writeb(0, rx->cor + T7_RX_COR_PREAMBLE);
++	writeb(0xff, rx->cor + T7_RX_COR_PHY_CLOCK1);
++	writeb(0x3f, rx->cor + T7_RX_COR_PHY_CLOCK2);
++	writeb(1, rx->cor + T7_RX_COR_PHY_CLOCK3);
++	writeb(0, rx->cor + T7_RX_COR_AON_RESET);
++	writeb(0, rx->cor + T7_RX_COR_PWD_INT_CTRL);
++	/* TMDS DPLL, no FRL, and video/deep-colour reset pulse. */
++	writeb(0x10, rx->cor + T7_RX_COR_DPLL_CONFIG);
++	writeb(0, rx->cor + T7_RX_COR_FRL_CTRL);
++	writeb(0, rx->cor + T7_RX_COR_DPLL_HDMI2);
++	writeb(0x20, rx->cor + T7_RX_COR_AV_MUTE);
++	writeb(0x1a, rx->cor + T7_RX_COR_POWER_RESET);
++	usleep_range(100, 110);
++	writeb(1, rx->cor + T7_RX_COR_POWER_RESET);
++	writel(BIT(21) | BIT(20) | BIT(7), rx->top + T7_RX_TOP_VID_CNTL);
++	writel(0x0a, rx->top + T7_RX_TOP_VID_CNTL2);
++	writel(0, rx->top + T7_RX_TOP_OUTPUT_OVERRIDE);
++	/* Re-align the PCS after lane and video setup; lock alone is insufficient. */
++	writel(BIT(13) | BIT(7), rx->top + T7_RX_TOP_SW_RESET);
++	readl(rx->top + T7_RX_TOP_SW_RESET);
++	usleep_range(1, 5);
++	writel(0, rx->top + T7_RX_TOP_SW_RESET);
++	if (readb(rx->cor + T7_RX_COR_SYS_CTRL) != 3 ||
++	    readb(rx->cor + T7_RX_COR_PHY_CLOCK1) != 0xff)
++		return -EIO;
++	return 0;
++}
++
++static u32 t7_hdmirx_core_read16(struct t7_hdmirx *rx, u32 offset)
++{
++	return readb(rx->cor + offset) | (readb(rx->cor + offset + 1) << 8);
++}
++
++int t7_hdmirx_check_1080p(struct device *dev)
++{
++	struct t7_hdmirx *rx = dev_get_drvdata(dev);
++	u32 ticks, reference;
++	unsigned int i;
++
++	if (!rx || !rx->core_active)
++		return -ENOLINK;
++	for (i = 0; i < 2; i++) {
++		if (!(readl(rx->top + T7_RX_TOP_HPD_PWR5V) & BIT(20 + rx->port)) ||
++		    !(readl(rx->top + T7_RX_TOP_TMDS_ALIGN_STAT) & BIT(0)))
++			return -ENOLINK;
++		if (readb(rx->cor + T7_RX_COR_FRAME_STATUS) & BIT(2))
++			return -ERANGE;
++		if (readl(rx->top + T7_RX_TOP_VID_STAT) & GENMASK(23, 20) ||
++		    readb(rx->cor + T7_RX_COR_COLOR_DEPTH) > 4)
++			return -ERANGE;
++		if (t7_hdmirx_core_read16(rx, T7_RX_COR_WIDTH) != 1920 ||
++		    t7_hdmirx_core_read16(rx, T7_RX_COR_HEIGHT) != 1080 ||
++		    t7_hdmirx_core_read16(rx, T7_RX_COR_HSYNC) +
++		    t7_hdmirx_core_read16(rx, T7_RX_COR_HFRONT_BACK) != 2200 ||
++		    t7_hdmirx_core_read16(rx, T7_RX_COR_VSYNC) +
++		    t7_hdmirx_core_read16(rx, T7_RX_COR_VFRONT_BACK) != 1125)
++			return -ERANGE;
++		ticks = t7_hdmirx_core_read16(rx, T7_RX_COR_FRAME_TICKS) |
++			(readb(rx->cor + T7_RX_COR_FRAME_TICKS + 2) << 16);
++		reference = clk_get_rate(rx->clocks[T7_RX_PCLK].clk);
++		if (!ticks || ticks < reference / 61 || ticks > reference / 59)
++			return -ERANGE;
++		if (!i)
++			usleep_range(20000, 21000);
++	}
++	return 0;
++}
++EXPORT_SYMBOL_GPL(t7_hdmirx_check_1080p);
++
+ static int t7_hdmirx_status(struct seq_file *s, void *unused)
+ {
+ 	struct device *dev = s->private;
+@@ -398,6 +569,26 @@ static int t7_hdmirx_status(struct seq_file *s, void *unused)
+ 	seq_printf(s, "top_edid_gen_stat: %#010x\n",
+ 		   readl(rx->top + T7_RX_TOP_EDID_GEN_STAT));
+ 	seq_printf(s, "phy_active: %u\n", rx->phy_active);
++	seq_printf(s, "core_active: %u\n", rx->core_active);
++	if (rx->core_active) {
++		u32 ticks = t7_hdmirx_core_read16(rx, T7_RX_COR_FRAME_TICKS) |
++			    (readb(rx->cor + T7_RX_COR_FRAME_TICKS + 2) << 16);
++
++		seq_printf(s, "core_state: %#x\n", readb(rx->cor + T7_RX_COR_STATE));
++		seq_printf(s, "core_smc_result: %#lx\n", rx->core_smc_result);
++		seq_printf(s, "core_sys_ctrl: %#x\n", readb(rx->cor + T7_RX_COR_SYS_CTRL));
++		seq_printf(s, "core_phyck: %#x\n", readb(rx->cor + T7_RX_COR_PHY_CLOCK1));
++		seq_printf(s, "core_aon_reset: %#x\n", readb(rx->cor + T7_RX_COR_AON_RESET));
++		seq_printf(s, "core_fdet: %#x\n", readb(rx->cor + T7_RX_COR_FRAME_STATUS));
++		seq_printf(s, "color_depth_code: %#x\n", readb(rx->cor + T7_RX_COR_COLOR_DEPTH));
++		seq_printf(s, "width: %u\n", t7_hdmirx_core_read16(rx, T7_RX_COR_WIDTH));
++		seq_printf(s, "height: %u\n", t7_hdmirx_core_read16(rx, T7_RX_COR_HEIGHT));
++		seq_printf(s, "htotal: %u\n", t7_hdmirx_core_read16(rx, T7_RX_COR_HSYNC) +
++			   t7_hdmirx_core_read16(rx, T7_RX_COR_HFRONT_BACK));
++		seq_printf(s, "vtotal: %u\n", t7_hdmirx_core_read16(rx, T7_RX_COR_VSYNC) +
++			   t7_hdmirx_core_read16(rx, T7_RX_COR_VFRONT_BACK));
++		seq_printf(s, "frame_ticks: %u\n", ticks);
++	}
+ 	if (rx->phy_active) {
+ 		u32 cable = readl(rx->top + T7_RX_TOP_METER_CABLE_STAT);
+ 		u32 tmds = readl(rx->top + T7_RX_TOP_METER_HDMI_STAT);
+@@ -449,6 +640,8 @@ static int t7_hdmirx_probe(struct platform_device *pdev)
+ 
+ 	if (phy_test && !edid_firmware)
+ 		return dev_err_probe(dev, -EINVAL, "PHY trial requires an EDID firmware\n");
++	if (core_test && !phy_test)
++		return dev_err_probe(dev, -EINVAL, "Core trial requires PHY initialization\n");
+ 	rx = devm_kzalloc(dev, sizeof(*rx), GFP_KERNEL);
+ 	if (!rx)
+ 		return -ENOMEM;
+@@ -461,6 +654,9 @@ static int t7_hdmirx_probe(struct platform_device *pdev)
+ 	rx->phy = devm_platform_ioremap_resource_byname(pdev, "phy");
+ 	if (IS_ERR(rx->phy))
+ 		return PTR_ERR(rx->phy);
++	rx->cor = devm_platform_ioremap_resource_byname(pdev, "cor");
++	if (IS_ERR(rx->cor))
++		return PTR_ERR(rx->cor);
+ 	for (i = 0; i < ARRAY_SIZE(rx->clocks); i++)
+ 		rx->clocks[i].id = names[i];
+ 	ret = devm_clk_bulk_get(dev, ARRAY_SIZE(rx->clocks), rx->clocks);
+@@ -516,6 +712,14 @@ static int t7_hdmirx_probe(struct platform_device *pdev)
+ 					     rx->cable_hz, readl(rx->phy + T7_RX_PHY_APLL0));
+ 		t7_hdmirx_phy_equalize(rx);
+ 	}
++	if (core_test) {
++		ret = devm_add_action_or_reset(dev, t7_hdmirx_core_stop, rx);
++		if (ret)
++			return ret;
++		ret = t7_hdmirx_core_start(rx);
++		if (ret)
++			return dev_err_probe(dev, ret, "Cannot initialize receiver core\n");
++	}
+ 	debugfs = debugfs_create_dir(dev_name(dev), NULL);
+ 	if (IS_ERR(debugfs))
+ 		return PTR_ERR(debugfs);
+@@ -543,7 +747,20 @@ static struct platform_driver t7_hdmirx_driver = {
+ 		.of_match_table = t7_hdmirx_match,
+ 	},
+ };
+-module_platform_driver(t7_hdmirx_driver);
++
++static int __init t7_hdmirx_init(void)
++{
++	/* A faulted VDIN consumer must retain its supplier until reboot. */
++	t7_hdmirx_driver.driver.suppress_bind_attrs = core_test;
++	return platform_driver_register(&t7_hdmirx_driver);
++}
++module_init(t7_hdmirx_init);
++
++static void __exit t7_hdmirx_exit(void)
++{
++	platform_driver_unregister(&t7_hdmirx_driver);
++}
++module_exit(t7_hdmirx_exit);
+ 
+ MODULE_DESCRIPTION("Amlogic T7 HDMI receiver bring-up");
+ MODULE_LICENSE("GPL");
+diff --git a/drivers/media/platform/amlogic/t7-hdmirx/t7-hdmirx.h b/drivers/media/platform/amlogic/t7-hdmirx/t7-hdmirx.h
+new file mode 100644
+index 0000000000000..773dbc6bda9af
+--- /dev/null
++++ b/drivers/media/platform/amlogic/t7-hdmirx/t7-hdmirx.h
+@@ -0,0 +1,10 @@
++/* SPDX-License-Identifier: GPL-2.0-only */
++#ifndef __T7_HDMIRX_H
++#define __T7_HDMIRX_H
++
++struct device;
++
++/* Require two stable progressive 1080p60 samples on the bound receiver. */
++int t7_hdmirx_check_1080p(struct device *dev);
++
++#endif
+diff --git a/drivers/media/platform/amlogic/t7-hdmirx/t7-vdin-test.c b/drivers/media/platform/amlogic/t7-hdmirx/t7-vdin-test.c
+new file mode 100644
+index 0000000000000..f21e3f02561e9
+--- /dev/null
++++ b/drivers/media/platform/amlogic/t7-hdmirx/t7-vdin-test.c
+@@ -0,0 +1,458 @@
++// SPDX-License-Identifier: GPL-2.0-only
++/* Copyright (c) 2019 Amlogic, Inc. All rights reserved. */
++/* Exclusive T7 VDIN0 raw snapshot experiment; DRM must remain disabled. */
++#include <linux/arm-smccc.h>
++#include <linux/clk.h>
++#include <linux/completion.h>
++#include <linux/debugfs.h>
++#include <linux/dma-mapping.h>
++#include <linux/interrupt.h>
++#include <linux/iopoll.h>
++#include <linux/module.h>
++#include <linux/mutex.h>
++#include <linux/of.h>
++#include <linux/of_platform.h>
++#include <linux/platform_device.h>
++#include <linux/pm_domain.h>
++#include <linux/pm_runtime.h>
++#include <linux/seq_file.h>
++#include <linux/vmalloc.h>
++
++#include "t7-hdmirx.h"
++
++/* VCBUS word indices; the accessors alone convert them to byte offsets. */
++#define VDIN_COM_CTRL0		0x1202
++#define VDIN_ACTIVE_PIXELS	0x1203
++#define VDIN_LCNT_STATUS		0x1204
++#define VDIN_ASFIFO_CTRL1		0x1209
++#define VDIN_WIDTHS		0x120a
++#define VDIN_SC_MISC_CTRL		0x120b
++#define VDIN_MATRIX_CTRL		0x1210
++#define VDIN_LFIFO_CTRL		0x121a
++#define VDIN_GCLK_CTRL		0x121b
++#define VDIN_INTF_WIDTH		0x121c
++#define VDIN_WR_CTRL2		0x121f
++#define VDIN_WR_CTRL		0x1220
++#define VDIN_WR_H_WIN		0x1221
++#define VDIN_WR_V_WIN		0x1222
++#define VDIN_WR_URGENT		0x1257
++#define VDIN_WR_STATUS		0x1258
++#define VDIN_GCLK_CTRL2		0x1270
++#define VDIN_VSHRK_CTRL		0x1271
++#define VDIN_HDR_CTRL		0x1280
++#define VDIN_HDR_MATRIX_IN	0x12bb
++#define VDIN_HDR_MATRIX_OUT	0x12bc
++#define VDIN_WR_BADDR		0x12cc
++#define VDIN_WR_STRIDE		0x12ce
++#define VDIN_DOUBLE_CTRL		0x410b
++#define VDIN_TOP_MISC		0x410d
++#define VPU_SW_RESET		0x2720
++#define VPU_WRARB_MODE		0x27a2
++#define VPU_WRARB_REQEN		0x27a3
++#define VDIN_WR_REQ		BIT(8)
++#define VDIN_VCP_WR		BIT(25)
++#define VDIN_DONE_CLEAR		BIT(21)
++#define VDIN_WIDTH		1920
++#define VDIN_HEIGHT		1080
++#define VDIN_STRIDE		(VDIN_WIDTH * 3)
++#define VDIN_FRAME_SIZE		(VDIN_STRIDE * VDIN_HEIGHT)
++
++struct t7_vdin {
++	struct device *dev;
++	struct device *receiver;
++	struct device *domains[3];
++	unsigned int domain_count;
++	void __iomem *regs;
++	struct clk_bulk_data clocks[5];
++	struct mutex lock; /* Serializes DMA capture and the immutable copy. */
++	struct completion done;
++	spinlock_t irq_lock; /* Protects armed/frame_irqs and request gating. */
++	bool armed;
++	bool faulted;
++	unsigned int frame_irqs;
++	unsigned int snapshots;
++	int irq;
++	void *frame;
++	dma_addr_t frame_dma;
++	bool memory_on;
++};
++
++static u32 t7_vdin_read(struct t7_vdin *vdin, u32 reg)
++{
++	return readl(vdin->regs + reg * 4);
++}
++
++static void t7_vdin_write(struct t7_vdin *vdin, u32 reg, u32 value)
++{
++	writel(value, vdin->regs + reg * 4);
++}
++
++static void t7_vdin_update(struct t7_vdin *vdin, u32 reg, u32 mask, u32 value)
++{
++	t7_vdin_write(vdin, reg, (t7_vdin_read(vdin, reg) & ~mask) | (value & mask));
++}
++
++static irqreturn_t t7_vdin_write_done(int irq, void *data)
++{
++	struct t7_vdin *vdin = data;
++	unsigned long flags;
++
++	spin_lock_irqsave(&vdin->irq_lock, flags);
++	/* The write-done interrupt is latched until this clear pulse. */
++	t7_vdin_update(vdin, VDIN_WR_CTRL, VDIN_DONE_CLEAR, VDIN_DONE_CLEAR);
++	t7_vdin_update(vdin, VDIN_WR_CTRL, VDIN_DONE_CLEAR, 0);
++	if (vdin->armed && ++vdin->frame_irqs == 2) {
++		/* Discard the first partial frame, then stop before another starts. */
++		t7_vdin_update(vdin, VDIN_WR_CTRL, VDIN_WR_REQ | VDIN_VCP_WR, 0);
++		t7_vdin_read(vdin, VDIN_WR_CTRL);
++		vdin->armed = false;
++		complete(&vdin->done);
++	}
++	spin_unlock_irqrestore(&vdin->irq_lock, flags);
++	return IRQ_HANDLED;
++}
++
++static int t7_vdin_stop_dma(struct t7_vdin *vdin)
++{
++	unsigned long flags;
++	u32 idle;
++	int ret;
++
++	spin_lock_irqsave(&vdin->irq_lock, flags);
++	vdin->armed = false;
++	t7_vdin_update(vdin, VDIN_WR_CTRL, VDIN_WR_REQ | VDIN_VCP_WR, 0);
++	t7_vdin_read(vdin, VDIN_WR_CTRL);
++	spin_unlock_irqrestore(&vdin->irq_lock, flags);
++	synchronize_irq(vdin->irq);
++	/* T7's integrated MIF uses write-done, not the older VPU arbiter bits. */
++	ret = readl_poll_timeout(vdin->regs + VDIN_WR_STATUS * 4, idle,
++				 vdin->frame_irqs == 2 && (idle & BIT(0)),
++				 10, 100000);
++	if (ret) {
++		/* Keep DMA memory, clocks and binding alive until a hardware reboot. */
++		if (!vdin->faulted)
++			__module_get(THIS_MODULE);
++		vdin->faulted = true;
++		dev_err(vdin->dev, "DMA idle timeout (%#x); retaining buffer and module\n", idle);
++	}
++	return ret;
++}
++
++static void t7_vdin_configure(struct t7_vdin *vdin)
++{
++	t7_vdin_write(vdin, VDIN_WR_CTRL, 0);
++	t7_vdin_update(vdin, VDIN_TOP_MISC, BIT(26) | BIT(29), BIT(26) | BIT(29));
++	udelay(1);
++	t7_vdin_update(vdin, VDIN_TOP_MISC, BIT(26) | BIT(29), 0);
++	t7_vdin_write(vdin, VDIN_GCLK_CTRL, 0);
++	t7_vdin_write(vdin, VDIN_GCLK_CTRL2, 0);
++	/* HDMI input; components G/B/R pass through with no colour matrix. */
++	t7_vdin_write(vdin, VDIN_COM_CTRL0, 0x915);
++	t7_vdin_write(vdin, VDIN_ASFIFO_CTRL1, 0xe40000);
++	t7_vdin_update(vdin, VPU_SW_RESET, BIT(26), BIT(26));
++	t7_vdin_update(vdin, VPU_SW_RESET, BIT(26), 0);
++	t7_vdin_write(vdin, VDIN_WIDTHS, ((VDIN_WIDTH - 1) << 16) | (VDIN_WIDTH - 1));
++	t7_vdin_write(vdin, VDIN_INTF_WIDTH, VDIN_WIDTH - 1);
++	t7_vdin_write(vdin, VDIN_SC_MISC_CTRL, 0);
++	t7_vdin_write(vdin, VDIN_VSHRK_CTRL, 0);
++	t7_vdin_write(vdin, VDIN_MATRIX_CTRL, 0);
++	t7_vdin_write(vdin, VDIN_HDR_CTRL, 0);
++	t7_vdin_write(vdin, VDIN_HDR_MATRIX_IN, 0);
++	t7_vdin_write(vdin, VDIN_HDR_MATRIX_OUT, 0);
++	t7_vdin_update(vdin, VDIN_LFIFO_CTRL, GENMASK(13, 0) | BIT(17) | BIT(18),
++		       BIT(17) | 0x780);
++	t7_vdin_write(vdin, VDIN_WR_CTRL2, BIT(18) | (2 << 12));
++	t7_vdin_write(vdin, VDIN_WR_H_WIN, BIT(30) | (VDIN_WIDTH - 1));
++	t7_vdin_write(vdin, VDIN_WR_V_WIN, VDIN_HEIGHT - 1);
++	/* Packed 24-bit output; use EOL to reset the packer on every line. */
++	t7_vdin_write(vdin, VDIN_WR_CTRL,
++		      (3U << 30) | BIT(29) | BIT(27) | BIT(24) | BIT(23) | BIT(22) | (3 << 16) |
++		      BIT(12) | BIT(10) | BIT(9));
++	t7_vdin_write(vdin, VDIN_WR_BADDR, vdin->frame_dma >> 4);
++	t7_vdin_write(vdin, VDIN_WR_STRIDE, VDIN_STRIDE >> 4);
++	/* MIF0 takes normal VDIN0; done waits for the final AXI write response. */
++	t7_vdin_update(vdin, VDIN_DOUBLE_CTRL, GENMASK(7, 0) | BIT(20),
++		       BIT(4) | BIT(20));
++	t7_vdin_update(vdin, VPU_WRARB_MODE, BIT(16), 0);
++	t7_vdin_update(vdin, VPU_WRARB_REQEN, BIT(0), BIT(0));
++	t7_vdin_write(vdin, VDIN_WR_URGENT, BIT(9) | BIT(8));
++}
++
++static int t7_vdin_capture(struct t7_vdin *vdin)
++{
++	unsigned long flags;
++	bool completed;
++	int ret;
++
++	if (vdin->faulted)
++		return -EIO;
++	ret = t7_hdmirx_check_1080p(vdin->receiver);
++	if (ret)
++		return ret;
++	memset(vdin->frame, 0xa5, VDIN_FRAME_SIZE);
++	dma_wmb();
++	t7_vdin_configure(vdin);
++	t7_vdin_update(vdin, VDIN_WR_CTRL, VDIN_DONE_CLEAR, VDIN_DONE_CLEAR);
++	t7_vdin_update(vdin, VDIN_WR_CTRL, VDIN_DONE_CLEAR, 0);
++	reinit_completion(&vdin->done);
++	spin_lock_irqsave(&vdin->irq_lock, flags);
++	vdin->frame_irqs = 0;
++	vdin->armed = true;
++	t7_vdin_update(vdin, VDIN_WR_CTRL, VDIN_WR_REQ | VDIN_VCP_WR,
++		       VDIN_WR_REQ | VDIN_VCP_WR);
++	spin_unlock_irqrestore(&vdin->irq_lock, flags);
++	completed = wait_for_completion_timeout(&vdin->done, msecs_to_jiffies(1000));
++	ret = t7_vdin_stop_dma(vdin);
++	if (ret)
++		return ret;
++	if (!completed) {
++		dev_err(vdin->dev, "capture timeout: IRQs %u, pixels %#x, lines %#x, WR %#x\n",
++			vdin->frame_irqs, t7_vdin_read(vdin, VDIN_ACTIVE_PIXELS),
++			t7_vdin_read(vdin, VDIN_LCNT_STATUS), t7_vdin_read(vdin, VDIN_WR_STATUS));
++		return -ETIMEDOUT;
++	}
++	dma_rmb();
++	ret = t7_hdmirx_check_1080p(vdin->receiver);
++	if (!ret)
++		vdin->snapshots++;
++	return ret;
++}
++
++static int t7_vdin_frame_open(struct inode *inode, struct file *file)
++{
++	struct t7_vdin *vdin = inode->i_private;
++	void *snapshot;
++	int ret;
++
++	ret = debugfs_file_get(file->f_path.dentry);
++	if (ret)
++		return ret;
++	snapshot = kvmalloc(VDIN_FRAME_SIZE, GFP_KERNEL);
++	if (!snapshot) {
++		ret = -ENOMEM;
++		goto put_file;
++	}
++	ret = mutex_lock_interruptible(&vdin->lock);
++	if (ret)
++		goto free_snapshot;
++	ret = t7_vdin_capture(vdin);
++	if (!ret)
++		memcpy(snapshot, vdin->frame, VDIN_FRAME_SIZE);
++	mutex_unlock(&vdin->lock);
++	if (ret)
++		goto free_snapshot;
++	/* Per-fd immutable storage survives later captures or device removal. */
++	file->private_data = snapshot;
++	debugfs_file_put(file->f_path.dentry);
++	return 0;
++free_snapshot:
++	kvfree(snapshot);
++put_file:
++	debugfs_file_put(file->f_path.dentry);
++	return ret;
++}
++
++static ssize_t t7_vdin_frame_read(struct file *file, char __user *buffer,
++				  size_t size, loff_t *offset)
++{
++	return simple_read_from_buffer(buffer, size, offset, file->private_data, VDIN_FRAME_SIZE);
++}
++
++static int t7_vdin_frame_release(struct inode *inode, struct file *file)
++{
++	kvfree(file->private_data);
++	return 0;
++}
++
++static const struct file_operations t7_vdin_frame_fops = {
++	.owner = THIS_MODULE,
++	.open = t7_vdin_frame_open,
++	.read = t7_vdin_frame_read,
++	.release = t7_vdin_frame_release,
++};
++
++static int t7_vdin_status(struct seq_file *s, void *unused)
++{
++	struct t7_vdin *vdin = dev_get_drvdata(s->private);
++
++	seq_printf(s, "snapshots: %u\n", vdin->snapshots);
++	seq_printf(s, "frame_irqs: %u\n", vdin->frame_irqs);
++	seq_printf(s, "faulted: %u\n", vdin->faulted);
++	seq_printf(s, "write_ctrl: %#x\n", t7_vdin_read(vdin, VDIN_WR_CTRL));
++	seq_printf(s, "write_status: %#x\n", t7_vdin_read(vdin, VDIN_WR_STATUS));
++	seq_printf(s, "pixels: %#x\n", t7_vdin_read(vdin, VDIN_ACTIVE_PIXELS));
++	seq_printf(s, "lines: %#x\n", t7_vdin_read(vdin, VDIN_LCNT_STATUS));
++	seq_printf(s, "vpu_hz: %lu\n", clk_get_rate(vdin->clocks[1].clk));
++	seq_printf(s, "vapb_hz: %lu\n", clk_get_rate(vdin->clocks[2].clk));
++	seq_printf(s, "clkb_hz: %lu\n", clk_get_rate(vdin->clocks[3].clk));
++	seq_printf(s, "measure_hz: %lu\n", clk_get_rate(vdin->clocks[4].clk));
++	return 0;
++}
++
++static void t7_vdin_power_off(void *data)
++{
++	struct t7_vdin *vdin = data;
++	struct arm_smccc_res res;
++
++	if (vdin->memory_on)
++		arm_smccc_smc(0x82000093, 60, 0, 0, 0, 0, 0, 0, &res);
++	while (vdin->domain_count) {
++		struct device *domain = vdin->domains[--vdin->domain_count];
++
++		pm_runtime_put_sync(domain);
++		dev_pm_domain_detach(domain, true);
++	}
++}
++
++static void t7_vdin_clocks_off(void *data)
++{
++	struct t7_vdin *vdin = data;
++
++	clk_bulk_disable_unprepare(ARRAY_SIZE(vdin->clocks), vdin->clocks);
++}
++
++static void t7_vdin_free_frame(void *data)
++{
++	struct t7_vdin *vdin = data;
++
++	if (!vdin->faulted)
++		dma_free_coherent(vdin->dev, VDIN_FRAME_SIZE, vdin->frame, vdin->frame_dma);
++}
++
++static void t7_vdin_debugfs_remove(void *data)
++{
++	debugfs_remove_recursive(data);
++}
++
++static void t7_vdin_put_receiver(void *data)
++{
++	put_device(data);
++}
++
++static int t7_vdin_probe(struct platform_device *pdev)
++{
++	struct device *dev = &pdev->dev;
++	struct platform_device *receiver;
++	struct device_node *node;
++	struct arm_smccc_res res;
++	struct dentry *debugfs;
++	struct t7_vdin *vdin;
++	unsigned int i;
++	int ret;
++
++	vdin = devm_kzalloc(dev, sizeof(*vdin), GFP_KERNEL);
++	if (!vdin)
++		return -ENOMEM;
++	vdin->dev = dev;
++	mutex_init(&vdin->lock);
++	spin_lock_init(&vdin->irq_lock);
++	init_completion(&vdin->done);
++	platform_set_drvdata(pdev, vdin);
++	node = of_parse_phandle(dev->of_node, "amlogic,receiver", 0);
++	receiver = of_find_device_by_node(node);
++	of_node_put(node);
++	if (!receiver)
++		return -EPROBE_DEFER;
++	vdin->receiver = &receiver->dev;
++	ret = devm_add_action_or_reset(dev, t7_vdin_put_receiver, vdin->receiver);
++	if (ret)
++		return ret;
++	if (!device_is_bound(vdin->receiver))
++		return -EPROBE_DEFER;
++	if (!device_link_add(dev, vdin->receiver, DL_FLAG_AUTOREMOVE_CONSUMER))
++		return -EINVAL;
++	vdin->regs = devm_platform_ioremap_resource(pdev, 0);
++	if (IS_ERR(vdin->regs))
++		return PTR_ERR(vdin->regs);
++	vdin->clocks[0].id = "pclk";
++	vdin->clocks[1].id = "vpu";
++	vdin->clocks[2].id = "vapb";
++	vdin->clocks[3].id = "clkb";
++	vdin->clocks[4].id = "measure";
++	ret = devm_clk_bulk_get(dev, ARRAY_SIZE(vdin->clocks), vdin->clocks);
++	if (ret)
++		return dev_err_probe(dev, ret, "Cannot acquire capture clocks\n");
++	ret = devm_add_action_or_reset(dev, t7_vdin_power_off, vdin);
++	if (ret)
++		return ret;
++	for (i = 0; i < ARRAY_SIZE(vdin->domains); i++) {
++		struct device *domain = dev_pm_domain_attach_by_id(dev, i);
++
++		if (IS_ERR_OR_NULL(domain))
++			return domain ? PTR_ERR(domain) : -ENODEV;
++		ret = pm_runtime_resume_and_get(domain);
++		if (ret < 0) {
++			dev_pm_domain_detach(domain, true);
++			return ret;
++		}
++		vdin->domains[vdin->domain_count++] = domain;
++	}
++	ret = clk_set_rate(vdin->clocks[1].clk, 400000000);
++	if (ret)
++		return ret;
++	ret = clk_set_rate(vdin->clocks[2].clk, 250000000);
++	if (ret)
++		return ret;
++	ret = clk_set_rate(vdin->clocks[3].clk, 400000000);
++	if (ret)
++		return ret;
++	ret = clk_set_rate(vdin->clocks[4].clk, 50000000);
++	if (ret)
++		return ret;
++	ret = clk_bulk_prepare_enable(ARRAY_SIZE(vdin->clocks), vdin->clocks);
++	if (ret)
++		return ret;
++	ret = devm_add_action_or_reset(dev, t7_vdin_clocks_off, vdin);
++	if (ret)
++		return ret;
++	/* T7 firmware mempd IDs follow 52 power domains: VDIN0 module index 8. */
++	arm_smccc_smc(0x82000093, 60, 1, 0, 0, 0, 0, 0, &res);
++	if (res.a0)
++		return dev_err_probe(dev, -EIO, "Cannot power VDIN0 line memory\n");
++	vdin->memory_on = true;
++	t7_vdin_write(vdin, VDIN_WR_CTRL, 0);
++	ret = dma_set_mask_and_coherent(dev, DMA_BIT_MASK(32));
++	if (ret)
++		return ret;
++	vdin->frame = dma_alloc_coherent(dev, VDIN_FRAME_SIZE, &vdin->frame_dma, GFP_KERNEL);
++	if (!vdin->frame)
++		return -ENOMEM;
++	ret = devm_add_action_or_reset(dev, t7_vdin_free_frame, vdin);
++	if (ret)
++		return ret;
++	vdin->irq = platform_get_irq(pdev, 0);
++	if (vdin->irq < 0)
++		return vdin->irq;
++	ret = devm_request_irq(dev, vdin->irq, t7_vdin_write_done, 0, dev_name(dev), vdin);
++	if (ret)
++		return ret;
++	debugfs = debugfs_create_dir(dev_name(dev), NULL);
++	if (IS_ERR(debugfs))
++		return PTR_ERR(debugfs);
++	debugfs_create_file("frame", 0400, debugfs, vdin, &t7_vdin_frame_fops);
++	debugfs_create_devm_seqfile(dev, "status", debugfs, t7_vdin_status);
++	ret = devm_add_action_or_reset(dev, t7_vdin_debugfs_remove, debugfs);
++	if (ret)
++		return ret;
++	dev_info(dev, "exclusive 1080p snapshot ready; production capture not implemented\n");
++	return 0;
++}
++
++static const struct of_device_id t7_vdin_match[] = {
++	{ .compatible = "amlogic,t7-vdin-test" },
++	{ }
++};
++MODULE_DEVICE_TABLE(of, t7_vdin_match);
++
++static struct platform_driver t7_vdin_driver = {
++	.probe = t7_vdin_probe,
++	.driver = {
++		.name = "t7-vdin-test",
++		.of_match_table = t7_vdin_match,
++		.suppress_bind_attrs = true,
++	},
++};
++module_platform_driver(t7_vdin_driver);
++
++MODULE_DESCRIPTION("Amlogic T7 VDIN0 snapshot experiment");
++MODULE_LICENSE("GPL");
+diff --git a/drivers/media/platform/amlogic/t7-hdmirx/test_core.py b/drivers/media/platform/amlogic/t7-hdmirx/test_core.py
+new file mode 100644
+index 0000000000000..10c57c88a9a88
+--- /dev/null
++++ b/drivers/media/platform/amlogic/t7-hdmirx/test_core.py
+@@ -0,0 +1,133 @@
++#!/usr/bin/env python3
++"""Exercise actual core lifecycle and stable-timing validation with fake registers."""
++from pathlib import Path
++import subprocess
++import tempfile
++
++source = Path(__file__).with_name('t7-hdmirx.c').read_text()
++defines = '\n'.join(line for line in source.splitlines() if line.startswith('#define T7_RX_'))
++types = source[source.index('static const u32 t7_hdmirx_phy_top_regs'):
++               source.index('static int t7_hdmirx_validate_edid')]
++functions = source[source.index('static void t7_hdmirx_core_stop'):
++                   source.index('static int t7_hdmirx_status')]
++prefix = r'''
++#include <assert.h>
++#include <stdbool.h>
++#include <stdint.h>
++#include <string.h>
++#include <errno.h>
++#include <stdio.h>
++typedef uint8_t u8;
++typedef uint32_t u32;
++#define __iomem
++#define BIT(n) (1U << (n))
++#define GENMASK(h, l) ((~0U >> (31 - (h))) & (~0U << (l)))
++#define ARRAY_SIZE(a) (sizeof(a) / sizeof((a)[0]))
++#define EXPORT_SYMBOL_GPL(name)
++struct clk_bulk_data { void *clk; };
++struct debugfs_blob_wrapper { void *data; unsigned long size; };
++struct arm_smccc_res { unsigned long a0; };
++struct device { void *data; };
++'''
++mmio = r'''
++static u8 core[0x8000], top[0x4000];
++static bool allowed, changed, smc_error, readback_error;
++static unsigned int writes, pcs_resets;
++static u8 readb(void *address)
++{
++    if (readback_error && address == core + T7_RX_COR_SYS_CTRL) return 0;
++    return *(u8 *)address;
++}
++static void writeb(u8 value, void *address)
++{
++    assert(allowed);
++    assert((u8 *)address >= core && (u8 *)address < core + sizeof(core));
++    *(u8 *)address = value; writes++;
++}
++static u32 readl(void *address) { u32 value; memcpy(&value, address, 4); return value; }
++static void writel(u32 value, void *address)
++{
++    assert((u8 *)address >= top && (u8 *)address + 4 <= top + sizeof(top));
++    if (address == top + T7_RX_TOP_SW_RESET && value & BIT(13)) {
++        assert(core[T7_RX_COR_SYS_CTRL] == 3 && core[T7_RX_COR_PHY_CLOCK1] == 255);
++        pcs_resets++;
++    }
++    memcpy(address, &value, 4);
++}
++static void *dev_get_drvdata(struct device *dev) { return dev->data; }
++static unsigned long clk_get_rate(void *clk) { (void)clk; return 166666664; }
++static void arm_smccc_smc(unsigned long cmd, unsigned long reg, unsigned long value,
++                          int a, int b, int c, int d, int e, struct arm_smccc_res *res)
++{
++    assert(cmd == 0x8200008c && reg == 0xa2 && value == 0x1f);
++    allowed = !smc_error; res->a0 = smc_error;
++}
++static void t7_hdmirx_set_hpd(struct t7_hdmirx *rx, bool high)
++{
++    (void)rx; assert(!high);
++}
++static void usleep_range(unsigned int low, unsigned int high)
++{
++    assert(high >= low);
++    if (low == 20000 && changed) core[0x188e] = 0;
++}
++static void word(unsigned int address, unsigned int value)
++{
++    core[address] = value; core[address + 1] = value >> 8;
++}
++static void timing(void)
++{
++    u32 value = BIT(21);
++    memcpy(top + T7_RX_TOP_HPD_PWR5V, &value, 4);
++    value = 1; memcpy(top + T7_RX_TOP_TMDS_ALIGN_STAT, &value, 4);
++    word(0x188c, 1920); word(0x188e, 1080);
++    word(0x1890, 44); word(0x1892, 2156);
++    word(0x1898, 5); word(0x189a, 1120);
++    word(0x1888, 2777780 & 0xffff); core[0x188a] = 2777780 >> 16;
++    core[0x1881] = 3;
++}
++'''
++checks = r'''
++int main(void)
++{
++    struct t7_hdmirx rx = { .top = top, .cor = core, .port = 1 };
++    struct device dev = { .data = &rx };
++    unsigned int before;
++    assert(t7_hdmirx_check_1080p(&dev) == -ENOLINK);
++    smc_error = true;
++    assert(t7_hdmirx_core_start(&rx) == -EIO && !writes && !rx.core_active);
++    smc_error = false; readback_error = true;
++    assert(t7_hdmirx_core_start(&rx) == -EIO);
++    t7_hdmirx_core_stop(&rx); readback_error = false;
++    assert(!t7_hdmirx_core_start(&rx)); timing();
++    assert(pcs_resets == 2 && !readl(top + T7_RX_TOP_SW_RESET));
++    assert(rx.core_active && !t7_hdmirx_check_1080p(&dev));
++    core[T7_RX_COR_COLOR_DEPTH] = 5;
++    assert(t7_hdmirx_check_1080p(&dev) == -ERANGE);
++    core[T7_RX_COR_COLOR_DEPTH] = 4;
++    writel(BIT(20), top + T7_RX_TOP_VID_STAT);
++    assert(t7_hdmirx_check_1080p(&dev) == -ERANGE);
++    writel(0, top + T7_RX_TOP_VID_STAT);
++    core[0x1881] |= BIT(2);
++    assert(t7_hdmirx_check_1080p(&dev) == -ERANGE); timing();
++    word(0x188c, 1280);
++    assert(t7_hdmirx_check_1080p(&dev) == -ERANGE); timing();
++    word(0x1888, 0); core[0x188a] = 0;
++    assert(t7_hdmirx_check_1080p(&dev) == -ERANGE); timing();
++    changed = true;
++    assert(t7_hdmirx_check_1080p(&dev) == -ERANGE); timing(); changed = false;
++    memset(top + T7_RX_TOP_TMDS_ALIGN_STAT, 0, 4);
++    assert(t7_hdmirx_check_1080p(&dev) == -ENOLINK); timing();
++    t7_hdmirx_core_stop(&rx); before = writes;
++    assert(!rx.core_active && !core[0x20a3] && !core[0x20a4] && !core[0x20a5]);
++    t7_hdmirx_core_stop(&rx); assert(writes == before);
++    puts("Core access, stable progressive timing, signal loss and idempotent cleanup passed");
++}
++'''
++with tempfile.TemporaryDirectory() as directory:
++    code = Path(directory) / 'core.c'
++    executable = Path(directory) / 'core'
++    code.write_text(prefix + defines + '\n' + types + mmio + functions + checks)
++    subprocess.run(['cc', '-std=gnu11', '-Wall', '-Wextra', '-Werror',
++                    '-Wno-unused-parameter', str(code), '-o', str(executable)], check=True)
++    subprocess.run([str(executable)], check=True)
+diff --git a/drivers/media/platform/amlogic/t7-hdmirx/test_phy.py b/drivers/media/platform/amlogic/t7-hdmirx/test_phy.py
+index ef2c01f1d4b1c..5491fe7b5cb3c 100644
+--- a/drivers/media/platform/amlogic/t7-hdmirx/test_phy.py
++++ b/drivers/media/platform/amlogic/t7-hdmirx/test_phy.py
+@@ -9,7 +9,7 @@ defines = '\n'.join(line for line in source.splitlines() if line.startswith('#de
+ types = source[source.index('static const u32 t7_hdmirx_phy_top_regs'):
+                source.index('static int t7_hdmirx_validate_edid')]
+ functions = source[source.index('static u32 t7_hdmirx_meter_hz'):
+-                   source.index('static int t7_hdmirx_status')]
++                   source.index('static void t7_hdmirx_core_stop')]
+ for signature in ('static int t7_hdmirx_validate_edid(',
+                   'static int t7_hdmirx_validate_phy_edid('):
+     start = source.index(signature)
+diff --git a/drivers/media/platform/amlogic/t7-hdmirx/test_vdin.py b/drivers/media/platform/amlogic/t7-hdmirx/test_vdin.py
+new file mode 100644
+index 0000000000000..64f776343cb9b
+--- /dev/null
++++ b/drivers/media/platform/amlogic/t7-hdmirx/test_vdin.py
+@@ -0,0 +1,145 @@
++#!/usr/bin/env python3
++"""Run actual snapshot IRQ/capture code against bounded MMIO and failure schedules."""
++from pathlib import Path
++import subprocess
++import tempfile
++
++source = Path(__file__).with_name('t7-vdin-test.c').read_text()
++defines = '\n'.join(line for line in source.splitlines() if line.startswith('#define '))
++types = source[source.index('struct t7_vdin {'):source.index('static u32 t7_vdin_read')]
++functions = source[source.index('static u32 t7_vdin_read'):
++                   source.index('static int t7_vdin_frame_open')]
++prefix = r'''
++#include <assert.h>
++#include <stdbool.h>
++#include <stdint.h>
++#include <string.h>
++#include <errno.h>
++#include <stdio.h>
++typedef uint32_t u32;
++typedef uint64_t dma_addr_t;
++typedef int spinlock_t;
++typedef int irqreturn_t;
++#define __iomem
++#define BIT(n) (1U << (n))
++#define GENMASK(h, l) ((~0U >> (31 - (h))) & (~0U << (l)))
++#define IRQ_HANDLED 1
++#define THIS_MODULE ((void *)0)
++#define spin_lock_irqsave(lock, flags) ((void)(lock), (void)((flags) = 0))
++#define spin_unlock_irqrestore(lock, flags) ((void)(lock), (void)(flags))
++#define dma_wmb() ((void)0)
++#define dma_rmb() ((void)0)
++#define dev_err(...) ((void)0)
++#define msecs_to_jiffies(ms) (ms)
++struct device { int unused; };
++struct clk_bulk_data { int unused; };
++struct mutex { int unused; };
++struct completion { bool done; };
++'''
++mmio = r'''
++static uint8_t registers[0x40000], frame[VDIN_FRAME_SIZE];
++static struct t7_vdin receiver;
++static unsigned int pins, requests, timing_checks;
++static bool timeout, busy, bad_timing, change_timing;
++static u32 readl(void *address)
++{
++    u32 value;
++    assert((uint8_t *)address >= registers &&
++           (uint8_t *)address + 4 <= registers + sizeof(registers));
++    memcpy(&value, address, 4);
++    return value;
++}
++static void writel(u32 value, void *address)
++{
++    assert((uint8_t *)address >= registers &&
++           (uint8_t *)address + 4 <= registers + sizeof(registers));
++    if (address == registers + VDIN_WR_CTRL * 4 && value & VDIN_WR_REQ) {
++        /* Never start DMA before its bounded address/stride have been installed. */
++        assert(readl(registers + VDIN_WR_BADDR * 4) == receiver.frame_dma >> 4);
++        assert(readl(registers + VDIN_WR_STRIDE * 4) == VDIN_STRIDE >> 4);
++        if (!(readl(address) & VDIN_WR_REQ)) requests++;
++    }
++    memcpy(address, &value, 4);
++}
++static void __module_get(void *module) { (void)module; pins++; }
++static void synchronize_irq(int irq) { (void)irq; }
++#define readl_poll_timeout(address, value, condition, interval, limit) \
++    ((value = readl(address)), (condition) ? 0 : -ETIMEDOUT)
++static void complete(struct completion *done)
++{
++    assert(!receiver.armed);
++    assert(!(readl(registers + VDIN_WR_CTRL * 4) & (VDIN_WR_REQ | VDIN_VCP_WR)));
++    done->done = true;
++}
++static void reinit_completion(struct completion *done) { done->done = false; }
++static void udelay(unsigned int delay) { assert(delay == 1); }
++static int t7_hdmirx_check_1080p(struct device *dev)
++{
++    (void)dev;
++    timing_checks++;
++    return bad_timing || (change_timing && timing_checks == 2) ? -ERANGE : 0;
++}
++static unsigned long wait_for_completion_timeout(struct completion *done, unsigned long limit);
++'''
++checks = r'''
++static unsigned long wait_for_completion_timeout(struct completion *done, unsigned long limit)
++{
++    assert(limit == 1000);
++    /* Without per-line packer reset or IRQ routing, hardware never completes. */
++    if (!(readl(registers + VDIN_WR_CTRL * 4) & BIT(27)) ||
++        !(readl(registers + VDIN_DOUBLE_CTRL * 4) & BIT(20))) return 0;
++    if (timeout) return 0;
++    assert(receiver.armed);
++    t7_vdin_write_done(1, &receiver);
++    assert(receiver.armed && receiver.frame_irqs == 1 && !done->done);
++    assert(readl(registers + VDIN_WR_CTRL * 4) & VDIN_WR_REQ);
++    memset(frame, 0x5a, sizeof(frame));
++    if (!busy) writel(BIT(0), registers + VDIN_WR_STATUS * 4);
++    t7_vdin_write_done(1, &receiver);
++    assert(!receiver.armed && receiver.frame_irqs == 2 && done->done);
++    t7_vdin_write_done(1, &receiver);
++    assert(receiver.frame_irqs == 2);
++    /* Linux consumes one completion count when a waiter succeeds. */
++    done->done = false;
++    return 1;
++}
++static void reset(void)
++{
++    memset(registers, 0, sizeof(registers));
++    receiver = (struct t7_vdin) { .regs = registers, .frame = frame,
++                               .frame_dma = 0x10000000 };
++    pins = requests = timing_checks = 0;
++    timeout = busy = bad_timing = change_timing = false;
++}
++int main(void)
++{
++    reset();
++    writel(0xc0000000, registers + VDIN_LFIFO_CTRL * 4);
++    assert(!t7_vdin_capture(&receiver));
++    assert((readl(registers + VDIN_LFIFO_CTRL * 4) & 0xc0000000) == 0xc0000000);
++    assert(receiver.snapshots == 1 && receiver.frame_irqs == 2 && !receiver.armed);
++    assert(requests == 1 && timing_checks == 2 && frame[sizeof(frame) - 1] == 0x5a);
++    assert(!t7_vdin_capture(&receiver) && receiver.snapshots == 2);
++    reset(); bad_timing = true;
++    assert(t7_vdin_capture(&receiver) == -ERANGE && !requests && !receiver.armed);
++    reset(); timeout = true;
++    assert(t7_vdin_capture(&receiver) == -ETIMEDOUT);
++    assert(!receiver.armed && receiver.faulted && pins == 1 && !receiver.snapshots);
++    assert(!(readl(registers + VDIN_WR_CTRL * 4) & VDIN_WR_REQ));
++    reset(); change_timing = true;
++    assert(t7_vdin_capture(&receiver) == -ERANGE && !receiver.snapshots);
++    reset(); busy = true;
++    assert(t7_vdin_capture(&receiver) == -ETIMEDOUT && receiver.faulted && pins == 1);
++    requests = 0;
++    assert(t7_vdin_capture(&receiver) == -EIO && !requests && pins == 1);
++    assert(t7_vdin_stop_dma(&receiver) == -ETIMEDOUT && pins == 1);
++    puts("VDIN completion ordering, DMA bounds, timing change and timeout containment passed");
++}
++'''
++with tempfile.TemporaryDirectory() as directory:
++    code = Path(directory) / 'vdin.c'
++    executable = Path(directory) / 'vdin'
++    code.write_text(prefix + defines + '\n' + types + mmio + functions + checks)
++    subprocess.run(['cc', '-std=gnu11', '-Wall', '-Wextra', '-Werror',
++                    '-Wno-unused-parameter', str(code), '-o', str(executable)], check=True)
++    subprocess.run([str(executable)], check=True)

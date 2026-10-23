@@ -1,0 +1,243 @@
+From 3a88b93349e772f3ccd6c9ea28782d2a5ecd0990 Mon Sep 17 00:00:00 2001
+From: localhost-copilot <318096335+localhost-copilot@users.noreply.github.com>
+Date: Fri, 23 Oct 2026 14:58:06 +0800
+Subject: [PATCH] media: t7-hdmirx: retain bounded capture stop diagnostics
+
+---
+ .../platform/amlogic/t7-hdmirx/t7-hdmirx.c    | 56 +++++++++++++++----
+ .../platform/amlogic/t7-hdmirx/t7-hdmirx.h    |  3 +
+ .../platform/amlogic/t7-hdmirx/t7-vdin-test.c | 18 +++++-
+ .../platform/amlogic/t7-hdmirx/test_core.py   |  1 +
+ .../platform/amlogic/t7-hdmirx/test_stream.py |  3 +-
+ .../amlogic/t7-hdmirx/test_timings.py         |  1 +
+ 6 files changed, 68 insertions(+), 14 deletions(-)
+
+diff --git a/drivers/media/platform/amlogic/t7-hdmirx/t7-hdmirx.c b/drivers/media/platform/amlogic/t7-hdmirx/t7-hdmirx.c
+index 307bef90b24b0..f51058a305107 100644
+--- a/drivers/media/platform/amlogic/t7-hdmirx/t7-hdmirx.c
++++ b/drivers/media/platform/amlogic/t7-hdmirx/t7-hdmirx.c
+@@ -1014,7 +1014,14 @@ static bool t7_hdmirx_same_measurement(const struct t7_hdmirx_measurement *a,
+ 	return !memcmp(&left, &right, sizeof(left)) && delta <= a->ticks / 2000;
+ }
+ 
+-static int t7_hdmirx_video_status(struct t7_hdmirx *rx)
++static int t7_hdmirx_video_error(const char **reason, const char *value, int error)
++{
++	if (reason)
++		*reason = value;
++	return error;
++}
++
++static int t7_hdmirx_video_status_reason(struct t7_hdmirx *rx, const char **reason)
+ {
+ 	struct t7_hdmirx_measurement measured;
+ 	struct t7_hdmirx_color color;
+@@ -1023,41 +1030,41 @@ static int t7_hdmirx_video_status(struct t7_hdmirx *rx)
+ 	int ret;
+ 
+ 	if (!rx || !rx->core_active)
+-		return -ENOLINK;
++		return t7_hdmirx_video_error(reason, "core-inactive", -ENOLINK);
+ 	if (rx->dynamic_modes &&
+ 	    (!!(readb(rx->cor + T7_RX_COR_TMDS_CONFIG) & BIT(1)) != READ_ONCE(rx->uhd60)))
+-		return -ENOLINK;
++		return t7_hdmirx_video_error(reason, "clock-ratio", -ENOLINK);
+ 	if (rx->link && !(readl(rx->phy + T7_RX_PHY_APLL0) & T7_RX_PHY_PLL_LOCK))
+-		return -ENOLINK;
++		return t7_hdmirx_video_error(reason, "pll-unlocked", -ENOLINK);
+ 	if (!(readl(rx->top + T7_RX_TOP_HPD_PWR5V) & BIT(20 + rx->port)) ||
+ 	    !(readl(rx->top + T7_RX_TOP_TMDS_ALIGN_STAT) & BIT(0)))
+-		return -ENOLINK;
++		return t7_hdmirx_video_error(reason, "5v-or-align", -ENOLINK);
+ 	if (readb(rx->cor + T7_RX_COR_FRAME_STATUS) & BIT(2))
+-		return -ERANGE;
++		return t7_hdmirx_video_error(reason, "interlaced", -ERANGE);
+ 	hdr = t7_hdmirx_hdr_input(rx);
+ 	yuv420 = hdr || t7_hdmirx_sdr420_input(rx);
+ 	yuv = yuv420 || t7_hdmirx_sdr444_input(rx);
+ 	if (rx->dynamic_modes) {
+ 		ret = t7_hdmirx_read_color(rx, &color);
+ 		if (ret)
+-			return ret;
++			return t7_hdmirx_video_error(reason, "color-read", ret);
+ 		yuv420 = color.space == 3;
+ 		yuv = color.space != 0;
+ 		if (rx->link && rx->link->users &&
+ 		    memcmp(&color, &rx->lease_color, sizeof(color)))
+-			return -ENOLINK;
++			return t7_hdmirx_video_error(reason, "lease-color", -ENOLINK);
+ 	} else if (!yuv && (readl(rx->top + T7_RX_TOP_VID_STAT) & GENMASK(23, 20) ||
+ 	    readb(rx->cor + T7_RX_COR_COLOR_DEPTH) > 4))
+ 		return -ERANGE;
+ 	if (rx->link && rx->link->users &&
+ 	    (hdr != rx->lease_hdr || yuv != rx->lease_yuv || yuv420 != rx->lease_420))
+-		return -ENOLINK;
++		return t7_hdmirx_video_error(reason, "lease-encoding", -ENOLINK);
+ 	if (rx->dynamic_modes) {
+ 		ret = t7_hdmirx_measure(rx, yuv420, &measured);
+ 		if (!ret && rx->link && rx->link->users &&
+ 		    !t7_hdmirx_same_measurement(&measured, &rx->lease_mode))
+-			return -ENOLINK;
+-		return ret;
++			return t7_hdmirx_video_error(reason, "lease-timing", -ENOLINK);
++		return t7_hdmirx_video_error(reason, "measurement", ret);
+ 	}
+ 	if (t7_hdmirx_core_read16(rx, T7_RX_COR_WIDTH) != (yuv420 ? 1920 : rx->uhd60 ? 3840 : 1920) ||
+ 	    t7_hdmirx_core_read16(rx, T7_RX_COR_HEIGHT) != (rx->uhd60 ? 2160 : 1080) ||
+@@ -1073,6 +1080,33 @@ static int t7_hdmirx_video_status(struct t7_hdmirx *rx)
+ 		return -ERANGE;
+ 	return 0;
+ }
++
++static int t7_hdmirx_video_status(struct t7_hdmirx *rx)
++{
++	return t7_hdmirx_video_status_reason(rx, NULL);
++}
++
++int t7_hdmirx_check_capture(struct device *dev, const char **reason)
++{
++	struct t7_hdmirx *rx = dev_get_drvdata(dev);
++	int ret;
++
++	*reason = "video-status";
++	if (rx && rx->link && !READ_ONCE(rx->link->ready))
++		return t7_hdmirx_video_error(reason, "link-not-ready", -ENOLINK);
++	ret = t7_hdmirx_video_status_reason(rx, reason);
++	if (ret && ret != -EAGAIN && rx && rx->core_active && rx->phy_active)
++		dev_info_ratelimited(dev, "capture check: %s error=%d width=%u height=%u ticks=%u lease=%ux%u/%u pll=%u align=%u\n",
++			*reason, ret, t7_hdmirx_core_read16(rx, T7_RX_COR_WIDTH),
++			t7_hdmirx_core_read16(rx, T7_RX_COR_HEIGHT),
++			t7_hdmirx_core_read16(rx, T7_RX_COR_FRAME_TICKS) |
++			(readb(rx->cor + T7_RX_COR_FRAME_TICKS + 2) << 16),
++			rx->lease_mode.width, rx->lease_mode.height, rx->lease_mode.ticks,
++			!!(readl(rx->phy + T7_RX_PHY_APLL0) & T7_RX_PHY_PLL_LOCK),
++			!!(readl(rx->top + T7_RX_TOP_TMDS_ALIGN_STAT) & BIT(0)));
++	return ret;
++}
++EXPORT_SYMBOL_GPL(t7_hdmirx_check_capture);
+ int t7_hdmirx_check_video_now(struct device *dev)
+ {
+ 	struct t7_hdmirx *rx = dev_get_drvdata(dev);
+diff --git a/drivers/media/platform/amlogic/t7-hdmirx/t7-hdmirx.h b/drivers/media/platform/amlogic/t7-hdmirx/t7-hdmirx.h
+index 3cc0f8c8a206e..afe9fea8257e4 100644
+--- a/drivers/media/platform/amlogic/t7-hdmirx/t7-hdmirx.h
++++ b/drivers/media/platform/amlogic/t7-hdmirx/t7-hdmirx.h
+@@ -17,6 +17,9 @@ int t7_hdmirx_check_video(struct device *dev);
+ /* One process-context sample, without the stable check's inter-sample delay. */
+ int t7_hdmirx_check_video_now(struct device *dev);
+ 
++/* Same admission, with a static reason string for bounded capture diagnostics. */
++int t7_hdmirx_check_capture(struct device *dev, const char **reason);
++
+ /* Allocation bound, independent of the currently detected input mode. */
+ int t7_hdmirx_get_max_size(struct device *dev, unsigned int *width, unsigned int *height);
+ 
+diff --git a/drivers/media/platform/amlogic/t7-hdmirx/t7-vdin-test.c b/drivers/media/platform/amlogic/t7-hdmirx/t7-vdin-test.c
+index 468f66c4ddda7..c750a5d8f4fc7 100644
+--- a/drivers/media/platform/amlogic/t7-hdmirx/t7-vdin-test.c
++++ b/drivers/media/platform/amlogic/t7-hdmirx/t7-vdin-test.c
+@@ -165,6 +165,10 @@ struct t7_vdin {
+ 	u32 ring_sequence;
+ 	u32 ring_pauses;
+ 	u64 copied_bytes;
++	/* Last failed worker remains visible across close and the next STREAMON. */
++	u32 stream_stops, last_stop_sequence;
++	int last_stop_error;
++	const char *last_stop_reason;
+ 	u32 hdr_gain[149], hdr_oetf[149];
+ 	bool hdr_curve_pending;
+ };
+@@ -715,6 +719,7 @@ static void t7_vdin_ring_release(struct t7_vdin *vdin, struct t7_vdin_slot *slot
+ static int t7_vdin_thread(void *data)
+ {
+ 	struct t7_vdin *vdin = data;
++	const char *reason = "dma-wait";
+ 	int ret = 0;
+ 
+ 	t7_vdin_ring_begin(vdin);
+@@ -723,6 +728,7 @@ static int t7_vdin_thread(void *data)
+ 		struct t7_vdin_slot *slot;
+ 		long ready;
+ 
++		reason = "dma-wait";
+ 		ready = wait_event_interruptible_timeout(vdin->buffer_wait,
+ 							 kthread_should_stop() ||
+ 							 READ_ONCE(vdin->ring_error) ||
+@@ -764,7 +770,7 @@ static int t7_vdin_thread(void *data)
+ 		}
+ 		buffer = vdin->direct_dma ? slot->buffer : t7_vdin_next_buffer(vdin);
+ 		mutex_lock(&vdin->lock);
+-		ret = t7_hdmirx_check_video_now(vdin->receiver);
++		ret = t7_hdmirx_check_capture(vdin->receiver, &reason);
+ 		if (!vdin->direct_dma)
+ 			dma_sync_single_for_cpu(vdin->dev, slot->dma, vdin->frame_size, DMA_FROM_DEVICE);
+ 		if (!ret) {
+@@ -778,7 +784,7 @@ static int t7_vdin_thread(void *data)
+ 			}
+ 			/* Publish CPU writes to the coherent output before handing it off. */
+ 			dma_wmb();
+-			ret = t7_hdmirx_check_video_now(vdin->receiver);
++			ret = t7_hdmirx_check_capture(vdin->receiver, &reason);
+ 			buffer->vb.vb2_buf.timestamp = slot->timestamp;
+ 			buffer->vb.sequence = slot->sequence;
+ 			buffer->vb.field = V4L2_FIELD_NONE;
+@@ -826,6 +832,10 @@ static int t7_vdin_thread(void *data)
+ 		}
+ 	}
+ 	if (ret) {
++		vdin->stream_stops++;
++		vdin->last_stop_error = ret;
++		vdin->last_stop_reason = reason;
++		vdin->last_stop_sequence = vdin->ring_sequence;
+ 		vb2_queue_error(&vdin->queue);
+ 		t7_vdin_return_buffers(vdin, VB2_BUF_STATE_ERROR);
+ 		/* Keep the task alive until STREAMOFF joins it. */
+@@ -1348,6 +1358,10 @@ static int t7_vdin_status(struct seq_file *s, void *unused)
+ 	seq_printf(s, "stream_frames: %u\n", vdin->ring_sequence);
+ 	seq_printf(s, "stream_pauses: %u\n", vdin->ring_pauses);
+ 	seq_printf(s, "stream_error: %d\n", vdin->ring_error);
++	seq_printf(s, "stream_stops: %u\n", READ_ONCE(vdin->stream_stops));
++	seq_printf(s, "last_stop_error: %d\n", READ_ONCE(vdin->last_stop_error));
++	seq_printf(s, "last_stop_reason: %s\n", vdin->last_stop_reason ?: "none");
++	seq_printf(s, "last_stop_sequence: %u\n", READ_ONCE(vdin->last_stop_sequence));
+ 	seq_printf(s, "write_ctrl: %#x\n", t7_vdin_read(vdin, VDIN_WR_CTRL));
+ 	seq_printf(s, "write_status: %#x\n", t7_vdin_read(vdin, VDIN_WR_STATUS));
+ 	seq_printf(s, "pixels: %#x\n", t7_vdin_read(vdin, VDIN_ACTIVE_PIXELS));
+diff --git a/drivers/media/platform/amlogic/t7-hdmirx/test_core.py b/drivers/media/platform/amlogic/t7-hdmirx/test_core.py
+index 1bde2cedd9e0f..fc12686259d8a 100644
+--- a/drivers/media/platform/amlogic/t7-hdmirx/test_core.py
++++ b/drivers/media/platform/amlogic/t7-hdmirx/test_core.py
+@@ -15,6 +15,7 @@ status_api = vdin[vdin.index('static int t7_vdin_enum_input'):
+                   vdin.index('static int t7_vdin_get_input')]
+ prefix = r'''
+ #include <assert.h>
++#define dev_info_ratelimited(...) ((void)0)
+ #include <stdbool.h>
+ #include <stdint.h>
+ #include <string.h>
+diff --git a/drivers/media/platform/amlogic/t7-hdmirx/test_stream.py b/drivers/media/platform/amlogic/t7-hdmirx/test_stream.py
+index e2d2b94952e64..7bbd7c92deba2 100644
+--- a/drivers/media/platform/amlogic/t7-hdmirx/test_stream.py
++++ b/drivers/media/platform/amlogic/t7-hdmirx/test_stream.py
+@@ -209,7 +209,8 @@ static void t7_hdmirx_stream_put(void *dev) {
+     assert(receiver_users && !receiver.ring_running && !receiver.armed);
+     receiver_users--;
+ }
+-static int t7_hdmirx_check_video_now(void *dev) {
++static int t7_hdmirx_check_capture(void *dev, const char **reason) {
++    *reason="test-receiver";
+     if (__atomic_load_n(&transient_after,__ATOMIC_ACQUIRE) &&
+         !__atomic_sub_fetch(&transient_after,1,__ATOMIC_ACQ_REL)) return -EAGAIN;
+     bool copying=false;
+diff --git a/drivers/media/platform/amlogic/t7-hdmirx/test_timings.py b/drivers/media/platform/amlogic/t7-hdmirx/test_timings.py
+index 3afe8aa6ec0fe..afcdcd02119ec 100644
+--- a/drivers/media/platform/amlogic/t7-hdmirx/test_timings.py
++++ b/drivers/media/platform/amlogic/t7-hdmirx/test_timings.py
+@@ -18,6 +18,7 @@ ioctls = vdin[vdin.index('static int t7_vdin_query_dv_timings'):
+              vdin.index('static int t7_vdin_set_input')]
+ prefix = r'''
+ #include <assert.h>
++#define dev_info_ratelimited(...) ((void)0)
+ #include <errno.h>
+ #include <stdbool.h>
+ #include <stdint.h>

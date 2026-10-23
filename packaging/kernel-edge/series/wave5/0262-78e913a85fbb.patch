@@ -1,0 +1,1291 @@
+From 78e913a85fbb777e709b83cbd06f4ccff6e4b453 Mon Sep 17 00:00:00 2001
+From: localhost-copilot <318096335+localhost-copilot@users.noreply.github.com>
+Date: Fri, 23 Oct 2026 15:21:04 +0800
+Subject: [PATCH] media: wave5: quarantine T7 encoder on command and frame
+ timeouts
+
+---
+ .../media/platform/chips-media/wave5/Makefile |   1 +
+ .../chips-media/wave5/test_encoder_cleanup.py |   5 +-
+ .../platform/chips-media/wave5/test_hang.py   |  22 +-
+ .../chips-media/wave5/test_isolation.py       | 225 ++++++++++++
+ .../platform/chips-media/wave5/test_reset.py  |   6 +
+ .../platform/chips-media/wave5/wave5-helper.c |   5 +-
+ .../platform/chips-media/wave5/wave5-hw.c     |  18 +-
+ .../chips-media/wave5/wave5-isolation.c       | 326 ++++++++++++++++++
+ .../platform/chips-media/wave5/wave5-vdi.c    |   8 +
+ .../chips-media/wave5/wave5-vpu-enc.c         | 105 +++++-
+ .../platform/chips-media/wave5/wave5-vpu.c    |  49 ++-
+ .../platform/chips-media/wave5/wave5-vpu.h    |  10 +
+ .../platform/chips-media/wave5/wave5-vpuapi.c |   8 +
+ .../platform/chips-media/wave5/wave5-vpuapi.h |  10 +
+ 14 files changed, 776 insertions(+), 22 deletions(-)
+ create mode 100644 drivers/media/platform/chips-media/wave5/test_isolation.py
+ create mode 100644 drivers/media/platform/chips-media/wave5/wave5-isolation.c
+
+diff --git a/drivers/media/platform/chips-media/wave5/Makefile b/drivers/media/platform/chips-media/wave5/Makefile
+index 3d738a03bd8ec..ee068ddf46a5e 100644
+--- a/drivers/media/platform/chips-media/wave5/Makefile
++++ b/drivers/media/platform/chips-media/wave5/Makefile
+@@ -7,4 +7,5 @@ wave5-objs +=  	wave5-hw.o \
+ 		wave5-vpu-dec.o \
+ 		wave5-vpu.o \
+ 		wave5-vpu-enc.o \
++		wave5-isolation.o \
+ 		wave5-helper.o
+diff --git a/drivers/media/platform/chips-media/wave5/test_encoder_cleanup.py b/drivers/media/platform/chips-media/wave5/test_encoder_cleanup.py
+index 2dc74439adc2c..c8cc6c11d04ad 100644
+--- a/drivers/media/platform/chips-media/wave5/test_encoder_cleanup.py
++++ b/drivers/media/platform/chips-media/wave5/test_encoder_cleanup.py
+@@ -55,7 +55,7 @@ struct enc_info {
+ };
+ struct codec_info { struct enc_info enc_info; };
+ struct device { void *data; };
+-struct vpu_device { struct device *dev; int hw_lock; };
++struct vpu_device { struct device *dev; int hw_lock; bool legacy_firmware; };
+ struct vpu_instance { struct vpu_device *dev; struct codec_info *codec_info; int std; };
+ struct frame_buffer { uintptr_t buf_y, buf_cb; };
+ static unsigned attempts, fail_at, live, commands;
+@@ -65,6 +65,9 @@ static int mutex_lock_interruptible(int *lock) { (void)lock; return 0; }
+ static void mutex_unlock(int *lock) { (void)lock; }
+ static void pm_runtime_resume_and_get(struct device *dev) { (void)dev; }
+ static void pm_runtime_put_sync(struct device *dev) { (void)dev; }
++static void pm_runtime_put_autosuspend(struct device *dev) { (void)dev; }
++static void wave5_vpu_isolate(struct vpu_device *dev, const char *reason, u32 command)
++{ (void)dev; (void)reason; (void)command; }
+ static void vpu_write_reg(struct vpu_device *dev, u32 reg, uintptr_t value)
+ { (void)dev; (void)reg; (void)value; }
+ static int wave5_vdi_allocate_dma_memory(struct vpu_device *dev, struct vpu_buf *vb)
+diff --git a/drivers/media/platform/chips-media/wave5/test_hang.py b/drivers/media/platform/chips-media/wave5/test_hang.py
+index ce6eef0203790..8df81f80bd359 100644
+--- a/drivers/media/platform/chips-media/wave5/test_hang.py
++++ b/drivers/media/platform/chips-media/wave5/test_hang.py
+@@ -11,7 +11,7 @@ hardware = (root / 'wave5-hw.c').read_text()
+ selection = encoder[encoder.index('static int wave5_vpu_enc_s_selection('):
+                     encoder.index('static int wave5_vpu_enc_encoder_cmd(')]
+ release = encoder[encoder.index('static int wave5_vpu_enc_release('):
+-                  encoder.index('static const struct v4l2_file_operations')]
++                  encoder.index('static long wave5_vpu_enc_ioctl(')]
+ # Compile the real validation prefix through the geometry checks. Later
+ # profile/GOP checks are independent and have their own test harnesses.
+ validation = hardware[hardware.index('int wave5_vpu_enc_check_open_param('):]
+@@ -36,6 +36,7 @@ typedef int32_t s32;
+ #define V4L2_BUF_TYPE_VIDEO_OUTPUT_MPLANE 10
+ #define V4L2_BUF_TYPE_VIDEO_CAPTURE_MPLANE 9
+ #define V4L2_SEL_TGT_CROP 0
++#define VPU_INST_STATE_NONE 0
+ #define min(a,b) ((a) < (b) ? (a) : (b))
+ #define IS_ALIGNED(x,a) (!((x) & ((a)-1)))
+ #define dev_dbg(...) ((void)0)
+@@ -43,16 +44,21 @@ typedef int32_t s32;
+ struct v4l2_rect { int left, top; unsigned width, height; };
+ struct v4l2_selection { unsigned type, target; struct v4l2_rect r; };
+ struct vpu_attr { bool support_hevc10bit_enc, support_avc10bit_enc; };
+-struct vpu_device { int product, dev_lock; struct vpu_attr attr; };
++struct vpu_device { int product, dev_lock; struct vpu_attr attr; bool isolated, legacy_firmware; };
+ struct v4l2_m2m_ctx { bool running, linked, output, capture; };
+ struct vpu_instance {
+     struct vpu_device *dev;
+-    int std, id;
++    int std, id, state;
+     struct { unsigned width, height; } dst_fmt;
+     struct v4l2_rect conf_win;
+     struct { struct v4l2_m2m_ctx *m2m_ctx; } v4l2_fh;
+ };
+-struct file { struct vpu_instance *inst; };
++struct file { struct vpu_instance *inst; void *private_data; };
++static bool wave5_vpu_isolated(struct vpu_device *dev) { return dev->isolated; }
++static void wave5_vpu_isolate(struct vpu_device *dev, const char *reason, u32 command)
++{ (void)reason; (void)command; dev->isolated = true; }
++#define v4l2_fh_del(...) ((void)0)
++#define v4l2_fh_exit(...) ((void)0)
+ struct enc_wave_param { unsigned internal_bit_depth; };
+ struct enc_open_param {
+     unsigned pic_width, pic_height, frame_rate_info, bit_rate;
+@@ -134,6 +140,14 @@ int main(void)
+         assert(!wave5_vpu_enc_release(&file));
+         assert(!ctx.running && !ctx.linked && !dev.dev_lock);
+     }
++    /* Quarantined close must not release a queue or issue DESTROY. */
++    struct v4l2_m2m_ctx pinned = {.linked=true,.running=true,.output=true,.capture=true};
++    inst.v4l2_fh.m2m_ctx = &pinned;
++    dev.isolated = true;
++    file.private_data = &inst;
++    assert(!wave5_vpu_enc_release(&file));
++    assert(pinned.linked && pinned.running && pinned.output && pinned.capture);
++    assert(!file.private_data && !dev.dev_lock);
+     puts("Wave5 selection/firmware geometry (20 cases) and close/IRQ ordering (8 cases) passed");
+ }
+ '''
+diff --git a/drivers/media/platform/chips-media/wave5/test_isolation.py b/drivers/media/platform/chips-media/wave5/test_isolation.py
+new file mode 100644
+index 0000000000000..49964767ed1ac
+--- /dev/null
++++ b/drivers/media/platform/chips-media/wave5/test_isolation.py
+@@ -0,0 +1,225 @@
++#!/usr/bin/env python3
++# SPDX-License-Identifier: GPL-2.0-only
++"""Run actual quarantine/scheduler/allocator C against deterministic owners.
++
++Models scheduler races and buffer lifetimes, not physical DMA termination.
++"""
++from pathlib import Path
++import subprocess
++import tempfile
++
++root = Path(__file__).resolve().parent
++source = (root / 'wave5-isolation.c').read_text()
++logic = source[source.index('bool wave5_vpu_isolated('):source.index('static ssize_t isolated_show(')]
++planes = source[source.index('struct wave5_plane {'):]
++core = (root.parents[4] / 'include/media/videobuf2-core.h').read_text()
++memops = core[core.index('struct vb2_mem_ops {'):core.index('\n};', core.index('struct vb2_mem_ops {')) + 3]
++prefix = r'''
++#include <assert.h>
++#include <stdbool.h>
++#include <stddef.h>
++#include <stdint.h>
++#include <stdio.h>
++#include <stdlib.h>
++#include <errno.h>
++typedef uint32_t u32;
++typedef uint64_t u64;
++#define READ_ONCE(v) (v)
++#define WRITE_ONCE(v, x) ((v) = (x))
++#define cmpxchg(p, old, value) ({ unsigned _was = *(p); if (_was == (old)) *(p) = (value); _was; })
++#define container_of(p, type, member) ((type *)((char *)(p) - offsetof(type, member)))
++#define WAVE5_JOB_TIMEOUT_MS 5000
++#define WAVE5_ABORT_TIMEOUT_MS 1000
++#define msecs_to_jiffies(x) (x)
++#define time_before(a, b) ((long)((a) - (b)) < 0)
++#define THIS_MODULE NULL
++#define KOBJ_CHANGE 1
++#define GFP_KERNEL 0
++#define ERR_PTR(x) ((void *)(intptr_t)(x))
++#define IS_ERR(x) ((uintptr_t)(x) > (uintptr_t)-4096)
++#define dev_err(...) ((void)0)
++struct device { unsigned refs; int kobj; };
++struct work_struct { void (*fn)(struct work_struct *); bool pending; };
++struct delayed_work { struct work_struct work; unsigned long delay; };
++#define to_delayed_work(w) container_of(w, struct delayed_work, work)
++#define INIT_WORK(w, f) ((w)->fn = (f))
++#define INIT_DELAYED_WORK(w, f) INIT_WORK(&(w)->work, f)
++static void *system_wq;
++static unsigned long jiffies;
++static unsigned timeout_command, pins, disables, events, finishes, wakes, waits;
++struct vpu_instance;
++struct vb2_queue { bool error; void *priv; };
++struct vb2_buffer { struct vb2_queue *vb2_queue; };
++struct v4l2_m2m_ctx { struct { struct vb2_queue q; } out_q_ctx, cap_q_ctx; };
++struct m2m_dev { struct vpu_instance *current; };
++struct list_head { struct vpu_instance *first; };
++struct vpu_device {
++    unsigned isolated;
++    bool isolation_ready, legacy_firmware;
++    const char *isolation_reason;
++    u32 isolation_command;
++    u64 isolation_time_ns;
++    struct work_struct isolation_work;
++    struct delayed_work job_timeout_work;
++    unsigned long job_deadline;
++    int irq_lock, irq;
++    struct device *dev;
++    struct list_head instances;
++    struct m2m_dev *v4l2_m2m_enc_dev;
++};
++struct vpu_instance {
++    struct vpu_device *dev;
++    struct m2m_dev *v4l2_m2m_dev;
++    struct { struct v4l2_m2m_ctx *m2m_ctx; } v4l2_fh;
++    struct vpu_instance *next;
++    unsigned irq_done, job_wait;
++};
++#define list_for_each_entry(p, head, member) for ((p) = (head)->first; (p); (p) = (p)->next)
++static void mutex_lock(int *lock) { assert(!*lock); *lock = 1; }
++static void mutex_unlock(int *lock) { assert(*lock); *lock = 0; }
++#define lockdep_assert_held(lock) assert(*(lock))
++static u64 ktime_get_boottime_ns(void) { return 123456789; }
++static void __module_get(void *module) { (void)module; pins++; }
++static void get_device(struct device *dev) { dev->refs++; }
++static void disable_irq_nosync(int irq) { assert(irq >= 0); disables++; }
++static void schedule_work(struct work_struct *work) { work->pending = true; }
++static void cancel_delayed_work(struct delayed_work *work) { work->work.pending = false; }
++static void mod_delayed_work(void *queue, struct delayed_work *work, unsigned long delay)
++{ (void)queue; work->work.pending = true; work->delay = delay; }
++static void *v4l2_m2m_get_curr_priv(struct m2m_dev *dev) { return dev->current; }
++static void v4l2_m2m_job_finish(struct m2m_dev *dev, struct v4l2_m2m_ctx *ctx)
++{ assert(dev->current && dev->current->v4l2_fh.m2m_ctx == ctx); dev->current = NULL; finishes++; }
++static void wake_up_all(unsigned *wait) { (void)wait; wakes++; }
++static void complete_all(unsigned *completion) { *completion = 1; }
++static void vb2_queue_error(struct vb2_queue *q) { q->error = true; }
++static void kobject_uevent_env(int *kobj, int action, char **env)
++{ (void)kobj; assert(action == KOBJ_CHANGE && env[0]); events++; }
++/* Inject completion exactly at abort's wait boundary, without sleeping. */
++static struct m2m_dev *complete_during_wait;
++static int wait_boundary(bool condition)
++{
++    waits++;
++    if (complete_during_wait) { complete_during_wait->current = NULL; return 1; }
++    return condition;
++}
++#define wait_event_timeout(w, condition, timeout) ((void)(w), (void)(timeout), wait_boundary(condition))
++static void *kzalloc(size_t n, int flags) { (void)flags; return calloc(1, n); }
++#define kfree free
++struct dma_buf { unsigned refs; };
++static void get_dma_buf(struct dma_buf *buf) { buf->refs++; }
++static void dma_buf_put(struct dma_buf *buf) { assert(buf->refs); buf->refs--; }
++struct vm_area_struct { int unused; };
++'''
++allocator = r'''
++struct allocation { unsigned refs, maps; struct dma_buf *dbuf; uintptr_t addr; };
++static unsigned frees, unmaps, prepares, syncs, detaches;
++static void *vb2_get_drv_priv(struct vb2_queue *q) { return q->priv; }
++static void *alloc_plane(struct vb2_buffer *vb, struct device *dev, unsigned long size)
++{ (void)vb; (void)dev; (void)size; struct allocation *a = calloc(1, sizeof(*a)); a->refs=1; return a; }
++static void put_plane(void *priv)
++{ struct allocation *a=priv; assert(a->refs); if (!--a->refs) { frees++; free(a); } }
++static void *attach_plane(struct vb2_buffer *vb, struct device *dev, struct dma_buf *buf, unsigned long size)
++{ struct allocation *a=alloc_plane(vb, dev, size); a->dbuf=buf; return a; }
++static void detach_plane(void *priv) { detaches++; put_plane(priv); }
++static int map_plane(void *priv) { ((struct allocation *)priv)->maps++; return 0; }
++static void unmap_plane(void *priv) { unmaps++; assert(((struct allocation *)priv)->maps--); }
++static void prepare_plane(void *priv) { (void)priv; prepares++; }
++static void finish_plane(void *priv) { (void)priv; syncs++; }
++static void *cookie_plane(struct vb2_buffer *vb, void *priv)
++{ (void)vb; return &((struct allocation *)priv)->addr; }
++static void *vaddr_plane(struct vb2_buffer *vb, void *priv) { (void)vb; return priv; }
++static unsigned users_plane(void *priv) { return ((struct allocation *)priv)->refs; }
++static int mmap_plane(void *priv, struct vm_area_struct *vma)
++{ (void)vma; ((struct allocation *)priv)->refs++; return 0; }
++static struct dma_buf *export_plane(struct vb2_buffer *vb, void *priv, unsigned long flags)
++{ (void)vb; (void)flags; ((struct allocation *)priv)->refs++; return NULL; }
++static const struct vb2_mem_ops vb2_dma_contig_memops = {
++    .alloc=alloc_plane, .put=put_plane, .attach_dmabuf=attach_plane, .detach_dmabuf=detach_plane,
++    .map_dmabuf=map_plane, .unmap_dmabuf=unmap_plane, .prepare=prepare_plane, .finish=finish_plane,
++    .cookie=cookie_plane, .vaddr=vaddr_plane, .num_users=users_plane,
++    .mmap=mmap_plane, .get_dmabuf=export_plane,
++};
++'''
++checks = r'''
++int main(void)
++{
++    struct device device = {};
++    struct m2m_dev scheduler = {};
++    struct vpu_device dev = {.isolation_ready=true, .legacy_firmware=true, .dev=&device,
++                             .v4l2_m2m_enc_dev=&scheduler, .irq=1};
++    struct v4l2_m2m_ctx contexts[2] = {};
++    struct vpu_instance a = {.dev=&dev, .v4l2_m2m_dev=&scheduler, .v4l2_fh={&contexts[0]}};
++    struct vpu_instance b = {.dev=&dev, .v4l2_m2m_dev=&scheduler, .v4l2_fh={&contexts[1]}};
++    a.next=&b; dev.instances.first=&a;
++    wave5_vpu_isolation_init(&dev);
++    timeout_command=8;
++    assert(!wave5_vpu_inject_timeout(&dev, 9));
++    assert(wave5_vpu_inject_timeout(&dev, 8));
++    assert(!wave5_vpu_inject_timeout(&dev, 8));
++    scheduler.current=&a;
++    complete_during_wait=&scheduler;
++    wave5_vpu_job_abort(&a);
++    assert(!dev.isolated && !finishes);
++    complete_during_wait=NULL;
++    scheduler.current=&a;
++    mutex_lock(&dev.irq_lock);
++    jiffies=100; wave5_vpu_job_start(&a);
++    mutex_unlock(&dev.irq_lock);
++    jiffies=200;
++    dev.job_timeout_work.work.fn(&dev.job_timeout_work.work);
++    assert(!dev.isolated && dev.job_timeout_work.delay==4900);
++    /* An abort before device_run starts must still release the scheduler. */
++    wave5_vpu_job_abort(&a);
++    assert(dev.isolated && finishes==1 && wakes==1 && pins==1 && disables==1);
++    wave5_vpu_isolate(&dev, "second error must not overwrite first", 123);
++    assert(pins==1 && !dev.isolation_command);
++    dev.isolation_work.fn(&dev.isolation_work);
++    assert(events==1 && finishes==1 && contexts[0].out_q_ctx.q.error &&
++           contexts[0].cap_q_ctx.q.error && contexts[1].out_q_ctx.q.error &&
++           contexts[1].cap_q_ctx.q.error && a.irq_done && b.irq_done);
++    /* A late callback cannot finish another/nonexistent scheduler job. */
++    mutex_lock(&dev.irq_lock); wave5_vpu_job_finish(&a); mutex_unlock(&dev.irq_lock);
++    assert(finishes==1);
++    dev.isolated=0; scheduler.current=&a;
++    jiffies=10000; dev.job_deadline=9999;
++    dev.job_timeout_work.work.fn(&dev.job_timeout_work.work);
++    assert(dev.isolated);
++    dev.isolation_work.fn(&dev.isolation_work);
++    assert(finishes==2);
++
++    /* MMAP/export references may disappear after quarantine, but ours stays. */
++    dev.isolated=0;
++    struct vb2_queue q={.priv=&a}; struct vb2_buffer vb={.vb2_queue=&q};
++    struct wave5_plane *m=wave5_plane_alloc(&vb, &device, 4096);
++    assert(!IS_ERR(m));
++    struct allocation *original=m->memory;
++    wave5_plane_mmap(m, NULL); wave5_plane_export(&vb, m, 0);
++    assert(wave5_plane_users(m)==3 && wave5_plane_cookie(&vb,m)==&original->addr);
++    dev.isolated=1;
++    wave5_plane_put(m); put_plane(original); put_plane(original);
++    assert(!frees && original->refs==1);
++    dev.isolated=0; wave5_plane_put(m); assert(frees==1);
++
++    struct dma_buf buf={.refs=1};
++    m=wave5_plane_attach(&vb, &device, &buf, 4096);
++    original=m->memory;
++    assert(buf.refs==2 && !wave5_plane_map(m));
++    wave5_plane_prepare(m);
++    dev.isolated=1;
++    wave5_plane_finish(m); wave5_plane_unmap(m); wave5_plane_detach(m);
++    dma_buf_put(&buf); /* vb2 drops its own import ref; the independent ref stays. */
++    assert(buf.refs==1 && original->maps==1 && !unmaps && !detaches && !syncs);
++    assert(wave5_plane_map(m)==-EIO && prepares==1);
++    dev.isolated=0; wave5_plane_unmap(m); wave5_plane_detach(m);
++    assert(!buf.refs && frees==2 && unmaps==1 && detaches==1);
++    puts("Wave5 isolation: scheduler cancel races, all-instance errors, late IRQ, MMAP/export/import retention passed");
++}
++'''
++with tempfile.TemporaryDirectory(prefix='wave5-isolation-') as directory:
++    code = Path(directory) / 'isolation.c'
++    binary = Path(directory) / 'isolation'
++    code.write_text(prefix + memops + allocator + logic + planes + checks)
++    subprocess.run(['cc', '-std=gnu11', '-Wall', '-Wextra', '-Werror',
++                    '-Wno-unused-parameter', '-Wno-unused-function',
++                    '-fsanitize=address,undefined', str(code), '-o', str(binary)], check=True)
++    subprocess.run([str(binary)], check=True, timeout=10)
+diff --git a/drivers/media/platform/chips-media/wave5/test_reset.py b/drivers/media/platform/chips-media/wave5/test_reset.py
+index fd42d603b6e10..79b47c5f58b60 100644
+--- a/drivers/media/platform/chips-media/wave5/test_reset.py
++++ b/drivers/media/platform/chips-media/wave5/test_reset.py
+@@ -77,6 +77,12 @@ static int ktime_compare(ktime_t a, ktime_t b) { return (a > b) - (a < b); }
+ static bool ktime_before(ktime_t a, ktime_t b) { return a < b; }
+ static void usleep_range(unsigned a, unsigned b) { (void)b; hw.now += a; }
+ static void *dev_get_drvdata(struct device *dev) { return dev->data; }
++/* Runtime isolation is disabled during initial probe/reset. */
++static bool wave5_vpu_isolated(struct vpu_device *dev) { (void)dev; return false; }
++static bool wave5_vpu_inject_timeout(struct vpu_device *dev, u32 command)
++{ (void)dev; (void)command; return false; }
++static void wave5_vpu_isolate(struct vpu_device *dev, const char *reason, u32 command)
++{ (void)dev; (void)reason; (void)command; }
+ '''
+ mmio = r'''
+ static bool is_bus_control(u32 addr)
+diff --git a/drivers/media/platform/chips-media/wave5/wave5-helper.c b/drivers/media/platform/chips-media/wave5/wave5-helper.c
+index c3d34be833ff0..e04cbd6f0babe 100644
+--- a/drivers/media/platform/chips-media/wave5/wave5-helper.c
++++ b/drivers/media/platform/chips-media/wave5/wave5-helper.c
+@@ -119,7 +119,8 @@ int wave5_vpu_queue_init(void *priv, struct vb2_queue *src_vq, struct vb2_queue
+ 
+ 	src_vq->type = V4L2_BUF_TYPE_VIDEO_OUTPUT_MPLANE;
+ 	src_vq->io_modes = VB2_MMAP | VB2_DMABUF;
+-	src_vq->mem_ops = &vb2_dma_contig_memops;
++	src_vq->mem_ops = inst->dev->legacy_firmware ?
++		&wave5_quarantine_memops : &vb2_dma_contig_memops;
+ 	src_vq->ops = ops;
+ 	src_vq->timestamp_flags = V4L2_BUF_FLAG_TIMESTAMP_COPY;
+ 	src_vq->buf_struct_size = sizeof(struct vpu_src_buffer);
+@@ -132,7 +133,7 @@ int wave5_vpu_queue_init(void *priv, struct vb2_queue *src_vq, struct vb2_queue
+ 
+ 	dst_vq->type = V4L2_BUF_TYPE_VIDEO_CAPTURE_MPLANE;
+ 	dst_vq->io_modes = VB2_MMAP | VB2_DMABUF;
+-	dst_vq->mem_ops = &vb2_dma_contig_memops;
++	dst_vq->mem_ops = src_vq->mem_ops;
+ 	dst_vq->ops = ops;
+ 	dst_vq->timestamp_flags = V4L2_BUF_FLAG_TIMESTAMP_COPY;
+ 	dst_vq->buf_struct_size = sizeof(struct vpu_src_buffer);
+diff --git a/drivers/media/platform/chips-media/wave5/wave5-hw.c b/drivers/media/platform/chips-media/wave5/wave5-hw.c
+index acdaed4434234..e1dd32033d176 100644
+--- a/drivers/media/platform/chips-media/wave5/wave5-hw.c
++++ b/drivers/media/platform/chips-media/wave5/wave5-hw.c
+@@ -209,9 +209,19 @@ static int wave5_wait_bus_busy(struct vpu_device *vpu_dev, unsigned int addr)
+ static int wave5_wait_vpu_busy(struct vpu_device *vpu_dev, unsigned int addr)
+ {
+ 	u32 data;
++	int ret;
+ 
+-	return read_poll_timeout(wave5_vdi_read_register, data, data == 0,
+-				 0, VPU_BUSY_CHECK_TIMEOUT, false, vpu_dev, addr);
++	if (wave5_vpu_isolated(vpu_dev))
++		return -EIO;
++	ret = read_poll_timeout(wave5_vdi_read_register, data, data == 0,
++				10, VPU_BUSY_CHECK_TIMEOUT, false, vpu_dev, addr);
++	if (!ret && addr == W5_VPU_BUSY_STATUS &&
++	    wave5_vpu_inject_timeout(vpu_dev, vpu_read_reg(vpu_dev, W5_COMMAND)))
++		ret = -ETIMEDOUT;
++	if (ret)
++		wave5_vpu_isolate(vpu_dev, "command acknowledgment timeout",
++				  vpu_read_reg(vpu_dev, W5_COMMAND));
++	return ret;
+ }
+ 
+ static int wave5_wait_vcpu_bus_busy(struct vpu_device *vpu_dev, unsigned int addr)
+@@ -306,6 +316,8 @@ static int send_firmware_command(struct vpu_instance *inst, u32 cmd, bool check_
+ {
+ 	int ret;
+ 
++	if (wave5_vpu_isolated(inst->dev))
++		return -EIO;
+ 	wave5_bit_issue_command(inst->dev, inst, cmd);
+ 	ret = wave5_wait_vpu_busy(inst->dev, W5_VPU_BUSY_STATUS);
+ 	if (ret) {
+@@ -331,6 +343,8 @@ static int wave5_send_query(struct vpu_device *vpu_dev, struct vpu_instance *ins
+ {
+ 	int ret;
+ 
++	if (wave5_vpu_isolated(vpu_dev))
++		return -EIO;
+ 	vpu_write_reg(vpu_dev, W5_QUERY_OPTION, query_opt);
+ 	vpu_write_reg(vpu_dev, W5_VPU_BUSY_STATUS, 1);
+ 	wave5_bit_issue_command(vpu_dev, inst, W5_QUERY);
+diff --git a/drivers/media/platform/chips-media/wave5/wave5-isolation.c b/drivers/media/platform/chips-media/wave5/wave5-isolation.c
+new file mode 100644
+index 0000000000000..c3dbdfcbcf843
+--- /dev/null
++++ b/drivers/media/platform/chips-media/wave5/wave5-isolation.c
+@@ -0,0 +1,326 @@
++// SPDX-License-Identifier: (GPL-2.0 OR BSD-3-Clause)
++/* Fail closed when the T7 encoder no longer acknowledges commands or frames. */
++#include <linux/dma-buf.h>
++#include <linux/interrupt.h>
++#include <linux/module.h>
++#include <linux/ktime.h>
++#include "wave5-vpu.h"
++
++#define WAVE5_JOB_TIMEOUT_MS 5000
++#define WAVE5_ABORT_TIMEOUT_MS 1000
++
++/* One shot: acknowledge a real command, then simulate losing its completion. */
++static unsigned int timeout_command;
++module_param(timeout_command, uint, 0600);
++MODULE_PARM_DESC(timeout_command, "One-shot T7 command timeout injection (command opcode)");
++
++bool wave5_vpu_isolated(struct vpu_device *dev)
++{
++	return READ_ONCE(dev->isolated);
++}
++
++bool wave5_vpu_inject_timeout(struct vpu_device *dev, u32 command)
++{
++	if (!dev->isolation_ready || !dev->legacy_firmware || !command)
++		return false;
++	return cmpxchg(&timeout_command, command, 0) == command;
++}
++
++void wave5_vpu_isolate(struct vpu_device *dev, const char *reason, u32 command)
++{
++	/* Decoder and other integrations have different buffer lifetimes. */
++	if (!dev->isolation_ready || !dev->legacy_firmware)
++		return;
++	if (cmpxchg(&dev->isolated, 0, 1))
++		return;
++	WRITE_ONCE(dev->isolation_reason, reason);
++	WRITE_ONCE(dev->isolation_command, command);
++	WRITE_ONCE(dev->isolation_time_ns, ktime_get_boottime_ns());
++	/* Keep callbacks, DMA mappings, clocks and firmware storage until reboot. */
++	__module_get(THIS_MODULE);
++	get_device(dev->dev);
++	if (dev->irq >= 0)
++		disable_irq_nosync(dev->irq);
++	schedule_work(&dev->isolation_work);
++}
++
++/* All scheduler completion paths are serialized by irq_lock. */
++void wave5_vpu_job_finish(struct vpu_instance *inst)
++{
++	lockdep_assert_held(&inst->dev->irq_lock);
++	if (v4l2_m2m_get_curr_priv(inst->v4l2_m2m_dev) != inst)
++		return;
++	cancel_delayed_work(&inst->dev->job_timeout_work);
++	v4l2_m2m_job_finish(inst->v4l2_m2m_dev, inst->v4l2_fh.m2m_ctx);
++	wake_up_all(&inst->job_wait);
++}
++
++void wave5_vpu_job_start(struct vpu_instance *inst)
++{
++	lockdep_assert_held(&inst->dev->irq_lock);
++	if (!inst->dev->legacy_firmware)
++		return;
++	inst->dev->job_deadline = jiffies + msecs_to_jiffies(WAVE5_JOB_TIMEOUT_MS);
++	mod_delayed_work(system_wq, &inst->dev->job_timeout_work,
++			 msecs_to_jiffies(WAVE5_JOB_TIMEOUT_MS));
++}
++
++static void wave5_isolation_work(struct work_struct *work)
++{
++	struct vpu_device *dev = container_of(work, struct vpu_device, isolation_work);
++	struct vpu_instance *inst;
++	char event[] = "WAVE5_ISOLATED=1";
++	char *envp[2];
++
++	envp[0] = event;
++	envp[1] = NULL;
++
++	/* Never take dev_lock: STREAMOFF may hold it while awaiting job_abort. */
++	mutex_lock(&dev->irq_lock);
++	list_for_each_entry(inst, &dev->instances, list) {
++		struct v4l2_m2m_ctx *ctx = inst->v4l2_fh.m2m_ctx;
++
++		vb2_queue_error(&ctx->out_q_ctx.q);
++		vb2_queue_error(&ctx->cap_q_ctx.q);
++		complete_all(&inst->irq_done);
++		wave5_vpu_job_finish(inst);
++	}
++	mutex_unlock(&dev->irq_lock);
++	dev_err(dev->dev, "isolated: %s, command %#x; DMA storage retained until reboot\n",
++		dev->isolation_reason, dev->isolation_command);
++	kobject_uevent_env(&dev->dev->kobj, KOBJ_CHANGE, envp);
++}
++
++static void wave5_job_timeout_work(struct work_struct *work)
++{
++	struct vpu_device *dev = container_of(to_delayed_work(work),
++					    struct vpu_device, job_timeout_work);
++	struct vpu_instance *inst;
++
++	mutex_lock(&dev->irq_lock);
++	inst = v4l2_m2m_get_curr_priv(dev->v4l2_m2m_enc_dev);
++	if (inst && !wave5_vpu_isolated(dev)) {
++		/* A previous timer may have started just before a new job was armed. */
++		if (time_before(jiffies, dev->job_deadline))
++			mod_delayed_work(system_wq, &dev->job_timeout_work,
++					 dev->job_deadline - jiffies);
++		else
++			wave5_vpu_isolate(dev, "frame completion timeout", 0);
++	}
++	mutex_unlock(&dev->irq_lock);
++}
++
++void wave5_vpu_job_abort(void *priv)
++{
++	struct vpu_instance *inst = priv;
++	struct vpu_device *dev = inst->dev;
++
++	if (wait_event_timeout(inst->job_wait,
++			       v4l2_m2m_get_curr_priv(inst->v4l2_m2m_dev) != inst,
++			       msecs_to_jiffies(WAVE5_ABORT_TIMEOUT_MS)))
++		return;
++	wave5_vpu_isolate(dev, "job abort timeout", 0);
++	mutex_lock(&dev->irq_lock);
++	/* Also covers cancel racing with device_run before it takes irq_lock. */
++	wave5_vpu_job_finish(inst);
++	mutex_unlock(&dev->irq_lock);
++}
++
++void wave5_vpu_isolation_init(struct vpu_device *dev)
++{
++	INIT_WORK(&dev->isolation_work, wave5_isolation_work);
++	INIT_DELAYED_WORK(&dev->job_timeout_work, wave5_job_timeout_work);
++}
++
++static ssize_t isolated_show(struct device *device, struct device_attribute *attr, char *buf)
++{
++	return sysfs_emit(buf, "%u\n", wave5_vpu_isolated(dev_get_drvdata(device)));
++}
++static DEVICE_ATTR_RO(isolated);
++
++static ssize_t isolation_reason_show(struct device *device, struct device_attribute *attr,
++				     char *buf)
++{
++	struct vpu_device *dev = dev_get_drvdata(device);
++	const char *reason = READ_ONCE(dev->isolation_reason);
++
++	return sysfs_emit(buf, "%s\n", reason ?: "none");
++}
++static DEVICE_ATTR_RO(isolation_reason);
++
++static ssize_t isolation_time_ns_show(struct device *device, struct device_attribute *attr,
++				      char *buf)
++{
++	struct vpu_device *dev = dev_get_drvdata(device);
++
++	return sysfs_emit(buf, "%llu\n", READ_ONCE(dev->isolation_time_ns));
++}
++static DEVICE_ATTR_RO(isolation_time_ns);
++
++static struct attribute *wave5_isolation_attrs[] = {
++	&dev_attr_isolated.attr,
++	&dev_attr_isolation_reason.attr,
++	&dev_attr_isolation_time_ns.attr,
++	NULL,
++};
++
++const struct attribute_group wave5_isolation_group = {
++	.attrs = wave5_isolation_attrs,
++};
++
++/*
++ * vb2 STREAMOFF can unmap imported planes even when stop_streaming returns
++ * without touching them. Hold an independent dma-buf reference and retain the
++ * allocator's original reference/mapping when DMA termination is unproven.
++ * MMAP's VMA/export references can then disappear without freeing our storage.
++ */
++struct wave5_plane {
++	struct vpu_device *dev;
++	void *memory;
++	struct dma_buf *dbuf;
++};
++
++static void *wave5_plane_alloc(struct vb2_buffer *vb, struct device *dev, unsigned long size)
++{
++	struct vpu_instance *inst = vb2_get_drv_priv(vb->vb2_queue);
++	struct wave5_plane *plane = kzalloc(sizeof(*plane), GFP_KERNEL);
++
++	if (!plane)
++		return ERR_PTR(-ENOMEM);
++	plane->dev = inst->dev;
++	plane->memory = vb2_dma_contig_memops.alloc(vb, dev, size);
++	if (IS_ERR(plane->memory)) {
++		void *error = plane->memory;
++
++		kfree(plane);
++		return error;
++	}
++	return plane;
++}
++
++static void wave5_plane_put(void *priv)
++{
++	struct wave5_plane *plane = priv;
++
++	if (wave5_vpu_isolated(plane->dev))
++		return;
++	vb2_dma_contig_memops.put(plane->memory);
++	kfree(plane);
++}
++
++static void *wave5_plane_attach(struct vb2_buffer *vb, struct device *dev,
++				struct dma_buf *dbuf, unsigned long size)
++{
++	struct vpu_instance *inst = vb2_get_drv_priv(vb->vb2_queue);
++	struct wave5_plane *plane = kzalloc(sizeof(*plane), GFP_KERNEL);
++
++	if (!plane)
++		return ERR_PTR(-ENOMEM);
++	plane->dev = inst->dev;
++	plane->memory = vb2_dma_contig_memops.attach_dmabuf(vb, dev, dbuf, size);
++	if (IS_ERR(plane->memory)) {
++		void *error = plane->memory;
++
++		kfree(plane);
++		return error;
++	}
++	get_dma_buf(dbuf);
++	plane->dbuf = dbuf;
++	return plane;
++}
++
++static void wave5_plane_detach(void *priv)
++{
++	struct wave5_plane *plane = priv;
++
++	if (wave5_vpu_isolated(plane->dev))
++		return;
++	vb2_dma_contig_memops.detach_dmabuf(plane->memory);
++	dma_buf_put(plane->dbuf);
++	kfree(plane);
++}
++
++static int wave5_plane_map(void *priv)
++{
++	struct wave5_plane *plane = priv;
++
++	if (wave5_vpu_isolated(plane->dev))
++		return -EIO;
++	return vb2_dma_contig_memops.map_dmabuf(plane->memory);
++}
++
++static void wave5_plane_unmap(void *priv)
++{
++	struct wave5_plane *plane = priv;
++
++	if (!wave5_vpu_isolated(plane->dev))
++		vb2_dma_contig_memops.unmap_dmabuf(plane->memory);
++}
++
++static void wave5_plane_prepare(void *priv)
++{
++	struct wave5_plane *plane = priv;
++
++	if (!wave5_vpu_isolated(plane->dev))
++		vb2_dma_contig_memops.prepare(plane->memory);
++}
++
++static void wave5_plane_finish(void *priv)
++{
++	struct wave5_plane *plane = priv;
++
++	if (!wave5_vpu_isolated(plane->dev))
++		vb2_dma_contig_memops.finish(plane->memory);
++}
++
++static void *wave5_plane_cookie(struct vb2_buffer *vb, void *priv)
++{
++	struct wave5_plane *plane = priv;
++
++	return vb2_dma_contig_memops.cookie(vb, plane->memory);
++}
++
++static void *wave5_plane_vaddr(struct vb2_buffer *vb, void *priv)
++{
++	struct wave5_plane *plane = priv;
++
++	return vb2_dma_contig_memops.vaddr(vb, plane->memory);
++}
++
++static unsigned int wave5_plane_users(void *priv)
++{
++	struct wave5_plane *plane = priv;
++
++	return vb2_dma_contig_memops.num_users(plane->memory);
++}
++
++static int wave5_plane_mmap(void *priv, struct vm_area_struct *vma)
++{
++	struct wave5_plane *plane = priv;
++
++	return vb2_dma_contig_memops.mmap(plane->memory, vma);
++}
++
++static struct dma_buf *wave5_plane_export(struct vb2_buffer *vb, void *priv,
++					  unsigned long flags)
++{
++	struct wave5_plane *plane = priv;
++
++	return vb2_dma_contig_memops.get_dmabuf(vb, plane->memory, flags);
++}
++
++const struct vb2_mem_ops wave5_quarantine_memops = {
++	.alloc = wave5_plane_alloc,
++	.put = wave5_plane_put,
++	.attach_dmabuf = wave5_plane_attach,
++	.detach_dmabuf = wave5_plane_detach,
++	.map_dmabuf = wave5_plane_map,
++	.unmap_dmabuf = wave5_plane_unmap,
++	.prepare = wave5_plane_prepare,
++	.finish = wave5_plane_finish,
++	.cookie = wave5_plane_cookie,
++	.vaddr = wave5_plane_vaddr,
++	.num_users = wave5_plane_users,
++	.mmap = wave5_plane_mmap,
++	.get_dmabuf = wave5_plane_export,
++};
+diff --git a/drivers/media/platform/chips-media/wave5/wave5-vdi.c b/drivers/media/platform/chips-media/wave5/wave5-vdi.c
+index 8f71920a8a35c..367ac72c188f8 100644
+--- a/drivers/media/platform/chips-media/wave5/wave5-vdi.c
++++ b/drivers/media/platform/chips-media/wave5/wave5-vdi.c
+@@ -78,6 +78,8 @@ int wave5_vdi_release(struct device *dev)
+ 
+ void wave5_vdi_write_register(struct vpu_device *vpu_dev, u32 addr, u32 data)
+ {
++	if (wave5_vpu_isolated(vpu_dev))
++		return;
+ 	writel(data, vpu_dev->vdb_register + addr);
+ }
+ 
+@@ -120,6 +122,8 @@ int wave5_vdi_allocate_dma_memory(struct vpu_device *vpu_dev, struct vpu_buf *vb
+ 	void *vaddr;
+ 	dma_addr_t daddr;
+ 
++	if (wave5_vpu_isolated(vpu_dev))
++		return -EIO;
+ 	if (!vb->size) {
+ 		dev_err(vpu_dev->dev, "%s: requested size==0\n", __func__);
+ 		return -EINVAL;
+@@ -136,6 +140,8 @@ int wave5_vdi_allocate_dma_memory(struct vpu_device *vpu_dev, struct vpu_buf *vb
+ 
+ int wave5_vdi_free_dma_memory(struct vpu_device *vpu_dev, struct vpu_buf *vb)
+ {
++	if (wave5_vpu_isolated(vpu_dev))
++		return -EBUSY;
+ 	if (vb->size == 0)
+ 		return -EINVAL;
+ 
+@@ -202,6 +208,8 @@ void wave5_vdi_free_sram(struct vpu_device *vpu_dev)
+ {
+ 	struct vpu_buf *vb = &vpu_dev->sram_buf;
+ 
++	if (wave5_vpu_isolated(vpu_dev))
++		return;
+ 	if (!vb->size || !vb->vaddr)
+ 		return;
+ 
+diff --git a/drivers/media/platform/chips-media/wave5/wave5-vpu-enc.c b/drivers/media/platform/chips-media/wave5/wave5-vpu-enc.c
+index d989bbf2e70b9..03753baaddfbc 100644
+--- a/drivers/media/platform/chips-media/wave5/wave5-vpu-enc.c
++++ b/drivers/media/platform/chips-media/wave5/wave5-vpu-enc.c
+@@ -235,6 +235,8 @@ static int start_encode(struct vpu_instance *inst, u32 *fail_res)
+ 		pic_param.force_keyframe = atomic_xchg(&inst->force_keyframe, 0);
+ 	ret = wave5_vpu_enc_start_one_frame(inst, &pic_param, fail_res);
+ 	if (ret) {
++		if (wave5_vpu_isolated(inst->dev))
++			return ret;
+ 		/* A command which was not accepted must not consume the request. */
+ 		if (pic_param.force_keyframe)
+ 			atomic_set(&inst->force_keyframe, 1);
+@@ -261,6 +263,7 @@ static int start_encode(struct vpu_instance *inst, u32 *fail_res)
+ 		dst_buf->vb2_buf.timestamp = src_buf->vb2_buf.timestamp;
+ 		v4l2_m2m_buf_done(src_buf, VB2_BUF_STATE_ERROR);
+ 		v4l2_m2m_buf_done(dst_buf, VB2_BUF_STATE_ERROR);
++		return ret;
+ 	} else {
+ 		dev_dbg(inst->dev->dev, "%s: wave5_vpu_enc_start_one_frame success\n",
+ 			__func__);
+@@ -277,11 +280,15 @@ static void wave5_vpu_enc_finish_encode(struct vpu_instance *inst)
+ 	struct vb2_v4l2_buffer *src_buf = NULL;
+ 	struct vb2_v4l2_buffer *dst_buf = NULL;
+ 
++	if (wave5_vpu_isolated(inst->dev))
++		return;
+ 	ret = wave5_vpu_enc_get_output_info(inst, &enc_output_info);
+ 	if (ret) {
+ 		dev_dbg(inst->dev->dev,
+ 			"%s: vpu_enc_get_output_info fail: %d  reason: %u | info: %u\n",
+ 			__func__, ret, enc_output_info.error_reason, enc_output_info.warn_info);
++		/* A failed result query cannot prove which buffers firmware owns. */
++		wave5_vpu_isolate(inst->dev, "frame result query failed", 0);
+ 		return;
+ 	}
+ 
+@@ -314,11 +321,11 @@ static void wave5_vpu_enc_finish_encode(struct vpu_instance *inst)
+ 
+ 		v4l2_event_queue_fh(&inst->v4l2_fh, &vpu_event_eos);
+ 
+-		v4l2_m2m_job_finish(inst->v4l2_m2m_dev, m2m_ctx);
++		wave5_vpu_job_finish(inst);
+ 	} else {
+ 		if (!dst_buf) {
+ 			dev_warn(inst->dev->dev, "No bitstream buffer.");
+-			v4l2_m2m_job_finish(inst->v4l2_m2m_dev, m2m_ctx);
++			wave5_vpu_job_finish(inst);
+ 			return;
+ 		}
+ 
+@@ -349,7 +356,7 @@ static void wave5_vpu_enc_finish_encode(struct vpu_instance *inst)
+ 		dev_dbg(inst->dev->dev, "%s: frame_cycle %8u\n",
+ 			__func__, enc_output_info.frame_cycle);
+ 
+-		v4l2_m2m_job_finish(inst->v4l2_m2m_dev, m2m_ctx);
++		wave5_vpu_job_finish(inst);
+ 	}
+ }
+ 
+@@ -1417,6 +1424,10 @@ static int wave5_vpu_enc_start_streaming(struct vb2_queue *q, unsigned int count
+ 	struct v4l2_m2m_ctx *m2m_ctx = inst->v4l2_fh.m2m_ctx;
+ 	int ret = 0;
+ 
++	if (wave5_vpu_isolated(inst->dev)) {
++		wave5_return_bufs(q, VB2_BUF_STATE_QUEUED);
++		return -EIO;
++	}
+ 	pm_runtime_resume_and_get(inst->dev->dev);
+ 	v4l2_m2m_update_start_streaming_state(m2m_ctx, q);
+ 
+@@ -1516,7 +1527,8 @@ static void streamoff_capture(struct vpu_instance *inst, struct vb2_queue *q)
+ static void wave5_vpu_enc_stop_streaming(struct vb2_queue *q)
+ {
+ 	struct vpu_instance *inst = vb2_get_drv_priv(q);
+-	bool check_cmd = true;
++	unsigned int timeout = inst->dev->legacy_firmware ? 5000 : VPU_ENC_TIMEOUT;
++	unsigned long deadline = jiffies + msecs_to_jiffies(timeout);
+ 
+ 	/*
+ 	 * Note that we don't need m2m_ctx->next_buf_last for this driver, so we
+@@ -1529,7 +1541,7 @@ static void wave5_vpu_enc_stop_streaming(struct vb2_queue *q)
+ 	if (wave5_vpu_both_queues_are_streaming(inst))
+ 		switch_state(inst, VPU_INST_STATE_STOP);
+ 
+-	while (check_cmd) {
++	while (!wave5_vpu_isolated(inst->dev)) {
+ 		struct queue_status_info q_status;
+ 		struct enc_output_info enc_output_info;
+ 
+@@ -1537,8 +1549,12 @@ static void wave5_vpu_enc_stop_streaming(struct vb2_queue *q)
+ 
+ 		if (q_status.report_queue_count == 0)
+ 			break;
++		if (time_after_eq(jiffies, deadline)) {
++			wave5_vpu_isolate(inst->dev, "streamoff drain timeout", 0);
++			break;
++		}
+ 
+-		if (wave5_vpu_wait_interrupt(inst, VPU_ENC_TIMEOUT) < 0)
++		if (wave5_vpu_wait_interrupt(inst, jiffies_to_msecs(deadline - jiffies)) < 0)
+ 			break;
+ 
+ 		if (wave5_vpu_enc_get_output_info(inst, &enc_output_info))
+@@ -1594,6 +1610,10 @@ static void wave5_vpu_enc_device_run(void *priv)
+ 	int ret = 0;
+ 
+ 	pm_runtime_resume_and_get(inst->dev->dev);
++	mutex_lock(&inst->dev->irq_lock);
++	if (wave5_vpu_isolated(inst->dev))
++		goto finish;
++	wave5_vpu_job_start(inst);
+ 	switch (inst->state) {
+ 	case VPU_INST_STATE_PIC_RUN:
+ 		ret = start_encode(inst, &fail_res);
+@@ -1608,15 +1628,18 @@ static void wave5_vpu_enc_device_run(void *priv)
+ 		}
+ 		dev_dbg(inst->dev->dev, "%s: leave with active job", __func__);
+ 		pm_runtime_put_autosuspend(inst->dev->dev);
++		mutex_unlock(&inst->dev->irq_lock);
+ 		return;
+ 	default:
+ 		WARN(1, "Execution of a job in state %s is invalid.\n",
+ 		     state_to_str(inst->state));
+ 		break;
+ 	}
++finish:
+ 	dev_dbg(inst->dev->dev, "%s: leave and finish job", __func__);
+ 	pm_runtime_put_autosuspend(inst->dev->dev);
+-	v4l2_m2m_job_finish(inst->v4l2_m2m_dev, m2m_ctx);
++	wave5_vpu_job_finish(inst);
++	mutex_unlock(&inst->dev->irq_lock);
+ }
+ 
+ static int wave5_vpu_enc_job_ready(void *priv)
+@@ -1624,6 +1647,8 @@ static int wave5_vpu_enc_job_ready(void *priv)
+ 	struct vpu_instance *inst = priv;
+ 	struct v4l2_m2m_ctx *m2m_ctx = inst->v4l2_fh.m2m_ctx;
+ 
++	if (wave5_vpu_isolated(inst->dev))
++		return false;
+ 	switch (inst->state) {
+ 	case VPU_INST_STATE_NONE:
+ 		dev_dbg(inst->dev->dev, "Encoder must be open to start queueing M2M jobs!\n");
+@@ -1650,6 +1675,12 @@ static const struct v4l2_m2m_ops wave5_vpu_enc_m2m_ops = {
+ 	.job_ready = wave5_vpu_enc_job_ready,
+ };
+ 
++static const struct v4l2_m2m_ops wave5_vpu_enc_t7_m2m_ops = {
++	.device_run = wave5_vpu_enc_device_run,
++	.job_ready = wave5_vpu_enc_job_ready,
++	.job_abort = wave5_vpu_job_abort,
++};
++
+ static int wave5_vpu_open_enc(struct file *filp)
+ {
+ 	struct video_device *vdev = video_devdata(filp);
+@@ -1658,6 +1689,8 @@ static int wave5_vpu_open_enc(struct file *filp)
+ 	struct v4l2_ctrl_handler *v4l2_ctrl_hdl;
+ 	int ret = 0;
+ 
++	if (wave5_vpu_isolated(dev))
++		return -EIO;
+ 	inst = kzalloc_obj(*inst);
+ 	if (!inst)
+ 		return -ENOMEM;
+@@ -1864,6 +1897,7 @@ static int wave5_vpu_open_enc(struct file *filp)
+ 	inst->frame_rate = 30;
+ 
+ 	init_completion(&inst->irq_done);
++	init_waitqueue_head(&inst->job_wait);
+ 	ret = wave5_kfifo_alloc(inst);
+ 	if (ret) {
+ 		dev_err(inst->dev->dev, "failed to allocate fifo\n");
+@@ -1883,7 +1917,17 @@ static int wave5_vpu_open_enc(struct file *filp)
+ 	if (ret)
+ 		goto cleanup_inst;
+ 
++	mutex_lock(&dev->irq_lock);
++	if (wave5_vpu_isolated(dev)) {
++		mutex_unlock(&dev->irq_lock);
++		mutex_unlock(&dev->dev_lock);
++		ret = -EIO;
++		goto cleanup_inst;
++	}
++	spin_lock_irq(&dev->irq_spinlock);
+ 	list_add_tail(&inst->list, &dev->instances);
++	spin_unlock_irq(&dev->irq_spinlock);
++	mutex_unlock(&dev->irq_lock);
+ 
+ 	mutex_unlock(&dev->dev_lock);
+ 
+@@ -1908,20 +1952,60 @@ static int wave5_vpu_enc_release(struct file *filp)
+ 	 * keeping both queues stopped also prevents another job being queued.
+ 	 */
+ 	mutex_lock(&dev->dev_lock);
++	if (wave5_vpu_isolated(dev))
++		goto retain;
+ 	v4l2_m2m_streamoff(filp, m2m_ctx, V4L2_BUF_TYPE_VIDEO_OUTPUT_MPLANE);
+ 	v4l2_m2m_streamoff(filp, m2m_ctx, V4L2_BUF_TYPE_VIDEO_CAPTURE_MPLANE);
++	if (wave5_vpu_isolated(dev))
++		goto retain;
++	/* Confirm DESTROY before releasing any queue backing on the T7. */
++	if (dev->legacy_firmware && inst->state != VPU_INST_STATE_NONE) {
++		u32 fail_res;
++
++		ret = wave5_vpu_enc_close(inst, &fail_res);
++		if (ret) {
++			wave5_vpu_isolate(dev, "instance destroy failed", 0);
++			goto retain;
++		}
++		inst->state = VPU_INST_STATE_NONE;
++	}
+ 	ret = wave5_vpu_release_device(filp, wave5_vpu_enc_close, "encoder");
+ 	mutex_unlock(&dev->dev_lock);
+ 
+ 	return ret;
++retain:
++	/* Keep the queues, imported DMA refs, instance and auxiliary allocations. */
++	v4l2_fh_del(&inst->v4l2_fh, filp);
++	v4l2_fh_exit(&inst->v4l2_fh);
++	filp->private_data = NULL;
++	mutex_unlock(&dev->dev_lock);
++	return 0;
++}
++
++static long wave5_vpu_enc_ioctl(struct file *filp, unsigned int cmd, unsigned long arg)
++{
++	struct vpu_instance *inst = file_to_vpu_inst(filp);
++
++	if (wave5_vpu_isolated(inst->dev))
++		return -EIO;
++	return video_ioctl2(filp, cmd, arg);
++}
++
++static __poll_t wave5_vpu_enc_poll(struct file *filp, struct poll_table_struct *wait)
++{
++	struct vpu_instance *inst = file_to_vpu_inst(filp);
++
++	if (wave5_vpu_isolated(inst->dev))
++		return EPOLLERR;
++	return v4l2_m2m_fop_poll(filp, wait);
+ }
+ 
+ static const struct v4l2_file_operations wave5_vpu_enc_fops = {
+ 	.owner = THIS_MODULE,
+ 	.open = wave5_vpu_open_enc,
+ 	.release = wave5_vpu_enc_release,
+-	.unlocked_ioctl = video_ioctl2,
+-	.poll = v4l2_m2m_fop_poll,
++	.unlocked_ioctl = wave5_vpu_enc_ioctl,
++	.poll = wave5_vpu_enc_poll,
+ 	.mmap = v4l2_m2m_fop_mmap,
+ };
+ 
+@@ -1934,7 +2018,8 @@ int wave5_vpu_enc_register_device(struct vpu_device *dev)
+ 	if (!vdev_enc)
+ 		return -ENOMEM;
+ 
+-	dev->v4l2_m2m_enc_dev = v4l2_m2m_init(&wave5_vpu_enc_m2m_ops);
++	dev->v4l2_m2m_enc_dev = v4l2_m2m_init(dev->legacy_firmware ?
++		&wave5_vpu_enc_t7_m2m_ops : &wave5_vpu_enc_m2m_ops);
+ 	if (IS_ERR(dev->v4l2_m2m_enc_dev)) {
+ 		ret = PTR_ERR(dev->v4l2_m2m_enc_dev);
+ 		dev_err(dev->dev, "v4l2_m2m_init, fail: %d\n", ret);
+diff --git a/drivers/media/platform/chips-media/wave5/wave5-vpu.c b/drivers/media/platform/chips-media/wave5/wave5-vpu.c
+index 8027fd6c8ac71..c59d2bd9ff371 100644
+--- a/drivers/media/platform/chips-media/wave5/wave5-vpu.c
++++ b/drivers/media/platform/chips-media/wave5/wave5-vpu.c
+@@ -41,10 +41,18 @@ int wave5_vpu_wait_interrupt(struct vpu_instance *inst, unsigned int timeout)
+ {
+ 	int ret;
+ 
++	if (wave5_vpu_isolated(inst->dev))
++		return -EIO;
++	if (inst->dev->legacy_firmware)
++		timeout = min(timeout, 5000U);
+ 	ret = wait_for_completion_timeout(&inst->irq_done,
+ 					  msecs_to_jiffies(timeout));
+-	if (!ret)
++	if (!ret) {
++		wave5_vpu_isolate(inst->dev, "command completion timeout", 0);
+ 		return -ETIMEDOUT;
++	}
++	if (wave5_vpu_isolated(inst->dev))
++		return -EIO;
+ 
+ 	reinit_completion(&inst->irq_done);
+ 
+@@ -62,6 +70,8 @@ static void wave5_vpu_handle_irq(void *dev_id)
+ 	int val;
+ 	unsigned long flags;
+ 
++	if (wave5_vpu_isolated(dev))
++		return;
+ 	irq_reason = wave5_vdi_read_register(dev, W5_VPU_VINT_REASON);
+ 	seq_done = wave5_vdi_read_register(dev, W5_RET_SEQ_DONE_INSTANCE_INFO);
+ 	cmd_done = wave5_vdi_read_register(dev, W5_RET_QUEUE_CMD_DONE_INST);
+@@ -114,6 +124,8 @@ static irqreturn_t wave5_vpu_irq(int irq, void *dev_id)
+ {
+ 	struct vpu_device *dev = dev_id;
+ 
++	if (wave5_vpu_isolated(dev))
++		return IRQ_HANDLED;
+ 	if (wave5_vdi_read_register(dev, W5_VPU_VPU_INT_STS)) {
+ 		wave5_vpu_handle_irq(dev);
+ 		return IRQ_WAKE_THREAD;
+@@ -130,7 +142,7 @@ static irqreturn_t wave5_vpu_irq_thread(int irq, void *dev_id)
+ 
+ 	mutex_lock(&dev->irq_lock);
+ 	list_for_each_entry_safe(inst, tmp, &dev->instances, list) {
+-		while (kfifo_len(&inst->irq_status)) {
++		while (!wave5_vpu_isolated(dev) && kfifo_len(&inst->irq_status)) {
+ 			ret = kfifo_out(&inst->irq_status, &irq_status, sizeof(int));
+ 			if (!ret)
+ 				break;
+@@ -147,6 +159,8 @@ static void wave5_vpu_irq_work_fn(struct kthread_work *work)
+ {
+ 	struct vpu_device *dev = container_of(work, struct vpu_device, work);
+ 
++	if (wave5_vpu_isolated(dev))
++		return;
+ 	if (wave5_vdi_read_register(dev, W5_VPU_VPU_INT_STS))
+ 		wave5_vpu_handle_irq(dev);
+ }
+@@ -177,7 +191,7 @@ static int irq_thread(void *data)
+ 
+ 		mutex_lock(&dev->irq_lock);
+ 		list_for_each_entry_safe(inst, tmp, &dev->instances, list) {
+-			while (kfifo_len(&inst->irq_status)) {
++			while (!wave5_vpu_isolated(dev) && kfifo_len(&inst->irq_status)) {
+ 				ret = kfifo_out(&inst->irq_status, &irq_status, sizeof(int));
+ 				if (!ret)
+ 					break;
+@@ -228,6 +242,8 @@ static __maybe_unused int wave5_pm_suspend(struct device *dev)
+ {
+ 	struct vpu_device *vpu = dev_get_drvdata(dev);
+ 
++	if (wave5_vpu_isolated(vpu))
++		return -EBUSY;
+ 	/* T7 keeps clocks running until genpd completes its power-off sequence. */
+ 	if (vpu->legacy_firmware)
+ 		return 0;
+@@ -248,6 +264,8 @@ static __maybe_unused int wave5_pm_resume(struct device *dev)
+ 	struct vpu_device *vpu = dev_get_drvdata(dev);
+ 	int ret = 0;
+ 
++	if (wave5_vpu_isolated(vpu))
++		return -EIO;
+ 	/* T7 probe owns the clocks before asking genpd to power the block on. */
+ 	if (vpu->legacy_firmware)
+ 		return 0;
+@@ -305,6 +323,7 @@ static int wave5_vpu_probe(struct platform_device *pdev)
+ 	mutex_init(&dev->hw_lock);
+ 	mutex_init(&dev->irq_lock);
+ 	spin_lock_init(&dev->irq_spinlock);
++	wave5_vpu_isolation_init(dev);
+ 	dev_set_drvdata(&pdev->dev, dev);
+ 	dev->dev = &pdev->dev;
+ 	dev->legacy_firmware = match_data->legacy_firmware;
+@@ -439,6 +458,7 @@ static int wave5_vpu_probe(struct platform_device *pdev)
+ 		wave5_vpu_sleep_wake(&pdev->dev, true, NULL, 0);
+ 	}
+ 
++	dev->isolation_ready = true;
+ 	return 0;
+ 
+ err_enc_unreg:
+@@ -489,6 +509,14 @@ static void wave5_vpu_remove(struct platform_device *pdev)
+ 	const struct wave5_match_data *match_data = device_get_match_data(&pdev->dev);
+ 	bool stopped = true;
+ 
++	/* An isolated module is pinned and userspace unbind is disabled. */
++	if (wave5_vpu_isolated(dev)) {
++		dev_err(dev->dev, "isolated device retains DMA storage until reboot\n");
++		return;
++	}
++	dev->isolation_ready = false;
++	cancel_delayed_work_sync(&dev->job_timeout_work);
++	cancel_work_sync(&dev->isolation_work);
+ 	wave5_vpu_enc_unregister_device(dev);
+ 	wave5_vpu_dec_unregister_device(dev);
+ 	v4l2_device_unregister(&dev->v4l2_dev);
+@@ -534,6 +562,15 @@ static void wave5_vpu_remove(struct platform_device *pdev)
+ 	ida_destroy(&dev->inst_ida);
+ }
+ 
++static void wave5_vpu_shutdown(struct platform_device *pdev)
++{
++	struct vpu_device *dev = dev_get_drvdata(&pdev->dev);
++
++	/* No firmware waits, power collapse or reset on the quarantine path. */
++	if (wave5_vpu_isolated(dev))
++		dev_info(dev->dev, "shutdown: retaining quarantined DMA storage\n");
++}
++
+ static const struct wave5_match_data ti_wave521c_data = {
+ 	.flags = WAVE5_IS_ENC | WAVE5_IS_DEC,
+ 	.fw_name = "cnm/wave521c_k3_codec_fw.bin",
+@@ -561,11 +598,17 @@ static struct platform_driver wave5_vpu_driver = {
+ 		.name = VPU_PLATFORM_DEVICE_NAME,
+ 		.of_match_table = of_match_ptr(wave5_dt_ids),
+ 		.pm = &wave5_pm_ops,
++		.dev_groups = (const struct attribute_group *[]) {
++			&wave5_isolation_group, NULL,
++		},
++		.suppress_bind_attrs = true,
+ 		},
+ 	.probe = wave5_vpu_probe,
+ 	.remove = wave5_vpu_remove,
++	.shutdown = wave5_vpu_shutdown,
+ };
+ 
+ module_platform_driver(wave5_vpu_driver);
+ MODULE_DESCRIPTION("chips&media VPU V4L2 driver");
+ MODULE_LICENSE("Dual BSD/GPL");
++MODULE_IMPORT_NS("DMA_BUF");
+diff --git a/drivers/media/platform/chips-media/wave5/wave5-vpu.h b/drivers/media/platform/chips-media/wave5/wave5-vpu.h
+index 99c3be882192f..aedfc7b93c755 100644
+--- a/drivers/media/platform/chips-media/wave5/wave5-vpu.h
++++ b/drivers/media/platform/chips-media/wave5/wave5-vpu.h
+@@ -68,6 +68,16 @@ static inline struct vpu_dst_buffer *wave5_to_vpu_dst_buf(struct vb2_v4l2_buffer
+ 
+ int wave5_vpu_wait_interrupt(struct vpu_instance *inst, unsigned int timeout);
+ 
++bool wave5_vpu_isolated(struct vpu_device *dev);
++void wave5_vpu_isolate(struct vpu_device *dev, const char *reason, u32 command);
++bool wave5_vpu_inject_timeout(struct vpu_device *dev, u32 command);
++void wave5_vpu_job_finish(struct vpu_instance *inst);
++void wave5_vpu_job_start(struct vpu_instance *inst);
++void wave5_vpu_job_abort(void *priv);
++extern const struct attribute_group wave5_isolation_group;
++extern const struct vb2_mem_ops wave5_quarantine_memops;
++void wave5_vpu_isolation_init(struct vpu_device *dev);
++
+ int  wave5_vpu_dec_register_device(struct vpu_device *dev);
+ void wave5_vpu_dec_unregister_device(struct vpu_device *dev);
+ int  wave5_vpu_enc_register_device(struct vpu_device *dev);
+diff --git a/drivers/media/platform/chips-media/wave5/wave5-vpuapi.c b/drivers/media/platform/chips-media/wave5/wave5-vpuapi.c
+index f77abd5e122a2..6e37afa4e724c 100644
+--- a/drivers/media/platform/chips-media/wave5/wave5-vpuapi.c
++++ b/drivers/media/platform/chips-media/wave5/wave5-vpuapi.c
+@@ -767,6 +767,14 @@ int wave5_vpu_enc_close(struct vpu_instance *inst, u32 *fail_res)
+ 			return ret;
+ 		}
+ 
++		if (*fail_res == WAVE5_SYSERR_VPU_STILL_RUNNING &&
++		    vpu_dev->legacy_firmware) {
++			wave5_vpu_isolate(vpu_dev, "instance destroy still running", 0);
++			pm_runtime_put_autosuspend(inst->dev->dev);
++			mutex_unlock(&vpu_dev->hw_lock);
++			return -ETIMEDOUT;
++		}
++
+ 		if (*fail_res == WAVE5_SYSERR_VPU_STILL_RUNNING &&
+ 		    retry++ >= MAX_FIRMWARE_CALL_RETRY) {
+ 			pm_runtime_resume_and_get(inst->dev->dev);
+diff --git a/drivers/media/platform/chips-media/wave5/wave5-vpuapi.h b/drivers/media/platform/chips-media/wave5/wave5-vpuapi.h
+index f40fd1c8e84c6..ae48854c40b31 100644
+--- a/drivers/media/platform/chips-media/wave5/wave5-vpuapi.h
++++ b/drivers/media/platform/chips-media/wave5/wave5-vpuapi.h
+@@ -778,6 +778,15 @@ struct vpu_device {
+ 	struct semaphore irq_sem; /* signal to irq_thread when interrupt happens*/
+ 	struct reset_control *resets;
+ 	spinlock_t irq_spinlock; /* protect instances list */
++	/* Quarantine is irreversible until the next boot. */
++	unsigned int isolated;
++	u32 isolation_command;
++	const char *isolation_reason;
++	u64 isolation_time_ns;
++	bool isolation_ready;
++	struct work_struct isolation_work;
++	struct delayed_work job_timeout_work;
++	unsigned long job_deadline; /* protected by irq_lock */
+ };
+ 
+ struct vpu_instance;
+@@ -793,6 +802,7 @@ struct vpu_instance {
+ 	struct v4l2_ctrl_handler v4l2_ctrl_hdl;
+ 	struct vpu_device *dev;
+ 	struct completion irq_done;
++	wait_queue_head_t job_wait;
+ 
+ 	struct v4l2_pix_format_mplane src_fmt;
+ 	struct v4l2_pix_format_mplane dst_fmt;

@@ -1,0 +1,167 @@
+From c5f1290d5bb581a5c985da3bd5f8c919e7fe62bb Mon Sep 17 00:00:00 2001
+From: localhost-copilot <318096335+localhost-copilot@users.noreply.github.com>
+Date: Tue, 20 Oct 2026 16:33:06 +0800
+Subject: [PATCH] media: wave5: honor offsets and validate imported source
+ planes
+
+---
+ .../chips-media/wave5/test_buffers.py         | 66 +++++++++++++++++++
+ .../chips-media/wave5/wave5-vpu-enc.c         | 41 ++++++++++--
+ 2 files changed, 101 insertions(+), 6 deletions(-)
+ create mode 100644 drivers/media/platform/chips-media/wave5/test_buffers.py
+
+diff --git a/drivers/media/platform/chips-media/wave5/test_buffers.py b/drivers/media/platform/chips-media/wave5/test_buffers.py
+new file mode 100644
+index 0000000000000..d3d87541c9980
+--- /dev/null
++++ b/drivers/media/platform/chips-media/wave5/test_buffers.py
+@@ -0,0 +1,66 @@
++#!/usr/bin/env python3
++# SPDX-License-Identifier: GPL-2.0-only
++"""Exercise actual encoder import validation and DMA offsets without hardware."""
++from pathlib import Path
++import subprocess
++import tempfile
++
++source = Path(__file__).with_name('wave5-vpu-enc.c').read_text()
++address = source[source.index('static dma_addr_t wave5_vpu_enc_source_addr'):
++                 source.index('static int start_encode')]
++prepare = source[source.index('static int wave5_vpu_enc_buf_prepare'):
++                 source.index('static void wave5_vpu_enc_buf_queue')]
++harness = r'''
++#include <assert.h>
++#include <errno.h>
++#include <stdint.h>
++#include <stdio.h>
++typedef uint32_t u32;
++typedef uint64_t dma_addr_t;
++#define V4L2_BUF_TYPE_VIDEO_OUTPUT_MPLANE 10
++struct vpu_instance {
++    struct { unsigned num_planes; struct { u32 sizeimage; } plane_fmt[3]; } src_fmt;
++};
++struct vb2_buffer {
++    unsigned type;
++    struct vpu_instance *vb2_queue;
++    struct { u32 data_offset; uint64_t size, payload, dma; } planes[3];
++};
++static void *vb2_get_drv_priv(void *queue) { return queue; }
++static uint64_t vb2_plane_size(struct vb2_buffer *vb, unsigned p) { return vb->planes[p].size; }
++static uint64_t vb2_get_plane_payload(struct vb2_buffer *vb, unsigned p) { return vb->planes[p].payload; }
++static dma_addr_t vb2_dma_contig_plane_dma_addr(struct vb2_buffer *vb, unsigned p) { return vb->planes[p].dma; }
++'''
++checks = r'''
++int main(void)
++{
++    struct vpu_instance inst = { .src_fmt = { .num_planes = 2,
++        .plane_fmt = { { 8294400 }, { 4147200 } } } };
++    struct vb2_buffer vb = { .type = V4L2_BUF_TYPE_VIDEO_OUTPUT_MPLANE,
++        .vb2_queue = &inst,
++        .planes = { { 0, 12441600, 8294400, 0x40000000 },
++                    { 8294400, 12441600, 12441600, 0x40000000 } } };
++    assert(!wave5_vpu_enc_buf_prepare(&vb));
++    assert(wave5_vpu_enc_source_addr(&vb, 0) == 0x40000000);
++    assert(wave5_vpu_enc_source_addr(&vb, 1) == 0x40000000 + 8294400);
++    vb.planes[1].size--;
++    assert(wave5_vpu_enc_buf_prepare(&vb) == -EINVAL);
++    vb.planes[1].size++;
++    vb.planes[1].payload--;
++    assert(wave5_vpu_enc_buf_prepare(&vb) == -EINVAL);
++    vb.planes[1].payload = 1;
++    assert(wave5_vpu_enc_buf_prepare(&vb) == -EINVAL);
++    vb.planes[1].data_offset = UINT32_MAX;
++    assert(wave5_vpu_enc_buf_prepare(&vb) == -EINVAL);
++    vb.type = 9;
++    assert(!wave5_vpu_enc_buf_prepare(&vb));
++    puts("Wave5 shared DMA plane offsets and bounds passed");
++}
++'''
++with tempfile.TemporaryDirectory() as directory:
++    test = Path(directory) / 'buffers.c'
++    test.write_text(harness + address + prepare + checks)
++    executable = Path(directory) / 'buffers'
++    subprocess.run(['cc', '-Wall', '-Wextra', '-Werror', '-O2', str(test),
++                    '-o', str(executable)], check=True)
++    subprocess.run([str(executable)], check=True)
+diff --git a/drivers/media/platform/chips-media/wave5/wave5-vpu-enc.c b/drivers/media/platform/chips-media/wave5/wave5-vpu-enc.c
+index f9fcdf4c224b3..0145244dd275e 100644
+--- a/drivers/media/platform/chips-media/wave5/wave5-vpu-enc.c
++++ b/drivers/media/platform/chips-media/wave5/wave5-vpu-enc.c
+@@ -141,6 +141,11 @@ static int switch_state(struct vpu_instance *inst, enum vpu_instance_state state
+ 	return -EINVAL;
+ }
+ 
++static dma_addr_t wave5_vpu_enc_source_addr(struct vb2_buffer *vb, unsigned int plane)
++{
++	return vb2_dma_contig_plane_dma_addr(vb, plane) + vb->planes[plane].data_offset;
++}
++
+ static int start_encode(struct vpu_instance *inst, u32 *fail_res)
+ {
+ 	struct v4l2_m2m_ctx *m2m_ctx = inst->v4l2_fh.m2m_ctx;
+@@ -190,22 +195,22 @@ static int start_encode(struct vpu_instance *inst, u32 *fail_res)
+ 	} else {
+ 		if (inst->src_fmt.num_planes == 1) {
+ 			frame_buf.buf_y =
+-				vb2_dma_contig_plane_dma_addr(&src_buf->vb2_buf, 0);
++				wave5_vpu_enc_source_addr(&src_buf->vb2_buf, 0);
+ 			frame_buf.buf_cb = frame_buf.buf_y + luma_size;
+ 			frame_buf.buf_cr = frame_buf.buf_cb + chroma_size;
+ 		} else if (inst->src_fmt.num_planes == 2) {
+ 			frame_buf.buf_y =
+-				vb2_dma_contig_plane_dma_addr(&src_buf->vb2_buf, 0);
++				wave5_vpu_enc_source_addr(&src_buf->vb2_buf, 0);
+ 			frame_buf.buf_cb =
+-				vb2_dma_contig_plane_dma_addr(&src_buf->vb2_buf, 1);
++				wave5_vpu_enc_source_addr(&src_buf->vb2_buf, 1);
+ 			frame_buf.buf_cr = frame_buf.buf_cb + chroma_size;
+ 		} else if (inst->src_fmt.num_planes == 3) {
+ 			frame_buf.buf_y =
+-				vb2_dma_contig_plane_dma_addr(&src_buf->vb2_buf, 0);
++				wave5_vpu_enc_source_addr(&src_buf->vb2_buf, 0);
+ 			frame_buf.buf_cb =
+-				vb2_dma_contig_plane_dma_addr(&src_buf->vb2_buf, 1);
++				wave5_vpu_enc_source_addr(&src_buf->vb2_buf, 1);
+ 			frame_buf.buf_cr =
+-				vb2_dma_contig_plane_dma_addr(&src_buf->vb2_buf, 2);
++				wave5_vpu_enc_source_addr(&src_buf->vb2_buf, 2);
+ 		}
+ 		frame_buf.stride = stride;
+ 		pic_param.src_idx = src_buf->vb2_buf.index;
+@@ -1121,6 +1126,29 @@ static int wave5_vpu_enc_queue_setup(struct vb2_queue *q, unsigned int *num_buff
+ 	return 0;
+ }
+ 
++static int wave5_vpu_enc_buf_prepare(struct vb2_buffer *vb)
++{
++	struct vpu_instance *inst = vb2_get_drv_priv(vb->vb2_queue);
++	unsigned int i;
++
++	if (vb->type != V4L2_BUF_TYPE_VIDEO_OUTPUT_MPLANE)
++		return 0;
++
++	/* Imported planes may share an allocation with different data offsets. */
++	for (i = 0; i < inst->src_fmt.num_planes; i++) {
++		u32 offset = vb->planes[i].data_offset;
++		u32 required = inst->src_fmt.plane_fmt[i].sizeimage;
++
++		if (offset > vb2_plane_size(vb, i) ||
++		    required > vb2_plane_size(vb, i) - offset ||
++		    vb2_get_plane_payload(vb, i) < offset ||
++		    required > vb2_get_plane_payload(vb, i) - offset)
++			return -EINVAL;
++	}
++
++	return 0;
++}
++
+ static void wave5_vpu_enc_buf_queue(struct vb2_buffer *vb)
+ {
+ 	struct vb2_v4l2_buffer *vbuf = to_vb2_v4l2_buffer(vb);
+@@ -1490,6 +1518,7 @@ static void wave5_vpu_enc_stop_streaming(struct vb2_queue *q)
+ static const struct vb2_ops wave5_vpu_enc_vb2_ops = {
+ 	.queue_setup = wave5_vpu_enc_queue_setup,
+ 	.buf_queue = wave5_vpu_enc_buf_queue,
++	.buf_prepare = wave5_vpu_enc_buf_prepare,
+ 	.start_streaming = wave5_vpu_enc_start_streaming,
+ 	.stop_streaming = wave5_vpu_enc_stop_streaming,
+ };

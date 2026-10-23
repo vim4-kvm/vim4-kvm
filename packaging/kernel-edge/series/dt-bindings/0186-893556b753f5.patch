@@ -1,0 +1,27 @@
+From 893556b753f5c723f837451c52805a43574d1919 Mon Sep 17 00:00:00 2001
+From: localhost-copilot <318096335+localhost-copilot@users.noreply.github.com>
+Date: Tue, 20 Oct 2026 17:04:13 +0800
+Subject: [PATCH] dt-bindings: media: keep the T7 NIC3 bridge reset outside the
+ codec
+
+---
+ Documentation/devicetree/bindings/media/cnm,wave521c.yaml | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/Documentation/devicetree/bindings/media/cnm,wave521c.yaml b/Documentation/devicetree/bindings/media/cnm,wave521c.yaml
+index 386a9c1a89b56..007b797823639 100644
+--- a/Documentation/devicetree/bindings/media/cnm,wave521c.yaml
++++ b/Documentation/devicetree/bindings/media/cnm,wave521c.yaml
+@@ -75,11 +75,11 @@ allOf:
+             - const: axi
+             - const: bpu
+             - const: vce
++        resets: false
+       required:
+         - clock-names
+         - interrupts
+         - power-domains
+-        - resets
+     else:
+       properties:
+         clocks:

@@ -1,0 +1,1159 @@
+From f7d8add1c253850d2d55b77b9dcfd73af2138d64 Mon Sep 17 00:00:00 2001
+From: localhost-copilot <318096335+localhost-copilot@users.noreply.github.com>
+Date: Fri, 23 Oct 2026 15:32:56 +0800
+Subject: [PATCH] drm/meson: add fixed T7 OSD1 handoff alongside VDIN capture
+
+Take over only the boot OSD1 address and VENC interrupt without running
+global VPU, VPP, timing or TX initialization. Split VDIN resource claims
+under an explicit profile while preserving its existing device paths.
+
+Use atomic DRM objects and DMA GEM with a fixed RGB888 mode. Retire a
+buffer only after two display interrupts and pin both references if the
+latch times out. Keep this experiment built-in and reject suspend until
+the complete display state has a lifecycle independent of firmware.
+
+Signed-off-by: localhost-copilot <318096335+localhost-copilot@users.noreply.github.com>
+---
+ MAINTAINERS                                   |   2 +
+ drivers/gpu/drm/meson/Kconfig                 |   9 +
+ drivers/gpu/drm/meson/Makefile                |   1 +
+ drivers/gpu/drm/meson/meson_hdmitx21.c        | 105 ++++
+ drivers/gpu/drm/meson/meson_t7_handoff.c      | 507 ++++++++++++++++++
+ drivers/gpu/drm/meson/meson_t7_handoff.h      |  14 +
+ drivers/gpu/drm/meson/test_t7_handoff.py      | 162 ++++++
+ .../platform/amlogic/t7-hdmirx/t7-vdin-test.c |  71 ++-
+ .../platform/amlogic/t7-hdmirx/test_stream.py |   5 +-
+ .../platform/amlogic/t7-hdmirx/test_vdin.py   |  37 +-
+ 10 files changed, 899 insertions(+), 14 deletions(-)
+ create mode 100644 drivers/gpu/drm/meson/meson_t7_handoff.c
+ create mode 100644 drivers/gpu/drm/meson/meson_t7_handoff.h
+ create mode 100644 drivers/gpu/drm/meson/test_t7_handoff.py
+
+diff --git a/MAINTAINERS b/MAINTAINERS
+index 41629607f42d1..14197db859664 100644
+--- a/MAINTAINERS
++++ b/MAINTAINERS
+@@ -1436,6 +1436,8 @@ M:	localhost-copilot <318096335+localhost-copilot@users.noreply.github.com>
+ S:	Odd Fixes
+ F:	Documentation/devicetree/bindings/display/amlogic,t7-display-handoff.yaml
+ F:	Documentation/devicetree/bindings/media/amlogic,t7-vdin-test.yaml
++F:	drivers/gpu/drm/meson/meson_t7_handoff.*
++F:	drivers/gpu/drm/meson/test_t7_handoff.py
+ 
+ AMLOGIC VDEC DRIVER
+ M:	Zhentao Guo <zhentao.guo@amlogic.com>
+diff --git a/drivers/gpu/drm/meson/Kconfig b/drivers/gpu/drm/meson/Kconfig
+index cbf848a868729..2ffba830d084a 100644
+--- a/drivers/gpu/drm/meson/Kconfig
++++ b/drivers/gpu/drm/meson/Kconfig
+@@ -16,6 +16,15 @@ config DRM_MESON
+ 	select CEC_CORE if CEC_NOTIFIER
+ 	select DRM_DISPLAY_HDMI_CEC_NOTIFIER_HELPER if CEC_NOTIFIER
+ 
++config DRM_MESON_T7_HANDOFF
++	bool "Experimental T7 fixed boot display handoff"
++	depends on DRM_MESON=y && DRM_MESON_HDMITX21=y
++	help
++	  Take over a firmware-configured 1080p60 RGB888 OSD1 without changing
++	  VPP, VENC timing, PHY or PLL. Requires the dedicated display-m1 DTB.
++	  This built-in experiment has no suspend or driver unbind support.
++	  Only one linear OSD1 plane is exposed; audio and mode changes are absent.
++
+ config DRM_MESON_DW_HDMI
+ 	tristate "HDMI Synopsys Controller support for Amlogic Meson Display"
+ 	depends on DRM_MESON
+diff --git a/drivers/gpu/drm/meson/Makefile b/drivers/gpu/drm/meson/Makefile
+index f96db1f69be4e..b6b885ef2a9cb 100644
+--- a/drivers/gpu/drm/meson/Makefile
++++ b/drivers/gpu/drm/meson/Makefile
+@@ -5,6 +5,7 @@ meson-drm-y += meson_rdma.o meson_osd_afbcd.o
+ meson-drm-y += meson_encoder_hdmi.o meson_encoder_dsi.o
+ 
+ obj-$(CONFIG_DRM_MESON) += meson-drm.o
++obj-$(CONFIG_DRM_MESON_T7_HANDOFF) += meson_t7_handoff.o
+ obj-$(CONFIG_DRM_MESON_DW_HDMI) += meson_dw_hdmi.o
+ obj-$(CONFIG_DRM_MESON_DW_MIPI_DSI) += meson_dw_mipi_dsi.o
+ obj-$(CONFIG_DRM_MESON_HDMITX21) += meson_hdmitx21.o
+diff --git a/drivers/gpu/drm/meson/meson_hdmitx21.c b/drivers/gpu/drm/meson/meson_hdmitx21.c
+index 9395e2aa46e30..874f5411288f2 100644
+--- a/drivers/gpu/drm/meson/meson_hdmitx21.c
++++ b/drivers/gpu/drm/meson/meson_hdmitx21.c
+@@ -10,6 +10,7 @@
+  * Register sequences follow the Amlogic vendor driver (hdmitx21).
+  */
+ 
++#include <linux/arm-smccc.h>
+ #include <linux/clk.h>
+ #include <linux/delay.h>
+ #include <linux/i2c.h>
+@@ -35,6 +36,7 @@
+ #include <linux/media-bus-format.h>
+ 
+ #include "meson_drv.h"
++#include "meson_t7_handoff.h"
+ 
+ /* TOP registers (32-bit, byte offsets) */
+ #define TOP_SW_RESET		0x000
+@@ -168,6 +170,7 @@ struct meson_hdmitx21 {
+ 	struct drm_bridge *next_bridge;
+ 	void __iomem *top;
+ 	void __iomem *cor;
++	resource_size_t boot_top, boot_cor;
+ 	struct regmap *hhi;	/* analog control block with the PHY, from meson DRM */
+ 	struct clk *pclk;
+ 	struct i2c_adapter ddc;
+@@ -915,6 +918,105 @@ static irqreturn_t meson_hdmitx21_irq_thread(int irq, void *dev_id)
+ 	return IRQ_HANDLED;
+ }
+ 
++/*
++ * The handoff bridge owns no modesetting state. In particular it must never
++ * enter the normal attach/enable callbacks, which change PHY and TX registers.
++ * Use the vendor TOP/COR SMC read ABI, including its byte-width argument.
++ */
++static u32 meson_hdmitx21_boot_read(resource_size_t address, unsigned int width)
++{
++	struct arm_smccc_res result;
++
++	arm_smccc_smc(0x82000018, address, width, 0, 0, 0, 0, 0, &result);
++	return result.a0;
++}
++
++static int meson_hdmitx21_boot_attach(struct drm_bridge *bridge,
++				      struct drm_encoder *encoder,
++				      enum drm_bridge_attach_flags flags)
++{
++	if (!(flags & DRM_BRIDGE_ATTACH_NO_CONNECTOR))
++		return -EINVAL;
++	return 0;
++}
++
++static enum drm_mode_status
++meson_hdmitx21_boot_mode_valid(struct drm_bridge *bridge,
++			       const struct drm_display_info *info,
++			       const struct drm_display_mode *mode)
++{
++	return drm_mode_equal(mode, &meson_t7_handoff_mode) ? MODE_OK : MODE_BAD;
++}
++
++static enum drm_connector_status
++meson_hdmitx21_boot_detect(struct drm_bridge *bridge, struct drm_connector *connector)
++{
++	struct meson_hdmitx21 *tx = bridge_to_hdmitx(bridge);
++
++	return meson_hdmitx21_boot_read(tx->boot_top + TOP_STAT0, 32) & TOP_STAT0_HPD ?
++		connector_status_connected : connector_status_disconnected;
++}
++
++static int meson_hdmitx21_boot_get_modes(struct drm_bridge *bridge,
++					 struct drm_connector *connector)
++{
++	struct drm_display_mode *mode;
++
++	mode = drm_mode_duplicate(bridge->dev, &meson_t7_handoff_mode);
++	if (!mode)
++		return -ENOMEM;
++	drm_mode_probed_add(connector, mode);
++	return 1;
++}
++
++static const struct drm_bridge_funcs meson_hdmitx21_boot_funcs = {
++	.attach = meson_hdmitx21_boot_attach,
++	.detect = meson_hdmitx21_boot_detect,
++	.get_modes = meson_hdmitx21_boot_get_modes,
++	.mode_valid = meson_hdmitx21_boot_mode_valid,
++	.atomic_duplicate_state = drm_atomic_helper_bridge_duplicate_state,
++	.atomic_destroy_state = drm_atomic_helper_bridge_destroy_state,
++	.atomic_create_state = drm_atomic_helper_bridge_create_state,
++};
++
++static int meson_hdmitx21_boot_probe(struct platform_device *pdev)
++{
++	struct device *dev = &pdev->dev;
++	struct meson_hdmitx21 *tx;
++	struct resource *top, *cor;
++	u32 status, active, tmds;
++
++	top = platform_get_resource_byname(pdev, IORESOURCE_MEM, "top");
++	cor = platform_get_resource_byname(pdev, IORESOURCE_MEM, "cor");
++	if (!top || !cor || top->start != 0xfe300000 || cor->start != 0xfe380000 ||
++	    resource_size(top) != 0x10000 || resource_size(cor) != 0x10000)
++		return -EINVAL;
++	if (!devm_request_mem_region(dev, top->start, resource_size(top), dev_name(dev)) ||
++	    !devm_request_mem_region(dev, cor->start, resource_size(cor), dev_name(dev)))
++		return -EBUSY;
++	tx = devm_drm_bridge_alloc(dev, struct meson_hdmitx21, bridge,
++				   &meson_hdmitx21_boot_funcs);
++	if (IS_ERR(tx))
++		return PTR_ERR(tx);
++	tx->dev = dev;
++	tx->boot_top = top->start;
++	tx->boot_cor = cor->start;
++	tx->pclk = devm_clk_get_enabled(dev, "pclk");
++	if (IS_ERR(tx->pclk))
++		return PTR_ERR(tx->pclk);
++	status = meson_hdmitx21_boot_read(tx->boot_top + TOP_STAT0, 32);
++	active = meson_hdmitx21_boot_read(tx->boot_top + TOP_HV_ACTIVE, 32);
++	tmds = meson_hdmitx21_boot_read(tx->boot_cor + TMDS_CTRL, 8);
++	dev_info(dev, "boot TX HPD=%#x active=%#x TMDS=%#x (SMC read-only)\n",
++		 status, active, tmds);
++	if (!(status & TOP_STAT0_HPD) || active != (1080 << 16 | 1920))
++		return dev_err_probe(dev, -ENODEV, "TX boot mode is not connected 1080p\n");
++	tx->bridge.of_node = dev->of_node;
++	tx->bridge.ops = DRM_BRIDGE_OP_DETECT | DRM_BRIDGE_OP_MODES;
++	tx->bridge.type = DRM_MODE_CONNECTOR_HDMIA;
++	return devm_drm_bridge_add(dev, &tx->bridge);
++}
++
+ static int meson_hdmitx21_probe(struct platform_device *pdev)
+ {
+ 	struct device *dev = &pdev->dev;
+@@ -922,6 +1024,9 @@ static int meson_hdmitx21_probe(struct platform_device *pdev)
+ 	struct reset_control *rst;
+ 	int irq, ret;
+ 
++	if (of_property_present(dev->of_node, "amlogic,boot-handoff"))
++		return meson_hdmitx21_boot_probe(pdev);
++
+ 	tx = devm_drm_bridge_alloc(dev, struct meson_hdmitx21, bridge,
+ 				   &meson_hdmitx21_bridge_funcs);
+ 	if (IS_ERR(tx))
+diff --git a/drivers/gpu/drm/meson/meson_t7_handoff.c b/drivers/gpu/drm/meson/meson_t7_handoff.c
+new file mode 100644
+index 0000000000000..bf4f725a9e313
+--- /dev/null
++++ b/drivers/gpu/drm/meson/meson_t7_handoff.c
+@@ -0,0 +1,507 @@
++// SPDX-License-Identifier: GPL-2.0-only
++/* Fixed T7 OSD1 handoff. The normal meson initialization is deliberately absent. */
++#include <linux/clk.h>
++#include <linux/interrupt.h>
++#include <linux/module.h>
++#include <linux/of.h>
++#include <linux/of_graph.h>
++#include <linux/of_reserved_mem.h>
++#include <linux/platform_device.h>
++#include <linux/pm_domain.h>
++#include <linux/pm_runtime.h>
++
++#include <drm/drm_atomic.h>
++#include <drm/drm_atomic_helper.h>
++#include <drm/drm_bridge.h>
++#include <drm/drm_bridge_connector.h>
++#include <drm/drm_drv.h>
++#include <drm/drm_fb_dma_helper.h>
++#include <drm/drm_fourcc.h>
++#include <drm/drm_framebuffer.h>
++#include <drm/drm_gem_dma_helper.h>
++#include <drm/drm_gem_framebuffer_helper.h>
++#include <drm/drm_managed.h>
++#include <drm/drm_modeset_helper_vtables.h>
++#include <drm/drm_of.h>
++#include <drm/drm_probe_helper.h>
++#include <drm/drm_print.h>
++#include <drm/drm_simple_kms_helper.h>
++#include <drm/drm_vblank.h>
++
++#include "meson_registers.h"
++#include "meson_t7_handoff.h"
++
++#define HANDOFF_WIDTH	1920
++#define HANDOFF_HEIGHT	1080
++#define HANDOFF_PITCH	5760
++#define HANDOFF_BOOT_ADDR	0x3fdeec00
++#define OSD_REG(reg)	(((reg) - VIU_OSD1_CTRL_STAT) * 4)
++#define VENC_REG(reg)	(((reg) - VENC_INTCTRL) * 4)
++
++struct meson_t7_handoff {
++	struct drm_device drm;
++	struct drm_plane plane;
++	struct drm_crtc crtc;
++	struct drm_encoder encoder;
++	void __iomem *osd;
++	void __iomem *venc;
++	spinlock_t lock; /* Address publication and IRQ acknowledgment. */
++	wait_queue_head_t wait;
++	u32 pending_addr;
++	u32 requested, written, applied;
++	u32 boot_interrupts;
++	bool faulted;
++	/* Keep DMA memory alive even if the display interrupt stops. */
++	struct drm_framebuffer *scanout;
++	struct drm_framebuffer *stalled;
++};
++
++static struct meson_t7_handoff *to_handoff(struct drm_device *drm)
++{
++	return container_of(drm, struct meson_t7_handoff, drm);
++}
++
++static irqreturn_t meson_t7_handoff_irq(int irq, void *data)
++{
++	struct meson_t7_handoff *display = data;
++	unsigned long flags;
++
++	/* VENC_INTFLAG is read-to-clear, as in the normal meson handler. */
++	readl(display->venc + VENC_REG(VENC_INTFLAG));
++	spin_lock_irqsave(&display->lock, flags);
++	WRITE_ONCE(display->applied, display->written);
++	if (display->written != display->requested) {
++		writel(display->pending_addr >> 4,
++		       display->osd + OSD_REG(VIU_OSD1_BLK1_CFG_W4));
++		readl(display->osd + OSD_REG(VIU_OSD1_BLK1_CFG_W4));
++		display->written = display->requested;
++	}
++	spin_unlock_irqrestore(&display->lock, flags);
++	drm_crtc_handle_vblank(&display->crtc);
++	wake_up(&display->wait);
++	return IRQ_HANDLED;
++}
++
++/* The caller is the serialized atomic commit worker, never the IRQ handler. */
++static void meson_t7_handoff_scanout(struct meson_t7_handoff *display,
++				     struct drm_framebuffer *fb, dma_addr_t addr)
++{
++	unsigned long flags;
++	u32 sequence;
++
++	if (READ_ONCE(display->faulted))
++		return;
++	if (fb)
++		drm_framebuffer_get(fb);
++	spin_lock_irqsave(&display->lock, flags);
++	display->pending_addr = addr;
++	sequence = ++display->requested;
++	spin_unlock_irqrestore(&display->lock, flags);
++	/*
++	 * The vendor OSD path writes the linear address at vsync. Wait for the
++	 * following vsync as well before releasing the previous DMA allocation.
++	 */
++	if (!wait_event_timeout(display->wait,
++				READ_ONCE(display->applied) == sequence,
++				msecs_to_jiffies(100))) {
++		WRITE_ONCE(display->faulted, true);
++		display->stalled = fb;
++		drm_err(&display->drm, "OSD latch timeout; DMA buffers pinned until reboot\n");
++		return;
++	}
++	if (display->scanout)
++		drm_framebuffer_put(display->scanout);
++	display->scanout = fb;
++}
++
++static int meson_t7_handoff_plane_check(struct drm_plane *plane,
++					struct drm_atomic_commit *state)
++{
++	struct drm_plane_state *new = drm_atomic_get_new_plane_state(state, plane);
++	struct meson_t7_handoff *display = to_handoff(plane->dev);
++	struct drm_crtc_state *crtc_state;
++	dma_addr_t addr;
++	int ret;
++
++	if (READ_ONCE(display->faulted))
++		return -EIO;
++	if (!new->crtc)
++		return 0;
++	crtc_state = drm_atomic_get_new_crtc_state(state, new->crtc);
++	ret = drm_atomic_helper_check_plane_state(new, crtc_state,
++						  DRM_PLANE_NO_SCALING, DRM_PLANE_NO_SCALING,
++						  false, false);
++	if (ret)
++		return ret;
++	if (!new->visible)
++		return 0;
++	if (new->src_x || new->src_y || new->crtc_x || new->crtc_y ||
++	    new->fb->format->format != DRM_FORMAT_RGB888 ||
++	    new->src_w != HANDOFF_WIDTH << 16 || new->src_h != HANDOFF_HEIGHT << 16 ||
++	    new->crtc_w != HANDOFF_WIDTH || new->crtc_h != HANDOFF_HEIGHT ||
++	    new->fb->width != HANDOFF_WIDTH || new->fb->height != HANDOFF_HEIGHT ||
++	    new->fb->pitches[0] != HANDOFF_PITCH || new->fb->offsets[0] ||
++	    new->fb->modifier != DRM_FORMAT_MOD_LINEAR)
++		return -EINVAL;
++	addr = drm_fb_dma_get_gem_addr(new->fb, new, 0);
++	if (!IS_ALIGNED(addr, 16) || addr > U32_MAX - HANDOFF_PITCH * HANDOFF_HEIGHT + 1)
++		return -ERANGE;
++	return 0;
++}
++
++static void meson_t7_handoff_plane_update(struct drm_plane *plane,
++					  struct drm_atomic_commit *state)
++{
++	/* The CRTC flush publishes the address after all plane state is ready. */
++}
++
++static const struct drm_plane_helper_funcs meson_t7_handoff_plane_helpers = {
++	.atomic_check = meson_t7_handoff_plane_check,
++	.atomic_update = meson_t7_handoff_plane_update,
++	.atomic_disable = meson_t7_handoff_plane_update,
++};
++
++static const struct drm_plane_funcs meson_t7_handoff_plane_funcs = {
++	.update_plane = drm_atomic_helper_update_plane,
++	.disable_plane = drm_atomic_helper_disable_plane,
++	.destroy = drm_plane_cleanup,
++	.reset = drm_atomic_helper_plane_reset,
++	.atomic_duplicate_state = drm_atomic_helper_plane_duplicate_state,
++	.atomic_destroy_state = drm_atomic_helper_plane_destroy_state,
++};
++
++static int meson_t7_handoff_crtc_check(struct drm_crtc *crtc,
++				       struct drm_atomic_commit *state)
++{
++	struct drm_crtc_state *new = drm_atomic_get_new_crtc_state(state, crtc);
++
++	if (new->enable && !drm_mode_equal(&new->mode, &meson_t7_handoff_mode))
++		return -EINVAL;
++	return drm_atomic_add_affected_planes(state, crtc);
++}
++
++static void meson_t7_handoff_flush(struct drm_crtc *crtc,
++				   struct drm_atomic_commit *state)
++{
++	struct meson_t7_handoff *display = to_handoff(crtc->dev);
++	struct drm_plane_state *plane = display->plane.state;
++	struct drm_crtc_state *old = drm_atomic_get_old_crtc_state(state, crtc);
++	bool vblank_ref = false;
++
++	if (crtc->state->active) {
++		/* Keep DRM sequence/timestamps running after the idle off-delay. */
++		if (old->active)
++			vblank_ref = !drm_crtc_vblank_get(crtc);
++		if (plane->visible)
++			meson_t7_handoff_scanout(display, plane->fb,
++						 drm_fb_dma_get_gem_addr(plane->fb, plane, 0));
++		else
++			meson_t7_handoff_scanout(display, NULL, HANDOFF_BOOT_ADDR);
++	}
++	if (crtc->state->event) {
++		spin_lock_irq(&crtc->dev->event_lock);
++		drm_crtc_send_vblank_event(crtc, crtc->state->event);
++		crtc->state->event = NULL;
++		spin_unlock_irq(&crtc->dev->event_lock);
++	}
++	if (vblank_ref)
++		drm_crtc_vblank_put(crtc);
++}
++
++static void meson_t7_handoff_enable(struct drm_crtc *crtc,
++				    struct drm_atomic_commit *state)
++{
++	drm_crtc_vblank_on(crtc);
++}
++
++static void meson_t7_handoff_disable(struct drm_crtc *crtc,
++				     struct drm_atomic_commit *state)
++{
++	/* The reserved boot frame is never returned to the DMA allocator. */
++	meson_t7_handoff_scanout(to_handoff(crtc->dev), NULL, HANDOFF_BOOT_ADDR);
++	drm_crtc_vblank_off(crtc);
++	meson_t7_handoff_flush(crtc, state);
++}
++
++static int meson_t7_handoff_enable_vblank(struct drm_crtc *crtc)
++{
++	return 0;
++}
++
++static void meson_t7_handoff_disable_vblank(struct drm_crtc *crtc)
++{
++	/* Keep the IRQ running to retire buffers during CRTC disable. */
++}
++
++static const struct drm_crtc_funcs meson_t7_handoff_crtc_funcs = {
++	.set_config = drm_atomic_helper_set_config,
++	.page_flip = drm_atomic_helper_page_flip,
++	.destroy = drm_crtc_cleanup,
++	.reset = drm_atomic_helper_crtc_reset,
++	.atomic_duplicate_state = drm_atomic_helper_crtc_duplicate_state,
++	.atomic_destroy_state = drm_atomic_helper_crtc_destroy_state,
++	.enable_vblank = meson_t7_handoff_enable_vblank,
++	.disable_vblank = meson_t7_handoff_disable_vblank,
++};
++
++static const struct drm_crtc_helper_funcs meson_t7_handoff_crtc_helpers = {
++	.atomic_check = meson_t7_handoff_crtc_check,
++	.atomic_flush = meson_t7_handoff_flush,
++	.atomic_enable = meson_t7_handoff_enable,
++	.atomic_disable = meson_t7_handoff_disable,
++};
++
++static int meson_t7_handoff_dumb_create(struct drm_file *file, struct drm_device *drm,
++					struct drm_mode_create_dumb *args)
++{
++	if (args->width != HANDOFF_WIDTH || args->height != HANDOFF_HEIGHT || args->bpp != 24)
++		return -EINVAL;
++	args->pitch = HANDOFF_PITCH;
++	args->size = PAGE_ALIGN(HANDOFF_PITCH * HANDOFF_HEIGHT);
++	return drm_gem_dma_dumb_create_internal(file, drm, args);
++}
++
++DEFINE_DRM_GEM_DMA_FOPS(meson_t7_handoff_fops);
++
++static const struct drm_driver meson_t7_handoff_driver = {
++	.driver_features = DRIVER_GEM | DRIVER_MODESET | DRIVER_ATOMIC,
++	DRM_GEM_DMA_DRIVER_OPS_WITH_DUMB_CREATE(meson_t7_handoff_dumb_create),
++	.fops = &meson_t7_handoff_fops,
++	.name = "meson-t7-handoff",
++	.desc = "T7 fixed firmware display handoff",
++	.major = 1,
++};
++
++static const struct drm_mode_config_funcs meson_t7_handoff_mode_funcs = {
++	.fb_create = drm_gem_fb_create,
++	.atomic_check = drm_atomic_helper_check,
++	.atomic_commit = drm_atomic_helper_commit,
++};
++
++static void meson_t7_handoff_domain_put(void *data)
++{
++	struct device *domain = data;
++
++	pm_runtime_put_sync(domain);
++	dev_pm_domain_detach(domain, true);
++}
++
++static void meson_t7_handoff_restore_irq(void *data)
++{
++	struct meson_t7_handoff *display = data;
++
++	writel(display->boot_interrupts, display->venc + VENC_REG(VENC_INTCTRL));
++}
++
++static void __iomem *meson_t7_handoff_map(struct platform_device *pdev,
++					  const char *name, resource_size_t start,
++					  resource_size_t size)
++{
++	struct resource *resource = platform_get_resource_byname(pdev, IORESOURCE_MEM, name);
++
++	if (!resource || resource->start != start || resource_size(resource) != size)
++		return ERR_PTR(-EINVAL);
++	return devm_ioremap_resource(&pdev->dev, resource);
++}
++
++static int meson_t7_handoff_check_dt(struct device *dev)
++{
++	struct of_phandle_args pll;
++	struct device_node *node;
++	struct reserved_mem *memory;
++	int ret;
++
++	ret = of_parse_phandle_with_args(dev->of_node, "clocks", "#clock-cells", 4, &pll);
++	if (ret)
++		return ret;
++	ret = of_device_is_compatible(pll.np, "amlogic,t7-hdmi-pll-ro") ? 0 : -EINVAL;
++	of_node_put(pll.np);
++	if (ret)
++		return dev_err_probe(dev, ret, "HDMI PLL provider must be read-only\n");
++	for_each_compatible_node(node, NULL, "simple-framebuffer") {
++		if (of_device_is_available(node)) {
++			of_node_put(node);
++			return dev_err_probe(dev, -EBUSY,
++					     "Disable simple-framebuffer before handoff\n");
++		}
++	}
++	node = of_parse_phandle(dev->of_node, "memory-region", 0);
++	memory = node ? of_reserved_mem_lookup(node) : NULL;
++	if (!memory || memory->base != 0x3f800000 || memory->size != 0xc00000 ||
++	    !of_property_present(node, "no-map")) {
++		of_node_put(node);
++		return dev_err_probe(dev, -EINVAL, "Missing reserved firmware frames\n");
++	}
++	of_node_put(node);
++	return 0;
++}
++
++static int meson_t7_handoff_probe(struct platform_device *pdev)
++{
++	static const u32 formats[] = { DRM_FORMAT_RGB888 };
++	static const u64 modifiers[] = { DRM_FORMAT_MOD_LINEAR, DRM_FORMAT_MOD_INVALID };
++	struct device *dev = &pdev->dev;
++	struct meson_t7_handoff *display;
++	struct drm_connector *connector;
++	struct drm_bridge *bridge;
++	struct drm_device *drm;
++	struct clk_bulk_data *clocks;
++	struct device_node *node;
++	unsigned int i;
++	u32 ctrl, format, htotal, vtotal;
++	int ret, irq;
++
++	ret = meson_t7_handoff_check_dt(dev);
++	if (ret)
++		return ret;
++
++	display = devm_drm_dev_alloc(dev, &meson_t7_handoff_driver,
++				     struct meson_t7_handoff, drm);
++	if (IS_ERR(display))
++		return PTR_ERR(display);
++	drm = &display->drm;
++	platform_set_drvdata(pdev, display);
++	spin_lock_init(&display->lock);
++	init_waitqueue_head(&display->wait);
++	ret = dma_set_mask_and_coherent(dev, DMA_BIT_MASK(32));
++	if (ret)
++		return ret;
++	ret = devm_clk_bulk_get_all_enabled(dev, &clocks);
++	if (ret < 0)
++		return ret;
++	for (i = 0; i < 3; i++) {
++		struct device *domain = dev_pm_domain_attach_by_id(dev, i);
++
++		if (IS_ERR_OR_NULL(domain))
++			return domain ? PTR_ERR(domain) : -ENODEV;
++		ret = pm_runtime_resume_and_get(domain);
++		if (ret < 0) {
++			dev_pm_domain_detach(domain, true);
++			return ret;
++		}
++		ret = devm_add_action_or_reset(dev, meson_t7_handoff_domain_put, domain);
++		if (ret)
++			return ret;
++	}
++	display->osd = meson_t7_handoff_map(pdev, "osd1", 0xff006840, 0x80);
++	if (IS_ERR(display->osd))
++		return PTR_ERR(display->osd);
++	display->venc = meson_t7_handoff_map(pdev, "venc", 0xff006db8, 0x108);
++	if (IS_ERR(display->venc))
++		return PTR_ERR(display->venc);
++	ctrl = readl(display->osd + OSD_REG(VIU_OSD1_CTRL_STAT));
++	format = readl(display->osd + OSD_REG(VIU_OSD1_BLK0_CFG_W0));
++	htotal = readl(display->venc + VENC_REG(ENCP_VIDEO_MAX_PXCNT));
++	vtotal = readl(display->venc + VENC_REG(ENCP_VIDEO_MAX_LNCNT));
++	dev_info(dev, "boot OSD ctrl=%#x format=%#x VENC totals=%u/%u\n",
++		 ctrl, format, htotal, vtotal);
++	/* RGB888 little endian, linear, 1920x1080 with the matching boot frame. */
++	if ((ctrl & 5) != 5 || (format & 0xffff) != 0x8700 ||
++	    readl(display->osd + OSD_REG(VIU_OSD1_BLK1_CFG_W4)) != HANDOFF_BOOT_ADDR >> 4 ||
++	    readl(display->osd + OSD_REG(VIU_OSD1_BLK2_CFG_W4)) != HANDOFF_PITCH >> 4 ||
++	    readl(display->osd + OSD_REG(VIU_OSD1_BLK0_CFG_W1)) != (HANDOFF_WIDTH - 1) << 16 ||
++	    readl(display->osd + OSD_REG(VIU_OSD1_BLK0_CFG_W2)) != (HANDOFF_HEIGHT - 1) << 16 ||
++	    readl(display->venc + VENC_REG(ENCP_VIDEO_EN)) != 1 ||
++	    htotal != 2199 || vtotal != 1124)
++		return dev_err_probe(dev, -ENODEV, "Firmware display contract does not match\n");
++	node = of_graph_get_remote_node(dev->of_node, 0, 0);
++	if (!node || !of_device_is_compatible(node, "amlogic,t7-hdmi-tx") ||
++	    !of_property_present(node, "amlogic,boot-handoff")) {
++		of_node_put(node);
++		return dev_err_probe(dev, -EINVAL, "TX must use the boot-handoff bridge\n");
++	}
++	of_node_put(node);
++	bridge = devm_drm_of_get_bridge(dev, dev->of_node, 0, 0);
++	if (IS_ERR(bridge))
++		return dev_err_probe(dev, PTR_ERR(bridge), "No boot TX bridge\n");
++	ret = drmm_mode_config_init(drm);
++	if (ret)
++		return ret;
++	drm->mode_config.funcs = &meson_t7_handoff_mode_funcs;
++	drm->mode_config.min_width = HANDOFF_WIDTH;
++	drm->mode_config.max_width = HANDOFF_WIDTH;
++	drm->mode_config.min_height = HANDOFF_HEIGHT;
++	drm->mode_config.max_height = HANDOFF_HEIGHT;
++	ret = drm_universal_plane_init(drm, &display->plane, 1, &meson_t7_handoff_plane_funcs,
++				       formats, ARRAY_SIZE(formats), modifiers,
++				       DRM_PLANE_TYPE_PRIMARY, NULL);
++	if (ret)
++		return ret;
++	drm_plane_helper_add(&display->plane, &meson_t7_handoff_plane_helpers);
++	ret = drm_crtc_init_with_planes(drm, &display->crtc, &display->plane, NULL,
++					&meson_t7_handoff_crtc_funcs, NULL);
++	if (ret)
++		return ret;
++	drm_crtc_helper_add(&display->crtc, &meson_t7_handoff_crtc_helpers);
++	ret = drm_vblank_init(drm, 1);
++	if (ret)
++		return ret;
++	ret = drm_simple_encoder_init(drm, &display->encoder, DRM_MODE_ENCODER_TMDS);
++	if (ret)
++		return ret;
++	display->encoder.possible_crtcs = 1;
++	ret = drm_bridge_attach(&display->encoder, bridge, NULL, DRM_BRIDGE_ATTACH_NO_CONNECTOR);
++	if (ret)
++		return ret;
++	connector = drm_bridge_connector_init(drm, &display->encoder);
++	if (IS_ERR(connector))
++		return PTR_ERR(connector);
++	ret = drm_connector_attach_encoder(connector, &display->encoder);
++	if (ret)
++		return ret;
++	irq = platform_get_irq(pdev, 0);
++	if (irq < 0)
++		return irq;
++	ret = devm_request_irq(dev, irq, meson_t7_handoff_irq, 0, dev_name(dev), display);
++	if (ret)
++		return ret;
++	drm_mode_config_reset(drm);
++	/* Preserve all other VENC interrupt users; VDIN has a separate IRQ. */
++	display->boot_interrupts = readl(display->venc + VENC_REG(VENC_INTCTRL));
++	ret = devm_add_action_or_reset(dev, meson_t7_handoff_restore_irq, display);
++	if (ret)
++		return ret;
++	writel(display->boot_interrupts | VENC_INTCTRL_ENCP_LNRST_INT_EN,
++	       display->venc + VENC_REG(VENC_INTCTRL));
++	return drm_dev_register(drm, 0);
++}
++
++static void meson_t7_handoff_shutdown(struct platform_device *pdev)
++{
++	struct meson_t7_handoff *display = platform_get_drvdata(pdev);
++
++	drm_atomic_helper_shutdown(&display->drm);
++}
++
++static int meson_t7_handoff_suspend(struct device *dev)
++{
++	/* Firmware state cannot be reconstructed after a system power cycle. */
++	return -EBUSY;
++}
++
++static const struct dev_pm_ops meson_t7_handoff_pm = {
++	.suspend = meson_t7_handoff_suspend,
++	.freeze = meson_t7_handoff_suspend,
++	.poweroff = meson_t7_handoff_suspend,
++};
++
++static const struct of_device_id meson_t7_handoff_match[] = {
++	{ .compatible = "amlogic,t7-display-handoff" },
++	{ }
++};
++MODULE_DEVICE_TABLE(of, meson_t7_handoff_match);
++
++static struct platform_driver meson_t7_handoff_platform_driver = {
++	.probe = meson_t7_handoff_probe,
++	.shutdown = meson_t7_handoff_shutdown,
++	.driver = {
++		.name = "meson-t7-handoff",
++		.of_match_table = meson_t7_handoff_match,
++		.pm = &meson_t7_handoff_pm,
++		.suppress_bind_attrs = true,
++	},
++};
++builtin_platform_driver(meson_t7_handoff_platform_driver);
++
++MODULE_DESCRIPTION("T7 OSD1 fixed firmware handoff experiment");
++MODULE_LICENSE("GPL");
+diff --git a/drivers/gpu/drm/meson/meson_t7_handoff.h b/drivers/gpu/drm/meson/meson_t7_handoff.h
+new file mode 100644
+index 0000000000000..5597ecd89d97e
+--- /dev/null
++++ b/drivers/gpu/drm/meson/meson_t7_handoff.h
+@@ -0,0 +1,14 @@
++/* SPDX-License-Identifier: GPL-2.0-only */
++#ifndef __MESON_T7_HANDOFF_H
++#define __MESON_T7_HANDOFF_H
++
++#include <drm/drm_modes.h>
++
++/* Firmware contract, not an EDID-derived mode or a programmable clock. */
++static const struct drm_display_mode meson_t7_handoff_mode = {
++	DRM_MODE("1920x1080", DRM_MODE_TYPE_DRIVER | DRM_MODE_TYPE_PREFERRED,
++		 148500, 1920, 2008, 2052, 2200, 0, 1080, 1084, 1089, 1125, 0,
++		 DRM_MODE_FLAG_PHSYNC | DRM_MODE_FLAG_PVSYNC)
++};
++
++#endif
+diff --git a/drivers/gpu/drm/meson/test_t7_handoff.py b/drivers/gpu/drm/meson/test_t7_handoff.py
+new file mode 100644
+index 0000000000000..60de586db5932
+--- /dev/null
++++ b/drivers/gpu/drm/meson/test_t7_handoff.py
+@@ -0,0 +1,162 @@
++#!/usr/bin/env python3
++# SPDX-License-Identifier: GPL-2.0-only
++"""Execute the handoff IRQ and buffer retirement with controlled vsync delivery."""
++from pathlib import Path
++import argparse
++import subprocess
++import tempfile
++import re
++
++
++def initializer(source, name):
++    start = source.index(name + ' = {') + len(name + ' = ')
++    depth = 0
++    for offset in range(start, len(source)):
++        depth += (source[offset] == '{') - (source[offset] == '}')
++        if not depth:
++            return source[start:offset + 1]
++    raise AssertionError('Unclosed initializer: ' + name)
++
++
++# Absence of write callbacks is a handoff contract, including clock registration.
++clock_dir = Path(__file__).resolve().parents[4] / 'drivers/clk/meson'
++clock_source = (clock_dir / 't7-pll.c').read_text()
++for name in ('t7_hdmi_pll_dco_ro', 't7_hdmi_pll_od_ro', 't7_hdmi_pll_ro'):
++    clock = initializer(clock_source, name)
++    assert 'CLK_SET_RATE_PARENT' not in clock, name
++    ops_name = re.search(r'\.ops\s*=\s*&([a-z_]+)', clock)[1]
++    ops_file = 'clk-pll.c' if ops_name == 'meson_clk_pll_ro_ops' else 'clk-regmap.c'
++    ops = initializer((clock_dir / ops_file).read_text(), ops_name)
++    callbacks = dict(re.findall(r'\.([a-z_]+)\s*=\s*([a-z_]+)', ops))
++    assert callbacks.pop('init') == 'clk_regmap_init', callbacks
++    assert set(callbacks) <= {'recalc_rate', 'determine_rate', 'is_enabled'}, callbacks
++print('HDMI PLL handoff has no registration, enable, disable or rate write callbacks')
++
++parser = argparse.ArgumentParser(description=__doc__)
++parser.add_argument('--dtb', type=Path, help='Also check the compiled VIM4 M1 resource profile')
++args = parser.parse_args()
++if args.dtb:
++    def property_value(node, name, kind='s'):
++        return subprocess.check_output(['fdtget', '-t', kind, str(args.dtb), node, name],
++                                       text=True).strip()
++
++    vdin = (clock_dir.parents[2] / 'drivers/media/platform/amlogic/t7-hdmirx/t7-vdin-test.c').read_text()
++    regions = initializer(vdin, 'regions[]')
++    capture = [(int(start, 16), int(size, 16))
++               for start, size in re.findall(r'\{\s*(0x[0-9a-f]+),\s*(0x[0-9a-f]+)\s*}', regions)]
++    assert capture
++    cells = [int(cell, 16) for cell in property_value('/display@ff006840', 'reg', 'x').split()]
++    assert len(cells) % 4 == 0
++    display = [((cells[i] << 32) | cells[i + 1], (cells[i + 2] << 32) | cells[i + 3])
++               for i in range(0, len(cells), 4)]
++    for start, size in display:
++        for capture_start, capture_size in capture:
++            assert max(start, capture_start) >= min(start + size, capture_start + capture_size)
++    assert property_value('/chosen/framebuffer@3fdeec00', 'status') == 'disabled'
++    assert property_value('/vpu@ff000000', 'status') == 'disabled'
++    assert property_value('/video-capture@ff000000', 'amlogic,split-vcbus') == ''
++    assert property_value('/soc/bus@fe000000/clock-controller@81c0', 'compatible').endswith('-ro')
++    print('Compiled M1 DT: disjoint capture/display claims, exclusive KMS and read-only PLL')
++
++source = Path(__file__).with_name('meson_t7_handoff.c').read_text()
++register_source = Path(__file__).with_name('meson_registers.h').read_text()
++registers = '\n'.join(line for line in register_source.splitlines()
++                      if line.startswith('#define ') and not line.endswith('\\'))
++defines = '\n'.join(line for line in source.splitlines() if line.startswith('#define '))
++types = source[source.index('struct meson_t7_handoff {'):source.index('static struct meson_t7_handoff *')]
++functions = source[source.index('static irqreturn_t meson_t7_handoff_irq'):
++                   source.index('static int meson_t7_handoff_plane_check')]
++prefix = r'''
++#include <assert.h>
++#include <stdbool.h>
++#include <stdint.h>
++#include <stdio.h>
++typedef uint32_t u32;
++typedef uint64_t dma_addr_t;
++typedef int spinlock_t;
++typedef int wait_queue_head_t;
++typedef int irqreturn_t;
++struct drm_device { int unused; };
++struct drm_plane { int unused; };
++struct drm_crtc { int unused; };
++struct drm_encoder { int unused; };
++struct drm_framebuffer { unsigned int references; };
++#define __iomem
++#define BIT(n) (1U << (n))
++#define IRQ_HANDLED 1
++#define spin_lock_irqsave(lock, flags) ((void)(lock), (void)((flags) = 0))
++#define spin_unlock_irqrestore(lock, flags) ((void)(lock), (void)(flags))
++#define READ_ONCE(value) (value)
++#define WRITE_ONCE(target, value) ((target) = (value))
++#define msecs_to_jiffies(value) (value)
++#define drm_err(...) ((void)0)
++static bool inject_timeout;
++static u32 osd[32], venc[66];
++static unsigned int writes, vblanks;
++static u32 readl(void *address) { return *(u32 *)address; }
++static void writel(u32 value, void *address)
++{
++    /* This function must never write a VDIN, VPP or arbitration register. */
++    assert(address == &osd[4]);
++    *(u32 *)address = value;
++    writes++;
++}
++static void drm_crtc_handle_vblank(struct drm_crtc *crtc) { (void)crtc; vblanks++; }
++static void wake_up(wait_queue_head_t *wait) { (void)wait; }
++static void drm_framebuffer_get(struct drm_framebuffer *fb) { fb->references++; }
++static void drm_framebuffer_put(struct drm_framebuffer *fb)
++{
++    assert(fb->references > 1);
++    fb->references--;
++}
++#define wait_event_timeout(wait, condition, timeout) ({ \
++    assert((timeout) == 100); \
++    assert(!(condition)); \
++    meson_t7_handoff_irq(0, display); \
++    assert(!(condition)); \
++    if (!inject_timeout) meson_t7_handoff_irq(0, display); \
++    assert((bool)(condition) == !inject_timeout); \
++    !inject_timeout; \
++})
++'''
++checks = r'''
++int main(void)
++{
++    struct meson_t7_handoff display = { .osd = osd, .venc = venc };
++    struct drm_framebuffer first = { 1 }, second = { 1 }, third = { 1 };
++
++    meson_t7_handoff_irq(0, &display);
++    assert(!writes);
++    meson_t7_handoff_scanout(&display, &first, 0x20000000);
++    assert(writes == 1 && first.references == 2 && osd[4] == 0x02000000);
++    meson_t7_handoff_scanout(&display, &second, 0x21000000);
++    assert(writes == 2 && first.references == 1 && second.references == 2);
++    meson_t7_handoff_scanout(&display, NULL, HANDOFF_BOOT_ADDR);
++    assert(writes == 3 && second.references == 1 && !display.scanout);
++    assert(osd[4] == HANDOFF_BOOT_ADDR >> 4);
++    /* Counter wrap must not retire the buffer before two real interrupts. */
++    display.requested = display.written = display.applied = UINT32_MAX;
++    meson_t7_handoff_scanout(&display, &first, 0x20000000);
++    assert(!display.applied && first.references == 2);
++    inject_timeout = true;
++    meson_t7_handoff_scanout(&display, &second, 0x21000000);
++    assert(display.faulted && display.scanout == &first && display.stalled == &second);
++    assert(first.references == 2 && second.references == 2);
++    unsigned int stopped_at = writes;
++    meson_t7_handoff_scanout(&display, &third, 0x22000000);
++    assert(writes == stopped_at && third.references == 1);
++    /* A delayed IRQ cannot make the failed path drop either DMA reference. */
++    meson_t7_handoff_irq(0, &display);
++    assert(first.references == 2 && second.references == 2);
++    puts("OSD address publication, two-vsync retirement, wrap and timeout pinning passed");
++}
++'''
++with tempfile.TemporaryDirectory() as directory:
++    code = Path(directory) / 'handoff.c'
++    executable = Path(directory) / 'handoff'
++    code.write_text(prefix + registers + '\n' + defines + '\n' +
++                    types + functions + checks)
++    subprocess.run(['cc', '-std=gnu11', '-Wall', '-Wextra', '-Werror',
++                    '-Wno-unused-parameter', '-I', str(Path(__file__).parent),
++                    str(code), '-o', str(executable)], check=True)
++    subprocess.run([str(executable)], check=True)
+diff --git a/drivers/media/platform/amlogic/t7-hdmirx/t7-vdin-test.c b/drivers/media/platform/amlogic/t7-hdmirx/t7-vdin-test.c
+index 2db74b151e440..468f66c4ddda7 100644
+--- a/drivers/media/platform/amlogic/t7-hdmirx/t7-vdin-test.c
++++ b/drivers/media/platform/amlogic/t7-hdmirx/t7-vdin-test.c
+@@ -1,6 +1,6 @@
+ // SPDX-License-Identifier: GPL-2.0-only
+ /* Copyright (c) 2019 Amlogic, Inc. All rights reserved. */
+-/* Exclusive T7 VDIN0 capture experiment; DRM must remain disabled. */
++/* T7 VDIN0 capture; the split-resource profile permits OSD-only handoff. */
+ #include <linux/arm-smccc.h>
+ #include <linux/clk.h>
+ #include <linux/completion.h>
+@@ -124,6 +124,7 @@ struct t7_vdin {
+ 	struct device *domains[3];
+ 	unsigned int domain_count;
+ 	void __iomem *regs;
++	void __iomem *split_regs[4];
+ 	struct clk_bulk_data clocks[5];
+ 	struct mutex lock; /* Serializes DMA capture and the immutable copy. */
+ 	struct completion done;
+@@ -168,14 +169,36 @@ struct t7_vdin {
+ 	bool hdr_curve_pending;
+ };
+ 
++static void __iomem *t7_vdin_reg(struct t7_vdin *vdin, u32 reg)
++{
++	if (vdin->regs)
++		return vdin->regs + reg * 4;
++	if (reg >= 0x1200 && reg <= 0x12ff)
++		return vdin->split_regs[0] + (reg - 0x1200) * 4;
++	if (reg == VPU_SW_RESET)
++		return vdin->split_regs[1];
++	if (reg >= VPU_WRARB_MODE && reg <= VPU_WRARB_REQEN)
++		return vdin->split_regs[2] + (reg - VPU_WRARB_MODE) * 4;
++	if (reg >= VDIN_DOUBLE_CTRL && reg <= VDIN_TOP_MISC)
++		return vdin->split_regs[3] + (reg - VDIN_DOUBLE_CTRL) * 4;
++	/* Do not turn an accidental new register into an out-of-resource access. */
++	WARN_ON_ONCE(1);
++	return NULL;
++}
++
+ static u32 t7_vdin_read(struct t7_vdin *vdin, u32 reg)
+ {
+-	return readl(vdin->regs + reg * 4);
++	void __iomem *address = t7_vdin_reg(vdin, reg);
++
++	return address ? readl(address) : 0;
+ }
+ 
+ static void t7_vdin_write(struct t7_vdin *vdin, u32 reg, u32 value)
+ {
+-	writel(value, vdin->regs + reg * 4);
++	void __iomem *address = t7_vdin_reg(vdin, reg);
++
++	if (address)
++		writel(value, address);
+ }
+ 
+ static void t7_vdin_update(struct t7_vdin *vdin, u32 reg, u32 mask, u32 value)
+@@ -309,7 +332,7 @@ static int t7_vdin_stop_dma(struct t7_vdin *vdin)
+ 	 * Source loss may suppress the IRQ: software completion is required to
+ 	 * publish a frame, but must not veto hardware-confirmed DMA shutdown.
+ 	 */
+-	ret = readl_poll_timeout(vdin->regs + VDIN_WR_STATUS * 4, idle,
++	ret = readl_poll_timeout(t7_vdin_reg(vdin, VDIN_WR_STATUS), idle,
+ 				 idle & BIT(0),
+ 				 10, 100000);
+ 	if (!ret)
+@@ -1447,6 +1470,38 @@ static void t7_vdin_put_receiver(void *data)
+ 	put_device(data);
+ }
+ 
++static int t7_vdin_map_regs(struct platform_device *pdev, struct t7_vdin *vdin)
++{
++	static const struct {
++		resource_size_t start, size;
++	} regions[] = {
++		{ 0xff004800, 0x400 }, /* VDIN0, including its HDR2 core. */
++		{ 0xff009c80, 0x4 },   /* VPU_SW_RESET, only bit 26 is updated. */
++		{ 0xff009e88, 0x8 },   /* VDIN write arbitration. */
++		{ 0xff01042c, 0xc },   /* VDIN double-write and top controls. */
++	};
++	struct resource *window;
++	unsigned int i;
++
++	/* Existing capture-only DTBs retain their exclusive whole-window lease. */
++	if (!of_property_present(pdev->dev.of_node, "amlogic,split-vcbus")) {
++		vdin->regs = devm_platform_ioremap_resource(pdev, 0);
++		return PTR_ERR_OR_ZERO(vdin->regs);
++	}
++	window = platform_get_resource(pdev, IORESOURCE_MEM, 0);
++	if (!window || window->start != 0xff000000 || resource_size(window) != 0x40000)
++		return -EINVAL;
++	for (i = 0; i < ARRAY_SIZE(regions); i++) {
++		struct resource resource = DEFINE_RES_MEM(regions[i].start, regions[i].size);
++
++		/* Keep resource reservation: mapping alone would silently allow conflicts. */
++		vdin->split_regs[i] = devm_ioremap_resource(&pdev->dev, &resource);
++		if (IS_ERR(vdin->split_regs[i]))
++			return PTR_ERR(vdin->split_regs[i]);
++	}
++	return 0;
++}
++
+ static int t7_vdin_probe(struct platform_device *pdev)
+ {
+ 	struct device *dev = &pdev->dev;
+@@ -1507,9 +1562,9 @@ static int t7_vdin_probe(struct platform_device *pdev)
+ 	/* Keep NV12 tightly packed, with tail room for aligned encoder plane views. */
+ 	vdin->allocation_size = nv12 ? vdin->stride * ALIGN(vdin->height, 16) * 3 / 2 :
+ 				       vdin->frame_size;
+-	vdin->regs = devm_platform_ioremap_resource(pdev, 0);
+-	if (IS_ERR(vdin->regs))
+-		return PTR_ERR(vdin->regs);
++	ret = t7_vdin_map_regs(pdev, vdin);
++	if (ret)
++		return ret;
+ 	vdin->clocks[0].id = "pclk";
+ 	vdin->clocks[1].id = "vpu";
+ 	vdin->clocks[2].id = "vapb";
+@@ -1599,7 +1654,7 @@ static int t7_vdin_probe(struct platform_device *pdev)
+ 	ret = t7_vdin_video_register(vdin);
+ 	if (ret)
+ 		return ret;
+-	dev_info(dev, "exclusive %ux%u %s capture ready at /dev/video%d\n",
++	dev_info(dev, "%ux%u %s capture ready at /dev/video%d\n",
+ 		 vdin->width, vdin->height, nv12 ? "NV12" : "RGB24", vdin->video.num);
+ 	return 0;
+ }
+diff --git a/drivers/media/platform/amlogic/t7-hdmirx/test_stream.py b/drivers/media/platform/amlogic/t7-hdmirx/test_stream.py
+index b237984ef8d0c..e2d2b94952e64 100644
+--- a/drivers/media/platform/amlogic/t7-hdmirx/test_stream.py
++++ b/drivers/media/platform/amlogic/t7-hdmirx/test_stream.py
+@@ -8,8 +8,8 @@ import tempfile
+ source = Path(__file__).with_name('t7-vdin-test.c').read_text()
+ source = source.replace('#include "t7-vdin-hdr.h"', Path(__file__).with_name('t7-vdin-hdr.h').read_text())
+ defines = '\n'.join(line for line in source.splitlines() if line.startswith('#define '))
+-types = source[source.index('enum t7_vdin_slot_state {'):source.index('static u32 t7_vdin_read')]
+-hardware = source[source.index('static u32 t7_vdin_read'):source.index('static int t7_vdin_capture')]
++types = source[source.index('enum t7_vdin_slot_state {'):source.index('static void __iomem *t7_vdin_reg')]
++hardware = source[source.index('static void __iomem *t7_vdin_reg'):source.index('static int t7_vdin_capture')]
+ stream = source[source.index('static struct t7_vdin_buffer *t7_vdin_next_buffer(struct t7_vdin *vdin)\n{'):
+                 source.index('static const struct vb2_ops t7_vdin_queue_ops')]
+ prefix = r'''
+@@ -32,6 +32,7 @@ typedef int irqreturn_t;
+ #define module_param(...)
+ #define MODULE_PARM_DESC(...)
+ #define __iomem
++#define WARN_ON_ONCE(condition) assert(!(condition))
+ #define BIT(n) (1U<<(n))
+ #define ARRAY_SIZE(a) (sizeof(a)/sizeof((a)[0]))
+ #define GENMASK(h,l) ((~0U>>(31-(h))) & (~0U<<(l)))
+diff --git a/drivers/media/platform/amlogic/t7-hdmirx/test_vdin.py b/drivers/media/platform/amlogic/t7-hdmirx/test_vdin.py
+index ed74bba0255e2..80dab3c9d36ee 100644
+--- a/drivers/media/platform/amlogic/t7-hdmirx/test_vdin.py
++++ b/drivers/media/platform/amlogic/t7-hdmirx/test_vdin.py
+@@ -7,8 +7,8 @@ import tempfile
+ source = Path(__file__).with_name('t7-vdin-test.c').read_text()
+ source = source.replace('#include "t7-vdin-hdr.h"', Path(__file__).with_name('t7-vdin-hdr.h').read_text())
+ defines = '\n'.join(line for line in source.splitlines() if line.startswith('#define '))
+-types = source[source.index('enum t7_vdin_slot_state {'):source.index('static u32 t7_vdin_read')]
+-functions = source[source.index('static u32 t7_vdin_read'):
++types = source[source.index('enum t7_vdin_slot_state {'):source.index('static void __iomem *t7_vdin_reg')]
++functions = source[source.index('static void __iomem *t7_vdin_reg'):
+                    source.index('static int t7_vdin_frame_open')]
+ prefix = r'''
+ #include <assert.h>
+@@ -26,6 +26,8 @@ typedef int irqreturn_t;
+ #define VDIN_FRAME_SIZE (1920U*1080U*3U)
+ #define VDIN_STRIDE (1920U*3U)
+ #define __iomem
++static unsigned int rejected_accesses;
++#define WARN_ON_ONCE(condition) ((condition) ? rejected_accesses++ : 0)
+ #define BIT(n) (1U << (n))
+ #define ARRAY_SIZE(a) (sizeof(a)/sizeof((a)[0]))
+ #define GENMASK(h, l) ((~0U >> (31 - (h))) & (~0U << (l)))
+@@ -64,7 +66,7 @@ static bool t7_hdmirx_stream_is_yuv(struct device *dev) { (void)dev; return hdr_
+ static bool t7_hdmirx_stream_needs_yuv444_swap(struct device *dev) { (void)dev; return yuv444_input; }
+ static bool t7_hdmirx_stream_is_full_range(struct device *dev) { (void)dev; return !hdr_input && !yuv_input; }
+ static bool t7_hdmirx_stream_is_bt601(struct device *dev) { (void)dev; return false; }
+-static bool timeout, busy, bad_timing, change_timing;
++static bool timeout, busy, bad_timing, change_timing, split_resources;
+ static u32 readl(void *address)
+ {
+     u32 value;
+@@ -75,6 +77,13 @@ static u32 readl(void *address)
+ }
+ static void writel(u32 value, void *address)
+ {
++    if (split_resources) {
++        uint8_t *p = address;
++        assert((p >= registers + 0x1200 * 4 && p < registers + 0x1300 * 4) ||
++               p == registers + VPU_SW_RESET * 4 ||
++               (p >= registers + VPU_WRARB_MODE * 4 && p <= registers + VPU_WRARB_REQEN * 4) ||
++               (p >= registers + VDIN_DOUBLE_CTRL * 4 && p <= registers + VDIN_TOP_MISC * 4));
++    }
+     if (address == registers + 0x129f * 4) pq_writes++;
+     if (address == registers + 0x12a7 * 4) gain_writes++;
+     if (address == registers + 0x12a1 * 4) oetf_writes++;
+@@ -160,10 +169,18 @@ static void reset(void)
+                                .frame_dma = 0x10000000, .width = 1920, .height = 1080,
+                                .input_width = 1920, .input_height = 1080,
+                                .stride = VDIN_STRIDE, .frame_size = VDIN_FRAME_SIZE };
++    if (split_resources) {
++        receiver.regs = NULL;
++        receiver.split_regs[0] = registers + 0x1200 * 4;
++        receiver.split_regs[1] = registers + VPU_SW_RESET * 4;
++        receiver.split_regs[2] = registers + VPU_WRARB_MODE * 4;
++        receiver.split_regs[3] = registers + VDIN_DOUBLE_CTRL * 4;
++    }
+     pins = requests = timing_checks = receiver_users = 0;
++    pq_writes = gain_writes = oetf_writes = 0;
+     timeout = busy = bad_timing = change_timing = false;
+ }
+-int main(void)
++static void scenarios(void)
+ {
+     reset();
+     writel(0xc0000000, registers + VDIN_LFIFO_CTRL * 4);
+@@ -230,6 +247,18 @@ int main(void)
+     assert(t7_vdin_stop_dma(&receiver) == -ETIMEDOUT && pins == 1);
+     puts("VDIN completion ordering, DMA bounds, timing change and timeout containment passed");
+ }
++int main(void)
++{
++    scenarios();
++    split_resources = true;
++    scenarios();
++    /* A future accidental display access must fail closed in split mode. */
++    writel(0x12345678, registers + VDIN_LFIFO_CTRL * 4);
++    unsigned int before = requests;
++    t7_vdin_write(&receiver, 0x1a14, 0xdeadbeef);
++    assert(t7_vdin_read(&receiver, 0x1a14) == 0 && rejected_accesses == 2);
++    assert(!readl(registers + 0x1a14 * 4) && requests == before);
++}
+ '''
+ with tempfile.TemporaryDirectory() as directory:
+     code = Path(directory) / 'vdin.c'

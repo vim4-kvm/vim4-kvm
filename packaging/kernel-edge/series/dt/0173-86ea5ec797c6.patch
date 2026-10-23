@@ -1,0 +1,64 @@
+From 86ea5ec797c644d6414b437727269a7eadadd820 Mon Sep 17 00:00:00 2001
+From: localhost-copilot <318096335+localhost-copilot@users.noreply.github.com>
+Date: Tue, 20 Oct 2026 11:00:15 +0800
+Subject: [PATCH] media: amlogic: describe T7 receiver analog register window
+
+---
+ .../devicetree/bindings/media/amlogic,t7-hdmirx.yaml   | 10 +++++++---
+ arch/arm64/boot/dts/amlogic/amlogic-t7.dtsi            |  5 +++--
+ 2 files changed, 10 insertions(+), 5 deletions(-)
+
+diff --git a/Documentation/devicetree/bindings/media/amlogic,t7-hdmirx.yaml b/Documentation/devicetree/bindings/media/amlogic,t7-hdmirx.yaml
+index 12e298a943b9e..e62aa3d86f094 100644
+--- a/Documentation/devicetree/bindings/media/amlogic,t7-hdmirx.yaml
++++ b/Documentation/devicetree/bindings/media/amlogic,t7-hdmirx.yaml
+@@ -13,17 +13,21 @@ description: |
+   The receiver TOP window contains input 5V/HPD controls and per-port EDID RAM.
+   The APB and receiver system gates are separate clocks; both are required for
+   access to the DDC controller.
++  A separate analog window contains the receiver PHY and input PLL.
+ 
+ properties:
+   compatible:
+     const: amlogic,t7-hdmirx
+ 
+   reg:
+-    maxItems: 1
++    items:
++      - description: Receiver TOP controls and EDID RAM
++      - description: Analog PHY and input PLL
+ 
+   reg-names:
+     items:
+       - const: top
++      - const: phy
+ 
+   clocks:
+     maxItems: 6
+@@ -63,8 +67,8 @@ examples:
+ 
+     hdmi-receiver@fe398000 {
+         compatible = "amlogic,t7-hdmirx";
+-        reg = <0xfe398000 0x4000>;
+-        reg-names = "top";
++        reg = <0xfe398000 0x4000>, <0xfe39c000 0x50>;
++        reg-names = "top", "phy";
+         power-domains = <&pwrc PWRC_T7_HDMIRX_ID>;
+         clocks = <&clkc_periphs CLKID_SYS_HDMIRX_PCLK>,
+                  <&clkc_periphs CLKID_SYS_HDMIRX>,
+diff --git a/arch/arm64/boot/dts/amlogic/amlogic-t7.dtsi b/arch/arm64/boot/dts/amlogic/amlogic-t7.dtsi
+index 1e6543f1c3753..3b4894e755ec2 100644
+--- a/arch/arm64/boot/dts/amlogic/amlogic-t7.dtsi
++++ b/arch/arm64/boot/dts/amlogic/amlogic-t7.dtsi
+@@ -1960,8 +1960,9 @@ canvas: video-lut@36048 {
+ 	hdmirx: hdmi-receiver@398000 {
+ 		compatible = "amlogic,t7-hdmirx";
+ 		amlogic,input-port = <0>;
+-		reg = <0x0 0x398000 0x0 0x4000>;
+-		reg-names = "top";
++		reg = <0x0 0x398000 0x0 0x4000>,
++		      <0x0 0x39c000 0x0 0x50>;
++		reg-names = "top", "phy";
+ 		power-domains = <&pwrc PWRC_T7_HDMIRX_ID>;
+ 		clocks = <&clkc_periphs CLKID_SYS_HDMIRX_PCLK>,
+ 			 <&clkc_periphs CLKID_SYS_HDMIRX>,

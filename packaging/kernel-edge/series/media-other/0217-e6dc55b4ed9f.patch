@@ -1,0 +1,251 @@
+From e6dc55b4ed9f8b7b18aacb9513774fd7a9fe3094 Mon Sep 17 00:00:00 2001
+From: localhost-copilot <318096335+localhost-copilot@users.noreply.github.com>
+Date: Wed, 21 Oct 2026 23:41:14 +0800
+Subject: [PATCH] media: t7-jpeg: cache compressed output with explicit DMA
+ ownership
+
+---
+ .../media/platform/amlogic/t7-jpeg/README.rst |  5 ++
+ .../media/platform/amlogic/t7-jpeg/t7-jpeg.c  | 52 +++++++++++++++++--
+ .../platform/amlogic/t7-jpeg/test_jpeg.py     | 49 ++++++++++++++++-
+ 3 files changed, 100 insertions(+), 6 deletions(-)
+
+diff --git a/drivers/media/platform/amlogic/t7-jpeg/README.rst b/drivers/media/platform/amlogic/t7-jpeg/README.rst
+index f1f666a79d74b..f75c90bfcc488 100644
+--- a/drivers/media/platform/amlogic/t7-jpeg/README.rst
++++ b/drivers/media/platform/amlogic/t7-jpeg/README.rst
+@@ -15,6 +15,11 @@ copies and releases its mapping after each completed frame. System-memory
+ diagnostics copy into the input area. Only one file owns the engine at a time.
+ Mapped VMAs retain the file and its DMA allocation until the last mapping closes.
+ Completion ends the firmware's reads before input-engine reset and unmapping.
++The mapping uses cached pages with explicit CPU/device ownership. After command
++submission, userspace must not touch input or payload until completion and the
++lengths ioctl have returned. Between frames only the returned payload extent
++may be read; the unused bitstream ring remains device-owned. The header page is
++CPU-only. Diagnostic input is synchronized separately from imported DMA-bufs.
+ Close aborts with a secure power-off before freeing DMA; a failed power-off
+ quarantines the context and pins the module until reboot.
+ 
+diff --git a/drivers/media/platform/amlogic/t7-jpeg/t7-jpeg.c b/drivers/media/platform/amlogic/t7-jpeg/t7-jpeg.c
+index a52d1280207ab..30760486045bc 100644
+--- a/drivers/media/platform/amlogic/t7-jpeg/t7-jpeg.c
++++ b/drivers/media/platform/amlogic/t7-jpeg/t7-jpeg.c
+@@ -98,6 +98,7 @@ struct t7_jpeg_file {
+ 	struct dma_buf_attachment *attachment;
+ 	struct sg_table *sgt;
+ 	u32 header_bytes;
++	size_t output_cpu_bytes, input_device_bytes;
+ 	bool running;
+ };
+ 
+@@ -408,6 +409,42 @@ static void configure_jpeg(struct t7_jpeg_file *f, const u32 cmd[30])
+ 	wr(j, ASSIST_INT3, 0x14);
+ }
+ 
++static void prepare_dma(struct t7_jpeg_file *f, size_t input_bytes)
++{
++	struct device *dev = f->jpeg->dev;
++
++	/*
++	 * Only the returned payload may be accessed by the CPU between frames.
++	 * Untouched output pages remain device-owned, even if the next JPEG is
++	 * larger. The first frame hands off the allocator's zeroed output area.
++	 */
++	if (f->output_cpu_bytes) {
++		dma_sync_single_for_device(dev, f->dma + OUTPUT_OFFSET,
++					   f->output_cpu_bytes, DMA_BIDIRECTIONAL);
++		f->output_cpu_bytes = 0;
++	}
++	if (!f->input) {
++		input_bytes = ALIGN(input_bytes, dma_get_cache_alignment());
++		dma_sync_single_for_device(dev, f->dma, input_bytes, DMA_BIDIRECTIONAL);
++		f->input_device_bytes = input_bytes;
++	}
++}
++
++static void finish_dma(struct t7_jpeg_file *f, size_t output_bytes)
++{
++	struct device *dev = f->jpeg->dev;
++
++	output_bytes = ALIGN(output_bytes, dma_get_cache_alignment());
++	if (f->input_device_bytes) {
++		dma_sync_single_for_cpu(dev, f->dma, f->input_device_bytes,
++				       DMA_BIDIRECTIONAL);
++		f->input_device_bytes = 0;
++	}
++	dma_sync_single_for_cpu(dev, f->dma + OUTPUT_OFFSET, output_bytes,
++			       DMA_BIDIRECTIONAL);
++	f->output_cpu_bytes = output_bytes;
++}
++
+ static int start_frame(struct t7_jpeg_file *f, const u32 cmd[30])
+ {
+ 	struct t7_jpeg *j = f->jpeg;
+@@ -454,10 +491,11 @@ static int start_frame(struct t7_jpeg_file *f, const u32 cmd[30])
+ 	wr(j, MBOX_CLEAR, 1);
+ 	WRITE_ONCE(j->bytes, 0);
+ 	WRITE_ONCE(j->stage, 0);
++	prepare_dma(f, required);
+ 	f->running = true;
+ 	wr(j, MBOX_MASK, 0xffffffff);
+ 	reset_engine(j, BIT(12) | BIT(11));
+-	/* Header/input writes must be visible before the firmware starts DMA. */
++	/* Publish buffer ownership and register programming before DMA starts. */
+ 	dma_wmb();
+ 	wr(j, MPSR, 1);
+ 	return 0;
+@@ -523,6 +561,8 @@ static long jpeg_ioctl(struct file *file, unsigned int command, unsigned long ar
+ 		wr(j, CPSR, 0);
+ 		reset_engine(j, ENGINE_RESET);
+ 		synchronize_irq(j->irq);
++		if (f->running)
++			finish_dma(f, j->bytes);
+ 		f->running = false;
+ 		break;
+ 	case JPEG_IOCTL(7):
+@@ -562,7 +602,8 @@ static int jpeg_mmap(struct file *file, struct vm_area_struct *vma)
+ 
+ 	if (vma->vm_pgoff || vma->vm_end - vma->vm_start != MAPPING_SIZE)
+ 		return -EINVAL;
+-	return dma_mmap_wc(f->jpeg->dev, vma, f->mapping, f->dma, MAPPING_SIZE);
++	return dma_mmap_pages(f->jpeg->dev, vma, MAPPING_SIZE,
++			      virt_to_page(f->mapping));
+ }
+ 
+ static int jpeg_open(struct inode *inode, struct file *file)
+@@ -582,13 +623,15 @@ static int jpeg_open(struct inode *inode, struct file *file)
+ 		ret = -ENOMEM;
+ 		goto out;
+ 	}
+-	f->mapping = dma_alloc_wc(j->dev, MAPPING_SIZE, &f->dma, GFP_KERNEL);
++	f->mapping = dma_alloc_noncoherent(j->dev, MAPPING_SIZE, &f->dma,
++					   DMA_BIDIRECTIONAL, GFP_KERNEL);
+ 	if (!f->mapping) {
+ 		kfree(f);
+ 		ret = -ENOMEM;
+ 		goto out;
+ 	}
+ 	f->jpeg = j;
++	f->output_cpu_bytes = OUTPUT_SIZE;
+ 	j->stage = 0;
+ 	j->bytes = 0;
+ 	j->opened = true;
+@@ -611,7 +654,8 @@ static int jpeg_release(struct inode *inode, struct file *file)
+ 		return 0;
+ 	}
+ 	release_input(f);
+-	dma_free_wc(j->dev, MAPPING_SIZE, f->mapping, f->dma);
++	dma_free_noncoherent(j->dev, MAPPING_SIZE, f->mapping, f->dma,
++			     DMA_BIDIRECTIONAL);
+ 	kfree(f);
+ 	j->opened = false;
+ 	mutex_unlock(&j->lock);
+diff --git a/drivers/media/platform/amlogic/t7-jpeg/test_jpeg.py b/drivers/media/platform/amlogic/t7-jpeg/test_jpeg.py
+index ed7b5184cb0ef..4421387c42fd8 100644
+--- a/drivers/media/platform/amlogic/t7-jpeg/test_jpeg.py
++++ b/drivers/media/platform/amlogic/t7-jpeg/test_jpeg.py
+@@ -32,11 +32,15 @@ typedef uint64_t dma_addr_t;
+ #define DIV_ROUND_CLOSEST(n,d) (((n) + (d)/2) / (d))
+ #define WRITE_ONCE(p,v) ((p) = (v))
+ #define dma_wmb() ((void)0)
++#define ALIGN(value, alignment) (((value) + (alignment) - 1) & ~((alignment) - 1))
++#define dma_get_cache_alignment() 64u
++enum dma_data_direction { DMA_BIDIRECTIONAL };
++struct device { int unused; };
+ struct dma_buf { u64 size; };
+ struct scatterlist { dma_addr_t dma; };
+ struct sg_table { struct scatterlist *sgl; };
+ #define sg_dma_address(sg) ((sg)->dma)
+-struct t7_jpeg { void *regs; bool powered; u32 stage, bytes; };
++struct t7_jpeg { void *regs; bool powered; u32 stage, bytes; struct device *dev; };
+ struct t7_jpeg_file {
+     struct t7_jpeg *jpeg;
+     void *mapping;
+@@ -44,8 +48,24 @@ struct t7_jpeg_file {
+     struct dma_buf *input;
+     struct sg_table *sgt;
+     u32 header_bytes;
++    size_t output_cpu_bytes, input_device_bytes;
+     bool running;
+ };
++struct sync_event { bool cpu; dma_addr_t address; size_t size; };
++static struct sync_event events[512];
++static unsigned int event_count;
++static void record_sync(bool cpu, dma_addr_t address, size_t size) {
++    assert(size && event_count < 512);
++    events[event_count++] = (struct sync_event){cpu, address, size};
++}
++static void dma_sync_single_for_device(struct device *dev, dma_addr_t address,
++        size_t size, enum dma_data_direction direction) {
++    (void)dev; assert(direction == DMA_BIDIRECTIONAL); record_sync(false, address, size);
++}
++static void dma_sync_single_for_cpu(struct device *dev, dma_addr_t address,
++        size_t size, enum dma_data_direction direction) {
++    (void)dev; assert(direction == DMA_BIDIRECTIONAL); record_sync(true, address, size);
++}
+ static u8 mmio[65536];
+ static unsigned int writes;
+ static u32 readl(void *p) {
+@@ -62,6 +82,7 @@ int main(int argc, char **argv) {
+     assert(argc == 2);
+     struct t7_jpeg j = {.regs=mmio, .powered=true};
+     struct t7_jpeg_file f = {.jpeg=&j, .dma=0x10000000};
++    f.output_cpu_bytes = OUTPUT_SIZE;
+     f.mapping = calloc(1, MAPPING_SIZE);
+     assert(f.mapping);
+     u32 cmd[30] = {0};
+@@ -70,7 +91,14 @@ int main(int argc, char **argv) {
+     cmd[11]=cmd[12]=cmd[13]=cmd[14]=16;
+     for (unsigned int quality=1; quality<=100; quality++) {
+         cmd[7]=quality;
++        unsigned int previous=event_count;
++        size_t previous_output=f.output_cpu_bytes;
+         assert(start_frame(&f, cmd)==0);
++        assert(event_count == previous + 2 && !f.output_cpu_bytes);
++        assert(!events[previous].cpu && events[previous].address == f.dma + OUTPUT_OFFSET);
++        assert(events[previous].size == previous_output);
++        assert(!events[previous+1].cpu && events[previous+1].address == f.dma);
++        assert(events[previous+1].size == 384 && f.input_device_bytes == 384);
+         assert(f.running && f.header_bytes < HEADER_SIZE && !(f.header_bytes & 7));
+         assert(rd(&j, MFDIN_Y) == f.dma);
+         assert(rd(&j, MFDIN_U) == f.dma + 256);
+@@ -78,6 +106,17 @@ int main(int argc, char **argv) {
+         assert(rd(&j, MPSR)==1);
+         unsigned int before=writes;
+         assert(start_frame(&f, cmd)==-EBUSY && writes==before);
++        assert(event_count == previous + 2);
++        /* Alternate growing and shrinking results; untouched output stays
++         * device-owned rather than flushing the entire 16 MiB each frame. */
++        size_t bytes = quality & 1 ? 1031 : 32769;
++        finish_dma(&f, bytes);
++        assert(event_count == previous + 4 && !f.input_device_bytes);
++        assert(events[previous+2].cpu && events[previous+2].address == f.dma);
++        assert(events[previous+2].size == 384);
++        assert(events[previous+3].cpu && events[previous+3].address == f.dma + OUTPUT_OFFSET);
++        assert(events[previous+3].size == ALIGN(bytes, 64u));
++        assert(f.output_cpu_bytes == ALIGN(bytes, 64u));
+         f.running=false;
+     }
+     FILE *out=fopen(argv[1], "wb"); assert(out);
+@@ -97,7 +136,12 @@ int main(int argc, char **argv) {
+     struct sg_table sgt={.sgl=&sg};
+     struct dma_buf input={.size=384};
+     f.input=&input; f.sgt=&sgt;
+-    assert(start_frame(&f, cmd)==0); f.running=false;
++    unsigned int imported_start=event_count;
++    assert(start_frame(&f, cmd)==0);
++    assert(event_count == imported_start + 1 && !f.input_device_bytes);
++    finish_dma(&f, 1777); f.running=false;
++    assert(event_count == imported_start + 2);
++    assert(events[event_count-1].cpu && events[event_count-1].size == ALIGN(1777, 64u));
+     sg.dma=0xffffff00;
+     unsigned int before=writes;
+     assert(start_frame(&f, cmd)==-EINVAL && writes==before);
+@@ -107,6 +151,7 @@ int main(int argc, char **argv) {
+     assert(start_frame(&f, cmd)==-EPIPE && writes==before);
+     free(f.mapping);
+     puts("PASS: 100 qualities, JPEG headers, command bounds, busy/unpowered, DMA extent/4GiB");
++    puts("PASS: first DMA handoff, changing output lengths and imported/system-memory ownership");
+ }
+ '''
+ with tempfile.TemporaryDirectory() as temp:

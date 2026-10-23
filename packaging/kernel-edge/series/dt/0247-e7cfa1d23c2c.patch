@@ -1,0 +1,27 @@
+From e7cfa1d23c2c4aa28f3617d077f57109ef2536f2 Mon Sep 17 00:00:00 2001
+From: localhost-copilot <318096335+localhost-copilot@users.noreply.github.com>
+Date: Thu, 22 Oct 2026 18:14:37 +0800
+Subject: [PATCH] arm64: dts: amlogic: enable the T7 hardware random number
+ generator
+
+T7 uses the seed handshake and data offset handled by the Meson S4 RNG driver. Expose its 12-byte register window on APB4.
+---
+ arch/arm64/boot/dts/amlogic/amlogic-t7.dtsi | 5 +++++
+ 1 file changed, 5 insertions(+)
+
+diff --git a/arch/arm64/boot/dts/amlogic/amlogic-t7.dtsi b/arch/arm64/boot/dts/amlogic/amlogic-t7.dtsi
+index db72fec2c9d21..8a03fbb24e266 100644
+--- a/arch/arm64/boot/dts/amlogic/amlogic-t7.dtsi
++++ b/arch/arm64/boot/dts/amlogic/amlogic-t7.dtsi
+@@ -532,6 +532,11 @@ apb4: bus@fe000000 {
+ 			ranges = <0x0 0x0 0x0 0xfe000000 0x0 0x480000>,
+ 				 <0x0 0xfdd00000 0x0 0xfdd00000 0x0 0x200000>; /* usb drd */
+ 
++			rng: rng@440788 {
++				compatible = "amlogic,meson-s4-rng";
++				reg = <0x0 0x440788 0x0 0xc>;
++			};
++
+ 			clkc_periphs: clock-controller@0 {
+ 				compatible = "amlogic,t7-peripherals-clkc";
+ 				reg = <0x0 0x0 0x0 0x1c8>;

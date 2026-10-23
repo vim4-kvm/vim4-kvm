@@ -1,0 +1,59 @@
+From 85e89d3447e1161f4d19c9115ba9e472f965a7ff Mon Sep 17 00:00:00 2001
+From: localhost-copilot <318096335+localhost-copilot@users.noreply.github.com>
+Date: Thu, 22 Oct 2026 19:47:36 +0800
+Subject: [PATCH] media: amlogic: constrain HDMI audio DMA rings to whole
+ periods
+
+---
+ drivers/media/platform/amlogic/t7-hdmirx/t7-hdmirx.c   | 10 ++++++++++
+ drivers/media/platform/amlogic/t7-hdmirx/test_audio.py |  9 +++++++++
+ 2 files changed, 19 insertions(+)
+
+diff --git a/drivers/media/platform/amlogic/t7-hdmirx/t7-hdmirx.c b/drivers/media/platform/amlogic/t7-hdmirx/t7-hdmirx.c
+index db3d8c8900e92..233f8166a942c 100644
+--- a/drivers/media/platform/amlogic/t7-hdmirx/t7-hdmirx.c
++++ b/drivers/media/platform/amlogic/t7-hdmirx/t7-hdmirx.c
+@@ -1459,6 +1459,16 @@ static int t7_hdmirx_audio_startup(struct snd_pcm_substream *substream,
+ {
+ 	struct t7_hdmirx *rx = dev_get_drvdata(dai->dev);
+ 	unsigned int rate;
++	int ret;
++
++	/* Keep T7 HDMI capture rings on whole periods. Native 9602/1920-frame
++	 * recordings corrupt samples at each ring wrap, unlike 9600/1920.
++	 * ALSA rate conversion can negotiate the former without this rule.
++	 */
++	ret = snd_pcm_hw_constraint_integer(substream->runtime,
++					    SNDRV_PCM_HW_PARAM_PERIODS);
++	if (ret)
++		return ret;
+ 
+ 	mutex_lock(&rx->audio_lock);
+ 	rate = rx->audio_format.pcm ? rx->audio_format.rate : 0;
+diff --git a/drivers/media/platform/amlogic/t7-hdmirx/test_audio.py b/drivers/media/platform/amlogic/t7-hdmirx/test_audio.py
+index 398bb637d4ecf..369786637513e 100644
+--- a/drivers/media/platform/amlogic/t7-hdmirx/test_audio.py
++++ b/drivers/media/platform/amlogic/t7-hdmirx/test_audio.py
+@@ -41,6 +41,12 @@ struct snd_soc_component { struct snd_soc_card *card; };
+ struct snd_soc_dai { struct device *dev; };
+ struct snd_pcm_substream { void *runtime; };
+ #define SNDRV_PCM_HW_PARAM_RATE 0
++#define SNDRV_PCM_HW_PARAM_PERIODS 1
++static bool fail_period_constraint;
++static int snd_pcm_hw_constraint_integer(void *runtime, int param) {
++    assert(param == SNDRV_PCM_HW_PARAM_PERIODS);
++    return fail_period_constraint ? -EINVAL : 0;
++}
+ static unsigned int constraint_rate;
+ static int snd_pcm_hw_constraint_minmax(void *runtime, int param, unsigned int min, unsigned int max) {
+     assert(min == max); constraint_rate = min; return 0;
+@@ -132,6 +138,9 @@ int main(void) {
+     aif(3,2);
+     assert(!t7_hdmirx_read_audio(&rx,&rx.audio_format));
+     assert(rx.audio_format.rate==48000 && rx.audio_format.pcm);
++    fail_period_constraint=true;
++    assert(t7_hdmirx_audio_startup(&stream,&dai)==-EINVAL && !writes && !enables);
++    fail_period_constraint=false;
+     assert(!t7_hdmirx_audio_startup(&stream,&dai) && constraint_rate==48000);
+     assert(t7_hdmirx_audio_prepare(&stream,&dai)==-ENOLINK);
+     const unsigned int rates[]={32000,44100,48000,88200,96000,176400,192000};

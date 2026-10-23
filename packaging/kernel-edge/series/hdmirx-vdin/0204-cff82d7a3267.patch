@@ -1,0 +1,183 @@
+From cff82d7a32676659bc2cb2450b5141e1a497dbf4 Mon Sep 17 00:00:00 2001
+From: deepdream <deepdream@deepdremsMinim4.lan>
+Date: Tue, 20 Oct 2026 20:32:56 -0700
+Subject: [PATCH] media: amlogic: rearm latched receiver clock meters
+
+---
+ .../platform/amlogic/t7-hdmirx/README.md      |  6 ++++++
+ .../platform/amlogic/t7-hdmirx/t7-hdmirx.c    | 20 ++++++++++++++-----
+ .../platform/amlogic/t7-hdmirx/test_link.py   | 18 ++++++++++++++---
+ .../platform/amlogic/t7-hdmirx/test_phy.py    | 15 ++++++++++++++
+ 4 files changed, 51 insertions(+), 8 deletions(-)
+
+diff --git a/drivers/media/platform/amlogic/t7-hdmirx/README.md b/drivers/media/platform/amlogic/t7-hdmirx/README.md
+index aaa8a216ecba9..089647c7f15d5 100644
+--- a/drivers/media/platform/amlogic/t7-hdmirx/README.md
++++ b/drivers/media/platform/amlogic/t7-hdmirx/README.md
+@@ -8,6 +8,12 @@ SCDC ratio, then configures the video PLL/PCS. Loss does not withdraw HPD or
+ rewrite EDID. The supported profile is still selected by `uhd60`; automatic
+ timings and format negotiation are a separate change.
+ 
++Cable qualification reads the completed meter count and rearms the cable/TMDS
++meters for the next sample. The counters latch completed measurements; repeatedly
++reading a startup count cannot detect a delayed source. Only the meter reset bits
++are pulsed, leaving PCS, DDC and HPD intact. `test_phy.py` covers a stale initial
++count followed by a source clock that appears after rearming.
++
+ Capture holds a receiver lease from before DMA starts until the MIF is stopped.
+ The worker never reconfigures a PHY with outstanding leases. Stop quarantine
+ retains that lease until reboot. Audio PLL and DDC registers are not part of the
+diff --git a/drivers/media/platform/amlogic/t7-hdmirx/t7-hdmirx.c b/drivers/media/platform/amlogic/t7-hdmirx/t7-hdmirx.c
+index b2fa1e604a8bd..9f36a6ac75f7e 100644
+--- a/drivers/media/platform/amlogic/t7-hdmirx/t7-hdmirx.c
++++ b/drivers/media/platform/amlogic/t7-hdmirx/t7-hdmirx.c
+@@ -371,6 +371,18 @@ static u32 t7_hdmirx_meter_hz(u32 status, unsigned long reference_hz)
+ 	return frequency <= U32_MAX ? frequency : 0;
+ }
+ 
++static u32 t7_hdmirx_sample_cable(struct t7_hdmirx *rx, unsigned long reference_hz)
++{
++	u32 status = readl(rx->top + T7_RX_TOP_METER_CABLE_STAT);
++
++	/* Completed counts latch; arm the next measurement without resetting PCS. */
++	writel(BIT(5) | BIT(6), rx->top + T7_RX_TOP_SW_RESET);
++	readl(rx->top + T7_RX_TOP_SW_RESET);
++	writel(0, rx->top + T7_RX_TOP_SW_RESET);
++	readl(rx->top + T7_RX_TOP_SW_RESET);
++	return t7_hdmirx_meter_hz(status, reference_hz);
++}
++
+ static void t7_hdmirx_phy_update(struct t7_hdmirx *rx, u32 reg, u32 mask, u32 value)
+ {
+ 	u32 data = readl(rx->phy + reg);
+@@ -453,15 +465,14 @@ static void t7_hdmirx_phy_prepare(struct t7_hdmirx *rx)
+ 
+ static int t7_hdmirx_wait_cable(struct t7_hdmirx *rx, unsigned long reference_hz)
+ {
+-	u32 previous = 0, sample_hz, status;
++	u32 previous = 0, sample_hz;
+ 	unsigned int i, stable = 0;
+ 
+ 	/* EDID reconnects on the source can outlast the initial three seconds. */
+ 	for (i = 0; i < 500; i++) {
+ 		if (!(readl(rx->top + T7_RX_TOP_HPD_PWR5V) & BIT(20 + rx->port)))
+ 			return -ENOLINK;
+-		status = readl(rx->top + T7_RX_TOP_METER_CABLE_STAT);
+-		sample_hz = t7_hdmirx_meter_hz(status, reference_hz);
++		sample_hz = t7_hdmirx_sample_cable(rx, reference_hz);
+ 		rx->cable_hz = sample_hz;
+ 		/* Both profiles have a 148.5 MHz cable clock; SCDC distinguishes 1:40. */
+ 		if ((!!(readb(rx->cor + T7_RX_COR_TMDS_CONFIG) & BIT(1)) == rx->uhd60) &&
+@@ -948,8 +959,7 @@ static void t7_hdmirx_link_work(struct work_struct *work)
+ 	/* A live or quarantined MIF owns its receiver until DMA is safe. */
+ 	if (link->users)
+ 		goto out;
+-	cable = t7_hdmirx_meter_hz(readl(rx->top + T7_RX_TOP_METER_CABLE_STAT),
+-				 clk_get_rate(rx->clocks[T7_RX_METER].clk));
++	cable = t7_hdmirx_sample_cable(rx, clk_get_rate(rx->clocks[T7_RX_METER].clk));
+ 	rx->cable_hz = cable;
+ 	if (!(readl(rx->top + T7_RX_TOP_HPD_PWR5V) & BIT(20 + rx->port)) ||
+ 	    (!!(readb(rx->cor + T7_RX_COR_TMDS_CONFIG) & BIT(1)) != rx->uhd60) ||
+diff --git a/drivers/media/platform/amlogic/t7-hdmirx/test_link.py b/drivers/media/platform/amlogic/t7-hdmirx/test_link.py
+index 90a320aed4c47..a9584b5b6e895 100644
+--- a/drivers/media/platform/amlogic/t7-hdmirx/test_link.py
++++ b/drivers/media/platform/amlogic/t7-hdmirx/test_link.py
+@@ -8,7 +8,9 @@ source = Path(__file__).with_name('t7-hdmirx.c').read_text()
+ defines = '\n'.join(line for line in source.splitlines() if line.startswith('#define T7_RX_'))
+ types = source[source.index('static const u32 t7_hdmirx_phy_top_regs'):
+                source.index('static int t7_hdmirx_validate_edid')]
+-functions = source[source.index('int t7_hdmirx_stream_get('):
++start = source.index('static u32 t7_hdmirx_sample_cable(')
++functions = source[start:source.index('\n}', start) + 2] + '\n'
++functions += source[source.index('int t7_hdmirx_stream_get('):
+                    source.index('static int t7_hdmirx_status(')]
+ prefix = r'''
+ #include <assert.h>
+@@ -42,7 +44,8 @@ struct device { void *data; };
+ '''
+ stubs = r'''
+ static bool signal_valid, source_present, hdmi2 = true, pll_fail, late_alignment, lose_during_wait;
+-static unsigned int pll_calls, pcs_calls, queued, canceled, last_delay;
++static unsigned int pll_calls, pcs_calls, queued, canceled, last_delay, meter_resets;
++static u32 meter_reset;
+ static u32 cable_hz;
+ static struct t7_hdmirx receiver;
+ static void *dev_get_drvdata(struct device *dev) { return dev->data; }
+@@ -59,11 +62,19 @@ static int t7_hdmirx_check_video(struct device *dev)
+ }
+ static u32 readl(void *address)
+ {
++    if (address == receiver.top + T7_RX_TOP_SW_RESET) return meter_reset;
+     if (address == receiver.top + T7_RX_TOP_HPD_PWR5V)
+         return source_present ? BIT(20 + receiver.port) : 0;
+     assert(address == receiver.top + T7_RX_TOP_METER_CABLE_STAT);
+     return cable_hz;
+ }
++static void writel(u32 value, void *address)
++{
++    assert(address == receiver.top + T7_RX_TOP_SW_RESET && !receiver.link->users);
++    assert(!value || value == (BIT(5) | BIT(6)));
++    meter_reset = value;
++    if (value) meter_resets++;
++}
+ static u8 readb(void *address)
+ {
+     assert(address == receiver.cor + T7_RX_COR_TMDS_CONFIG);
+@@ -114,8 +125,9 @@ int main(void)
+     tick(&link, 1); assert(pll_calls == 1 && pcs_calls == 1 && link.ready);
+     tick(&link, 100); assert(pll_calls == 1);
+     assert(!t7_hdmirx_stream_get(&dev) && !t7_hdmirx_stream_get(&dev) && link.users == 2);
++    unsigned int resets_before = meter_resets;
+     signal_valid = false; tick(&link, 10);
+-    assert(!link.ready && pll_calls == 1);
++    assert(!link.ready && pll_calls == 1 && meter_resets == resets_before);
+     t7_hdmirx_stream_put(&dev); tick(&link, 10); assert(pll_calls == 1);
+     t7_hdmirx_stream_put(&dev); tick(&link, 4); assert(link.ready && pll_calls == 2);
+     signal_valid = false; source_present = false; tick(&link, 10);
+diff --git a/drivers/media/platform/amlogic/t7-hdmirx/test_phy.py b/drivers/media/platform/amlogic/t7-hdmirx/test_phy.py
+index c00532c25f3f8..e28f3e6f812f9 100644
+--- a/drivers/media/platform/amlogic/t7-hdmirx/test_phy.py
++++ b/drivers/media/platform/amlogic/t7-hdmirx/test_phy.py
+@@ -45,6 +45,9 @@ static u8 readb(void *address) {
+ }
+ static struct t7_hdmirx receiver;
+ static bool lock_pll, jitter, delayed_source;
++static bool one_shot_meter;
++static u32 next_meter;
++static unsigned int meter_restarts;
+ static unsigned int delays, meter_reads, pll_attempts, writes;
+ static u32 raw_read(void *address)
+ {
+@@ -74,6 +77,11 @@ static u32 readl(void *address)
+ static void writel(u32 value, void *address)
+ {
+     assert(bounded(address));
++    if (one_shot_meter && address == top + T7_RX_TOP_SW_RESET && !value &&
++        raw_read(address) == (BIT(5) | BIT(6))) {
++        memcpy(top + T7_RX_TOP_METER_CABLE_STAT, &next_meter, 4);
++        meter_restarts++;
++    }
+     if (address == phy + T7_RX_PHY_APLL0 && value == 0x20090428)
+         pll_attempts++;
+     memcpy(address, &value, 4);
+@@ -97,6 +105,7 @@ static void reset(void)
+     memset(core, 0, sizeof(core));
+     receiver = (struct t7_hdmirx) { .top = top, .phy = phy, .cor = core, .port = 1 };
+     lock_pll = jitter = delayed_source = false;
++    one_shot_meter = false; next_meter = meter_restarts = 0;
+     delays = meter_reads = pll_attempts = writes = 0;
+     writel(BIT(21) | BIT(1), top + T7_RX_TOP_HPD_PWR5V);
+ }
+@@ -158,6 +167,12 @@ int main(void)
+     reset(); delayed_source = true;
+     writel(BIT(31) | 50688, top + T7_RX_TOP_METER_CABLE_STAT);
+     assert(!t7_hdmirx_wait_cable(&receiver, 24000000) && meter_reads == 204);
++    /* The hardware keeps a completed count until the meter reset pulse. */
++    reset(); one_shot_meter = true; next_meter = BIT(31) | 50688;
++    writel(BIT(31) | 65, top + T7_RX_TOP_METER_CABLE_STAT);
++    assert(!t7_hdmirx_wait_cable(&receiver, 24000000));
++    assert(meter_reads == 5 && meter_restarts == 5);
++    assert(receiver.cable_hz == 148500000);
+     reset(); writel(BIT(31) | 101376, top + T7_RX_TOP_METER_CABLE_STAT);
+     assert(t7_hdmirx_wait_cable(&receiver, 24000000) == -ETIMEDOUT);
+     assert(receiver.cable_hz == 297000000 && !pll_attempts);

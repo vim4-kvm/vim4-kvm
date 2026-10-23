@@ -1,0 +1,28 @@
+From 24405a0364d09815a61d67acfea8c2e06e44d94c Mon Sep 17 00:00:00 2001
+From: Christian Hewitt <christianshewitt@gmail.com>
+Date: Mon, 2 Feb 2026 16:41:26 +0000
+Subject: [PATCH] arm64: dts: amlogic: meson-s4-s905y4-khadas-vim1s: add chosen
+ node
+
+Describe the UART console settings.
+
+Signed-off-by: Christian Hewitt <christianshewitt@gmail.com>
+---
+ arch/arm64/boot/dts/amlogic/meson-s4-s905y4-khadas-vim1s.dts | 4 ++++
+ 1 file changed, 4 insertions(+)
+
+diff --git a/arch/arm64/boot/dts/amlogic/meson-s4-s905y4-khadas-vim1s.dts b/arch/arm64/boot/dts/amlogic/meson-s4-s905y4-khadas-vim1s.dts
+index c7366c74496a7..92645817e93ca 100644
+--- a/arch/arm64/boot/dts/amlogic/meson-s4-s905y4-khadas-vim1s.dts
++++ b/arch/arm64/boot/dts/amlogic/meson-s4-s905y4-khadas-vim1s.dts
+@@ -25,6 +25,10 @@ aliases {
+ 		serial0 = &uart_b;
+ 	};
+ 
++	chosen {
++		stdout-path = "serial0:921600n8";
++	};
++
+ 	memory@0 {
+ 		device_type = "memory";
+ 		reg = <0x0 0x0 0x0 0x80000000>;

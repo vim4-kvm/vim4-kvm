@@ -1,0 +1,107 @@
+From 928a31e3e67101435e2c9a64e93c04eaa8f56094 Mon Sep 17 00:00:00 2001
+From: localhost-copilot <318096335+localhost-copilot@users.noreply.github.com>
+Date: Fri, 23 Oct 2026 19:18:11 +0800
+Subject: [PATCH] media: t7-hdmirx: record bounded readiness loss diagnostics
+
+---
+ .../media/platform/amlogic/t7-hdmirx/t7-hdmirx.c   | 14 ++++++++++++--
+ .../media/platform/amlogic/t7-hdmirx/test_core.py  |  1 +
+ .../media/platform/amlogic/t7-hdmirx/test_link.py  |  6 ++++++
+ .../platform/amlogic/t7-hdmirx/test_timings.py     |  1 +
+ 4 files changed, 20 insertions(+), 2 deletions(-)
+
+diff --git a/drivers/media/platform/amlogic/t7-hdmirx/t7-hdmirx.c b/drivers/media/platform/amlogic/t7-hdmirx/t7-hdmirx.c
+index 143e9627df426..7d4bd1cf1db31 100644
+--- a/drivers/media/platform/amlogic/t7-hdmirx/t7-hdmirx.c
++++ b/drivers/media/platform/amlogic/t7-hdmirx/t7-hdmirx.c
+@@ -1078,8 +1078,13 @@ static int t7_hdmirx_video_status_reason(struct t7_hdmirx *rx, const char **reas
+ 	if (rx->dynamic_modes) {
+ 		ret = t7_hdmirx_measure_live(rx, yuv420, &measured);
+ 		if (!ret && rx->link && rx->link->users &&
+-		    !t7_hdmirx_same_measurement(&measured, &rx->lease_mode))
++		    !t7_hdmirx_same_measurement(&measured, &rx->lease_mode)) {
++			pr_info_ratelimited("t7-hdmirx lease timing changed: measured=%ux%u/%u lease=%ux%u/%u\n",
++					    measured.width, measured.height, measured.ticks,
++					    rx->lease_mode.width, rx->lease_mode.height,
++					    rx->lease_mode.ticks);
+ 			return t7_hdmirx_video_error(reason, "lease-timing", -ENOLINK);
++		}
+ 		return t7_hdmirx_video_error(reason, "measurement", ret);
+ 	}
+ 	if (t7_hdmirx_core_read16(rx, T7_RX_COR_WIDTH) != (yuv420 ? 1920 : rx->uhd60 ? 3840 : 1920) ||
+@@ -1955,6 +1960,7 @@ static void t7_hdmirx_link_work(struct work_struct *work)
+ 	bool sampled = false;
+ 	u32 previous_pll;
+ 	struct t7_hdmirx_color color;
++	const char *reason = "video-status";
+ 	int ret;
+ 
+ 	mutex_lock(&link->lock);
+@@ -1962,7 +1968,7 @@ static void t7_hdmirx_link_work(struct work_struct *work)
+ 	if (rx->dynamic_modes && rx->core_active && !link->users)
+ 		writeb(readb(rx->cor + T7_RX_COR_AUDIO_PACKET) & BIT(0) ? 6 : 0,
+ 		       rx->cor + T7_RX_COR_PREAMBLE);
+-	ret = t7_hdmirx_video_status(rx);
++	ret = t7_hdmirx_video_status_reason(rx, &reason);
+ 	if (ret == -EAGAIN) {
+ 		/* One torn snapshot is harmless. A stuck FDET can change on every
+ 		 * read indefinitely; after a second, qualify clocks and recover PCS.
+@@ -1994,6 +2000,10 @@ static void t7_hdmirx_link_work(struct work_struct *work)
+ 		WRITE_ONCE(link->ready, !ret);
+ 		goto out;
+ 	}
++	if (READ_ONCE(link->ready))
++		pr_info_ratelimited("t7-hdmirx link readiness revoked: reason=%s error=%d retries=%u users=%u configured=%u\n",
++				    reason, ret, link->timing_retries,
++				    link->users, link->configured);
+ 	WRITE_ONCE(link->ready, false);
+ 	/* A live or quarantined MIF owns its receiver until DMA is safe. */
+ 	if (link->users) {
+diff --git a/drivers/media/platform/amlogic/t7-hdmirx/test_core.py b/drivers/media/platform/amlogic/t7-hdmirx/test_core.py
+index fc12686259d8a..d23c461fb881a 100644
+--- a/drivers/media/platform/amlogic/t7-hdmirx/test_core.py
++++ b/drivers/media/platform/amlogic/t7-hdmirx/test_core.py
+@@ -16,6 +16,7 @@ status_api = vdin[vdin.index('static int t7_vdin_enum_input'):
+ prefix = r'''
+ #include <assert.h>
+ #define dev_info_ratelimited(...) ((void)0)
++#define pr_info_ratelimited(...) ((void)0)
+ #include <stdbool.h>
+ #include <stdint.h>
+ #include <string.h>
+diff --git a/drivers/media/platform/amlogic/t7-hdmirx/test_link.py b/drivers/media/platform/amlogic/t7-hdmirx/test_link.py
+index 13eae0399ce08..7e42f7158cbf6 100644
+--- a/drivers/media/platform/amlogic/t7-hdmirx/test_link.py
++++ b/drivers/media/platform/amlogic/t7-hdmirx/test_link.py
+@@ -35,6 +35,7 @@ typedef uint64_t u64;
+ #define WRITE_ONCE(place, value) ((place) = (value))
+ #define WARN_ON(condition) (condition)
+ #define EXPORT_SYMBOL_GPL(name)
++#define pr_info_ratelimited(...) ((void)0)
+ #define msecs_to_jiffies(value) (value)
+ #define container_of(p,t,m) ((t *)((char *)(p) - offsetof(t,m)))
+ #define to_delayed_work(p) container_of(p,struct delayed_work,work)
+@@ -76,6 +77,11 @@ static int t7_hdmirx_video_status(struct t7_hdmirx *rx)
+     if (unsupported_signal) return -ERANGE;
+     return signal_valid && (!rx->dynamic_modes || rx->uhd60==hdmi2) ? 0 : -ENOLINK;
+ }
++static int t7_hdmirx_video_status_reason(struct t7_hdmirx *rx, const char **reason)
++{
++    *reason = "simulated-source";
++    return t7_hdmirx_video_status(rx);
++}
+ static int t7_hdmirx_check_video(struct device *dev)
+ {
+     struct t7_hdmirx *rx = dev->data;
+diff --git a/drivers/media/platform/amlogic/t7-hdmirx/test_timings.py b/drivers/media/platform/amlogic/t7-hdmirx/test_timings.py
+index ab6478afe3351..f6e6caf600f54 100644
+--- a/drivers/media/platform/amlogic/t7-hdmirx/test_timings.py
++++ b/drivers/media/platform/amlogic/t7-hdmirx/test_timings.py
+@@ -19,6 +19,7 @@ ioctls = vdin[vdin.index('static int t7_vdin_query_dv_timings'):
+ prefix = r'''
+ #include <assert.h>
+ #define dev_info_ratelimited(...) ((void)0)
++#define pr_info_ratelimited(...) ((void)0)
+ #include <errno.h>
+ #include <stdbool.h>
+ #include <stdint.h>

@@ -1,0 +1,112 @@
+From 8c98390aea4853671c8ee46daeccff273e044a15 Mon Sep 17 00:00:00 2001
+From: localhost-copilot <318096335+localhost-copilot@users.noreply.github.com>
+Date: Thu, 22 Oct 2026 18:14:36 +0800
+Subject: [PATCH] thermal: khadas: distinguish initial missing zones from
+ sensor failures
+
+---
+ drivers/thermal/khadas_mcu_fan.c       | 23 +++++++++++++++++++----
+ drivers/thermal/test_khadas_mcu_fan.py | 11 ++++++++++-
+ 2 files changed, 29 insertions(+), 5 deletions(-)
+
+diff --git a/drivers/thermal/khadas_mcu_fan.c b/drivers/thermal/khadas_mcu_fan.c
+index 20e4a1aeeb714..3404439134c86 100644
+--- a/drivers/thermal/khadas_mcu_fan.c
++++ b/drivers/thermal/khadas_mcu_fan.c
+@@ -39,6 +39,7 @@ struct khadas_mcu_fan_ctx {
+ 	bool quiet;
+ 	bool sensor_fault;
+ 	bool quiet_started;
++	bool quiet_sampled;
+ 	int temperature;
+ 	struct mutex curve_lock;
+ 	unsigned int trigger_low;
+@@ -115,6 +116,7 @@ static void khadas_vim4_fan_work(struct work_struct *work)
+ 					struct khadas_mcu_fan_ctx, quiet_work);
+ 	int hottest = INT_MIN;
+ 	bool fault = false;
++	bool read_fault = false;
+ 	bool was_fault = ctx->sensor_fault;
+ 	unsigned int target;
+ 	int i, ret;
+@@ -125,8 +127,14 @@ static void khadas_vim4_fan_work(struct work_struct *work)
+ 		int temperature;
+ 
+ 		zone = thermal_zone_get_zone_by_name(khadas_vim4_fan_sensors[i]);
+-		if (IS_ERR(zone) || thermal_zone_get_temp(zone, &temperature)) {
++		if (IS_ERR(zone)) {
+ 			fault = true;
++			read_fault |= PTR_ERR(zone) != -ENODEV;
++			continue;
++		}
++		if (thermal_zone_get_temp(zone, &temperature)) {
++			fault = true;
++			read_fault = true;
+ 			continue;
+ 		}
+ 		hottest = max(hottest, temperature);
+@@ -145,9 +153,16 @@ static void khadas_vim4_fan_work(struct work_struct *work)
+ 	else if (!fault)
+ 		ctx->quiet_started = true;
+ 	mutex_unlock(&ctx->curve_lock);
+-	if (fault)
+-		dev_warn_ratelimited(ctx->dev,
+-			"Fan temperature unavailable; requesting %u%% output\n", target);
++	if (fault) {
++		/* Only an unregistered zone on the first sample is expected. */
++		if (!ctx->quiet_sampled && !read_fault)
++			dev_info(ctx->dev,
++				 "Waiting for fan thermal zones; requesting %u%% output\n", target);
++		else
++			dev_warn_ratelimited(ctx->dev,
++				"Fan temperature unavailable; requesting %u%% output\n", target);
++	}
++	ctx->quiet_sampled = true;
+ 
+ 	/* Thermal zones may register after the first boot-time sample. */
+ 	schedule_delayed_work(&ctx->quiet_work,
+diff --git a/drivers/thermal/test_khadas_mcu_fan.py b/drivers/thermal/test_khadas_mcu_fan.py
+index 9a342a46994f5..4da36a1f8194a 100644
+--- a/drivers/thermal/test_khadas_mcu_fan.py
++++ b/drivers/thermal/test_khadas_mcu_fan.py
+@@ -26,11 +26,14 @@ prefix = r'''
+ #define WRITE_ONCE(a, b) ((a) = (b))
+ #define max(a, b) ((a) > (b) ? (a) : (b))
+ #define IS_ERR(p) ((p) == NULL)
++#define PTR_ERR(p) (-ENODEV)
+ #define container_of(p, t, m) ((t *)((char *)(p) - offsetof(t, m)))
+ #define to_delayed_work(p) container_of(p, struct delayed_work, work)
+ #define msecs_to_jiffies(ms) (ms)
+ #define dev_err_ratelimited(...) ((void)0)
+-#define dev_warn_ratelimited(...) ((void)0)
++static int warnings, infos;
++#define dev_warn_ratelimited(...) ((void)warnings++)
++#define dev_info(...) ((void)infos++)
+ struct mutex { int unused; };
+ static void mutex_lock(struct mutex *lock) { (void)lock; }
+ static void mutex_unlock(struct mutex *lock) { (void)lock; }
+@@ -147,8 +150,10 @@ int main(void)
+     khadas_vim4_fan_work(&ctx.quiet_work.work);
+     assert(ctx.level == 15 && ctx.sensor_fault && !ctx.quiet_started);
+     assert(delay == 1000);
++    assert(infos == 1 && warnings == 0);
+     khadas_vim4_fan_work(&ctx.quiet_work.work);
+     assert(ctx.level == 15 && !ctx.quiet_started && delay == 1000);
++    assert(infos == 1 && warnings == 1);
+     missing = -1; reads = 0;
+     khadas_vim4_fan_work(&ctx.quiet_work.work);
+     assert(ctx.level == 15 && !ctx.sensor_fault && ctx.quiet_started);
+@@ -157,9 +162,13 @@ int main(void)
+     khadas_vim4_fan_work(&ctx.quiet_work.work);
+     assert(ctx.level == 20 && ctx.temperature == 90000);
+     unreadable = 5;
++    /* A read failure must warn even on the first sample. */
++    ctx.quiet_sampled = false;
++    int old_warnings = warnings;
+     khadas_vim4_fan_work(&ctx.quiet_work.work);
+     assert(ctx.level == 15 && ctx.sensor_fault);
+     assert(delay == 1000);
++    assert(warnings == old_warnings + 1 && infos == 1);
+     /* A missing early sensor must not hide another zone's valid hot sample. */
+     unreadable = -1; missing = 0;
+     khadas_vim4_fan_work(&ctx.quiet_work.work);

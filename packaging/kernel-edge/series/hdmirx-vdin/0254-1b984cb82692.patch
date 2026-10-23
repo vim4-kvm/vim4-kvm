@@ -1,0 +1,78 @@
+From 1b984cb82692047a5aac72c62a1b0c84a5fb257a Mon Sep 17 00:00:00 2001
+From: localhost-copilot <318096335+localhost-copilot@users.noreply.github.com>
+Date: Thu, 22 Oct 2026 20:08:23 +0800
+Subject: [PATCH] media: amlogic: tolerate ACR jitter within a qualified HDMI
+ audio rate
+
+---
+ drivers/media/platform/amlogic/t7-hdmirx/t7-hdmirx.c | 12 ++++++++----
+ .../media/platform/amlogic/t7-hdmirx/test_audio.py   | 11 ++++++++++-
+ 2 files changed, 18 insertions(+), 5 deletions(-)
+
+diff --git a/drivers/media/platform/amlogic/t7-hdmirx/t7-hdmirx.c b/drivers/media/platform/amlogic/t7-hdmirx/t7-hdmirx.c
+index 233f8166a942c..614b162453272 100644
+--- a/drivers/media/platform/amlogic/t7-hdmirx/t7-hdmirx.c
++++ b/drivers/media/platform/amlogic/t7-hdmirx/t7-hdmirx.c
+@@ -1256,7 +1256,7 @@ static int t7_hdmirx_read_audio(struct t7_hdmirx *rx,
+ 		0, 32000, 44100, 48000, 88200, 96000, 176400, 192000,
+ 	};
+ 	u8 aif[14], second[14], packet, channel_status, sum = 0;
+-	u32 n, cts, tmds;
++	u32 n, cts, next_n, next_cts, tmds;
+ 	unsigned int i, declared;
+ 
+ 	if (!rx->core_active || (rx->link && !READ_ONCE(rx->link->ready)))
+@@ -1269,9 +1269,9 @@ static int t7_hdmirx_read_audio(struct t7_hdmirx *rx,
+ 		aif[i] = readb(rx->cor + T7_RX_COR_AUDIO_AIF + i);
+ 	for (i = 0; i < ARRAY_SIZE(second); i++)
+ 		second[i] = readb(rx->cor + T7_RX_COR_AUDIO_AIF + i);
++	next_n = t7_hdmirx_audio_word(rx, T7_RX_COR_N);
++	next_cts = t7_hdmirx_audio_word(rx, T7_RX_COR_CTS);
+ 	if (memcmp(aif, second, sizeof(aif)) ||
+-	    n != t7_hdmirx_audio_word(rx, T7_RX_COR_N) ||
+-	    cts != t7_hdmirx_audio_word(rx, T7_RX_COR_CTS) ||
+ 	    packet != readb(rx->cor + T7_RX_COR_AUDIO_PACKET) ||
+ 	    channel_status != readb(rx->cor + T7_RX_COR_AUDIO_CHSTATUS))
+ 		return -EAGAIN;
+@@ -1285,7 +1285,11 @@ static int t7_hdmirx_read_audio(struct t7_hdmirx *rx,
+ 	tmds = t7_hdmirx_meter_hz(readl(rx->top + T7_RX_TOP_METER_HDMI_STAT),
+ 				clk_get_rate(rx->clocks[T7_RX_METER].clk));
+ 	format->rate = t7_hdmirx_audio_rate(tmds, n, cts);
+-	if (!format->rate)
++	/* CTS legitimately varies by a few ticks between consecutive ACR packets.
++	 * Require two complete snapshots to agree on the qualified rate, rather
++	 * than exact counter equality which can falsely stop a stable source.
++	 */
++	if (!format->rate || format->rate != t7_hdmirx_audio_rate(tmds, next_n, next_cts))
+ 		return -EAGAIN;
+ 	declared = aif_rates[(aif[5] >> 2) & 7];
+ 	if (declared && declared != format->rate)
+diff --git a/drivers/media/platform/amlogic/t7-hdmirx/test_audio.py b/drivers/media/platform/amlogic/t7-hdmirx/test_audio.py
+index 369786637513e..12c430aabcb7b 100644
+--- a/drivers/media/platform/amlogic/t7-hdmirx/test_audio.py
++++ b/drivers/media/platform/amlogic/t7-hdmirx/test_audio.py
+@@ -62,7 +62,13 @@ static void mutex_unlock(struct mutex *m) { assert(m->held); m->held=false; }
+ static u8 core[0x8000], top[0x4000], phy[0x90], fifo[0x30];
+ static bool clocks, fail_clocks, pll_locked;
+ static unsigned int writes, enables, disables;
+-static u8 readb(void *p) { return *(u8 *)p; }
++static bool cts_jitter;
++static unsigned int cts_reads;
++static u8 readb(void *p) {
++    if (cts_jitter && p == core + T7_RX_COR_CTS + 2)
++        return *(u8 *)p + (cts_reads++ & 1);
++    return *(u8 *)p;
++}
+ static void writeb(u8 v, void *p) { *(u8 *)p = v; writes++; }
+ static u32 readl(void *p) { u32 v; memcpy(&v, p, 4); return v; }
+ static void writel(u32 v, void *p) {
+@@ -138,6 +144,9 @@ int main(void) {
+     aif(3,2);
+     assert(!t7_hdmirx_read_audio(&rx,&rx.audio_format));
+     assert(rx.audio_format.rate==48000 && rx.audio_format.pcm);
++    cts_jitter=true;
++    assert(!t7_hdmirx_read_audio(&rx,&rx.audio_format) && rx.audio_format.rate==48000);
++    cts_jitter=false;
+     fail_period_constraint=true;
+     assert(t7_hdmirx_audio_startup(&stream,&dai)==-EINVAL && !writes && !enables);
+     fail_period_constraint=false;

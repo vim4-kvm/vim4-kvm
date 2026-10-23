@@ -1,0 +1,595 @@
+From ebb0242771aa11304017c8dba8db75b74ec441bc Mon Sep 17 00:00:00 2001
+From: deepdream <deepdream@deepdremsMinim4.lan>
+Date: Tue, 20 Oct 2026 20:12:05 -0700
+Subject: [PATCH] media: amlogic: retain receiver and recover video link after
+ source loss
+
+---
+ .../platform/amlogic/t7-hdmirx/README.md      |  17 ++
+ .../platform/amlogic/t7-hdmirx/t7-hdmirx.c    | 160 ++++++++++++++++--
+ .../platform/amlogic/t7-hdmirx/t7-hdmirx.h    |   4 +
+ .../platform/amlogic/t7-hdmirx/t7-vdin-test.c |  16 +-
+ .../platform/amlogic/t7-hdmirx/test_audio.py  |   2 +
+ .../platform/amlogic/t7-hdmirx/test_core.py   |   3 +
+ .../platform/amlogic/t7-hdmirx/test_ddc.py    |   2 +
+ .../platform/amlogic/t7-hdmirx/test_link.py   | 140 +++++++++++++++
+ .../platform/amlogic/t7-hdmirx/test_phy.py    |   2 +
+ .../platform/amlogic/t7-hdmirx/test_stream.py |  13 ++
+ 10 files changed, 345 insertions(+), 14 deletions(-)
+ create mode 100644 drivers/media/platform/amlogic/t7-hdmirx/test_link.py
+
+diff --git a/drivers/media/platform/amlogic/t7-hdmirx/README.md b/drivers/media/platform/amlogic/t7-hdmirx/README.md
+index 2652a20be38ae..aaa8a216ecba9 100644
+--- a/drivers/media/platform/amlogic/t7-hdmirx/README.md
++++ b/drivers/media/platform/amlogic/t7-hdmirx/README.md
+@@ -1,5 +1,22 @@
+ # T7 HDMI receiver bring-up
+ 
++## Persistent receiver and recovery
++
++With `core_test=1`, probe publishes the EDID and keeps the receiver registered
++without requiring a live source. A delayed worker qualifies the cable clock and
++SCDC ratio, then configures the video PLL/PCS. Loss does not withdraw HPD or
++rewrite EDID. The supported profile is still selected by `uhd60`; automatic
++timings and format negotiation are a separate change.
++
++Capture holds a receiver lease from before DMA starts until the MIF is stopped.
++The worker never reconfigures a PHY with outstanding leases. Stop quarantine
++retains that lease until reboot. Audio PLL and DDC registers are not part of the
++video relock sequence. Status exposes `link_ready` and `capture_users`.
++`python3 test_link.py` covers delayed/absent source, PLL failure, late alignment,
++source changes during qualification and DMA lease exclusion using actual code.
++
++## Earlier bring-up stages
++
+ The initial driver owns the receiver TOP MMIO window, HDMIRX power domain and
+ pclk/sys/CFG/METER/2M/5M clocks. It reads source 5V and the HPD request register through
+ `/sys/kernel/debug/fe398000.hdmi-receiver/status`. No capture device is exposed;
+diff --git a/drivers/media/platform/amlogic/t7-hdmirx/t7-hdmirx.c b/drivers/media/platform/amlogic/t7-hdmirx/t7-hdmirx.c
+index 053479b90951c..b2fa1e604a8bd 100644
+--- a/drivers/media/platform/amlogic/t7-hdmirx/t7-hdmirx.c
++++ b/drivers/media/platform/amlogic/t7-hdmirx/t7-hdmirx.c
+@@ -11,10 +11,12 @@
+ #include <linux/iopoll.h>
+ #include <linux/math64.h>
+ #include <linux/module.h>
++#include <linux/mutex.h>
+ #include <linux/platform_device.h>
+ #include <linux/pm_runtime.h>
+ #include <linux/property.h>
+ #include <linux/seq_file.h>
++#include <linux/workqueue.h>
+ #include <sound/pcm_params.h>
+ #include <sound/soc.h>
+ 
+@@ -190,7 +192,20 @@ enum t7_hdmirx_clock {
+ 	T7_RX_NUM_CLOCKS,
+ };
+ 
++struct t7_hdmirx;
++struct t7_hdmirx_link {
++	struct mutex lock;
++	struct delayed_work work;
++	struct t7_hdmirx *rx;
++	unsigned int users;
++	u32 previous_cable;
++	unsigned int stable_samples;
++	bool ready;
++	bool configured;
++};
++
+ struct t7_hdmirx {
++	struct t7_hdmirx_link *link;
+ 	bool uhd60;
+ 	u8 saved_ddc_switch, saved_sink_version, saved_tmds_config;
+ 	void __iomem *top;
+@@ -623,13 +638,14 @@ static u32 t7_hdmirx_core_read16(struct t7_hdmirx *rx, u32 offset)
+ 	return readb(rx->cor + offset) | (readb(rx->cor + offset + 1) << 8);
+ }
+ 
+-int t7_hdmirx_check_video_now(struct device *dev)
++static int t7_hdmirx_video_status(struct t7_hdmirx *rx)
+ {
+-	struct t7_hdmirx *rx = dev_get_drvdata(dev);
+ 	u32 ticks, reference;
+ 
+ 	if (!rx || !rx->core_active)
+ 		return -ENOLINK;
++	if (rx->link && !(readl(rx->phy + T7_RX_PHY_APLL0) & T7_RX_PHY_PLL_LOCK))
++		return -ENOLINK;
+ 	if (!(readl(rx->top + T7_RX_TOP_HPD_PWR5V) & BIT(20 + rx->port)) ||
+ 	    !(readl(rx->top + T7_RX_TOP_TMDS_ALIGN_STAT) & BIT(0)))
+ 		return -ENOLINK;
+@@ -652,6 +668,14 @@ int t7_hdmirx_check_video_now(struct device *dev)
+ 		return -ERANGE;
+ 	return 0;
+ }
++int t7_hdmirx_check_video_now(struct device *dev)
++{
++	struct t7_hdmirx *rx = dev_get_drvdata(dev);
++
++	if (rx && rx->link && !READ_ONCE(rx->link->ready))
++		return -ENOLINK;
++	return t7_hdmirx_video_status(rx);
++}
+ EXPORT_SYMBOL_GPL(t7_hdmirx_check_video_now);
+ 
+ int t7_hdmirx_check_video(struct device *dev)
+@@ -872,6 +896,104 @@ static int t7_hdmirx_audio_register(struct platform_device *pdev, struct t7_hdmi
+ 					     &t7_hdmirx_audio_dai, 1);
+ }
+ 
++int t7_hdmirx_stream_get(struct device *dev)
++{
++	struct t7_hdmirx *rx = dev_get_drvdata(dev);
++	int ret;
++
++	if (!rx || !rx->link)
++		return -ENOLINK;
++	mutex_lock(&rx->link->lock);
++	ret = t7_hdmirx_check_video(dev);
++	if (!ret)
++		rx->link->users++;
++	mutex_unlock(&rx->link->lock);
++	return ret;
++}
++EXPORT_SYMBOL_GPL(t7_hdmirx_stream_get);
++
++void t7_hdmirx_stream_put(struct device *dev)
++{
++	struct t7_hdmirx *rx = dev_get_drvdata(dev);
++
++	mutex_lock(&rx->link->lock);
++	if (WARN_ON(!rx->link->users)) {
++		mutex_unlock(&rx->link->lock);
++		return;
++	}
++	rx->link->users--;
++	mutex_unlock(&rx->link->lock);
++}
++EXPORT_SYMBOL_GPL(t7_hdmirx_stream_put);
++
++static void t7_hdmirx_link_work(struct work_struct *work)
++{
++	struct t7_hdmirx_link *link = container_of(to_delayed_work(work),
++						struct t7_hdmirx_link, work);
++	struct t7_hdmirx *rx = link->rx;
++	u32 cable;
++	int ret;
++
++	mutex_lock(&link->lock);
++	ret = t7_hdmirx_video_status(rx);
++	if (!ret && link->configured) {
++		if (!READ_ONCE(link->ready)) {
++			usleep_range(20000, 21000);
++			ret = t7_hdmirx_video_status(rx);
++		}
++		WRITE_ONCE(link->ready, !ret);
++		goto out;
++	}
++	WRITE_ONCE(link->ready, false);
++	/* A live or quarantined MIF owns its receiver until DMA is safe. */
++	if (link->users)
++		goto out;
++	cable = t7_hdmirx_meter_hz(readl(rx->top + T7_RX_TOP_METER_CABLE_STAT),
++				 clk_get_rate(rx->clocks[T7_RX_METER].clk));
++	rx->cable_hz = cable;
++	if (!(readl(rx->top + T7_RX_TOP_HPD_PWR5V) & BIT(20 + rx->port)) ||
++	    (!!(readb(rx->cor + T7_RX_COR_TMDS_CONFIG) & BIT(1)) != rx->uhd60) ||
++	    cable < 146500000 || cable > 150500000) {
++		link->stable_samples = 0;
++		link->previous_cable = 0;
++		link->configured = false;
++		goto out;
++	}
++	if (link->previous_cable &&
++	    abs((int)cable - (int)link->previous_cable) <= 500000)
++		link->stable_samples++;
++	else
++		link->stable_samples = 0;
++	link->previous_cable = cable;
++	if (link->stable_samples < 3)
++		goto out;
++	link->stable_samples = 0;
++	ret = t7_hdmirx_phy_pll(rx);
++	if (ret)
++		goto out;
++	/* Video PLL/PCS only: keep DDC/HPD and the audio PLL configuration. */
++	t7_hdmirx_phy_equalize(rx);
++	t7_hdmirx_reset_pcs(rx);
++	link->configured = true;
++	ret = t7_hdmirx_video_status(rx);
++	if (!ret) {
++		usleep_range(20000, 21000);
++		ret = t7_hdmirx_video_status(rx);
++	}
++	WRITE_ONCE(link->ready, !ret);
++out:
++	mutex_unlock(&link->lock);
++	schedule_delayed_work(&link->work, msecs_to_jiffies(250));
++}
++
++static void t7_hdmirx_link_stop(void *data)
++{
++	struct t7_hdmirx_link *link = data;
++
++	cancel_delayed_work_sync(&link->work);
++	WRITE_ONCE(link->ready, false);
++}
++
+ static int t7_hdmirx_status(struct seq_file *s, void *unused)
+ {
+ 	struct device *dev = s->private;
+@@ -897,6 +1019,10 @@ static int t7_hdmirx_status(struct seq_file *s, void *unused)
+ 		   readl(rx->top + T7_RX_TOP_EDID_GEN_STAT));
+ 	seq_printf(s, "phy_active: %u\n", rx->phy_active);
+ 	seq_printf(s, "core_active: %u\n", rx->core_active);
++	if (rx->link) {
++		seq_printf(s, "link_ready: %u\n", READ_ONCE(rx->link->ready));
++		seq_printf(s, "capture_users: %u\n", READ_ONCE(rx->link->users));
++	}
+ 	if (rx->core_active) {
+ 		u32 ticks = t7_hdmirx_core_read16(rx, T7_RX_COR_FRAME_TICKS) |
+ 			    (readb(rx->cor + T7_RX_COR_FRAME_TICKS + 2) << 16);
+@@ -1052,15 +1178,25 @@ static int t7_hdmirx_probe(struct platform_device *pdev)
+ 			if (ret)
+ 				return dev_err_probe(dev, ret, "Cannot initialize receiver core\n");
+ 		}
+-		ret = t7_hdmirx_wait_cable(rx, clk_get_rate(rx->clocks[T7_RX_METER].clk));
+-		if (!ret)
+-			ret = t7_hdmirx_phy_pll(rx);
+-		if (ret)
+-			return dev_err_probe(dev, ret, "PHY trial failed, cable %u Hz, APLL %#x\n",
+-					     rx->cable_hz, readl(rx->phy + T7_RX_PHY_APLL0));
+-		t7_hdmirx_phy_equalize(rx);
+-		if (core_test)
+-			t7_hdmirx_reset_pcs(rx);
++		if (core_test) {
++			rx->link = devm_kzalloc(dev, sizeof(*rx->link), GFP_KERNEL);
++			if (!rx->link)
++				return -ENOMEM;
++			rx->link->rx = rx;
++			mutex_init(&rx->link->lock);
++			INIT_DELAYED_WORK(&rx->link->work, t7_hdmirx_link_work);
++			ret = devm_add_action_or_reset(dev, t7_hdmirx_link_stop, rx->link);
++			if (ret)
++				return ret;
++			schedule_delayed_work(&rx->link->work, 0);
++		} else {
++			ret = t7_hdmirx_wait_cable(rx, clk_get_rate(rx->clocks[T7_RX_METER].clk));
++			if (!ret)
++				ret = t7_hdmirx_phy_pll(rx);
++			if (ret)
++				return dev_err_probe(dev, ret, "PHY trial failed\n");
++			t7_hdmirx_phy_equalize(rx);
++		}
+ 	}
+ 	ret = t7_hdmirx_audio_register(pdev, rx);
+ 	if (ret)
+@@ -1074,7 +1210,7 @@ static int t7_hdmirx_probe(struct platform_device *pdev)
+ 	ret = devm_add_action_or_reset(dev, t7_hdmirx_debugfs_remove, debugfs);
+ 	if (ret)
+ 		return ret;
+-	dev_info(dev, "receiver resources ready, input port %u; capture not implemented\n",
++	dev_info(dev, "receiver ready, input port %u; waiting for a stable source\n",
+ 		 rx->port);
+ 	return 0;
+ }
+diff --git a/drivers/media/platform/amlogic/t7-hdmirx/t7-hdmirx.h b/drivers/media/platform/amlogic/t7-hdmirx/t7-hdmirx.h
+index 00dc2fca956ca..b30ba9cd4e24a 100644
+--- a/drivers/media/platform/amlogic/t7-hdmirx/t7-hdmirx.h
++++ b/drivers/media/platform/amlogic/t7-hdmirx/t7-hdmirx.h
+@@ -13,4 +13,8 @@ int t7_hdmirx_check_video_now(struct device *dev);
+ /* Profile dimensions are immutable for the lifetime of the bound receiver. */
+ int t7_hdmirx_get_size(struct device *dev, unsigned int *width, unsigned int *height);
+ 
++/* Hold the video PHY configuration until the consumer has stopped all DMA. */
++int t7_hdmirx_stream_get(struct device *dev);
++void t7_hdmirx_stream_put(struct device *dev);
++
+ #endif
+diff --git a/drivers/media/platform/amlogic/t7-hdmirx/t7-vdin-test.c b/drivers/media/platform/amlogic/t7-hdmirx/t7-vdin-test.c
+index dddaf592ba7ec..d7ea9d83ad526 100644
+--- a/drivers/media/platform/amlogic/t7-hdmirx/t7-vdin-test.c
++++ b/drivers/media/platform/amlogic/t7-hdmirx/t7-vdin-test.c
+@@ -135,6 +135,7 @@ struct t7_vdin {
+ 	wait_queue_head_t buffer_wait;
+ 	struct task_struct *thread;
+ 	bool streaming; /* Protected by lock, including debugfs exclusion. */
++	bool receiver_lease;
+ 	/* Private cached DMA ring; all ownership transitions use irq_lock. */
+ 	struct t7_vdin_slot slots[VDIN_DMA_SLOTS];
+ 	bool ring_mode;
+@@ -360,7 +361,7 @@ static int t7_vdin_capture(struct t7_vdin *vdin)
+ 
+ 	if (vdin->faulted)
+ 		return -EIO;
+-	ret = t7_hdmirx_check_video(vdin->receiver);
++	ret = t7_hdmirx_stream_get(vdin->receiver);
+ 	if (ret)
+ 		return ret;
+ 	memset(vdin->frame, 0xa5, vdin->frame_size);
+@@ -384,12 +385,14 @@ static int t7_vdin_capture(struct t7_vdin *vdin)
+ 		dev_err(vdin->dev, "capture timeout: IRQs %u, pixels %#x, lines %#x, WR %#x\n",
+ 			vdin->frame_irqs, t7_vdin_read(vdin, VDIN_ACTIVE_PIXELS),
+ 			t7_vdin_read(vdin, VDIN_LCNT_STATUS), t7_vdin_read(vdin, VDIN_WR_STATUS));
++		t7_hdmirx_stream_put(vdin->receiver);
+ 		return -ETIMEDOUT;
+ 	}
+ 	dma_rmb();
+ 	ret = t7_hdmirx_check_video(vdin->receiver);
+ 	if (!ret)
+ 		vdin->snapshots++;
++	t7_hdmirx_stream_put(vdin->receiver);
+ 	return ret;
+ }
+ 
+@@ -669,6 +672,12 @@ static int t7_vdin_thread(void *data)
+ 	}
+ 	if (t7_vdin_ring_stop(vdin))
+ 		ret = -EIO;
++	mutex_lock(&vdin->lock);
++	if (vdin->receiver_lease && !vdin->faulted) {
++		t7_hdmirx_stream_put(vdin->receiver);
++		vdin->receiver_lease = false;
++	}
++	mutex_unlock(&vdin->lock);
+ 	if (vdin->direct_dma) {
+ 		unsigned int i;
+ 
+@@ -771,14 +780,17 @@ static int t7_vdin_start_streaming(struct vb2_queue *queue, unsigned int count)
+ 	int ret;
+ 
+ 	mutex_lock(&vdin->lock);
+-	ret = vdin->faulted ? -EIO : t7_hdmirx_check_video(vdin->receiver);
++	ret = vdin->faulted ? -EIO : t7_hdmirx_stream_get(vdin->receiver);
+ 	if (!ret) {
++		vdin->receiver_lease = true;
+ 		vdin->streaming = true;
+ 		vdin->thread = kthread_run(t7_vdin_thread, vdin, "t7-vdin-capture");
+ 		if (IS_ERR(vdin->thread)) {
+ 			ret = PTR_ERR(vdin->thread);
+ 			vdin->thread = NULL;
+ 			vdin->streaming = false;
++			t7_hdmirx_stream_put(vdin->receiver);
++			vdin->receiver_lease = false;
+ 		}
+ 	}
+ 	mutex_unlock(&vdin->lock);
+diff --git a/drivers/media/platform/amlogic/t7-hdmirx/test_audio.py b/drivers/media/platform/amlogic/t7-hdmirx/test_audio.py
+index edd7aa3d3154a..d8f719861a5d5 100644
+--- a/drivers/media/platform/amlogic/t7-hdmirx/test_audio.py
++++ b/drivers/media/platform/amlogic/t7-hdmirx/test_audio.py
+@@ -17,6 +17,8 @@ prefix = r'''
+ #include <string.h>
+ #include <errno.h>
+ #include <stdio.h>
++struct mutex { int unused; };
++struct delayed_work { int unused; };
+ typedef uint8_t u8;
+ typedef uint32_t u32;
+ typedef uint64_t u64;
+diff --git a/drivers/media/platform/amlogic/t7-hdmirx/test_core.py b/drivers/media/platform/amlogic/t7-hdmirx/test_core.py
+index 395094364f8f3..6ba5af6966c40 100644
+--- a/drivers/media/platform/amlogic/t7-hdmirx/test_core.py
++++ b/drivers/media/platform/amlogic/t7-hdmirx/test_core.py
+@@ -20,6 +20,9 @@ prefix = r'''
+ #include <string.h>
+ #include <errno.h>
+ #include <stdio.h>
++struct mutex { int unused; };
++struct delayed_work { int unused; };
++#define READ_ONCE(value) (value)
+ #ifdef __clang__
+ /* The extracted register tables size real struct fields; core-only paths do not read them. */
+ #pragma clang diagnostic ignored "-Wunneeded-internal-declaration"
+diff --git a/drivers/media/platform/amlogic/t7-hdmirx/test_ddc.py b/drivers/media/platform/amlogic/t7-hdmirx/test_ddc.py
+index 2c3105931bb22..5bcef32339e1e 100644
+--- a/drivers/media/platform/amlogic/t7-hdmirx/test_ddc.py
++++ b/drivers/media/platform/amlogic/t7-hdmirx/test_ddc.py
+@@ -23,6 +23,8 @@ prefix = r'''
+ #include <stdint.h>
+ #include <string.h>
+ #include <stdio.h>
++struct mutex { int unused; };
++struct delayed_work { int unused; };
+ #include <errno.h>
+ typedef uint8_t u8;
+ typedef uint32_t u32;
+diff --git a/drivers/media/platform/amlogic/t7-hdmirx/test_link.py b/drivers/media/platform/amlogic/t7-hdmirx/test_link.py
+new file mode 100644
+index 0000000000000..90a320aed4c47
+--- /dev/null
++++ b/drivers/media/platform/amlogic/t7-hdmirx/test_link.py
+@@ -0,0 +1,140 @@
++#!/usr/bin/env python3
++"""Actual receiver recovery/lease code with deterministic source and PLL gates."""
++from pathlib import Path
++import subprocess
++import tempfile
++
++source = Path(__file__).with_name('t7-hdmirx.c').read_text()
++defines = '\n'.join(line for line in source.splitlines() if line.startswith('#define T7_RX_'))
++types = source[source.index('static const u32 t7_hdmirx_phy_top_regs'):
++               source.index('static int t7_hdmirx_validate_edid')]
++functions = source[source.index('int t7_hdmirx_stream_get('):
++                   source.index('static int t7_hdmirx_status(')]
++prefix = r'''
++#include <assert.h>
++#include <stdbool.h>
++#include <stdint.h>
++#include <stddef.h>
++#include <errno.h>
++#include <stdlib.h>
++#include <stdio.h>
++#ifdef __clang__
++#pragma clang diagnostic ignored "-Wunneeded-internal-declaration"
++#endif
++typedef uint8_t u8;
++typedef uint32_t u32;
++#define __iomem
++#define BIT(n) (1U << (n))
++#define ARRAY_SIZE(a) (sizeof(a) / sizeof((a)[0]))
++#define READ_ONCE(value) (value)
++#define WRITE_ONCE(place, value) ((place) = (value))
++#define WARN_ON(condition) (condition)
++#define EXPORT_SYMBOL_GPL(name)
++#define msecs_to_jiffies(value) (value)
++#define container_of(p,t,m) ((t *)((char *)(p) - offsetof(t,m)))
++#define to_delayed_work(p) container_of(p,struct delayed_work,work)
++struct mutex { bool held; };
++struct work_struct { int unused; };
++struct delayed_work { struct work_struct work; };
++struct clk_bulk_data { void *clk; };
++struct debugfs_blob_wrapper { void *data; unsigned long size; };
++struct device { void *data; };
++'''
++stubs = r'''
++static bool signal_valid, source_present, hdmi2 = true, pll_fail, late_alignment, lose_during_wait;
++static unsigned int pll_calls, pcs_calls, queued, canceled, last_delay;
++static u32 cable_hz;
++static struct t7_hdmirx receiver;
++static void *dev_get_drvdata(struct device *dev) { return dev->data; }
++static void mutex_lock(struct mutex *lock) { assert(!lock->held); lock->held = true; }
++static void mutex_unlock(struct mutex *lock) { assert(lock->held); lock->held = false; }
++static int t7_hdmirx_video_status(struct t7_hdmirx *rx)
++{
++    (void)rx; return signal_valid ? 0 : -ENOLINK;
++}
++static int t7_hdmirx_check_video(struct device *dev)
++{
++    struct t7_hdmirx *rx = dev->data;
++    return rx->link->ready ? t7_hdmirx_video_status(rx) : -ENOLINK;
++}
++static u32 readl(void *address)
++{
++    if (address == receiver.top + T7_RX_TOP_HPD_PWR5V)
++        return source_present ? BIT(20 + receiver.port) : 0;
++    assert(address == receiver.top + T7_RX_TOP_METER_CABLE_STAT);
++    return cable_hz;
++}
++static u8 readb(void *address)
++{
++    assert(address == receiver.cor + T7_RX_COR_TMDS_CONFIG);
++    return hdmi2 ? BIT(1) : 0;
++}
++static unsigned long clk_get_rate(void *clk) { (void)clk; return 24000000; }
++static u32 t7_hdmirx_meter_hz(u32 value, unsigned long rate) { (void)rate; return value; }
++static int t7_hdmirx_phy_pll(struct t7_hdmirx *rx)
++{
++    assert(rx->link->lock.held && !rx->link->users);
++    pll_calls++; return pll_fail ? -ETIMEDOUT : 0;
++}
++static void t7_hdmirx_phy_equalize(struct t7_hdmirx *rx)
++{
++    assert(!rx->link->users); signal_valid = !late_alignment;
++}
++static void t7_hdmirx_reset_pcs(struct t7_hdmirx *rx) { (void)rx; pcs_calls++; }
++static void usleep_range(unsigned int low, unsigned int high)
++{
++    assert(low == 20000 && high == 21000);
++    if (lose_during_wait) signal_valid = false;
++}
++static void schedule_delayed_work(struct delayed_work *work, unsigned int delay)
++{
++    (void)work; queued++; last_delay = delay;
++}
++static void cancel_delayed_work_sync(struct delayed_work *work) { (void)work; canceled++; }
++'''
++checks = r'''
++static void tick(struct t7_hdmirx_link *link, int count)
++{
++    while (count--) {
++        t7_hdmirx_link_work(&link->work.work);
++        assert(!link->lock.held && last_delay == 250);
++    }
++}
++int main(void)
++{
++    unsigned char top[0x4000], core[0x8000];
++    struct t7_hdmirx_link link = {.rx = &receiver};
++    struct device dev = {.data = &receiver};
++    receiver.top = top; receiver.cor = core; receiver.link = &link; receiver.uhd60 = true;
++    tick(&link, 100);
++    assert(!link.ready && !pll_calls && queued == 100);
++    assert(t7_hdmirx_stream_get(&dev) == -ENOLINK && !link.users);
++    source_present = true; cable_hz = 148500000;
++    tick(&link, 3); assert(!pll_calls);
++    tick(&link, 1); assert(pll_calls == 1 && pcs_calls == 1 && link.ready);
++    tick(&link, 100); assert(pll_calls == 1);
++    assert(!t7_hdmirx_stream_get(&dev) && !t7_hdmirx_stream_get(&dev) && link.users == 2);
++    signal_valid = false; tick(&link, 10);
++    assert(!link.ready && pll_calls == 1);
++    t7_hdmirx_stream_put(&dev); tick(&link, 10); assert(pll_calls == 1);
++    t7_hdmirx_stream_put(&dev); tick(&link, 4); assert(link.ready && pll_calls == 2);
++    signal_valid = false; source_present = false; tick(&link, 10);
++    assert(!link.ready && !link.configured && !link.stable_samples && pll_calls == 2);
++    source_present = true; hdmi2 = false; tick(&link, 10); assert(pll_calls == 2);
++    hdmi2 = true; pll_fail = true; tick(&link, 4); assert(!link.ready && pll_calls == 3);
++    pll_fail = false; late_alignment = true; tick(&link, 3);
++    assert(pll_calls == 4 && !link.ready && link.configured);
++    signal_valid = true; tick(&link, 1); assert(link.ready && pll_calls == 4);
++    link.ready = false; lose_during_wait = true; tick(&link, 1);
++    assert(!link.ready && !signal_valid);
++    t7_hdmirx_link_stop(&link);
++    assert(canceled == 1 && !link.ready);
++    puts("Receiver recovery: absent/delayed source, DMA leases, PLL failure and late alignment passed");
++}
++'''
++with tempfile.TemporaryDirectory(prefix='t7-link-test-') as directory:
++    path = Path(directory)
++    (path/'test.c').write_text(prefix + defines + '\n' + types + stubs + functions + checks)
++    subprocess.run(['cc', '-std=gnu11', '-Wall', '-Wextra', '-Werror', str(path/'test.c'),
++                    '-o', str(path/'test')], check=True)
++    subprocess.run([str(path/'test')], check=True)
+diff --git a/drivers/media/platform/amlogic/t7-hdmirx/test_phy.py b/drivers/media/platform/amlogic/t7-hdmirx/test_phy.py
+index 536d98bc655b4..c00532c25f3f8 100644
+--- a/drivers/media/platform/amlogic/t7-hdmirx/test_phy.py
++++ b/drivers/media/platform/amlogic/t7-hdmirx/test_phy.py
+@@ -22,6 +22,8 @@ prefix = r'''
+ #include <string.h>
+ #include <stdio.h>
+ #include <errno.h>
++struct mutex { int unused; };
++struct delayed_work { int unused; };
+ typedef uint8_t u8;
+ typedef uint32_t u32;
+ typedef uint64_t u64;
+diff --git a/drivers/media/platform/amlogic/t7-hdmirx/test_stream.py b/drivers/media/platform/amlogic/t7-hdmirx/test_stream.py
+index 0010945ad7902..c5641be343f7e 100644
+--- a/drivers/media/platform/amlogic/t7-hdmirx/test_stream.py
++++ b/drivers/media/platform/amlogic/t7-hdmirx/test_stream.py
+@@ -188,6 +188,17 @@ static void vb2_queue_error(struct vb2_queue *q) {
+     pthread_mutex_unlock(&gate);
+ }
+ static int t7_hdmirx_check_video(void *dev) { return fail_timing?-ENOLINK:0; }
++static unsigned int receiver_users;
++static int t7_hdmirx_stream_get(void *dev) {
++    int ret=t7_hdmirx_check_video(dev);
++    if (!ret) receiver_users++;
++    return ret;
++}
++static void t7_hdmirx_stream_put(void *dev) {
++    (void)dev;
++    assert(receiver_users && !receiver.ring_running && !receiver.armed);
++    receiver_users--;
++}
+ static int t7_hdmirx_check_video_now(void *dev) {
+     bool copying=false;
+     for (int i=0;i<VDIN_DMA_SLOTS;i++) copying|=cpu_owned[i];
+@@ -239,6 +250,7 @@ static void destroy_wait(wait_queue_head_t *w) {
+     pthread_mutex_destroy(&w->lock); pthread_cond_destroy(&w->cond);
+ }
+ static void setup(struct t7_vdin_buffer b[4]) {
++    receiver_users=0;
+     memset(&receiver,0,sizeof(receiver)); memset(b,0,4*sizeof(*b));
+     memset(registers,0,sizeof(registers)); memset(cpu_owned,0,sizeof(cpu_owned));
+     pthread_mutex_init(&receiver.lock.native,NULL); pthread_mutex_init(&receiver.queue_lock,NULL);
+@@ -265,6 +277,7 @@ static void setup(struct t7_vdin_buffer b[4]) {
+     }
+ }
+ static void teardown(struct t7_vdin_buffer b[4]) {
++    assert(receiver.receiver_lease ? receiver.faulted && receiver_users==1 : receiver_users==0);
+     assert(list_empty(&receiver.queued) && !receiver.streaming && !receiver.thread);
+     for (int i=0;i<VDIN_DMA_SLOTS;i++) { assert(!cpu_owned[i]); free(receiver.slots[i].data); }
+     for (int i=0;i<4;i++) {

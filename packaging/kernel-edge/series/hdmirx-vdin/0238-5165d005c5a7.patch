@@ -1,0 +1,50 @@
+From 5165d005c5a7ae0ba782bac7c795c0fbed29664e Mon Sep 17 00:00:00 2001
+From: localhost-copilot <318096335+localhost-copilot@users.noreply.github.com>
+Date: Thu, 22 Oct 2026 14:52:59 +0800
+Subject: [PATCH] Align HDMI NV12 capture rows for Wave5 DMA imports
+
+---
+ .../media/platform/amlogic/t7-hdmirx/t7-vdin-test.c  |  6 +++++-
+ .../platform/amlogic/t7-hdmirx/test_ioctl_locks.py   | 12 ++++++++++++
+ 2 files changed, 17 insertions(+), 1 deletion(-)
+
+diff --git a/drivers/media/platform/amlogic/t7-hdmirx/t7-vdin-test.c b/drivers/media/platform/amlogic/t7-hdmirx/t7-vdin-test.c
+index 8131299ba18bf..b6d370957be10 100644
+--- a/drivers/media/platform/amlogic/t7-hdmirx/t7-vdin-test.c
++++ b/drivers/media/platform/amlogic/t7-hdmirx/t7-vdin-test.c
+@@ -1005,7 +1005,11 @@ static int t7_vdin_enum_fmt(struct file *file, void *priv, struct v4l2_fmtdesc *
+ static void t7_vdin_fill_fmt(struct t7_vdin *vdin, struct v4l2_format *fmt,
+ 			     unsigned int width, unsigned int height)
+ {
+-	unsigned int stride = ALIGN(width * (vdin->nv12 ? 1 : 3), 16);
++	/* VDIN needs 16-byte rows; Wave5 imports NV12 with 32-byte rows.
++	 * Preserve the visible width while sharing the same DMA allocation.
++	 */
++	unsigned int stride = ALIGN(width * (vdin->nv12 ? 1 : 3),
++				    vdin->nv12 ? 32 : 16);
+ 
+ 	fmt->fmt.pix = (struct v4l2_pix_format) {
+ 		.width = width,
+diff --git a/drivers/media/platform/amlogic/t7-hdmirx/test_ioctl_locks.py b/drivers/media/platform/amlogic/t7-hdmirx/test_ioctl_locks.py
+index 1a610a1458465..8ce70c6dee8fe 100644
+--- a/drivers/media/platform/amlogic/t7-hdmirx/test_ioctl_locks.py
++++ b/drivers/media/platform/amlogic/t7-hdmirx/test_ioctl_locks.py
+@@ -247,6 +247,18 @@ int main(void) {
+     assert(capture.width==1366 && capture.stride==1376);
+     assert(capture.frame_size==1376*768*3/2);
+     assert(capture.allocation_size>=capture.frame_size);
++    /* A 16-byte VDIN stride is too short for Wave5's 32-byte NV12 rows. */
++    input_width=720; input_height=400;
++    fmt.fmt.pix.width=720; fmt.fmt.pix.height=400;
++    assert(!dispatch(VIDIOC_S_FMT,&fmt));
++    assert(capture.width==720 && capture.stride==736);
++    assert(capture.frame_size==736*400*3/2);
++    input_width=1680; input_height=1050;
++    fmt.fmt.pix.width=1680; fmt.fmt.pix.height=1050;
++    assert(!dispatch(VIDIOC_S_FMT,&fmt));
++    assert(capture.width==1680 && capture.stride==1696);
++    assert(capture.frame_size==1696*1050*3/2);
++    assert(capture.allocation_size>=1696*1056*3/2);
+     input_width=1920; input_height=1080;
+     fmt.fmt.pix.width=1920; fmt.fmt.pix.height=1080;
+     assert(!dispatch(VIDIOC_S_FMT,&fmt));

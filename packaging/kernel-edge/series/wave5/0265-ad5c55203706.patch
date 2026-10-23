@@ -1,0 +1,76 @@
+From ad5c552037069763f6836e85e8382fc0e6f858f7 Mon Sep 17 00:00:00 2001
+From: localhost-copilot <318096335+localhost-copilot@users.noreply.github.com>
+Date: Fri, 23 Oct 2026 15:50:17 +0800
+Subject: [PATCH] media: wave5: track submitted opcodes for timeout injection
+
+---
+ drivers/media/platform/chips-media/wave5/test_reset.py  | 3 ++-
+ drivers/media/platform/chips-media/wave5/wave5-hw.c     | 4 ++--
+ drivers/media/platform/chips-media/wave5/wave5-vdi.c    | 2 ++
+ drivers/media/platform/chips-media/wave5/wave5-vpuapi.h | 1 +
+ 4 files changed, 7 insertions(+), 3 deletions(-)
+
+diff --git a/drivers/media/platform/chips-media/wave5/test_reset.py b/drivers/media/platform/chips-media/wave5/test_reset.py
+index 79b47c5f58b60..793af81067717 100644
+--- a/drivers/media/platform/chips-media/wave5/test_reset.py
++++ b/drivers/media/platform/chips-media/wave5/test_reset.py
+@@ -44,6 +44,7 @@ typedef uintptr_t dma_addr_t;
+ #define dev_err(...) ((void)0)
+ #define dev_dbg_ratelimited(...) ((void)0)
+ #define PRINT_REG_ERR(...) ((void)0)
++#define READ_ONCE(v) (v)
+ #define barrier() ((void)0)
+ #define cpu_relax() ((void)0)
+ #define might_sleep_if(x) ((void)(x))
+@@ -55,7 +56,7 @@ struct vpu_attr {
+ };
+ struct vpu_device {
+     struct vpu_attr attr;
+-    u32 product_code, bus_idle_value, reset_mask;
++    u32 product_code, bus_idle_value, reset_mask, last_command;
+     bool legacy_firmware;
+     struct vpu_buf common_mem, sram_buf;
+ };
+diff --git a/drivers/media/platform/chips-media/wave5/wave5-hw.c b/drivers/media/platform/chips-media/wave5/wave5-hw.c
+index e1dd32033d176..8da472dfe70a9 100644
+--- a/drivers/media/platform/chips-media/wave5/wave5-hw.c
++++ b/drivers/media/platform/chips-media/wave5/wave5-hw.c
+@@ -216,11 +216,11 @@ static int wave5_wait_vpu_busy(struct vpu_device *vpu_dev, unsigned int addr)
+ 	ret = read_poll_timeout(wave5_vdi_read_register, data, data == 0,
+ 				10, VPU_BUSY_CHECK_TIMEOUT, false, vpu_dev, addr);
+ 	if (!ret && addr == W5_VPU_BUSY_STATUS &&
+-	    wave5_vpu_inject_timeout(vpu_dev, vpu_read_reg(vpu_dev, W5_COMMAND)))
++	    wave5_vpu_inject_timeout(vpu_dev, READ_ONCE(vpu_dev->last_command)))
+ 		ret = -ETIMEDOUT;
+ 	if (ret)
+ 		wave5_vpu_isolate(vpu_dev, "command acknowledgment timeout",
+-				  vpu_read_reg(vpu_dev, W5_COMMAND));
++				  READ_ONCE(vpu_dev->last_command));
+ 	return ret;
+ }
+ 
+diff --git a/drivers/media/platform/chips-media/wave5/wave5-vdi.c b/drivers/media/platform/chips-media/wave5/wave5-vdi.c
+index 367ac72c188f8..f286bd4618a12 100644
+--- a/drivers/media/platform/chips-media/wave5/wave5-vdi.c
++++ b/drivers/media/platform/chips-media/wave5/wave5-vdi.c
+@@ -80,6 +80,8 @@ void wave5_vdi_write_register(struct vpu_device *vpu_dev, u32 addr, u32 data)
+ {
+ 	if (wave5_vpu_isolated(vpu_dev))
+ 		return;
++	if (addr == W5_COMMAND)
++		WRITE_ONCE(vpu_dev->last_command, data);
+ 	writel(data, vpu_dev->vdb_register + addr);
+ }
+ 
+diff --git a/drivers/media/platform/chips-media/wave5/wave5-vpuapi.h b/drivers/media/platform/chips-media/wave5/wave5-vpuapi.h
+index ae48854c40b31..33f0c33e56fb9 100644
+--- a/drivers/media/platform/chips-media/wave5/wave5-vpuapi.h
++++ b/drivers/media/platform/chips-media/wave5/wave5-vpuapi.h
+@@ -781,6 +781,7 @@ struct vpu_device {
+ 	/* Quarantine is irreversible until the next boot. */
+ 	unsigned int isolated;
+ 	u32 isolation_command;
++	u32 last_command;
+ 	const char *isolation_reason;
+ 	u64 isolation_time_ns;
+ 	bool isolation_ready;

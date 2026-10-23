@@ -1,0 +1,99 @@
+From 4f754e6413324de1edab6bb4545416717c5cf0e4 Mon Sep 17 00:00:00 2001
+From: localhost-copilot <318096335+localhost-copilot@users.noreply.github.com>
+Date: Fri, 23 Oct 2026 15:33:24 +0800
+Subject: [PATCH] arm64: dts: amlogic: add VIM4 DRM display handoff profile
+
+Select the fixed OSD1 handoff, read-only HDMI PLL and TX bridge, and split
+VDIN resource ownership. Keep simple-framebuffer and the normal VPU
+disabled, preserving both reserved firmware frames for a safe return.
+
+Signed-off-by: localhost-copilot <318096335+localhost-copilot@users.noreply.github.com>
+---
+ MAINTAINERS                                   |  1 +
+ arch/arm64/boot/dts/amlogic/Makefile          |  1 +
+ ...logic-t7-a311d2-khadas-vim4-display-m1.dts | 52 +++++++++++++++++++
+ 3 files changed, 54 insertions(+)
+ create mode 100644 arch/arm64/boot/dts/amlogic/amlogic-t7-a311d2-khadas-vim4-display-m1.dts
+
+diff --git a/MAINTAINERS b/MAINTAINERS
+index 14197db859664..71a4ffd726f48 100644
+--- a/MAINTAINERS
++++ b/MAINTAINERS
+@@ -1436,6 +1436,7 @@ M:	localhost-copilot <318096335+localhost-copilot@users.noreply.github.com>
+ S:	Odd Fixes
+ F:	Documentation/devicetree/bindings/display/amlogic,t7-display-handoff.yaml
+ F:	Documentation/devicetree/bindings/media/amlogic,t7-vdin-test.yaml
++F:	arch/arm64/boot/dts/amlogic/amlogic-t7-a311d2-khadas-vim4-display-m1.dts
+ F:	drivers/gpu/drm/meson/meson_t7_handoff.*
+ F:	drivers/gpu/drm/meson/test_t7_handoff.py
+ 
+diff --git a/arch/arm64/boot/dts/amlogic/Makefile b/arch/arm64/boot/dts/amlogic/Makefile
+index f20dfe0ad8500..09243e016c450 100644
+--- a/arch/arm64/boot/dts/amlogic/Makefile
++++ b/arch/arm64/boot/dts/amlogic/Makefile
+@@ -13,6 +13,7 @@ dtb-$(CONFIG_ARCH_MESON) += amlogic-t7-a311d2-khadas-vim4-udc-test.dtb
+ dtb-$(CONFIG_ARCH_MESON) += amlogic-t7-a311d2-khadas-vim4-hdmirx-test.dtb
+ dtb-$(CONFIG_ARCH_MESON) += amlogic-t7-a311d2-khadas-vim4-audio-test.dtb
+ dtb-$(CONFIG_ARCH_MESON) += amlogic-t7-a311d2-khadas-vim4-display-m0.dtb
++dtb-$(CONFIG_ARCH_MESON) += amlogic-t7-a311d2-khadas-vim4-display-m1.dtb
+ dtb-$(CONFIG_ARCH_MESON) += meson-a1-ad401.dtb
+ dtb-$(CONFIG_ARCH_MESON) += meson-a1-ad402.dtb
+ dtb-$(CONFIG_ARCH_MESON) += meson-axg-jethome-jethub-j100.dtb
+diff --git a/arch/arm64/boot/dts/amlogic/amlogic-t7-a311d2-khadas-vim4-display-m1.dts b/arch/arm64/boot/dts/amlogic/amlogic-t7-a311d2-khadas-vim4-display-m1.dts
+new file mode 100644
+index 0000000000000..146ca75c1f07d
+--- /dev/null
++++ b/arch/arm64/boot/dts/amlogic/amlogic-t7-a311d2-khadas-vim4-display-m1.dts
+@@ -0,0 +1,52 @@
++// SPDX-License-Identifier: (GPL-2.0+ OR MIT)
++/* Fixed 1080p60 handoff for the matching pd-handoff firmware, no MIPI. */
++#include "amlogic-t7-a311d2-khadas-vim4-display-m0.dts"
++
++/delete-node/ &hdmi_tx_out;
++
++/ {
++	display@ff006840 {
++		compatible = "amlogic,t7-display-handoff";
++		reg = <0x0 0xff006840 0x0 0x80>,
++		      <0x0 0xff006db8 0x0 0x108>;
++		reg-names = "osd1", "venc";
++		memory-region = <&{/reserved-memory/framebuffer@3f800000}>;
++		interrupts = <GIC_SPI 197 IRQ_TYPE_EDGE_RISING>;
++		clocks = <&clkc_periphs CLKID_SYS_VPU_INTR>,
++			 <&clkc_periphs CLKID_VPU>, <&clkc_periphs CLKID_VAPB>,
++			 <&clkc_periphs CLKID_SYS_HDMITX_APB>, <&hdmi CLKID_HDMI_PLL>;
++		power-domains = <&pwrc PWRC_T7_VPU_HDMI_ID>,
++				<&pwrc PWRC_T7_VI_CLK1_ID>, <&pwrc PWRC_T7_VI_CLK2_ID>;
++
++		port {
++			display_m1_out: endpoint {
++				remote-endpoint = <&hdmi_tx_in>;
++			};
++		};
++	};
++};
++
++&vdin_test {
++	/* Preserve the platform/sysfs name used by the installed KVM services. */
++	amlogic,split-vcbus;
++};
++
++&{/chosen/framebuffer@3fdeec00} {
++	status = "disabled";
++};
++
++&hdmi_tx {
++	amlogic,boot-handoff;
++	/delete-property/ resets;
++	/delete-property/ reset-names;
++	/delete-property/ #sound-dai-cells;
++};
++
++&hdmi {
++	/* Both registration and enable references must preserve the boot PLL. */
++	compatible = "amlogic,t7-hdmi-pll-ro";
++};
++
++&hdmi_tx_in {
++	remote-endpoint = <&display_m1_out>;
++};

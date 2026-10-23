@@ -1,0 +1,22 @@
+From d0c36b0fab52f1179e7f42ffea2dbdc10bf31b64 Mon Sep 17 00:00:00 2001
+From: localhost-copilot <318096335+localhost-copilot@users.noreply.github.com>
+Date: Fri, 23 Oct 2026 12:03:54 +0800
+Subject: [PATCH] iio: adc: meson_saradc: correct the sample delay mask
+
+---
+ drivers/iio/adc/meson_saradc.c | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/drivers/iio/adc/meson_saradc.c b/drivers/iio/adc/meson_saradc.c
+index 000e39ca5c624..fdb079fb293b3 100644
+--- a/drivers/iio/adc/meson_saradc.c
++++ b/drivers/iio/adc/meson_saradc.c
+@@ -884,7 +884,7 @@ static int meson_sar_adc_init(struct iio_dev *indio_dev)
+ 
+ 	/* delay between two samples = (10+1) * 1uS */
+ 	regmap_update_bits(priv->regmap, MESON_SAR_ADC_DELAY,
+-			   MESON_SAR_ADC_DELAY_INPUT_DLY_CNT_MASK,
++			   MESON_SAR_ADC_DELAY_SAMPLE_DLY_CNT_MASK,
+ 			   FIELD_PREP(MESON_SAR_ADC_DELAY_SAMPLE_DLY_CNT_MASK,
+ 				      10));
+ 	regmap_update_bits(priv->regmap, MESON_SAR_ADC_DELAY,

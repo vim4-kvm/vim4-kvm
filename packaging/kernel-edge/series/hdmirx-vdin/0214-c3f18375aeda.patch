@@ -1,0 +1,271 @@
+From c3f18375aedaddce9e71645522dff5b69cf75e6d Mon Sep 17 00:00:00 2001
+From: deepdream <deepdream@deepdremsMinim4.lan>
+Date: Wed, 21 Oct 2026 01:38:33 -0700
+Subject: [PATCH] media: t7-hdmirx: preserve 420 transport across HDR and SDR
+ switching
+
+---
+ .../platform/amlogic/t7-hdmirx/README.md      |  4 +-
+ .../platform/amlogic/t7-hdmirx/t7-hdmirx.c    | 52 +++++++++++++++----
+ .../platform/amlogic/t7-hdmirx/t7-hdmirx.h    |  1 +
+ .../platform/amlogic/t7-hdmirx/t7-vdin-test.c | 12 ++++-
+ .../platform/amlogic/t7-hdmirx/test_core.py   | 10 ++++
+ .../platform/amlogic/t7-hdmirx/test_link.py   |  1 +
+ .../platform/amlogic/t7-hdmirx/test_stream.py |  1 +
+ .../platform/amlogic/t7-hdmirx/test_vdin.py   |  8 ++-
+ 8 files changed, 75 insertions(+), 14 deletions(-)
+
+diff --git a/drivers/media/platform/amlogic/t7-hdmirx/README.md b/drivers/media/platform/amlogic/t7-hdmirx/README.md
+index ec9d8c74883b8..4104861317674 100644
+--- a/drivers/media/platform/amlogic/t7-hdmirx/README.md
++++ b/drivers/media/platform/amlogic/t7-hdmirx/README.md
+@@ -28,7 +28,9 @@ mode bit 4 requests every receipt rather than only content changes. Both the
+ packet selection and IRQ mode are restored on shutdown. AVI/DRM checksums and
+ double reads reject malformed/torn packets; link loss clears metadata.
+ 
+-The stream lease also records HDR/SDR classification. A change invalidates
++BT.709 limited 420/10-bit VIC97 is also accepted for SDR: macOS may retain this
++transport after turning HDR off. RX expansion feeds NV12 with HDR2 bypassed.
++The stream lease records both YCbCr/RGB and HDR/SDR classification. A change invalidates
+ capture even at unchanged geometry, allowing the existing loss/recovery path
+ to rebuild without publishing PQ bytes as SDR. VDIN HDR2 performs PQ EOTF,
+ BT.2020-to-709 gamut conversion, 203/1000-nit tone mapping and sRGB OETF before
+diff --git a/drivers/media/platform/amlogic/t7-hdmirx/t7-hdmirx.c b/drivers/media/platform/amlogic/t7-hdmirx/t7-hdmirx.c
+index 35d860db5760b..0fa7a642ff3ad 100644
+--- a/drivers/media/platform/amlogic/t7-hdmirx/t7-hdmirx.c
++++ b/drivers/media/platform/amlogic/t7-hdmirx/t7-hdmirx.c
+@@ -231,6 +231,7 @@ struct t7_hdmirx {
+ 	bool hdr_probe;
+ 	bool hdr_capture;
+ 	bool lease_hdr;
++	bool lease_yuv;
+ 	unsigned long long drm_received_ns;
+ 	u8 saved_unrec_ctrl, saved_unrec_type;
+ 	u8 saved_packet_irq_mode;
+@@ -768,10 +769,30 @@ static bool t7_hdmirx_hdr_input(struct t7_hdmirx *rx)
+ 		avi[7] == 97 && readb(rx->cor + T7_RX_COR_COLOR_DEPTH) == 5;
+ }
+ 
++/* macOS can keep the same 420/10-bit transport when HDR is disabled. Its
++ * BT.709 limited AVI describes ordinary SDR and needs no PQ/tone mapping.
++ */
++static bool t7_hdmirx_sdr420_input(struct t7_hdmirx *rx)
++{
++	u8 avi[17], again[17];
++	unsigned int i;
++
++	if (!rx->hdr_capture || readb(rx->cor + T7_RX_COR_COLOR_DEPTH) != 5)
++		return false;
++	for (i = 0; i < sizeof(avi); i++)
++		avi[i] = readb(rx->cor + 0x1140 + i);
++	for (i = 0; i < sizeof(again); i++)
++		again[i] = readb(rx->cor + 0x1140 + i);
++	return !memcmp(avi, again, sizeof(avi)) &&
++		t7_hdmirx_packet_valid(avi, 0x82, 2, 13) &&
++		(avi[4] >> 5) == 3 && (avi[5] >> 6) == 2 &&
++		!(avi[8] & 0xc0) && avi[7] == 97;
++}
++
+ static int t7_hdmirx_video_status(struct t7_hdmirx *rx)
+ {
+ 	u32 ticks, reference;
+-	bool hdr;
++	bool hdr, yuv;
+ 
+ 	if (!rx || !rx->core_active)
+ 		return -ENOLINK;
+@@ -786,15 +807,17 @@ static int t7_hdmirx_video_status(struct t7_hdmirx *rx)
+ 	if (readb(rx->cor + T7_RX_COR_FRAME_STATUS) & BIT(2))
+ 		return -ERANGE;
+ 	hdr = t7_hdmirx_hdr_input(rx);
+-	if (!hdr && (readl(rx->top + T7_RX_TOP_VID_STAT) & GENMASK(23, 20) ||
++	yuv = hdr || t7_hdmirx_sdr420_input(rx);
++	if (!yuv && (readl(rx->top + T7_RX_TOP_VID_STAT) & GENMASK(23, 20) ||
+ 	    readb(rx->cor + T7_RX_COR_COLOR_DEPTH) > 4))
+ 		return -ERANGE;
+-	if (rx->link && rx->link->users && hdr != rx->lease_hdr)
++	if (rx->link && rx->link->users &&
++	    (hdr != rx->lease_hdr || yuv != rx->lease_yuv))
+ 		return -ENOLINK;
+-	if (t7_hdmirx_core_read16(rx, T7_RX_COR_WIDTH) != (hdr ? 1920 : rx->uhd60 ? 3840 : 1920) ||
++	if (t7_hdmirx_core_read16(rx, T7_RX_COR_WIDTH) != (yuv ? 1920 : rx->uhd60 ? 3840 : 1920) ||
+ 	    t7_hdmirx_core_read16(rx, T7_RX_COR_HEIGHT) != (rx->uhd60 ? 2160 : 1080) ||
+ 	    t7_hdmirx_core_read16(rx, T7_RX_COR_HSYNC_LOW) +
+-	    t7_hdmirx_core_read16(rx, T7_RX_COR_HSYNC_HIGH) != (hdr ? 2200 : rx->uhd60 ? 4400 : 2200) ||
++	    t7_hdmirx_core_read16(rx, T7_RX_COR_HSYNC_HIGH) != (yuv ? 2200 : rx->uhd60 ? 4400 : 2200) ||
+ 	    t7_hdmirx_core_read16(rx, T7_RX_COR_VSYNC_LOW) +
+ 	    t7_hdmirx_core_read16(rx, T7_RX_COR_VSYNC_HIGH) != (rx->uhd60 ? 2250 : 1125))
+ 		return -ERANGE;
+@@ -872,7 +895,7 @@ int t7_hdmirx_query_timings(struct device *dev, struct v4l2_dv_timings *timings,
+ 	 * includes the active picture and porches, not the sync pulse width.
+ 	 */
+ 	hsync = t7_hdmirx_core_read16(rx, T7_RX_COR_HSYNC_HIGH);
+-	if (t7_hdmirx_hdr_input(rx))
++	if (t7_hdmirx_hdr_input(rx) || t7_hdmirx_sdr420_input(rx))
+ 		hsync *= 2;
+ 	vsync = t7_hdmirx_core_read16(rx, T7_RX_COR_VSYNC_HIGH);
+ 	/* Only these CEA profiles have qualified porch/polarity settings. Do not
+@@ -1129,6 +1152,7 @@ int t7_hdmirx_stream_get(struct device *dev, unsigned int width, unsigned int he
+ 		ret = -EPIPE;
+ 	if (!ret) {
+ 		rx->lease_hdr = t7_hdmirx_hdr_input(rx);
++		rx->lease_yuv = rx->lease_hdr || t7_hdmirx_sdr420_input(rx);
+ 		rx->link->users++;
+ 	}
+ 	mutex_unlock(&rx->link->lock);
+@@ -1144,6 +1168,14 @@ bool t7_hdmirx_stream_is_hdr(struct device *dev)
+ }
+ EXPORT_SYMBOL_GPL(t7_hdmirx_stream_is_hdr);
+ 
++bool t7_hdmirx_stream_is_yuv(struct device *dev)
++{
++	struct t7_hdmirx *rx = dev_get_drvdata(dev);
++
++	return READ_ONCE(rx->lease_yuv);
++}
++EXPORT_SYMBOL_GPL(t7_hdmirx_stream_is_yuv);
++
+ void t7_hdmirx_stream_put(struct device *dev)
+ {
+ 	struct t7_hdmirx *rx = dev_get_drvdata(dev);
+@@ -1181,15 +1213,17 @@ static void t7_hdmirx_link_work(struct work_struct *work)
+ 						struct t7_hdmirx_link, work);
+ 	struct t7_hdmirx *rx = link->rx;
+ 	u32 cable;
+-	bool next_uhd;
++	bool next_uhd, yuv;
+ 	int ret;
+ 
+ 	mutex_lock(&link->lock);
+ 	t7_hdmirx_update_drm(rx);
+ 	ret = t7_hdmirx_video_status(rx);
++	yuv = t7_hdmirx_hdr_input(rx) || t7_hdmirx_sdr420_input(rx);
+ 	if (!ret && link->configured &&
+-	    (!rx->hdr_probe || t7_hdmirx_sdr_cable(link->previous_cable) ||
+-	     t7_hdmirx_hdr_input(rx))) {
++	    (!rx->hdr_probe ||
++	     (t7_hdmirx_sdr_cable(link->previous_cable) && !yuv) ||
++	     (link->previous_cable && !t7_hdmirx_sdr_cable(link->previous_cable) && yuv))) {
+ 		if (!READ_ONCE(link->ready)) {
+ 			usleep_range(20000, 21000);
+ 			ret = t7_hdmirx_video_status(rx);
+diff --git a/drivers/media/platform/amlogic/t7-hdmirx/t7-hdmirx.h b/drivers/media/platform/amlogic/t7-hdmirx/t7-hdmirx.h
+index 168a47a2ef8e8..b7b5c01189072 100644
+--- a/drivers/media/platform/amlogic/t7-hdmirx/t7-hdmirx.h
++++ b/drivers/media/platform/amlogic/t7-hdmirx/t7-hdmirx.h
+@@ -25,5 +25,6 @@ void t7_hdmirx_stream_put(struct device *dev);
+ 
+ /* Stable input classification for the held stream lease, until stream_put. */
+ bool t7_hdmirx_stream_is_hdr(struct device *dev);
++bool t7_hdmirx_stream_is_yuv(struct device *dev);
+ 
+ #endif
+diff --git a/drivers/media/platform/amlogic/t7-hdmirx/t7-vdin-test.c b/drivers/media/platform/amlogic/t7-hdmirx/t7-vdin-test.c
+index 0a9a77ef8f5e8..e5e0e315577de 100644
+--- a/drivers/media/platform/amlogic/t7-hdmirx/t7-vdin-test.c
++++ b/drivers/media/platform/amlogic/t7-hdmirx/t7-vdin-test.c
+@@ -349,6 +349,14 @@ static void t7_vdin_configure(struct t7_vdin *vdin)
+ 		t7_vdin_write(vdin, VDIN_HDR_MATRIX_IN, 1);
+ 		t7_vdin_write(vdin, VDIN_MATRIX_CTRL, 1);
+ 	}
++	if (t7_hdmirx_stream_is_yuv(vdin->receiver)) {
++		/* The RX has already expanded limited BT.709 YCbCr to 4:4:4;
++		 * MIF subsampling/truncation supplies limited NV12 directly.
++		 */
++		t7_vdin_write(vdin, VDIN_HDR_CTRL, 0);
++		t7_vdin_write(vdin, VDIN_HDR_MATRIX_IN, 0);
++		t7_vdin_write(vdin, VDIN_MATRIX_CTRL, 0);
++	}
+ 	if (t7_hdmirx_stream_is_hdr(vdin->receiver))
+ 		t7_vdin_hdr_configure(vdin);
+ 	t7_vdin_update(vdin, VDIN_LFIFO_CTRL, GENMASK(13, 0) | BIT(17) | BIT(18),
+@@ -388,7 +396,7 @@ static int t7_vdin_capture(struct t7_vdin *vdin)
+ 	ret = t7_hdmirx_stream_get(vdin->receiver, vdin->width, vdin->height);
+ 	if (ret)
+ 		return ret;
+-	if (!vdin->nv12 && t7_hdmirx_stream_is_hdr(vdin->receiver)) {
++	if (!vdin->nv12 && t7_hdmirx_stream_is_yuv(vdin->receiver)) {
+ 		t7_hdmirx_stream_put(vdin->receiver);
+ 		return -EOPNOTSUPP;
+ 	}
+@@ -815,7 +823,7 @@ static int t7_vdin_start_streaming(struct vb2_queue *queue, unsigned int count)
+ 	mutex_lock(&vdin->lock);
+ 	ret = vdin->faulted ? -EIO :
+ 		t7_hdmirx_stream_get(vdin->receiver, vdin->width, vdin->height);
+-	if (!ret && !vdin->nv12 && t7_hdmirx_stream_is_hdr(vdin->receiver)) {
++	if (!ret && !vdin->nv12 && t7_hdmirx_stream_is_yuv(vdin->receiver)) {
+ 		t7_hdmirx_stream_put(vdin->receiver);
+ 		ret = -EOPNOTSUPP;
+ 	}
+diff --git a/drivers/media/platform/amlogic/t7-hdmirx/test_core.py b/drivers/media/platform/amlogic/t7-hdmirx/test_core.py
+index d09a28a92a3ff..a87c16d561328 100644
+--- a/drivers/media/platform/amlogic/t7-hdmirx/test_core.py
++++ b/drivers/media/platform/amlogic/t7-hdmirx/test_core.py
+@@ -211,6 +211,16 @@ int main(void)
+     assert(t7_hdmirx_hdr_input(&rx) && !t7_hdmirx_video_status(&rx));
+     now_ns+=1000000001ULL;
+     assert(!t7_hdmirx_hdr_input(&rx)); /* missing refresh expires */
++    unsigned char sdravi[17]={0x82,2,13,0xf4,0x72,0xa8,0,0x61};
++    memcpy(core+0x1140,sdravi,sizeof(sdravi));
++    assert(t7_hdmirx_sdr420_input(&rx) && !t7_hdmirx_video_status(&rx));
++    struct t7_hdmirx_link lease={.users=1};
++    u32 pll=T7_RX_PHY_PLL_LOCK;rx.phy=core;memcpy(core+T7_RX_PHY_APLL0,&pll,4);
++    rx.link=&lease;rx.lease_yuv=true;rx.lease_hdr=true;
++    assert(t7_hdmirx_video_status(&rx)==-ENOLINK); /* HDR -> SDR, same geometry */
++    rx.lease_hdr=false;assert(!t7_hdmirx_video_status(&rx));
++    rx.lease_yuv=false;assert(t7_hdmirx_video_status(&rx)==-ENOLINK);
++    rx.link=NULL;memcpy(core+0x1140,avi,sizeof(avi));
+     core[0x1134]=BIT(4);t7_hdmirx_update_drm(&rx);
+     core[0x1140+3]^=1;assert(!t7_hdmirx_hdr_input(&rx));
+     core[0x1140+3]^=1;assert(t7_hdmirx_hdr_input(&rx));
+diff --git a/drivers/media/platform/amlogic/t7-hdmirx/test_link.py b/drivers/media/platform/amlogic/t7-hdmirx/test_link.py
+index 879dfc19718d9..18d2fb63d0c60 100644
+--- a/drivers/media/platform/amlogic/t7-hdmirx/test_link.py
++++ b/drivers/media/platform/amlogic/t7-hdmirx/test_link.py
+@@ -45,6 +45,7 @@ struct device { void *data; };
+ '''
+ stubs = r'''
+ static bool t7_hdmirx_hdr_input(struct t7_hdmirx *rx) { (void)rx; return false; }
++static bool t7_hdmirx_sdr420_input(struct t7_hdmirx *rx) { (void)rx; return false; }
+ static void t7_hdmirx_update_drm(struct t7_hdmirx *rx) { (void)rx; }
+ static bool signal_valid, source_present, hdmi2 = true, pll_fail, late_alignment, lose_during_wait;
+ static bool unsupported_signal;
+diff --git a/drivers/media/platform/amlogic/t7-hdmirx/test_stream.py b/drivers/media/platform/amlogic/t7-hdmirx/test_stream.py
+index 037dad8146e13..5557781013812 100644
+--- a/drivers/media/platform/amlogic/t7-hdmirx/test_stream.py
++++ b/drivers/media/platform/amlogic/t7-hdmirx/test_stream.py
+@@ -192,6 +192,7 @@ static void vb2_queue_error(struct vb2_queue *q) {
+ static int t7_hdmirx_check_video(void *dev) { return fail_timing?-ENOLINK:0; }
+ static unsigned int receiver_users;
+ static bool t7_hdmirx_stream_is_hdr(void *dev) { (void)dev; return false; }
++static bool t7_hdmirx_stream_is_yuv(void *dev) { (void)dev; return false; }
+ static int t7_hdmirx_stream_get(void *dev, unsigned int width, unsigned int height) {
+     int ret=t7_hdmirx_check_video(dev);
+     if (!ret) receiver_users++;
+diff --git a/drivers/media/platform/amlogic/t7-hdmirx/test_vdin.py b/drivers/media/platform/amlogic/t7-hdmirx/test_vdin.py
+index eca2077010929..2411aec3adc01 100644
+--- a/drivers/media/platform/amlogic/t7-hdmirx/test_vdin.py
++++ b/drivers/media/platform/amlogic/t7-hdmirx/test_vdin.py
+@@ -57,8 +57,9 @@ static struct t7_vdin_buffer *t7_vdin_next_buffer(struct t7_vdin *vdin)
+ { assert(!vdin->direct_dma); return NULL; }
+ static unsigned int pins, requests, timing_checks, receiver_users;
+ static unsigned int pq_writes, gain_writes, oetf_writes;
+-static bool hdr_input;
++static bool hdr_input, yuv_input;
+ static bool t7_hdmirx_stream_is_hdr(struct device *dev) { (void)dev; return hdr_input; }
++static bool t7_hdmirx_stream_is_yuv(struct device *dev) { (void)dev; return hdr_input || yuv_input; }
+ static bool timeout, busy, bad_timing, change_timing;
+ static u32 readl(void *address)
+ {
+@@ -182,7 +183,10 @@ int main(void)
+     assert(readl(registers+0x12b0*4)==0x18);
+     assert(!(readl(registers+VDIN_HDR_CTRL*4)&BIT(16)));
+     assert(readl(registers+VDIN_HDR_MATRIX_OUT*4)==1);
+-    hdr_input=false;t7_vdin_configure(&receiver);
++    hdr_input=false;yuv_input=true;t7_vdin_configure(&receiver);
++    assert(readl(registers+VDIN_HDR_CTRL*4)==0);
++    assert(readl(registers+VDIN_MATRIX_CTRL*4)==0);
++    yuv_input=false;t7_vdin_configure(&receiver);
+     assert(readl(registers+VDIN_HDR_CTRL*4)==BIT(16));
+     assert(readl(registers+VDIN_HDR_MATRIX_OUT*4)==0);
+     reset(); bad_timing = true;

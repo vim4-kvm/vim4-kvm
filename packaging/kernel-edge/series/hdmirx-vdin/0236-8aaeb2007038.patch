@@ -1,0 +1,165 @@
+From 8aaeb200703820f8a4567ef043dccbfccf988bf1 Mon Sep 17 00:00:00 2001
+From: localhost-copilot <318096335+localhost-copilot@users.noreply.github.com>
+Date: Thu, 22 Oct 2026 14:22:37 +0800
+Subject: [PATCH] Recover malformed HDMI timings and preserve native YUV
+ component order
+
+---
+ .../media/platform/amlogic/t7-hdmirx/t7-hdmirx.c  | 11 +++++++----
+ .../media/platform/amlogic/t7-hdmirx/t7-hdmirx.h  |  2 +-
+ .../platform/amlogic/t7-hdmirx/t7-vdin-test.c     |  7 ++++---
+ .../media/platform/amlogic/t7-hdmirx/test_link.py | 15 +++++++++++----
+ .../platform/amlogic/t7-hdmirx/test_stream.py     |  2 +-
+ .../media/platform/amlogic/t7-hdmirx/test_vdin.py |  2 +-
+ 6 files changed, 25 insertions(+), 14 deletions(-)
+
+diff --git a/drivers/media/platform/amlogic/t7-hdmirx/t7-hdmirx.c b/drivers/media/platform/amlogic/t7-hdmirx/t7-hdmirx.c
+index 25c7194d00f7c..c4e3798a5d74e 100644
+--- a/drivers/media/platform/amlogic/t7-hdmirx/t7-hdmirx.c
++++ b/drivers/media/platform/amlogic/t7-hdmirx/t7-hdmirx.c
+@@ -1523,14 +1523,13 @@ bool t7_hdmirx_stream_is_yuv(struct device *dev)
+ }
+ EXPORT_SYMBOL_GPL(t7_hdmirx_stream_is_yuv);
+ 
+-bool t7_hdmirx_stream_is_yuv444(struct device *dev)
++bool t7_hdmirx_stream_needs_yuv444_swap(struct device *dev)
+ {
+ 	struct t7_hdmirx *rx = dev_get_drvdata(dev);
+ 
+-	return rx->dynamic_modes ? READ_ONCE(rx->lease_color.space) == 2 :
+-		READ_ONCE(rx->lease_yuv) && !READ_ONCE(rx->lease_420);
++	return !rx->dynamic_modes && READ_ONCE(rx->lease_yuv) && !READ_ONCE(rx->lease_420);
+ }
+-EXPORT_SYMBOL_GPL(t7_hdmirx_stream_is_yuv444);
++EXPORT_SYMBOL_GPL(t7_hdmirx_stream_needs_yuv444_swap);
+ 
+ bool t7_hdmirx_stream_is_full_range(struct device *dev)
+ {
+@@ -1601,6 +1600,7 @@ static void t7_hdmirx_link_work(struct work_struct *work)
+ 	bool next_uhd, yuv;
+ 	bool sampled = false;
+ 	u32 previous_pll;
++	struct t7_hdmirx_color color;
+ 	int ret;
+ 
+ 	mutex_lock(&link->lock);
+@@ -1652,10 +1652,13 @@ static void t7_hdmirx_link_work(struct work_struct *work)
+ 		goto out;
+ 	}
+ 	/* Keep an unsupported but aligned probe signal intact for packet reads.
++	 * A supported colour with malformed FDET geometry still needs PCS recovery:
++	 * alignment alone can survive a mode switch with height zero/width +2.
+ 	 * Remember its reference clock so returning SDR is requalified, including
+ 	 * fresh TMDS meter counts for the subsequent ALSA N/CTS validation.
+ 	 */
+ 	if (rx->hdr_probe && ret == -ERANGE && link->configured &&
++	    (!rx->dynamic_modes || t7_hdmirx_read_color(rx, &color) == -ERANGE) &&
+ 	    (readl(rx->phy + T7_RX_PHY_APLL0) & T7_RX_PHY_PLL_LOCK) &&
+ 	    (readl(rx->top + T7_RX_TOP_TMDS_ALIGN_STAT) & BIT(0))) {
+ 		link->previous_cable = cable;
+diff --git a/drivers/media/platform/amlogic/t7-hdmirx/t7-hdmirx.h b/drivers/media/platform/amlogic/t7-hdmirx/t7-hdmirx.h
+index e18bad44c46da..3cc0f8c8a206e 100644
+--- a/drivers/media/platform/amlogic/t7-hdmirx/t7-hdmirx.h
++++ b/drivers/media/platform/amlogic/t7-hdmirx/t7-hdmirx.h
+@@ -31,7 +31,7 @@ void t7_hdmirx_stream_put(struct device *dev);
+ /* Stable input classification for the held stream lease, until stream_put. */
+ bool t7_hdmirx_stream_is_hdr(struct device *dev);
+ bool t7_hdmirx_stream_is_yuv(struct device *dev);
+-bool t7_hdmirx_stream_is_yuv444(struct device *dev);
++bool t7_hdmirx_stream_needs_yuv444_swap(struct device *dev);
+ bool t7_hdmirx_stream_is_full_range(struct device *dev);
+ bool t7_hdmirx_stream_is_bt601(struct device *dev);
+ 
+diff --git a/drivers/media/platform/amlogic/t7-hdmirx/t7-vdin-test.c b/drivers/media/platform/amlogic/t7-hdmirx/t7-vdin-test.c
+index ccb9115e91b92..8131299ba18bf 100644
+--- a/drivers/media/platform/amlogic/t7-hdmirx/t7-vdin-test.c
++++ b/drivers/media/platform/amlogic/t7-hdmirx/t7-vdin-test.c
+@@ -397,10 +397,11 @@ static void t7_vdin_configure(struct t7_vdin *vdin)
+ 	t7_vdin_write(vdin, VDIN_GCLK_CTRL2, 0);
+ 	/* The core supplies R/G/B; the packed MIF emits components 2/1/0. */
+ 	t7_vdin_write(vdin, VDIN_COM_CTRL0, vdin->nv12 ? 0x915 : 0x195);
+-	/* Native 4:4:4 arrives as Cr/Y/Cb with this RX core mapping. Expanded
+-	 * 4:2:0 already arrives as Y/Cb/Cr; keep its qualified HDR path intact.
++	/* The fixed legacy RX leaves TOP format at RGB for 4:4:4, requiring this
++	 * component rotation. Dynamic mode configures TOP's native YUV mapping,
++	 * which already supplies Y/Cb/Cr, as does expanded 4:2:0.
+ 	 */
+-	if (t7_hdmirx_stream_is_yuv444(vdin->receiver))
++	if (t7_hdmirx_stream_needs_yuv444_swap(vdin->receiver))
+ 		t7_vdin_write(vdin, VDIN_COM_CTRL0, 0x255);
+ 	t7_vdin_write(vdin, VDIN_ASFIFO_CTRL1, 0xe40000);
+ 	t7_vdin_update(vdin, VPU_SW_RESET, BIT(26), BIT(26));
+diff --git a/drivers/media/platform/amlogic/t7-hdmirx/test_link.py b/drivers/media/platform/amlogic/t7-hdmirx/test_link.py
+index d940db2b78428..4d195ad47dbb9 100644
+--- a/drivers/media/platform/amlogic/t7-hdmirx/test_link.py
++++ b/drivers/media/platform/amlogic/t7-hdmirx/test_link.py
+@@ -51,14 +51,14 @@ static bool t7_hdmirx_sdr420_input(struct t7_hdmirx *rx) { (void)rx; return fals
+ static bool t7_hdmirx_sdr444_input(struct t7_hdmirx *rx) { (void)rx; return false; }
+ static void t7_hdmirx_update_drm(struct t7_hdmirx *rx) { (void)rx; }
+ static bool signal_valid, source_present, hdmi2 = true, pll_fail, late_alignment, lose_during_wait;
+-static bool unsupported_signal;
++static bool unsupported_signal, unsupported_color;
+ static unsigned int pll_calls, pcs_calls, queued, canceled, last_delay, meter_resets;
+ static unsigned int profile_changes;
+ static u32 meter_reset;
+ static u32 cable_hz;
+ static struct t7_hdmirx receiver;
+ static int t7_hdmirx_read_color(struct t7_hdmirx *rx, struct t7_hdmirx_color *c) {
+-    (void)rx; *c=(struct t7_hdmirx_color){.depth=8,.full=1}; return 0;
++    (void)rx; *c=(struct t7_hdmirx_color){.depth=8,.full=1}; return unsupported_color?-ERANGE:0;
+ }
+ static int t7_hdmirx_measure(struct t7_hdmirx *rx, bool yuv420,
+                              struct t7_hdmirx_measurement *m) {
+@@ -199,7 +199,7 @@ int main(void)
+     assert(!t7_hdmirx_cable_supported(&receiver,23999999,false));
+     assert(!t7_hdmirx_cable_supported(&receiver,0,true));
+     assert(!t7_hdmirx_cable_supported(&receiver,297000000,true));
+-    cable_hz=92812500; unsupported_signal=true; link.configured=false;
++    cable_hz=92812500; unsupported_signal=unsupported_color=true; link.configured=false;
+     link.stable_samples=0; link.previous_cable=0;
+     unsigned int before_probe=pll_calls;
+     tick(&link,4);
+@@ -207,9 +207,16 @@ int main(void)
+     tick(&link,100);
+     assert(!link.ready && pll_calls==before_probe+1);
+     assert(t7_hdmirx_stream_get(&dev,3840,2160)==-ENOLINK && !link.users);
+-    unsupported_signal=false;cable_hz=148500000;
++    unsupported_signal=unsupported_color=false;cable_hz=148500000;
+     tick(&link,3);assert(!link.ready && pll_calls==before_probe+1);
+     tick(&link,1);assert(link.ready && pll_calls==before_probe+2);
++    /* An aligned but malformed FDET after HPD is not an unsupported HDR probe.
++     * It must retry PCS without waiting for a different cable clock.
++     */
++    unsigned int before_malformed=pll_calls;
++    unsupported_signal=true; tick(&link,4);
++    assert(!link.ready && pll_calls>before_malformed);
++    unsupported_signal=false; tick(&link,1); assert(link.ready);
+     t7_hdmirx_link_stop(&link);
+     assert(canceled == 1 && !link.ready);
+     puts("Receiver recovery: absent/delayed source, DMA leases, PLL failure and late alignment passed");
+diff --git a/drivers/media/platform/amlogic/t7-hdmirx/test_stream.py b/drivers/media/platform/amlogic/t7-hdmirx/test_stream.py
+index 4d091b18c9e81..9a5447e229d68 100644
+--- a/drivers/media/platform/amlogic/t7-hdmirx/test_stream.py
++++ b/drivers/media/platform/amlogic/t7-hdmirx/test_stream.py
+@@ -194,7 +194,7 @@ static int t7_hdmirx_check_video(void *dev) { return fail_timing?-ENOLINK:0; }
+ static unsigned int receiver_users;
+ static bool t7_hdmirx_stream_is_hdr(void *dev) { (void)dev; return false; }
+ static bool t7_hdmirx_stream_is_yuv(void *dev) { (void)dev; return false; }
+-static bool t7_hdmirx_stream_is_yuv444(void *dev) { (void)dev; return false; }
++static bool t7_hdmirx_stream_needs_yuv444_swap(void *dev) { (void)dev; return false; }
+ static bool t7_hdmirx_stream_is_full_range(void *dev) { (void)dev; return true; }
+ static bool t7_hdmirx_stream_is_bt601(void *dev) { (void)dev; return false; }
+ static int t7_hdmirx_stream_get(void *dev, unsigned int width, unsigned int height) {
+diff --git a/drivers/media/platform/amlogic/t7-hdmirx/test_vdin.py b/drivers/media/platform/amlogic/t7-hdmirx/test_vdin.py
+index 4ade11501da78..ed74bba0255e2 100644
+--- a/drivers/media/platform/amlogic/t7-hdmirx/test_vdin.py
++++ b/drivers/media/platform/amlogic/t7-hdmirx/test_vdin.py
+@@ -61,7 +61,7 @@ static unsigned int pq_writes, gain_writes, oetf_writes;
+ static bool hdr_input, yuv_input, yuv444_input;
+ static bool t7_hdmirx_stream_is_hdr(struct device *dev) { (void)dev; return hdr_input; }
+ static bool t7_hdmirx_stream_is_yuv(struct device *dev) { (void)dev; return hdr_input || yuv_input; }
+-static bool t7_hdmirx_stream_is_yuv444(struct device *dev) { (void)dev; return yuv444_input; }
++static bool t7_hdmirx_stream_needs_yuv444_swap(struct device *dev) { (void)dev; return yuv444_input; }
+ static bool t7_hdmirx_stream_is_full_range(struct device *dev) { (void)dev; return !hdr_input && !yuv_input; }
+ static bool t7_hdmirx_stream_is_bt601(struct device *dev) { (void)dev; return false; }
+ static bool timeout, busy, bad_timing, change_timing;

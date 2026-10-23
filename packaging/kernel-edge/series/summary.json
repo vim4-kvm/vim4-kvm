@@ -1,0 +1,32 @@
+{
+  "base": "c03c1a14507dfaf8b856c2608f9ac216021fc222",
+  "head": "0a775305f0ad81475f65d33b15f79099c8445c75",
+  "floor": "24a19b953e2a3d0ea5a8c4951a0ab8f32720c907",
+  "total": 580,
+  "dispositions": {
+    "already-upstream": 289,
+    "needs-cleanup": 136,
+    "upstream-candidate": 82,
+    "private-temporary": 72,
+    "merge-review": 1
+  },
+  "patches": 290,
+  "replay_tree": "e35abde9a3661a84746427495ddc0f727bf33dda",
+  "replay_matches_source": true,
+  "topics_overlapping": {
+    "platform-other": 22,
+    "dt-bindings": 38,
+    "asoc": 7,
+    "clk": 17,
+    "dt": 63,
+    "drm": 72,
+    "media-other": 5,
+    "thermal-mcu": 10,
+    "usb": 6,
+    "pwrc": 3,
+    "network": 7,
+    "hdmirx-vdin": 61,
+    "wave5": 21,
+    "iio": 1
+  }
+}

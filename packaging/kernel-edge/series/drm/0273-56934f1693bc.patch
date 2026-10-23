@@ -1,0 +1,46 @@
+From 56934f1693bcef044170cab1e52dc1d9918f3ab2 Mon Sep 17 00:00:00 2001
+From: localhost-copilot <318096335+localhost-copilot@users.noreply.github.com>
+Date: Fri, 23 Oct 2026 16:35:17 +0800
+Subject: [PATCH] arm64: dts: amlogic: preserve HDMI pinmux during T7 handoff
+
+Drop the normal TX default pinctrl state from the handoff profile. The
+device core applies it before bridge probe, even when the bridge itself
+only reads registers. Keep firmware HPD and DDC routing untouched.
+
+Check the compiled profile for accidental pinctrl, reset and audio
+properties before accepting it for the fixed firmware experiment.
+
+Signed-off-by: localhost-copilot <318096335+localhost-copilot@users.noreply.github.com>
+---
+ .../dts/amlogic/amlogic-t7-a311d2-khadas-vim4-display-m1.dts  | 2 ++
+ drivers/gpu/drm/meson/test_t7_handoff.py                      | 4 ++++
+ 2 files changed, 6 insertions(+)
+
+diff --git a/arch/arm64/boot/dts/amlogic/amlogic-t7-a311d2-khadas-vim4-display-m1.dts b/arch/arm64/boot/dts/amlogic/amlogic-t7-a311d2-khadas-vim4-display-m1.dts
+index 01b9c52fe42d3..8d4fceb5c38ff 100644
+--- a/arch/arm64/boot/dts/amlogic/amlogic-t7-a311d2-khadas-vim4-display-m1.dts
++++ b/arch/arm64/boot/dts/amlogic/amlogic-t7-a311d2-khadas-vim4-display-m1.dts
+@@ -40,6 +40,8 @@ &hdmi_tx {
+ 	/delete-property/ resets;
+ 	/delete-property/ reset-names;
+ 	/delete-property/ #sound-dai-cells;
++	/delete-property/ pinctrl-0;
++	/delete-property/ pinctrl-names;
+ };
+ 
+ &hdmi {
+diff --git a/drivers/gpu/drm/meson/test_t7_handoff.py b/drivers/gpu/drm/meson/test_t7_handoff.py
+index e6fd612dfeae3..29516d90f6c11 100644
+--- a/drivers/gpu/drm/meson/test_t7_handoff.py
++++ b/drivers/gpu/drm/meson/test_t7_handoff.py
+@@ -56,6 +56,10 @@ if args.dtb:
+     assert property_value('/vpu@ff000000', 'status') == 'disabled'
+     assert property_value('/video-capture@ff000000', 'amlogic,split-vcbus') == ''
+     assert property_value('/soc/bus@fe000000/clock-controller@81c0', 'compatible').endswith('-ro')
++    tx_properties = subprocess.check_output(
++        ['fdtget', '-p', str(args.dtb), '/soc/bus@fe000000/hdmi-tx@300000'], text=True).split()
++    assert not any(name.startswith('pinctrl-') or name in
++                   ('resets', 'reset-names', '#sound-dai-cells') for name in tx_properties)
+     print('Compiled M1 DT: disjoint capture/display claims, exclusive KMS and read-only PLL')
+ 
+ source = Path(__file__).with_name('meson_t7_handoff.c').read_text()

@@ -1,0 +1,38 @@
+From 0489619d3d692a01b6fc9d7e18649e1b5f88e7bb Mon Sep 17 00:00:00 2001
+From: localhost-copilot <318096335+localhost-copilot@users.noreply.github.com>
+Date: Fri, 23 Oct 2026 15:39:07 +0800
+Subject: [PATCH] media: wave5: ignore encoder reports after scheduler
+ cancellation
+
+---
+ drivers/media/platform/chips-media/wave5/wave5-vpu-enc.c | 4 ++++
+ drivers/media/platform/chips-media/wave5/wave5-vpuapi.c  | 1 +
+ 2 files changed, 5 insertions(+)
+
+diff --git a/drivers/media/platform/chips-media/wave5/wave5-vpu-enc.c b/drivers/media/platform/chips-media/wave5/wave5-vpu-enc.c
+index 03753baaddfbc..775fd2f5f0416 100644
+--- a/drivers/media/platform/chips-media/wave5/wave5-vpu-enc.c
++++ b/drivers/media/platform/chips-media/wave5/wave5-vpu-enc.c
+@@ -282,6 +282,10 @@ static void wave5_vpu_enc_finish_encode(struct vpu_instance *inst)
+ 
+ 	if (wave5_vpu_isolated(inst->dev))
+ 		return;
++	/* STREAMOFF drains reports itself after M2M cancellation has finished. */
++	if (inst->dev->legacy_firmware &&
++	    v4l2_m2m_get_curr_priv(inst->v4l2_m2m_dev) != inst)
++		return;
+ 	ret = wave5_vpu_enc_get_output_info(inst, &enc_output_info);
+ 	if (ret) {
+ 		dev_dbg(inst->dev->dev,
+diff --git a/drivers/media/platform/chips-media/wave5/wave5-vpuapi.c b/drivers/media/platform/chips-media/wave5/wave5-vpuapi.c
+index 6e37afa4e724c..58ebe6e47fc09 100644
+--- a/drivers/media/platform/chips-media/wave5/wave5-vpuapi.c
++++ b/drivers/media/platform/chips-media/wave5/wave5-vpuapi.c
+@@ -9,6 +9,7 @@
+ #include <linux/pm_runtime.h>
+ #include <linux/delay.h>
+ #include "wave5-vpuapi.h"
++#include "wave5-vpu.h"
+ #include "wave5-regdefine.h"
+ #include "wave5.h"
+ 

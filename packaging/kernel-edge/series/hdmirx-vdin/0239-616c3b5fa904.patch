@@ -1,0 +1,81 @@
+From 616c3b5fa904a87570c0e6b8282d2a2b4417a167 Mon Sep 17 00:00:00 2001
+From: localhost-copilot <318096335+localhost-copilot@users.noreply.github.com>
+Date: Thu, 22 Oct 2026 14:58:38 +0800
+Subject: [PATCH] Recover HDMI after persistently unstable timing snapshots
+
+---
+ .../media/platform/amlogic/t7-hdmirx/t7-hdmirx.c  | 15 +++++++++++++--
+ .../media/platform/amlogic/t7-hdmirx/test_link.py | 13 ++++++++++++-
+ 2 files changed, 25 insertions(+), 3 deletions(-)
+
+diff --git a/drivers/media/platform/amlogic/t7-hdmirx/t7-hdmirx.c b/drivers/media/platform/amlogic/t7-hdmirx/t7-hdmirx.c
+index cbe545b54614f..3c9b3c236f903 100644
+--- a/drivers/media/platform/amlogic/t7-hdmirx/t7-hdmirx.c
++++ b/drivers/media/platform/amlogic/t7-hdmirx/t7-hdmirx.c
+@@ -234,6 +234,7 @@ struct t7_hdmirx_link {
+ 	unsigned int users;
+ 	u32 previous_cable;
+ 	unsigned int stable_samples;
++	unsigned int timing_retries;
+ 	bool previous_uhd;
+ 	bool ready;
+ 	bool configured;
+@@ -1617,8 +1618,18 @@ static void t7_hdmirx_link_work(struct work_struct *work)
+ 		writeb(readb(rx->cor + T7_RX_COR_AUDIO_PACKET) & BIT(0) ? 6 : 0,
+ 		       rx->cor + T7_RX_COR_PREAMBLE);
+ 	ret = t7_hdmirx_video_status(rx);
+-	if (ret == -EAGAIN)
+-		goto out;
++	if (ret == -EAGAIN) {
++		/* One torn snapshot is harmless. A stuck FDET can change on every
++		 * read indefinitely; after a second, qualify clocks and recover PCS.
++		 * The users check below still protects live or quarantined DMA.
++		 */
++		if (link->timing_retries < 4) {
++			link->timing_retries++;
++			goto out;
++		}
++	} else {
++		link->timing_retries = 0;
++	}
+ 	if (rx->dynamic_modes && link->configured && !link->users) {
+ 		cable = t7_hdmirx_sample_cable(rx, clk_get_rate(rx->clocks[T7_RX_METER].clk));
+ 		sampled = true;
+diff --git a/drivers/media/platform/amlogic/t7-hdmirx/test_link.py b/drivers/media/platform/amlogic/t7-hdmirx/test_link.py
+index 4d195ad47dbb9..13eae0399ce08 100644
+--- a/drivers/media/platform/amlogic/t7-hdmirx/test_link.py
++++ b/drivers/media/platform/amlogic/t7-hdmirx/test_link.py
+@@ -51,7 +51,7 @@ static bool t7_hdmirx_sdr420_input(struct t7_hdmirx *rx) { (void)rx; return fals
+ static bool t7_hdmirx_sdr444_input(struct t7_hdmirx *rx) { (void)rx; return false; }
+ static void t7_hdmirx_update_drm(struct t7_hdmirx *rx) { (void)rx; }
+ static bool signal_valid, source_present, hdmi2 = true, pll_fail, late_alignment, lose_during_wait;
+-static bool unsupported_signal, unsupported_color;
++static bool unsupported_signal, unsupported_color, unstable_timings;
+ static unsigned int pll_calls, pcs_calls, queued, canceled, last_delay, meter_resets;
+ static unsigned int profile_changes;
+ static u32 meter_reset;
+@@ -72,6 +72,7 @@ static void mutex_lock(struct mutex *lock) { assert(!lock->held); lock->held = t
+ static void mutex_unlock(struct mutex *lock) { assert(lock->held); lock->held = false; }
+ static int t7_hdmirx_video_status(struct t7_hdmirx *rx)
+ {
++    if (unstable_timings) return -EAGAIN;
+     if (unsupported_signal) return -ERANGE;
+     return signal_valid && (!rx->dynamic_modes || rx->uhd60==hdmi2) ? 0 : -ENOLINK;
+ }
+@@ -217,6 +218,16 @@ int main(void)
+     unsupported_signal=true; tick(&link,4);
+     assert(!link.ready && pll_calls>before_malformed);
+     unsupported_signal=false; tick(&link,1); assert(link.ready);
++    unsigned int before_unstable=pll_calls;
++    unstable_timings=true; tick(&link,1);
++    assert(link.ready && pll_calls==before_unstable);
++    unstable_timings=false; tick(&link,1);
++    assert(link.ready && !link.timing_retries);
++    link.users=1; unstable_timings=true; tick(&link,12);
++    assert(!link.ready && pll_calls==before_unstable);
++    link.users=0; tick(&link,8);
++    assert(pll_calls>before_unstable && !link.ready);
++    unstable_timings=false; tick(&link,1); assert(link.ready);
+     t7_hdmirx_link_stop(&link);
+     assert(canceled == 1 && !link.ready);
+     puts("Receiver recovery: absent/delayed source, DMA leases, PLL failure and late alignment passed");

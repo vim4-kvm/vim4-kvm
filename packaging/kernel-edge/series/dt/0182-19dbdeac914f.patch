@@ -1,0 +1,103 @@
+From 19dbdeac914fa5f67dfe194c06811f98a1987ca0 Mon Sep 17 00:00:00 2001
+From: localhost-copilot <318096335+localhost-copilot@users.noreply.github.com>
+Date: Tue, 20 Oct 2026 16:32:33 +0800
+Subject: [PATCH] dt-bindings: media: describe T7 Wave521c clocks and resources
+
+---
+ .../bindings/media/cnm,wave521c.yaml          | 51 ++++++++++++++++---
+ .../clock/amlogic,t7-peripherals-clkc.h       |  9 ++++
+ 2 files changed, 54 insertions(+), 6 deletions(-)
+
+diff --git a/Documentation/devicetree/bindings/media/cnm,wave521c.yaml b/Documentation/devicetree/bindings/media/cnm,wave521c.yaml
+index 6cd33dfd095d6..386a9c1a89b56 100644
+--- a/Documentation/devicetree/bindings/media/cnm,wave521c.yaml
++++ b/Documentation/devicetree/bindings/media/cnm,wave521c.yaml
+@@ -15,17 +15,22 @@ description:
+ 
+ properties:
+   compatible:
+-    items:
+-      - enum:
+-          - ti,j721s2-wave521c
+-      - const: cnm,wave521c
++    oneOf:
++      - items:
++          - const: ti,j721s2-wave521c
++          - const: cnm,wave521c
++      - const: amlogic,t7-wave521c
+ 
+   reg:
+     maxItems: 1
+ 
+   clocks:
+-    items:
+-      - description: VCODEC clock
++    minItems: 1
++    maxItems: 5
++
++  clock-names:
++    minItems: 1
++    maxItems: 5
+ 
+   interrupts:
+     maxItems: 1
+@@ -48,6 +53,40 @@ required:
+   - reg
+   - clocks
+ 
++allOf:
++  - if:
++      properties:
++        compatible:
++          contains:
++            const: amlogic,t7-wave521c
++    then:
++      properties:
++        clocks:
++          items:
++            - description: DOS register clock
++            - description: VPU APB clock
++            - description: Wave AXI clock (A)
++            - description: Wave bitstream processor clock (B)
++            - description: Wave video codec clock (C)
++        clock-names:
++          items:
++            - const: pclk
++            - const: apb
++            - const: axi
++            - const: bpu
++            - const: vce
++      required:
++        - clock-names
++        - interrupts
++        - power-domains
++        - resets
++    else:
++      properties:
++        clocks:
++          items:
++            - description: VCODEC clock
++        clock-names: false
++
+ additionalProperties: false
+ 
+ examples:
+diff --git a/include/dt-bindings/clock/amlogic,t7-peripherals-clkc.h b/include/dt-bindings/clock/amlogic,t7-peripherals-clkc.h
+index d7afae0179e98..99728337cda37 100644
+--- a/include/dt-bindings/clock/amlogic,t7-peripherals-clkc.h
++++ b/include/dt-bindings/clock/amlogic,t7-peripherals-clkc.h
+@@ -268,5 +268,14 @@
+ #define CLKID_VDIN_MEAS_SEL		259
+ #define CLKID_VDIN_MEAS_DIV		260
+ #define CLKID_VDIN_MEAS			261
++#define CLKID_WAVE_A_SEL			262
++#define CLKID_WAVE_A_DIV			263
++#define CLKID_WAVE_A			264
++#define CLKID_WAVE_B_SEL			265
++#define CLKID_WAVE_B_DIV			266
++#define CLKID_WAVE_B			267
++#define CLKID_WAVE_C_SEL			268
++#define CLKID_WAVE_C_DIV			269
++#define CLKID_WAVE_C			270
+ 
+ #endif /* __T7_PERIPHERALS_CLKC_H */

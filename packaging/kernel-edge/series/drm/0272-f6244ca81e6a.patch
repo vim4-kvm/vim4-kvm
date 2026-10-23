@@ -1,0 +1,166 @@
+From f6244ca81e6adccc5a7ee13297b2064a7771a07e Mon Sep 17 00:00:00 2001
+From: localhost-copilot <318096335+localhost-copilot@users.noreply.github.com>
+Date: Fri, 23 Oct 2026 16:09:21 +0800
+Subject: [PATCH] drm/meson: follow the firmware ENC2 and VIU1 handoff contract
+
+Read ENC2 timing at the vendor 0x800-word offset. Use the existing VIU1
+edge interrupt without legacy VENC acknowledgments or interrupt writes,
+and require two real interrupts before exposing the DRM device.
+
+TOP_STAT0 bit zero is not T7 HPD. Keep the fixed firmware connector and
+defer GPIOW15 HPD ownership, pinmux and hotplug to a later milestone.
+Read the documented TPI_SC register instead of interpreting TMDS_CTRL.
+
+Signed-off-by: localhost-copilot <318096335+localhost-copilot@users.noreply.github.com>
+---
+ ...logic-t7-a311d2-khadas-vim4-display-m1.dts |  2 +-
+ drivers/gpu/drm/meson/meson_hdmitx21.c        | 18 +++++-------
+ drivers/gpu/drm/meson/meson_t7_handoff.c      | 29 +++++++------------
+ drivers/gpu/drm/meson/test_t7_handoff.py      |  3 ++
+ 4 files changed, 22 insertions(+), 30 deletions(-)
+
+diff --git a/arch/arm64/boot/dts/amlogic/amlogic-t7-a311d2-khadas-vim4-display-m1.dts b/arch/arm64/boot/dts/amlogic/amlogic-t7-a311d2-khadas-vim4-display-m1.dts
+index 146ca75c1f07d..01b9c52fe42d3 100644
+--- a/arch/arm64/boot/dts/amlogic/amlogic-t7-a311d2-khadas-vim4-display-m1.dts
++++ b/arch/arm64/boot/dts/amlogic/amlogic-t7-a311d2-khadas-vim4-display-m1.dts
+@@ -8,7 +8,7 @@ / {
+ 	display@ff006840 {
+ 		compatible = "amlogic,t7-display-handoff";
+ 		reg = <0x0 0xff006840 0x0 0x80>,
+-		      <0x0 0xff006db8 0x0 0x108>;
++		      <0x0 0xff008db8 0x0 0x108>;
+ 		reg-names = "osd1", "venc";
+ 		memory-region = <&{/reserved-memory/framebuffer@3f800000}>;
+ 		interrupts = <GIC_SPI 197 IRQ_TYPE_EDGE_RISING>;
+diff --git a/drivers/gpu/drm/meson/meson_hdmitx21.c b/drivers/gpu/drm/meson/meson_hdmitx21.c
+index 874f5411288f2..1bcffca4e219c 100644
+--- a/drivers/gpu/drm/meson/meson_hdmitx21.c
++++ b/drivers/gpu/drm/meson/meson_hdmitx21.c
+@@ -951,10 +951,8 @@ meson_hdmitx21_boot_mode_valid(struct drm_bridge *bridge,
+ static enum drm_connector_status
+ meson_hdmitx21_boot_detect(struct drm_bridge *bridge, struct drm_connector *connector)
+ {
+-	struct meson_hdmitx21 *tx = bridge_to_hdmitx(bridge);
+-
+-	return meson_hdmitx21_boot_read(tx->boot_top + TOP_STAT0, 32) & TOP_STAT0_HPD ?
+-		connector_status_connected : connector_status_disconnected;
++	/* Fixed firmware sink. Real T7 HPD is GPIOW15, not TOP_STAT0 bit 0. */
++	return connector_status_connected;
+ }
+ 
+ static int meson_hdmitx21_boot_get_modes(struct drm_bridge *bridge,
+@@ -984,7 +982,7 @@ static int meson_hdmitx21_boot_probe(struct platform_device *pdev)
+ 	struct device *dev = &pdev->dev;
+ 	struct meson_hdmitx21 *tx;
+ 	struct resource *top, *cor;
+-	u32 status, active, tmds;
++	u32 status, active, tpi;
+ 
+ 	top = platform_get_resource_byname(pdev, IORESOURCE_MEM, "top");
+ 	cor = platform_get_resource_byname(pdev, IORESOURCE_MEM, "cor");
+@@ -1006,11 +1004,11 @@ static int meson_hdmitx21_boot_probe(struct platform_device *pdev)
+ 		return PTR_ERR(tx->pclk);
+ 	status = meson_hdmitx21_boot_read(tx->boot_top + TOP_STAT0, 32);
+ 	active = meson_hdmitx21_boot_read(tx->boot_top + TOP_HV_ACTIVE, 32);
+-	tmds = meson_hdmitx21_boot_read(tx->boot_cor + TMDS_CTRL, 8);
+-	dev_info(dev, "boot TX HPD=%#x active=%#x TMDS=%#x (SMC read-only)\n",
+-		 status, active, tmds);
+-	if (!(status & TOP_STAT0_HPD) || active != (1080 << 16 | 1920))
+-		return dev_err_probe(dev, -ENODEV, "TX boot mode is not connected 1080p\n");
++	tpi = meson_hdmitx21_boot_read(tx->boot_cor + TPI_SC, 8);
++	dev_info(dev, "boot TX TOP_STAT0=%#x active=%#x TPI_SC=%#x (SMC read-only, fixed sink)\n",
++		 status, active, tpi);
++	if (active != (1080 << 16 | 1920))
++		return dev_err_probe(dev, -ENODEV, "TX boot active area is not 1080p\n");
+ 	tx->bridge.of_node = dev->of_node;
+ 	tx->bridge.ops = DRM_BRIDGE_OP_DETECT | DRM_BRIDGE_OP_MODES;
+ 	tx->bridge.type = DRM_MODE_CONNECTOR_HDMIA;
+diff --git a/drivers/gpu/drm/meson/meson_t7_handoff.c b/drivers/gpu/drm/meson/meson_t7_handoff.c
+index bf4f725a9e313..3eeb92c08aa64 100644
+--- a/drivers/gpu/drm/meson/meson_t7_handoff.c
++++ b/drivers/gpu/drm/meson/meson_t7_handoff.c
+@@ -49,7 +49,7 @@ struct meson_t7_handoff {
+ 	wait_queue_head_t wait;
+ 	u32 pending_addr;
+ 	u32 requested, written, applied;
+-	u32 boot_interrupts;
++	u32 vsync_count;
+ 	bool faulted;
+ 	/* Keep DMA memory alive even if the display interrupt stops. */
+ 	struct drm_framebuffer *scanout;
+@@ -66,9 +66,9 @@ static irqreturn_t meson_t7_handoff_irq(int irq, void *data)
+ 	struct meson_t7_handoff *display = data;
+ 	unsigned long flags;
+ 
+-	/* VENC_INTFLAG is read-to-clear, as in the normal meson handler. */
+-	readl(display->venc + VENC_REG(VENC_INTFLAG));
++	/* T7 VIU1 uses an edge IRQ; the vendor handler has no VENC acknowledgment. */
+ 	spin_lock_irqsave(&display->lock, flags);
++	WRITE_ONCE(display->vsync_count, display->vsync_count + 1);
+ 	WRITE_ONCE(display->applied, display->written);
+ 	if (display->written != display->requested) {
+ 		writel(display->pending_addr >> 4,
+@@ -286,13 +286,6 @@ static void meson_t7_handoff_domain_put(void *data)
+ 	dev_pm_domain_detach(domain, true);
+ }
+ 
+-static void meson_t7_handoff_restore_irq(void *data)
+-{
+-	struct meson_t7_handoff *display = data;
+-
+-	writel(display->boot_interrupts, display->venc + VENC_REG(VENC_INTCTRL));
+-}
+-
+ static void __iomem *meson_t7_handoff_map(struct platform_device *pdev,
+ 					  const char *name, resource_size_t start,
+ 					  resource_size_t size)
+@@ -386,14 +379,15 @@ static int meson_t7_handoff_probe(struct platform_device *pdev)
+ 	display->osd = meson_t7_handoff_map(pdev, "osd1", 0xff006840, 0x80);
+ 	if (IS_ERR(display->osd))
+ 		return PTR_ERR(display->osd);
+-	display->venc = meson_t7_handoff_map(pdev, "venc", 0xff006db8, 0x108);
++	/* The matching firmware selects ENC2: vendor VENC words have +0x800. */
++	display->venc = meson_t7_handoff_map(pdev, "venc", 0xff008db8, 0x108);
+ 	if (IS_ERR(display->venc))
+ 		return PTR_ERR(display->venc);
+ 	ctrl = readl(display->osd + OSD_REG(VIU_OSD1_CTRL_STAT));
+ 	format = readl(display->osd + OSD_REG(VIU_OSD1_BLK0_CFG_W0));
+ 	htotal = readl(display->venc + VENC_REG(ENCP_VIDEO_MAX_PXCNT));
+ 	vtotal = readl(display->venc + VENC_REG(ENCP_VIDEO_MAX_LNCNT));
+-	dev_info(dev, "boot OSD ctrl=%#x format=%#x VENC totals=%u/%u\n",
++	dev_info(dev, "boot OSD ctrl=%#x format=%#x ENC2 totals=%u/%u\n",
+ 		 ctrl, format, htotal, vtotal);
+ 	/* RGB888 little endian, linear, 1920x1080 with the matching boot frame. */
+ 	if ((ctrl & 5) != 5 || (format & 0xffff) != 0x8700 ||
+@@ -456,13 +450,10 @@ static int meson_t7_handoff_probe(struct platform_device *pdev)
+ 	if (ret)
+ 		return ret;
+ 	drm_mode_config_reset(drm);
+-	/* Preserve all other VENC interrupt users; VDIN has a separate IRQ. */
+-	display->boot_interrupts = readl(display->venc + VENC_REG(VENC_INTCTRL));
+-	ret = devm_add_action_or_reset(dev, meson_t7_handoff_restore_irq, display);
+-	if (ret)
+-		return ret;
+-	writel(display->boot_interrupts | VENC_INTCTRL_ENCP_LNRST_INT_EN,
+-	       display->venc + VENC_REG(VENC_INTCTRL));
++	/* Do not enable legacy ENC0 interrupts or rewrite the firmware VIU mux. */
++	if (!wait_event_timeout(display->wait, READ_ONCE(display->vsync_count) >= 2,
++				msecs_to_jiffies(100)))
++		return dev_err_probe(dev, -ETIMEDOUT, "No firmware VIU1 vsync IRQ\n");
+ 	return drm_dev_register(drm, 0);
+ }
+ 
+diff --git a/drivers/gpu/drm/meson/test_t7_handoff.py b/drivers/gpu/drm/meson/test_t7_handoff.py
+index 60de586db5932..e6fd612dfeae3 100644
+--- a/drivers/gpu/drm/meson/test_t7_handoff.py
++++ b/drivers/gpu/drm/meson/test_t7_handoff.py
+@@ -59,6 +59,9 @@ if args.dtb:
+     print('Compiled M1 DT: disjoint capture/display claims, exclusive KMS and read-only PLL')
+ 
+ source = Path(__file__).with_name('meson_t7_handoff.c').read_text()
++# The handoff must not configure legacy VENC interrupts or the global VIU mux.
++assert len(re.findall(r'\bwritel\(', source)) == 1
++assert 'display->osd + OSD_REG(VIU_OSD1_BLK1_CFG_W4)' in source
+ register_source = Path(__file__).with_name('meson_registers.h').read_text()
+ registers = '\n'.join(line for line in register_source.splitlines()
+                       if line.startswith('#define ') and not line.endswith('\\'))
