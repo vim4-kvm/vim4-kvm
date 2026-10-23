@@ -70,6 +70,7 @@ PiKVM smoke 可用 `PIKVM_CDP` 接入专用测试 Chrome；结束时关闭测试
 | tools/kvm-gadget.sh | /usr/local/sbin/kvm-gadget.sh | USB gadget：键盘、绝对/相对鼠标、NCM | [USB](subsystems/usb.md) |
 | tools/usb-pd-init.c | /usr/sbin/usb-pd-init | FUSB302B 5V PD 协商；成功调用板级 Python 模块原子保存合同；`--status` 只读 VBUS 状态 | [USB-PD](usb-pd.md) |
 | board/vim4-wave5-monitor.py | /usr/libexec/vim4-wave5-monitor | 轮询 Wave5 隔离状态并记 journal；自动重启默认关闭，启用后仍要求应用均已停止且虚拟盘为空 | [音视频](subsystems/video.md#wave5-隔离告警) |
+| board/60-vim4-watchdog.conf | /usr/lib/systemd/system.conf.d/60-vim4-watchdog.conf | board/install.sh 与 Ubuntu board 包安装；PID 1 在两种内核共用 30 秒运行、60 秒重启硬件看门狗策略，重启或 daemon-reexec 生效 | [部署](subsystems/deployment.md#一次性启动与硬件看门狗) |
 
 ## 应用回归（浏览器）
 

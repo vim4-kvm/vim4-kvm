@@ -53,6 +53,24 @@ U-Boot 候选必须先从 microSD 验证，见 [现场恢复](../bringup/2026-10
 
 冒烟中的新内核告警需判断归因：本次改动引入的阻塞部署，既有或可恢复的记入记录后修复。
 
+## 一次性启动与硬件看门狗
+
+危险候选测试以一次性启动保留默认基线，并先确认硬件看门狗已实测能复位当前板子。
+T7 的 Meson GXBB Watchdog 已在正式 7.3 基线上以停止喂狗验证：15 秒超时，
+15.036 秒出现启动串口，36.867 秒到登录，U-Boot 报 `watchdog_reboot`，默认基线自动恢复。
+命令、串口证据与范围见 [Wave5 批量窗口](../bringup/2026-10-23-wave5-parity-window.md)。
+这组机制是无人按 RESET 的危险窗口前提；不保证电源、总线或 secure firmware
+故障时计数器一定继续运行，也不能将软件超时注入当成所有真实硬锁已验证。
+
+`board/60-vim4-watchdog.conf` 由 board/install.sh 和 Ubuntu board 组件包安装到
+`/usr/lib/systemd/system.conf.d/60-vim4-watchdog.conf`，两种内核共用：
+`RuntimeWatchdogSec=30s`、`RebootWatchdogSec=60s`。PID 1 负责喂狗，无新增守护进程。
+安装不重启 PID 1，下一次启动生效；受控窗口可用 `systemctl daemon-reexec` 生效。
+核对 `systemctl show -p RuntimeWatchdogUSec -p RebootWatchdogUSec`、journal 的
+`Using hardware watchdog` 与 `/dev/watchdog0` 的持有者 PID 1，不能只检查配置文件。
+管理员可用 `/etc/systemd/system.conf.d/` 中同名或字典序更后的 drop-in 覆盖；
+关闭需设置 `RuntimeWatchdogSec=off`，再 reexec 或重启。本轮未启动 5.15 验证其驱动。
+
 ## 错题
 
 | 触发条件 / 错误 | 原因与正确做法 | 验证入口 |

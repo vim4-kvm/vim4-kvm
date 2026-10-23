@@ -6,6 +6,7 @@ for tool in mcopy mdir mkfs.vfat fsck.vfat; do
     command -v "$tool" >/dev/null || { echo 'Install mtools and dosfstools before installing board services' >&2; exit 1; }
 done
 sh ./install-logging.sh
+install -D -m 0644 60-vim4-watchdog.conf /usr/lib/systemd/system.conf.d/60-vim4-watchdog.conf
 install -D -m 0644 vim4media.py /usr/lib/vim4-kvm/python/vim4media.py
 install -D -m 0644 vim4video.py /usr/lib/vim4-kvm/python/vim4video.py
 install -D -m 0644 vim4boot.py /usr/lib/vim4-kvm/python/vim4boot.py

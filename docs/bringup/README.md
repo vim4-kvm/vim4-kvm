@@ -8,6 +8,7 @@
 ## 2026-10-23
 
 - [M2 首次一次性上板：60Hz 翻页、PRIME 上屏，颜色错误阻塞验收](2026-10-23-display-m2-window1.md) — kernel video audio deployment board
+- [Wave5 编码器批量窗口与 T7 硬件看门狗](2026-10-23-wave5-parity-window.md) — kernel video deployment board
 - [Wave5 E02 可见尺寸与 E01 标准控件离线候选](2026-10-23-wave5-encoder-parity.md) — kernel video
 - [Wave5 E01 全量参数与标准控件映射](2026-10-23-wave5-encoder-controls.md) — kernel video
 - [Wave5 E01 公共、动态与逐帧参数协议附表](2026-10-23-wave5-encoder-protocol.md) — kernel video

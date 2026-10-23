@@ -68,6 +68,8 @@ def package(name, version, output, populate, depends):
 
 
 def board(stage):
+    copy(ROOT / 'board/60-vim4-watchdog.conf', stage,
+         'usr/lib/systemd/system.conf.d/60-vim4-watchdog.conf')
     copy(ROOT / 'board/60-vim4-journal.conf', stage,
          'usr/lib/systemd/journald.conf.d/60-vim4-journal.conf')
     copy(ROOT / 'board/vim4-logging', stage, 'usr/libexec/vim4-logging', 0o755)

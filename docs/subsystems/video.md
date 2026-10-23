@@ -94,8 +94,11 @@ HDMI_LOW_LATENCY=0 恢复厂商自动策略。模式含义、对照结果及帧�
 
 内核 sysfs 的 `isolated`、`isolation_reason`、`isolation_time_ns`
 提供状态，触发时发出 `WAVE5_ISOLATED=1` uevent。隔离后保留 DMA 内存与映射，
-只允许重启清除；不尝试运行时硬件复位。已在 aa2f875 内核完成十轮软件注入及九类门禁并部署，
-范围与证据见[正式窗口](../bringup/2026-10-23-wave5-isolation-final.md)。
+只允许重启清除。当前正式内核先尝试 T7 WAVE genpd 循环和固件冷加载，旧实例 EIO、
+新实例重开；复位失败才进入隔离，见[运行时复位窗口](../bringup/2026-10-23-wave5-runtime-window.md)。
+隔离的十轮软件注入及九类门禁见[正式窗口](../bringup/2026-10-23-wave5-isolation-final.md)。
+非 8 对齐 HEVC crop、B 帧和控件增量的实测边界另见
+[编码器批量窗口](../bringup/2026-10-23-wave5-parity-window.md)；内核合入不代表正式安装。
 
 `vim4-wave5-monitor.service` 默认只记录 journal，写 `/run/vim4-wave5/alert.json`。
 `/etc/default/vim4-wave5-monitor` 的 `WAVE5_AUTO_REBOOT=1` 可启用一次受控重启，
