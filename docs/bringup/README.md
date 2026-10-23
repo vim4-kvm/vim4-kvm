@@ -7,6 +7,7 @@
 
 ## 2026-10-23
 
+- [M3 首批离线实现：OSD 原子属性与标准 CEC，其余显示层待开发](2026-10-23-display-m3.md) — kernel video audio deployment
 - [T7 GCLK_EN 访问条件与分步候选（离线）](2026-10-23-vdec-gclk-offline.md) — kernel video deployment
 - [T7 VDEC MDEC 远程分级窗口](2026-10-23-vdec-mdec-window.md) — kernel video usb deployment board
 - [M2 颜色修正与第二个一次性窗口：共存通过，物理颜色和 TX 音频待验](2026-10-23-display-m2-window2.md) — kernel video audio deployment board
