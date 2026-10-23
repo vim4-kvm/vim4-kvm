@@ -7,6 +7,7 @@
 
 ## 2026-10-23
 
+- [M3 DMA 边界修复、启动接管与剩余视频路径合同（离线）](2026-10-23-display-m3-dma-contracts.md) — kernel video deployment
 - [M3 多层退休、SRAM 所有权与 OSD overlay/cursor（离线）](2026-10-23-display-m3-layers.md) — kernel video audio deployment
 - [VDEC APB 候选第九步仍失败，看门狗恢复](2026-10-23-vdec-apb-window.md) — kernel video usb deployment board
 - [厂商 H.264 活体对照与物理时钟检查候选](2026-10-23-vdec-vendor-live.md) — kernel video usb deployment board
