@@ -52,6 +52,21 @@ class DecoderWindowTests(unittest.TestCase):
                 window.main()
             run.assert_not_called()
 
+    def test_known_panicking_candidate_is_blocked_before_ssh_but_allows_recovery(self):
+        proof = {'release': '7.3.0-vim4kvm-vdec3+', 'source': window.FAILED_SOURCE}
+        with tempfile.TemporaryDirectory() as directory:
+            manifest = Path(directory) / 'manifest.json'
+            manifest.write_text(json.dumps(proof))
+            for action in set(window.ACTIONS) - {'arm-baseline', 'verify-baseline'}:
+                with self.subTest(action=action), \
+                        patch.object(sys, 'argv', [str(SOURCE), action, '--execute', '--at-board',
+                                                   '--manifest', str(manifest)]), \
+                        patch.object(window.subprocess, 'run') as run, self.assertRaises(ValueError):
+                    window.main()
+                run.assert_not_called()
+        for action in ('arm-baseline', 'verify-baseline'):
+            window.require_candidate(action, proof)
+
     def test_timeout_is_not_retried(self):
         with patch.object(window.subprocess, 'run', side_effect=subprocess.TimeoutExpired('test', 10)) as run, \
                 contextlib.redirect_stdout(io.StringIO()), self.assertRaises(subprocess.TimeoutExpired):
@@ -86,6 +101,32 @@ class DecoderWindowTests(unittest.TestCase):
         marker.assert_called_once()
         self.assertEqual([call.args[:2] for call in run.call_args_list],
                          [('systemctl', 'stop'), ('modprobe', 'aml-vdec-drv'), ('v4l2-ctl', '-d')])
+
+    def test_unsuspended_close_preserves_recovery_marker_without_unloading(self):
+        args = SimpleNamespace(action='power', build_id='candidate', fixtures='/fixtures')
+        with tempfile.TemporaryDirectory() as directory:
+            device = Path(directory)
+            (device / 'power').mkdir()
+            (device / 'power/runtime_status').write_text('active\n')
+            fault = device / 'faulted'
+            fault.write_text('0\n')
+            with patch.object(window.os, 'geteuid', return_value=0), \
+                    patch.object(window.Path, 'exists', return_value=False), \
+                    patch.object(window.Path, 'glob', autospec=True,
+                                 side_effect=lambda path, pattern: [fault] if pattern == '*/faulted' else []), \
+                    patch.object(window.Path, 'write_text') as marker, \
+                    patch.object(window, 'build_id', return_value='candidate'), \
+                    patch.object(window, 'require_baseline_files'), \
+                    patch.object(window, 'faulted', return_value=False), \
+                    patch.object(window, 'video_node', return_value='/dev/video99'), \
+                    patch.object(window.subprocess, 'run') as service, \
+                    patch.object(window, 'run') as run, \
+                    contextlib.redirect_stdout(io.StringIO()), self.assertRaises(RuntimeError):
+                service.return_value.returncode = 1
+                window.board_window(args)
+            marker.assert_called_once()
+            self.assertEqual([call.args[:2] for call in run.call_args_list],
+                             [('systemctl', 'stop'), ('modprobe', 'aml-vdec-drv'), ('v4l2-ctl', '-d')])
 
 
 if __name__ == '__main__':

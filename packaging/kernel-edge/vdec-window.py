@@ -20,12 +20,21 @@ import tarfile
 
 BOOT_ACTIONS = ('boot-install', 'arm-baseline', 'verify-baseline')
 ACTIONS = (*BOOT_ACTIONS, 'probe', 'power', 'compliance', 'h264', 'wave')
-BASE_ID = '3ed254bfa838ab50732fdce1c5134400a1663fd5'
+BASE_ID = 'f283ab1f8a001a19bab5247afc4f9b0c00c1da99'
 BASE_RELEASE = '7.3.0-vim4kvm-uhd1+'
 BASE_FILES = {
-    'Image': '47c53206718adeaa81961c10d589f3e7cbc40fa6c075fbd4d854918a78df7bc7',
-    'vim4.dtb': '8cd68e30d5c7adf4fa063ae9c2ab9561912c46133ce24f1637fd36d14a2d95d8',
+    'Image': '855f0fa8caa49fdb9973bd7cd1cbbfaa2c5f62138574862e651e16eb0fda42b5',
+    'vim4.dtb': 'd2333e962326d0710300b71e758440a94b177eb273921f70e5ba12eb5f640cf6',
 }
+FAILED_SOURCE = '5bf7d6359df9ff68d8746851cf45de40611988a1'
+
+
+def require_candidate(action, proof):
+    if not proof['release'].startswith('7.3.0-vim4kvm-vdec3'):
+        raise ValueError('Only this separate experimental kernel is accepted')
+    if action not in ('arm-baseline', 'verify-baseline') and proof.get('source') == FAILED_SOURCE:
+        raise ValueError('Known failing candidate: udev v4l_id caused SError during DOS power-up; '
+                         'prepare a revised offline candidate before another board window')
 
 
 def sha(path):
@@ -188,6 +197,7 @@ def board_window(args):
     if build_id('/sys/kernel/notes') != args.build_id:
         raise ValueError('Running kernel does not match candidate')
     require_baseline_files()
+    print('CANDIDATE_RUNNING', args.build_id, args.action, flush=True)
     clip = Path(args.fixtures) / 'small.h264'
     reference = Path(args.fixtures) / 'small.i420'
     if args.action in ('h264', 'wave'):
@@ -233,12 +243,20 @@ def board_window(args):
             run('modprobe', 'aml-vdec-drv', 'enable_t7=1')
             candidate = 'aml_vdec_drv'
         if args.action == 'probe':
-            # No video open here: opening triggers runtime PM and is the next stage.
-            video_node('h264')
+            # Registration can trigger udev v4l_id opens. The driver must gate
+            # power independently before probe can be a stage without DOS MMIO.
+            print('PROBE_REGISTERED', video_node('h264'), flush=True)
             if faulted():
                 raise RuntimeError('Fault reported at probe')
         elif args.action == 'power':
             run('v4l2-ctl', '-d', video_node('h264'), '--info', timeout=8)
+            for path in Path('/sys/bus/platform/devices').glob('*/faulted'):
+                status = (path.parent / 'power/runtime_status').read_text().strip()
+                print('RUNTIME_AFTER_CLOSE', path.parent.name, status,
+                      'faulted=' + path.read_text().strip(), flush=True)
+                if status != 'suspended':
+                    critical = True
+                    raise RuntimeError('Runtime PM did not suspend after close')
         elif args.action == 'compliance':
             run('v4l2-compliance', '-d', video_node('h264'), timeout=20)
         else:
@@ -259,7 +277,7 @@ def board_window(args):
         critical = True
         raise
     except (RuntimeError, subprocess.CalledProcessError):
-        critical = faulted() or args.action == 'wave'
+        critical = critical or faulted() or args.action == 'wave'
         raise
     finally:
         if critical or faulted():
@@ -294,6 +312,11 @@ def main():
     parser.add_argument('--build-id', help=argparse.SUPPRESS)
     args = parser.parse_args()
     if args.remote:
+        # Keep missing diagnostic tools in the temporary payload, off the rootfs
+        # package database. Their shared libraries are checked before installation.
+        tool_bin = Path(args.payload) / 'tools/usr/bin'
+        if tool_bin.is_dir():
+            os.environ['PATH'] = str(tool_bin) + os.pathsep + os.environ['PATH']
         board_window(args)
         return
     if not args.execute:
@@ -306,8 +329,7 @@ def main():
     if not args.at_board or args.manifest is None:
         parser.error('--execute requires --at-board and --manifest')
     proof = json.loads(args.manifest.read_text())
-    if not proof['release'].startswith('7.3.0-vim4kvm-vdec3'):
-        raise ValueError('Only this separate experimental kernel is accepted')
+    require_candidate(args.action, proof)
     if not args.locked:
         command = ['/usr/bin/lockf', '-t', '600', '/tmp/vim4-board.lock',
                    '/usr/bin/lockf', '-t', '120', '/tmp/vim4-heavy.lock',

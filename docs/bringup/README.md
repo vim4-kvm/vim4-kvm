@@ -16,6 +16,7 @@
 - [Wave521C GET_VPU_INFO 实机取证](2026-10-22-vdec-wave5-capabilities.md) — kernel video board
 - [T7 stateless 解码离线准备](2026-10-22-vdec-t7-offline.md) — kernel video
 - [T7 H.264 完整离线候选与现场恢复脚本](2026-10-22-vdec-candidate.md) — kernel video deployment
+- [T7 解码候选现场分级验证与恢复](2026-10-22-vdec-field.md) — kernel video usb deployment board
 - [P2 PD Request＋KASLR 合并固件候选](2026-10-22-p2-uboot-combined.md) — usb kernel deployment
 - [P2 有界持久 journal 部署并保留](2026-10-22-p2-journal-deploy.md) — deployment board
 - [P2 ramoops 候选与正常重启验证](2026-10-22-p2-pstore.md) — kernel deployment board
