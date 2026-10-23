@@ -13,6 +13,10 @@ P2P 已移除能力屏蔽，修正 discovery、扫描版本、ARP/ND 控制和�
 7.3 下游补丁分类、私有接口整改、linux-next 迁移成本与统一离线验证见
 [补丁清单](../kernel-patch-inventory.md)。它固定审计版本，不代表正式分支或部署版本。
 
+GPU 电压来源、CPU 分档/thermal 对照、PSCI idle 及设备系统 PM 缺口见
+[平台 PM 离线审查](../parity/platform-pm-offline.md)；
+[批量清单](../parity/platform-pm-board-checklist.md)区分正常负载和真正挂起窗口。
+
 MCU 风扇在 VM 主内核 drivers/misc/khadas-mcu.c，策略验证用 tools/test-fan-policy.sh。
 7.x 对应 drivers/thermal/khadas_mcu_fan.c，VIM4 默认安静自动调速；验证用同目录
 test_khadas_mcu_fan.py。控制值和回退见 [安静风扇](../bringup/2026-10-20-edge-quiet-fan.md)。

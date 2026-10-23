@@ -12,6 +12,11 @@
 给出逐提交、寄存器差异、DT/schema、实际C测试与完整Image/DTB/modules构建证据。
 未合入正式分支、未部署；低功耗VAD、DSP与真实板级端点仍有交付缺口。
 
+平台 PM 独立候选 `vim4-platform-pm` 基于 `1d80e6ccc3641`，六个小提交至
+`62724cd3d00ab`，不混入下方固定计数。[离线审查](parity/platform-pm-offline.md)
+覆盖 GPU 电压来源、thermal/cpuidle、PM 失败恢复和设备拒绝保护；
+[批量清单](parity/platform-pm-board-checklist.md)保留整机挂起与唤醒验收欠账。
+
 ## 计数口径与全部提交
 
 `v7.3` 的 annotated tag 对象为 `091b06388b117`，解引用后的提交为
