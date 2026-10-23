@@ -2,11 +2,11 @@
 [kernel]
 url = "https://github.com/vim4-kvm/linux.git"
 branch = "vim4-kvm-7.3"
-revision = "47878a0c611d1e1deb3699c4f225963a37a218c0"
-tree = "3c679fdc0a2f3b8fc3c98d5b94966fdc6e4ebf57"
+revision = "aa2f875bec2fc7c9a4952fccb9dcaa6fbfc4aa64"
+tree = "9b736ca14e1cb3f5536b6526c5dfac4dd110a91f"
 upstream_url = "https://github.com/gregkh/linux.git"
 # Retained final-release deployment (published).
-# Evidence and limits: docs/bringup/2026-10-23-display-m0-r4.md.
+# Evidence and limits: docs/bringup/2026-10-23-wave5-isolation-final.md.
 upstream_tag = "v7.3"
 upstream_revision = "c03c1a14507dfaf8b856c2608f9ac216021fc222"
 
@@ -23,32 +23,32 @@ tested_binary_sha256 = "0b537561096ee5dfb5f15839738c8ac4ea87ba0dbb3a5127a25c241d
 [tested_build]
 release = "7.3.0-vim4kvm-uhd1+"
 localversion = "-vim4kvm-uhd1"
-build_id = "f483ea42fee88be39ea67c43478638be67334d6e"
-image_sha256 = "4906f02df730a28d78d2f877542ea2f5611d2d98d2e53bfdfa6e9c9973d8a77d"
+build_id = "7b8372b894c98ffae12e636a325c86f2b6c85e00"
+image_sha256 = "9fca5c6fc2a7c8943b5802198977df97857d89717f8da0041329bc070061c41a"
 config_sha256 = "bca0e45df6eb43177bd82f251b4133c0468dd05195b7bae8ed8f639ba21f971c"
 config_path = "uhd1.config"
-modules_sha256 = "ee7f1c05eb9c8db7bfa794b395649099fc61fdbbfe34c60c8bec4410943f17c5"
+modules_sha256 = "770213bb108478a263be61f2b1b59031813ad639fd53232ed51f3b5393479cb1"
 module_count = 2334
 module_btf = true
 board_dtb_path = "arch/arm64/boot/dts/amlogic/amlogic-t7-a311d2-khadas-vim4-display-m0.dtb"
 framebuffer_console = true
 board_dtb_sha256 = "a635f8947ee77f67a43714aaa87276aff70edc0952bf40188d46853e055ce652"
-manifest_sha256 = "d0652ba55bb17347e51a5b5aad71ceecb6e0e0a32f0329cd363df8905fae860f"
-runtime_proof_sha256 = "75a2376233858a8ca980d91cb420d241e9371d8aa0a6599221f56cb85f7ee9f7"
-wave5_module_sha256 = "f6e4bb26e2693cd11047c09de20954722a0e1cc07fbc72a17bcf9dd88bf5bb8e"
+manifest_sha256 = "a2acacbe3c3236702b5b051871f935de8fb1f9b30c8bf55eac0d44ee348e1f52"
+runtime_proof_sha256 = "e7a453303dbcdcc21bba4e3bef98be053200b1c9dd86dcc16868c3d0eecc6de4"
+wave5_module_sha256 = "39ae88c3ce5e9225b094ade9fd950c45cd86173b51884721a967cfda27df7844"
 
 [tested_build.loaded_module_build_ids]
-meson_ir = "8a8eafe4b3e64fcabb15d705aba630f876787ef0"
-rc_khadas = "42a594300a5d9a3fc56885d2dfd784e8669c70fe"
-ir_nec_decoder = "8c0d7a84b3ebbde946ce31d1aa86d193648ee596"
-dwmac_meson8b = "cac097cf03f0335ac764b923a65a317d7132d6f0"
-panfrost = "50bc62e3e401f1772530aaf3814681cdd0352b5e"
-brcmfmac = "90e1d87f82444847930160f784dc83e4e5446e4f"
-wave5 = "032cfdf0c90e381072d44bb32423039b9ca91df4"
-t7_hdmirx = "f5f81a0597833037476cfbba7bb8441159a5aa41"
-t7_vdin_test = "a0463eb8a080600fb9c4a393517cb647862f25fa"
-t7_jpeg = "e5ab13dc87d3f14ef3227cb587cf9a3202233285"
-crg_udc = "8147e2bec6e11503ce8fc33490d19121bc52579c"
+meson_ir = "a6a5e763b8dbb7078760efe1ee06156e9636d188"
+rc_khadas = "ea91b62b8da353e67301643c8107debe28cbe895"
+ir_nec_decoder = "45402c1f46b1c56273ade43b16b2aa89ea9d64eb"
+dwmac_meson8b = "e63c67dd65b703d142869806408e86675ae4c8d2"
+panfrost = "09f93a61d57e080ae3169783c8dabc1968868613"
+brcmfmac = "d81414e0dd5c237c98646b6de51dee36eb627b03"
+wave5 = "52f71181453475bd188db808c4da04fde8b419b4"
+t7_hdmirx = "d7a200d5d2ed48f6e26748a7e3c38d9bdbc14d3d"
+t7_vdin_test = "5a4ae3a387643cde92a997b27c58d05ff9e91fdf"
+t7_jpeg = "b0085f321044cb0277756c9aebe764a6760b6231"
+crg_udc = "fbc658a9529794931ccd3a3c00e2108723fd7303"
 
 # Shared application sources are pinned in workspace.toml; the old independent
 # One-KVM and its private plugin above/below remain historical separate inputs.
@@ -60,7 +60,7 @@ manifest_path = "/etc/vim4-kvm/runtime-build.json"
 wave5_plugin_sha256 = "1d90f0d36f0eae0dca3e847663d6c5f16b4c3f02da2a6a128ed62a9746eb6b5f"
 v4l2_plugin_sha256 = "7fea3773c028de64ec7da4e87b2acc28206465e2cb09fb6530fe597c00868443"
 one_kvm_binary_sha256 = "72db30c07aa2351a27499e06d2ac28ccde3a74e1cb18d0927766a7ba35d37b0d"
-manager_binary_sha256 = "3fc215e3de431d1c65e08e62b3179b6329e190d803ab77e89dae3c3d90728eb1"
+manager_binary_sha256 = "d7a15868e4b0b2a9fcf7342e1ffb69ed63db9b983d7b55aeedb99b0faaa59901"
 
 # Diagnostic capability, not proof that the historical firmware crash is fixed.
 [wifi_diagnostics]

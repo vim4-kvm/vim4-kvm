@@ -92,17 +92,17 @@ HDMI_LOW_LATENCY=0 恢复厂商自动策略。模式含义、对照结果及帧�
 
 ## Wave5 隔离告警
 
-隔离候选由内核 sysfs 的 `isolated`、`isolation_reason`、`isolation_time_ns`
+内核 sysfs 的 `isolated`、`isolation_reason`、`isolation_time_ns`
 提供状态，触发时发出 `WAVE5_ISOLATED=1` uevent。隔离后保留 DMA 内存与映射，
-只允许重启清除；不尝试运行时硬件复位。当前已部署内核是否具备该接口须看实际
-sysfs 和部署记录，不能以此处的候选说明代替验收。
+只允许重启清除；不尝试运行时硬件复位。已在 aa2f875 内核完成十轮软件注入及九类门禁并部署，
+范围与证据见[正式窗口](../bringup/2026-10-23-wave5-isolation-final.md)。
 
 `vim4-wave5-monitor.service` 默认只记录 journal，写 `/run/vim4-wave5/alert.json`。
 `/etc/default/vim4-wave5-monitor` 的 `WAVE5_AUTO_REBOOT=1` 可启用一次受控重启，
 但仅在全部 KVM 应用 inactive、所有虚拟介质为空持续至少 30 秒后请求；默认 60 秒。
 运行中但空闲的 One-KVM 不计为已确认无需求，因为 clients 未覆盖 UU、RTSP、录屏等
 消费者。读取失败会取消空闲计时；同次启动已有 reboot-attempted 标记时不重试。
-manager 候选的 `GET /api/status` 新增 `encoder`，包含 `known`、`isolated`、
+manager 的 `GET /api/status` 新增 `encoder`，包含 `known`、`isolated`、
 `needsReboot`、`reason`、字符串 `timeBoottimeNs`；本轮没有前端变更。
 
 常规板级安装或组件安装会启用监控单元；独立候选窗口用 final-window 的

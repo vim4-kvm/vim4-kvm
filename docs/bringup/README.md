@@ -7,7 +7,8 @@
 
 ## 2026-10-23
 
-- [Wave5 超时隔离候选（第二轮）](2026-10-23-wave5-isolation.md) — kernel video application deployment board
+- [Wave5 隔离正式窗口复验](2026-10-23-wave5-isolation-final.md) — kernel video audio usb manager deployment board
+- [Wave5 超时隔离与十轮验收（第二轮）](2026-10-23-wave5-isolation.md) — kernel video application deployment board
 - [Wave5 恢复前置修复与厂商复位审查（未上板）](2026-10-23-wave5-recovery.md) — kernel video
 - [M0 第四轮音频归因与发布](2026-10-23-display-m0-r4.md) — kernel video audio usb manager deployment board
 - [HDMI RX 音频 ENOLINK 基线对照](2026-10-23-hdmirx-audio-enolink.md) — kernel audio application board

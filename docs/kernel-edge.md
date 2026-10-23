@@ -5,13 +5,16 @@
 当前包、匹配内核、安装/回退与实际验收范围见
 [双内核完整系统集成](bringup/2026-10-21-dual-kernel-integration.md)。
 本页保留 Armbian 编译基线与专项历史记录；通用 edge.config 不等于已验收的整板配置。
-当前板上保留 v7.3 显示M0版本 `47878a0c611d`，release `7.3.0-vim4kvm-uhd1+`、
-build ID `f483ea42fee88be39ea67c43478638be67334d6e`；uhd1.config 同次完整 Image/DTB/
-2334模块，继承Wave5防护及ramoops console，增加专用DTB的simpledrm/tty0接管。
-One-KVM为 `382efb70e7ebb`，manager为 `4ea748426935`。全19档、编码往返、4K60、
+当前板上保留 v7.3 Wave5 隔离版本 `aa2f875bec2fc`，release `7.3.0-vim4kvm-uhd1+`、
+build ID `7b8372b894c98ffae12e636a325c86f2b6c85e00`；uhd1.config 同次完整 Image/DTB/
+2334模块，继承 M0 simpledrm/tty0、Wave5尺寸防护及ramoops console，增加运行时超时隔离。
+One-KVM为 `382efb70e7ebb`，manager为 `9b141c5833c0`。十次软件超时注入/重启/4K60恢复，
+以及全19档、编码往返、4K60、
 48/44.1/32k音频、USB、GPU和管理页九类通过；最终taint=0、无新增警告。
 静态显示布局只匹配当前pd-handoff/HDMI/无MIPI，4K显示器、原生模式切换未验收。
-哈希、备份、音频ENOLINK对照与回退见 [M0正式部署](bringup/2026-10-23-display-m0-r4.md)；
+当前哈希、备份与门禁见 [Wave5隔离正式窗口](bringup/2026-10-23-wave5-isolation-final.md)；
+M0布局、音频ENOLINK对照与原基线回退见 [M0正式部署](bringup/2026-10-23-display-m0-r4.md)。
+隔离保留可能仍被 DMA 使用的内存到重启，不执行运行时复位；真实固件挂死未测试。
 短测不代表长期稳定性；此前 [Wave5正式部署](bringup/2026-10-22-edge-wave5-deploy.md)
 含正常重启pstore标记读回，本轮没有另做该重启检查。
 此前 pstore 启动的 SARADC channel 2 超时见[专项取证与离线候选](bringup/2026-10-22-saradc-timeout-audit.md)，

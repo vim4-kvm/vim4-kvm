@@ -1,9 +1,11 @@
-# 2026-10-23：Wave5 超时隔离候选（第二轮）
+# 2026-10-23：Wave5 超时隔离与十轮验收（第二轮）
 
-本轮按新的边界实现超时后隔离，不实现运行时复位或固件重载。当前仍是候选：
+正式窗口进展与构建产物修正见[窗口复验](2026-10-23-wave5-isolation-final.md)。
+
+本轮按新的边界实现超时后隔离，不实现运行时复位或固件重载。
 离线测试、完整构建与十次注入/重启/4K60 恢复通过，临时窗口已恢复基线与实际 HID。
-完整模块重打包也已通过，正式窗口 KVM 回归待完成；完整门禁通过前，
-不合入已部署内核分支，不更新部署版本锁。厂商复位证据与未解问题保留在
+完整模块重打包与第二次正式窗口九类回归通过，已保留并推送；详情见窗口复验记录。
+厂商复位证据与未解问题保留在
 [第一轮审查](2026-10-23-wave5-recovery.md)。测试起点为
 [M0 基线](2026-10-23-display-m0-r4.md)，build ID `f483ea42fee88be39ea67c43478638be67334d6e`。
 
@@ -80,7 +82,8 @@ final-window 的可选 `stage --wave5-monitor` 把监控脚本、单元和 manag
 - checkpatch strict：新逻辑及后续修正均为 0 errors/warnings/checks；新增文件提示
   FILE_PATH_CHANGES 单独过滤，目录已由既有 Wave5 MAINTAINERS 通配覆盖，不过滤其他类型。
 - manager `env -u GOROOT go test ./...` 通过，ARM64 静态编译通过；构建元数据为上述
-  `9b141c5` 且 vcs.modified=false。前端资产沿用基线构建，未修改前端源码。
+  `9b141c5` 且 vcs.modified=false。首次复用了主工作树旧 dist，正式门禁发现其缺失现有内核标记；
+  已按 pnpm 锁文件重建资产并重新编译，未修改前端源码，后续窗口重新完整验收。
 - 主仓 `python3 -m unittest discover -s tests -p 'test_*.py'`：共享工作区初版 195 项、5 项跳过；
   隔离主仓 worktree 最终 197 项、9 项跳过（未展开其子仓），均通过。
   监控器回归验证默认从不请求重启、持续空闲计时、忙碌/未知/有介质拒绝、每 boot 一次。
@@ -155,7 +158,7 @@ absoluteMouse=true、relativeMouse 坐标改变、click=true、wheel=true，最�
 VM 本地重打包通过，清单恢复为 2334 模块，Image/Wave5 字节及全部已加载模块 build ID 不变。
 完整包 SHA256 `770213bb108478a263be61f2b1b59031813ad639fd53232ed51f3b5393479cb1`；
 日志 `logs/wave5-isolation/package-complete.log`。已重新 stage formal-complete.bundle，
-待新窗口运行全部九类回归；任一失败回退。
+第一次正式窗口 manager 前端资产失败已回退；修正后第二次九类全部通过并保留。
 
 下一阶段仍缺独立寄存器手册、挂死态总线停止确认、两个 reset mask 差异与固件 SLEEP
 不可响应时的安全顺序，以及复位后实例上下文保留证据。软件故障注入不能补足真实挂死态
