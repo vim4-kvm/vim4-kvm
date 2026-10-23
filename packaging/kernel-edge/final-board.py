@@ -8,6 +8,7 @@ import os
 from pathlib import Path
 import re
 import shutil
+import shlex
 import sqlite3
 import struct
 import subprocess
@@ -89,6 +90,14 @@ def atomic_copy(source, target, mode=None):
     os.replace(temporary, target)
 
 
+def recovery_systemctl(*arguments):
+    """A wedged service manager must not prevent restoring boot files."""
+    try:
+        subprocess.run(['systemctl', *arguments], check=True, timeout=30)
+    except (subprocess.TimeoutExpired, subprocess.CalledProcessError) as error:
+        print('SYSTEMCTL_FAILED_CONTINUING', arguments, str(error), flush=True)
+
+
 class Board:
     def __init__(self, payload, backup):
         self.payload, self.backup = payload, backup
@@ -164,8 +173,26 @@ class Board:
         (self.backup / 'warnings.txt').write_text(run('dmesg', '-k', '-l', 'err,warn'))
         (self.backup / 'dmesg.txt').write_text(run('dmesg'))
         (self.backup / 'COMPLETE').touch()
+        self.prepare_rollback()
         os.sync()
         print('BACKUP_COMPLETE', self.backup, flush=True)
+
+    def prepare_rollback(self):
+        # Keep recovery independent of the staging directory and host process.
+        recovery = self.backup / 'recovery'
+        recovery.mkdir()
+        for name in ('final-board.py', 'deployment.json', 'manifest.json'):
+            shutil.copy2(self.payload / name, recovery / name)
+        command = ' '.join(map(shlex.quote, ['python3', str(recovery / 'final-board.py'),
+                            '--payload', str(recovery), '--backup', str(self.backup)]))
+        script = self.backup / 'rollback.sh'
+        script.write_text('#!/bin/sh\nset -eu\ncase "${1:-restore}" in\n'
+                          f' restore) {command} restore; sync ;;\n'
+                          f' verify) {command} verify-restore ;;\n'
+                          f' reboot) {command} restore; sync; timeout 30 systemctl reboot --no-block ;;\n'
+                          ' *) echo "Usage: $0 [restore|reboot|verify]" >&2; exit 2 ;;\nesac\n')
+        script.chmod(0o700)
+        print('INDEPENDENT_ROLLBACK', script, flush=True)
 
     def install(self):
         assert (self.backup / 'COMPLETE').exists()
@@ -180,7 +207,7 @@ class Board:
                         '-C', str(staging)], check=True)
         assert tree(staging / RELEASE) == {k: {'sha256': v} for k, v in self.report['modules'].items()}
         for name in ('one-kvm', 'vim4-manager'):
-            subprocess.run(['systemctl', 'stop', name], check=True, timeout=30)
+            recovery_systemctl('stop', name)
         if self.baseline['release'] == RELEASE:
             MODULES.rename(self.backup / 'original-modules')
         (staging / RELEASE).rename(MODULES)
@@ -192,7 +219,8 @@ class Board:
         IMAGE.unlink()
         shutil.copy2(self.payload / 'Image', IMAGE)
         shutil.copy2(self.payload / 'vim4.dtb', DTB)
-        subprocess.run(['systemctl', 'daemon-reload'], check=True)
+        os.sync()
+        recovery_systemctl('daemon-reload')
         registration = ['python3', str(self.payload / 'register-runtime.py'), 'register',
                         str(self.payload / 'runtime-proof.json')]
         if self.deployment.get('framebuffer_console'):
@@ -301,7 +329,7 @@ class Board:
         assert (self.backup / 'COMPLETE').exists()
         state = json.loads((self.backup / 'state.json').read_text())
         for service in ('one-kvm', 'vim4-manager'):
-            subprocess.run(['systemctl', 'stop', service], check=True, timeout=30)
+            recovery_systemctl('stop', service)
         # Files may be executable/in use. Unlink only our replaced payloads;
         # extraction retains /lib and preserves original file metadata.
         for name in state['files']:
@@ -314,8 +342,8 @@ class Board:
         for name in state['missing']:
             Path(name).unlink(missing_ok=True)
         self.restore_modules()
-        subprocess.run(['systemctl', 'daemon-reload'], check=True)
         os.sync()
+        recovery_systemctl('daemon-reload')
         print('RESTORED_REBOOT_REQUIRED', flush=True)
 
     def restore_modules(self):

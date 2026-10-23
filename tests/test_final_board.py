@@ -37,6 +37,47 @@ class StatusRecoveryTest(unittest.TestCase):
 
 
 class ModuleRecoveryTest(unittest.TestCase):
+    def test_restore_survives_wedged_service_manager(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            backup = Path(temporary)
+            (backup / 'COMPLETE').touch()
+            (backup / 'state.json').write_text(json.dumps({'files': {}, 'missing': []}))
+            instance = object.__new__(board.Board)
+            instance.backup = backup
+            calls = []
+
+            def execute(command, **kwargs):
+                calls.append(command)
+                if command[0] == 'systemctl':
+                    self.assertEqual(kwargs['timeout'], 30)
+                    raise board.subprocess.TimeoutExpired(command, 30)
+
+            with patch.object(board.subprocess, 'run', side_effect=execute), \
+                    patch.object(board.Path, 'unlink'), \
+                    patch.object(board.shutil, 'chown'), \
+                    patch.object(instance, 'restore_modules') as modules, \
+                    patch.object(board.os, 'sync') as sync:
+                instance.restore()
+            self.assertEqual(sum(command[0] == 'tar' for command in calls), 2)
+            modules.assert_called_once()
+            sync.assert_called_once()
+
+    def test_recovery_script_survives_payload_removal(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            payload, backup = root / 'payload', root / 'backup'
+            payload.mkdir()
+            backup.mkdir()
+            (payload / 'final-board.py').write_text('print("RECOVERY_EXECUTED")\n')
+            for name in ('deployment.json', 'manifest.json'):
+                (payload / name).write_text('{}')
+            instance = object.__new__(board.Board)
+            instance.payload, instance.backup = payload, backup
+            instance.prepare_rollback()
+            board.shutil.rmtree(payload)
+            result = board.subprocess.check_output([str(backup / 'rollback.sh'), 'verify'], text=True)
+            self.assertIn('RECOVERY_EXECUTED', result)
+
     def test_same_release_partial_install_restores_original_directory(self):
         for phase in ('before-rename', 'after-rename', 'after-install'):
             with self.subTest(phase=phase), tempfile.TemporaryDirectory() as temporary:
