@@ -7,6 +7,7 @@
 
 ## 2026-10-23
 
+- [M2 首次一次性上板：60Hz 翻页、PRIME 上屏，颜色错误阻塞验收](2026-10-23-display-m2-window1.md) — kernel video audio deployment board
 - [M2 原生 ENC2 模式切换：PLL/VENC/PHY、SCDC 与厂商参数对比（离线）](2026-10-23-display-m2-modeset.md) — kernel video audio deployment
 - [HDMI RX 同链路 7.3 / 厂商 5.15 十分钟对照](2026-10-23-hdmirx-vendor-comparison.md) — kernel video audio deployment board
 - [M2 RDMA 翻页与独立 TX 音频：离线实现，原生 modeset 仍缺失](2026-10-23-display-m2-rdma-audio.md) — kernel video audio deployment
