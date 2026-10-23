@@ -1,0 +1,91 @@
+{
+  "revision": "ca0e6c12862c62342cca81ac75fa95bacdeb2c3f",
+  "final_revision": "ca0e6c12862c62342cca81ac75fa95bacdeb2c3f",
+  "base": "c03c1a14507dfaf8b856c2608f9ac216021fc222",
+  "config_sha256": "8af98a1fbefdf163c407f9f04bb31372178b8f8d7d6f00f5dff162b930c968bf",
+  "effective_config_sha256": "8af98a1fbefdf163c407f9f04bb31372178b8f8d7d6f00f5dff162b930c968bf",
+  "build_requested": false,
+  "hardware_tested": false,
+  "results": [
+    {
+      "stage": "config",
+      "command": [
+        "make",
+        "-C",
+        "/home/deepdream/src/linux-7.3-maintenance",
+        "O=/home/deepdream/build/kernel-maintenance-20261023/verify-final-baseline/build",
+        "ARCH=arm64",
+        "-j4",
+        "olddefconfig"
+      ],
+      "exit": 0,
+      "seconds": 4.58,
+      "schema_diagnostics": []
+    },
+    {
+      "stage": "host-tests",
+      "command": [
+        "python3",
+        "/home/deepdream/src/linux-7.3-maintenance/scripts/vim4/offline-tests.py",
+        "--output",
+        "/home/deepdream/build/kernel-maintenance-20261023/verify-final-baseline/host-tests"
+      ],
+      "exit": 0,
+      "seconds": 12.13,
+      "schema_diagnostics": []
+    },
+    {
+      "stage": "checkpatch",
+      "command": [
+        "/home/deepdream/src/linux-7.3-maintenance/scripts/checkpatch.pl",
+        "--strict",
+        "--no-tree",
+        "-g",
+        "v7.3..HEAD"
+      ],
+      "exit": 1,
+      "seconds": 46.04,
+      "schema_diagnostics": []
+    },
+    {
+      "stage": "bindings",
+      "command": [
+        "make",
+        "-C",
+        "/home/deepdream/src/linux-7.3-maintenance",
+        "O=/home/deepdream/build/kernel-maintenance-20261023/verify-final-baseline/build",
+        "ARCH=arm64",
+        "-j4",
+        "DT_SCHEMA_FILES=arm/firmware/linaro,optee-tz.yaml:clock/amlogic,axg-audio-clkc.yaml:clock/amlogic,s4-pll-clkc.yaml:clock/amlogic,t7-cpu-clkc.yaml:clock/amlogic,t7-pll-clkc.yaml:display/amlogic,meson-dw-hdmi.yaml:display/amlogic,meson-t7-hdmi-tx.yaml:display/amlogic,meson-vpu.yaml:display/amlogic,t7-display-handoff.yaml:media/amlogic,s4-vcodec-dec.yaml:media/amlogic,t7-hdmirx.yaml:media/amlogic,t7-jpeg-encoder.yaml:media/amlogic,t7-vdin-test.yaml:media/cnm,wave521c.yaml:mmc/amlogic,meson-gx-mmc.yaml:net/amlogic,meson-dwmac.yaml:opp/amlogic,s4-cpu-operating-points.yaml:pci/amlogic,axg-pcie.yaml:phy/amlogic,g12a-usb2-phy.yaml:phy/amlogic,g12a-usb3-pcie-phy.yaml:pwm/pwm-amlogic.yaml:sound/amlogic,axg-fifo.yaml:sound/amlogic,g12a-toacodec.yaml:sound/amlogic,g12a-tohdmitx.yaml:thermal/amlogic,thermal.yaml:usb/amlogic,meson-g12a-usb-ctrl.yaml:usb/amlogic,t7-crg-udc.yaml:usb/generic-xhci.yaml",
+        "dt_binding_check"
+      ],
+      "exit": 0,
+      "seconds": 59.36,
+      "schema_diagnostics": []
+    },
+    {
+      "stage": "dtbs",
+      "command": [
+        "make",
+        "-C",
+        "/home/deepdream/src/linux-7.3-maintenance",
+        "O=/home/deepdream/build/kernel-maintenance-20261023/verify-final-baseline/build",
+        "ARCH=arm64",
+        "-j4",
+        "DT_SCHEMA_FILES=arm/firmware/linaro,optee-tz.yaml:clock/amlogic,axg-audio-clkc.yaml:clock/amlogic,s4-pll-clkc.yaml:clock/amlogic,t7-cpu-clkc.yaml:clock/amlogic,t7-pll-clkc.yaml:display/amlogic,meson-dw-hdmi.yaml:display/amlogic,meson-t7-hdmi-tx.yaml:display/amlogic,meson-vpu.yaml:display/amlogic,t7-display-handoff.yaml:media/amlogic,s4-vcodec-dec.yaml:media/amlogic,t7-hdmirx.yaml:media/amlogic,t7-jpeg-encoder.yaml:media/amlogic,t7-vdin-test.yaml:media/cnm,wave521c.yaml:mmc/amlogic,meson-gx-mmc.yaml:net/amlogic,meson-dwmac.yaml:opp/amlogic,s4-cpu-operating-points.yaml:pci/amlogic,axg-pcie.yaml:phy/amlogic,g12a-usb2-phy.yaml:phy/amlogic,g12a-usb3-pcie-phy.yaml:pwm/pwm-amlogic.yaml:sound/amlogic,axg-fifo.yaml:sound/amlogic,g12a-toacodec.yaml:sound/amlogic,g12a-tohdmitx.yaml:thermal/amlogic,thermal.yaml:usb/amlogic,meson-g12a-usb-ctrl.yaml:usb/amlogic,t7-crg-udc.yaml:usb/generic-xhci.yaml",
+        "CHECK_DTBS=y",
+        "amlogic/amlogic-t7-a311d2-khadas-vim4-audio-test.dtb",
+        "amlogic/amlogic-t7-a311d2-khadas-vim4-display-m0.dtb",
+        "amlogic/amlogic-t7-a311d2-khadas-vim4-display-m1.dtb",
+        "amlogic/amlogic-t7-a311d2-khadas-vim4-hdmirx-test.dtb",
+        "amlogic/amlogic-t7-a311d2-khadas-vim4-udc-test.dtb",
+        "amlogic/amlogic-t7-a311d2-khadas-vim4.dtb",
+        "amlogic/meson-s4-s805x2-aq222.dtb",
+        "amlogic/meson-s4-s905y4-khadas-vim1s.dtb"
+      ],
+      "exit": 0,
+      "seconds": 4.33,
+      "schema_diagnostics": []
+    }
+  ]
+}

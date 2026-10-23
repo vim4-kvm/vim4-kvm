@@ -3452,9 +3452,9 @@
         "checks": 0
       },
       "flags": [
-        "temporary-policy"
+        "submission-metadata"
       ],
-      "disposition": "private-temporary",
+      "disposition": "needs-cleanup",
       "patch": "drm/0008-380965874ead.patch",
       "sha256": "96e35849ea6d750f21f9ca5200be74c7f9ef3aef608d149d803661b1021a1fd3"
     },
@@ -3474,9 +3474,9 @@
         "checks": 0
       },
       "flags": [
-        "temporary-policy"
+        "submission-metadata"
       ],
-      "disposition": "private-temporary",
+      "disposition": "needs-cleanup",
       "patch": "drm/0009-58859979dde8.patch",
       "sha256": "0af84ca976ab1523aee52a558cb26224cc77cb325605bb0cc4da9c22b1a54e4b"
     },
@@ -3496,9 +3496,9 @@
         "checks": 0
       },
       "flags": [
-        "temporary-policy"
+        "submission-metadata"
       ],
-      "disposition": "private-temporary",
+      "disposition": "needs-cleanup",
       "patch": "drm/0010-db57ecd11395.patch",
       "sha256": "162ac71c3a1891976d5132c37b8577be7ddb4db77353b157a05be60c05c9b863"
     },
@@ -3518,9 +3518,9 @@
         "checks": 0
       },
       "flags": [
-        "temporary-policy"
+        "submission-metadata"
       ],
-      "disposition": "private-temporary",
+      "disposition": "needs-cleanup",
       "patch": "drm/0011-fb53c4b7fd22.patch",
       "sha256": "cc068cd9652cc84e5140866f4501ba1f332efbe6d261f7572864e95dade873e5"
     },
@@ -3540,9 +3540,9 @@
         "checks": 0
       },
       "flags": [
-        "temporary-policy"
+        "submission-metadata"
       ],
-      "disposition": "private-temporary",
+      "disposition": "needs-cleanup",
       "patch": "drm/0012-9c9b2202d452.patch",
       "sha256": "76ac21ce1c5481830cd4861cedf8521c1d869e89e8fe3a551694d1a656c986e0"
     },
@@ -3562,9 +3562,9 @@
         "checks": 0
       },
       "flags": [
-        "temporary-policy"
+        "submission-metadata"
       ],
-      "disposition": "private-temporary",
+      "disposition": "needs-cleanup",
       "patch": "drm/0013-431e8f4b17a6.patch",
       "sha256": "9ad473d41b0c01190c9dc5a8cb597abc8eee0237f9522107e2a24c8514c02663"
     },
@@ -3584,9 +3584,9 @@
         "checks": 0
       },
       "flags": [
-        "temporary-policy"
+        "submission-metadata"
       ],
-      "disposition": "private-temporary",
+      "disposition": "needs-cleanup",
       "patch": "drm/0014-e7618232c14c.patch",
       "sha256": "21468dc8eb79dea25b99686a1fee3d1f2af26425fd034998d1b93f0e80cca986"
     },
@@ -3606,9 +3606,9 @@
         "checks": 0
       },
       "flags": [
-        "temporary-policy"
+        "submission-metadata"
       ],
-      "disposition": "private-temporary",
+      "disposition": "needs-cleanup",
       "patch": "drm/0015-b6f67a719f44.patch",
       "sha256": "849f0f056e60db744b306334e9384790a14677a8c80dc1b76c995a12f0a4af56"
     },
@@ -3628,9 +3628,9 @@
         "checks": 0
       },
       "flags": [
-        "temporary-policy"
+        "submission-metadata"
       ],
-      "disposition": "private-temporary",
+      "disposition": "needs-cleanup",
       "patch": "drm/0016-0eca1c3d5eae.patch",
       "sha256": "9b2ac01db9561a6756674b01b883f8690c057a170ef99b05c235892764b1fae9"
     },
@@ -3650,9 +3650,9 @@
         "checks": 0
       },
       "flags": [
-        "temporary-policy"
+        "submission-metadata"
       ],
-      "disposition": "private-temporary",
+      "disposition": "needs-cleanup",
       "patch": "drm/0017-c4b80b0a9e8b.patch",
       "sha256": "bd8cccf4475e69448ef6e5ea7cdce4ce3042cf1b680b349bc9bb9147944de3b2"
     },
@@ -3672,9 +3672,9 @@
         "checks": 0
       },
       "flags": [
-        "temporary-policy"
+        "submission-metadata"
       ],
-      "disposition": "private-temporary",
+      "disposition": "needs-cleanup",
       "patch": "drm/0018-566984844e74.patch",
       "sha256": "cb7655edac130001555964793addde81cbdb7cfb93ebfe711c613d2e4fb4af38"
     },
@@ -3694,9 +3694,9 @@
         "checks": 0
       },
       "flags": [
-        "temporary-policy"
+        "submission-metadata"
       ],
-      "disposition": "private-temporary",
+      "disposition": "needs-cleanup",
       "patch": "drm/0019-984ed02f52fa.patch",
       "sha256": "1e77cd0bc9423feea72cabef5b601fceab505cb09da4f995d247753febd1cbd5"
     },
@@ -3716,9 +3716,9 @@
         "checks": 0
       },
       "flags": [
-        "temporary-policy"
+        "submission-metadata"
       ],
-      "disposition": "private-temporary",
+      "disposition": "needs-cleanup",
       "patch": "drm/0020-44554e319fea.patch",
       "sha256": "e5b634ad09245538045753444b8d7ffc9f30f9267da678768776724725a0b6dd"
     },
@@ -3738,9 +3738,9 @@
         "checks": 1
       },
       "flags": [
-        "temporary-policy"
+        "submission-metadata"
       ],
-      "disposition": "private-temporary",
+      "disposition": "needs-cleanup",
       "patch": "drm/0021-8cb76ed6d2e3.patch",
       "sha256": "cc8afb6eedbdd4d893c7916607cd65278c708f33776d80ff311cda323b00f92b"
     },
@@ -3760,9 +3760,9 @@
         "checks": 0
       },
       "flags": [
-        "temporary-policy"
+        "submission-metadata"
       ],
-      "disposition": "private-temporary",
+      "disposition": "needs-cleanup",
       "patch": "drm/0022-88f6df58aed7.patch",
       "sha256": "65f99c46d7036f5e0ab7bc465eded4a9ed1f37889ea15e288aa8004ea618ba03"
     },
@@ -3783,9 +3783,9 @@
         "checks": 0
       },
       "flags": [
-        "temporary-policy"
+        "submission-metadata"
       ],
-      "disposition": "private-temporary",
+      "disposition": "needs-cleanup",
       "patch": "drm/0023-e6a846a94106.patch",
       "sha256": "2a775e2a5ae728b5d17977622bb984df33b0193e2a9d540830eeabc6004b32a8"
     },
@@ -3805,9 +3805,9 @@
         "checks": 0
       },
       "flags": [
-        "temporary-policy"
+        "submission-metadata"
       ],
-      "disposition": "private-temporary",
+      "disposition": "needs-cleanup",
       "patch": "drm/0024-ed788105550b.patch",
       "sha256": "8450374f4a717810648c09fb041f1693e0588459bafd671c57bac2bc54a89a64"
     },
@@ -3827,9 +3827,9 @@
         "checks": 0
       },
       "flags": [
-        "temporary-policy"
+        "submission-metadata"
       ],
-      "disposition": "private-temporary",
+      "disposition": "needs-cleanup",
       "patch": "drm/0025-d7b98da30054.patch",
       "sha256": "2cfc7ea6d3e07e754db2a051874ac4a893b0ff3c946f6fc7df95defaf2e6a769"
     },
@@ -3849,9 +3849,9 @@
         "checks": 0
       },
       "flags": [
-        "temporary-policy"
+        "submission-metadata"
       ],
-      "disposition": "private-temporary",
+      "disposition": "needs-cleanup",
       "patch": "drm/0026-5b839973710b.patch",
       "sha256": "5a3726f4b14f4eece766184d88c985b02431be1b192abc7e906fab4b2b6eb421"
     },
@@ -3871,7 +3871,8 @@
         "checks": 0
       },
       "flags": [
-        "temporary-policy"
+        "temporary-policy",
+        "submission-metadata"
       ],
       "disposition": "private-temporary",
       "patch": "drm/0027-4ee8b7c192c9.patch",
@@ -3893,9 +3894,9 @@
         "checks": 0
       },
       "flags": [
-        "temporary-policy"
+        "submission-metadata"
       ],
-      "disposition": "private-temporary",
+      "disposition": "needs-cleanup",
       "patch": "drm/0028-a7f985c3f67b.patch",
       "sha256": "f488188b208b87eaf2cd039619eb26a9bc8d6663a71a62f70a763b8032c59d31"
     },
@@ -3917,9 +3918,9 @@
         "checks": 0
       },
       "flags": [
-        "temporary-policy"
+        "submission-metadata"
       ],
-      "disposition": "private-temporary",
+      "disposition": "needs-cleanup",
       "patch": "drm/0029-628e21ea1553.patch",
       "sha256": "5f80ce8c903209d1c4c3f38b2f9d14b73d20f44e6808d31d8dfd028071d58e5c"
     },
@@ -3943,9 +3944,9 @@
         "checks": 0
       },
       "flags": [
-        "temporary-policy"
+        "submission-metadata"
       ],
-      "disposition": "private-temporary",
+      "disposition": "needs-cleanup",
       "patch": "drm/0030-152862c85e1e.patch",
       "sha256": "5933e59a448378c82aed6b29564c58baded02e66b044c4e77b7aa6ca083c9e15"
     },
@@ -3965,9 +3966,9 @@
         "checks": 0
       },
       "flags": [
-        "temporary-policy"
+        "submission-metadata"
       ],
-      "disposition": "private-temporary",
+      "disposition": "needs-cleanup",
       "patch": "drm/0031-7dc499a42b4e.patch",
       "sha256": "64fdfb8421d39b792a068b48afa1f903a932c53f8f0dc4dddedbc14eba0528c7"
     },
@@ -3988,9 +3989,9 @@
         "checks": 0
       },
       "flags": [
-        "temporary-policy"
+        "submission-metadata"
       ],
-      "disposition": "private-temporary",
+      "disposition": "needs-cleanup",
       "patch": "drm/0032-e0d2f3d10701.patch",
       "sha256": "7db9e4543195cbe2e3df7d0644fcf96ec532632fab1cc563c321dc70d5bbb813"
     },
@@ -4010,9 +4011,9 @@
         "checks": 0
       },
       "flags": [
-        "temporary-policy"
+        "submission-metadata"
       ],
-      "disposition": "private-temporary",
+      "disposition": "needs-cleanup",
       "patch": "drm/0033-c5d5e0f06f3e.patch",
       "sha256": "1846fba2b6edca832701ad5c9bab1f74cf8541b7b61b958b1b028109f0d0d5a4"
     },
@@ -4032,9 +4033,9 @@
         "checks": 0
       },
       "flags": [
-        "temporary-policy"
+        "submission-metadata"
       ],
-      "disposition": "private-temporary",
+      "disposition": "needs-cleanup",
       "patch": "drm/0034-533726e4edf8.patch",
       "sha256": "b9b4f15849bf7472ee0c5d72545f5028b7ac2eed491329ac1a9f35c6a8ef2b11"
     },
@@ -4054,9 +4055,9 @@
         "checks": 0
       },
       "flags": [
-        "temporary-policy"
+        "submission-metadata"
       ],
-      "disposition": "private-temporary",
+      "disposition": "needs-cleanup",
       "patch": "drm/0035-33f23e56d44a.patch",
       "sha256": "3cbfedc9a34601cba57d1f81ab4983f916bdcc45f1e419febbf4fa53c5890886"
     },
@@ -4076,9 +4077,9 @@
         "checks": 0
       },
       "flags": [
-        "temporary-policy"
+        "submission-metadata"
       ],
-      "disposition": "private-temporary",
+      "disposition": "needs-cleanup",
       "patch": "drm/0036-a56dad74fa38.patch",
       "sha256": "0097b094dbdd6a7d44adec3d09de68644ad7fa4ebac58abbca9a03b69a0b7360"
     },
@@ -4099,9 +4100,9 @@
         "checks": 0
       },
       "flags": [
-        "temporary-policy"
+        "submission-metadata"
       ],
-      "disposition": "private-temporary",
+      "disposition": "needs-cleanup",
       "patch": "drm/0037-ddd7ebaff004.patch",
       "sha256": "8dab1fdf05bce7a5849306bddd9cf3d7f4d2d99b86190ccfebb087586589f05a"
     },
@@ -4121,9 +4122,9 @@
         "checks": 0
       },
       "flags": [
-        "temporary-policy"
+        "submission-metadata"
       ],
-      "disposition": "private-temporary",
+      "disposition": "needs-cleanup",
       "patch": "drm/0038-2a1ad68f1a28.patch",
       "sha256": "c81ce4594c2c2cc6fecd39e26c7ee3c2270862287a346adad9d9a064cf0d2eee"
     },
@@ -4143,9 +4144,9 @@
         "checks": 0
       },
       "flags": [
-        "temporary-policy"
+        "submission-metadata"
       ],
-      "disposition": "private-temporary",
+      "disposition": "needs-cleanup",
       "patch": "drm/0039-6c58a1e302b0.patch",
       "sha256": "81cec6b367d08d476614464be0a23a56fb75d5ea3f1702af962ae7aca0aaf3cc"
     },
@@ -4165,9 +4166,9 @@
         "checks": 0
       },
       "flags": [
-        "temporary-policy"
+        "submission-metadata"
       ],
-      "disposition": "private-temporary",
+      "disposition": "needs-cleanup",
       "patch": "drm/0040-d2dde3a88202.patch",
       "sha256": "67b15e54b3810f50c9fd885a31ac41358a4f7e9780d3d9bd63b97c076b5ae6cd"
     },
@@ -4187,9 +4188,9 @@
         "checks": 0
       },
       "flags": [
-        "temporary-policy"
+        "submission-metadata"
       ],
-      "disposition": "private-temporary",
+      "disposition": "needs-cleanup",
       "patch": "drm/0041-1773cefadbef.patch",
       "sha256": "843940a11f8456df32ff4948d5b64c77586502d854c253166716ca0c4b62f6b5"
     },
@@ -4210,9 +4211,9 @@
         "checks": 0
       },
       "flags": [
-        "temporary-policy"
+        "submission-metadata"
       ],
-      "disposition": "private-temporary",
+      "disposition": "needs-cleanup",
       "patch": "drm/0042-0dc31d74134d.patch",
       "sha256": "defdd6ec60d0b9a18cf4a72253223f87e7d4fccdec0d16b075798f6972081b08"
     },
@@ -4232,9 +4233,9 @@
         "checks": 0
       },
       "flags": [
-        "temporary-policy"
+        "submission-metadata"
       ],
-      "disposition": "private-temporary",
+      "disposition": "needs-cleanup",
       "patch": "drm/0043-dd450d1fd830.patch",
       "sha256": "d15bbcfd66efbf4cb5a1dee9e27f9ae327cde7832674d3d64a9055060cea399f"
     },
@@ -4254,9 +4255,9 @@
         "checks": 0
       },
       "flags": [
-        "temporary-policy"
+        "submission-metadata"
       ],
-      "disposition": "private-temporary",
+      "disposition": "needs-cleanup",
       "patch": "drm/0044-8c7682544aad.patch",
       "sha256": "39c045fa0ffd36dbbb196f930fcf4bc39b44e6f1131c849b824702440a58dd4e"
     },
@@ -4276,9 +4277,9 @@
         "checks": 0
       },
       "flags": [
-        "temporary-policy"
+        "submission-metadata"
       ],
-      "disposition": "private-temporary",
+      "disposition": "needs-cleanup",
       "patch": "drm/0045-da18155e76c9.patch",
       "sha256": "2643d72fd90a2b9da0eb760eec4865caec057c39cdb096134e23bcaf9a62df3d"
     },
@@ -6030,9 +6031,9 @@
         "checks": 0
       },
       "flags": [
-        "temporary-policy"
+        "submission-metadata"
       ],
-      "disposition": "private-temporary",
+      "disposition": "needs-cleanup",
       "patch": "dt-bindings/0129-0ca12a679765.patch",
       "sha256": "9526d2087142d2b710289b0fc91a50746899b2eb6c6649079aa93f28ef7043f1"
     },
@@ -6052,9 +6053,9 @@
         "checks": 0
       },
       "flags": [
-        "temporary-policy"
+        "submission-metadata"
       ],
-      "disposition": "private-temporary",
+      "disposition": "needs-cleanup",
       "patch": "platform-other/0130-764474aa0195.patch",
       "sha256": "9193c7cf7cf79de9073f48352d165424cbe857752c2fb630bd35feef4ef38dc4"
     },
@@ -6077,9 +6078,9 @@
         "checks": 0
       },
       "flags": [
-        "temporary-policy"
+        "submission-metadata"
       ],
-      "disposition": "private-temporary",
+      "disposition": "needs-cleanup",
       "patch": "dt/0131-e7437d338a67.patch",
       "sha256": "acad892202494616b5fb12538981a028e962df7aa56ab529e57daf69f9505205"
     },
@@ -8061,8 +8062,11 @@
         "warnings": 261,
         "checks": 5
       },
-      "flags": [],
-      "disposition": "needs-cleanup",
+      "flags": [
+        "private-sysfs",
+        "private-ioctl"
+      ],
+      "disposition": "private-temporary",
       "patch": "clk/0216-ac775d0cd062.patch",
       "sha256": "2f2b39e630a99e7acd248e0970ad78b30f82385883ad09ff414c033aabcd52c6"
     },

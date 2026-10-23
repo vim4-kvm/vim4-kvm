@@ -1,0 +1,165 @@
+{
+  "source": "0a775305f0ad81475f65d33b15f79099c8445c75",
+  "target": "20a33c6b6cbe7e4805dfb6cd68816937443aa148",
+  "baseline_revision": "ca0e6c12862c62342cca81ac75fa95bacdeb2c3f",
+  "next_revision": "e38d04466478edff9d6ecb868a41849efd9e0156",
+  "baseline_tree": "fc2eb3d40d42e7f395ec9a62621e42308c7b3b88",
+  "next_tree": "e4dab9a19c39145d2891dd2a291c34f723ede777",
+  "input_patches": 290,
+  "rebase_complete": true,
+  "conflict_stops": 9,
+  "rebase_elapsed_seconds_including_manual_review": 1028,
+  "conflict_files_unique": [
+    "drivers/clk/meson/t7-peripherals.c",
+    "drivers/gpu/drm/bridge/synopsys/dw-hdmi.c",
+    "drivers/gpu/drm/meson/meson_encoder_hdmi.c",
+    "drivers/media/platform/chips-media/wave5/wave5-vpuapi.c",
+    "drivers/mfd/khadas-mcu.c",
+    "drivers/net/wireless/broadcom/brcm80211/brcmfmac/cfg80211.c",
+    "drivers/thermal/khadas_mcu_fan.c"
+  ],
+  "conflicts": [
+    {
+      "commit": "a7f985c3f67ba",
+      "subject": "FROMLIST(v7): drm: bridge: dw_hdmi: Rework HDP and RXSENSE interrupt handling",
+      "files": [
+        "drivers/gpu/drm/bridge/synopsys/dw-hdmi.c"
+      ],
+      "log": "rebase-identified.log"
+    },
+    {
+      "commit": "da18155e76c9c",
+      "subject": "fixup! drm/meson: encoder_hdmi: fix undefined err_put_node label",
+      "files": [
+        "drivers/gpu/drm/meson/meson_encoder_hdmi.c"
+      ],
+      "log": "continue-01.log"
+    },
+    {
+      "commit": "fedccb17883c7",
+      "subject": "drm/meson: update the HDR infoframe without a modeset",
+      "files": [
+        "drivers/gpu/drm/meson/meson_encoder_hdmi.c"
+      ],
+      "log": "continue-02.log"
+    },
+    {
+      "commit": "a752288bf917d",
+      "subject": "mfd: khadas-mcu: Add support for VIM4 MCU variant",
+      "files": [
+        "drivers/mfd/khadas-mcu.c"
+      ],
+      "log": "continue-03.log"
+    },
+    {
+      "commit": "9590cf5921824",
+      "subject": "thermal: khadas-mcu-fan: Add fan config from platform data Add regulator support",
+      "files": [
+        "drivers/thermal/khadas_mcu_fan.c"
+      ],
+      "log": "continue-04.log"
+    },
+    {
+      "commit": "bf522d8b884ae",
+      "subject": "clk: meson: t7: keep the memory fabric clocks running",
+      "files": [
+        "drivers/clk/meson/t7-peripherals.c"
+      ],
+      "log": "continue-05.log"
+    },
+    {
+      "commit": "8205175f017ba",
+      "subject": "thermal: khadas-mcu-fan: add quiet automatic cooling for VIM4",
+      "files": [
+        "drivers/thermal/khadas_mcu_fan.c"
+      ],
+      "log": "continue-06.log"
+    },
+    {
+      "commit": "805385d90d4e3",
+      "subject": "Advertise external SAE AKMs after firmware capability discovery",
+      "files": [
+        "drivers/net/wireless/broadcom/brcm80211/brcmfmac/cfg80211.c"
+      ],
+      "log": "continue-07.log"
+    },
+    {
+      "commit": "39d42b6393f92",
+      "subject": "media: wave5: recover T7 encoders through a drained power cycle",
+      "files": [
+        "drivers/media/platform/chips-media/wave5/wave5-vpuapi.c"
+      ],
+      "log": "continue-08.log"
+    }
+  ],
+  "automatically_dropped": [
+    {
+      "commit": "c29c385f19a2996fd229655f3f9d549ba862f7fb",
+      "subject": "arm64: dts: amlogic: t7: Add i2c controller node"
+    },
+    {
+      "commit": "e0fa5f8a9183b14f2f34357ab3b859645162505e",
+      "subject": "arm64: dts: amlogic: t7: khadas-vim4: Add i2c MCU fan node"
+    },
+    {
+      "commit": "eb2de2f088b2cfae0d13451871709472d343ff9d",
+      "subject": "dt-bindings: thermal: amlogic: describe bus clock for t7-thermal"
+    },
+    {
+      "commit": "8b58b51c79216c820485162a7c54d4ad4d857a51",
+      "subject": "thermal/drivers/amlogic: switch to clk_bulk API to support multiple clocks"
+    },
+    {
+      "commit": "4ad58653341305df954c40cdf4534b39e3fe3b76",
+      "subject": "dt-bindings: mmc: amlogic,meson-gx-mmc: document the T7 pipeline clock"
+    },
+    {
+      "commit": "c8bb8e7ac755978676974320751904da446be937",
+      "subject": "mmc: meson-gx: enable the bus pipeline clock on T7"
+    },
+    {
+      "commit": "8cf0c9244c13caf296645e213600ab8c494731fb",
+      "subject": "arm64: dts: amlogic: t7: add the pipeline clock to the MMC controllers"
+    }
+  ],
+  "first_compile": {
+    "errors": 6,
+    "warnings": 1,
+    "diagnostics": [
+      "/home/deepdream/src/linux-next-vim4-maintenance/drivers/gpu/drm/meson/meson_t7_handoff.c:168:10: error: \u2018const struct drm_plane_funcs\u2019 has no member named \u2018reset\u2019",
+      "/home/deepdream/src/linux-next-vim4-maintenance/drivers/gpu/drm/meson/meson_t7_handoff.c:168:18: error: \u2018drm_atomic_helper_plane_reset\u2019 undeclared here (not in a function); did you mean \u2018drm_atomic_helper_page_flip\u2019?",
+      "/home/deepdream/src/linux-next-vim4-maintenance/drivers/gpu/drm/meson/meson_t7_handoff.c:240:10: error: \u2018const struct drm_crtc_funcs\u2019 has no member named \u2018reset\u2019",
+      "/home/deepdream/src/linux-next-vim4-maintenance/drivers/gpu/drm/meson/meson_t7_handoff.c:240:18: error: \u2018drm_atomic_helper_crtc_reset\u2019 undeclared here (not in a function); did you mean \u2018drm_atomic_helper_check_modeset\u2019?",
+      "/home/deepdream/src/linux-next-vim4-maintenance/drivers/gpu/drm/meson/meson_t7_handoff.c:433:15: error: implicit declaration of function \u2018drm_simple_encoder_init\u2019; did you mean \u2018drmm_encoder_init\u2019? [-Werror=implicit-function-declaration]",
+      "/home/deepdream/src/linux-next-vim4-maintenance/drivers/gpu/drm/meson/meson_hdmitx21.c:1055:27: error: implicit declaration of function \u2018devm_drm_of_get_bridge\u2019 [-Werror=implicit-function-declaration]",
+      "/home/deepdream/src/linux-next-vim4-maintenance/drivers/gpu/drm/meson/meson_hdmitx21.c:1055:25: warning: assignment to \u2018struct drm_bridge *\u2019 from \u2018int\u2019 makes pointer from integer without a cast [-Wint-conversion]"
+    ],
+    "exit": 2
+  },
+  "fixed_objects_exit": 0,
+  "baseline_full_exit": 0,
+  "next_full_exit": 0,
+  "baseline_module_count": 2334,
+  "next_module_count": 2333,
+  "compiler": "gcc (Ubuntu 13.3.0-6ubuntu2~24.04.1) 13.3.0",
+  "hardware_tested": false,
+  "config_sha256": "8af98a1fbefdf163c407f9f04bb31372178b8f8d7d6f00f5dff162b930c968bf",
+  "note": "The first push lacked VM credentials; final pushes use the existing developer credential without persistent Git configuration changes. KUnit was not run.",
+  "baseline_effective_config_sha256": "8af98a1fbefdf163c407f9f04bb31372178b8f8d7d6f00f5dff162b930c968bf",
+  "baseline_release": "7.3.0-vim4kvm-uhd1+",
+  "baseline_image_sha256": "f756a3f8b83d0fcb84e5619a0691508bf93db2386d59862e43c165e83d625c93",
+  "next_effective_config_sha256": "45071ddf7f67750e689af6bfcc053a8a7e51613ab07e1ea82ebf417f0b63fdc7",
+  "next_release": "7.3.0-next-20261023-vim4kvm-uhd1+",
+  "next_image_sha256": "f1e28587d2eec45bb7fbbda607d507469453181a7742eda645832b8d384114cd",
+  "removed_modules_after_olddefconfig": [
+    "drivers/iio/dac/mcp47feb02.ko",
+    "drivers/staging/rtl8723bs/r8723bs.ko",
+    "fs/nfs/blocklayout/blocklayoutdriver.ko",
+    "net/llc/llc2.ko"
+  ],
+  "added_modules_after_olddefconfig": [
+    "drivers/gpio/gpio-shared-proxy.ko",
+    "drivers/virt/steal_governor.ko",
+    "lib/crypto/libsha3.ko"
+  ]
+}

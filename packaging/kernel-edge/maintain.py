@@ -49,6 +49,31 @@ def write_json(path, value):
     path.write_text(json.dumps(value, ensure_ascii=False, indent=2) + '\n')
 
 
+def classify_patch(patch, subject, checkpatch_exit):
+    """Flag review obligations without treating standard V4L2 ioctls as private."""
+    flags = []
+    added = '\n'.join(line[1:] for line in patch.decode().splitlines()
+                      if line.startswith('+') and not line.startswith('+++'))
+    for label, pattern in (
+        ('private-sysfs', r'(?:DEVICE|CLASS)_ATTR'),
+        ('private-ioctl', r'\bmisc_register\('),
+        ('module-parameter', r'module_param'),
+        ('debug-interface', r'debugfs_create'),
+        ('temporary-policy', r'(?i)experiment|bring.up|\bhack\b|keep.*(?:clock|domain).*on|force.*on'),
+        ('submission-metadata', r'fixup!|FROMLIST'),
+    ):
+        if re.search(pattern, added + '\n' + subject):
+            flags.append(label)
+    private = set(flags) - {'submission-metadata', 'debug-interface'}
+    if private:
+        disposition = 'private-temporary'
+    elif flags or checkpatch_exit:
+        disposition = 'needs-cleanup'
+    else:
+        disposition = 'upstream-candidate'
+    return flags, disposition
+
+
 def inventory(args):
     source = args.source.resolve()
     output = args.output.resolve()
@@ -57,7 +82,7 @@ def inventory(args):
     base = git(source, 'rev-parse', args.base + '^{commit}')
     floor = git(source, 'rev-parse', args.floor + '^{commit}')
     commits = git(source, 'rev-list', '--reverse', '--topo-order', f'{floor}..{head}').splitlines()
-    upstream = set(git(source, 'rev-list', base).splitlines())
+    upstream = set(git(source, 'rev-list', f'{floor}..{base}').splitlines())
     rows, series = [], []
     patch_count = 0
     for number, commit in enumerate(commits, 1):
@@ -75,7 +100,9 @@ def inventory(args):
             patch = subprocess.check_output(['git', '-C', str(source), 'format-patch',
                                              '-1', '--stdout', '--no-signature', commit])
             patch_count += 1
-            primary = next((name for name in topics if name not in ('dt', 'dt-bindings', 'platform-other')), topics[0] if topics else 'platform-other')
+            primary = next(
+                (name for name in topics if name not in ('dt', 'dt-bindings', 'platform-other')),
+                topics[0] if topics else 'platform-other')
             relative = Path(primary) / f'{patch_count:04d}-{commit[:12]}.patch'
             destination = output / relative
             destination.parent.mkdir(exist_ok=True)
@@ -86,22 +113,12 @@ def inventory(args):
                                      capture_output=True, text=True)
             (output / (str(relative) + '.checkpatch')).write_text(checked.stdout + checked.stderr)
             totals = re.search(r'total: (\d+) errors, (\d+) warnings, (\d+) checks', checked.stdout)
-            row['checkpatch'] = dict(zip(('errors', 'warnings', 'checks'), map(int, totals.groups()))) if totals else {'exit': checked.returncode}
+            row['checkpatch'] = (
+                dict(zip(('errors', 'warnings', 'checks'), map(int, totals.groups())))
+                if totals else {'exit': checked.returncode})
             # These markers require review; a clean style check alone never
             # establishes hardware correctness or upstream acceptance.
-            flags = []
-            added = '\n'.join(line[1:] for line in patch.decode().splitlines() if line.startswith('+') and not line.startswith('+++'))
-            for label, pattern in (
-                ('private-sysfs', r'DEVICE_ATTR'),
-                ('module-parameter', r'module_param'),
-                ('debug-interface', r'debugfs_create'),
-                ('temporary-policy', r'(?i)experiment|bring.up|\bhack\b|keep.*(?:clock|domain).*on|force.*on|fixup!|FROMLIST'),
-            ):
-                if re.search(pattern, added + '\n' + subject):
-                    flags.append(label)
-            row['flags'] = flags
-            row['disposition'] = ('private-temporary' if flags else
-                                  'upstream-candidate' if checked.returncode == 0 else 'needs-cleanup')
+            row['flags'], row['disposition'] = classify_patch(patch, subject, checked.returncode)
             row['patch'] = str(relative)
             row['sha256'] = hashlib.sha256(patch).hexdigest()
         rows.append(row)
@@ -122,11 +139,13 @@ def inventory(args):
                 if replay.returncode:
                     replay_exit = replay.returncode
                     break
-        tree = subprocess.check_output(['git', '-C', str(source), 'write-tree'], env=environment, text=True).strip() if not replay_exit else None
+        tree = (subprocess.check_output(['git', '-C', str(source), 'write-tree'],
+                                        env=environment, text=True).strip()
+                if not replay_exit else None)
     replayable = tree == git(source, 'rev-parse', head + '^{tree}')
     write_json(output / 'inventory.json', {'base': base, 'floor': floor, 'head': head, 'commits': rows})
     with (output / 'inventory.tsv').open('w') as stream:
-        writer = csv.writer(stream, delimiter='\t')
+        writer = csv.writer(stream, delimiter='\t', lineterminator='\n')
         writer.writerow(('commit', 'kind', 'topics', 'disposition', 'checkpatch', 'flags', 'subject'))
         for row in rows:
             writer.writerow((row['commit'], row['kind'], ','.join(row['topics']), row['disposition'],
@@ -135,7 +154,9 @@ def inventory(args):
                'dispositions': dict(Counter(row['disposition'] for row in rows)),
                'patches': patch_count,
                'replay_tree': tree, 'replay_matches_source': replayable,
-               'topics_overlapping': dict(Counter(name for row in rows if row['commit'] not in upstream and row['kind'] == 'patch' for name in row['topics']))}
+               'topics_overlapping': dict(Counter(
+                   name for row in rows if row['commit'] not in upstream and row['kind'] == 'patch'
+                   for name in row['topics']))}
     write_json(output / 'summary.json', summary)
     print(json.dumps(summary, indent=2))
     return int(not replayable)
@@ -161,7 +182,8 @@ def forward(args):
         result = subprocess.run(['git', '-C', str(worktree), '-c', 'rerere.enabled=false',
                                  'rebase', '--onto', target, base], stdout=stream, stderr=subprocess.STDOUT)
     conflicts = git(worktree, 'diff', '--name-only', '--diff-filter=U').splitlines()
-    stopped = subprocess.run(['git', '-C', str(worktree), 'rev-parse', '--verify', 'REBASE_HEAD'], capture_output=True, text=True)
+    stopped = subprocess.run(['git', '-C', str(worktree), 'rev-parse', '--verify', 'REBASE_HEAD'],
+                             capture_output=True, text=True)
     report = {'source': head, 'base': base, 'target': target, 'branch': args.branch,
               'worktree': str(worktree), 'exit': result.returncode,
               'seconds': round(time.monotonic() - started, 2),
@@ -214,20 +236,22 @@ def verify(args):
         log = (output / (name + '.log')).read_text(errors='replace')
         # Kbuild can exit zero after reporting dt-schema validation failures.
         diagnostics = [line for line in log.splitlines() if re.search(
-            r'\.dtb:|\.yaml:.*(?:error|warning)|Error:|Warning \(|ignoring, error in schema', line)] if name in ('bindings', 'dtbs') else []
+            r'\.dtb:|\.yaml:|Error:|Warning \(|ignoring, error in schema', line)] if name in ('bindings', 'dtbs') else []
         results.append({'stage': name, 'command': command, 'exit': result.returncode,
                         'seconds': round(time.monotonic() - started, 2),
                         'schema_diagnostics': diagnostics})
         print(f'{name}: exit={result.returncode} diagnostics={len(diagnostics)}', flush=True)
         if name == 'config' and result.returncode:
             break
+    final_revision = git(source, 'rev-parse', 'HEAD')
+    source_changed = final_revision != revision
     write_json(output / 'verify.json', {
-        'revision': revision, 'final_revision': git(source, 'rev-parse', 'HEAD'),
+        'revision': revision, 'final_revision': final_revision, 'source_changed': source_changed,
         'base': git(source, 'rev-parse', args.base + '^{commit}'),
         'config_sha256': hashlib.sha256(args.config.read_bytes()).hexdigest(),
         'effective_config_sha256': hashlib.sha256((build / '.config').read_bytes()).hexdigest(),
         'build_requested': args.build, 'hardware_tested': False, 'results': results})
-    return int(any(row['exit'] or row['schema_diagnostics'] for row in results))
+    return int(source_changed or any(row['exit'] or row['schema_diagnostics'] for row in results))
 
 
 def main():

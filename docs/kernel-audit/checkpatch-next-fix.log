@@ -1,0 +1,3 @@
+total: 0 errors, 0 warnings, 0 checks, 183 lines checked
+
+Commit e38d04466478 ("drm/meson: adapt T7 drivers to current state and bridge APIs") has no obvious style problems and is ready for submission.

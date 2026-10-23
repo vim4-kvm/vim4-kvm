@@ -1,0 +1,18 @@
+----------------------------------------------------------------------------------
+Commit 3f57f9102b6f ("dt-bindings: describe T7 JPEG and CRG controller resources")
+----------------------------------------------------------------------------------
+total: 0 errors, 0 warnings, 0 checks, 145 lines checked
+
+Commit 3f57f9102b6f ("dt-bindings: describe T7 JPEG and CRG controller resources") has no obvious style problems and is ready for submission.
+----------------------------------------------------------------------------------------
+Commit d2bd279971a2 ("scripts: vim4: unify host regression fixtures and optional KUnit")
+----------------------------------------------------------------------------------------
+total: 0 errors, 0 warnings, 0 checks, 128 lines checked
+
+Commit d2bd279971a2 ("scripts: vim4: unify host regression fixtures and optional KUnit") has no obvious style problems and is ready for submission.
+-------------------------------------------------------------------------------------
+Commit ca0e6c12862c ("media: amlogic: describe current receiver and VDIN experiment")
+-------------------------------------------------------------------------------------
+total: 0 errors, 0 warnings, 0 checks, 31 lines checked
+
+Commit ca0e6c12862c ("media: amlogic: describe current receiver and VDIN experiment") has no obvious style problems and is ready for submission.

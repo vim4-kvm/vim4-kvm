@@ -1,0 +1,421 @@
+### rebase-identified.log
+Rebasing (1/290)
+Rebasing (2/290)
+Rebasing (3/290)
+Rebasing (4/290)
+Rebasing (5/290)
+Rebasing (6/290)
+Rebasing (7/290)
+Rebasing (8/290)
+Rebasing (9/290)
+Rebasing (10/290)
+Rebasing (11/290)
+Rebasing (12/290)
+Rebasing (13/290)
+Rebasing (14/290)
+Rebasing (15/290)
+Rebasing (16/290)
+Rebasing (17/290)
+Rebasing (18/290)
+Rebasing (19/290)
+Rebasing (20/290)
+Rebasing (21/290)
+Rebasing (22/290)
+Rebasing (23/290)
+Rebasing (24/290)
+Rebasing (25/290)
+Rebasing (26/290)
+Rebasing (27/290)
+Rebasing (28/290)
+Auto-merging drivers/gpu/drm/bridge/synopsys/dw-hdmi.c
+CONFLICT (content): Merge conflict in drivers/gpu/drm/bridge/synopsys/dw-hdmi.c
+error: could not apply a7f985c3f67ba... FROMLIST(v7): drm: bridge: dw_hdmi: Rework HDP and RXSENSE interrupt handling
+hint: Resolve all conflicts manually, mark them as resolved with
+hint: "git add/rm <conflicted_files>", then run "git rebase --continue".
+hint: You can instead skip this commit: run "git rebase --skip".
+hint: To abort and get back to the state before "git rebase", run "git rebase --abort".
+Could not apply a7f985c3f67ba... FROMLIST(v7): drm: bridge: dw_hdmi: Rework HDP and RXSENSE interrupt handling
+
+### continue-01.log
+[detached HEAD 1c0739346182b] FROMLIST(v7): drm: bridge: dw_hdmi: Rework HDP and RXSENSE interrupt handling
+ Author: Jonas Karlman <jonas@kwiboo.se>
+ 1 file changed, 22 insertions(+), 125 deletions(-)
+Rebasing (29/290)
+Rebasing (30/290)
+Rebasing (31/290)
+Rebasing (32/290)
+Rebasing (33/290)
+Rebasing (34/290)
+Rebasing (35/290)
+Rebasing (36/290)
+Rebasing (37/290)
+Rebasing (38/290)
+Rebasing (39/290)
+Rebasing (40/290)
+Rebasing (41/290)
+Rebasing (42/290)
+Rebasing (43/290)
+Rebasing (44/290)
+Rebasing (45/290)
+Auto-merging drivers/gpu/drm/meson/meson_encoder_hdmi.c
+CONFLICT (content): Merge conflict in drivers/gpu/drm/meson/meson_encoder_hdmi.c
+error: could not apply da18155e76c9c... fixup! drm/meson: encoder_hdmi: fix undefined err_put_node label
+hint: Resolve all conflicts manually, mark them as resolved with
+hint: "git add/rm <conflicted_files>", then run "git rebase --continue".
+hint: You can instead skip this commit: run "git rebase --skip".
+hint: To abort and get back to the state before "git rebase", run "git rebase --abort".
+Could not apply da18155e76c9c... fixup! drm/meson: encoder_hdmi: fix undefined err_put_node label
+
+### continue-02.log
+[detached HEAD 826aaa72da35d] fixup! drm/meson: encoder_hdmi: fix undefined err_put_node label
+ Author: Christian Hewitt <christianshewitt@gmail.com>
+ 1 file changed, 5 insertions(+), 11 deletions(-)
+Rebasing (46/290)
+Rebasing (47/290)
+Rebasing (48/290)
+Rebasing (49/290)
+Rebasing (50/290)
+Rebasing (51/290)
+Rebasing (52/290)
+Rebasing (53/290)
+Rebasing (54/290)
+Rebasing (55/290)
+Rebasing (56/290)
+Rebasing (57/290)
+Rebasing (58/290)
+Rebasing (59/290)
+Rebasing (60/290)
+Rebasing (61/290)
+Rebasing (62/290)
+Rebasing (63/290)
+Rebasing (64/290)
+Rebasing (65/290)
+Auto-merging drivers/gpu/drm/meson/meson_crtc.c
+Auto-merging drivers/gpu/drm/meson/meson_encoder_hdmi.c
+CONFLICT (content): Merge conflict in drivers/gpu/drm/meson/meson_encoder_hdmi.c
+error: could not apply fedccb17883c7... drm/meson: update the HDR infoframe without a modeset
+hint: Resolve all conflicts manually, mark them as resolved with
+hint: "git add/rm <conflicted_files>", then run "git rebase --continue".
+hint: You can instead skip this commit: run "git rebase --skip".
+hint: To abort and get back to the state before "git rebase", run "git rebase --abort".
+Could not apply fedccb17883c7... drm/meson: update the HDR infoframe without a modeset
+
+### continue-03.log
+[detached HEAD 85c6b20d13ee4] drm/meson: update the HDR infoframe without a modeset
+ Author: Christian Hewitt <christianshewitt@gmail.com>
+ 4 files changed, 55 insertions(+), 2 deletions(-)
+Rebasing (66/290)
+Rebasing (67/290)
+Rebasing (68/290)
+Rebasing (69/290)
+Rebasing (70/290)
+Rebasing (71/290)
+Rebasing (72/290)
+Rebasing (73/290)
+Rebasing (74/290)
+Rebasing (75/290)
+Rebasing (76/290)
+Rebasing (77/290)
+Rebasing (78/290)
+Rebasing (79/290)
+Rebasing (80/290)
+Rebasing (81/290)
+Rebasing (82/290)
+Rebasing (83/290)
+Rebasing (84/290)
+Rebasing (85/290)
+Rebasing (86/290)
+Rebasing (87/290)
+Rebasing (88/290)
+Rebasing (89/290)
+Rebasing (90/290)
+Auto-merging drivers/mfd/khadas-mcu.c
+CONFLICT (content): Merge conflict in drivers/mfd/khadas-mcu.c
+error: could not apply a752288bf917d... mfd: khadas-mcu: Add support for VIM4 MCU variant
+hint: Resolve all conflicts manually, mark them as resolved with
+hint: "git add/rm <conflicted_files>", then run "git rebase --continue".
+hint: You can instead skip this commit: run "git rebase --skip".
+hint: To abort and get back to the state before "git rebase", run "git rebase --abort".
+Could not apply a752288bf917d... mfd: khadas-mcu: Add support for VIM4 MCU variant
+
+### continue-04.log
+[detached HEAD 7f9249f65200a] mfd: khadas-mcu: Add support for VIM4 MCU variant
+ Author: Ronald Claveau <linux-kernel-dev@aliel.fr>
+ 1 file changed, 50 insertions(+), 37 deletions(-)
+Rebasing (91/290)
+Auto-merging drivers/thermal/khadas_mcu_fan.c
+CONFLICT (content): Merge conflict in drivers/thermal/khadas_mcu_fan.c
+error: could not apply 9590cf5921824... thermal: khadas-mcu-fan: Add fan config from platform data Add regulator support
+hint: Resolve all conflicts manually, mark them as resolved with
+hint: "git add/rm <conflicted_files>", then run "git rebase --continue".
+hint: You can instead skip this commit: run "git rebase --skip".
+hint: To abort and get back to the state before "git rebase", run "git rebase --abort".
+Could not apply 9590cf5921824... thermal: khadas-mcu-fan: Add fan config from platform data Add regulator support
+
+### continue-05.log
+[detached HEAD f03ee5380fb10] thermal: khadas-mcu-fan: Add fan config from platform data Add regulator support
+ Author: Ronald Claveau <linux-kernel-dev@aliel.fr>
+ 1 file changed, 56 insertions(+), 71 deletions(-)
+Rebasing (92/290)
+dropping c29c385f19a2996fd229655f3f9d549ba862f7fb arm64: dts: amlogic: t7: Add i2c controller node -- patch contents already upstream
+Rebasing (93/290)
+dropping e0fa5f8a9183b14f2f34357ab3b859645162505e arm64: dts: amlogic: t7: khadas-vim4: Add i2c MCU fan node -- patch contents already upstream
+Rebasing (94/290)
+Rebasing (95/290)
+Rebasing (96/290)
+Rebasing (97/290)
+Rebasing (98/290)
+Rebasing (99/290)
+Rebasing (100/290)
+Rebasing (101/290)
+Rebasing (102/290)
+Rebasing (103/290)
+Rebasing (104/290)
+Rebasing (105/290)
+Rebasing (106/290)
+Rebasing (107/290)
+Rebasing (108/290)
+Rebasing (109/290)
+Rebasing (110/290)
+Rebasing (111/290)
+Rebasing (112/290)
+Rebasing (113/290)
+Rebasing (114/290)
+Rebasing (115/290)
+Rebasing (116/290)
+Rebasing (117/290)
+Rebasing (118/290)
+Rebasing (119/290)
+Rebasing (120/290)
+Rebasing (121/290)
+Rebasing (122/290)
+Rebasing (123/290)
+Rebasing (124/290)
+Rebasing (125/290)
+Rebasing (126/290)
+Rebasing (127/290)
+Rebasing (128/290)
+Rebasing (129/290)
+Rebasing (130/290)
+Rebasing (131/290)
+Rebasing (132/290)
+dropping eb2de2f088b2cfae0d13451871709472d343ff9d dt-bindings: thermal: amlogic: describe bus clock for t7-thermal -- patch contents already upstream
+Rebasing (133/290)
+dropping 8b58b51c79216c820485162a7c54d4ad4d857a51 thermal/drivers/amlogic: switch to clk_bulk API to support multiple clocks -- patch contents already upstream
+Rebasing (134/290)
+Rebasing (135/290)
+Rebasing (136/290)
+Rebasing (137/290)
+Rebasing (138/290)
+Rebasing (139/290)
+Rebasing (140/290)
+Rebasing (141/290)
+Rebasing (142/290)
+Rebasing (143/290)
+Auto-merging drivers/clk/meson/t7-peripherals.c
+CONFLICT (content): Merge conflict in drivers/clk/meson/t7-peripherals.c
+error: could not apply bf522d8b884ae... clk: meson: t7: keep the memory fabric clocks running
+hint: Resolve all conflicts manually, mark them as resolved with
+hint: "git add/rm <conflicted_files>", then run "git rebase --continue".
+hint: You can instead skip this commit: run "git rebase --skip".
+hint: To abort and get back to the state before "git rebase", run "git rebase --abort".
+Could not apply bf522d8b884ae... clk: meson: t7: keep the memory fabric clocks running
+
+### continue-06.log
+[detached HEAD 5158342ebdf24] clk: meson: t7: keep the memory fabric clocks running
+ Author: Lucas Tanure <tanure@linux.com>
+ 1 file changed, 5 insertions(+), 5 deletions(-)
+Rebasing (144/290)
+dropping 4ad58653341305df954c40cdf4534b39e3fe3b76 dt-bindings: mmc: amlogic,meson-gx-mmc: document the T7 pipeline clock -- patch contents already upstream
+Rebasing (145/290)
+dropping c8bb8e7ac755978676974320751904da446be937 mmc: meson-gx: enable the bus pipeline clock on T7 -- patch contents already upstream
+Rebasing (146/290)
+dropping 8cf0c9244c13caf296645e213600ab8c494731fb arm64: dts: amlogic: t7: add the pipeline clock to the MMC controllers -- patch contents already upstream
+Rebasing (147/290)
+Rebasing (148/290)
+Rebasing (149/290)
+Rebasing (150/290)
+Rebasing (151/290)
+Rebasing (152/290)
+Rebasing (153/290)
+Rebasing (154/290)
+Rebasing (155/290)
+Rebasing (156/290)
+Rebasing (157/290)
+Rebasing (158/290)
+Rebasing (159/290)
+Rebasing (160/290)
+Rebasing (161/290)
+Rebasing (162/290)
+Rebasing (163/290)
+Rebasing (164/290)
+Rebasing (165/290)
+Rebasing (166/290)
+Rebasing (167/290)
+Rebasing (168/290)
+Rebasing (169/290)
+Rebasing (170/290)
+Rebasing (171/290)
+Rebasing (172/290)
+Rebasing (173/290)
+Rebasing (174/290)
+Rebasing (175/290)
+Rebasing (176/290)
+Rebasing (177/290)
+Rebasing (178/290)
+Rebasing (179/290)
+Rebasing (180/290)
+Rebasing (181/290)
+Rebasing (182/290)
+Rebasing (183/290)
+Rebasing (184/290)
+Rebasing (185/290)
+Rebasing (186/290)
+Rebasing (187/290)
+Rebasing (188/290)
+Rebasing (189/290)
+Rebasing (190/290)
+Rebasing (191/290)
+Rebasing (192/290)
+Rebasing (193/290)
+Rebasing (194/290)
+Rebasing (195/290)
+Rebasing (196/290)
+Rebasing (197/290)
+Rebasing (198/290)
+Rebasing (199/290)
+Rebasing (200/290)
+Auto-merging drivers/thermal/khadas_mcu_fan.c
+CONFLICT (content): Merge conflict in drivers/thermal/khadas_mcu_fan.c
+error: could not apply 8205175f017ba... thermal: khadas-mcu-fan: add quiet automatic cooling for VIM4
+hint: Resolve all conflicts manually, mark them as resolved with
+hint: "git add/rm <conflicted_files>", then run "git rebase --continue".
+hint: You can instead skip this commit: run "git rebase --skip".
+hint: To abort and get back to the state before "git rebase", run "git rebase --abort".
+Could not apply 8205175f017ba... thermal: khadas-mcu-fan: add quiet automatic cooling for VIM4
+
+### continue-07.log
+[detached HEAD bd81f96924740] thermal: khadas-mcu-fan: add quiet automatic cooling for VIM4
+ Author: deepdream <deepdream@deepdremsMinim4.lan>
+ 3 files changed, 372 insertions(+), 4 deletions(-)
+ create mode 100644 Documentation/ABI/testing/sysfs-platform-khadas-mcu-fan
+ create mode 100644 drivers/thermal/test_khadas_mcu_fan.py
+Rebasing (201/290)
+Rebasing (202/290)
+Rebasing (203/290)
+Rebasing (204/290)
+Rebasing (205/290)
+Rebasing (206/290)
+Rebasing (207/290)
+Rebasing (208/290)
+Rebasing (209/290)
+Rebasing (210/290)
+Rebasing (211/290)
+Rebasing (212/290)
+Rebasing (213/290)
+Rebasing (214/290)
+Rebasing (215/290)
+Rebasing (216/290)
+Rebasing (217/290)
+Rebasing (218/290)
+Rebasing (219/290)
+Rebasing (220/290)
+Rebasing (221/290)
+Rebasing (222/290)
+Rebasing (223/290)
+Rebasing (224/290)
+Rebasing (225/290)
+Rebasing (226/290)
+Auto-merging drivers/net/wireless/broadcom/brcm80211/brcmfmac/cfg80211.c
+CONFLICT (content): Merge conflict in drivers/net/wireless/broadcom/brcm80211/brcmfmac/cfg80211.c
+Auto-merging drivers/net/wireless/broadcom/brcm80211/brcmfmac/fwvid.h
+error: could not apply 805385d90d4e3... Advertise external SAE AKMs after firmware capability discovery
+hint: Resolve all conflicts manually, mark them as resolved with
+hint: "git add/rm <conflicted_files>", then run "git rebase --continue".
+hint: You can instead skip this commit: run "git rebase --skip".
+hint: To abort and get back to the state before "git rebase", run "git rebase --abort".
+Could not apply 805385d90d4e3... Advertise external SAE AKMs after firmware capability discovery
+
+### continue-08.log
+[detached HEAD 44f0ad8759236] Advertise external SAE AKMs after firmware capability discovery
+ 3 files changed, 51 insertions(+), 1 deletion(-)
+Rebasing (227/290)
+Rebasing (228/290)
+Rebasing (229/290)
+Rebasing (230/290)
+Rebasing (231/290)
+Rebasing (232/290)
+Rebasing (233/290)
+Rebasing (234/290)
+Rebasing (235/290)
+Rebasing (236/290)
+Rebasing (237/290)
+Rebasing (238/290)
+Rebasing (239/290)
+Rebasing (240/290)
+Rebasing (241/290)
+Rebasing (242/290)
+Rebasing (243/290)
+Rebasing (244/290)
+Rebasing (245/290)
+Rebasing (246/290)
+Rebasing (247/290)
+Rebasing (248/290)
+Rebasing (249/290)
+Rebasing (250/290)
+Rebasing (251/290)
+Rebasing (252/290)
+Rebasing (253/290)
+Rebasing (254/290)
+Rebasing (255/290)
+Rebasing (256/290)
+Rebasing (257/290)
+Rebasing (258/290)
+Rebasing (259/290)
+Rebasing (260/290)
+Rebasing (261/290)
+Rebasing (262/290)
+Rebasing (263/290)
+Rebasing (264/290)
+Rebasing (265/290)
+Rebasing (266/290)
+Rebasing (267/290)
+Rebasing (268/290)
+Rebasing (269/290)
+Rebasing (270/290)
+Rebasing (271/290)
+Rebasing (272/290)
+Rebasing (273/290)
+Rebasing (274/290)
+Rebasing (275/290)
+Rebasing (276/290)
+Rebasing (277/290)
+Auto-merging drivers/media/platform/chips-media/wave5/wave5-vpu.c
+Auto-merging drivers/media/platform/chips-media/wave5/wave5-vpuapi.c
+CONFLICT (content): Merge conflict in drivers/media/platform/chips-media/wave5/wave5-vpuapi.c
+error: could not apply 39d42b6393f92... media: wave5: recover T7 encoders through a drained power cycle
+hint: Resolve all conflicts manually, mark them as resolved with
+hint: "git add/rm <conflicted_files>", then run "git rebase --continue".
+hint: You can instead skip this commit: run "git rebase --skip".
+hint: To abort and get back to the state before "git rebase", run "git rebase --abort".
+Could not apply 39d42b6393f92... media: wave5: recover T7 encoders through a drained power cycle
+
+### continue-09.log
+[detached HEAD daabf2e609f1f] media: wave5: recover T7 encoders through a drained power cycle
+ 15 files changed, 597 insertions(+), 71 deletions(-)
+ create mode 100644 drivers/media/platform/chips-media/wave5/test_recovery.py
+Rebasing (278/290)
+Rebasing (279/290)
+Rebasing (280/290)
+Rebasing (281/290)
+Rebasing (282/290)
+Rebasing (283/290)
+Rebasing (284/290)
+Rebasing (285/290)
+Rebasing (286/290)
+Rebasing (287/290)
+Rebasing (288/290)
+Rebasing (289/290)
+Rebasing (290/290)
+
+[KSuccessfully rebased and updated refs/heads/maintenance/next-20261023.

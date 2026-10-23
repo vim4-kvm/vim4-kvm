@@ -5,9 +5,9 @@
   "total": 580,
   "dispositions": {
     "already-upstream": 289,
-    "needs-cleanup": 136,
+    "needs-cleanup": 175,
     "upstream-candidate": 82,
-    "private-temporary": 72,
+    "private-temporary": 33,
     "merge-review": 1
   },
   "patches": 290,

@@ -76,6 +76,29 @@ class KernelMaintenanceTest(unittest.TestCase):
         self.assertFalse(worktree.exists())
         self.assertEqual(len(self.git('worktree', 'list', '--porcelain').split('worktree ')), 2)
 
+    def test_validation_rejects_revision_change_during_build(self):
+        fixtures = self.source / 'scripts/vim4'
+        fixtures.mkdir()
+        (fixtures / 'offline-tests.py').write_text('raise SystemExit(0)\n')
+        self.commit('fixture runner')
+        executable_dir = self.root / 'bin'
+        executable_dir.mkdir()
+        make = executable_dir / 'make'
+        make.write_text('#!/bin/sh\ngit commit --allow-empty -qm "concurrent source update"\n')
+        make.chmod(0o755)
+        config = self.root / 'config'
+        config.write_text('CONFIG_TEST=y\n')
+        output = self.root / 'verify'
+        environment = dict(self.env, PATH=str(executable_dir) + os.pathsep + os.environ['PATH'])
+        with patch.dict(os.environ, environment):
+            status = maintain.verify(SimpleNamespace(source=self.source, output=output,
+                base='v7.3', config=config, jobs=1, build=False, kunit_config=None))
+        report = json.loads((output / 'verify.json').read_text())
+        self.assertEqual(status, 1)
+        self.assertTrue(report['source_changed'])
+        self.assertNotEqual(report['revision'], report['final_revision'])
+        self.assertTrue(all(result['exit'] == 0 for result in report['results']))
+
 
 if __name__ == '__main__':
     unittest.main()

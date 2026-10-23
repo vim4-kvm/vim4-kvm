@@ -47,12 +47,13 @@ strict checkpatch 计数和私有/临时标记；[机器清单](../packaging/ker
 ## 可投递性与严格检查
 
 对每个普通下游提交运行 `scripts/checkpatch.pl --strict --no-tree`，累计 **345 error、
-514 warning、375 check**。118 个提交没有这些诊断；其中 36 个仍命中临时/私有标记。
+514 warning、375 check**。118 个提交没有这些诊断；其中 36 个仍命中整理/临时标记。
 逐行结果在 TSV，可按提交定位，不能用净 diff 的较低计数取代历史补丁质量。
 
-自动初筛为：82 个 `upstream-candidate`、136 个 `needs-cleanup`、72 个
-`private-temporary`，另有 1 个 `merge-review`。标记覆盖新增 sysfs、module parameter、
-debugfs 及实验/常开/FROMLIST/fixup 等标题或新增文本；它是可复现的筛选，**不是上游接收承诺**。
+自动初筛为：82 个 `upstream-candidate`、175 个 `needs-cleanup`、33 个
+`private-temporary`，另有 1 个 `merge-review`。标记覆盖新增 sysfs/私有 ioctl、module parameter、
+debugfs 和实验/常开策略；FROMLIST/fixup 与只新增 debugfs 的项归入待整理，
+不计为私有实现。它是可复现的筛选，**不是上游接收承诺**。
 特别是没有新增私有接口的后续修复，仍可能依赖实验驱动，必须按上表主题复核。
 
 可直接形成小系列候选：IIO mask 修复、标准 HID 请求取消、UAC2 单方向生命周期、
@@ -137,6 +138,8 @@ python3 "$RECIPE/maintain.py" verify --source ~/src/linux-7.3-maintenance \
 ```
 
 `forward`只在新分支 rebase，遇冲突保留现场和 JSON；第一次停止数不冒充总冲突数。
+VM 无配置身份时，先通过环境传入与开发机 `git var GIT_COMMITTER_IDENT` 一致的
+`GIT_COMMITTER_NAME`/`GIT_COMMITTER_EMAIL`；身份预检失败不会分配工作树。
 解决后用 `git rebase --continue`，然后对完整结果运行 `verify`。
 `verify`即使 host/checkpatch/schema 失败仍继续收集各阶段，最终非零退出；schema 的
 Kbuild 零退出不覆盖已输出的 DT 验证诊断。产物仅用于离线检查，不是部署包。
@@ -152,7 +155,53 @@ JPEG 解码 fixture 失败；独立完整依赖环境补测 34/34，不能把初
 
 目标固定为 `next-20261023`，commit `20a33c6b6cbe7e4805dfb6cd68816937443aa148`；
 本轮远端未提供 `v7.4-rc1`。远端可用性以实际 fetch 为准，不能用版本名推定发布。
-最终迁移、构建与整改提交证据补充在本节及[kernel-audit](kernel-audit/)。
+实际重放 290 条，Git 自动去掉 7 条已被主线包含的补丁，保留 283 条。
+共 **9 次冲突停止、7 个不同文件**，从 rebase start 到 finish（含人工阅读、处理与并行
+审计）为 **1028 秒**；这不是可外推的人日估算。原始冲突与去重日志保存在
+[重放记录](kernel-audit/rebase.log)，[成本数据](kernel-audit/cost.json)含逐次提交/文件。
+
+| 冲突主题 | 停止次数 | 处理 |
+|---|---:|---|
+| Synopsys HDMI bridge | 1 | 删除已随 RXSENSE 重构废弃的初始化 |
+| Meson HDMI encoder | 2 | 保留主线显式 encoder 清理及下游错误处理/HDR helper |
+| Khadas MCU/风扇 | 3 | 合并主线新 VIM4 支持与下游平台数据/安静策略，保留 PM 失败回滚 |
+| T7 clocks | 1 | 合并重复 AXI fabric 注释，不扩大常开策略 |
+| brcmfmac | 1 | 同时保留主线漫游特性与 WCC capability setup |
+| Wave5 close/recovery | 1 | 保留统一错误出口和 PM 引用平衡，错误路径解锁后延后挂起，成功路径同步 put |
+
+首轮 `make -k` 编译受影响驱动目录：两个 T7 DRM 驱动出现 **6 error、1 warning**，
+是 `.reset`/reset helper、simple encoder 和 devm OF bridge helper 的 API 变化。
+新增 `e38d04466478e` 改用 `atomic_create_state`、显式 encoder funcs 和
+`of_drm_get_bridge_by_endpoint`，并用 devres 平衡 bridge 引用。
+实际 probe 片段的 C fixture 覆盖 defer、非法 endpoint、无下游桥、devres 注册失败和释放；
+修复后同一目录构建退出 0，35/35 host fixture 通过。
+
+| 离线结果 | 7.3 整理分支 | next 迁移分支 |
+|---|---|---|
+| 整理 HEAD | `ca0e6c12862c6` | `e38d04466478e` |
+| 新增提交 strict checkpatch | 3 条均 0/0/0 | 同三条及 DRM API 适配均 0/0/0 |
+| host fixture | 34/34 | 35/35 |
+| 变更 YAML binding/实例 | 通过 | 通过 |
+| 8 个直接变更 DTS 的 schema 检查 | 通过 | 通过 |
+| 完整 Image、dtbs、modules | 通过 | 通过 |
+| KUnit/QEMU、硬件/性能验收 | 未运行 | 未运行 |
+
+新提交严格检查见[7.3 记录](kernel-audit/checkpatch-new.log)和
+[DRM 适配记录](kernel-audit/checkpatch-next-fix.log)。统一验证详见
+[7.3 结果](kernel-audit/baseline-verify.json)、[next 结果](kernel-audit/next-verify.json)和
+[next host 结果](kernel-audit/next-host-tests.json)。整条历史补丁栈仍有风格欠账，
+两个 `verify` 的非零状态来自该历史 strict 检查，不能被构建通过覆盖。
+
+VM 原始日志与产物：`/home/deepdream/build/kernel-maintenance-20261023/`；
+使用原 `uhd1.config`，保留 BTF，不安装模块。成本数据记录输入/实际配置哈希、编译器、
+最终树、Image 哈希和模块数量；首次缺依赖、初次编译失败均保留，不把修复前结果改写成通过。
+7.3 产出 2334 个模块，next 产出 2333 个；同一输入经 `olddefconfig` 后移除 4 个、
+新增 3 个通用模块，具体路径和实际配置哈希列在成本数据中，不能只比较总数量。
+
+两条内核新分支均已推送：
+[7.3 整理分支](https://github.com/vim4-kvm/linux/tree/maintenance/upstream-20261023)、
+[next 迁移分支](https://github.com/vim4-kvm/linux/tree/maintenance/next-20261023)。
+主仓离线套件本轮 226 项通过、6 项按已有条件跳过。未触碰正式内核分支或板端状态。
 
 建议长期保留四层：正式 `vim4-kvm-7.3` 只接已通过门禁的提交；`topic/*` 保存各子系统可独立
 评审的小系列；`integration/next-日期` 固定目标、系列清单和配置，定期记录冲突/构建/测试成本；
