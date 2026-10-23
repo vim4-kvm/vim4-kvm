@@ -34,6 +34,21 @@ FAILED_SOURCES = {
     '34ab72b7fbecaa13347aca58584b4bcb10b1b73e',
     'e8ebc2e82734739a7ae0f1a91117cebc36ff7b89',
 }
+REGISTER_STEPS = (
+    'clocks + NIC3 on; require VDEC off',
+    'DOS_GCLK_EN0 read (VDEC off)',
+    'DOS_GCLK_EN0 write (preserve HCODEC)',
+    'DOS_GCLK_EN0 verify',
+    '800MHz + VDEC on + secure policy; verify domains',
+    'DOS_GCLK_EN0 verify after secure power-on',
+    'DOS_SW_RESET0 read',
+    'DOS_MEM_PD_VDEC read',
+    'GCLK_EN first read',
+    'GCLK_EN write',
+    'GCLK_EN verify',
+    'MDEC_PIC_DC_CTRL single read',
+    'clocks + VDEC off; release NIC3; verify off',
+)
 
 
 def require_candidate(action, proof, once=False):
@@ -336,12 +351,19 @@ def power_cycle():
 
 
 def mdec_cycle():
-    """Complete prerequisites, read PIC_DC once, verify power-off; no video open."""
+    """One DOS transaction per sysfs write; stop before any following step on error."""
     power_cycle()
     device = t7_device()
     set_power_permission(True)
-    run('python3', '-c', 'from pathlib import Path; '
-        f'Path({str(device / "mdec_test")!r}).write_text("1")', timeout=8)
+    for step, description in enumerate(REGISTER_STEPS, 1):
+        print('REGISTER_STEP_BEGIN', step, description, flush=True)
+        run('python3', '-c', 'from pathlib import Path; '
+            f'Path({str(device / "register_step")!r}).write_text({str(step)!r})', timeout=8)
+        status = (device / 'register_step').read_text().strip()
+        expected = step if step < len(REGISTER_STEPS) else 0
+        if not status.startswith(f'step={expected} ') or not status.endswith(' failed=0'):
+            raise RuntimeError('Register step failed: ' + status)
+        print('REGISTER_STEP_COMPLETE', step, status, flush=True)
     result = (device / 'mdec_test').read_text().strip()
     print('MDEC_TEST', result, flush=True)
     if not result.startswith('passed=1 '):
@@ -522,11 +544,12 @@ def main():
                           'order': ['heavy then board locks', 'RAM-only boot or supervised baseline recovery',
                                     'probe: gate off, EPERM, read-only SMC status',
                                     'power: explicit opt-in, one DOS read, verified power off',
-                                    'mdec: secure policy + verified prerequisites, one PIC_DC read, power off',
+                                    'mdec: thirteen separate steps; EN0 before domain, GCLK read before write',
                                     'compliance only after probe + power + mdec receipts',
                                     'stop clients', 'exclusive codec lease', args.action,
                                     'safe unload or RESET_REQUIRED', 'restore boot baseline',
-                                    'encoding + HDMI + services + UDC + actual HID verification']}, indent=2))
+                                    'encoding + HDMI + services + UDC + actual HID verification'],
+                          'register_steps': dict(enumerate(REGISTER_STEPS, 1))}, indent=2))
         return
     if not (args.at_board or args.once_baseline) or args.manifest is None:
         parser.error('--execute requires --at-board or --once-baseline, and --manifest')

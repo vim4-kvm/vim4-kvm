@@ -257,13 +257,17 @@ class DecoderWindowTests(unittest.TestCase):
             device = Path(directory)
             result = device / 'mdec_test'
             state = device / 'power_state'
+            def complete_step(*command, **kwargs):
+                step = int(command[-1].rsplit('write_text(', 1)[1].strip("')"))
+                (device / 'register_step').write_text(
+                    f'step={step if step < 13 else 0} value=0x0 failed=0\n')
             for passed, off in ((False, True), (True, False), (True, True)):
                 result.write_text(f'passed={int(passed)} MDEC_PIC_DC_CTRL=0x0\n')
                 state.write_text(f'VDEC[4]={int(off)} NIC3[39]=0\n')
                 with self.subTest(passed=passed, off=off), \
                         patch.object(window, 'power_cycle') as power, \
                         patch.object(window, 't7_device', return_value=device), \
-                        patch.object(window, 'run') as run, \
+                        patch.object(window, 'run', side_effect=complete_step) as run, \
                         patch.object(window, 'set_power_permission') as permission, \
                         patch.object(window, 'require_suspended'), \
                         contextlib.redirect_stdout(io.StringIO()):
@@ -273,10 +277,29 @@ class DecoderWindowTests(unittest.TestCase):
                         with self.assertRaises(RuntimeError):
                             window.mdec_cycle()
                     power.assert_called_once()
-                    self.assertIn('mdec_test', run.call_args.args[-1])
+                    self.assertEqual(run.call_count, 13)
+                    self.assertIn('register_step', run.call_args.args[-1])
                     self.assertEqual(run.call_args.kwargs['timeout'], 8)
                     self.assertEqual([c.args[0] for c in permission.call_args_list],
                                      [True, False] if passed and off else [True])
+
+    def test_register_read_timeout_stops_before_gate_write_or_poweroff_retry(self):
+        with tempfile.TemporaryDirectory() as directory:
+            device = Path(directory)
+            calls = []
+            def access(*command, **kwargs):
+                step = int(command[-1].rsplit('write_text(', 1)[1].strip("')"))
+                calls.append(step)
+                if step == 9:
+                    raise subprocess.TimeoutExpired('GCLK_EN read', 8)
+                (device / 'register_step').write_text(f'step={step} value=0x0 failed=0\n')
+            with patch.object(window, 'power_cycle'), \
+                    patch.object(window, 't7_device', return_value=device), \
+                    patch.object(window, 'run', side_effect=access), \
+                    patch.object(window, 'set_power_permission'), \
+                    contextlib.redirect_stdout(io.StringIO()), self.assertRaises(subprocess.TimeoutExpired):
+                window.mdec_cycle()
+            self.assertEqual(calls, list(range(1, 10)))
 
 
 if __name__ == '__main__':
