@@ -3,7 +3,8 @@
 摘要：同一 Mac HDMI 源、线缆、运动程序、4K60 RGB/4:4:4 8bit、H.264 下，
 正式 7.3 十分钟出现 12 次浏览器冻结、12 条 TMDS 拒绝事件；厂商 5.15 十分钟
 冻结、RX 信号丢失及重新锁定事件均为 0。不能继续将这些停顿统称为源/线缆物理失锁，
-已定位 TOP meter 的短暂无效标志被误判为 ENOLINK；修复候选待上板验证。
+已定位 TOP meter 的短暂无效标志被误判为 ENOLINK；修复候选十分钟零冻结、零停流，
+四次 HPD 与采样率切换自动恢复，无 ASoC 错误。
 一次配对不能证明所有线缆/源或长期场景都健康。
 
 ## 版本、同条件与窗口边界
@@ -101,7 +102,27 @@ VDIN 丢弃该帧后继续采集；不输出每次重试日志。5V、SQO 或 al
 分别缺 VALID 时可重试、查询不发布无效输出，真实 SQO/alignment/5V 丢失和差频仍拒绝，
 恢复有效计数后成功；既有 worker 测试覆盖持续 EAGAIN 有界恢复及 lease 保护。
 两个提交 checkpatch 均为 0 errors / 0 warnings / 0 checks。功能候选 build ID
-`eeddb005df059a850853876d52ef603aa1af192b`，已排队等待独占验证。
+`eeddb005df059a850853876d52ef603aa1af192b`。
+
+## 修复候选一次性验证
+
+同源、同模式、同程序，UTC 17:24:40.097–17:34:40.130 的 600 秒窗口：
+解码增加 36,002 帧，59.99954 fps，冻结/冻结时长/丢帧/丢包均为 0，SSRC 不变；
+61 个像素摘要各异。600 个窗口内只读样本的 stream_stops 增量为 0。
+invalid_frames 增加 14,382，是既有混合拒帧计数，不能全归为 meter 空窗或当作停流次数。
+未添加逐帧日志；真实 ENOLINK 原始快照仍限频。
+
+随后四次 HPD 失锁，依次确认 48k/44.1k/32k/48k 的非零解码声音；实际输出
+`AUDIO_LOSS_CONTINUITY_PASS SAME_APPLICATION_PID 919`、`AUDIO_RESTORED_48000`、
+`AUDIO_NO_RESIDUAL_ERRORS_PASS`。EDID 读回恢复原哈希。失锁后再次确认候选 build ID、
+全启动日志无 ASoC error/oops/BUG/panic/WARNING，taint=0、isolated=0、三服务 active、
+UDC configured；原生键鼠 HID 通过。
+
+正常回 `3a3cd15c…`，12 个文件及两个完整模块目录与入场相同，60 秒运动冒烟及 HID/
+隔离检查通过；删除本次私有候选目录并 sync，窗口退出释放双锁。
+功能分支两提交推送后，正式分支仍为其祖先 `0a775305…`，故直接 fast-forward 至
+`b1300eb808f43` 并推送，没有 rebase 或引入其他子系统，复用同次已验证完整构建。
+正式安装使用部署文档的单一 RX 子系统门禁，不重复九类全量。
 
 ## 恢复与原始证据
 

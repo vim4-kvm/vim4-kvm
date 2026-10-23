@@ -12,8 +12,9 @@ build ID `3a3cd15ca69e6084238d3bda54e41c56f6a16776`；uhd1.config 同次完整 I
 One-KVM为 `672b8fd9fdec`，manager为 `9b141c5833c0`。一次性采样率切换、四次HPD恢复及
 300秒冒烟通过；正式19档、编码往返、4K60、音频、USB、GPU和管理页九类通过。
 最终taint=0、无新增警告或ASoC错误；可恢复RX资格撤销与画面停顿仍存在，未做长期零中断验收。
-[同链路对照](bringup/2026-10-23-hdmirx-vendor-comparison.md)为7.3十分钟12次冻结、厂商5.15零次，
-应先定位7.3 RX差异，不能将恢复期间状态直接归因为源/线缆物理失锁。
+[同链路对照](bringup/2026-10-23-hdmirx-vendor-comparison.md)为7.3十分钟12次冻结、厂商5.15零次；
+已定位TOP测量VALID空窗被误判ENOLINK，修复候选十分钟零冻结、四次HPD恢复。
+不能将恢复期间状态直接归因为源/线缆物理失锁。
 静态显示布局只匹配当前pd-handoff/HDMI/无MIPI，4K显示器、原生模式切换未验收。
 当前哈希、备份与门禁见 [PCM与SARADC正式窗口](bringup/2026-10-23-kvm-audio-capture-stability-deploy.md)；
 M0布局、音频ENOLINK对照与原基线回退见 [M0正式部署](bringup/2026-10-23-display-m0-r4.md)。
@@ -64,7 +65,7 @@ H.264/H.265 硬编码已取得实验结果，见
 
 | 优先级 | 方向 | 当前边界与下一步 |
 |---|---|---|
-| F0，最高 | KVM采集与音频稳定性 | FDET分类、PCM XRUN与资格重开已正式保留；验收自动恢复、非零声音及无ASoC残留，物理失锁和长期连续性待现场对照 |
+| F0，最高 | KVM采集与音频稳定性 | FDET分类、PCM XRUN与资格重开已正式保留；TOP测量空窗误判已有同链路定位与候选验证，更多源及长期连续性待覆盖 |
 | F1，最高 | Wave5恢复与HEVC尺寸正式实现 | [正式隔离](bringup/2026-10-23-wave5-isolation-final.md)已有watchdog/job_abort和保留DMA到重启，但无运行时硬件复位/固件重载、真实挂死未验。继续正式恢复，再退出[尺寸保护](bringup/2026-10-22-edge-wave5-deploy.md)/AVC回退 |
 | F1→F2 | 本地显示M1+与采集共存 | M0 simpledrm已过，M1由现有任务承接；统一共享VCBUS/MMIO/时钟归属，后续原生DRM modeset/EDID/HPD、多平面及HDMI声音，不以固定handoff当终态 |
 | F2 | 输入格式完整化与硬件解码 | HLG/隔行拒绝需正式色彩/去隔行实现；12bit动态路径已实现但真源未验。解码沿[既有VDEC门禁](bringup/2026-10-22-vdec-mdec-offline.md)，先安全平台层和H.264正确帧，再扩codec/位深/多实例 |
