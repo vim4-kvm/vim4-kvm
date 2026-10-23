@@ -1,0 +1,4 @@
+# Fixed T7 OSD1 KMS experiment; select the display-m1 DTB, never the M0 DTB.
+CONFIG_DRM_MESON=y
+CONFIG_DRM_MESON_HDMITX21=y
+CONFIG_DRM_MESON_T7_HANDOFF=y
