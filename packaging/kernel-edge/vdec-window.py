@@ -30,7 +30,9 @@ FAILED_SOURCE = '5bf7d6359df9ff68d8746851cf45de40611988a1'
 
 
 def require_candidate(action, proof):
-    if not proof['release'].startswith('7.3.0-vim4kvm-vdec3'):
+    recovery = action in ('arm-baseline', 'verify-baseline')
+    if not proof['release'].startswith('7.3.0-vim4kvm-vdec4') and not (
+            recovery and proof['release'].startswith('7.3.0-vim4kvm-vdec3')):
         raise ValueError('Only this separate experimental kernel is accepted')
     if action not in ('arm-baseline', 'verify-baseline') and proof.get('source') == FAILED_SOURCE:
         raise ValueError('Known failing candidate: udev v4l_id caused SError during DOS power-up; '
@@ -73,7 +75,8 @@ def boot_window(args):
             raise ValueError('Default boot entry does not use the retained edge paths')
         proof = json.loads((payload / 'manifest.json').read_text())
         release = proof['release']
-        if not release.startswith('7.3.0-vim4kvm-vdec3') or proof['kernel_build_id'] != args.build_id:
+        require_candidate(args.action, proof)
+        if proof['kernel_build_id'] != args.build_id:
             raise ValueError('Staged manifest does not match the local candidate')
         for name, expected in proof['artifacts'].items():
             if Path(name).name != name or sha(payload / name) != expected:
@@ -186,6 +189,101 @@ def video_node(decoder):
     raise ValueError('Decoder video node missing')
 
 
+def begin_stage(args, path=Path('/tmp/vim4-vdec-stages.json')):
+    """A failed/interrupted stage blocks further experiments in this boot."""
+    identity = {'boot': Path('/proc/sys/kernel/random/boot_id').read_text().strip(),
+                'build': args.build_id}
+    state = json.loads(path.read_text()) if path.exists() else {}
+    if state.get('identity') != identity:
+        state = {'identity': identity, 'passed': []}
+    previous = {'power': 'probe', 'compliance': 'power', 'h264': 'compliance', 'wave': 'h264'}
+    if state.get('pending') or state.get('failed'):
+        raise ValueError('Previous stage did not finish; collect evidence and restore baseline')
+    if args.action in previous and previous[args.action] not in state['passed']:
+        raise ValueError('Required previous stage: ' + previous[args.action])
+    if args.action in state['passed']:
+        raise ValueError('Stage already completed; do not repeat hardware experiments')
+    state['pending'] = args.action
+    path.write_text(json.dumps(state) + '\n')
+    return state
+
+
+def finish_stage(state, success, path=Path('/tmp/vim4-vdec-stages.json')):
+    action = state.pop('pending')
+    if success:
+        state['passed'].append(action)
+    else:
+        state['failed'] = action
+    path.write_text(json.dumps(state) + '\n')
+
+
+def t7_device():
+    devices = list(Path('/sys/bus/platform/devices').glob('*/faulted'))
+    if len(devices) != 1:
+        raise ValueError('Expected one T7 VDEC diagnostic device')
+    return devices[0].parent
+
+
+def require_suspended(device):
+    status = (device / 'power/runtime_status').read_text().strip()
+    print('RUNTIME_AFTER_CLOSE', device.name, status, flush=True)
+    if status != 'suspended':
+        raise RuntimeError('Runtime PM did not suspend')
+
+
+POWER_PARAM = '/sys/module/aml_vdec_drv/parameters/allow_t7_power'
+
+
+def set_power_permission(enabled):
+    # A subprocess bounds a sysfs write which might block inside the kernel.
+    run('python3', '-c', 'from pathlib import Path; '
+        f'Path({POWER_PARAM!r}).write_text({"Y" if enabled else "N"!r})', timeout=8)
+
+
+def probe_without_power():
+    if Path(POWER_PARAM).read_text().strip() != 'N':
+        raise ValueError('Power opt-in must default off')
+    run('udevadm', 'settle', '--timeout=5', timeout=8)
+    # Reproduce the previously fatal userspace operation while the gate is off.
+    run('python3', '-c', '''import errno, os, sys
+try:
+    fd = os.open(sys.argv[1], os.O_RDWR | os.O_NONBLOCK)
+except OSError as error:
+    if error.errno != errno.EPERM:
+        raise
+    print('OPEN_BLOCKED_EPERM')
+else:
+    os.close(fd)
+    raise RuntimeError('Open unexpectedly bypassed power gate')
+''', video_node('h264'), timeout=8)
+    device = t7_device()
+    print('PRE_POWER_STATE', (device / 'power_state').read_text().strip(), flush=True)
+    if not (device / 'power_test').read_text().startswith('passed=0 '):
+        raise ValueError('Probe unexpectedly performed a power test')
+    require_suspended(device)
+    print('PROBE_NO_DOS_MMIO; power gate off', flush=True)
+
+
+def power_cycle():
+    """Only one DOS read; this does not open video or run the decoder."""
+    device = t7_device()
+    run('udevadm', 'settle', '--timeout=5', timeout=8)
+    print('PRE_POWER_STATE', (device / 'power_state').read_text().strip(), flush=True)
+    set_power_permission(True)
+    run('python3', '-c', 'from pathlib import Path; '
+        f'Path({str(device / "power_test")!r}).write_text("1")', timeout=8)
+    result = (device / 'power_test').read_text().strip()
+    print('POWER_TEST', result, flush=True)
+    if not result.startswith('passed=1 '):
+        raise RuntimeError('Power test did not pass')
+    state = (device / 'power_state').read_text().strip()
+    print('POST_POWER_STATE', state, flush=True)
+    if not state.startswith('VDEC[4]=1 '):
+        raise RuntimeError('Secure VDEC domain did not power off')
+    require_suspended(device)
+    set_power_permission(False)
+
+
 def board_window(args):
     if os.geteuid() != 0:
         raise ValueError('Board subprocess requires root')
@@ -213,11 +311,13 @@ def board_window(args):
         factory = 'v4l2h264dec' if args.action == 'wave' else 'v4l2slh264dec'
         # The stateless factory appears only after its media device is registered.
         run('gst-inspect-1.0', 'videoconvert')
+    stage = begin_stage(args)
     service_active = subprocess.run(['systemctl', 'is-active', '--quiet', 'one-kvm']).returncode == 0
     loaded = {name for name in ('wave5', 't7_jpeg') if Path('/sys/module', name).exists()}
     critical = False
     removed = []
     candidate = None
+    success = False
     try:
         run('systemctl', 'stop', 'one-kvm')
         owners = []
@@ -243,23 +343,20 @@ def board_window(args):
             run('modprobe', 'aml-vdec-drv', 'enable_t7=1')
             candidate = 'aml_vdec_drv'
         if args.action == 'probe':
-            # Registration can trigger udev v4l_id opens. The driver must gate
-            # power independently before probe can be a stage without DOS MMIO.
-            print('PROBE_REGISTERED', video_node('h264'), flush=True)
+            probe_without_power()
             if faulted():
                 raise RuntimeError('Fault reported at probe')
         elif args.action == 'power':
-            run('v4l2-ctl', '-d', video_node('h264'), '--info', timeout=8)
-            for path in Path('/sys/bus/platform/devices').glob('*/faulted'):
-                status = (path.parent / 'power/runtime_status').read_text().strip()
-                print('RUNTIME_AFTER_CLOSE', path.parent.name, status,
-                      'faulted=' + path.read_text().strip(), flush=True)
-                if status != 'suspended':
-                    critical = True
-                    raise RuntimeError('Runtime PM did not suspend after close')
+            power_cycle()
         elif args.action == 'compliance':
+            power_cycle()
+            set_power_permission(True)
             run('v4l2-compliance', '-d', video_node('h264'), timeout=20)
+            require_suspended(t7_device())
         else:
+            if args.action == 'h264':
+                power_cycle()
+                set_power_permission(True)
             video_node('wave' if args.action == 'wave' else 'h264')
             output = Path('/tmp/vim4-vdec-' + args.action + '.i420')
             factory = 'v4l2h264dec' if args.action == 'wave' else 'v4l2slh264dec'
@@ -271,26 +368,33 @@ def board_window(args):
             if output.read_bytes() != reference.read_bytes():
                 raise ValueError('Decoded frames differ from software reference')
             print('EXACT_FRAMES_MATCH', hashlib.sha256(output.read_bytes()).hexdigest(), flush=True)
+            if args.action == 'h264':
+                require_suspended(t7_device())
         if faulted():
             raise RuntimeError('DMA stop not confirmed')
+        success = True
     except subprocess.TimeoutExpired:
         critical = True
         raise
-    except (RuntimeError, subprocess.CalledProcessError):
-        critical = critical or faulted() or args.action == 'wave'
+    except (RuntimeError, subprocess.CalledProcessError, OSError, ValueError):
+        critical = critical or faulted() or candidate is not None
         raise
     finally:
         if critical or faulted():
+            finish_stage(stage, False)
             Path('/tmp/vim4-vdec-reset-required').write_text('Do not reload codecs. Restore boot baseline and reset.\n')
             print('RESET_REQUIRED: retain DMA; no unload/reload or automatic retry', flush=True)
         else:
             try:
                 if candidate and Path('/sys/module', candidate).exists():
+                    if candidate == 'aml_vdec_drv':
+                        set_power_permission(False)
                     run('modprobe', '-r', candidate)
                 for name in sorted(loaded.intersection(removed)):
                     run('modprobe', name)
                 if service_active:
                     run('systemctl', 'start', 'one-kvm')
+                finish_stage(stage, success)
                 print('CANDIDATE_WINDOW_RESTORED; baseline boot and HID checks still required', flush=True)
             except (subprocess.TimeoutExpired, subprocess.CalledProcessError):
                 Path('/tmp/vim4-vdec-reset-required').write_text('Cleanup failed; restore boot baseline under supervision.\n')
@@ -303,8 +407,8 @@ def main():
     parser.add_argument('action', choices=ACTIONS)
     parser.add_argument('--manifest', type=Path)
     parser.add_argument('--fixtures', default='/var/tmp/vim4-vdec-fixtures')
-    parser.add_argument('--payload', default='/var/tmp/vim4-vdec-r3')
-    parser.add_argument('--backup', default='/var/backups/vim4-vdec-r3-20261022')
+    parser.add_argument('--payload', default='/var/tmp/vim4-vdec-power-fix')
+    parser.add_argument('--backup', default='/var/backups/vim4-vdec-power-fix-20261022')
     parser.add_argument('--execute', action='store_true')
     parser.add_argument('--at-board', action='store_true')
     parser.add_argument('--locked', action='store_true', help=argparse.SUPPRESS)
@@ -322,6 +426,9 @@ def main():
     if not args.execute:
         print(json.dumps({'action': args.action, 'offline': True, 'ssh': False,
                           'order': ['board + heavy locks', 'boot-install, reboot, arm-baseline',
+                                    'probe: gate off, EPERM, read-only SMC status',
+                                    'power: explicit opt-in, one DOS read, verified power off',
+                                    'compliance only after probe + power receipts',
                                     'stop clients', 'exclusive codec lease', args.action,
                                     'safe unload or RESET_REQUIRED', 'restore boot baseline',
                                     'encoding + HDMI + services + UDC + actual HID verification']}, indent=2))

@@ -91,16 +91,19 @@ class DecoderWindowTests(unittest.TestCase):
                 patch.object(window.Path, 'write_text') as marker, \
                 patch.object(window, 'build_id', return_value='candidate'), \
                 patch.object(window, 'require_baseline_files'), \
+                patch.object(window, 'begin_stage', return_value={}), \
+                patch.object(window, 'finish_stage'), \
+                patch.object(window, 'power_cycle', side_effect=subprocess.TimeoutExpired('power_test', 8)), \
                 patch.object(window, 'faulted', return_value=False), \
                 patch.object(window, 'video_node', return_value='/dev/video99'), \
                 patch.object(window.subprocess, 'run') as service, \
-                patch.object(window, 'run', side_effect=['', '', subprocess.TimeoutExpired('v4l2-ctl', 8)]) as run, \
+                patch.object(window, 'run') as run, \
                 contextlib.redirect_stdout(io.StringIO()), self.assertRaises(subprocess.TimeoutExpired):
             service.return_value.returncode = 0
             window.board_window(args)
         marker.assert_called_once()
         self.assertEqual([call.args[:2] for call in run.call_args_list],
-                         [('systemctl', 'stop'), ('modprobe', 'aml-vdec-drv'), ('v4l2-ctl', '-d')])
+                         [('systemctl', 'stop'), ('modprobe', 'aml-vdec-drv')])
 
     def test_unsuspended_close_preserves_recovery_marker_without_unloading(self):
         args = SimpleNamespace(action='power', build_id='candidate', fixtures='/fixtures')
@@ -117,6 +120,9 @@ class DecoderWindowTests(unittest.TestCase):
                     patch.object(window.Path, 'write_text') as marker, \
                     patch.object(window, 'build_id', return_value='candidate'), \
                     patch.object(window, 'require_baseline_files'), \
+                    patch.object(window, 'begin_stage', return_value={}), \
+                    patch.object(window, 'finish_stage'), \
+                    patch.object(window, 'power_cycle', side_effect=lambda: window.require_suspended(device)), \
                     patch.object(window, 'faulted', return_value=False), \
                     patch.object(window, 'video_node', return_value='/dev/video99'), \
                     patch.object(window.subprocess, 'run') as service, \
@@ -126,7 +132,50 @@ class DecoderWindowTests(unittest.TestCase):
                 window.board_window(args)
             marker.assert_called_once()
             self.assertEqual([call.args[:2] for call in run.call_args_list],
-                             [('systemctl', 'stop'), ('modprobe', 'aml-vdec-drv'), ('v4l2-ctl', '-d')])
+                             [('systemctl', 'stop'), ('modprobe', 'aml-vdec-drv')])
+
+    def test_stage_receipts_require_order_and_reject_incomplete_or_repeated_window(self):
+        read_text = Path.read_text
+        with tempfile.TemporaryDirectory() as directory, \
+                patch.object(window.Path, 'read_text', autospec=True,
+                             side_effect=lambda path: 'boot-test' if str(path).startswith('/proc/')
+                             else read_text(path)):
+            path = Path(directory) / 'stages.json'
+            args = SimpleNamespace(action='power', build_id='test')
+            with self.assertRaises(ValueError):
+                window.begin_stage(args, path)
+            args.action = 'probe'
+            state = window.begin_stage(args, path)
+            with self.assertRaises(ValueError):
+                window.begin_stage(args, path)
+            window.finish_stage(state, True, path)
+            with self.assertRaises(ValueError):
+                window.begin_stage(args, path)
+            args.action = 'power'
+            state = window.begin_stage(args, path)
+            window.finish_stage(state, False, path)
+            for action in ('probe', 'power', 'compliance', 'h264', 'wave'):
+                args.action = action
+                with self.subTest(action=action), self.assertRaises(ValueError):
+                    window.begin_stage(args, path)
+
+    def test_power_cycle_requires_verified_off_state_and_relocks_open(self):
+        with tempfile.TemporaryDirectory() as directory:
+            device = Path(directory)
+            (device / 'power_test').write_text('passed=1 DOS_SW_RESET0=0x0\n')
+            state = device / 'power_state'
+            state.write_text('VDEC[4]=1 NIC3[39]=0 (0=on 1=off)\n')
+            with patch.object(window, 't7_device', return_value=device), \
+                    patch.object(window, 'run') as run, \
+                    patch.object(window, 'set_power_permission') as permission, \
+                    patch.object(window, 'require_suspended'), \
+                    contextlib.redirect_stdout(io.StringIO()):
+                window.power_cycle()
+                self.assertEqual([call.args[0] for call in permission.call_args_list], [True, False])
+                self.assertEqual(run.call_args_list[-1].kwargs['timeout'], 8)
+                state.write_text('VDEC[4]=0 NIC3[39]=0 (0=on 1=off)\n')
+                with self.assertRaises(RuntimeError):
+                    window.power_cycle()
 
 
 if __name__ == '__main__':

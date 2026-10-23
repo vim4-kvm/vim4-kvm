@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Package a completed, clean vdec3 build offline; run under the heavy lock.
+"""Package a completed, clean vdec4 build offline; run under the heavy lock.
 
 Separate release and deployment inventory: this does not register a KVM runtime.
 The deployed baseline and its module directory must remain untouched.
@@ -38,8 +38,8 @@ def main():
     if not re.fullmatch(r'(?:[0-9a-fA-F]{2}:){5}[0-9a-fA-F]{2}', args.mac):
         parser.error('Invalid ethernet MAC')
     release = (output / 'include/config/kernel.release').read_text().strip()
-    if not release.startswith('7.3.0-vim4kvm-vdec3'):
-        parser.error('Expected the separate vdec3 build')
+    if not release.startswith('7.3.0-vim4kvm-vdec4'):
+        parser.error('Expected the separate vdec4 build with power opt-in')
     if run('git', '-C', source, 'status', '--porcelain'):
         parser.error('Kernel source must be committed and clean')
     if output == source or output.is_relative_to(source):
