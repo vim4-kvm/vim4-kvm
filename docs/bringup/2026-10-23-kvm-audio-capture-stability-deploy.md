@@ -1,0 +1,65 @@
+# 2026-10-23：HDMI 音频 PCM 生命周期修复与部署
+
+承接[诊断与27轮历史](2026-10-23-kvm-audio-capture-stability.md)。最新用户决定停止重复
+5/20轮验收，按[内核开发门禁](../subsystems/deployment.md#内核开发流程与部署门禁)推进：
+驱动修复、一次性启动针对性测试与约5分钟冒烟，通过后与SARADC单提交合入，正式部署跑一次九类。
+物理链路失锁只记录现场对照方案；本轮不扩大源/线缆/PHY调查。
+
+## 历史正式窗口为何回退
+
+da19093a…的27轮有24轮完整通过，3轮旧source-change断言失败但应用自动恢复。
+后续三个正式窗口都回到7b8372b8…，没有finalize：
+
+| 窗口 | 实际结果 |
+|---|---|
+| formal-window | 19模式通过，H.264 1680×1050成功快照后遇到ENOLINK及空DMA，旧即时断言中止 |
+| formal-recovery-window | 原始模式、H.264/H.265及4K60过；音频48k失锁产生21/35个track/tab坏窗口，约3.18秒恢复，旧零中断门禁失败 |
+| formal-qualified-window | 九类及四次HPD恢复全过；正常音频310/308个窗口、HPD616/613个窗口均零bad；最终health发现两条ASoC -11 |
+
+最后两条发生在启动后360.718/360.719秒，分别为snd_soc_dai_hw_params和
+__soc_pcm_hw_params的EAGAIN。音频虽恢复，仍违反无ASoC残留错误要求。
+b076a35c／d5740fac…日志降级候选只离线构建，未上板；最新方案撤回通用ASoC改动。
+上述窗口均另查三服务、UDC、隔离、taint和真实HID；没有同方法7b基线数据，不补跑。
+
+## 驱动方案与离线证据
+
+功能分支fix/hdmi-capture-stability已rebase到最新origin/vim4-kvm-7.3的c1315a95691e，
+当前41002d035f1a19596012dc054ee7862a29738f3e；本轮两个提交为6ed0155c0e2b和41002d035f1a。
+ASoC通用snd_soc_ret恢复基线实现，最终差异仅HDMI RX/VDIN驱动及其测试。
+
+- hw_params只验证PCM通道/格式并保存协商速率、substream，不读取异步ACR/AIF或开PLL。
+- prepare在audio_lock下核对实时包、连续资格格式和协商速率；匹配后才配置PLL及FIFO。
+  源未就绪或变化时返回成功但保持FIFO门控，100ms监控通过snd_pcm_stop_xrun通知运行中的PCM。
+- snd_pcm_stop_xrun只处理RUNNING状态，因此监控在无效PCM存续期间重试，覆盖先监控后START的竞态。
+  hw_free清substream，取消待发XRUN。标准ALSA同采样率XRUN恢复可直接prepare，重新配置硬件；
+  不锁死在audio_invalid状态。不同采样率仍须用户态重新资格确认并协商。
+- 真正时钟使能失败、FIFO被占用、稳定源PLL超时保留错误与回滚；PLL超时同时发生源变化才转XRUN。
+  不在锁内等待源重新就绪，不改厂商已验证的寄存器配置序列。
+
+One-KVM保持672b8fd9fdec1c35c35149265f901dc43da79394：退避后重新读取ready，
+同格式/generation跨200ms资格确认再重开；原生ENOLINK/EAGAIN/ERANGE保持兼容处理。
+其read循环在XRUN恢复前也检查HDMI资格，真正换源走串行、可取消重开。
+
+VM实际C测试覆盖七档ACR/AIF、损坏/矛盾包、hw_params后失锁、monitor-before-START、
+关闭取消XRUN、同速率prepare恢复、时钟/FIFO/PLL失败回滚。HDMI驱动全套通过；
+rebase后整体差异checkpatch为0 errors、0 warnings（756行），git diff --check通过。
+日志：logs/kvm-stability/pcm-lifecycle-rebased-tests.log、pcm-xrun-reprepare.log。
+完整候选build ID为8d6ee8e4d0e6844b933a64402ac605218a8548df，2334模块；
+M0 DTB仍为a635f894…，有效配置只新增显式禁用CONFIG_DRM_MESON_T7_HANDOFF一行。
+一次性归档83,927,040字节，已完成逐文件哈希与静态ARM64 PID 1检查。
+
+## 一次性窗口与正式发布计划
+
+候选以display-once.py prepare/stage和静态PID 1暂存完整匹配模块，仅在U-Boot RAM选择，
+默认Image/DTB/extlinux、运行时登记与基线模块原件保持不变。One-KVM用私有候选文件的
+临时只读bind替代，重启即撤销。上板预置独立rollback.sh，请求有界正常重启回默认基线；
+窗口finally同样重启并核对基线。所有服务stop有30秒上限。未修改final-board.py。
+
+针对性顺序：48/44.1/48k切换、四次HPD（48/44.1/32/48k）恢复、300秒H.264画面/帧推进，
+真实HID、UDC configured、三服务active、isolated=0、taint=0、无新增ASoC/oops告警。
+全程board/heavy双锁；完成即释放。不跑重复轮数组。
+
+**当前尚未上板验证此次PCM生命周期候选，也未正式合并、部署或更新已部署锁。**
+一次性验证通过后再合入SARADC d0c36b0f（单提交）、One-KVM正式分支，构建正式完整包，
+一次九类全量通过后finalize并更新实际源码/二进制锁。物理失锁仍为
+[厂商差距待办](../vendor-parity.md)，需用户现场受控源或厂商5.15同链路对照。

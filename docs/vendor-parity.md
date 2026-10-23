@@ -76,7 +76,7 @@ kvim4 274项/242启用，kvim4n 261项/227启用。启用LCD/触摸/传感器候
 | R01/R02无效FDET导致永久停流、test驱动和专用DT | 与实际源变化区分短暂测量无效；统一lease/时序查询/事件分类，标准media资源归属，稳定段不发生无故重建；保留真实失锁拒绝 |
 | R03/R04 HLG/隔行/像素重复拒绝 | 标准色彩/EOTF、场序/de-repeat与去隔行处理，真源逐帧/场验证；保护保留到实现通过 |
 | R05“12bit拒绝”的旧描述 | 已核对：动态路径解析/配置8/10/12bit，现缺**真12bit源验收**，不是一律拒绝；固定旧profile仍有限制，NV12输出为8bit。需发生器确认源精度及转换/原生位深 |
-| A01 ENOLINK/EAGAIN | 这是必要失锁保护；正式补齐源generation资格确认与可取消重开、连续性恢复，不能删除hw_params检查或把静音当成功 |
+| A01 ENOLINK/EAGAIN | 保留源generation资格确认与可取消重开；驱动把实时链路检查移到prepare，未就绪FIFO门控并以XRUN通知，不能把静音当恢复成功 |
 | D01 M0/固定sink M1 | 固件framebuffer交接与固定模式只作中间阶段；正式DRM/KMS拥有共享资源、EDID/HPD/modeset/音频/PM，且与KVM并行 |
 | P04 GPU只调频、保持启动PWM电压 | 先取得真实板型/分档逐频电压与电路标定，再OPP/devfreq/regulator；厂商1150字段不足以证明电压表，禁止表外试压 |
 | P06/P08常开域、CRG EBUSY | 先完成各DMA消费者quiesce/context恢复，再解除可恢复设备的临时常开/挂起拒绝；SRAM/DDR等固件必需常开域不能盲目关闭 |
@@ -90,7 +90,7 @@ kvim4 274项/242启用，kvim4n 261项/227启用。启用LCD/触摸/传感器候
 
 | 阶段 | 里程碑与门禁 | 承接已有任务 / 工作量量级 |
 |---|---|---|
-| F0 KVM稳定性收口 | R01稳定采集段零无故停流/重建，A01失锁与变采样率后恢复非零波形；模式/HPD仍可正常重建，DMA/CMA/服务/真实HID回归 | 正在进行的“音频/采集稳定性”任务；剩余定向回归约4–8日，候选严格20轮未完成前不得记已修复 |
+| F0 KVM稳定性收口 | 按内核开发门禁做一次性针对性测试和约5分钟冒烟；多子系统正式部署跑一次九类；真实失锁自动恢复单独计数 | [稳定性记录](bringup/2026-10-23-kvm-audio-capture-stability.md)：旧27轮含3次自动恢复；ASoC EAGAIN改走驱动XRUN，修复后候选待验，物理失锁仍未解决 |
 | F1 核心绕过替换 | E03先证明DMA停止/取消与恢复，再E02正式HEVC尺寸；R02与D01共享VCBUS/MMIO/时钟最低需求一次归一；M1固定scanout与KVM共存只是本阶段子里程碑 | Wave5恢复任务＋显示M1；10–20日恢复起、M1/共享资源剩余5–12日，不能用“隔离通过”提前退出 |
 | F2 标准通用显示/媒体 | D02/M2原生EDID/HPD/modeset→A03/M3声音→D03/M4多平面/桌面；C01先安全上电/退出与1080p H.264正确帧，再C02/C03逐codec；R03/R04/R05补HLG/隔行/真实深色 | 既有M1后续和vdec任务；显示/输出音频约15–30日，vdec平台/首codec15–30日，其他codec分别估；风险上板须有人可RESET |
 | F3 电源与启动正式化 | P06/P08所有DMA/PCM/DRM上下文恢复→P09明确RTC/AO唤醒源→整机PM；P04有可信电压表后补调压；Q05先SD启动验证 | 挂起离线审查、GPU电压审查、KASLR/PD SD恢复方案；PM20–40日，GPU3–7日＋资料，种子3–6日；本轮禁止挂起、引导区写入 |
@@ -108,13 +108,17 @@ kvim4 274项/242启用，kvim4n 261项/227启用。启用LCD/触摸/传感器候
 |---|---|---|
 | 显示M1，`vim4-display-m1` | D01/R02共享资源和固定模式共存；后接M2/M3/M4 | 当前本地记录 `docs/bringup/2026-10-23-display-m1*.md` 仍由该任务维护；正式起点/目标见[显示调查](bringup/2026-10-23-display-feasibility.md)，固定handoff不算原生全栈完成 |
 | Wave5恢复，`vim4-wave5-recovery` | E03取消/隔离已正式部署，运行时硬件复位/重载仍缺，再解E02 | 复用[最新隔离正式窗口](bringup/2026-10-23-wave5-isolation-final.md)和[复位证据](bringup/2026-10-23-wave5-recovery.md)，不重做watchdog/job_abort，也不另造不明复位掩码 |
-| KVM音频/采集稳定性，`fix/hdmi-capture-stability` | R01测量分类、A01重开资格与严格稳态计数 | 当前本地记录 `docs/bringup/2026-10-23-kvm-audio-capture-stability.md` 由该任务更新；基线证据见[采集审计](bringup/2026-10-22-wave5-first-failure-audit.md)和[ENOLINK](bringup/2026-10-23-hdmirx-audio-enolink.md)，不删除保护/降低断言 |
+| KVM音频/采集稳定性，`fix/hdmi-capture-stability` | R01测量分类、A01重开资格及有界计数 | [稳定性记录](bringup/2026-10-23-kvm-audio-capture-stability.md)保留旧严格门禁结果与用户更改后的自动恢复验收；保留失锁拒绝与非零声音验证，不能宣称物理链路已修复 |
 | vdec，`vim4-vdec`及其候选分支 | C01先解决MDEC/DBUS/安全退出，首个正确帧之后再扩codec | 复用[最新MDEC门禁](bringup/2026-10-22-vdec-mdec-offline.md)，不从staging旧ESPARSER或Wave产品名另起未经证明的捷径 |
 
 ## 最重要的十项缺口与建议顺序
 
-1. **R01/R02 采集稳定性及资源归属**：短暂FDET异常不应永久停流；严格计数/运动帧验收。
-2. **A01 HDMI音频失锁/重开竞态**：保留ENOLINK，完善资格确认、重试和非静音连续性。
+物理失锁待办：27轮中3次自动恢复，详细RX采样显示5V/HPD在、SQO/PLL/alignment丢失、
+线缆时钟归零，源/线缆/RX PHY尚未定位。用户在场时换受控HDMI源，再做厂商5.15同源同线同模式
+对照；记录失锁率、RX ready、首帧/非零声音恢复耗时及两端时钟事件。本轮只写方案，未改对齐计数。
+
+1. **R01/R02 物理链路失锁及资源归属**：软件自动恢复之外仍需定位源/线缆/RX PHY；标准media资源归属未完成。
+2. **A01 HDMI音频恢复覆盖**：以XRUN通知实时源变化，保留资格重试；更多源类型和长期非静音连续性仍待验证。
 3. **E03 Wave5真正恢复**：DMA安全、取消、固件与多实例恢复是后续尺寸/PM的前置。
 4. **E02 非8对齐HEVC**：恢复门禁通过后，正式实现可见尺寸/补边，退出AVC回退。
 5. **D01–D03 显示M1→M2**：固定scanout共存后取得标准modeset/HPD与统一VCBUS/时钟所有权。
