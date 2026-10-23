@@ -2,11 +2,11 @@
 [kernel]
 url = "https://github.com/vim4-kvm/linux.git"
 branch = "vim4-kvm-7.3"
-revision = "1262da082ba528be27c17adc62a92d90ed18b158"
-tree = "f0ce0a0139240eb56601ce22e7a71def001517b6"
+revision = "0196fe22ecf0104d96b7ef0fa497ca2317bd20bb"
+tree = "6d92e84e1d2135e3abf601cf3a5bbfc6c6976f51"
 upstream_url = "https://github.com/gregkh/linux.git"
 # Retained final-release deployment (published).
-# Evidence and known warnings: docs/bringup/2026-10-22-edge-pstore-deploy.md.
+# Evidence and limits: docs/bringup/2026-10-22-edge-wave5-deploy.md.
 upstream_tag = "v7.3"
 upstream_revision = "c03c1a14507dfaf8b856c2608f9ac216021fc222"
 
@@ -23,14 +23,30 @@ tested_binary_sha256 = "0b537561096ee5dfb5f15839738c8ac4ea87ba0dbb3a5127a25c241d
 [tested_build]
 release = "7.3.0-vim4kvm-uhd1+"
 localversion = "-vim4kvm-uhd1"
-build_id = "f283ab1f8a001a19bab5247afc4f9b0c00c1da99"
-image_sha256 = "855f0fa8caa49fdb9973bd7cd1cbbfaa2c5f62138574862e651e16eb0fda42b5"
+build_id = "3a61b75bccf8c46e9411dee92928999884bbfc7f"
+image_sha256 = "34fcacc47825b82abab0b0ba41e0e3b7bf4f9e93729d2d71e8532ca18b33d2d8"
 config_sha256 = "86746fde4d0e6d377264466262a27b4953206ce5e07441c8b870eee5ca05957f"
 config_path = "uhd1.config"
-modules_sha256 = "523f0a358573a6ca2786cace805c38a698df562a26ff2dc12a5f4f472b7efcbb"
+modules_sha256 = "90ef5b8ea749636ec9453098a93fa2f3b0575bca29919913b249de11574d5412"
 module_count = 2335
 module_btf = true
 board_dtb_sha256 = "d2333e962326d0710300b71e758440a94b177eb273921f70e5ba12eb5f640cf6"
+manifest_sha256 = "f28cee55a24ecc3dbe5d1bebdbbb738d95a47c01891f5a27bb090629bbdbdd62"
+runtime_proof_sha256 = "62fd0ad8fc4ff96bc8d646a95b89d7e1815b410758ae391b23d0d9c85f0cbd96"
+wave5_module_sha256 = "a5e30410968e0026f9252abb64329d957c220344b3badac001dd9e91fb737960"
+
+[tested_build.loaded_module_build_ids]
+meson_ir = "d7ad2e0be90cde485242e0e5a381c098a4ae75c3"
+rc_khadas = "08eb2ef96cf7d27f220665d86ee443cba580bec9"
+ir_nec_decoder = "5246503bd1f57532d4afbdba876200ce5ca21c2c"
+dwmac_meson8b = "d47164cce6ed5510507f2ea8e76002b241113fe1"
+panfrost = "1d075d5185899051a154138e5d2e3b1a54b864f4"
+brcmfmac = "62d664119c4715cc50a402f29ea2970b97b4eab6"
+wave5 = "e4c1ef1943745fe507cd1b72be2c483b1fe3832c"
+t7_hdmirx = "e538a758d6296898f02df0e5d1b60b5e00af1a56"
+t7_vdin_test = "219663e157771807d9b3c2fb44d75c0e559c616e"
+t7_jpeg = "4818064e1ec6fb56f218feb8789e66d2ab9999bb"
+crg_udc = "8846476045893e6ef6fe8f0ba08d357d5bb7b61f"
 
 # Shared application sources are pinned in workspace.toml; the old independent
 # One-KVM and its private plugin above/below remain historical separate inputs.

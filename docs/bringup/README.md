@@ -7,6 +7,7 @@
 
 ## 2026-10-22
 
+- [Wave5 尺寸与关闭路径防护正式部署](2026-10-22-edge-wave5-deploy.md) — kernel video audio usb manager deployment board
 - [Wave5 HEVC 防护候选现场验证并恢复原模块](2026-10-22-wave5-hevc-field.md) — kernel video usb deployment board
 - [U-Boot 现场复位分析与 microSD 安全验证](2026-10-22-uboot-sd-recovery.md) — usb kernel deployment
 - [7.3 ramoops/pstore 正式部署并保留](2026-10-22-edge-pstore-deploy.md) — kernel deployment board
