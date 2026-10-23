@@ -201,7 +201,7 @@ VM 原始日志与产物：`/home/deepdream/build/kernel-maintenance-20261023/`�
 两条内核新分支均已推送：
 [7.3 整理分支](https://github.com/vim4-kvm/linux/tree/maintenance/upstream-20261023)、
 [next 迁移分支](https://github.com/vim4-kvm/linux/tree/maintenance/next-20261023)。
-主仓离线套件本轮 226 项通过、6 项按已有条件跳过。未触碰正式内核分支或板端状态。
+主仓离线套件本轮共 226 项：220 项通过、6 项按已有条件跳过。未触碰正式内核分支或板端状态。
 
 建议长期保留四层：正式 `vim4-kvm-7.3` 只接已通过门禁的提交；`topic/*` 保存各子系统可独立
 评审的小系列；`integration/next-日期` 固定目标、系列清单和配置，定期记录冲突/构建/测试成本；
