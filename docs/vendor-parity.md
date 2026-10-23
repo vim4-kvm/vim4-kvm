@@ -109,6 +109,7 @@ kvim4 274项/242启用，kvim4n 261项/227启用。启用LCD/触摸/传感器候
 | 显示M1，`vim4-display-m1` | D01/R02共享资源和固定模式共存；后接M2/M3/M4 | 当前本地记录 `docs/bringup/2026-10-23-display-m1*.md` 仍由该任务维护；正式起点/目标见[显示调查](bringup/2026-10-23-display-feasibility.md)，固定handoff不算原生全栈完成 |
 | Wave5恢复，`vim4-wave5-recovery` | E03取消/隔离已正式部署，运行时硬件复位/重载仍缺，再解E02 | 复用[最新隔离正式窗口](bringup/2026-10-23-wave5-isolation-final.md)和[复位证据](bringup/2026-10-23-wave5-recovery.md)，不重做watchdog/job_abort，也不另造不明复位掩码 |
 | KVM音频/采集稳定性，`fix/hdmi-capture-stability` | R01测量分类、A01重开资格及有界计数 | [稳定性记录](bringup/2026-10-23-kvm-audio-capture-stability.md)保留旧严格门禁结果与用户更改后的自动恢复验收；保留失锁拒绝与非零声音验证，不能宣称物理链路已修复 |
+| 音频全路由，`vim4-audio-routes` | [离线基础系列](parity/audio-routes-offline.md)：T7 FIFO/TDMIN/SPDIF、PDM绑定、路由图与九DAI审计 | 不改RX行为、不重复显示任务的VIM4HDMITX；ASRC/VAD/DSP等仍欠实现。[批量上板与外设](parity/audio-board-checklist.md)尚未执行，16项计数不升级 |
 | vdec，`vim4-vdec`及其候选分支 | C01先解决MDEC/DBUS/安全退出，首个正确帧之后再扩codec | 复用[最新MDEC门禁](bringup/2026-10-22-vdec-mdec-offline.md)，不从staging旧ESPARSER或Wave产品名另起未经证明的捷径 |
 
 ## 最重要的十项缺口与建议顺序

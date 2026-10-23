@@ -6,6 +6,11 @@
 新增整理位于 `maintenance/upstream-20261023`，前移试验位于 `maintenance/next-20261023`。
 硬件能力与退出条件继续以[厂商能力对照](vendor-parity.md)为准。
 
+后续独立音频候选 `vim4-audio-routes` 基于正式远端 `cb3b9f1a69051`，
+12 个提交至 `e934ed1e3b87f`，不混入下方固定审计的 580/291 计数。
+[音频离线记录](parity/audio-routes-offline.md)给出逐提交、寄存器差异、DT/schema 与测试证据；
+未合入正式分支、未部署，ASRC/VAD/DSP 等仍有实现欠账。
+
 ## 计数口径与全部提交
 
 `v7.3` 的 annotated tag 对象为 `091b06388b117`，解引用后的提交为

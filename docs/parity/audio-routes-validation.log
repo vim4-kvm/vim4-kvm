@@ -1,0 +1,105 @@
+[checkpatch-b464012fda59] exit=0
+total: 0 errors, 0 warnings, 0 checks, 14 lines checked
+
+"[PATCH] dt-bindings: sound: describe T7 SPDIF output layout" has no obvious style problems and is ready for submission.
+
+[checkpatch-d13d95df45e8] exit=0
+total: 0 errors, 0 warnings, 0 checks, 162 lines checked
+
+"[PATCH] ASoC: meson: apply T7 SPDIF output channel masks" has no obvious style problems and is ready for submission.
+
+[checkpatch-c63ebb8f7bfe] exit=0
+total: 0 errors, 0 warnings, 0 checks, 14 lines checked
+
+"[PATCH] dt-bindings: sound: describe T7 TDM input formatters" has no obvious style problems and is ready for submission.
+
+[checkpatch-128b17755679] exit=0
+total: 0 errors, 0 warnings, 0 checks, 153 lines checked
+
+"[PATCH] ASoC: meson: program T7 TDM input slot counts" has no obvious style problems and is ready for submission.
+
+[checkpatch-b17148b5bbd1] exit=0
+total: 0 errors, 0 warnings, 0 checks, 135 lines checked
+
+"[PATCH] ASoC: meson: handle T7 capture packing outside HDMI RX" has no obvious style problems and is ready for submission.
+
+[checkpatch-edae286b17e4] exit=0
+total: 0 errors, 0 warnings, 0 checks, 28 lines checked
+
+"[PATCH] dt-bindings: sound: describe T7 PDM and SPDIF capture" has no obvious style problems and is ready for submission.
+
+[checkpatch-8ee06152c54c] exit=0
+total: 0 errors, 0 warnings, 0 checks, 150 lines checked
+
+"[PATCH] ASoC: meson: configure T7 SPDIF input mode detection" has no obvious style problems and is ready for submission.
+
+[checkpatch-3534175e80af] exit=0
+total: 0 errors, 0 warnings, 0 checks, 14 lines checked
+
+"[PATCH] dt-bindings: sound: describe T7 playback FIFOs" has no obvious style problems and is ready for submission.
+
+[checkpatch-8e2b521ac99e] exit=0
+total: 0 errors, 0 warnings, 0 checks, 183 lines checked
+
+"[PATCH] ASoC: meson: configure T7 playback FIFO channels" has no obvious style problems and is ready for submission.
+
+[checkpatch-93e4fe510cf2] exit=0
+total: 0 errors, 0 warnings, 0 checks, 155 lines checked
+
+"[PATCH] arm64: dts: amlogic: select T7 digital audio variants" has no obvious style problems and is ready for submission.
+
+[checkpatch-99142051a2ad] exit=0
+total: 0 errors, 0 warnings, 0 checks, 297 lines checked
+
+"[PATCH] ASoC: meson: validate T7 digital routes against compiled DT" has no obvious style problems and is ready for submission.
+
+[checkpatch-e934ed1e3b87] exit=0
+total: 0 errors, 0 warnings, 0 checks, 80 lines checked
+
+"[PATCH] ASoC: meson: restrict T7 capture to supported sample formats" has no obvious style problems and is ready for submission.
+
+[host-spdifout] exit=0
+SPDIF lane clearing, mono/stereo and PCM packing passed
+
+[host-tdmin] exit=0
+TDM slots, mux isolation, legacy layout and channel distribution passed
+
+[host-toddr] exit=0
+T7 selector isolation, S16 cropping and channel sync passed
+
+[host-spdifin] exit=0
+SPDIF seven-rate timers, filter isolation and clock unwind passed
+
+[host-frddr] exit=0
+FRDDR channel count, route preservation, depth and write failures passed
+
+[host-rx-audio] exit=0
+seven rates, packet races, native constraints, XRUN-before/after START, PLL unwind passed
+
+[host-routes] exit=0
+T7 audio DT: RX contract, MMIO ownership and digital route graph passed
+
+[final-asoc-build] exit=0
+make[1]: Entering directory '/home/deepdream/build/kernel-audio-routes'
+  DESCEND bpf/resolve_btfids
+make[1]: Leaving directory '/home/deepdream/build/kernel-audio-routes'
+
+[final-dtb-build] exit=0
+make[1]: Entering directory '/home/deepdream/build/kernel-audio-routes'
+make[1]: Leaving directory '/home/deepdream/build/kernel-audio-routes'
+
+[final-dt-instances] exit=0
+
+[final-bindings] exit=0
+make[1]: Entering directory '/home/deepdream/build/kernel-audio-routes'
+  SCHEMA  Documentation/devicetree/bindings/processed-schema.json
+  CHKDT   /home/deepdream/src/linux-7.3-audio-routes/Documentation/devicetree/bindings
+  LINT    /home/deepdream/src/linux-7.3-audio-routes/Documentation/devicetree/bindings
+  STYLE   /home/deepdream/src/linux-7.3-audio-routes/Documentation/devicetree/bindings
+  DTC [C] Documentation/devicetree/bindings/sound/amlogic,axg-spdifout.example.dtb
+  DTC [C] Documentation/devicetree/bindings/sound/amlogic,axg-tdm-formatters.example.dtb
+  DTC [C] Documentation/devicetree/bindings/sound/amlogic,axg-pdm.example.dtb
+  DTC [C] Documentation/devicetree/bindings/sound/amlogic,axg-spdifin.example.dtb
+  DTEX    Documentation/devicetree/bindings/sound/amlogic,axg-fifo.example.dts
+  DTC [C] Documentation/devicetree/bindings/sound/amlogic,axg-fifo.example.dtb
+make[1]: Leaving directory '/home/deepdream/build/kernel-audio-routes'

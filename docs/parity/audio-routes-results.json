@@ -1,0 +1,165 @@
+{
+  "base": "cb3b9f1a69051a0263dd448d88c944e4a495d9f2",
+  "head": "e934ed1e3b87f098e7af6de256b7eb002f3297fe",
+  "checks": [
+    {
+      "name": "checkpatch-b464012fda59",
+      "exit_code": 0,
+      "passed": true,
+      "log_sha256": "82de513da2abf9ed46ebdc0ca67ff0a200b8654639da9816096b749576c2d5f0"
+    },
+    {
+      "name": "checkpatch-d13d95df45e8",
+      "exit_code": 0,
+      "passed": true,
+      "log_sha256": "6bf9241976b9aae33f560fcb5f13267ac17a700fe02c650670d2aec8ca9db220"
+    },
+    {
+      "name": "checkpatch-c63ebb8f7bfe",
+      "exit_code": 0,
+      "passed": true,
+      "log_sha256": "26e46dce0558af533c855d36566a728d85fcfd3f79093e8e99b2021f5675985d"
+    },
+    {
+      "name": "checkpatch-128b17755679",
+      "exit_code": 0,
+      "passed": true,
+      "log_sha256": "6b97e6c17fc6004313e5ab2ee10d881aa2e71596e79006a8a939eac8c2a92e38"
+    },
+    {
+      "name": "checkpatch-b17148b5bbd1",
+      "exit_code": 0,
+      "passed": true,
+      "log_sha256": "1d3d5f1ea8e845efdef7cfe297b302ea42738a747e6cf42c3cce2a5b2d228768"
+    },
+    {
+      "name": "checkpatch-edae286b17e4",
+      "exit_code": 0,
+      "passed": true,
+      "log_sha256": "eddbf08c17f0c8722bae3d78b874319798f0b6ba32fdeed9d4037a0b58ec5470"
+    },
+    {
+      "name": "checkpatch-8ee06152c54c",
+      "exit_code": 0,
+      "passed": true,
+      "log_sha256": "3a92f6b70a7f26f95f497f32b4a2a35a3df5ebbab77c02aedb51aa2a1e1aa437"
+    },
+    {
+      "name": "checkpatch-3534175e80af",
+      "exit_code": 0,
+      "passed": true,
+      "log_sha256": "e3c30252dfc709dc9e2db7baca76532069d71246c15ff9037959215a5b2700d0"
+    },
+    {
+      "name": "checkpatch-8e2b521ac99e",
+      "exit_code": 0,
+      "passed": true,
+      "log_sha256": "c777cc017f1baa35d112743925b8ed6b3f30d72b2b92e4bc3abb23ee8d5179b6"
+    },
+    {
+      "name": "checkpatch-93e4fe510cf2",
+      "exit_code": 0,
+      "passed": true,
+      "log_sha256": "808ca9612764d70309237e7d73bda462221462b60724fe7dd14eac3a97b92152"
+    },
+    {
+      "name": "checkpatch-99142051a2ad",
+      "exit_code": 0,
+      "passed": true,
+      "log_sha256": "fe29121935359023de19d5a51a16b0cd41d68c38288c937a42f091b486c110ef"
+    },
+    {
+      "name": "checkpatch-e934ed1e3b87",
+      "exit_code": 0,
+      "passed": true,
+      "log_sha256": "6818de20ed3891c922dc45d9757d949af5c78c375720876f93f1add988d9469b"
+    },
+    {
+      "name": "host-spdifout",
+      "exit_code": 0,
+      "passed": true,
+      "log_sha256": "b88b402cf74d17c0cd5495c06258bd4f13c9e8e0af9338f0cf0617f37a5b1589"
+    },
+    {
+      "name": "host-tdmin",
+      "exit_code": 0,
+      "passed": true,
+      "log_sha256": "b28057367ac48a71685394bb437d331a22c9e63fbfcb36b423b1b1fe1726cfa8"
+    },
+    {
+      "name": "host-toddr",
+      "exit_code": 0,
+      "passed": true,
+      "log_sha256": "c310febed9900bc5a870dacd04915fb241e6d9641707828c5bb56e695571c5d8"
+    },
+    {
+      "name": "host-spdifin",
+      "exit_code": 0,
+      "passed": true,
+      "log_sha256": "1619827b06bea5c838c2cd20b73fecda7a77c62322cf4d63a97f94c43c16fb0f"
+    },
+    {
+      "name": "host-frddr",
+      "exit_code": 0,
+      "passed": true,
+      "log_sha256": "ba4e19225b2b95813fbd2394baee8f9bd407c51d9308986b98de2f0636f18a51"
+    },
+    {
+      "name": "host-rx-audio",
+      "exit_code": 0,
+      "passed": true,
+      "log_sha256": "308c1d21ccf93b3fc80f779ccc38e584f865bbae5b98cc09e0b25cdebf5decbf"
+    },
+    {
+      "name": "host-routes",
+      "exit_code": 0,
+      "passed": true,
+      "log_sha256": "37732db4aca7159eaf1fc88fa5f34dc59ac1c0e9ea4b10ef2a392c787ac9a5d2"
+    },
+    {
+      "name": "final-asoc-build",
+      "exit_code": 0,
+      "passed": true,
+      "log_sha256": "98cd37b97a4a74e5011f279d2ede85b086948f042333398cfab4b59c4cd1e2d8"
+    },
+    {
+      "name": "final-dtb-build",
+      "exit_code": 0,
+      "passed": true,
+      "log_sha256": "c0bcf990ab99cef886cb6ba949c5f1d3362c507dc0548657f72dfe3c1126146e"
+    },
+    {
+      "name": "final-dt-instances",
+      "exit_code": 0,
+      "passed": true,
+      "log_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "name": "final-bindings",
+      "exit_code": 0,
+      "passed": true,
+      "log_sha256": "2ba1eda56630c24235de342a5a9e94f5d4c70349354b42f445f4d3e25efbbd6c"
+    }
+  ],
+  "config_sha256": "8af98a1fbefdf163c407f9f04bb31372178b8f8d7d6f00f5dff162b930c968bf",
+  "full_image_modules_build": "not run; only ASoC objects and selected DTBs built",
+  "hardware_tests": "not run; no board access",
+  "schema_scope": {
+    "bindings": [
+      "amlogic,axg-fifo.yaml",
+      "amlogic,axg-pdm.yaml",
+      "amlogic,axg-spdifin.yaml",
+      "amlogic,axg-spdifout.yaml",
+      "amlogic,axg-tdm-formatters.yaml"
+    ],
+    "instance_filter": "sound/amlogic,axg:sound/dmic:sound/linux,spdif",
+    "instance_diagnostics": 0
+  },
+  "environment": {
+    "gcc": "13.3.0",
+    "dtc": "1.7.0",
+    "dtschema": "2026.9",
+    "config_source": "packaging/kernel-edge/uhd1.config + olddefconfig",
+    "platform": "OrbStack vim4-build Ubuntu arm64"
+  }
+}
