@@ -122,3 +122,17 @@ daemon-reload 也有界且不阻止已经完成的启动文件恢复。
    每次结束复位回基线，核对 build ID、服务含监控、UDC、isolated=0、taint=0、实际 HID。
 
 当前只完成离线安全网；实际一次性启动及修复候选上板验证均待窗口。
+
+## 合入主仓 main 的恢复逻辑统一
+
+合并 `428e4bf`（含 `f3b0f51`）时保留独立 backup/recovery 副本与 rollback.sh，
+统一为一个 `bounded_command`：三路标准流接 DEVNULL，超时 kill 后不二次等待。
+保留模块恢复、pending 标记和本地 `sync -f`；daemon-reload 在同步/应用恢复异常时
+也会尝试执行。rollback.sh 不再追加全局 sync，避免重新依赖 CIFS 响应。
+README 保留两边记录，继续按日期分组降序排列。本次合并只离线，未访问板子。
+合并验证：主仓全套 210 项通过、10 项跳过；Linux VM 一次性启动 6 项、恢复 10 项
+全部通过（含真实 PID 1 C harness）。
+
+下次获准短窗口时，还须在一次性启动下测 HDMI-OUT 拔插，记录拔出、重新插入后的
+显示恢复及 KVM 采集状态。当前 simpledrm 不处理热插拔；M1 的固定 connected 报告
+也不能作为真实 HPD 支持或拔插恢复通过的证据。

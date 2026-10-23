@@ -37,6 +37,70 @@ class StatusRecoveryTest(unittest.TestCase):
 
 
 class ModuleRecoveryTest(unittest.TestCase):
+    def test_restore_survives_wedged_service_manager(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            backup = Path(temporary)
+            (backup / 'COMPLETE').touch()
+            (backup / 'state.json').write_text(json.dumps({'files': {}, 'missing': []}))
+            instance = object.__new__(board.Board)
+            instance.backup = backup
+            calls = []
+
+            def execute(command, **kwargs):
+                calls.append(command)
+                return Mock(returncode=0)
+
+            def launch(command, **kwargs):
+                calls.append(command)
+                for stream in ('stdin', 'stdout', 'stderr'):
+                    self.assertEqual(kwargs[stream], board.subprocess.DEVNULL)
+                process = Mock()
+                if command[0] == 'systemctl':
+                    process.wait.side_effect = board.subprocess.TimeoutExpired(command, 10)
+                else:
+                    self.assertEqual(command[:2], ['sync', '-f'])
+                    process.wait.return_value = 0
+                return process
+
+            with patch.object(board.subprocess, 'run', side_effect=execute), \
+                    patch.object(board.subprocess, 'Popen', side_effect=launch), \
+                    patch.object(board.Path, 'unlink'), \
+                    patch.object(board.shutil, 'chown'), \
+                    patch.object(instance, 'restore_modules') as modules, \
+                    patch.object(board.os, 'sync') as sync:
+                instance.restore()
+            self.assertEqual(sum(command[0] == 'tar' for command in calls), 1)
+            modules.assert_called_once()
+            sync.assert_not_called()
+            self.assertTrue((backup / 'application-restore-pending').exists())
+            self.assertIn(['systemctl', 'daemon-reload'], calls)
+
+    def test_recovery_script_survives_payload_removal(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            payload, backup = root / 'payload', root / 'backup'
+            payload.mkdir()
+            backup.mkdir()
+            (payload / 'final-board.py').write_text('print("RECOVERY_EXECUTED")\n')
+            for name in ('deployment.json', 'manifest.json'):
+                (payload / name).write_text('{}')
+            instance = object.__new__(board.Board)
+            instance.payload, instance.backup = payload, backup
+            instance.prepare_rollback()
+            board.shutil.rmtree(payload)
+            result = board.subprocess.check_output([str(backup / 'rollback.sh'), 'verify'], text=True)
+            self.assertIn('RECOVERY_EXECUTED', result)
+            # Recovery already syncs its local filesystems; an extra global sync
+            # in the wrapper would bring the stalled NAS back into the path.
+            bin_dir = root / 'bin'
+            bin_dir.mkdir()
+            sync = bin_dir / 'sync'
+            sync.write_text('#!/bin/sh\nexit 91\n')
+            sync.chmod(0o755)
+            env = dict(board.os.environ, PATH=str(bin_dir) + ':' + board.os.environ['PATH'])
+            result = board.subprocess.check_output([str(backup / 'rollback.sh'), 'restore'], env=env, text=True)
+            self.assertIn('RECOVERY_EXECUTED', result)
+
     def test_same_release_partial_install_restores_original_directory(self):
         for phase in ('before-rename', 'after-rename', 'after-install'):
             with self.subTest(phase=phase), tempfile.TemporaryDirectory() as temporary:
@@ -117,6 +181,22 @@ class StopFailureRecoveryTest(unittest.TestCase):
     def test_sync_timeout_is_not_reported_as_durable_restore(self):
         with patch.object(board, 'bounded_command', return_value=False), self.assertRaisesRegex(RuntimeError, 'sync failed'):
             board.sync_restored_files({'files': {'/boot/edge/Image': 'hash'}})
+
+    def test_daemon_reload_is_attempted_after_sync_failure(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            instance = object.__new__(board.Board)
+            instance.backup = Path(temporary)
+            (instance.backup / 'COMPLETE').touch()
+            (instance.backup / 'state.json').write_text(json.dumps({'files': {}, 'missing': []}))
+            with patch.object(board, 'bounded_command', return_value=False) as command, \
+                    patch.object(board.subprocess, 'run'), \
+                    patch.object(instance, 'restore_modules') as modules, \
+                    patch.object(board, 'sync_restored_files', side_effect=RuntimeError('sync failed')), \
+                    self.assertRaisesRegex(RuntimeError, 'sync failed'):
+                instance.restore()
+            modules.assert_called_once_with()
+            self.assertEqual(command.call_args.args[0], ['systemctl', 'daemon-reload'])
+            self.assertTrue((instance.backup / 'application-restore-pending').exists())
 
 
 if __name__ == '__main__':
