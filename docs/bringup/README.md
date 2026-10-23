@@ -7,6 +7,7 @@
 
 ## 2026-10-23
 
+- [M2 颜色修正与第二个一次性窗口：共存通过，物理颜色和 TX 音频待验](2026-10-23-display-m2-window2.md) — kernel video audio deployment board
 - [M2 首次一次性上板：60Hz 翻页、PRIME 上屏，颜色错误阻塞验收](2026-10-23-display-m2-window1.md) — kernel video audio deployment board
 - [Wave5 编码器批量窗口与 T7 硬件看门狗](2026-10-23-wave5-parity-window.md) — kernel video deployment board
 - [Wave5 E02 可见尺寸与 E01 标准控件离线候选](2026-10-23-wave5-encoder-parity.md) — kernel video
