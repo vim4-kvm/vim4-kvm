@@ -24,7 +24,8 @@ b076a35c／d5740fac…日志降级候选只离线构建，未上板；最新方�
 ## 驱动方案与离线证据
 
 功能分支fix/hdmi-capture-stability已rebase到最新origin/vim4-kvm-7.3的c1315a95691e，
-当前41002d035f1a19596012dc054ee7862a29738f3e；本轮两个提交为6ed0155c0e2b和41002d035f1a。
+驱动候选41002d035f1a19596012dc054ee7862a29738f3e；生命周期修复为6ed0155c0e2b和41002d035f1a。
+后续9a842d455a957只加PLL启动中失锁的实际C测试，不改变候选驱动代码，已推送功能分支。
 ASoC通用snd_soc_ret恢复基线实现，最终差异仅HDMI RX/VDIN驱动及其测试。
 
 - hw_params只验证PCM通道/格式并保存协商速率、substream，不读取异步ACR/AIF或开PLL。
@@ -54,12 +55,35 @@ M0 DTB仍为a635f894…，有效配置只新增显式禁用CONFIG_DRM_MESON_T7_H
 默认Image/DTB/extlinux、运行时登记与基线模块原件保持不变。One-KVM用私有候选文件的
 临时只读bind替代，重启即撤销。上板预置独立rollback.sh，请求有界正常重启回默认基线；
 窗口finally同样重启并核对基线。所有服务stop有30秒上限。未修改final-board.py。
+正式包直接采用主仓2a34982已合并的恢复helper，保留bounded_command、文件本地同步和
+application-restore-pending，不再编辑该文件；Linux VM恢复故障注入10项通过。
 
 针对性顺序：48/44.1/48k切换、四次HPD（48/44.1/32/48k）恢复、300秒H.264画面/帧推进，
 真实HID、UDC configured、三服务active、isolated=0、taint=0、无新增ASoC/oops告警。
 全程board/heavy双锁；完成即释放。不跑重复轮数组。
 
-**当前尚未上板验证此次PCM生命周期候选，也未正式合并、部署或更新已部署锁。**
+## 首个针对性窗口：未通过，已恢复
+
+logs/kvm-stability/pcm-once-window/记录一次性启动8d6ee8e4…：
+候选GNU build ID、完整模块bind、五个基线文件哈希、三服务/UDC/隔离/taint均通过，
+临时One-KVM进程1313的实际可执行文件SHA为3d3cf276…。
+48k段track/tab各104窗口零bad，44.1k段103/102窗口零bad；第三次切回48k，
+5秒宽限之后仍有坏波形窗口，探针报Audio failure without observed RX link loss，故中止。
+应用14:56:19.662观察源变化，14:56:20.871自动恢复，PID不变；候选完整内核journal中
+ASoC error计数为0。首次探针在输出第三段坏窗口前断言，已补充诊断输出，未修改阈值。
+四次HPD和300秒冒烟尚未执行，不能把该窗口记通过。
+
+finally正常重启回7b8372b894c98ffae12e636a325c86f2b6c85e00；restored.json确认
+三服务active、UDC configured、isolated=0、taint=0，应用/manager运行哈希回到
+72db30c0…／d7a15868…；五个基线文件哈希不变，restored-hid.log确认键盘、绝对/相对鼠标、click、wheel通过。
+候选私有目录、上传包和临时应用bind已清除，释放双锁。
+
+再次申请窗口时HEAD预检发现正式分支已推进39d42b6393f92c4a5bc4bf6d73877dcb83c7d257，
+在改变板子前中止（pcm-once-window-2.log）。功能分支重新rebase为
+5b60d643af5ffcd395298d1df12b74145ab6a74e并推送；HDMI全套及整体差异checkpatch重新通过，
+782行0 errors/0 warnings。新完整候选build ID为b0cf6a7264aa9c5e5247b9f5f9f21aec36fb60e4。
+
+**当前针对性验证未通过，未正式合并、部署或更新已部署锁。**
 一次性验证通过后再合入SARADC d0c36b0f（单提交）、One-KVM正式分支，构建正式完整包，
 一次九类全量通过后finalize并更新实际源码/二进制锁。物理失锁仍为
 [厂商差距待办](../vendor-parity.md)，需用户现场受控源或厂商5.15同链路对照。
