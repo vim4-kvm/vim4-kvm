@@ -5,16 +5,18 @@
 当前包、匹配内核、安装/回退与实际验收范围见
 [双内核完整系统集成](bringup/2026-10-21-dual-kernel-integration.md)。
 本页保留 Armbian 编译基线与专项历史记录；通用 edge.config 不等于已验收的整板配置。
-当前板上保留 v7.3 Wave5 隔离版本 `aa2f875bec2fc`，release `7.3.0-vim4kvm-uhd1+`、
-build ID `7b8372b894c98ffae12e636a325c86f2b6c85e00`；uhd1.config 同次完整 Image/DTB/
-2334模块，继承 M0 simpledrm/tty0、Wave5尺寸防护及ramoops console，增加运行时超时隔离。
-One-KVM为 `382efb70e7ebb`，manager为 `9b141c5833c0`。十次软件超时注入/重启/4K60恢复，
-以及全19档、编码往返、4K60、
-48/44.1/32k音频、USB、GPU和管理页九类通过；最终taint=0、无新增警告。
+当前板上保留 v7.3 `0a775305f0ad8`，release `7.3.0-vim4kvm-uhd1+`、
+build ID `3a3cd15ca69e6084238d3bda54e41c56f6a16776`；uhd1.config 同次完整 Image/DTB/
+2334模块，继续M0 simpledrm/tty0，包含HDMI PCM生命周期、FDET竞态与SARADC sample-delay修复，
+以及最新正式分支的Wave5恢复。M1驱动编译启用，M0 DTB不启用其接管。
+One-KVM为 `672b8fd9fdec`，manager为 `9b141c5833c0`。一次性采样率切换、四次HPD恢复及
+300秒冒烟通过；正式19档、编码往返、4K60、音频、USB、GPU和管理页九类通过。
+最终taint=0、无新增警告或ASoC错误；可恢复物理失锁与画面停顿仍存在，未做长期零中断验收。
 静态显示布局只匹配当前pd-handoff/HDMI/无MIPI，4K显示器、原生模式切换未验收。
-当前哈希、备份与门禁见 [Wave5隔离正式窗口](bringup/2026-10-23-wave5-isolation-final.md)；
+当前哈希、备份与门禁见 [PCM与SARADC正式窗口](bringup/2026-10-23-kvm-audio-capture-stability-deploy.md)；
 M0布局、音频ENOLINK对照与原基线回退见 [M0正式部署](bringup/2026-10-23-display-m0-r4.md)。
-隔离保留可能仍被 DMA 使用的内存到重启，不执行运行时复位；真实固件挂死未测试。
+此前[隔离基线](bringup/2026-10-23-wave5-isolation-final.md)保留可能仍被DMA使用的内存到重启；
+新[Wave5受控恢复与失败隔离](bringup/2026-10-23-wave5-runtime-window.md)有独立注入证据，真实固件挂死未证明解决。
 短测不代表长期稳定性；此前 [Wave5正式部署](bringup/2026-10-22-edge-wave5-deploy.md)
 含正常重启pstore标记读回，本轮没有另做该重启检查。
 此前 pstore 启动的 SARADC channel 2 超时见[专项取证与离线候选](bringup/2026-10-22-saradc-timeout-audit.md)，
@@ -55,12 +57,12 @@ H.264/H.265 硬编码已取得实验结果，见
 目标是追平厂商5.15全部适用能力，核心进入DRM/KMS、V4L2、ASoC、genpd等主线框架，
 外围可先移植后整理；绕过和保护不能作为终态。完整范围、固定源码/DT行号、缺口依赖、
 工作量与硬件见 [厂商能力对照与总体规划](vendor-parity.md)。该表固定比较M0 `47878a0c611d`，
-并明确叠加当前`aa2f875b`正式隔离增量；未合入候选不算已部署能力。
+并叠加当前`0a775305`正式增量；未合入候选不算已部署能力。
 以下顺序与F0–F5一致，不代表硬件验收通过。
 
 | 优先级 | 方向 | 当前边界与下一步 |
 |---|---|---|
-| F0，最高 | KVM采集与音频稳定性 | 承接正在进行的稳定性任务：FDET瞬态分类、源generation与PCM重开；ENOLINK保留失锁保护，严格稳态零无故停流/重建和非零声音验收 |
+| F0，最高 | KVM采集与音频稳定性 | FDET分类、PCM XRUN与资格重开已正式保留；验收自动恢复、非零声音及无ASoC残留，物理失锁和长期连续性待现场对照 |
 | F1，最高 | Wave5恢复与HEVC尺寸正式实现 | [正式隔离](bringup/2026-10-23-wave5-isolation-final.md)已有watchdog/job_abort和保留DMA到重启，但无运行时硬件复位/固件重载、真实挂死未验。继续正式恢复，再退出[尺寸保护](bringup/2026-10-22-edge-wave5-deploy.md)/AVC回退 |
 | F1→F2 | 本地显示M1+与采集共存 | M0 simpledrm已过，M1由现有任务承接；统一共享VCBUS/MMIO/时钟归属，后续原生DRM modeset/EDID/HPD、多平面及HDMI声音，不以固定handoff当终态 |
 | F2 | 输入格式完整化与硬件解码 | HLG/隔行拒绝需正式色彩/去隔行实现；12bit动态路径已实现但真源未验。解码沿[既有VDEC门禁](bringup/2026-10-22-vdec-mdec-offline.md)，先安全平台层和H.264正确帧，再扩codec/位深/多实例 |

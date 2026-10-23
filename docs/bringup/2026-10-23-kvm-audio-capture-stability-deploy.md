@@ -1,5 +1,8 @@
 # 2026-10-23：HDMI 音频 PCM 生命周期修复与部署
 
+**已正式保留**：Linux 0a775305f0ad8、One-KVM 672b8fd9、manager 9b141c58，
+build ID 3a3cd15ca69e6084238d3bda54e41c56f6a16776；一次九类回归与最终health通过。
+
 承接[诊断与27轮历史](2026-10-23-kvm-audio-capture-stability.md)。最新用户决定停止重复
 5/20轮验收，按[内核开发门禁](../subsystems/deployment.md#内核开发流程与部署门禁)推进：
 驱动修复、一次性启动针对性测试与约5分钟冒烟，通过后与SARADC单提交合入，正式部署跑一次九类。
@@ -23,9 +26,9 @@ b076a35c／d5740fac…日志降级候选只离线构建，未上板；最新方�
 
 ## 驱动方案与离线证据
 
-功能分支fix/hdmi-capture-stability已rebase到最新origin/vim4-kvm-7.3的c1315a95691e，
-驱动候选41002d035f1a19596012dc054ee7862a29738f3e；生命周期修复为6ed0155c0e2b和41002d035f1a。
-后续9a842d455a957只加PLL启动中失锁的实际C测试，不改变候选驱动代码，已推送功能分支。
+功能分支fix/hdmi-capture-stability最终rebase到39d42b6393f92，HEAD为
+5b60d643af5ffcd395298d1df12b74145ab6a74e；生命周期修复为4fdf3fdef4143和83bf2086a366a。
+5b60d643只加PLL启动中失锁的实际C测试，不改变驱动代码；功能分支与正式合并均已推送。
 ASoC通用snd_soc_ret恢复基线实现，最终差异仅HDMI RX/VDIN驱动及其测试。
 
 - hw_params只验证PCM通道/格式并保存协商速率、substream，不读取异步ACR/AIF或开PLL。
@@ -45,7 +48,7 @@ VM实际C测试覆盖七档ACR/AIF、损坏/矛盾包、hw_params后失锁、mon
 关闭取消XRUN、同速率prepare恢复、时钟/FIFO/PLL失败回滚。HDMI驱动全套通过；
 rebase后整体差异checkpatch为0 errors、0 warnings（756行），git diff --check通过。
 日志：logs/kvm-stability/pcm-lifecycle-rebased-tests.log、pcm-xrun-reprepare.log。
-完整候选build ID为8d6ee8e4d0e6844b933a64402ac605218a8548df，2334模块；
+首轮候选build ID为8d6ee8e4d0e6844b933a64402ac605218a8548df，2334模块；
 M0 DTB仍为a635f894…，有效配置只新增显式禁用CONFIG_DRM_MESON_T7_HANDOFF一行。
 一次性归档83,927,040字节，已完成逐文件哈希与静态ARM64 PID 1检查。
 
@@ -106,5 +109,54 @@ taint=0通过，完整journal无新增ASoC/oops/BUG/panic。11个已加载模块
 SARADC d0c36b0f），One-KVM vim4已快进到672b8fd9，均已推送。
 合并后的HDMI实际C测试全过，整体checkpatch为790行0 errors/0 warnings。
 正式完整包沿用最新主仓uhd1.config的M1驱动编译开关，但仍安装已验M0 DTB，不启用M1。
-正式九类回归、finalize及已部署锁更新仍待完成。物理失锁仍为
+正式九类回归及finalize结果如下。物理失锁仍为
 [厂商差距待办](../vendor-parity.md)，需用户现场受控源或厂商5.15同链路对照。
+
+## 正式窗口与保留证据
+
+在board/heavy双锁下执行（构建、stage均已在窗口外完成）：
+
+```sh
+python3 build/kvm-stability/locked.py python3 build/kvm-stability/pcm-final-window.py window \
+  --bundle build/kvm-stability/pcm-formal.bundle \
+  --backup /var/backups/vim4-kvm-stability-pcm-final \
+  --logs logs/kvm-stability/pcm-formal-window \
+  --archive-remote-to /var/tmp/vim4-kvm-stability-before-pcm-final --execute --locked
+```
+
+先保存板上及Mac六项完整备份并核对SHA，再安装；预置独立rollback.sh。
+板上空间不足前仅删除本任务两组逐文件哈希确认的旧可再生暂存包，共238843706字节，未删备份。
+实际输出PREFLIGHT_OK、BACKUP_COMPLETE、CRITICAL_HEALTH_VERIFIED及以下结果：
+
+| 门禁 | 实际结果 |
+|---|---|
+| SARADC | channel 2读2000次，0错误，4093–4093，0.319秒；未按实体键，不证明历史偶发超时根因已消除 |
+| HDMI模式 | 19档帧号、颜色、布局及DMA检查通过 |
+| H.264 / H.265 | 分别18/16段模式往返，浏览器帧推进、颜色及快照通过 |
+| 4K60 | H.264 60.0383fps、H.265 60.0461fps；各15秒采样，freeze/drop/lost/PLI均0 |
+| 音频 | 48/44.1/48k，稳态track/tab分别103/103、103/103、102/103个窗口，零bad；concealedSamples与packetsLost均0 |
+| HID | 实际主机键盘down/up、绝对/相对鼠标、click、wheel通过 |
+| 虚拟介质 | 只读及可写路径、1MiB写入SHA校验、应用重启保留、主机弹出清LUN通过 |
+| GPU | Panfrost实际渲染、自动devfreq与runtime resume通过，恢复原策略；未做整机挂起 |
+| 管理页 | 正式管理器/网关页面及状态检查通过 |
+
+regression-results.json九项全true；最后health十项全true，NEW_WARNINGS []。
+完整本次启动kernel journal的ASoC error=0，Oops/BUG/panic=0。
+最终输出DEPLOYMENT_RETAINED和SUCCESS: final deployment retained; no baseline reboot；
+窗口退出释放双锁，不再恢复旧基线。复查三服务active、UDC configured、isolated=0、taint=0，
+One-KVM/manager运行哈希3d3cf276…／d7a15868…，真实build ID与包一致。
+M0 DTB和extlinux哈希仍为a635f894…／c6446a1c…，没有切换默认启动标签或引导器。
+
+| 已保留产物 | SHA-256 |
+|---|---|
+| Image | 2e781026a59f1551569f1a0e2d93989f1e3cbff034f3e187e6d5f0c963043c99 |
+| 完整模块包（2334模块） | c4240d66bdfa1fba2deb178b004996b760f52be4d502203f708679d996015c6e |
+| uhd1.config | 8af98a1fbefdf163c407f9f04bb31372178b8f8d7d6f00f5dff162b930c968bf |
+
+其余产物、11个实际加载模块build ID及应用源码锁见sources.toml/workspace.toml。
+日志为logs/kvm-stability/pcm-formal-window.log、pcm-formal-window/、
+pcm-formal-final-proof.json、pcm-formal-final-isolation.json、pcm-formal-kernel.log。
+需要回退时保留板上/var/backups/vim4-kvm-stability-pcm-final及Mac同名窗口baseline/；
+rollback.sh reboot恢复7b8372b8…后仍需verify及真实HID确认。
+本轮未重跑20轮、未重复pstore标记重启；没有同方法旧基线对照。短测不代替长期稳定性，
+首次第三段48k波形失败原因仍未确定，物理链路失锁仍待现场对照。

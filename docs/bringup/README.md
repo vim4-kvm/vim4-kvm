@@ -13,7 +13,7 @@
 - [Wave5 运行时恢复：五轮注入、失败隔离与一次性启动窗口](2026-10-23-wave5-runtime-window.md) — kernel video deployment board
 - [M1 第七窗口：一次性启动、RMFB、翻页与 Panfrost](2026-10-23-display-m1-window7.md) — kernel video deployment board
 - [HDMI 音频与采集稳定性：27轮自动恢复与EAGAIN残留](2026-10-23-kvm-audio-capture-stability.md) — kernel audio video application deployment board
-- [HDMI 音频 PCM 生命周期修复与部署](2026-10-23-kvm-audio-capture-stability-deploy.md) — kernel audio video application deployment board
+- [HDMI 音频 PCM 生命周期修复与 SARADC 正式部署：九类通过](2026-10-23-kvm-audio-capture-stability-deploy.md) — kernel audio video application deployment board
 - [T7 DRM M1 固定输出、RMFB 崩溃与离线修复](2026-10-23-display-m1.md) — kernel video audio usb deployment board
 - [M1 一次性启动与恢复安全网](2026-10-23-display-m1-safety.md) — kernel deployment
 - [T7 DRM M1 共存接管设计](2026-10-23-display-m1-design.md) — kernel video audio
