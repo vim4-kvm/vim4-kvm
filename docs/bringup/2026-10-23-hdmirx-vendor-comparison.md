@@ -4,7 +4,8 @@
 正式 7.3 十分钟出现 12 次浏览器冻结、12 条 TMDS 拒绝事件；厂商 5.15 十分钟
 冻结、RX 信号丢失及重新锁定事件均为 0。不能继续将这些停顿统称为源/线缆物理失锁，
 已定位 TOP meter 的短暂无效标志被误判为 ENOLINK；修复候选十分钟零冻结、零停流，
-四次 HPD 与采样率切换自动恢复，无 ASoC 错误。
+四次 HPD 与采样率切换自动恢复，无 ASoC 错误。已正式保留 `b1300eb8` / `eeddb005…`，
+正式五分钟及音频/HID/管理面门禁通过。
 一次配对不能证明所有线缆/源或长期场景都健康。
 
 ## 版本、同条件与窗口边界
@@ -123,6 +124,36 @@ UDC configured；原生键鼠 HID 通过。
 功能分支两提交推送后，正式分支仍为其祖先 `0a775305…`，故直接 fast-forward 至
 `b1300eb808f43` 并推送，没有 rebase 或引入其他子系统，复用同次已验证完整构建。
 正式安装使用部署文档的单一 RX 子系统门禁，不重复九类全量。
+
+## 正式安装与保留
+
+显示任务释放锁后，`locked.py tmds-final-window.py window --execute --locked` 取得双锁；
+在当前标准 final-window/final-board 上按单一 RX 范围选择 4k60/audio/hid/manager，
+四项全部 required。没有修改主仓 final-board.py。拿锁后再核对远端正式 HEAD，
+板/Mac 备份逐文件校验后才安装。独立回退脚本提前写入并 sync；服务停止与回退均有超时。
+
+正式 300 秒运动 H.264：18,002 帧、60.00038 fps，冻结/停流/丢帧/丢包增量均 0，
+31 个像素摘要各异；混合 invalid_frames 增量 6,463。音频 48k→44.1k→48k 非零声音、
+真实键鼠 HID 与管理页通过，输出四项 `REGRESSION_PASSED`。末尾健康项全部通过、
+`NEW_WARNINGS []`、三服务 active、UDC configured、isolated=0、taint=0。
+最初 IR 健康项因旧临时工具被清理而失败；窗口内补回同一 ARM64 ir-keytable
+（SHA256 `c4df205326ccb3901f65a9db395174c9a831473a64fc83ec4845295f3bbfc24b`），
+确认 rc-khadas/NEC，末尾重新通过，没有将首次失败藏掉。
+
+finalize 实际输出 `UBOOT_UNCHANGED`、`DEPLOYMENT_RETAINED` 和
+`SUCCESS: final deployment retained; no baseline reboot`。正式源码 `b1300eb808f43`，
+build ID `eeddb005df059a850853876d52ef603aa1af192b`，2334 个匹配模块；
+Image SHA256 `33d108070f6643476cecea90f24f26c088a25dda325e8aa87542781c96ab4ae6`，
+模块包 `a3272e074fa19ed3eda97673abc7b86496781a4211860cded0f7e92f854c20cc`。
+M0 DTB/config 未变，其余哈希及加载模块身份同步到 sources.toml。
+One-KVM `672b8fd9fdec`、manager `9b141c5833c0` 原文件保留，workspace.toml 无需变更。
+
+当前回退点 `/var/backups/vim4-kvm-tmds-final`，含独立 rollback.sh；Mac 镜像位于
+`logs/kvm-stability/tmds-formal/baseline/`。窗口全日志 `tmds-formal-window.log`，
+四项结果/健康/警告、运动计数及最终清单位于 `tmds-formal/`。
+最终2334模块逐项匹配、厂商目录未变、无ASoC/oops/WARNING；清理本任务临时目录，
+保留当前回退点并释放板锁。证据 `tmds-retained-proof-final.log`。
+主仓离线测试 223 项通过、6 项跳过。未重复九类、未做新 pstore 重启或长期多源验收。
 
 ## 恢复与原始证据
 

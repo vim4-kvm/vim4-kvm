@@ -2,11 +2,11 @@
 [kernel]
 url = "https://github.com/vim4-kvm/linux.git"
 branch = "vim4-kvm-7.3"
-revision = "0a775305f0ad81475f65d33b15f79099c8445c75"
-tree = "e35abde9a3661a84746427495ddc0f727bf33dda"
+revision = "b1300eb808f43e7161d4971d47c689af28e67e83"
+tree = "c65c7d9b6f88b50d544ac72d56ff0e33b47cb54b"
 upstream_url = "https://github.com/gregkh/linux.git"
 # Retained final-release deployment (published).
-# Evidence and limits: docs/bringup/2026-10-23-kvm-audio-capture-stability-deploy.md.
+# Evidence and limits: docs/bringup/2026-10-23-hdmirx-vendor-comparison.md.
 upstream_tag = "v7.3"
 upstream_revision = "c03c1a14507dfaf8b856c2608f9ac216021fc222"
 
@@ -23,19 +23,19 @@ tested_binary_sha256 = "0b537561096ee5dfb5f15839738c8ac4ea87ba0dbb3a5127a25c241d
 [tested_build]
 release = "7.3.0-vim4kvm-uhd1+"
 localversion = "-vim4kvm-uhd1"
-build_id = "3a3cd15ca69e6084238d3bda54e41c56f6a16776"
-image_sha256 = "2e781026a59f1551569f1a0e2d93989f1e3cbff034f3e187e6d5f0c963043c99"
+build_id = "eeddb005df059a850853876d52ef603aa1af192b"
+image_sha256 = "33d108070f6643476cecea90f24f26c088a25dda325e8aa87542781c96ab4ae6"
 config_sha256 = "8af98a1fbefdf163c407f9f04bb31372178b8f8d7d6f00f5dff162b930c968bf"
 config_path = "uhd1.config"
-modules_sha256 = "c4240d66bdfa1fba2deb178b004996b760f52be4d502203f708679d996015c6e"
+modules_sha256 = "a3272e074fa19ed3eda97673abc7b86496781a4211860cded0f7e92f854c20cc"
 module_count = 2334
 module_btf = true
 board_dtb_path = "arch/arm64/boot/dts/amlogic/amlogic-t7-a311d2-khadas-vim4-display-m0.dtb"
 framebuffer_console = true
 board_dtb_sha256 = "a635f8947ee77f67a43714aaa87276aff70edc0952bf40188d46853e055ce652"
-manifest_sha256 = "9162e3104ec07e88afac1d46e0210af5181c26f2c04a022bff99e2975635d6c2"
-runtime_proof_sha256 = "d4c26b26ea191e3ab2c46bd1c91839dfb1622c358fca24a2aa055fe05139aa97"
-wave5_module_sha256 = "d9faea8a78b50d29a529ea0c3710ee07cb8fd040e152a14941292aeb0c962e2c"
+manifest_sha256 = "6c71af705c9ba80ec16e9cbfe9d789fe27f6eb4ef3407324f1d1fd02a89fd607"
+runtime_proof_sha256 = "da8ed4069e55fbb4ef4646654f8e1a8beea69618fb09cf2458d9b2ee70c218dc"
+wave5_module_sha256 = "e88df353c730e5d82bbef8335788a28d5f71cfc7a4e1b8b5854ef00046d4b667"
 
 [tested_build.loaded_module_build_ids]
 meson_ir = "1ef2e6c71b739486d3356d1aafb131c63be49a7c"
@@ -45,7 +45,7 @@ dwmac_meson8b = "c2d73a4529dc94d006263886abb270c83dadfe71"
 panfrost = "d573b3dc322735c60a569634ba46d842e4d2df5b"
 brcmfmac = "377b4ea3f944dc7072e3f2ed8d43c2d1278fc8e8"
 wave5 = "8e2dedd2579d126adb8ba710eec2082ec1753b05"
-t7_hdmirx = "fa53a24101b5c4bb683ee50238f306f09b0f18da"
+t7_hdmirx = "93dfabd64fa7cca88caf7b97a0357e2470ea59a2"
 t7_vdin_test = "fac1231e782c9035439deee2031f32b287c0231c"
 t7_jpeg = "be8cbd7c285fb0be281688bb4de3b78c9e301b70"
 crg_udc = "bbd01bc197cb11f4cd6383e8bf641c6a8d0b77fe"
