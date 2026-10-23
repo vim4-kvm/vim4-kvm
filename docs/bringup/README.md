@@ -7,6 +7,7 @@
 
 ## 2026-10-22
 
+- [U-Boot 现场复位分析与 microSD 安全验证](2026-10-22-uboot-sd-recovery.md) — usb kernel deployment
 - [7.3 ramoops/pstore 正式部署并保留](2026-10-22-edge-pstore-deploy.md) — kernel deployment board
 - [P1 浏览器音频观察器复核](2026-10-22-p1-browser-audio.md) — audio application board
 - [PD 热重启历史合同卡片](2026-10-22-pd-warm-carryover.md) — usb manager deployment board

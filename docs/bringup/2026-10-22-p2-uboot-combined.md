@@ -1,8 +1,34 @@
 # 2026-10-22：P2 PD Request＋KASLR 合并固件候选
 
-结论：在 pd-handoff 之上合并固定 5V USB Request 与硬件随机种子交接，
-两组主机测试通过，独立构建签名镜像。**未刷写、未改变板上 U-Boot**。
-以下现场流程尚未执行；不能把 mock 测试当作 PD/HID 或种子硬件验证。
+最新结论：原合并候选 d54877c9f5 / 6a25037a… **现场冷启动循环复位，已撤回**。
+用户经 OOWOW 恢复 pd-handoff FIP 并逐字节核对，板子已恢复正常。
+本次分析和新候选构建完全离线；没有 SSH、串口连接或板端操作。
+新候选、证据边界及必须先做的 microSD 验证见
+[失败分析与 SD 验证](2026-10-22-uboot-sd-recovery.md)。以下原构建证据保留为历史，
+旧 eMMC 流程不得跳过 SD 验证直接复用。
+
+## 现场失败与恢复补记
+
+用户最初观察 19 个循环；当前保存的 coldboot-uart.log 已有 32 次 DTB size 行、
+31 个完整 d54877c9f5 banner，oowow-uart.log 另有 14 次 size 行，部分串口片段缺字。
+每轮停在 `the dtb partition size is:40000   byte`，没有 seed handoff 日志，随后重入 BL2。
+记录既有 5V/3A `PDO=3f01912c RDO=1304b12c`，也有用户报告的
+5V/1.5A `PDO=3f019096 RDO=13025896`；`flags=41` 表示观测到合同完成和 Sink attached，
+不能据此排除随后供电/PD Hard Reset。
+
+恢复日志 recovered-boot-uart.log 的 0d5a3d7848 在同一位置继续 DTB 校验、文件系统
+加载，最后到 Ubuntu login。fip-before.bin SHA 为
+`751490703dc2f8ccee199ffe083b2ba5937cc598ec0e9e718f36c863a164e9e0`；
+fip-new.bin SHA 为 `efb0bef62ca74dbaff85d00817bf5e35574e2e06c4eba5e07e788dd64007eca9`。
+现场恢复逐字节核对由用户完成；本轮只复核已有文件，不能把本地备份哈希称为新板端回读。
+
+**FUNCTION+RESET 在此次早期崩溃下无效；拔 SD、断开全部供电/回供、按住 FUNCTION
+再冷上电可以进入 OOWOW。** 热复位组合依赖 eMMC U-Boot 运行到按键检测，不能作为
+任意引导故障下的恢复保证。不能把冷上电的成功进一步推断成未公开 MCU/BootROM 实现细节。
+
+高置信结论是故障窗口早于 RNG/FDT seed fixup；直接诱因尚未确定。
+新候选移除 Linux 启动的 Android 保留 DTB 探测，并修复独立的 T7 RNG READY 握手遗漏。
+主机测试覆盖路径避让及握手故障，**不等于已复现或证实修复物理复位**。
 
 ## 分支、实现与离线证据
 
@@ -68,7 +94,7 @@ Verified stock round-trip, preserved early stages/BL30/BL40/BL32 and expected BL
 镜像 3248640 字节，FIP 位于 `0xa4200`（672256），长度 2576384。
 sector 0 的磁盘身份/分区表不由候选覆盖。
 
-## 用户在板边时一次刷写流程（本轮不执行）
+## 历史 eMMC 刷写流程（仅 SD 验证通过后参考）
 
 1. 用户在板边、USB-C 接线/供电可冷插拔且 OOWOW 恢复可用时开始。
    Mac 外层持 `/usr/bin/lockf /tmp/vim4-board.lock /usr/bin/lockf /tmp/vim4-heavy.lock <窗口脚本>`，
@@ -119,8 +145,9 @@ sector 0 的磁盘身份/分区表不由候选覆盖。
 7. 任一关键验证失败，从**本次新备份**取 fip-before.bin，先核验当前 FIP 为本候选或已知
    写入失败状态，再用相同 seek/count/conv 参数写回。完整前缀读回必须与本次备份逐字节相同。
    重启并确认 pd-handoff、原内核 build ID、服务和实际 HID；持久 journal 配置保留。
-   若 Linux 无法启动，现场用 FUNCTION+RESET 进入 OOWOW，从 Mac 的备份恢复同一 FIP 范围，
-   不调用整盘重装或格式化。恢复通道须在写前准备好，现场失联恢复未由本轮实测。
+   若 Linux 无法启动，拔 SD、断开全部供电，按住 FUNCTION 冷上电进入 OOWOW，
+   从 Mac 的备份恢复同一 FIP 范围，
+   不调用整盘重装或格式化。恢复通道须在写前准备好；本次现场已验证上述冷上电方式。
 
 通过现场验收可保留合并固件，由用户记录最终部署决定。旧 `build/pd-handoff/board.py`
 硬编码旧固件/旧应用基线，不能原样执行。本轮没有现场冷插拔、实际种子或固件 HID 结论。

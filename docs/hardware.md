@@ -44,9 +44,13 @@
 
 | 操作 | 效果 |
 |---|---|
-| 按住 FUNCTION → 短按 RESET → 松开 FUNCTION | 进入 OOWOW（先拔出 SD 卡，SD 启动优先级最高） |
+| 按住 FUNCTION → 短按 RESET → 松开 FUNCTION | U-Boot 能运行到按键检测时可进入 OOWOW；不能用于保证早期循环复位的恢复 |
+| 拔 SD、断开全部供电及 USB 回供 → 按住 FUNCTION 冷上电 | 本次 U-Boot 早期循环复位时已验证可进 SPI OOWOW；确认进入后松键。SD 启动优先级最高，恢复前先拔卡 |
 | 2 秒内按 FUNCTION 3 次 | MaskROM 模式 |
 | RESET | 硬复位 |
+
+U-Boot 候选先从 microSD 启动验证，失败断电拔卡即可返回原 eMMC 固件。
+现场证据与 SD 偏移/写卡步骤见 [失败分析与恢复](bringup/2026-10-22-uboot-sd-recovery.md)。
 
 ## 串口调试
 

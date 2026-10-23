@@ -29,7 +29,10 @@ Image / 完整模块后，用 `packaging/kernel-edge/register-runtime.py` 核对
 面板切换只保存默认启动项并重启，保留 5.15 Image、Stock 与实验入口，不格式化数据。
 重装清空 eMMC，须用户明确确认；
 优先使用 tools/board.py recover 远程进入 OOWOW；系统无法响应时，按住 FUNCTION、
-短按 RESET、松开 FUNCTION。刷写见板级工具文档，禁止直接用 OOWOW /shell/write。
+短按 RESET、松开 FUNCTION（要求 U-Boot 已能运行到按键检测）。若早期循环复位，
+先拔 SD、断开全部供电/回供，按住 FUNCTION 冷上电进 OOWOW。
+U-Boot 候选必须先从 microSD 验证，见 [现场恢复](../bringup/2026-10-22-uboot-sd-recovery.md)。
+刷写见板级工具文档，禁止直接用 OOWOW /shell/write。
 
 镜像构建需记录各仓库提交、模块、插件、板级服务和应用配置。
 上板关键发现按 [上板记录索引](../bringup/README.md) 新建条目，跨子系统教训归
