@@ -30,6 +30,28 @@ fip-new.bin SHA 为 `efb0bef62ca74dbaff85d00817bf5e35574e2e06c4eba5e07e788dd6400
 新候选移除 Linux 启动的 Android 保留 DTB 探测，并修复独立的 T7 RNG READY 握手遗漏。
 主机测试覆盖路径避让及握手故障，**不等于已复现或证实修复物理复位**。
 
+## 离线修正边界
+
+第二轮按用户判断拆为 A（旧 PD＋种子/握手/DTB 修正）、B（仅 pd-request），见上方
+SD 记录；PD 协议空窗/单线供电下源端复位为首要假设，仍缺 CC/VBUS 实测。
+实际末段路径是 `common_dtb_load → imgread → store_rsv_size`（size 日志）
+`→ store_rsv_read → dtb_read → blk_dread → DTB 校验`。失败未到首次校验输出，
+新 RNG 只由后面的 ft_board_setup 调用，不能直接解释此早期窗口。
+MMC/DMA、内存破坏、安全侧复位仍未排除；非安全 watchdog 关闭不能证明 EL3 WDT 状态，
+正常/失败 reason=0x00 也不能区分断电原因。没有匹配 BL31 源码/ELF/异常记录；镜像审计
+确认 BL31 未变，不能虚构其复位策略。
+
+e92aba63ca 修正 raw DTB 探测：厂商 dtb_read 在副本有效性/时间戳不同时可能修复写回，
+文件系统直载及禁止 raw fallback 是隔离措施，不是根因证明。另按厂商 T7
+`arch/arm/mach-meson/t7/hw_rng.c` 补齐 READY bit0 清零 → CFG bit0 清零 → CFG bit31
+启动/等待 → OUT0 → READY 写 1 ACK。三个等待各最多 10ms，不能限制不返回的 MMIO。
+独立写入 8/32 字节种子，不打印值；超时/坏样本/FDT 空间不足则清理属性、继续启动。
+前轮 IDA、负向测试和镜像审计在 `logs/uboot-recovery/`；将旧函数放进新主机测试，
+分别在 READY 顺序/raw DTB 访问处断言失败，不等于复现了物理复位。
+e92aba63ca 仍含 pd-request；本轮 SD 现场计划改用 A/B，不使用该旧合并修正镜像。
+文档内两组 dd 已对临时普通文件实际执行，验证写入范围、MBR bytes 442–511 与镜像尾后
+数据不变；没有打开磁盘设备，见 `logs/uboot-sd-ab/sd-layout-test.log`。
+
 ## 分支、实现与离线证据
 
 VM 工作树 `/home/deepdream/src/u-boot-pd-kaslr`，分支
