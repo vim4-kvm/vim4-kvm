@@ -7,6 +7,7 @@
 
 ## 2026-10-23
 
+- [M2 原生 ENC2 模式切换：PLL/VENC/PHY、SCDC 与厂商参数对比（离线）](2026-10-23-display-m2-modeset.md) — kernel video audio deployment
 - [M2 RDMA 翻页与独立 TX 音频：离线实现，原生 modeset 仍缺失](2026-10-23-display-m2-rdma-audio.md) — kernel video audio deployment
 - [厂商5.15一次性启动往返与GPU用户态识别](2026-10-23-vendor-boot-gpu.md) — kernel deployment board
 - [M1 合入与 M2 离线开发：HPD、EDID、线性 PRIME 和音频接口](2026-10-23-display-m2.md) — kernel video audio deployment
