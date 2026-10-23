@@ -70,6 +70,7 @@ int main(void)
 	struct utsname kernel;
 	ssize_t length, size;
 	char *directory;
+	const char *step = "mount proc";
 	int fd;
 
 	if (getpid() != 1)
@@ -78,11 +79,14 @@ int main(void)
 	if (mount("proc", "/proc", "proc", MS_NOSUID | MS_NODEV | MS_NOEXEC, NULL) &&
 	    errno != EBUSY)
 		goto fail;
+	step = "mount sysfs";
 	if (mount("sysfs", "/sys", "sysfs", MS_NOSUID | MS_NODEV | MS_NOEXEC, NULL) &&
 	    errno != EBUSY)
 		goto fail;
+	step = "kernel release";
 	if (uname(&kernel) || strcmp(kernel.release, RELEASE))
 		goto fail;
+	step = "executable path";
 	length = readlink("/proc/self/exe", executable, sizeof(executable) - 1);
 	if (length <= 0 || length >= (ssize_t)sizeof(executable) - 1)
 		goto fail;
@@ -97,6 +101,7 @@ int main(void)
 	for (unsigned int i = 0; i < 40; i++)
 		if (!((id[i] >= '0' && id[i] <= '9') || (id[i] >= 'a' && id[i] <= 'f')))
 			goto fail;
+	step = "kernel build ID";
 	fd = open("/sys/kernel/notes", O_RDONLY | O_CLOEXEC);
 	if (fd < 0)
 		goto fail;
@@ -106,24 +111,34 @@ int main(void)
 		goto fail;
 	/* Separate storage, same release: existing KVM launchers remain applicable. */
 	*strrchr(executable, '/') = '\0';
+	step = "candidate directory";
 	if (!trusted_directory(executable, &source_info))
 		goto fail;
 	if (snprintf(source, sizeof(source), "%s/modules/%s", executable, RELEASE) >=
 	    (int)sizeof(source))
 		goto fail;
+	step = "module directories";
+	/* The existing mountpoint can retain a package builder's numeric owner.
+	 * Only the private source supplies modules; validate its ownership strictly.
+	 */
 	if (!trusted_directory(source, &source_info) ||
-	    !trusted_directory(MODULES, &target_info) ||
+	    stat(MODULES, &target_info) || !S_ISDIR(target_info.st_mode) ||
 	    (source_info.st_dev == target_info.st_dev && source_info.st_ino == target_info.st_ino))
 		goto fail;
-	if (mount(source, MODULES, NULL, MS_BIND, NULL) ||
-	    mount(NULL, MODULES, NULL, MS_BIND | MS_REMOUNT | MS_RDONLY, NULL))
+	step = "bind modules";
+	if (mount(source, MODULES, NULL, MS_BIND, NULL))
+		goto fail;
+	step = "read-only modules";
+	if (mount(NULL, MODULES, NULL, MS_BIND | MS_REMOUNT | MS_RDONLY, NULL))
 		goto fail;
 	puts("DISPLAY_ONCE: matching modules mounted; starting systemd");
 	fflush(stdout);
+	step = "exec systemd";
 	execl("/sbin/init", "/sbin/init", (char *)NULL);
 fail:
 	/* No candidate userspace with baseline modules; the default boot is untouched. */
-	fputs("DISPLAY_ONCE: preflight failed; reboot to the retained baseline\n", stderr);
+	fprintf(stderr, "DISPLAY_ONCE: %s failed (errno=%d); reboot to the retained baseline\n",
+		step, errno);
 	reboot(RB_AUTOBOOT);
 	return 1;
 }

@@ -7,9 +7,10 @@
 
 ## 2026-10-23
 
+- [M1 第七窗口：一次性启动、RMFB、翻页与 Panfrost](2026-10-23-display-m1-window7.md) — kernel video deployment board
 - [HDMI 音频与采集稳定性：27轮3失败，已恢复基线](2026-10-23-kvm-audio-capture-stability.md) — kernel audio video application deployment board
 - [T7 DRM M1 固定输出、RMFB 崩溃与离线修复](2026-10-23-display-m1.md) — kernel video audio usb deployment board
-- [M1 一次性启动与恢复安全网（仅离线）](2026-10-23-display-m1-safety.md) — kernel deployment
+- [M1 一次性启动与恢复安全网](2026-10-23-display-m1-safety.md) — kernel deployment
 - [T7 DRM M1 共存接管设计](2026-10-23-display-m1-design.md) — kernel video audio
 - [Wave5 运行时硬复位地址冲突与拓扑保护（仅离线，恢复受阻）](2026-10-23-wave5-runtime-recovery.md) — kernel video
 - [Wave5 隔离正式窗口复验](2026-10-23-wave5-isolation-final.md) — kernel video audio usb manager deployment board

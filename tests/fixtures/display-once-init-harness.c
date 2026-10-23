@@ -14,7 +14,7 @@
 #include <unistd.h>
 
 static int mounts, fail_mount, executions, resets;
-static bool wrong_id, wrong_release, unsafe_source, same_directory;
+static bool wrong_id, wrong_release, unsafe_source, same_directory, invalid_target;
 static jmp_buf executed;
 static pid_t fake_pid(void) { return 1; }
 static int fake_uname(struct utsname *value)
@@ -47,8 +47,10 @@ static int fake_close(int fd) { assert(fd == 42); return 0; }
 static int fake_stat(const char *path, struct stat *info)
 {
 	memset(info, 0, sizeof(*info));
-	info->st_mode = S_IFDIR | 0555;
-	info->st_uid = unsafe_source;
+	bool target = strstr(path, "/lib/modules/") != NULL;
+	info->st_mode = (target && invalid_target ? S_IFREG : S_IFDIR) | 0555;
+	/* Real baseline packages can preserve the Mac builder's UID 501. */
+	info->st_uid = target ? 501 : unsafe_source;
 	info->st_dev = 1;
 	info->st_ino = strstr(path, "/lib/modules/") && !same_directory ? 2 : 1;
 	return 0;
@@ -92,13 +94,14 @@ static int fake_reboot(int command) { assert(command == RB_AUTOBOOT); resets++; 
 
 int main(void)
 {
-	for (int failure = 0; failure <= 8; failure++) {
+	for (int failure = 0; failure <= 9; failure++) {
 		mounts = executions = resets = 0;
 		fail_mount = failure <= 4 ? failure : 0;
 		wrong_id = failure == 5;
 		wrong_release = failure == 6;
 		unsafe_source = failure == 7;
 		same_directory = failure == 8;
+		invalid_target = failure == 9;
 		if (!setjmp(executed))
 			assert(trial_main() == 1);
 		assert(executions == (failure == 0));

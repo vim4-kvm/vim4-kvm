@@ -1,8 +1,9 @@
-# 2026-10-23：M1 一次性启动与恢复安全网（仅离线）
+# 2026-10-23：M1 一次性启动与恢复安全网
 
 第五窗口[RMFB 事故](2026-10-23-display-m1.md)说明：依靠候选 Linux 或 Mac 窗口
 的 finally 写回基线不可靠。新机制保留默认启动文件，只在 U-Boot RAM 中选择一次候选。
-本轮没有 SSH、串口操作、安装或重启；以下板级命令是下次窗口计划，不能当作实测证据。
+本文最初为离线设计；后续实际启动、失败回退与挂载点修正见
+[第七窗口](2026-10-23-display-m1-window7.md)。下文设计命令本身不作为实测证据。
 
 ## 现有固件支持与不变量
 
@@ -15,7 +16,7 @@
 `cmd/pxe.c:do_sysboot()` 接受 `sysboot <interface> <dev:part> any <address> <config>`，
 从指定分区读取 extlinux 风格配置，Image/FDT 继续从同一文件系统加载。现有第五窗口
 UART 确认 eMMC 为 U-Boot mmc1、默认启动分区为 1；Linux 根为
-`PARTUUID=bcb80000-02`（p2 ext4，ordered）。根分区的 U-Boot ext4 兼容性仍需板上验证。
+`PARTUUID=bcb80000-02`（p2 ext4，ordered）。第七窗口已验证从根 ext4 加载配置和候选。
 
 以下内容始终保留基线原件，不在候选暂存/启动流程里覆盖：
 
@@ -47,7 +48,8 @@ sysboot mmc 1:2 any ${pxefile_addr_r} /var/lib/vim4-kvm/display-m1/844bfec2f4240
 [display-once-init.c](../../packaging/kernel-edge/display-once-init.c) 编译为静态 ARM64 PID 1：
 
 1. 挂载 proc/sys，核对 release、可执行路径末级 40 位 build ID 与真实 GNU kernel notes。
-2. 核对源/目标目录为 root 所有、无 group/other 写权限，且不是同一目录。
+2. 核对私有源目录为 root 所有、无 group/other 写权限；目标须为独立目录。
+   第七窗口发现基线挂载点保留打包机 UID 501，已取消对目标旧所有者的限制，源检查保留。
 3. 在 systemd/udev 前将私有完整模块目录 bind 到正常模块目录，再 remount bind 为只读。
 4. 全部成功才 exec `/sbin/init`；任何预检或挂载失败立即请求复位，不启动候选用户态。
 
@@ -121,7 +123,8 @@ daemon-reload 也有界且不阻止已经完成的启动文件恢复。
 4. 另约短组跑 4K60 H.264/H.265、输入音频连续性及 HID 共存，不把静态图当 KVM 通过。
    每次结束复位回基线，核对 build ID、服务含监控、UDC、isolated=0、taint=0、实际 HID。
 
-当前只完成离线安全网；实际一次性启动及修复候选上板验证均待窗口。
+上述为离线阶段方案；后续实测、PID 1 挂载点兼容修正及边界见
+[第七窗口](2026-10-23-display-m1-window7.md)。
 
 ## 合入主仓 main 的恢复逻辑统一
 
