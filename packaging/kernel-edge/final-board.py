@@ -89,6 +89,42 @@ def atomic_copy(source, target, mode=None):
     os.replace(temporary, target)
 
 
+def bounded_command(args, timeout=10):
+    """Do not wait again after killing a process that might be in D state."""
+    # A surviving D-state child must not retain the recovery SSH channel either.
+    try:
+        process = subprocess.Popen(args, stdin=subprocess.DEVNULL,
+                                   stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+    except OSError as error:
+        print('RECOVERY_COMMAND_UNAVAILABLE', args, str(error), flush=True)
+        return False
+    try:
+        result = process.wait(timeout=timeout)
+    except subprocess.TimeoutExpired:
+        try:
+            process.kill()
+        except ProcessLookupError:
+            pass
+        except OSError as error:
+            print('RECOVERY_COMMAND_KILL_FAILED', args, str(error), flush=True)
+        print('RECOVERY_COMMAND_TIMEOUT', args, flush=True)
+        return False
+    if result:
+        print('RECOVERY_COMMAND_FAILED', result, args, flush=True)
+    return result == 0
+
+
+def sync_restored_files(state):
+    # syncfs on local restored filesystems avoids an unrelated stuck CIFS mount.
+    # A timeout is reported as incomplete durability, never as successful restore.
+    paths = {str(MODULES.parent), '/boot'}
+    paths.update(str(Path(name).parent) for name in state['files'])
+    failed = [path for path in sorted(paths)
+              if not bounded_command(['sync', '-f', path], timeout=30)]
+    if failed:
+        raise RuntimeError('Recovery files written, but sync failed: ' + ', '.join(failed))
+
+
 class Board:
     def __init__(self, payload, backup):
         self.payload, self.backup = payload, backup
@@ -300,23 +336,36 @@ class Board:
     def restore(self):
         assert (self.backup / 'COMPLETE').exists()
         state = json.loads((self.backup / 'state.json').read_text())
-        for service in ('one-kvm', 'vim4-manager'):
-            subprocess.run(['systemctl', 'stop', service], check=True, timeout=30)
+        stopped = [bounded_command(['systemctl', 'stop', service])
+                   for service in ('one-kvm', 'vim4-manager')]
+        pending = self.backup / 'application-restore-pending'
+        # Persist this before file writes: interruption must not look complete.
+        pending.write_text('Application restore requires stopped services.\n')
         # Files may be executable/in use. Unlink only our replaced payloads;
         # extraction retains /lib and preserves original file metadata.
         for name in state['files']:
             Path(name).unlink(missing_ok=True)
         subprocess.run(['tar', '--keep-directory-symlink', '-xpf', str(self.backup / 'files.tar'), '-C', '/'], check=True)
+        for name in state['missing']:
+            Path(name).unlink(missing_ok=True)
+        self.restore_modules()
+        # Secure the boot path before attempting any application/database work.
+        sync_restored_files(state)
+        if all(stopped):
+            self.restore_application()
+        else:
+            print('APPLICATION_RESTORE_DEFERRED', pending, flush=True)
+        bounded_command(['systemctl', 'daemon-reload'])
+        print('RESTORED_REBOOT_REQUIRED', flush=True)
+
+    def restore_application(self):
         for suffix in ('-wal', '-shm'):
             Path('/var/lib/one-kvm/one-kvm.db' + suffix).unlink(missing_ok=True)
         subprocess.run(['tar', '-xpf', str(self.backup / 'application.tar'), '-C', '/var/lib/one-kvm'], check=True)
         shutil.chown('/var/lib/one-kvm/one-kvm.db', user='khadas', group='khadas')
-        for name in state['missing']:
-            Path(name).unlink(missing_ok=True)
-        self.restore_modules()
-        subprocess.run(['systemctl', 'daemon-reload'], check=True)
-        os.sync()
-        print('RESTORED_REBOOT_REQUIRED', flush=True)
+        if not bounded_command(['sync', '-f', '/var/lib/one-kvm'], timeout=30):
+            raise RuntimeError('Application restored but sync failed')
+        (self.backup / 'application-restore-pending').unlink(missing_ok=True)
 
     def restore_modules(self):
         original = self.backup / 'original-modules'
@@ -331,6 +380,7 @@ class Board:
             original.rename(MODULES)
 
     def verify_restore(self):
+        assert not (self.backup / 'application-restore-pending').exists(), 'Application restore pending'
         state = json.loads((self.backup / 'state.json').read_text())
         assert os.uname().release == self.baseline['release'] and notes('/sys/kernel/notes') == [self.baseline['build_id']]
         assert tree(Path('/lib/modules') / self.baseline['release']) == state['modules']

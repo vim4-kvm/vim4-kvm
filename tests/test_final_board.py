@@ -62,5 +62,62 @@ class ModuleRecoveryTest(unittest.TestCase):
                     self.assertEqual((backup / 'candidate-modules/candidate.ko').read_bytes(), b'new BTF')
 
 
+class StopFailureRecoveryTest(unittest.TestCase):
+    def test_timed_out_stop_is_killed_without_another_blocking_wait(self):
+        process = Mock()
+        process.wait.side_effect = board.subprocess.TimeoutExpired('systemctl', 10)
+        with patch.object(board.subprocess, 'Popen', return_value=process):
+            self.assertFalse(board.bounded_command(['systemctl', 'stop', 'vim4-manager']))
+        process.kill.assert_called_once_with()
+        process.wait.assert_called_once_with(timeout=10)
+        with patch.object(board.subprocess, 'Popen', side_effect=OSError('cannot start systemctl')):
+            self.assertFalse(board.bounded_command(['systemctl', 'stop', 'vim4-manager']))
+
+    def test_stop_failures_cannot_prevent_boot_files_modules_and_sync(self):
+        for stops in ((False, True), (True, False), (False, False), (True, True)):
+            with self.subTest(stops=stops), tempfile.TemporaryDirectory() as temporary:
+                backup = Path(temporary)
+                (backup / 'COMPLETE').touch()
+                target = backup / 'Image'
+                target.write_bytes(b'candidate')
+                (backup / 'state.json').write_text(json.dumps({'files': {str(target): 'hash'}, 'missing': []}))
+                instance = object.__new__(board.Board)
+                instance.backup = backup
+                instance.restore_modules = Mock()
+                instance.restore_application = Mock(side_effect=lambda:
+                    (backup / 'application-restore-pending').unlink())
+                order = []
+
+                def restore_files(args, **kwargs):
+                    target.write_bytes(b'baseline')
+                    order.append('files')
+
+                def synced(state):
+                    self.assertEqual(target.read_bytes(), b'baseline')
+                    instance.restore_modules.assert_called_once_with()
+                    order.append('sync')
+
+                with patch.object(board, 'bounded_command', side_effect=[*stops, False]), \
+                        patch.object(board.subprocess, 'run', side_effect=restore_files), \
+                        patch.object(board, 'sync_restored_files', side_effect=synced):
+                    instance.restore()
+                self.assertEqual(order, ['files', 'sync'])
+                self.assertEqual(target.read_bytes(), b'baseline')
+                self.assertEqual(instance.restore_application.call_count, int(all(stops)))
+                self.assertEqual((backup / 'application-restore-pending').exists(), not all(stops))
+
+    def test_deferred_database_restore_cannot_pass_baseline_verification(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            instance = object.__new__(board.Board)
+            instance.backup = Path(temporary)
+            (instance.backup / 'application-restore-pending').touch()
+            with self.assertRaisesRegex(AssertionError, 'Application restore pending'):
+                instance.verify_restore()
+
+    def test_sync_timeout_is_not_reported_as_durable_restore(self):
+        with patch.object(board, 'bounded_command', return_value=False), self.assertRaisesRegex(RuntimeError, 'sync failed'):
+            board.sync_restored_files({'files': {'/boot/edge/Image': 'hash'}})
+
+
 if __name__ == '__main__':
     unittest.main()
