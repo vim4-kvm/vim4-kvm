@@ -83,7 +83,28 @@ finally正常重启回7b8372b894c98ffae12e636a325c86f2b6c85e00；restored.json�
 5b60d643af5ffcd395298d1df12b74145ab6a74e并推送；HDMI全套及整体差异checkpatch重新通过，
 782行0 errors/0 warnings。新完整候选build ID为b0cf6a7264aa9c5e5247b9f5f9f21aec36fb60e4。
 
-**当前针对性验证未通过，未正式合并、部署或更新已部署锁。**
-一次性验证通过后再合入SARADC d0c36b0f（单提交）、One-KVM正式分支，构建正式完整包，
-一次九类全量通过后finalize并更新实际源码/二进制锁。物理失锁仍为
+## 最新针对性验证
+
+窗口3（logs/kvm-stability/pcm-once-window-3）使用b0cf6a72…及同一One-KVM进程1317：
+48/44.1/48k的track/tab窗口合计308/307，全部零bad。四次HPD各拉低5秒，
+48/44.1/32/48k最终窗口分别154/154、154/154、154/154、150/150，全部零bad；
+从恢复开始到AudioRecovered分别6.234、6.488、6.233、6.234秒（包含故意失锁5秒）。
+最后一段另遇真实tmds-invalid，原有5个坏窗口保留，应用1.208秒自动恢复；
+保持同速率、浏览器与PID，补采一个完整20秒段通过原阈值。未放宽波形阈值。
+完整候选journal无ASoC错误。冒烟源选择器误用AML而实际为RTK，故该窗口的运动冒烟不计通过。
+
+窗口4（pcm-once-window-4）只纠正运动源并完成300秒冒烟，不重复音频组：
+3840×2160 H.264平均58.3454fps，浏览器freezes=7、dropped=0、lost=0、PLI=0。
+同一进程1316的7次采集停止均在约1.0–1.2秒自动重开；内核末态stream_stops=6、
+last_stop_reason=tmds-invalid，日志另有TRY_FMT失锁、缓冲池重建及poll错误。
+不能逐一证明7次浏览器停顿都是物理失锁，也不能宣称零停顿；声音恢复3次均约1.21秒。
+画面截图、运动源帧号推进、真实HID、UDC configured、三服务active、isolated=0、
+taint=0通过，完整journal无新增ASoC/oops/BUG/panic。11个已加载模块build ID与完整候选一致。
+两个窗口均恢复7b8372b8…、原应用/manager哈希、五个受保护文件、真实HID后清理私有候选并释放双锁。
+
+针对性门禁已通过。Linux正式分支已快进到0a775305f0ad8（含5b60d643与单提交
+SARADC d0c36b0f），One-KVM vim4已快进到672b8fd9，均已推送。
+合并后的HDMI实际C测试全过，整体checkpatch为790行0 errors/0 warnings。
+正式完整包沿用最新主仓uhd1.config的M1驱动编译开关，但仍安装已验M0 DTB，不启用M1。
+正式九类回归、finalize及已部署锁更新仍待完成。物理失锁仍为
 [厂商差距待办](../vendor-parity.md)，需用户现场受控源或厂商5.15同链路对照。
