@@ -56,18 +56,23 @@ class DecoderWindowTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as directory:
             manifest = Path(directory) / 'manifest.json'
             for source in window.FAILED_SOURCES:
-                for release in ('7.3.0-vim4kvm-vdec3+', '7.3.0-vim4kvm-vdec4+'):
-                    proof = {'release': release, 'source': source}
+                for release, flags in [('7.3.0-vim4kvm-vdec5+', ['--at-board']),
+                                       (window.BASE_RELEASE, ['--once-baseline', '/baseline.json'])]:
+                    proof = {'release': release, 'source': source, 'once': True}
                     manifest.write_text(json.dumps(proof))
                     for action in set(window.ACTIONS) - {'arm-baseline', 'verify-baseline'}:
+                        if flags[0] == '--once-baseline' and action in window.BOOT_ACTIONS:
+                            continue
                         with self.subTest(source=source, release=release, action=action), \
-                                patch.object(sys, 'argv', [str(SOURCE), action, '--execute', '--at-board',
-                                                           '--manifest', str(manifest)]), \
-                                patch.object(window.subprocess, 'run') as run, self.assertRaises(ValueError):
+                                patch.object(sys, 'argv', [str(SOURCE), action, '--execute',
+                                                           *flags, '--manifest', str(manifest)]), \
+                                patch.object(window.subprocess, 'run') as run, \
+                                self.assertRaisesRegex(ValueError, 'Known failing candidate'):
                             window.main()
                         run.assert_not_called()
+                for release in ('7.3.0-vim4kvm-vdec3+', '7.3.0-vim4kvm-vdec4+'):
                     for action in ('arm-baseline', 'verify-baseline'):
-                        window.require_candidate(action, proof)
+                        window.require_candidate(action, {'release': release, 'source': source})
 
     def test_timeout_is_not_retried(self):
         with patch.object(window.subprocess, 'run', side_effect=subprocess.TimeoutExpired('test', 10)) as run, \

@@ -33,6 +33,7 @@ FAILED_SOURCES = {
     '5bf7d6359df9ff68d8746851cf45de40611988a1',
     '34ab72b7fbecaa13347aca58584b4bcb10b1b73e',
     'e8ebc2e82734739a7ae0f1a91117cebc36ff7b89',
+    'c6fc96a347d0929a9385c09b408c333a50834091',
 }
 REGISTER_STEPS = (
     'clocks + NIC3 on; require VDEC off',
