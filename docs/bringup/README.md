@@ -11,6 +11,7 @@
 - [T7 DRM M1 固定输出、RMFB 崩溃与离线修复](2026-10-23-display-m1.md) — kernel video audio usb deployment board
 - [M1 一次性启动与恢复安全网（仅离线）](2026-10-23-display-m1-safety.md) — kernel deployment
 - [T7 DRM M1 共存接管设计](2026-10-23-display-m1-design.md) — kernel video audio
+- [Wave5 运行时硬复位地址冲突与拓扑保护（仅离线，恢复受阻）](2026-10-23-wave5-runtime-recovery.md) — kernel video
 - [Wave5 隔离正式窗口复验](2026-10-23-wave5-isolation-final.md) — kernel video audio usb manager deployment board
 - [Wave5 超时隔离与十轮验收（第二轮）](2026-10-23-wave5-isolation.md) — kernel video application deployment board
 - [Wave5 恢复前置修复与厂商复位审查（未上板）](2026-10-23-wave5-recovery.md) — kernel video

@@ -52,7 +52,7 @@ VM `vim4-build` 独立 worktree `/home/deepdream/src/linux-7.3-wave5-recovery`�
 | SDK `vpuapi/enc_driver.c:439–454`；`vpuapi/vdi.c:1588–1624` | ReInit 另一条路径额外等 VCPU_STATUS=`0x40`，随后 reset mask 用 **`0x07ffffff`**。不能混成一个未经验证的统一序列 |
 | 5.15 `vpu_multi.c:3421–3459` | resume 同样用 `0x07ffffff`，随后 remap、INIT_VPU/CORE_START；不是活跃编码器超时恢复验收 |
 | SDK `vpuapi/vdi.c:696–709`；5.15 `vpu_multi.c:436–440,1863–1866` | HWReset 经 RESET ioctl，但内核 `vpu_hw_reset()` **只返回 0**，没有硬复位或 DMA 停止确认 |
-| 5.15 `vpu_multi.c:324–339,980–1006` | 真正的硬复位只在上电流程看到：电源/时钟启用后，RMW `0xfe000044` bit28，清位 assert、置位 deassert，各有 5ms 延时。这里没有活跃 DMA 排空证明，不能用来兜底隔离失败 |
+| 5.15 `vpu_multi.c:324–339,980–1006` | 上电后所谓 hw_reset 写 `0xfe000044` bit28，各延时 5ms；[后续审查](2026-10-23-wave5-runtime-recovery.md)确认地址与 T7 ACODEC 时钟门重叠，不能作为硬复位或 DMA 停止证据 |
 
 7.3 基线的 T7 idle=`0x3f`、reset mask=`GENMASK(26,0)` 保持不变。
 现代集成的独立 VCPU backbone status=0 与上述 SDK 的 VCPU_STATUS=0x40 也不是同一寄存器，
