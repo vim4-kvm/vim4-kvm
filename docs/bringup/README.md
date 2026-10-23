@@ -13,6 +13,8 @@
 ## 2026-10-22
 
 - [手动 PD 协商合同持久化并保留](2026-10-22-pd-manual-contract.md) — usb deployment board
+- [SARADC channel 2 超时取证与离线候选](2026-10-22-saradc-timeout-audit.md) — kernel board
+- [Wave5 首轮部署采集停止复核](2026-10-22-wave5-first-failure-audit.md) — kernel video board
 - [Wave5 尺寸与关闭路径防护正式部署](2026-10-22-edge-wave5-deploy.md) — kernel video audio usb manager deployment board
 - [Wave5 HEVC 防护候选现场验证并恢复原模块](2026-10-22-wave5-hevc-field.md) — kernel video usb deployment board
 - [U-Boot 现场复位分析与 microSD 安全验证](2026-10-22-uboot-sd-recovery.md) — usb kernel deployment

@@ -5,13 +5,14 @@
 当前包、匹配内核、安装/回退与实际验收范围见
 [双内核完整系统集成](bringup/2026-10-21-dual-kernel-integration.md)。
 本页保留 Armbian 编译基线与专项历史记录；通用 edge.config 不等于已验收的整板配置。
-当前板上保留 v7.3 pstore 版本 `1262da082ba5`，release `7.3.0-vim4kvm-uhd1+`、
-build ID `f283ab1f8a001a19bab5247afc4f9b0c00c1da99`；uhd1.config 同次完整 Image/DTB/
-2335 模块，新增厂商诊断内存区的 ramoops console，正常重启标记读回通过。
+当前板上保留 v7.3 Wave5 防护版本 `0196fe22ecf0`，release `7.3.0-vim4kvm-uhd1+`、
+build ID `3a61b75bccf8c46e9411dee92928999884bbfc7f`；uhd1.config 同次完整 Image/DTB/
+2335 模块，包含尺寸保护、正常关闭顺序修复及 ramoops console，正常重启标记读回通过。
 One-KVM 为 `382efb70e7ebb`，manager 为 `4ea748426935`。九类抽样回归通过，
-含编码往返、4K60、音频、USB、GPU 和管理页；最终有一条 SARADC channel 2 超时警告，
-taint=0。本轮短测通过不推翻历史音频偶发跳变等边界，也不代表长期稳定性验收。
-哈希、备份与回退见 [pstore 正式部署](bringup/2026-10-22-edge-pstore-deploy.md)；
+含编码往返、4K60、音频、USB、GPU 和管理页；最终 taint=0、无新增警告。
+短测通过不推翻历史音频偶发跳变等边界，也不代表长期稳定性验收。
+哈希、备份与回退见 [Wave5 正式部署](bringup/2026-10-22-edge-wave5-deploy.md)；
+此前 pstore 启动的 SARADC channel 2 超时见[专项取证与离线候选](bringup/2026-10-22-saradc-timeout-audit.md)，
 此前 e0346697 基线见 [历史保留记录](bringup/2026-10-22-edge-7-3-final-retained.md)。
 第二轮 19 模式通过后即时 EDID 检查触发的回退见
 [历史尝试](bringup/2026-10-22-edge-7-3-final-deploy.md)，脚本入口见
@@ -43,6 +44,22 @@ H.264/H.265 硬编码已取得实验结果，见
 [动态模式记录](bringup/2026-10-20-edge-dynamic-modes.md)。
 有限的 [HDR10 4K60 采集与 HDR→SDR](bringup/2026-10-20-edge-hdr-capture.md) 已接通，
 独立 edge 服务使用专用 EDID 和显式选项；HLG、其他 HDR 格式与长期验收仍未完成。
+
+## 通用内核路线图
+
+按以下顺序推进；优先级表示后续工作次序，不代表硬件验收通过。
+
+| 优先级 | 方向 | 当前边界与下一步 |
+|---|---|---|
+| 1 | 本地显示输出（含 HDMI 音频输出） | 接通标准 DRM/KMS 显示与 HDMI 声音，再做实机模式、热插拔和音画验收 |
+| 2 | 硬件解码（进行中） | 标准 V4L2 路线；[VDEC 候选与门禁](bringup/2026-10-22-vdec-mdec-offline.md)仍待分级现场验证，尚无硬件解码帧验收 |
+| 3 | 板载音频输出 | 单独接通板载输出路由与声卡；已部署的 HDMI 输入采集不代表输出可用 |
+| 4 | 挂起唤醒 | 先补齐驱动与固件恢复约束，见[离线审查](bringup/2026-10-22-p2-suspend-audit.md)；暂不做整机挂起上板测试 |
+| 5 | NPU | 驱动、固件和通用用户态接口待评估 |
+| 6 | MIPI 屏／摄像头 | 显示与摄像头分别评估控制器、PHY、面板／传感器与标准接口 |
+| 低 | HLG／隔行输入 | 当前 HDR10／逐行输入之外的扩展，尚未验收 |
+| 防护已部署 | 非 8 对齐 H.265 | [尺寸保护](bringup/2026-10-22-edge-wave5-deploy.md)已部署，非法尺寸拒绝或应用回退 H.264；固件无响应后的通用恢复未做 |
+| 不做 | 旧厂商 ABI | 不兼容旧私有显示／编解码 ABI；通用软件使用标准 DRM／V4L2 |
 
 ## 源码与配置
 
