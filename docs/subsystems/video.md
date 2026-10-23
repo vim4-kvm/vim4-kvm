@@ -90,6 +90,25 @@ HDMI_LOW_LATENCY=0 恢复厂商自动策略。模式含义、对照结果及帧�
 4K60，但现有硬件编码只输出 4:2:0，应用仍用 NV21。改采集格式、vfm_cap 映射或
 真彩编码前读 [4:4:4 采集](../capture444.md)。
 
+## Wave5 隔离告警
+
+隔离候选由内核 sysfs 的 `isolated`、`isolation_reason`、`isolation_time_ns`
+提供状态，触发时发出 `WAVE5_ISOLATED=1` uevent。隔离后保留 DMA 内存与映射，
+只允许重启清除；不尝试运行时硬件复位。当前已部署内核是否具备该接口须看实际
+sysfs 和部署记录，不能以此处的候选说明代替验收。
+
+`vim4-wave5-monitor.service` 默认只记录 journal，写 `/run/vim4-wave5/alert.json`。
+`/etc/default/vim4-wave5-monitor` 的 `WAVE5_AUTO_REBOOT=1` 可启用一次受控重启，
+但仅在全部 KVM 应用 inactive、所有虚拟介质为空持续至少 30 秒后请求；默认 60 秒。
+运行中但空闲的 One-KVM 不计为已确认无需求，因为 clients 未覆盖 UU、RTSP、录屏等
+消费者。读取失败会取消空闲计时；同次启动已有 reboot-attempted 标记时不重试。
+manager 候选的 `GET /api/status` 新增 `encoder`，包含 `known`、`isolated`、
+`needsReboot`、`reason`、字符串 `timeBoottimeNs`；本轮没有前端变更。
+
+常规板级安装或组件安装会启用监控单元；独立候选窗口用 final-window 的
+`stage --wave5-monitor` 纳入脚本、单元和 manager Wants drop-in，随窗口备份和回退，
+不覆盖管理员的自动重启配置。自动重启配置的板端实测范围须看专项记录。
+
 ## 错题
 
 | 触发条件 / 错误 | 原因与正确做法 | 验证入口 |

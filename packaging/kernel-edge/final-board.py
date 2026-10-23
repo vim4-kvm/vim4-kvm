@@ -81,6 +81,7 @@ def wait_for_status(path, required, timeout=35):
 
 def atomic_copy(source, target, mode=None):
     target = Path(target)
+    target.parent.mkdir(parents=True, exist_ok=True)
     temporary = target.with_name(target.name + '.deploy-next')
     shutil.copy2(source, temporary)
     if mode is not None:

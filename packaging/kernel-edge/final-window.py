@@ -130,6 +130,12 @@ def stage(args):
     add(ROOT / 'board/vim4-kvm-pd.service', 'vim4-kvm-pd.service', '/usr/lib/systemd/system/vim4-kvm-pd.service', 0o644)
     # board/install.sh may have installed a higher-priority /etc unit.
     add(ROOT / 'board/vim4-kvm-pd.service', 'vim4-kvm-pd-etc.service', '/etc/systemd/system/vim4-kvm-pd.service', 0o644)
+    if getattr(args, 'wave5_monitor', False):
+        add(ROOT / 'board/vim4-wave5-monitor.py', 'vim4-wave5-monitor', '/usr/libexec/vim4-wave5-monitor')
+        add(ROOT / 'board/vim4-wave5-monitor.service', 'vim4-wave5-monitor.service',
+            '/etc/systemd/system/vim4-wave5-monitor.service', 0o644)
+        add(ROOT / 'board/vim4-manager-wave5-monitor.conf', 'vim4-manager-wave5-monitor.conf',
+            '/etc/systemd/system/vim4-manager.service.d/wave5-monitor.conf', 0o644)
     for source, target in (('one-kvm-edge-prepare', 'vim4-mainline-prepare'),
                            ('one-kvm-edge-usb-prepare', 'vim4-mainline-gadget-prepare')):
         add(RECIPE / source, target, '/usr/libexec/' + target)
@@ -301,6 +307,7 @@ def main():
     staging.add_argument('--baseline-release', default='7.3.0-rc7-vim4kvm-uhd1+')
     staging.add_argument('--baseline-build-id', default='52d5e46fb006230785110a1fa5ba0dd1383b732f')
     staging.add_argument('--kernel-only', action='store_true', help='Verify staged userspace files without replacing them')
+    staging.add_argument('--wave5-monitor', action='store_true', help='Include the default log-only Wave5 quarantine monitor')
     staging.add_argument('--verify-pstore', action='store_true', help='Verify console retention across an extra normal reboot')
     staging.add_argument('--framebuffer-console', action='store_true', help='Register tty0 for a qualified simpledrm DTB')
     staging.add_argument('--require-all-checks', action='store_true', help='Roll back if any regression fails')

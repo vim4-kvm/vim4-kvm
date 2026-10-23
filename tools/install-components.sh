@@ -147,6 +147,9 @@ for unit in "$app" vim4-manager.service vim4-kvm-hdmi.service vim4-kvm-gadget.se
 done
 udevadm control --reload-rules
 systemctl restart "$app" vim4-manager.service
+if systemctl cat vim4-wave5-monitor.service >/dev/null 2>&1; then
+    systemctl enable --now vim4-wave5-monitor.service
+fi
 systemctl is-active "$app" vim4-manager.service
 dpkg-query -W -f='${Package} ${Version}\n' "${components[@]}"
 for file in "$stage"/etc/sudoers.d/*; do

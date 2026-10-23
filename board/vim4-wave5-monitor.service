@@ -1,0 +1,16 @@
+[Unit]
+Description=VIM4 Wave5 isolation journal and optional reboot
+After=systemd-udevd.service
+
+[Service]
+Type=simple
+ExecStart=/usr/bin/python3 /usr/libexec/vim4-wave5-monitor
+EnvironmentFile=-/etc/default/vim4-wave5-monitor
+RuntimeDirectory=vim4-wave5
+RuntimeDirectoryPreserve=yes
+Restart=on-failure
+RestartSec=5
+TimeoutStopSec=5
+
+[Install]
+WantedBy=multi-user.target
