@@ -98,7 +98,7 @@ AUDIO_NO_RESIDUAL_ERRORS_PASS
 
 ```sh
 python3 -u build/kvm-stability/query-acceptance.py > logs/kvm-stability/query-acceptance.log 2>&1
-# attempt-5：5轮 → 九类全量回归 → 3轮；随后三个各4轮的独立窗口。
+# attempt-6：5轮 → 九类全量回归 → 3轮；随后三个各4轮的独立窗口。
 # 每窗口持heavy/board双锁，结束恢复7b8372b8…并验证实际HID，组间释放锁。
 ```
 
@@ -142,3 +142,9 @@ M1失败窗口恢复后，本任务只读核验7b8372b8…、三个服务active�
 taint=0及原应用／新manager运行哈希，证据m1-recovery-baseline.json；不将它当作本任务HID验收。
 目前候选尚未安装，板锁另有用户保留；严格20轮与正式部署尚未执行。
 主仓离线测试191项通过（跳过5）；同步发布后的独立文档工作树197项通过（跳过9）。
+
+等待期间板锁非阻塞申请返回75，输出already locked，且/tmp/vim4-user-hold仍存在。
+attempt-5只启动了等待器，没有创建上板窗口／备份、安装或重启；结束本轮前明确终止该等待器，
+SIGTERM是主动取消等待，不是候选回归失败。证据board-lock-wait.log、query-acceptance.log。
+后续从新编号attempt-6继续，避免覆盖等待日志。最终只读身份另存final-readonly-baseline.json；
+新基线实际HID复验、严格20轮、部署分支合入、发布锁更新及正式部署均未完成。
