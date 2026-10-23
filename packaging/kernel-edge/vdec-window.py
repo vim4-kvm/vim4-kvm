@@ -1,7 +1,8 @@
 #!/usr/bin/env python3
 """Prepare or run one supervised decoder window; default is offline plan only.
 
-Run on Mac. --execute requires --at-board and a matched candidate manifest.
+Run on Mac. --execute requires --at-board or --once-baseline and a matched manifest.
+The latter uses a watchdog-protected RAM boot and never writes default boot files.
 Boot actions install the candidate and arm baseline recovery. Reboots and
 functional baseline checks are supervised steps described in the bringup record.
 """
@@ -10,16 +11,18 @@ import hashlib
 import json
 import os
 from pathlib import Path
+import resource
 import shlex
 import shutil
 import struct
 import subprocess
 import sys
 import tarfile
+import time
 
 
 BOOT_ACTIONS = ('boot-install', 'arm-baseline', 'verify-baseline')
-ACTIONS = (*BOOT_ACTIONS, 'probe', 'power', 'mdec', 'compliance', 'h264', 'wave')
+ACTIONS = (*BOOT_ACTIONS, 'probe', 'power', 'mdec', 'compliance', 'h264', 'h264-1080p', 'wave')
 BASE_ID = 'f283ab1f8a001a19bab5247afc4f9b0c00c1da99'
 BASE_RELEASE = '7.3.0-vim4kvm-uhd1+'
 BASE_FILES = {
@@ -32,7 +35,15 @@ FAILED_SOURCES = {
 }
 
 
-def require_candidate(action, proof):
+def require_candidate(action, proof, once=False):
+    if once:
+        if action in BOOT_ACTIONS:
+            raise ValueError('One-time boot forbids persistent boot actions')
+        if proof['release'] != BASE_RELEASE or proof.get('once') is not True:
+            raise ValueError('Expected a private-module one-time boot package')
+        if proof.get('source') in FAILED_SOURCES:
+            raise ValueError('Known failing candidate')
+        return
     recovery = action in ('arm-baseline', 'verify-baseline')
     if not proof['release'].startswith('7.3.0-vim4kvm-vdec5') and not (
             recovery and proof['release'].startswith(('7.3.0-vim4kvm-vdec3',
@@ -55,6 +66,40 @@ def require_baseline_files():
     for name, expected in BASE_FILES.items():
         if sha(Path('/boot/edge') / name) != expected:
             raise ValueError('Baseline boot file mismatch: ' + name)
+
+
+def require_watchdog():
+    """WATCHDOG_SYSFS is disabled; PID 1 must own the hardware watchdog."""
+    timeout = run('systemctl', 'show', '--property=RuntimeWatchdogUSec', '--value').strip()
+    if timeout != '30s' or '1' not in run('fuser', '/dev/watchdog0').split():
+        raise ValueError('PID 1 must hold the hardware watchdog with a 30s timeout')
+
+
+def require_once(args):
+    baseline = json.loads(Path(args.once_baseline).read_text())
+    expected = {'/boot/edge/Image', '/boot/edge/vim4.dtb', '/boot/extlinux/extlinux.conf',
+                '/etc/vim4-kvm/kernels.json', '/etc/vim4-kvm/runtime-build.json'}
+    if set(baseline['files']) != expected:
+        raise ValueError('Incomplete baseline file proof')
+    for name, digest in baseline['files'].items():
+        if sha(name) != digest:
+            raise ValueError('Protected baseline changed: ' + name)
+    if args.build_id in baseline['buildIds'] or os.uname().release != BASE_RELEASE:
+        raise ValueError('Not the experimental one-time kernel')
+    trial = '/var/lib/vim4-kvm/display-m1/' + args.build_id
+    if 'init=' + trial + '/init' not in Path('/proc/cmdline').read_text().split():
+        raise ValueError('Candidate was not selected through the private PID 1')
+    mounts = Path('/proc/self/mountinfo').read_text().splitlines()
+    private = trial + '/modules/' + BASE_RELEASE
+    # Ubuntu merges /lib into /usr/lib; mountinfo records the resolved target.
+    target = str(Path('/lib/modules', BASE_RELEASE).resolve())
+    if not any(line.split()[3:5] == [private, target]
+               and 'ro' in line.split()[5].split(',') for line in mounts):
+        raise ValueError('Private read-only candidate modules are not mounted')
+    if (Path('/proc/sys/kernel/panic').read_text().strip() != '20' or
+            Path('/proc/sys/kernel/panic_on_oops').read_text().strip() != '1'):
+        raise ValueError('Candidate requires panic=20 and panic_on_oops=1')
+    require_watchdog()
 
 
 def require_services():
@@ -201,7 +246,7 @@ def begin_stage(args, path=Path('/tmp/vim4-vdec-stages.json')):
     if state.get('identity') != identity:
         state = {'identity': identity, 'passed': []}
     previous = {'power': 'probe', 'mdec': 'power', 'compliance': 'mdec',
-                'h264': 'compliance', 'wave': 'h264'}
+                'h264': 'compliance', 'h264-1080p': 'h264', 'wave': 'h264'}
     if state.get('pending') or state.get('failed'):
         raise ValueError('Previous stage did not finish; collect evidence and restore baseline')
     if args.action in previous and previous[args.action] not in state['passed']:
@@ -318,18 +363,24 @@ def board_window(args):
         raise ValueError('Previous window requires supervised reset and baseline recovery')
     if build_id('/sys/kernel/notes') != args.build_id:
         raise ValueError('Running kernel does not match candidate')
-    require_baseline_files()
+    if getattr(args, 'once_baseline', None):
+        require_once(args)
+    else:
+        require_baseline_files()
     print('CANDIDATE_RUNNING', args.build_id, args.action, flush=True)
-    clip = Path(args.fixtures) / 'small.h264'
-    reference = Path(args.fixtures) / 'small.i420'
-    if args.action in ('h264', 'wave'):
+    full_hd = args.action == 'h264-1080p'
+    width, height = (1920, 1080) if full_hd else (320, 256)
+    stem = '1080p' if full_hd else 'small'
+    clip = Path(args.fixtures) / (stem + '.h264')
+    reference = Path(args.fixtures) / (stem + '.i420')
+    if args.action in ('h264', 'h264-1080p', 'wave'):
         info = json.loads(run('ffprobe', '-v', 'error', '-count_frames', '-show_streams',
                               '-of', 'json', str(clip)))['streams'][0]
         if (info['codec_name'], info['width'], info['height'], info['pix_fmt'],
-                info['nb_read_frames']) != ('h264', 320, 256, 'yuv420p', '6'):
-            raise ValueError('Only the six-frame 320x256 8-bit fixture is allowed')
+                info['nb_read_frames']) != ('h264', width, height, 'yuv420p', '6'):
+            raise ValueError('Expected the six-frame single-instance 8-bit fixture')
         hashes = json.loads((Path(args.fixtures) / 'fixtures.json').read_text())
-        for name in ('small.h264', 'small.i420'):
+        for name in (clip.name, reference.name):
             if hashlib.sha256((Path(args.fixtures) / name).read_bytes()).hexdigest() != hashes[name]:
                 raise ValueError('Fixture hash mismatch: ' + name)
         factory = 'v4l2h264dec' if args.action == 'wave' else 'v4l2slh264dec'
@@ -380,21 +431,36 @@ def board_window(args):
             run('v4l2-compliance', '-d', video_node('h264'), timeout=20)
             require_suspended(t7_device())
         else:
-            if args.action == 'h264':
+            if args.action in ('h264', 'h264-1080p'):
                 mdec_cycle()
                 set_power_permission(True)
             video_node('wave' if args.action == 'wave' else 'h264')
             output = Path('/tmp/vim4-vdec-' + args.action + '.i420')
             factory = 'v4l2h264dec' if args.action == 'wave' else 'v4l2slh264dec'
             run('gst-inspect-1.0', factory, timeout=8)
+            started = time.monotonic()
+            usage = resource.getrusage(resource.RUSAGE_CHILDREN)
             run('gst-launch-1.0', '-q', 'filesrc', 'location=' + str(clip), '!',
                 'h264parse', '!', factory, '!', 'videoconvert', '!',
-                'video/x-raw,format=I420,width=320,height=256', '!',
-                'filesink', 'location=' + str(output), timeout=10)
+                f'video/x-raw,format=I420,width={width},height={height}', '!',
+                'filesink', 'location=' + str(output), timeout=15 if full_hd else 10)
+            elapsed = time.monotonic() - started
+            finished = resource.getrusage(resource.RUSAGE_CHILDREN)
+            cpu = finished.ru_utime + finished.ru_stime - usage.ru_utime - usage.ru_stime
             if output.read_bytes() != reference.read_bytes():
                 raise ValueError('Decoded frames differ from software reference')
             print('EXACT_FRAMES_MATCH', hashlib.sha256(output.read_bytes()).hexdigest(), flush=True)
-            if args.action == 'h264':
+            frame_size = width * height * 3 // 2
+            frames = output.read_bytes()
+            if len(frames) != frame_size * 6:
+                raise ValueError('Expected exactly six complete I420 frames')
+            for index in range(6):
+                digest = hashlib.md5(frames[index * frame_size:(index + 1) * frame_size]).hexdigest()
+                print('FRAME_MD5', index, digest, flush=True)
+            print('SHORT_CLIP_SECONDS', elapsed, 'including pipeline startup', flush=True)
+            print('SHORT_CLIP_CPU_SECONDS', cpu, 'ONE_CORE_PERCENT', 100 * cpu / elapsed,
+                  'FRAMES_PER_SECOND', 6 / elapsed, flush=True)
+            if args.action in ('h264', 'h264-1080p'):
                 require_suspended(t7_device())
         if faulted():
             raise RuntimeError('DMA stop not confirmed')
@@ -437,6 +503,7 @@ def main():
     parser.add_argument('--backup', default='/var/backups/vim4-vdec-mdec-20261022')
     parser.add_argument('--execute', action='store_true')
     parser.add_argument('--at-board', action='store_true')
+    parser.add_argument('--once-baseline', help='Board JSON proof for watchdog-protected RAM boot')
     parser.add_argument('--locked', action='store_true', help=argparse.SUPPRESS)
     parser.add_argument('--remote', action='store_true', help=argparse.SUPPRESS)
     parser.add_argument('--build-id', help=argparse.SUPPRESS)
@@ -451,7 +518,7 @@ def main():
         return
     if not args.execute:
         print(json.dumps({'action': args.action, 'offline': True, 'ssh': False,
-                          'order': ['board + heavy locks', 'boot-install, reboot, arm-baseline',
+                          'order': ['heavy then board locks', 'RAM-only boot or supervised baseline recovery',
                                     'probe: gate off, EPERM, read-only SMC status',
                                     'power: explicit opt-in, one DOS read, verified power off',
                                     'mdec: secure policy + verified prerequisites, one PIC_DC read, power off',
@@ -460,13 +527,13 @@ def main():
                                     'safe unload or RESET_REQUIRED', 'restore boot baseline',
                                     'encoding + HDMI + services + UDC + actual HID verification']}, indent=2))
         return
-    if not args.at_board or args.manifest is None:
-        parser.error('--execute requires --at-board and --manifest')
+    if not (args.at_board or args.once_baseline) or args.manifest is None:
+        parser.error('--execute requires --at-board or --once-baseline, and --manifest')
     proof = json.loads(args.manifest.read_text())
-    require_candidate(args.action, proof)
+    require_candidate(args.action, proof, once=bool(args.once_baseline))
     if not args.locked:
-        command = ['/usr/bin/lockf', '-t', '600', '/tmp/vim4-board.lock',
-                   '/usr/bin/lockf', '-t', '120', '/tmp/vim4-heavy.lock',
+        command = ['/usr/bin/lockf', '-t', '3600', '/tmp/vim4-heavy.lock',
+                   '/usr/bin/lockf', '-t', '600', '/tmp/vim4-board.lock',
                    sys.executable, str(Path(__file__).resolve()), *sys.argv[1:], '--locked']
         subprocess.run(command, check=True)
         return
@@ -474,6 +541,8 @@ def main():
     remote = ['sudo', 'python3', '-', args.action, '--remote',
               '--build-id', proof['kernel_build_id'], '--fixtures', args.fixtures,
               '--payload', args.payload, '--backup', args.backup]
+    if args.once_baseline:
+        remote.extend(['--once-baseline', args.once_baseline])
     subprocess.run(['ssh', '-o', 'ConnectTimeout=8', 'vim4', shlex.join(remote)],
                    input=source, text=True, check=True, timeout=180)
 

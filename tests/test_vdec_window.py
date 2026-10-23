@@ -75,6 +75,65 @@ class DecoderWindowTests(unittest.TestCase):
             window.run('test', timeout=10)
         self.assertEqual(run.call_count, 1)
 
+    def test_once_package_cannot_overwrite_default_boot_files(self):
+        proof = {'release': window.BASE_RELEASE, 'once': True, 'source': 'candidate'}
+        window.require_candidate('mdec', proof, once=True)
+        for action in window.BOOT_ACTIONS:
+            with self.subTest(action=action), self.assertRaises(ValueError):
+                window.require_candidate(action, proof, once=True)
+        with self.assertRaises(ValueError):
+            window.require_candidate('probe', {'release': window.BASE_RELEASE}, once=True)
+
+    def test_watchdog_requires_runtime_timeout_and_pid_one_ownership(self):
+        for timeout, owners, accepted in [('0', '1', False), ('30s', '22', False),
+                                          ('30s', '1', True)]:
+            with self.subTest(timeout=timeout, owners=owners), \
+                    patch.object(window, 'run', side_effect=[timeout, owners]):
+                if accepted:
+                    window.require_watchdog()
+                else:
+                    with self.assertRaises(ValueError):
+                        window.require_watchdog()
+
+    def test_once_guard_failure_prevents_codec_commands(self):
+        args = SimpleNamespace(action='mdec', build_id='candidate', once_baseline='/proof')
+        with patch.object(window.os, 'geteuid', return_value=0), \
+                patch.object(window.Path, 'exists', return_value=False), \
+                patch.object(window, 'build_id', return_value='candidate'), \
+                patch.object(window, 'require_once', side_effect=ValueError('missing watchdog')), \
+                patch.object(window, 'run') as run, self.assertRaises(ValueError):
+            window.board_window(args)
+        run.assert_not_called()
+
+    def test_once_guard_requires_protected_files_private_modules_and_panic(self):
+        files = {name: 'expected' for name in
+                 ('/boot/edge/Image', '/boot/edge/vim4.dtb', '/boot/extlinux/extlinux.conf',
+                  '/etc/vim4-kvm/kernels.json', '/etc/vim4-kvm/runtime-build.json')}
+        baseline = {'files': files, 'buildIds': ['baseline']}
+        trial = '/var/lib/vim4-kvm/display-m1/candidate'
+        args = SimpleNamespace(build_id='candidate', once_baseline='/proof')
+        for changed_file, mode, panic, accepted in [(False, 'ro', '1', True), (True, 'ro', '1', False),
+                                                   (False, 'rw', '1', False), (False, 'ro', '0', False)]:
+            content = {'/proof': json.dumps(baseline), '/proc/cmdline': 'init=' + trial + '/init',
+                       '/proc/sys/kernel/panic': '20', '/proc/sys/kernel/panic_on_oops': panic,
+                       '/proc/self/mountinfo': f'30 1 0:1 {trial}/modules/{window.BASE_RELEASE} '
+                       f'/usr/lib/modules/{window.BASE_RELEASE} {mode},relatime - ext4 /dev/root rw'}
+            with self.subTest(changed_file=changed_file, mode=mode, panic=panic), \
+                    patch.object(window.Path, 'read_text', autospec=True,
+                                 side_effect=lambda path: content[str(path)]), \
+                    patch.object(window.Path, 'resolve', return_value=Path('/usr/lib/modules', window.BASE_RELEASE)), \
+                    patch.object(window, 'sha', side_effect=lambda path:
+                                 'changed' if changed_file and path == '/boot/edge/Image' else 'expected'), \
+                    patch.object(window.os, 'uname', return_value=SimpleNamespace(release=window.BASE_RELEASE)), \
+                    patch.object(window, 'require_watchdog') as watchdog:
+                if accepted:
+                    window.require_once(args)
+                    watchdog.assert_called_once()
+                else:
+                    with self.assertRaises(ValueError):
+                        window.require_once(args)
+                    watchdog.assert_not_called()
+
     def test_no_codec_command_before_baseline_boot_files_are_armed(self):
         args = SimpleNamespace(action='power', build_id='candidate')
         with patch.object(window.os, 'geteuid', return_value=0), \
@@ -179,17 +238,19 @@ class DecoderWindowTests(unittest.TestCase):
                 with self.assertRaises(RuntimeError):
                     window.power_cycle()
 
-    def test_compliance_requires_mdec_receipt_even_after_power_passed(self):
+    def test_higher_stages_require_their_immediate_predecessor(self):
         with tempfile.TemporaryDirectory() as directory, \
                 patch.object(window.Path, 'read_text', return_value='boot-test'):
             path = Path(directory) / 'stages.json'
             path.touch()
             identity = {'boot': 'boot-test', 'build': 'test'}
-            state = {'identity': identity, 'passed': ['probe', 'power']}
-            with patch.object(window.json, 'loads', return_value=state):
-                args = SimpleNamespace(action='compliance', build_id='test')
-                with self.assertRaisesRegex(ValueError, 'Required previous stage: mdec'):
-                    window.begin_stage(args, path)
+            for action, previous, passed in [('compliance', 'mdec', ['probe', 'power']),
+                                             ('h264-1080p', 'h264', ['probe', 'power', 'mdec', 'compliance'])]:
+                state = {'identity': identity, 'passed': passed}
+                with self.subTest(action=action), patch.object(window.json, 'loads', return_value=state):
+                    args = SimpleNamespace(action=action, build_id='test')
+                    with self.assertRaisesRegex(ValueError, 'Required previous stage: ' + previous):
+                        window.begin_stage(args, path)
 
     def test_mdec_cycle_blocks_open_on_read_or_power_off_failure(self):
         with tempfile.TemporaryDirectory() as directory:

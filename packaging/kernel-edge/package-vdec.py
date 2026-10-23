@@ -1,8 +1,9 @@
 #!/usr/bin/env python3
-"""Package a completed, clean vdec5 build offline; run under the heavy lock.
+"""Package a completed, clean VDEC build offline; run under the heavy lock.
 
-Separate release and deployment inventory: this does not register a KVM runtime.
-The deployed baseline and its module directory must remain untouched.
+This does not register a KVM runtime. --once retains the baseline release for
+the private module mount used by display-once.py; it must not be installed into
+the baseline module directory.
 """
 import argparse
 import hashlib
@@ -33,12 +34,16 @@ def main():
     for name in ('source', 'output', 'destination'):
         parser.add_argument(name, type=Path)
     parser.add_argument('--mac', required=True)
+    parser.add_argument('--once', action='store_true',
+                        help='Same-release private modules for display-once.py only')
     args = parser.parse_args()
     source, output, destination = (p.resolve() for p in (args.source, args.output, args.destination))
     if not re.fullmatch(r'(?:[0-9a-fA-F]{2}:){5}[0-9a-fA-F]{2}', args.mac):
         parser.error('Invalid ethernet MAC')
     release = (output / 'include/config/kernel.release').read_text().strip()
-    if not release.startswith('7.3.0-vim4kvm-vdec5'):
+    if args.once and release != '7.3.0-vim4kvm-uhd1+':
+        parser.error('One-time boot requires the baseline release with private modules')
+    if not args.once and not release.startswith('7.3.0-vim4kvm-vdec5'):
         parser.error('Expected the separate vdec5 build with power and MDEC opt-in')
     if run('git', '-C', source, 'status', '--porcelain'):
         parser.error('Kernel source must be committed and clean')
@@ -89,7 +94,7 @@ def main():
                         str(stage / 'lib/modules'), release], check=True)
         report = dict(source=run('git', '-C', source, 'rev-parse', 'HEAD'),
                       tree=run('git', '-C', source, 'rev-parse', 'HEAD^{tree}'),
-                      release=release, kernel_build_id=build_id(output / 'vmlinux'),
+                      release=release, once=args.once, kernel_build_id=build_id(output / 'vmlinux'),
                       module_count=len(list(modules.rglob('*.ko*'))), selected_modules=selected,
                       config_sha256=sha(output / '.config'), ethernet_mac=args.mac,
                       modules={str(p.relative_to(modules)): sha(p)
