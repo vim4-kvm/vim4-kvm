@@ -52,19 +52,25 @@ H.264/H.265 硬编码已取得实验结果，见
 
 ## 通用内核路线图
 
-按以下顺序推进；优先级表示后续工作次序，不代表硬件验收通过。
+目标是追平厂商5.15全部适用能力，核心进入DRM/KMS、V4L2、ASoC、genpd等主线框架，
+外围可先移植后整理；绕过和保护不能作为终态。完整范围、固定源码/DT行号、缺口依赖、
+工作量与硬件见 [厂商能力对照与总体规划](vendor-parity.md)。该表固定比较M0 `47878a0c611d`，
+并明确叠加当前`aa2f875b`正式隔离增量；未合入候选不算已部署能力。
+以下顺序与F0–F5一致，不代表硬件验收通过。
 
 | 优先级 | 方向 | 当前边界与下一步 |
 |---|---|---|
-| 1 | 本地显示输出（含 HDMI 音频输出） | simpledrm接管已通过；继续标准DRM/KMS模式、HDMI声音、热插拔和音画验收 |
-| 2 | 硬件解码（进行中） | 标准 V4L2 路线；[VDEC 候选与门禁](bringup/2026-10-22-vdec-mdec-offline.md)仍待分级现场验证，尚无硬件解码帧验收 |
-| 3 | 板载音频输出 | 单独接通板载输出路由与声卡；已部署的 HDMI 输入采集不代表输出可用 |
-| 4 | 挂起唤醒 | 先补齐驱动与固件恢复约束，见[离线审查](bringup/2026-10-22-p2-suspend-audit.md)；暂不做整机挂起上板测试 |
-| 5 | NPU | 驱动、固件和通用用户态接口待评估 |
-| 6 | MIPI 屏／摄像头 | 显示与摄像头分别评估控制器、PHY、面板／传感器与标准接口 |
-| 低 | HLG／隔行输入 | 当前 HDR10／逐行输入之外的扩展，尚未验收 |
-| 防护已部署 | 非 8 对齐 H.265 | [尺寸保护](bringup/2026-10-22-edge-wave5-deploy.md)已部署，非法尺寸拒绝或应用回退 H.264；固件无响应后的通用恢复未做 |
-| 不做 | 旧厂商 ABI | 不兼容旧私有显示／编解码 ABI；通用软件使用标准 DRM／V4L2 |
+| F0，最高 | KVM采集与音频稳定性 | 承接正在进行的稳定性任务：FDET瞬态分类、源generation与PCM重开；ENOLINK保留失锁保护，严格稳态零无故停流/重建和非零声音验收 |
+| F1，最高 | Wave5恢复与HEVC尺寸正式实现 | [正式隔离](bringup/2026-10-23-wave5-isolation-final.md)已有watchdog/job_abort和保留DMA到重启，但无运行时硬件复位/固件重载、真实挂死未验。继续正式恢复，再退出[尺寸保护](bringup/2026-10-22-edge-wave5-deploy.md)/AVC回退 |
+| F1→F2 | 本地显示M1+与采集共存 | M0 simpledrm已过，M1由现有任务承接；统一共享VCBUS/MMIO/时钟归属，后续原生DRM modeset/EDID/HPD、多平面及HDMI声音，不以固定handoff当终态 |
+| F2 | 输入格式完整化与硬件解码 | HLG/隔行拒绝需正式色彩/去隔行实现；12bit动态路径已实现但真源未验。解码沿[既有VDEC门禁](bringup/2026-10-22-vdec-mdec-offline.md)，先安全平台层和H.264正确帧，再扩codec/位深/多实例 |
+| F2→F5 | 全部音频路由 | HDMI-TX播放先行，再I²S/PCM/SPDIF/PDM/EXTN/loopback/ASRC/effect/VAD/DSP；当前RX采集不代表输出、eARC或全部厂商路由可用 |
+| F3 | 电源、调压、挂起与唤醒 | 按[PM审查](bringup/2026-10-22-p2-suspend-audit.md)先设备quiesce/恢复，再解除临时常开/CRG EBUSY；GPU逐频电压表不足，禁止猜值；本轮不做整机挂起 |
+| F3 | KASLR/启动随机种子 | 晚期hwrng不能补早期KASLR；按[SD安全方案](bringup/2026-10-22-uboot-sd-recovery.md)先可恢复启动验证，不刷共享板引导区 |
+| F4 | NPU与通用外围 | 先确认新板ADLA/旧板NNA及匹配SDK，再驱动/标准接口；补PCIe、BT、USB真实声音/Windows网卡、存储与MCU/IR/ADC等；Wi-Fi/P2P另行验收 |
+| F5 | MIPI与图像处理 | DRM DSI/面板/背光，V4L2 CSI/ISP/sensor、GE2D/GDC/DI/writeback及高阶色彩；需准确扩展硬件，不能套用C3支持当T7完成 |
+| 条件受限 | Dolby Vision、HDCP/安全媒体、密钥/TA与闭源SDK | 缺授权/固件合同的功能明确受限，不以普通文件、软件回退或伪造能力替代；具备条件后仍接标准框架 |
+| 不做接口兼容 | 旧厂商私有ABI | 功能仍在追平范围；以DRM/V4L2/ASoC/dma-buf等标准接口交付，闭源旧消费者另列兼容条件 |
 
 ## 源码与配置
 

@@ -1,0 +1,536 @@
+variant	path	compatible	status	effective_status	compatible_source
+kvim4	/	t7_a311d2_vim4	okay	okay	arch/arm64/boot/dts/amlogic/kvim4.dts:18
+kvim4	/a53_tsensor@fe022000	amlogic, r1p1-tsensor	okay	okay	arch/arm64/boot/dts/amlogic/mesont7.dtsi:2905
+kvim4	/a53buck_opp_table0	operating-points-v2	okay	okay	arch/arm64/boot/dts/amlogic/mesont7.dtsi:1098
+kvim4	/a53buck_opp_table1	operating-points-v2	okay	okay	arch/arm64/boot/dts/amlogic/mesont7.dtsi:1148
+kvim4	/a53buck_opp_table2	operating-points-v2	okay	okay	arch/arm64/boot/dts/amlogic/mesont7.dtsi:1198
+kvim4	/a53buck_opp_table3	operating-points-v2	okay	okay	arch/arm64/boot/dts/amlogic/mesont7.dtsi:1248
+kvim4	/a53pwm_opp_table0	operating-points-v2	okay	okay	arch/arm64/boot/dts/amlogic/mesont7.dtsi:898
+kvim4	/a53pwm_opp_table1	operating-points-v2	okay	okay	arch/arm64/boot/dts/amlogic/mesont7.dtsi:948
+kvim4	/a53pwm_opp_table2	operating-points-v2	okay	okay	arch/arm64/boot/dts/amlogic/mesont7.dtsi:998
+kvim4	/a53pwm_opp_table3	operating-points-v2	okay	okay	arch/arm64/boot/dts/amlogic/mesont7.dtsi:1048
+kvim4	/a73_tsensor@fe020000	amlogic, r1p1-tsensor	okay	okay	arch/arm64/boot/dts/amlogic/mesont7.dtsi:2891
+kvim4	/a73pwm_opp_table0	operating-points-v2	okay	okay	arch/arm64/boot/dts/amlogic/mesont7.dtsi:682
+kvim4	/a73pwm_opp_table1	operating-points-v2	okay	okay	arch/arm64/boot/dts/amlogic/mesont7.dtsi:736
+kvim4	/a73pwm_opp_table2	operating-points-v2	okay	okay	arch/arm64/boot/dts/amlogic/mesont7.dtsi:790
+kvim4	/a73pwm_opp_table3	operating-points-v2	okay	okay	arch/arm64/boot/dts/amlogic/mesont7.dtsi:844
+kvim4	/adapter0@fe3b0000	amlogic, adapter0	okay	okay	arch/arm64/boot/dts/amlogic/mesont7.dtsi:2375
+kvim4	/adapter2@fe3b0800	amlogic, adapter2	okay	okay	arch/arm64/boot/dts/amlogic/mesont7.dtsi:2386
+kvim4	/adc_keypad	amlogic, adc_keypad	okay	okay	arch/arm64/boot/dts/amlogic/kvim4.dts:921
+kvim4	/amdolby_vision	amlogic, dolby_vision_t7	okay	okay	arch/arm64/boot/dts/amlogic/kvim4.dts:794
+kvim4	/amhdmitx	amlogic, amhdmitx-t7	okay	okay	arch/arm64/boot/dts/amlogic/mesont7.dtsi:2549
+kvim4	/aml_bt	amlogic, aml-bt	okay	okay	arch/arm64/boot/dts/amlogic/mesont7.dtsi:3370
+kvim4	/aml_dma	amlogic,aml_txlx_dma	okay	okay	arch/arm64/boot/dts/amlogic/mesont7.dtsi:2640
+kvim4	/aml_dma/aml_aes	amlogic,aes_g12a_dma	okay	okay	arch/arm64/boot/dts/amlogic/mesont7.dtsi:2645
+kvim4	/aml_dma/aml_sha	amlogic,sha_dma	okay	okay	arch/arm64/boot/dts/amlogic/mesont7.dtsi:2652
+kvim4	/aml_dma/aml_tdes	amlogic,tdes_dma	okay	okay	arch/arm64/boot/dts/amlogic/mesont7.dtsi:2658
+kvim4	/aml_enc	cnm, MultiEnc	okay	okay	arch/arm64/boot/dts/amlogic/mesont7.dtsi:2731
+kvim4	/aml_kt	amlogic,aml_kt	okay	okay	arch/arm64/boot/dts/amlogic/mesont7.dtsi:3565
+kvim4	/aml_mkl	amlogic,aml_mkl	okay	okay	arch/arm64/boot/dts/amlogic/mesont7.dtsi:3556
+kvim4	/aml_reboot	aml, reboot	okay	okay	arch/arm64/boot/dts/amlogic/mesont7.dtsi:313
+kvim4	/aml_smmu	amlogic,smmu	okay	okay	arch/arm64/boot/dts/amlogic/kvim4.dts:298
+kvim4	/aml_wifi	amlogic, aml-wifi	okay	okay	arch/arm64/boot/dts/amlogic/mesont7.dtsi:3375
+kvim4	/amlgdc	amlogic, aml-gdc	okay	okay	arch/arm64/boot/dts/amlogic/mesont7.dtsi:3418
+kvim4	/amlvecm	amlogic, vecm-t7	okay	okay	arch/arm64/boot/dts/amlogic/mesont7.dtsi:3301
+kvim4	/amlvideo2_0	amlogic, amlvideo2	okay	okay	arch/arm64/boot/dts/amlogic/kvim4.dts:905
+kvim4	/amlvideo2_1	amlogic, amlvideo2	okay	okay	arch/arm64/boot/dts/amlogic/kvim4.dts:913
+kvim4	/aocec	amlogic, aocec-t7	okay	okay	arch/arm64/boot/dts/amlogic/mesont7.dtsi:2603
+kvim4	/aucpu	amlogic, aucpu	okay	okay	arch/arm64/boot/dts/amlogic/mesont7.dtsi:3343
+kvim4	/auge_sound	amlogic, auge-sound-card	okay	okay	arch/arm64/boot/dts/amlogic/kvim4.dts:610
+kvim4	/backlight	amlogic, backlight-t7	okay	okay	arch/arm64/boot/dts/amlogic/khadas-panel.dtsi:1090
+kvim4	/backlight1	amlogic, backlight-t7	disabled	disabled	arch/arm64/boot/dts/amlogic/khadas-panel.dtsi:1863
+kvim4	/bifrost	arm,malit60x;arm,malit6xx;arm,mali-midgard	okay	okay	arch/arm64/boot/dts/amlogic/mesong12a-bifrost.dtsi:9
+kvim4	/camera0	amlogic, camera	okay	okay	arch/arm64/boot/dts/amlogic/mesont7.dtsi:2421
+kvim4	/camera1	amlogic, camera	okay	okay	arch/arm64/boot/dts/amlogic/mesont7.dtsi:2428
+kvim4	/canvas	amlogic, meson, canvas	okay	okay	arch/arm64/boot/dts/amlogic/mesont7.dtsi:2676
+kvim4	/cma_shrinker	amlogic, cma-shrinker	okay	okay	arch/arm64/boot/dts/amlogic/mesont7.dtsi:354
+kvim4	/codec_io	amlogic, meson-t7, codec-io	okay	okay	arch/arm64/boot/dts/amlogic/mesont7.dtsi:2683
+kvim4	/codec_mm	amlogic, codec, mm	okay	okay	arch/arm64/boot/dts/amlogic/kvim4.dts:327
+kvim4	/cpu_info	amlogic, cpuinfo	okay	okay	arch/arm64/boot/dts/amlogic/mesont7.dtsi:368
+kvim4	/cpu_ver_name	amlogic, cpu-major-id-t7	okay	okay	arch/arm64/boot/dts/amlogic/mesont7.dtsi:2462
+kvim4	/cpufreq-meson	amlogic, cpufreq-meson	okay	okay	arch/arm64/boot/dts/amlogic/mesont7.dtsi:1298
+kvim4	/cpus/cpu@0	arm,cortex-a73;arm,armv8	okay	okay	arch/arm64/boot/dts/amlogic/mesont7.dtsi:61
+kvim4	/cpus/cpu@1	arm,cortex-a73;arm,armv8	okay	okay	arch/arm64/boot/dts/amlogic/mesont7.dtsi:81
+kvim4	/cpus/cpu@100	arm,cortex-a53;arm,armv8	okay	okay	arch/arm64/boot/dts/amlogic/mesont7.dtsi:141
+kvim4	/cpus/cpu@101	arm,cortex-a53;arm,armv8	okay	okay	arch/arm64/boot/dts/amlogic/mesont7.dtsi:161
+kvim4	/cpus/cpu@102	arm,cortex-a53;arm,armv8	okay	okay	arch/arm64/boot/dts/amlogic/mesont7.dtsi:181
+kvim4	/cpus/cpu@103	arm,cortex-a53;arm,armv8	okay	okay	arch/arm64/boot/dts/amlogic/mesont7.dtsi:201
+kvim4	/cpus/cpu@2	arm,cortex-a73;arm,armv8	okay	okay	arch/arm64/boot/dts/amlogic/mesont7.dtsi:101
+kvim4	/cpus/cpu@3	arm,cortex-a73;arm,armv8	okay	okay	arch/arm64/boot/dts/amlogic/mesont7.dtsi:121
+kvim4	/cpus/idle-states/cpu-sleep-0	arm,idle-state	okay	okay	arch/arm64/boot/dts/amlogic/mesont7.dtsi:222
+kvim4	/cpus/idle-states/system-sleep-0	arm,idle-state	okay	okay	arch/arm64/boot/dts/amlogic/mesont7.dtsi:230
+kvim4	/csiphy0@fe3bfc00	amlogic, csiphy0	okay	okay	arch/arm64/boot/dts/amlogic/mesont7.dtsi:2396
+kvim4	/csiphy2@fe3bf400	amlogic, csiphy2	okay	okay	arch/arm64/boot/dts/amlogic/mesont7.dtsi:2409
+kvim4	/ddr_bandwidth	amlogic,ddr-bandwidth-t7	okay	okay	arch/arm64/boot/dts/amlogic/mesont7.dtsi:2527
+kvim4	/dmc_monitor	amlogic,dmc_monitor-t7	okay	okay	arch/arm64/boot/dts/amlogic/mesont7.dtsi:2538
+kvim4	/dolby_fw	amlogic, dolby_fw	okay	okay	arch/arm64/boot/dts/amlogic/mesont7.dtsi:487
+kvim4	/drm-amcvbsout	amlogic, drm-cvbsout	disabled	disabled	arch/arm64/boot/dts/amlogic/mesont7_drm.dtsi:12
+kvim4	/drm-subsystem	amlogic, drm-subsystem	okay	okay	arch/arm64/boot/dts/amlogic/mesont7_drm.dtsi:75
+kvim4	/drm-vpu@0xff900000	amlogic, meson-t7-vpu	okay	okay	arch/arm64/boot/dts/amlogic/mesont7_drm.dtsi:28
+kvim4	/dummy_venc	amlogic, dummy_venc_t7	okay	okay	arch/arm64/boot/dts/amlogic/mesont7.dtsi:2814
+kvim4	/dvb-demux	amlogic sc2, dvb-demux	disabled	disabled	arch/arm64/boot/dts/amlogic/kvim4.dts:872
+kvim4	/dvb-extern	amlogic, dvb-extern	disabled	disabled	arch/arm64/boot/dts/amlogic/kvim4.dts:836
+kvim4	/efuse	amlogic, efuse	okay	okay	arch/arm64/boot/dts/amlogic/mesont7.dtsi:3485
+kvim4	/fb	amlogic, fb-t7	disabled	disabled	arch/arm64/boot/dts/amlogic/mesont7.dtsi:3169
+kvim4	/gdc	amlogic, arm-gdc	okay	okay	arch/arm64/boot/dts/amlogic/mesont7.dtsi:3401
+kvim4	/ge2d	amlogic, ge2d-t7	okay	okay	arch/arm64/boot/dts/amlogic/mesont7.dtsi:3355
+kvim4	/gpio-regulator	regulator-gpio	okay	okay	arch/arm64/boot/dts/amlogic/kvim4.dts:316
+kvim4	/gpio_keypad	amlogic, gpio_keypad	okay	okay	arch/arm64/boot/dts/amlogic/kvim4.dts:934
+kvim4	/gpiomem	amlogic, gpiomem	okay	okay	arch/arm64/boot/dts/amlogic/kvim4.dts:769
+kvim4	/gpu_opp_table	operating-points-v2	okay	okay	arch/arm64/boot/dts/amlogic/mesont7.dtsi:3526
+kvim4	/gpu_tsensor@fe094000	amlogic, r1p1-tsensor	okay	okay	arch/arm64/boot/dts/amlogic/mesont7.dtsi:2919
+kvim4	/hdmirx	amlogic, hdmirx_t7	okay	okay	arch/arm64/boot/dts/amlogic/kvim4.dts:555
+kvim4	/hevc_tsensor@fe09a000	amlogic, r1p1-tsensor	okay	okay	arch/arm64/boot/dts/amlogic/mesont7.dtsi:2949
+kvim4	/hifidsp0	amlogic, hifidsp0	okay	okay	arch/arm64/boot/dts/amlogic/mesont7.dtsi:502
+kvim4	/hifidsp1	amlogic, hifidsp1	okay	okay	arch/arm64/boot/dts/amlogic/mesont7.dtsi:529
+kvim4	/interrupt-controller@fff01000	arm,cortex-a15-gic;arm,cortex-a9-gic	okay	okay	arch/arm64/boot/dts/amlogic/mesont7.dtsi:289
+kvim4	/ion_dev	amlogic, ion_dev	okay	okay	arch/arm64/boot/dts/amlogic/mesont7.dtsi:3162
+kvim4	/ionvideo	amlogic, ionvideo	okay	okay	arch/arm64/boot/dts/amlogic/kvim4.dts:899
+kvim4	/iq	soc, iq	okay	okay	arch/arm64/boot/dts/amlogic/kvim4.dts:544
+kvim4	/ir@8000	amlogic, meson-ir	okay	okay	arch/arm64/boot/dts/amlogic/mesont7.dtsi:2878
+kvim4	/isp-adapter@fe3b0000	amlogic, isp-adapter	okay	okay	arch/arm64/boot/dts/amlogic/mesont7.dtsi:2327
+kvim4	/isp-cmpr@fe3b4000	amlogic, isp-cmpr	okay	okay	arch/arm64/boot/dts/amlogic/mesont7.dtsi:2299
+kvim4	/isp-flicker@fe3b2c00	amlogic, isp-flicker	okay	okay	arch/arm64/boot/dts/amlogic/mesont7.dtsi:2292
+kvim4	/isp-md@fe3b2800	amlogic, isp-md	okay	okay	arch/arm64/boot/dts/amlogic/mesont7.dtsi:2285
+kvim4	/isp-sc@fe3b1400	amlogic, isp-sc	okay	okay	arch/arm64/boot/dts/amlogic/mesont7.dtsi:2272
+kvim4	/isp@fa000000	arm, isp	okay	okay	arch/arm64/boot/dts/amlogic/mesont7.dtsi:2308
+kvim4	/jpegenc	amlogic, jpegenc	okay	okay	arch/arm64/boot/dts/amlogic/mesont7.dtsi:2706
+kvim4	/jtag	amlogic, jtag	okay	okay	arch/arm64/boot/dts/amlogic/mesont7.dtsi:493
+kvim4	/lcd	amlogic, lcd-t7	okay	okay	arch/arm64/boot/dts/amlogic/khadas-panel.dtsi:8
+kvim4	/lcd1	amlogic, lcd-t7	disabled	disabled	arch/arm64/boot/dts/amlogic/khadas-panel.dtsi:1435
+kvim4	/lcd2	amlogic, lcd-t7	disabled	disabled	arch/arm64/boot/dts/amlogic/khadas-panel.dtsi:1926
+kvim4	/lens	soc, lens	okay	okay	arch/arm64/boot/dts/amlogic/kvim4.dts:550
+kvim4	/local_dimming_device	amlogic, ldim_dev	okay	okay	arch/arm64/boot/dts/amlogic/khadas-panel.dtsi:1186
+kvim4	/lut_dma	amlogic, meson-t7, lut_dma	okay	okay	arch/arm64/boot/dts/amlogic/mesont7.dtsi:3475
+kvim4	/mbox_devfs	amlogic, mbox-devfs	okay	okay	arch/arm64/boot/dts/amlogic/mesont7.dtsi:3455
+kvim4	/mbox_fifo@0xfe006000	amlogic, t7-mbox-fifo	okay	okay	arch/arm64/boot/dts/amlogic/mesont7.dtsi:3432
+kvim4	/meson-amvideom	amlogic, amvideom-t7	okay	okay	arch/arm64/boot/dts/amlogic/mesont7.dtsi:3325
+kvim4	/meson-cooldev@0	amlogic, meson-cooldev	okay	okay	arch/arm64/boot/dts/amlogic/mesont7.dtsi:2980
+kvim4	/meson-irblaster@fe08410c	amlogic, meson_irblaster	okay	okay	arch/arm64/boot/dts/amlogic/mesont7.dtsi:3185
+kvim4	/meson_uvm	amlogic, meson_uvm	okay	okay	arch/arm64/boot/dts/amlogic/mesont7.dtsi:2780
+kvim4	/meson_videotunnel	amlogic, meson_videotunnel	okay	okay	arch/arm64/boot/dts/amlogic/mesont7.dtsi:2785
+kvim4	/mesonstream	amlogic, codec, streambuf	okay	okay	arch/arm64/boot/dts/amlogic/mesont7.dtsi:2250
+kvim4	/multi-di	amlogic, dim-t7	okay	okay	arch/arm64/boot/dts/amlogic/mesont7.dtsi:2471
+kvim4	/nna_top_ports_wrapper@fe370000	amazon,nna-1.2	okay	okay	arch/arm64/boot/dts/amlogic/mesont7.dtsi:437
+kvim4	/nna_top_ports_wrapper@fe371000	amazon,nna-1.3	okay	okay	arch/arm64/boot/dts/amlogic/mesont7.dtsi:462
+kvim4	/nna_top_ports_wrapper@fe372000	amazon,nna-1.0	okay	okay	arch/arm64/boot/dts/amlogic/mesont7.dtsi:387
+kvim4	/nna_top_ports_wrapper@fe373000	amazon,nna-1.1	okay	okay	arch/arm64/boot/dts/amlogic/mesont7.dtsi:412
+kvim4	/nna_tsensor@fe096000	amlogic, r1p1-tsensor	okay	okay	arch/arm64/boot/dts/amlogic/mesont7.dtsi:2934
+kvim4	/onewire	w1-gpio	disabled	disabled	arch/arm64/boot/dts/amlogic/kvim4.dts:518
+kvim4	/optee	linaro,optee-tz	okay	okay	arch/arm64/boot/dts/amlogic/mesont7.dtsi:340
+kvim4	/phy-csi@fe3be000	amlogic, phy-csi	okay	okay	arch/arm64/boot/dts/amlogic/mesont7.dtsi:2335
+kvim4	/picdec	amlogic, picdec	okay	okay	arch/arm64/boot/dts/amlogic/kvim4.dts:776
+kvim4	/pm	amlogic, pm	okay	okay	arch/arm64/boot/dts/amlogic/mesont7.dtsi:304
+kvim4	/pmu-a53	arm,cortex-a53-pmu	okay	okay	arch/arm64/boot/dts/amlogic/mesont7.dtsi:276
+kvim4	/pmu-a73	arm,cortex-a73-pmu	okay	okay	arch/arm64/boot/dts/amlogic/mesont7.dtsi:263
+kvim4	/power-domains	amlogic,t7-power-domain	okay	okay	arch/arm64/boot/dts/amlogic/mesont7.dtsi:381
+kvim4	/ppmgr	amlogic, ppmgr	okay	okay	arch/arm64/boot/dts/amlogic/kvim4.dts:781
+kvim4	/provisionkey	amlogic, provisionkey	okay	okay	arch/arm64/boot/dts/amlogic/mesont7.dtsi:345
+kvim4	/psci	arm,psci-0.2	okay	okay	arch/arm64/boot/dts/amlogic/mesont7.dtsi:299
+kvim4	/pwmao_b-regulator	pwm-regulator	okay	okay	arch/arm64/boot/dts/amlogic/mesont7.dtsi:599
+kvim4	/pwmao_d-regulator	pwm-regulator	okay	okay	arch/arm64/boot/dts/amlogic/mesont7.dtsi:550
+kvim4	/pwmao_f-regulator	pwm-regulator	okay	okay	arch/arm64/boot/dts/amlogic/mesont7.dtsi:648
+kvim4	/pwmleds	pwm-leds	okay	okay	arch/arm64/boot/dts/amlogic/kvim4.dts:946
+kvim4	/ram-dump	amlogic, ram_dump	okay	okay	arch/arm64/boot/dts/amlogic/mesont7.dtsi:323
+kvim4	/rdma	amlogic, meson-t7, rdma	okay	okay	arch/arm64/boot/dts/amlogic/mesont7.dtsi:2796
+kvim4	/regulator-sdcard	regulator-fixed	okay	okay	arch/arm64/boot/dts/amlogic/kvim4.dts:305
+kvim4	/reserved-memory/heap-fb	shared-dma-pool	okay	okay	arch/arm64/boot/dts/amlogic/kvim4.dts:243
+kvim4	/reserved-memory/heap-gfx	shared-dma-pool	okay	okay	arch/arm64/boot/dts/amlogic/kvim4.dts:237
+kvim4	/reserved-memory/linux,adapt_cma	shared-dma-pool	okay	okay	arch/arm64/boot/dts/amlogic/kvim4.dts:188
+kvim4	/reserved-memory/linux,cma	shared-dma-pool	okay	okay	arch/arm64/boot/dts/amlogic/kvim4.dts:280
+kvim4	/reserved-memory/linux,codec_mm_cma	shared-dma-pool	okay	okay	arch/arm64/boot/dts/amlogic/kvim4.dts:136
+kvim4	/reserved-memory/linux,codec_mm_reserved	amlogic, codec-mm-reserved	okay	okay	arch/arm64/boot/dts/amlogic/kvim4.dts:221
+kvim4	/reserved-memory/linux,di_cma	shared-dma-pool	okay	okay	arch/arm64/boot/dts/amlogic/kvim4.dts:156
+kvim4	/reserved-memory/linux,dmc_monitor	amlogic,dmc_monitor-reserved	okay	okay	arch/arm64/boot/dts/amlogic/kvim4.dts:84
+kvim4	/reserved-memory/linux,dsp_fw0	amlogic, dsp	okay	okay	arch/arm64/boot/dts/amlogic/kvim4.dts:108
+kvim4	/reserved-memory/linux,dsp_fw1	amlogic, dsp	okay	okay	arch/arm64/boot/dts/amlogic/kvim4.dts:115
+kvim4	/reserved-memory/linux,ge2d_cma	shared-dma-pool	okay	okay	arch/arm64/boot/dts/amlogic/kvim4.dts:147
+kvim4	/reserved-memory/linux,ion-dev	shared-dma-pool	okay	okay	arch/arm64/boot/dts/amlogic/kvim4.dts:197
+kvim4	/reserved-memory/linux,ion-fb	shared-dma-pool	okay	okay	arch/arm64/boot/dts/amlogic/kvim4.dts:212
+kvim4	/reserved-memory/linux,ion-secure	amlogic, ion-secure-mem	okay	okay	arch/arm64/boot/dts/amlogic/kvim4.dts:205
+kvim4	/reserved-memory/linux,iotrace	amlogic, iotrace	okay	okay	arch/arm64/boot/dts/amlogic/kvim4.dts:89
+kvim4	/reserved-memory/linux,isp_cma	shared-dma-pool	okay	okay	arch/arm64/boot/dts/amlogic/kvim4.dts:179
+kvim4	/reserved-memory/linux,ldc_mem	shared-dma-pool	okay	okay	arch/arm64/boot/dts/amlogic/kvim4.dts:272
+kvim4	/reserved-memory/linux,meson-fb	amlogic, meson-fb	okay	okay	arch/arm64/boot/dts/amlogic/kvim4.dts:128
+kvim4	/reserved-memory/linux,pcie_dma_ops	shared-dma-pool	okay	okay	arch/arm64/boot/dts/amlogic/kvim4.dts:288
+kvim4	/reserved-memory/linux,ppmgr	shared-dma-pool	okay	okay	arch/arm64/boot/dts/amlogic/kvim4.dts:173
+kvim4	/reserved-memory/linux,secmon	shared-dma-pool	okay	okay	arch/arm64/boot/dts/amlogic/kvim4.dts:99
+kvim4	/reserved-memory/linux,secure_vdec_reserved	amlogic, secure-vdec-reserved	okay	okay	arch/arm64/boot/dts/amlogic/kvim4.dts:229
+kvim4	/reserved-memory/linux,vdin1_cma	shared-dma-pool	okay	okay	arch/arm64/boot/dts/amlogic/kvim4.dts:261
+kvim4	/reserved-memory/ramoops@0x07400000	ramoops	okay	okay	arch/arm64/boot/dts/amlogic/kvim4.dts:75
+kvim4	/rng	amlogic,meson-rng	okay	okay	arch/arm64/boot/dts/amlogic/mesont7.dtsi:2666
+kvim4	/rtc@0xfe010288	amlogic,meson-vrtc	disabled	disabled	arch/arm64/boot/dts/amlogic/mesont7.dtsi:374
+kvim4	/saradc@fe026000	amlogic,meson-g12a-saradc;amlogic,meson-saradc	okay	okay	arch/arm64/boot/dts/amlogic/mesont7.dtsi:1303
+kvim4	/secmon	amlogic, secmon	okay	okay	arch/arm64/boot/dts/amlogic/mesont7.dtsi:331
+kvim4	/sensor	soc, sensor	okay	okay	arch/arm64/boot/dts/amlogic/kvim4.dts:524
+kvim4	/smartcard	amlogic,smartcard-sc2	disabled	disabled	arch/arm64/boot/dts/amlogic/kvim4.dts:802
+kvim4	/soc	simple-bus	okay	okay	arch/arm64/boot/dts/amlogic/mesont7.dtsi:1318
+kvim4	/soc/amaudio	amlogic, amaudio	okay	okay	arch/arm64/boot/dts/amlogic/mesont7.dtsi:1893
+kvim4	/soc/aml_snd_iomap	amlogic, snd-iomap	okay	okay	arch/arm64/boot/dts/amlogic/mesont7.dtsi:2000
+kvim4	/soc/apb4@fe000000	simple-bus	okay	okay	arch/arm64/boot/dts/amlogic/mesont7.dtsi:1324
+kvim4	/soc/apb4@fe000000/clock-controller	amlogic,t7-clkc	okay	okay	arch/arm64/boot/dts/amlogic/mesont7.dtsi:1331
+kvim4	/soc/apb4@fe000000/i2c@66000	amlogic,meson-i2c	disabled	disabled	arch/arm64/boot/dts/amlogic/mesont7.dtsi:1557
+kvim4	/soc/apb4@fe000000/i2c@68000	amlogic,meson-i2c	okay	okay	arch/arm64/boot/dts/amlogic/mesont7.dtsi:1567
+kvim4	/soc/apb4@fe000000/i2c@6a000	amlogic,meson-i2c	okay	okay	arch/arm64/boot/dts/amlogic/mesont7.dtsi:1577
+kvim4	/soc/apb4@fe000000/i2c@6a000/dw9714@0c	dw, dw9714, t7	okay	okay	arch/arm64/boot/dts/amlogic/kvim4.dts:1440
+kvim4	/soc/apb4@fe000000/i2c@6a000/sensor-i2c@6c	arm, i2c-sensor	okay	okay	arch/arm64/boot/dts/amlogic/kvim4.dts:1430
+kvim4	/soc/apb4@fe000000/i2c@6c000	amlogic,meson-i2c	okay	okay	arch/arm64/boot/dts/amlogic/mesont7.dtsi:1587
+kvim4	/soc/apb4@fe000000/i2c@6c000/ft5336@38	edt,edt-ft5336;ft5x06	okay	okay	arch/arm64/boot/dts/amlogic/kvim4.dts:1452
+kvim4	/soc/apb4@fe000000/i2c@6c000/gt9xx@14	goodix,gt9xx	okay	okay	arch/arm64/boot/dts/amlogic/kvim4.dts:1460
+kvim4	/soc/apb4@fe000000/i2c@6e000	amlogic,meson-i2c	disabled	disabled	arch/arm64/boot/dts/amlogic/mesont7.dtsi:1597
+kvim4	/soc/apb4@fe000000/i2c@70000	amlogic,meson-i2c	disabled	disabled	arch/arm64/boot/dts/amlogic/mesont7.dtsi:1607
+kvim4	/soc/apb4@fe000000/i2c@76000	amlogic,meson-i2c	okay	okay	arch/arm64/boot/dts/amlogic/mesont7.dtsi:1617
+kvim4	/soc/apb4@fe000000/i2c@76000/hym8563-rtc@51	haoyu,hym8563	okay	okay	arch/arm64/boot/dts/amlogic/kvim4.dts:1502
+kvim4	/soc/apb4@fe000000/i2c@76000/khadas-kxtj3@e	kxtj3	okay	okay	arch/arm64/boot/dts/amlogic/kvim4.dts:1517
+kvim4	/soc/apb4@fe000000/i2c@76000/khadas-mcu@18	khadas-mcu	okay	okay	arch/arm64/boot/dts/amlogic/kvim4.dts:1507
+kvim4	/soc/apb4@fe000000/i2c@86000	amlogic,meson-i2c	disabled	disabled	arch/arm64/boot/dts/amlogic/mesont7.dtsi:1627
+kvim4	/soc/apb4@fe000000/interrupt-controller@4080	amlogic,meson-t7-gpio-intc;amlogic,meson-gpio-intc	okay	okay	arch/arm64/boot/dts/amlogic/mesont7.dtsi:1374
+kvim4	/soc/apb4@fe000000/mdio-multiplexer@28000	amlogic,g12a-mdio-mux	okay	okay	arch/arm64/boot/dts/amlogic/mesont7.dtsi:1653
+kvim4	/soc/apb4@fe000000/mdio-multiplexer@28000/mdio@1/ethernet_phy@8	ethernet-phy-id0180.3301;ethernet-phy-ieee802.3-c22	okay	okay	arch/arm64/boot/dts/amlogic/mesont7.dtsi:1678
+kvim4	/soc/apb4@fe000000/meson_clk_msr@48000	amlogic,meson-t7-clk-measure	okay	okay	arch/arm64/boot/dts/amlogic/mesont7.dtsi:1344
+kvim4	/soc/apb4@fe000000/pinctrl@4000	amlogic,meson-t7-periphs-pinctrl	okay	okay	arch/arm64/boot/dts/amlogic/mesont7.dtsi:1358
+kvim4	/soc/apb4@fe000000/pwm@30000	amlogic,meson-v2-pwm	okay	okay	arch/arm64/boot/dts/amlogic/mesont7.dtsi:1535
+kvim4	/soc/apb4@fe000000/pwm@32000	amlogic,meson-v2-pwm	disabled	disabled	arch/arm64/boot/dts/amlogic/mesont7.dtsi:1546
+kvim4	/soc/apb4@fe000000/pwm@58000	amlogic,meson-v2-pwm	okay	okay	arch/arm64/boot/dts/amlogic/mesont7.dtsi:1480
+kvim4	/soc/apb4@fe000000/pwm@5a000	amlogic,meson-v2-pwm	disabled	disabled	arch/arm64/boot/dts/amlogic/mesont7.dtsi:1491
+kvim4	/soc/apb4@fe000000/pwm@5c000	amlogic,meson-v2-pwm	okay	okay	arch/arm64/boot/dts/amlogic/mesont7.dtsi:1502
+kvim4	/soc/apb4@fe000000/pwm@5e000	amlogic,meson-v2-pwm	okay	okay	arch/arm64/boot/dts/amlogic/mesont7.dtsi:1513
+kvim4	/soc/apb4@fe000000/pwm@60000	amlogic,meson-v2-pwm	okay	okay	arch/arm64/boot/dts/amlogic/mesont7.dtsi:1524
+kvim4	/soc/apb4@fe000000/reset-controller@2000	amlogic,meson-t7-reset	okay	okay	arch/arm64/boot/dts/amlogic/mesont7.dtsi:1688
+kvim4	/soc/apb4@fe000000/serial@7a000	amlogic,meson-uart	disabled	disabled	arch/arm64/boot/dts/amlogic/mesont7.dtsi:1637
+kvim4	/soc/apb4@fe000000/spi@4a000	amlogic,meson-g12-spicc	disabled	disabled	arch/arm64/boot/dts/amlogic/mesont7.dtsi:1423
+kvim4	/soc/apb4@fe000000/spi@4c000	amlogic,meson-g12-spicc	disabled	disabled	arch/arm64/boot/dts/amlogic/mesont7.dtsi:1436
+kvim4	/soc/apb4@fe000000/spi@4e000	amlogic,meson-g12-spicc	disabled	disabled	arch/arm64/boot/dts/amlogic/mesont7.dtsi:1449
+kvim4	/soc/apb4@fe000000/spi@50000	amlogic,meson-g12-spicc	disabled	disabled	arch/arm64/boot/dts/amlogic/mesont7.dtsi:1384
+kvim4	/soc/apb4@fe000000/spi@52000	amlogic,meson-g12-spicc	disabled	disabled	arch/arm64/boot/dts/amlogic/mesont7.dtsi:1397
+kvim4	/soc/apb4@fe000000/spi@54000	amlogic,meson-g12-spicc	disabled	disabled	arch/arm64/boot/dts/amlogic/mesont7.dtsi:1410
+kvim4	/soc/apb4@fe000000/spi@56000	amlogic,meson-spifc	disabled	disabled	arch/arm64/boot/dts/amlogic/mesont7.dtsi:1462
+kvim4	/soc/apb4@fe000000/spi@56000/spi-nor@0	jedec,spi-nor	disabled	disabled	arch/arm64/boot/dts/amlogic/mesont7.dtsi:1472
+kvim4	/soc/apb4@fe000000/watchdog@2100	amlogic,meson-sc2-wdt	okay	okay	arch/arm64/boot/dts/amlogic/mesont7.dtsi:1349
+kvim4	/soc/audio_data	amlogic, audio_data	okay	okay	arch/arm64/boot/dts/amlogic/mesont7.dtsi:1886
+kvim4	/soc/audiobus@0xFE330000	amlogic, audio-controller;simple-bus	okay	okay	arch/arm64/boot/dts/amlogic/mesont7.dtsi:1900
+kvim4	/soc/audiobus@0xFE330000/audio_clocks	amlogic, t7-audio-clocks	okay	okay	arch/arm64/boot/dts/amlogic/mesont7.dtsi:1911
+kvim4	/soc/audiobus@0xFE330000/ddr_manager	amlogic, t3-audio-ddr-manager	okay	okay	arch/arm64/boot/dts/amlogic/mesont7.dtsi:1917
+kvim4	/soc/audiobus@0xFE330000/effect	amlogic, snd-effect-v4	okay	okay	arch/arm64/boot/dts/amlogic/kvim4.dts:1135
+kvim4	/soc/audiobus@0xFE330000/extn	amlogic, t7-snd-extn	okay	okay	arch/arm64/boot/dts/amlogic/kvim4.dts:1124
+kvim4	/soc/audiobus@0xFE330000/loopback@0	amlogic, t5-loopbacka	okay	okay	arch/arm64/boot/dts/amlogic/kvim4.dts:1235
+kvim4	/soc/audiobus@0xFE330000/loopback@1	amlogic, t5-loopbackb	disabled	disabled	arch/arm64/boot/dts/amlogic/kvim4.dts:1291
+kvim4	/soc/audiobus@0xFE330000/pdm	amlogic, tm2-revb-snd-pdm	okay	okay	arch/arm64/boot/dts/amlogic/kvim4.dts:1056
+kvim4	/soc/audiobus@0xFE330000/pinctrl	amlogic, audio-pinctrl	okay	okay	arch/arm64/boot/dts/amlogic/mesont7.dtsi:1940
+kvim4	/soc/audiobus@0xFE330000/resample@0	amlogic, t5-resample-a	okay	okay	arch/arm64/boot/dts/amlogic/kvim4.dts:1160
+kvim4	/soc/audiobus@0xFE330000/resample@1	amlogic, t5-resample-b	okay	okay	arch/arm64/boot/dts/amlogic/kvim4.dts:1186
+kvim4	/soc/audiobus@0xFE330000/spdif@0	amlogic, tm2-revb-snd-spdif-a	okay	okay	arch/arm64/boot/dts/amlogic/kvim4.dts:1085
+kvim4	/soc/audiobus@0xFE330000/spdif@1	amlogic, tm2-revb-snd-spdif-b	okay	okay	arch/arm64/boot/dts/amlogic/kvim4.dts:1110
+kvim4	/soc/audiobus@0xFE330000/tdm@0	amlogic, t7-snd-tdma	okay	okay	arch/arm64/boot/dts/amlogic/kvim4.dts:964
+kvim4	/soc/audiobus@0xFE330000/tdm@1	amlogic, t7-snd-tdmb	okay	okay	arch/arm64/boot/dts/amlogic/kvim4.dts:989
+kvim4	/soc/audiobus@0xFE330000/tdm@2	amlogic, t7-snd-tdmc	okay	okay	arch/arm64/boot/dts/amlogic/kvim4.dts:1037
+kvim4	/soc/audiobus@0xFE330000/vad	amlogic, snd-vad	okay	okay	arch/arm64/boot/dts/amlogic/kvim4.dts:1199
+kvim4	/soc/bus@fe333000	simple-bus	okay	okay	arch/arm64/boot/dts/amlogic/mesont7.dtsi:1947
+kvim4	/soc/bus@fe333000/earc@0	amlogic, t7-snd-earc	disabled	disabled	arch/arm64/boot/dts/amlogic/mesont7.dtsi:1954
+kvim4	/soc/codec	amlogic, t3_acodec	okay	okay	arch/arm64/boot/dts/amlogic/mesont7.dtsi:1873
+kvim4	/soc/crg20otg@fe03a000	amlogic, amlogic-crg-otg	okay	okay	arch/arm64/boot/dts/amlogic/mesont7.dtsi:1793
+kvim4	/soc/crg21otg@fe03a020	amlogic, amlogic-crg-otg	okay	okay	arch/arm64/boot/dts/amlogic/mesont7.dtsi:1803
+kvim4	/soc/crg2drd@fdd00000	amlogic, crg-drd	okay	okay	arch/arm64/boot/dts/amlogic/kvim4.dts:1369
+kvim4	/soc/crg3drd@fde00000	amlogic, crg-host-drd	okay	okay	arch/arm64/boot/dts/amlogic/kvim4.dts:1375
+kvim4	/soc/crg3phy20@fe03a080	amlogic, amlogic-crg-drd-usb3	okay	okay	arch/arm64/boot/dts/amlogic/mesont7.dtsi:1771
+kvim4	/soc/crg3phy21@fe03a080	amlogic, amlogic-crg-drd-usb3	okay	okay	arch/arm64/boot/dts/amlogic/mesont7.dtsi:1749
+kvim4	/soc/crgphy20@fe03c000	amlogic, amlogic-crg-drd-usb2	okay	okay	arch/arm64/boot/dts/amlogic/mesont7.dtsi:1695
+kvim4	/soc/crgphy21@fe03e000	amlogic, amlogic-crg-drd-usb2	okay	okay	arch/arm64/boot/dts/amlogic/mesont7.dtsi:1722
+kvim4	/soc/crgudc2@0xfdd00000	amlogic, crg_udc	okay	okay	arch/arm64/boot/dts/amlogic/mesont7.dtsi:1852
+kvim4	/soc/crgudc3@0xfde00000	amlogic, crg_udc	disable	disabled	arch/arm64/boot/dts/amlogic/mesont7.dtsi:1837
+kvim4	/soc/dummy	amlogic, aml_dummy_codec	okay	okay	arch/arm64/boot/dts/amlogic/mesont7.dtsi:1868
+kvim4	/soc/ethernet@fdc00000	amlogic,meson-axg-dwmac;snps,dwmac-4.00	okay	okay	arch/arm64/boot/dts/amlogic/mesont7.dtsi:2155
+kvim4	/soc/ethernet@fdc00000/mdio	snps,dwmac-mdio	okay	okay	arch/arm64/boot/dts/amlogic/mesont7.dtsi:2176
+kvim4	/soc/hdmirx_arc	amlogic, hdmirx-arc-iomap	okay	okay	arch/arm64/boot/dts/amlogic/mesont7.dtsi:2030
+kvim4	/soc/mmc@fe08c000	amlogic,meson-axg-mmc	okay	okay	arch/arm64/boot/dts/amlogic/mesont7.dtsi:2083
+kvim4	/soc/pcie@f5000000	amlogic, amlogic-pcie-v2;snps,dw-pcie	okay	okay	arch/arm64/boot/dts/amlogic/mesont7.dtsi:2039
+kvim4	/soc/sd@fe08a000	amlogic,meson-axg-mmc	okay	okay	arch/arm64/boot/dts/amlogic/mesont7.dtsi:2109
+kvim4	/soc/sdio@fe088000	amlogic,meson-axg-mmc	okay	okay	arch/arm64/boot/dts/amlogic/mesont7.dtsi:2131
+kvim4	/soc/sdio@fe088000/wifi@1	brcm,bcm4329-fmac	okay	okay	arch/arm64/boot/dts/amlogic/kvim4.dts:1551
+kvim4	/soc/serial@fe078000	amlogic,meson-uart	okay	okay	arch/arm64/boot/dts/amlogic/mesont7.dtsi:2181
+kvim4	/soc/serial@fe07c000	amlogic,meson-uart	okay	okay	arch/arm64/boot/dts/amlogic/mesont7.dtsi:2193
+kvim4	/soc/serial@fe07e000	amlogic,meson-uart	disabled	disabled	arch/arm64/boot/dts/amlogic/mesont7.dtsi:2207
+kvim4	/soc/serial@fe080000	amlogic,meson-uart	disabled	disabled	arch/arm64/boot/dts/amlogic/mesont7.dtsi:2221
+kvim4	/soc/serial@fe082000	amlogic,meson-uart	disabled	disabled	arch/arm64/boot/dts/amlogic/mesont7.dtsi:2235
+kvim4	/state_led	amlogic,state-led-aocpu	disabled	disabled	arch/arm64/boot/dts/amlogic/mesont7.dtsi:3480
+kvim4	/timer	arm,armv8-timer	okay	okay	arch/arm64/boot/dts/amlogic/mesont7.dtsi:240
+kvim4	/unifykey	amlogic,unifykey	okay	okay	arch/arm64/boot/dts/amlogic/kvim4.dts:376
+kvim4	/vclk_serve	amlogic, vclk_serve	okay	okay	arch/arm64/boot/dts/amlogic/mesont7.dtsi:2807
+kvim4	/vcodec_dec	amlogic, vcodec-dec	okay	okay	arch/arm64/boot/dts/amlogic/mesont7.dtsi:2465
+kvim4	/vdec	amlogic, vdec-pm-pd	okay	okay	arch/arm64/boot/dts/amlogic/mesont7.dtsi:2435
+kvim4	/vdin0	amlogic, vdin-t7	okay	okay	arch/arm64/boot/dts/amlogic/mesont7.dtsi:3194
+kvim4	/vdin1	amlogic, vdin-t7	okay	okay	arch/arm64/boot/dts/amlogic/mesont7.dtsi:3265
+kvim4	/video_composer	amlogic, video_composer	okay	okay	arch/arm64/boot/dts/amlogic/mesont7.dtsi:2790
+kvim4	/video_queue	amlogic, video_queue	okay	okay	arch/arm64/boot/dts/amlogic/kvim4.dts:788
+kvim4	/vout	amlogic, vout	okay	okay	arch/arm64/boot/dts/amlogic/mesont7.dtsi:2836
+kvim4	/vout2	amlogic, vout2	okay	okay	arch/arm64/boot/dts/amlogic/mesont7.dtsi:2841
+kvim4	/vout3	amlogic, vout3	okay	okay	arch/arm64/boot/dts/amlogic/mesont7.dtsi:2846
+kvim4	/vout_mux	amlogic, vout_mux-t7	okay	okay	arch/arm64/boot/dts/amlogic/mesont7.dtsi:2829
+kvim4	/vpu	amlogic, vpu-t7	okay	okay	arch/arm64/boot/dts/amlogic/mesont7.dtsi:2759
+kvim4	/vpu_security	amlogic, meson-t7, vpu_security	okay	okay	arch/arm64/boot/dts/amlogic/mesont7.dtsi:3335
+kvim4	/vpu_tsensor@fe098000	amlogic, r1p1-tsensor	okay	okay	arch/arm64/boot/dts/amlogic/mesont7.dtsi:2964
+kvim4	/vrr0	amlogic, vrr-t7	okay	okay	arch/arm64/boot/dts/amlogic/mesont7.dtsi:2851
+kvim4	/vrr1	amlogic, vrr-t7	okay	okay	arch/arm64/boot/dts/amlogic/mesont7.dtsi:2860
+kvim4	/vrr2	amlogic, vrr-t7	okay	okay	arch/arm64/boot/dts/amlogic/mesont7.dtsi:2869
+kvim4	/xtal-clk	fixed-clock	okay	okay	arch/arm64/boot/dts/amlogic/mesont7.dtsi:361
+kvim4n	/	t7c_a311d2_kvim4n	okay	okay	arch/arm64/boot/dts/amlogic/kvim4n.dts:18
+kvim4n	/a53_tsensor@fe022000	amlogic, r1p1-tsensor	okay	okay	arch/arm64/boot/dts/amlogic/mesont7c.dtsi:2741
+kvim4n	/a53buck_opp_table0	operating-points-v2	okay	okay	arch/arm64/boot/dts/amlogic/mesont7c.dtsi:1026
+kvim4n	/a53buck_opp_table1	operating-points-v2	okay	okay	arch/arm64/boot/dts/amlogic/mesont7c.dtsi:1076
+kvim4n	/a53buck_opp_table2	operating-points-v2	okay	okay	arch/arm64/boot/dts/amlogic/mesont7c.dtsi:1126
+kvim4n	/a53buck_opp_table3	operating-points-v2	okay	okay	arch/arm64/boot/dts/amlogic/mesont7c.dtsi:1176
+kvim4n	/a53pwm_opp_table0	operating-points-v2	okay	okay	arch/arm64/boot/dts/amlogic/mesont7c.dtsi:826
+kvim4n	/a53pwm_opp_table1	operating-points-v2	okay	okay	arch/arm64/boot/dts/amlogic/mesont7c.dtsi:876
+kvim4n	/a53pwm_opp_table2	operating-points-v2	okay	okay	arch/arm64/boot/dts/amlogic/mesont7c.dtsi:926
+kvim4n	/a53pwm_opp_table3	operating-points-v2	okay	okay	arch/arm64/boot/dts/amlogic/mesont7c.dtsi:976
+kvim4n	/a73_tsensor@fe020000	amlogic, r1p1-tsensor	okay	okay	arch/arm64/boot/dts/amlogic/mesont7c.dtsi:2727
+kvim4n	/a73pwm_opp_table0	operating-points-v2	okay	okay	arch/arm64/boot/dts/amlogic/mesont7c.dtsi:610
+kvim4n	/a73pwm_opp_table1	operating-points-v2	okay	okay	arch/arm64/boot/dts/amlogic/mesont7c.dtsi:664
+kvim4n	/a73pwm_opp_table2	operating-points-v2	okay	okay	arch/arm64/boot/dts/amlogic/mesont7c.dtsi:718
+kvim4n	/a73pwm_opp_table3	operating-points-v2	okay	okay	arch/arm64/boot/dts/amlogic/mesont7c.dtsi:772
+kvim4n	/adapter0@fe3b0000	amlogic, adapter	okay	okay	arch/arm64/boot/dts/amlogic/mesont7c.dtsi:2218
+kvim4n	/adc_keypad	amlogic, adc_keypad	okay	okay	arch/arm64/boot/dts/amlogic/kvim4n.dts:936
+kvim4n	/adla@0xfe371000	amlogic,adla	okay	okay	arch/arm64/boot/dts/amlogic/mesont7c.dtsi:387
+kvim4n	/amdolby_vision	amlogic, dolby_vision_t7	okay	okay	arch/arm64/boot/dts/amlogic/kvim4n.dts:807
+kvim4n	/amhdmitx	amlogic, amhdmitx-t7	okay	okay	arch/arm64/boot/dts/amlogic/mesont7c.dtsi:2385
+kvim4n	/aml_bt	amlogic, aml-bt	okay	okay	arch/arm64/boot/dts/amlogic/mesont7c.dtsi:3221
+kvim4n	/aml_dma	amlogic,aml_txlx_dma	okay	okay	arch/arm64/boot/dts/amlogic/mesont7c.dtsi:2476
+kvim4n	/aml_dma/aml_aes	amlogic,aes_g12a_dma	okay	okay	arch/arm64/boot/dts/amlogic/mesont7c.dtsi:2481
+kvim4n	/aml_dma/aml_sha	amlogic,sha_dma	okay	okay	arch/arm64/boot/dts/amlogic/mesont7c.dtsi:2488
+kvim4n	/aml_dma/aml_tdes	amlogic,des_dma,tdes_dma	okay	okay	arch/arm64/boot/dts/amlogic/mesont7c.dtsi:2494
+kvim4n	/aml_enc	cnm, MultiEnc	okay	okay	arch/arm64/boot/dts/amlogic/mesont7c.dtsi:2567
+kvim4n	/aml_kt	amlogic,aml_kt	okay	okay	arch/arm64/boot/dts/amlogic/mesont7c.dtsi:3398
+kvim4n	/aml_mkl	amlogic,aml_mkl	okay	okay	arch/arm64/boot/dts/amlogic/mesont7c.dtsi:3389
+kvim4n	/aml_reboot	aml, reboot	okay	okay	arch/arm64/boot/dts/amlogic/mesont7c.dtsi:312
+kvim4n	/aml_smmu	amlogic,smmu	okay	okay	arch/arm64/boot/dts/amlogic/kvim4n.dts:278
+kvim4n	/aml_wifi	amlogic, aml-wifi	okay	okay	arch/arm64/boot/dts/amlogic/mesont7c.dtsi:3226
+kvim4n	/amlgdc	amlogic, aml-gdc-v4	okay	okay	arch/arm64/boot/dts/amlogic/mesont7c.dtsi:3252
+kvim4n	/amlvecm	amlogic, vecm-t7	okay	okay	arch/arm64/boot/dts/amlogic/mesont7c.dtsi:3137
+kvim4n	/amlvideo2_0	amlogic, amlvideo2	okay	okay	arch/arm64/boot/dts/amlogic/kvim4n.dts:918
+kvim4n	/amlvideo2_1	amlogic, amlvideo2	okay	okay	arch/arm64/boot/dts/amlogic/kvim4n.dts:927
+kvim4n	/aocec	amlogic, aocec-t7	okay	okay	arch/arm64/boot/dts/amlogic/mesont7c.dtsi:2439
+kvim4n	/aucpu	amlogic, aucpu	okay	okay	arch/arm64/boot/dts/amlogic/mesont7c.dtsi:3179
+kvim4n	/auge_sound	amlogic, auge-sound-card	okay	okay	arch/arm64/boot/dts/amlogic/kvim4n.dts:596
+kvim4n	/backlight	amlogic, backlight-t7	okay	okay	arch/arm64/boot/dts/amlogic/khadas-panel.dtsi:1090
+kvim4n	/backlight1	amlogic, backlight-t7	disabled	disabled	arch/arm64/boot/dts/amlogic/khadas-panel.dtsi:1863
+kvim4n	/bifrost	arm,malit60x;arm,malit6xx;arm,mali-midgard	okay	okay	arch/arm64/boot/dts/amlogic/mesong12a-bifrost.dtsi:9
+kvim4n	/camera0	amlogic, camera	okay	okay	arch/arm64/boot/dts/amlogic/mesont7c.dtsi:2241
+kvim4n	/camera2	amlogic, camera	okay	okay	arch/arm64/boot/dts/amlogic/mesont7c.dtsi:2263
+kvim4n	/canvas	amlogic, meson, canvas	okay	okay	arch/arm64/boot/dts/amlogic/mesont7c.dtsi:2512
+kvim4n	/cma_shrinker	amlogic, cma-shrinker	okay	okay	arch/arm64/boot/dts/amlogic/mesont7c.dtsi:354
+kvim4n	/codec_io	amlogic, meson-t7, codec-io	okay	okay	arch/arm64/boot/dts/amlogic/mesont7c.dtsi:2519
+kvim4n	/codec_mm	amlogic, codec, mm	okay	okay	arch/arm64/boot/dts/amlogic/kvim4n.dts:308
+kvim4n	/cpu_info	amlogic, cpuinfo	okay	okay	arch/arm64/boot/dts/amlogic/mesont7c.dtsi:368
+kvim4n	/cpu_ver_name	amlogic, cpu-major-id-t7c	okay	okay	arch/arm64/boot/dts/amlogic/mesont7c.dtsi:2298
+kvim4n	/cpufreq-meson	amlogic, cpufreq-meson	okay	okay	arch/arm64/boot/dts/amlogic/mesont7c.dtsi:1226
+kvim4n	/cpus/cpu@0	arm,cortex-a73;arm,armv8	okay	okay	arch/arm64/boot/dts/amlogic/mesont7c.dtsi:60
+kvim4n	/cpus/cpu@1	arm,cortex-a73;arm,armv8	okay	okay	arch/arm64/boot/dts/amlogic/mesont7c.dtsi:80
+kvim4n	/cpus/cpu@100	arm,cortex-a53;arm,armv8	okay	okay	arch/arm64/boot/dts/amlogic/mesont7c.dtsi:140
+kvim4n	/cpus/cpu@101	arm,cortex-a53;arm,armv8	okay	okay	arch/arm64/boot/dts/amlogic/mesont7c.dtsi:160
+kvim4n	/cpus/cpu@102	arm,cortex-a53;arm,armv8	okay	okay	arch/arm64/boot/dts/amlogic/mesont7c.dtsi:180
+kvim4n	/cpus/cpu@103	arm,cortex-a53;arm,armv8	okay	okay	arch/arm64/boot/dts/amlogic/mesont7c.dtsi:200
+kvim4n	/cpus/cpu@2	arm,cortex-a73;arm,armv8	okay	okay	arch/arm64/boot/dts/amlogic/mesont7c.dtsi:100
+kvim4n	/cpus/cpu@3	arm,cortex-a73;arm,armv8	okay	okay	arch/arm64/boot/dts/amlogic/mesont7c.dtsi:120
+kvim4n	/cpus/idle-states/cpu-sleep-0	arm,idle-state	okay	okay	arch/arm64/boot/dts/amlogic/mesont7c.dtsi:221
+kvim4n	/cpus/idle-states/system-sleep-0	arm,idle-state	okay	okay	arch/arm64/boot/dts/amlogic/mesont7c.dtsi:229
+kvim4n	/csiphy0@0xfe3bec00	amlogic, csiphy0	okay	okay	arch/arm64/boot/dts/amlogic/mesont7c.dtsi:2204
+kvim4n	/csiphy2@0xfe3bec00	amlogic, csiphy0	okay	okay	arch/arm64/boot/dts/amlogic/mesont7c.dtsi:2249
+kvim4n	/cve	amlogic, cve	okay	okay	arch/arm64/boot/dts/amlogic/mesont7c.dtsi:3191
+kvim4n	/ddr_bandwidth	amlogic,ddr-bandwidth-t7	okay	okay	arch/arm64/boot/dts/amlogic/mesont7c.dtsi:2363
+kvim4n	/dmc_monitor	amlogic,dmc_monitor-t7	okay	okay	arch/arm64/boot/dts/amlogic/mesont7c.dtsi:2374
+kvim4n	/dolby_fw	amlogic, dolby_fw	okay	okay	arch/arm64/boot/dts/amlogic/mesont7c.dtsi:419
+kvim4n	/drm-amcvbsout	amlogic, drm-cvbsout	disabled	disabled	arch/arm64/boot/dts/amlogic/mesont7c_drm.dtsi:12
+kvim4n	/drm-subsystem	amlogic, drm-subsystem	okay	okay	arch/arm64/boot/dts/amlogic/mesont7c_drm.dtsi:75
+kvim4n	/drm-vpu@0xff900000	amlogic, meson-t7-vpu	okay	okay	arch/arm64/boot/dts/amlogic/mesont7c_drm.dtsi:28
+kvim4n	/dummy_venc	amlogic, dummy_venc_t7	okay	okay	arch/arm64/boot/dts/amlogic/mesont7c.dtsi:2650
+kvim4n	/dvb-demux	amlogic sc2, dvb-demux	disabled	disabled	arch/arm64/boot/dts/amlogic/kvim4n.dts:885
+kvim4n	/dvb-extern	amlogic, dvb-extern	disabled	disabled	arch/arm64/boot/dts/amlogic/kvim4n.dts:849
+kvim4n	/efuse	amlogic, efuse	okay	okay	arch/arm64/boot/dts/amlogic/mesont7c.dtsi:3318
+kvim4n	/fb	amlogic, fb-t7	disabled	disabled	arch/arm64/boot/dts/amlogic/mesont7c.dtsi:3005
+kvim4n	/ge2d	amlogic, ge2d-t7	okay	okay	arch/arm64/boot/dts/amlogic/mesont7c.dtsi:3206
+kvim4n	/gpio-regulator	regulator-gpio	okay	okay	arch/arm64/boot/dts/amlogic/kvim4n.dts:296
+kvim4n	/gpio_keypad	amlogic, gpio_keypad	okay	okay	arch/arm64/boot/dts/amlogic/kvim4n.dts:949
+kvim4n	/gpiomem	amlogic, gpiomem	okay	okay	arch/arm64/boot/dts/amlogic/kvim4n.dts:782
+kvim4n	/gpu_opp_table	operating-points-v2	okay	okay	arch/arm64/boot/dts/amlogic/mesont7c.dtsi:3359
+kvim4n	/gpu_tsensor@fe094000	amlogic, r1p1-tsensor	okay	okay	arch/arm64/boot/dts/amlogic/mesont7c.dtsi:2755
+kvim4n	/hdmirx	amlogic, hdmirx_t7	okay	okay	arch/arm64/boot/dts/amlogic/kvim4n.dts:541
+kvim4n	/hevc_tsensor@fe09a000	amlogic, r1p1-tsensor	okay	okay	arch/arm64/boot/dts/amlogic/mesont7c.dtsi:2785
+kvim4n	/hifidsp0	amlogic, hifidsp0	okay	okay	arch/arm64/boot/dts/amlogic/mesont7c.dtsi:434
+kvim4n	/hifidsp1	amlogic, hifidsp1	okay	okay	arch/arm64/boot/dts/amlogic/mesont7c.dtsi:457
+kvim4n	/interrupt-controller@fff01000	arm,cortex-a15-gic;arm,cortex-a9-gic	okay	okay	arch/arm64/boot/dts/amlogic/mesont7c.dtsi:288
+kvim4n	/ion_dev	amlogic, ion_dev	okay	okay	arch/arm64/boot/dts/amlogic/mesont7c.dtsi:2998
+kvim4n	/ionvideo	amlogic, ionvideo	okay	okay	arch/arm64/boot/dts/amlogic/kvim4n.dts:912
+kvim4n	/ir@8000	amlogic, meson-ir	okay	okay	arch/arm64/boot/dts/amlogic/mesont7c.dtsi:2714
+kvim4n	/isp0@fe3b0000	amlogic, isp	okay	okay	arch/arm64/boot/dts/amlogic/mesont7c.dtsi:2231
+kvim4n	/jpegenc	amlogic, jpegenc	okay	okay	arch/arm64/boot/dts/amlogic/mesont7c.dtsi:2542
+kvim4n	/jtag	amlogic, jtag	okay	okay	arch/arm64/boot/dts/amlogic/mesont7c.dtsi:425
+kvim4n	/lcd	amlogic, lcd-t7	okay	okay	arch/arm64/boot/dts/amlogic/khadas-panel.dtsi:8
+kvim4n	/lcd1	amlogic, lcd-t7	disabled	disabled	arch/arm64/boot/dts/amlogic/khadas-panel.dtsi:1435
+kvim4n	/lcd2	amlogic, lcd-t7	disabled	disabled	arch/arm64/boot/dts/amlogic/khadas-panel.dtsi:1926
+kvim4n	/local_dimming_device	amlogic, ldim_dev	okay	okay	arch/arm64/boot/dts/amlogic/khadas-panel.dtsi:1186
+kvim4n	/lut_dma	amlogic, meson-t7, lut_dma	okay	okay	arch/arm64/boot/dts/amlogic/mesont7c.dtsi:3309
+kvim4n	/mbox_devfs	amlogic, mbox-devfs	okay	okay	arch/arm64/boot/dts/amlogic/mesont7c.dtsi:3289
+kvim4n	/mbox_fifo@0xfe006000	amlogic, t7-mbox-fifo	okay	okay	arch/arm64/boot/dts/amlogic/mesont7c.dtsi:3266
+kvim4n	/meson-amvideom	amlogic, amvideom-t7	okay	okay	arch/arm64/boot/dts/amlogic/mesont7c.dtsi:3161
+kvim4n	/meson-cooldev@0	amlogic, meson-cooldev	okay	okay	arch/arm64/boot/dts/amlogic/mesont7c.dtsi:2816
+kvim4n	/meson-irblaster@fe08410c	amlogic, meson_irblaster	okay	okay	arch/arm64/boot/dts/amlogic/mesont7c.dtsi:3021
+kvim4n	/meson_uvm	amlogic, meson_uvm	okay	okay	arch/arm64/boot/dts/amlogic/mesont7c.dtsi:2616
+kvim4n	/meson_videotunnel	amlogic, meson_videotunnel	okay	okay	arch/arm64/boot/dts/amlogic/mesont7c.dtsi:2621
+kvim4n	/mesonstream	amlogic, codec, streambuf	okay	okay	arch/arm64/boot/dts/amlogic/mesont7c.dtsi:2182
+kvim4n	/multi-di	amlogic, dim-t7	okay	okay	arch/arm64/boot/dts/amlogic/mesont7c.dtsi:2307
+kvim4n	/nna_tsensor@fe096000	amlogic, r1p1-tsensor	disabled	disabled	arch/arm64/boot/dts/amlogic/mesont7c.dtsi:2770
+kvim4n	/onewire	w1-gpio	disabled	disabled	arch/arm64/boot/dts/amlogic/kvim4n.dts:535
+kvim4n	/optee	linaro,optee-tz	okay	okay	arch/arm64/boot/dts/amlogic/mesont7c.dtsi:340
+kvim4n	/picdec	amlogic, picdec	okay	okay	arch/arm64/boot/dts/amlogic/kvim4n.dts:789
+kvim4n	/pm	amlogic, pm	okay	okay	arch/arm64/boot/dts/amlogic/mesont7c.dtsi:303
+kvim4n	/pmu-a53	arm,cortex-a53-pmu	okay	okay	arch/arm64/boot/dts/amlogic/mesont7c.dtsi:275
+kvim4n	/pmu-a73	arm,cortex-a73-pmu	okay	okay	arch/arm64/boot/dts/amlogic/mesont7c.dtsi:262
+kvim4n	/power-domains	amlogic,t7-power-domain	okay	okay	arch/arm64/boot/dts/amlogic/mesont7c.dtsi:381
+kvim4n	/ppmgr	amlogic, ppmgr	okay	okay	arch/arm64/boot/dts/amlogic/kvim4n.dts:794
+kvim4n	/provisionkey	amlogic, provisionkey	okay	okay	arch/arm64/boot/dts/amlogic/mesont7c.dtsi:345
+kvim4n	/psci	arm,psci-0.2	okay	okay	arch/arm64/boot/dts/amlogic/mesont7c.dtsi:298
+kvim4n	/pwmao_b-regulator	pwm-regulator	okay	okay	arch/arm64/boot/dts/amlogic/mesont7c.dtsi:527
+kvim4n	/pwmao_d-regulator	pwm-regulator	okay	okay	arch/arm64/boot/dts/amlogic/mesont7c.dtsi:478
+kvim4n	/pwmao_f-regulator	pwm-regulator	okay	okay	arch/arm64/boot/dts/amlogic/mesont7c.dtsi:576
+kvim4n	/pwmleds	pwm-leds	okay	okay	arch/arm64/boot/dts/amlogic/kvim4n.dts:961
+kvim4n	/ram-dump	amlogic, ram_dump	okay	okay	arch/arm64/boot/dts/amlogic/mesont7c.dtsi:322
+kvim4n	/rdma	amlogic, meson-t7, rdma	okay	okay	arch/arm64/boot/dts/amlogic/mesont7c.dtsi:2632
+kvim4n	/regulator-sdcard	regulator-fixed	okay	okay	arch/arm64/boot/dts/amlogic/kvim4n.dts:285
+kvim4n	/reserved-memory/heap-fb	shared-dma-pool	okay	okay	arch/arm64/boot/dts/amlogic/kvim4n.dts:231
+kvim4n	/reserved-memory/heap-gfx	shared-dma-pool	okay	okay	arch/arm64/boot/dts/amlogic/kvim4n.dts:225
+kvim4n	/reserved-memory/linux,camera_cma	shared-dma-pool	okay	okay	arch/arm64/boot/dts/amlogic/kvim4n.dts:177
+kvim4n	/reserved-memory/linux,codec_mm_cma	shared-dma-pool	okay	okay	arch/arm64/boot/dts/amlogic/kvim4n.dts:134
+kvim4n	/reserved-memory/linux,codec_mm_reserved	amlogic, codec-mm-reserved	okay	okay	arch/arm64/boot/dts/amlogic/kvim4n.dts:209
+kvim4n	/reserved-memory/linux,di_cma	shared-dma-pool	okay	okay	arch/arm64/boot/dts/amlogic/kvim4n.dts:154
+kvim4n	/reserved-memory/linux,dmc_monitor	amlogic,dmc_monitor-reserved	okay	okay	arch/arm64/boot/dts/amlogic/kvim4n.dts:84
+kvim4n	/reserved-memory/linux,dsp_fw0	amlogic, dsp	okay	okay	arch/arm64/boot/dts/amlogic/kvim4n.dts:108
+kvim4n	/reserved-memory/linux,dsp_fw1	amlogic, dsp	okay	okay	arch/arm64/boot/dts/amlogic/kvim4n.dts:114
+kvim4n	/reserved-memory/linux,ge2d_cma	shared-dma-pool	okay	okay	arch/arm64/boot/dts/amlogic/kvim4n.dts:145
+kvim4n	/reserved-memory/linux,ion-dev	shared-dma-pool	okay	okay	arch/arm64/boot/dts/amlogic/kvim4n.dts:185
+kvim4n	/reserved-memory/linux,ion-fb	shared-dma-pool	okay	okay	arch/arm64/boot/dts/amlogic/kvim4n.dts:200
+kvim4n	/reserved-memory/linux,ion-secure	amlogic, ion-secure-mem	okay	okay	arch/arm64/boot/dts/amlogic/kvim4n.dts:193
+kvim4n	/reserved-memory/linux,iotrace	amlogic, iotrace	okay	okay	arch/arm64/boot/dts/amlogic/kvim4n.dts:89
+kvim4n	/reserved-memory/linux,ldc_mem	shared-dma-pool	okay	okay	arch/arm64/boot/dts/amlogic/kvim4n.dts:260
+kvim4n	/reserved-memory/linux,meson-fb	amlogic, meson-fb	okay	okay	arch/arm64/boot/dts/amlogic/kvim4n.dts:126
+kvim4n	/reserved-memory/linux,pcie_dma_ops	shared-dma-pool	okay	okay	arch/arm64/boot/dts/amlogic/kvim4n.dts:268
+kvim4n	/reserved-memory/linux,ppmgr	shared-dma-pool	okay	okay	arch/arm64/boot/dts/amlogic/kvim4n.dts:171
+kvim4n	/reserved-memory/linux,secmon	shared-dma-pool	okay	okay	arch/arm64/boot/dts/amlogic/kvim4n.dts:99
+kvim4n	/reserved-memory/linux,secure_vdec_reserved	amlogic, secure-vdec-reserved	okay	okay	arch/arm64/boot/dts/amlogic/kvim4n.dts:217
+kvim4n	/reserved-memory/linux,vdin1_cma	shared-dma-pool	okay	okay	arch/arm64/boot/dts/amlogic/kvim4n.dts:249
+kvim4n	/reserved-memory/ramoops@0x07400000	ramoops	okay	okay	arch/arm64/boot/dts/amlogic/kvim4n.dts:75
+kvim4n	/rng	amlogic,meson-rng	okay	okay	arch/arm64/boot/dts/amlogic/mesont7c.dtsi:2502
+kvim4n	/rtc@0xfe010288	amlogic,meson-vrtc	disabled	disabled	arch/arm64/boot/dts/amlogic/mesont7c.dtsi:374
+kvim4n	/saradc@fe026000	amlogic,meson-g12a-saradc;amlogic,meson-saradc	okay	okay	arch/arm64/boot/dts/amlogic/mesont7c.dtsi:1231
+kvim4n	/secmon	amlogic, secmon	okay	okay	arch/arm64/boot/dts/amlogic/mesont7c.dtsi:330
+kvim4n	/smartcard	amlogic,smartcard-sc2	disabled	disabled	arch/arm64/boot/dts/amlogic/kvim4n.dts:815
+kvim4n	/soc	simple-bus	okay	okay	arch/arm64/boot/dts/amlogic/mesont7c.dtsi:1246
+kvim4n	/soc/amaudio	amlogic, amaudio	okay	okay	arch/arm64/boot/dts/amlogic/mesont7c.dtsi:1823
+kvim4n	/soc/aml_snd_iomap	amlogic, snd-iomap	okay	okay	arch/arm64/boot/dts/amlogic/mesont7c.dtsi:1931
+kvim4n	/soc/apb4@fe000000	simple-bus	okay	okay	arch/arm64/boot/dts/amlogic/mesont7c.dtsi:1252
+kvim4n	/soc/apb4@fe000000/clock-controller	amlogic,t7-clkc	okay	okay	arch/arm64/boot/dts/amlogic/mesont7c.dtsi:1259
+kvim4n	/soc/apb4@fe000000/i2c@66000	amlogic,meson-i2c	disabled	disabled	arch/arm64/boot/dts/amlogic/mesont7c.dtsi:1485
+kvim4n	/soc/apb4@fe000000/i2c@68000	amlogic,meson-i2c	okay	okay	arch/arm64/boot/dts/amlogic/mesont7c.dtsi:1495
+kvim4n	/soc/apb4@fe000000/i2c@6a000	amlogic,meson-i2c	okay	okay	arch/arm64/boot/dts/amlogic/mesont7c.dtsi:1505
+kvim4n	/soc/apb4@fe000000/i2c@6a000/dw9714@0c	dw, dw9714	okay	okay	arch/arm64/boot/dts/amlogic/kvim4n.dts:1473
+kvim4n	/soc/apb4@fe000000/i2c@6a000/sensor0@36	amlogic, sensor	okay	okay	arch/arm64/boot/dts/amlogic/kvim4n.dts:1478
+kvim4n	/soc/apb4@fe000000/i2c@6c000	amlogic,meson-i2c	okay	okay	arch/arm64/boot/dts/amlogic/mesont7c.dtsi:1515
+kvim4n	/soc/apb4@fe000000/i2c@6c000/ft5336@38	edt,edt-ft5336;ft5x06	okay	okay	arch/arm64/boot/dts/amlogic/kvim4n.dts:1519
+kvim4n	/soc/apb4@fe000000/i2c@6c000/gt9xx@14	goodix,gt9xx	okay	okay	arch/arm64/boot/dts/amlogic/kvim4n.dts:1527
+kvim4n	/soc/apb4@fe000000/i2c@6e000	amlogic,meson-i2c	disabled	disabled	arch/arm64/boot/dts/amlogic/mesont7c.dtsi:1525
+kvim4n	/soc/apb4@fe000000/i2c@70000	amlogic,meson-i2c	disabled	disabled	arch/arm64/boot/dts/amlogic/mesont7c.dtsi:1535
+kvim4n	/soc/apb4@fe000000/i2c@76000	amlogic,meson-i2c	okay	okay	arch/arm64/boot/dts/amlogic/mesont7c.dtsi:1545
+kvim4n	/soc/apb4@fe000000/i2c@76000/hym8563-rtc@51	haoyu,hym8563	okay	okay	arch/arm64/boot/dts/amlogic/kvim4n.dts:1570
+kvim4n	/soc/apb4@fe000000/i2c@76000/khadas-kxtj3@e	kxtj3	okay	okay	arch/arm64/boot/dts/amlogic/kvim4n.dts:1585
+kvim4n	/soc/apb4@fe000000/i2c@76000/khadas-mcu@18	khadas-mcu	okay	okay	arch/arm64/boot/dts/amlogic/kvim4n.dts:1575
+kvim4n	/soc/apb4@fe000000/i2c@86000	amlogic,meson-i2c	disabled	disabled	arch/arm64/boot/dts/amlogic/mesont7c.dtsi:1555
+kvim4n	/soc/apb4@fe000000/interrupt-controller@4080	amlogic,meson-t7-gpio-intc;amlogic,meson-gpio-intc	okay	okay	arch/arm64/boot/dts/amlogic/mesont7c.dtsi:1302
+kvim4n	/soc/apb4@fe000000/mdio-multiplexer@28000	amlogic,g12a-mdio-mux	okay	okay	arch/arm64/boot/dts/amlogic/mesont7c.dtsi:1581
+kvim4n	/soc/apb4@fe000000/mdio-multiplexer@28000/mdio@1/ethernet_phy@8	ethernet-phy-id0180.3301;ethernet-phy-ieee802.3-c22	okay	okay	arch/arm64/boot/dts/amlogic/mesont7c.dtsi:1606
+kvim4n	/soc/apb4@fe000000/meson_clk_msr@48000	amlogic,meson-t7-clk-measure	okay	okay	arch/arm64/boot/dts/amlogic/mesont7c.dtsi:1272
+kvim4n	/soc/apb4@fe000000/pinctrl@4000	amlogic,meson-t7-periphs-pinctrl	okay	okay	arch/arm64/boot/dts/amlogic/mesont7c.dtsi:1286
+kvim4n	/soc/apb4@fe000000/pwm@30000	amlogic,meson-v2-pwm	okay	okay	arch/arm64/boot/dts/amlogic/mesont7c.dtsi:1463
+kvim4n	/soc/apb4@fe000000/pwm@32000	amlogic,meson-v2-pwm	disabled	disabled	arch/arm64/boot/dts/amlogic/mesont7c.dtsi:1474
+kvim4n	/soc/apb4@fe000000/pwm@58000	amlogic,meson-v2-pwm	okay	okay	arch/arm64/boot/dts/amlogic/mesont7c.dtsi:1408
+kvim4n	/soc/apb4@fe000000/pwm@5a000	amlogic,meson-v2-pwm	disabled	disabled	arch/arm64/boot/dts/amlogic/mesont7c.dtsi:1419
+kvim4n	/soc/apb4@fe000000/pwm@5c000	amlogic,meson-v2-pwm	okay	okay	arch/arm64/boot/dts/amlogic/mesont7c.dtsi:1430
+kvim4n	/soc/apb4@fe000000/pwm@5e000	amlogic,meson-v2-pwm	okay	okay	arch/arm64/boot/dts/amlogic/mesont7c.dtsi:1441
+kvim4n	/soc/apb4@fe000000/pwm@60000	amlogic,meson-v2-pwm	okay	okay	arch/arm64/boot/dts/amlogic/mesont7c.dtsi:1452
+kvim4n	/soc/apb4@fe000000/reset-controller@2000	amlogic,meson-t7-reset	okay	okay	arch/arm64/boot/dts/amlogic/mesont7c.dtsi:1616
+kvim4n	/soc/apb4@fe000000/serial@7a000	amlogic,meson-uart	disabled	disabled	arch/arm64/boot/dts/amlogic/mesont7c.dtsi:1565
+kvim4n	/soc/apb4@fe000000/spi@4a000	amlogic,meson-g12-spicc	disabled	disabled	arch/arm64/boot/dts/amlogic/mesont7c.dtsi:1351
+kvim4n	/soc/apb4@fe000000/spi@4a000/spi-nor@0	jedec,spi-nor	okay	disabled	arch/arm64/boot/dts/amlogic/mesont7c.dtsi:1400,arch/arm64/boot/dts/amlogic/kvim4n.dts:1763
+kvim4n	/soc/apb4@fe000000/spi@4c000	amlogic,meson-g12-spicc	disabled	disabled	arch/arm64/boot/dts/amlogic/mesont7c.dtsi:1364
+kvim4n	/soc/apb4@fe000000/spi@4e000	amlogic,meson-g12-spicc	disabled	disabled	arch/arm64/boot/dts/amlogic/mesont7c.dtsi:1377
+kvim4n	/soc/apb4@fe000000/spi@50000	amlogic,meson-g12-spicc	disabled	disabled	arch/arm64/boot/dts/amlogic/mesont7c.dtsi:1312
+kvim4n	/soc/apb4@fe000000/spi@52000	amlogic,meson-g12-spicc	disabled	disabled	arch/arm64/boot/dts/amlogic/mesont7c.dtsi:1325
+kvim4n	/soc/apb4@fe000000/spi@54000	amlogic,meson-g12-spicc	disabled	disabled	arch/arm64/boot/dts/amlogic/mesont7c.dtsi:1338
+kvim4n	/soc/apb4@fe000000/spi@56000	amlogic,meson-spifc	disabled	disabled	arch/arm64/boot/dts/amlogic/mesont7c.dtsi:1390
+kvim4n	/soc/apb4@fe000000/spi@56000/spi-nor@0	jedec,spi-nor	disabled	disabled	arch/arm64/boot/dts/amlogic/mesont7c.dtsi:1400,arch/arm64/boot/dts/amlogic/kvim4n.dts:1763
+kvim4n	/soc/apb4@fe000000/watchdog@2100	amlogic,meson-sc2-wdt	okay	okay	arch/arm64/boot/dts/amlogic/mesont7c.dtsi:1277
+kvim4n	/soc/audio_data	amlogic, audio_data	okay	okay	arch/arm64/boot/dts/amlogic/mesont7c.dtsi:1816
+kvim4n	/soc/audiobus@0xFE330000	amlogic, audio-controller;simple-bus	okay	okay	arch/arm64/boot/dts/amlogic/mesont7c.dtsi:1830
+kvim4n	/soc/audiobus@0xFE330000/audio_clocks	amlogic, t7-audio-clocks	okay	okay	arch/arm64/boot/dts/amlogic/mesont7c.dtsi:1841
+kvim4n	/soc/audiobus@0xFE330000/ddr_manager	amlogic, t3-audio-ddr-manager	okay	okay	arch/arm64/boot/dts/amlogic/mesont7c.dtsi:1847
+kvim4n	/soc/audiobus@0xFE330000/effect	amlogic, snd-effect-v4	okay	okay	arch/arm64/boot/dts/amlogic/kvim4n.dts:1175
+kvim4n	/soc/audiobus@0xFE330000/extn	amlogic, t7-snd-extn	okay	okay	arch/arm64/boot/dts/amlogic/kvim4n.dts:1164
+kvim4n	/soc/audiobus@0xFE330000/loopback@0	amlogic, t5-loopbacka	okay	okay	arch/arm64/boot/dts/amlogic/kvim4n.dts:1275
+kvim4n	/soc/audiobus@0xFE330000/loopback@1	amlogic, t5-loopbackb	disabled	disabled	arch/arm64/boot/dts/amlogic/kvim4n.dts:1331
+kvim4n	/soc/audiobus@0xFE330000/pdm	amlogic, tm2-revb-snd-pdm	okay	okay	arch/arm64/boot/dts/amlogic/kvim4n.dts:1096
+kvim4n	/soc/audiobus@0xFE330000/pinctrl	amlogic, audio-pinctrl	okay	okay	arch/arm64/boot/dts/amlogic/mesont7c.dtsi:1870
+kvim4n	/soc/audiobus@0xFE330000/resample@0	amlogic, t5-resample-a	okay	okay	arch/arm64/boot/dts/amlogic/kvim4n.dts:1200
+kvim4n	/soc/audiobus@0xFE330000/resample@1	amlogic, t5-resample-b	okay	okay	arch/arm64/boot/dts/amlogic/kvim4n.dts:1226
+kvim4n	/soc/audiobus@0xFE330000/spdif@0	amlogic, tm2-revb-snd-spdif-a	okay	okay	arch/arm64/boot/dts/amlogic/kvim4n.dts:1125
+kvim4n	/soc/audiobus@0xFE330000/spdif@1	amlogic, tm2-revb-snd-spdif-b	okay	okay	arch/arm64/boot/dts/amlogic/kvim4n.dts:1150
+kvim4n	/soc/audiobus@0xFE330000/tdm@0	amlogic, t7-snd-tdma	okay	okay	arch/arm64/boot/dts/amlogic/kvim4n.dts:979
+kvim4n	/soc/audiobus@0xFE330000/tdm@1	amlogic, t7-snd-tdmb	okay	okay	arch/arm64/boot/dts/amlogic/kvim4n.dts:1004
+kvim4n	/soc/audiobus@0xFE330000/tdm@2	amlogic, t7-snd-tdmc	okay	okay	arch/arm64/boot/dts/amlogic/kvim4n.dts:1052
+kvim4n	/soc/audiobus@0xFE330000/tdm@3	amlogic, t7-snd-tdmd	okay	okay	arch/arm64/boot/dts/amlogic/kvim4n.dts:1071
+kvim4n	/soc/audiobus@0xFE330000/vad	amlogic, snd-vad	okay	okay	arch/arm64/boot/dts/amlogic/kvim4n.dts:1239
+kvim4n	/soc/bus@fe333000	simple-bus	okay	okay	arch/arm64/boot/dts/amlogic/mesont7c.dtsi:1877
+kvim4n	/soc/bus@fe333000/earc@0	amlogic, t7-snd-earc	disabled	disabled	arch/arm64/boot/dts/amlogic/mesont7c.dtsi:1884
+kvim4n	/soc/codec	amlogic, t3_acodec	okay	okay	arch/arm64/boot/dts/amlogic/mesont7c.dtsi:1803
+kvim4n	/soc/crg20otg@fe03a000	amlogic, amlogic-crg-otg	okay	okay	arch/arm64/boot/dts/amlogic/mesont7c.dtsi:1721
+kvim4n	/soc/crg21otg@fe03a020	amlogic, amlogic-crg-otg	okay	okay	arch/arm64/boot/dts/amlogic/mesont7c.dtsi:1731
+kvim4n	/soc/crg2drd@fdd00000	amlogic, crg-drd	okay	okay	arch/arm64/boot/dts/amlogic/kvim4n.dts:1409
+kvim4n	/soc/crg3drd@fde00000	amlogic, crg-host-drd	okay	okay	arch/arm64/boot/dts/amlogic/kvim4n.dts:1415
+kvim4n	/soc/crg3phy20@fe03a080	amlogic, amlogic-crg-drd-usb3	okay	okay	arch/arm64/boot/dts/amlogic/mesont7c.dtsi:1699
+kvim4n	/soc/crg3phy21@fe03a080	amlogic, amlogic-crg-drd-usb3	okay	okay	arch/arm64/boot/dts/amlogic/mesont7c.dtsi:1677
+kvim4n	/soc/crgphy20@fe03c000	amlogic, amlogic-crg-drd-usb2	okay	okay	arch/arm64/boot/dts/amlogic/mesont7c.dtsi:1623
+kvim4n	/soc/crgphy21@fe03e000	amlogic, amlogic-crg-drd-usb2	okay	okay	arch/arm64/boot/dts/amlogic/mesont7c.dtsi:1650
+kvim4n	/soc/crgudc2@0xfdd00000	amlogic, crg_udc	okay	okay	arch/arm64/boot/dts/amlogic/mesont7c.dtsi:1781
+kvim4n	/soc/crgudc3@0xfde00000	amlogic, crg_udc	disable	disabled	arch/arm64/boot/dts/amlogic/mesont7c.dtsi:1765
+kvim4n	/soc/dummy	amlogic, aml_dummy_codec	okay	okay	arch/arm64/boot/dts/amlogic/mesont7c.dtsi:1798
+kvim4n	/soc/ethernet@fdc00000	amlogic,meson-axg-dwmac;snps,dwmac-4.00	okay	okay	arch/arm64/boot/dts/amlogic/mesont7c.dtsi:2086
+kvim4n	/soc/ethernet@fdc00000/mdio	snps,dwmac-mdio	okay	okay	arch/arm64/boot/dts/amlogic/mesont7c.dtsi:2108
+kvim4n	/soc/hdmirx_arc	amlogic, hdmirx-arc-iomap	okay	okay	arch/arm64/boot/dts/amlogic/mesont7c.dtsi:1961
+kvim4n	/soc/mmc@fe08c000	amlogic,meson-axg-mmc	okay	okay	arch/arm64/boot/dts/amlogic/mesont7c.dtsi:2014
+kvim4n	/soc/pcie@f5000000	amlogic, amlogic-pcie-v2;snps,dw-pcie	okay	okay	arch/arm64/boot/dts/amlogic/mesont7c.dtsi:1970
+kvim4n	/soc/sd@fe08a000	amlogic,meson-axg-mmc	okay	okay	arch/arm64/boot/dts/amlogic/mesont7c.dtsi:2040
+kvim4n	/soc/sdio@fe088000	amlogic,meson-axg-mmc	okay	okay	arch/arm64/boot/dts/amlogic/mesont7c.dtsi:2062
+kvim4n	/soc/sdio@fe088000/wifi@1	brcm,bcm4329-fmac	okay	okay	arch/arm64/boot/dts/amlogic/kvim4n.dts:1618
+kvim4n	/soc/serial@fe078000	amlogic,meson-uart	okay	okay	arch/arm64/boot/dts/amlogic/mesont7c.dtsi:2113
+kvim4n	/soc/serial@fe07c000	amlogic,meson-uart	okay	okay	arch/arm64/boot/dts/amlogic/mesont7c.dtsi:2125
+kvim4n	/soc/serial@fe07e000	amlogic,meson-uart	disabled	disabled	arch/arm64/boot/dts/amlogic/mesont7c.dtsi:2139
+kvim4n	/soc/serial@fe080000	amlogic,meson-uart	disabled	disabled	arch/arm64/boot/dts/amlogic/mesont7c.dtsi:2153
+kvim4n	/soc/serial@fe082000	amlogic,meson-uart	disabled	disabled	arch/arm64/boot/dts/amlogic/mesont7c.dtsi:2167
+kvim4n	/state_led	amlogic,state-led-aocpu	disabled	disabled	arch/arm64/boot/dts/amlogic/mesont7c.dtsi:3314
+kvim4n	/timer	arm,armv8-timer	okay	okay	arch/arm64/boot/dts/amlogic/mesont7c.dtsi:239
+kvim4n	/unifykey	amlogic,unifykey	okay	okay	arch/arm64/boot/dts/amlogic/kvim4n.dts:357
+kvim4n	/vclk_serve	amlogic, vclk_serve	okay	okay	arch/arm64/boot/dts/amlogic/mesont7c.dtsi:2643
+kvim4n	/vcodec_dec	amlogic, vcodec-dec	okay	okay	arch/arm64/boot/dts/amlogic/mesont7c.dtsi:2301
+kvim4n	/vdec	amlogic, vdec-pm-pd	okay	okay	arch/arm64/boot/dts/amlogic/mesont7c.dtsi:2271
+kvim4n	/vdin0	amlogic, vdin-t7	okay	okay	arch/arm64/boot/dts/amlogic/mesont7c.dtsi:3030
+kvim4n	/vdin1	amlogic, vdin-t7	okay	okay	arch/arm64/boot/dts/amlogic/mesont7c.dtsi:3101
+kvim4n	/video_composer	amlogic, video_composer	okay	okay	arch/arm64/boot/dts/amlogic/mesont7c.dtsi:2626
+kvim4n	/video_queue	amlogic, video_queue	okay	okay	arch/arm64/boot/dts/amlogic/kvim4n.dts:801
+kvim4n	/vout	amlogic, vout	okay	okay	arch/arm64/boot/dts/amlogic/mesont7c.dtsi:2672
+kvim4n	/vout2	amlogic, vout2	okay	okay	arch/arm64/boot/dts/amlogic/mesont7c.dtsi:2677
+kvim4n	/vout3	amlogic, vout3	okay	okay	arch/arm64/boot/dts/amlogic/mesont7c.dtsi:2682
+kvim4n	/vout_mux	amlogic, vout_mux-t7	okay	okay	arch/arm64/boot/dts/amlogic/mesont7c.dtsi:2665
+kvim4n	/vpu	amlogic, vpu-t7c	okay	okay	arch/arm64/boot/dts/amlogic/mesont7c.dtsi:2595
+kvim4n	/vpu_security	amlogic, meson-t7, vpu_security	okay	okay	arch/arm64/boot/dts/amlogic/mesont7c.dtsi:3171
+kvim4n	/vpu_tsensor@fe098000	amlogic, r1p1-tsensor	okay	okay	arch/arm64/boot/dts/amlogic/mesont7c.dtsi:2800
+kvim4n	/vrr0	amlogic, vrr-t7	okay	okay	arch/arm64/boot/dts/amlogic/mesont7c.dtsi:2687
+kvim4n	/vrr1	amlogic, vrr-t7	okay	okay	arch/arm64/boot/dts/amlogic/mesont7c.dtsi:2696
+kvim4n	/vrr2	amlogic, vrr-t7	okay	okay	arch/arm64/boot/dts/amlogic/mesont7c.dtsi:2705
+kvim4n	/xtal-clk	fixed-clock	okay	okay	arch/arm64/boot/dts/amlogic/mesont7c.dtsi:361
