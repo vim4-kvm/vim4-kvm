@@ -7,7 +7,7 @@
 
 ## 2026-10-23
 
-- [HDMI 音频与采集稳定性调查](2026-10-23-kvm-audio-capture-stability.md) — kernel audio video application deployment board
+- [HDMI 音频与采集稳定性：27轮3失败，已恢复基线](2026-10-23-kvm-audio-capture-stability.md) — kernel audio video application deployment board
 - [Wave5 隔离正式窗口复验](2026-10-23-wave5-isolation-final.md) — kernel video audio usb manager deployment board
 - [Wave5 超时隔离与十轮验收（第二轮）](2026-10-23-wave5-isolation.md) — kernel video application deployment board
 - [Wave5 恢复前置修复与厂商复位审查（未上板）](2026-10-23-wave5-recovery.md) — kernel video

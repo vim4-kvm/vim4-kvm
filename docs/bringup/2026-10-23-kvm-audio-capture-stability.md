@@ -1,28 +1,27 @@
 # 2026-10-23：HDMI 音频与采集稳定性
 
-状态：音频四次真实失锁恢复通过；采集根因已修复，rebase 后严格20轮待验收。
+状态：未通过20轮零失败，未正式部署。最新候选27轮中3轮失败，已恢复隔离基线及实际HID。
 最初基线 M0 `47878a0c611d`／One-KVM `382efb70`；后续临时窗口恢复目标改为
 [Wave5 隔离正式部署](2026-10-23-wave5-isolation-final.md)：内核 `aa2f875bec2fc`、
 build ID `7b8372b894c98ffae12e636a325c86f2b6c85e00`、manager `9b141c5833c0`。
-本记录仍在更新，未推进部署分支或源码锁。
+功能分支已推送，未推进部署分支或源码锁。音频四次失锁恢复通过仅指早期内核上的应用修复。
 
 ## 源码与约束
 
 对照 [ENOLINK 基线](2026-10-23-hdmirx-audio-enolink.md) 和
 [采集停止复核](2026-10-22-wave5-first-failure-audit.md)。不使用 strace。
 板子变更持 Mac board 锁；全部音视频采样同时持 heavy 锁，重型构建仅持 heavy 锁。
-不操作 Wi-Fi/P2P、挂起、U-Boot 或不安全 HEVC 尺寸；显示 M1 短窗口优先。
+不操作 Wi-Fi/P2P、挂起、U-Boot 或不安全 HEVC 尺寸；上板前先完成离线构建。
 
 两仓功能分支均为 `fix/hdmi-capture-stability`，已推送 fork：
 
 | 仓库／独立工作树 | 提交与用途 |
 |---|---|
 | One-KVM：`build/kvm-stability/One-KVM` | `dce8993d` 有界采集计数；`672b8fd9` 音频重开资格检查 |
-| Linux：VM `/home/deepdream/src/linux-7.3-kvm-stability` | `ad343d8f4860a` 限频失败诊断；`ede50b1860e70` 无效FDET重试；`35742e7e2d529` 查询修复及source_changes；`12931e4a42013` 竞态测试；`c0f216a18ca19` 参数对齐 |
+| Linux：VM `/home/deepdream/src/linux-7.3-kvm-stability` | `ad343d8f4860a` 诊断；`ede50b1860e70` FDET重试；`35742e7e2d529` 查询修复；`12931e4a42013` 竞态测试；后续提交见下文 |
 
 Linux 已 rebase 到 `aa2f875bec2fc`，没有切换 VM 主工作树。
 独立 O= `/home/deepdream/build/kernel-kvm-stability-diag`，使用正式 uhd1.config。
-首轮重构建发现旧输出仅调试信息压缩配置不同，未安装，改用正式配置重建。
 
 ## 采集根因与修复
 
@@ -51,8 +50,8 @@ RX既有250ms工作器最多延后四次，持续异常仍清ready并恢复；�
 actual-C测试覆盖饱和值、零高度、不发布无效结果、下一有效帧、失锁和有效模式变化。
 证据：`logs/kvm-stability/attempt-2/`，该轮失败后恢复旧基线并通过实际HID。
 
-首修复内核3cbe7d0f…的12轮48段停止计数未增，九类全量回归也全过，但日志审计发现
-其中三次bus stop／重建，故不算零失败验收。时序查询在前后状态检查之间还有独立FDET测量，
+首修复12轮停止计数未增，但日志发现三次bus stop／重建，不算零失败。
+时序查询在前后状态检查之间还有独立FDET测量，
 漏掉的中间ERANGE可产生错误SOURCE_CHANGE，使GStreamer重协商失败且不增加vb2停止计数。
 第二修复统一三处分类并新增source_changes计数；查询中间一致饱和值注入在旧修复失败、
 新修复通过，且不发布时序／周期。证据：`kernel-query-fix-before-test.log`、
@@ -69,7 +68,7 @@ actual-C测试覆盖饱和值、零高度、不发布无效结果、下一有效
 One-KVM原recovery退避前读取ready，睡眠后未复查。修复在退避后复查，并要求同一格式／
 generation跨过200ms资格窗口后再打开PCM。读取控件与hw_params仍有竞态，其中
 ENOLINK/EAGAIN/ERANGE归为AudioSourceChanged，关闭PCM后继续已有串行、可取消的
-退避恢复。源变化只记debug，真实设备／配置错误保留诊断。不改ASoC全局过滤，
+退避恢复。源变化只记debug，真实设备／配置错误保留诊断。
 明确失锁时直接arecord仍应失败。
 
 实测 `audio-loss-restarted-source-2/`：同一浏览器连接、同一候选应用进程，四次HPD拉低5秒，
@@ -84,10 +83,8 @@ AUDIO_RESTORED_48000
 AUDIO_NO_RESIDUAL_ERRORS_PASS
 ```
 
-首窗口audio-loss保留失效源端AudioQueue，API恢复但浏览器全零，未验收；
-仅重建源队列的对照通过。另一对照共享fixture被归档，在注入前失败，不计通过。
-随后改用独立/var/tmp/vim4-kvm-stability。结论不包含失效源队列不重建或物理扬声器录音。
-音频入口：`python3 -u build/kvm-stability/locked.py python3 -u build/kvm-stability/audio-window.py`。
+最初保留失效AudioQueue的窗口未过；结论不含该情形或物理扬声器录音。
+正式候选音频复验使用`check-audio-loss.py`，在已持双锁的正式窗口内执行。
 
 ## 严格验收方法
 
@@ -97,8 +94,8 @@ AUDIO_NO_RESIDUAL_ERRORS_PASS
 刻意切模式／HPD区间允许正常拆管线。20轮指历史故障的四段浏览器序列，不是九类部署测试重复20次。
 
 ```sh
-python3 -u build/kvm-stability/query-acceptance.py > logs/kvm-stability/query-acceptance.log 2>&1
-# attempt-6：5轮 → 九类全量回归 → 3轮；随后三个各4轮的独立窗口。
+python3 -u build/kvm-stability/query-acceptance.py > logs/kvm-stability/query-acceptance-resumed.log 2>&1
+# 计划为5轮 → 九类全量回归 → 3轮，再三个各4轮窗口；失败即回退。
 # 每窗口持heavy/board双锁，结束恢复7b8372b8…并验证实际HID，组间释放锁。
 ```
 
@@ -118,33 +115,66 @@ PLL回收、时序竞态、DMA生命周期和隔离调度竞态；差异checkpat
 日志：`stability-tests-final.log`、`app-python-tests-linux.log`、`kernel-rebased-tests.log`、
 `wave5-rebased-tests.log`、`kernel-release-checkpatch.log`，均在logs/kvm-stability。
 
-历史临时窗口恢复f483ea42…并核对运行哈希、服务active、UDC configured、taint=0；
-实际HID键盘按下／释放、绝对／相对鼠标、点击及滚轮均通过。例：
-`attempt-3/kernel-restored.json`、`kernel-restored-hid.log`。
-attempt-4的save/preflight发现并行任务已部署7b8372b8…，旧79cb6dac候选没有安装。
-用户随后指定新恢复目标；新bundle保留9b141c5 manager、隔离监控和M0 DTB。
-新恢复检查含监控active、isolated=0、taint=0、UDC configured、实际HID及运行中二进制哈希。
+早期窗口恢复f483ea42…并通过HID；发现新基线后未再安装旧目标。
+后续包保留manager 9b141c5、隔离监控和M0 DTB。
 
-## rebase 后的匹配候选
+## 追加复现与厂商链路判定
 
-源码c0f216a18ca19，tree为0b5b812d3df0276fb89071b1968d4a21704394bf；
-build ID为588f5247615044abc51e07788747e7f0920fbdb7，2334模块、带BTF。
-正式配置SHA256为bca0e45df6eb43177bd82f251b4133c0468dd05195b7bae8ed8f639ba21f971c。
-Image为8549a43a1eec9241c1ede9b071701dcece268c50330e4dd8341076ab07ed10e7；
-modules归档为f10b4d912d72648ec8597e2f042dfe9c0ecdb1fac3139e93ec5324119684246c；
-M0 DTB仍为a635f8947ee77f67a43714aaa87276aff70edc0952bf40188d46853e055ce652。
-完整清单在VM的kernel-kvm-stability-release-payload，Mac包为build/kvm-stability/rebased.bundle。
-构建中主动释放heavy锁让M1恢复，随后从独立O=续编；证据为kernel-release-build-resumed.log。
-stage校验输出STAGED与UNCHANGED_USERSPACE_AND_RUNTIME_HELPERS_VERIFIED，
-除内核和修复应用外，与Wave5隔离正式包的runtime／manager哈希相同。
+588f5247…（源码c0f216a18ca19）没有通过最终验收：attempt-6五轮及19模式通过，
+但应用重启后立即读UDC为not attached。增加有界15秒枚举等待后，attempt-7约1秒恢复configured，
+五轮及九类功能全过，最终health仍捕获两条ASoC -67，自动回退。
+原始帧fixture的stop增加板端timeout 25，保留SSH 30秒上限及画面断言。
 
-M1失败窗口恢复后，本任务只读核验7b8372b8…、三个服务active、UDC configured、isolated=0、
-taint=0及原应用／新manager运行哈希，证据m1-recovery-baseline.json；不将它当作本任务HID验收。
-目前候选尚未安装，板锁另有用户保留；严格20轮与正式部署尚未执行。
-主仓离线测试191项通过（跳过5）；同步发布后的独立文档工作树197项通过（跳过9）。
+Linux 5aaac0e098ece仅将snd_soc_ret的ENOLINK改为debug，保留errno和拒绝配置语义；
+这是ASoC范围的日志等级变化，不是过滤验收日志。EIO／EINVAL／ENODEV／ERANGE／EAGAIN仍报error。
+actual-C覆盖100次断链、真实错误和既有返回行为；新build 9b1cb1a6…在attempt-8前四轮通过，
+第五轮stream_stops 21→21、source_changes 53→57、pipelineTransitions=4，未通过。
 
-等待期间板锁非阻塞申请返回75，输出already locked，且/tmp/vim4-user-hold仍存在。
-attempt-5只启动了等待器，没有创建上板窗口／备份、安装或重启；结束本轮前明确终止该等待器，
-SIGTERM是主动取消等待，不是候选回归失败。证据board-lock-wait.log、query-acceptance.log。
-后续从新编号attempt-6继续，避免覆盖等待日志。最终只读身份另存final-readonly-baseline.json；
-新基线实际HID复验、严格20轮、部署分支合入、发布锁更新及正式部署均未完成。
+诊断提交8386336e61a7（build 9acf4311…）限频记录readiness撤销原因。
+readiness-diag-1十轮未复现；readiness-diag-2第一轮过、第二轮失败：source_changes 23→25，
+管线重开一次。kernel-iso.log记录11:34:58.499 pll-unlocked，应用11:34:58.696 TRY_FMT返回ENOLINK。
+这些窗口均恢复7b8372b8…、三服务active、configured、isolated=0、taint=0和实际HID，
+证据在各窗口restored.json／restored-hid.log；attempt窗口为kernel-restored.json及HID日志。
+
+厂商5.15 hdmi_rx_hw_t7.c的aml_get_tmds_valid_t7使用SQO、is_tmds_clk_stable和alignment。
+hdmi_rx_hw.c中clock_lock_th=2，即线缆时钟（高倍率×4）与TMDS差不超过2MHz。
+当前移植额外用模拟APLL锁定位单独撤销ready，与厂商持续链路判定不同。
+修复3ff099187ea5按厂商补齐SQO及有效时钟匹配，保留5V、alignment和初始PLL锁定要求。
+actual-C验证PLL位低但有效链路可查询，SQO／有效计数／alignment丢失及±2MHz边界外仍ENOLINK；
+RX/VDIN全套通过，日志kernel-tmds-tests.log。该改动未消除后续真实失锁，不能作为修复完成证据。
+
+## 最新候选结果与阻塞
+
+Linux分支HEAD 3ff099187ea5bb1b08e0a34dc78a974f604516de，build ID
+da19093a7b275128c352c0f92d735620fce168a1；One-KVM仍为672b8fd9。
+attempt-9及source-diag-1/2/3累计27轮，24过、3失败；1表示该轮失败，0表示通过：
+
+| 轮次 | 逐轮失败数 |
+|---|---|
+| 1–10 | 0,1,0,0,0,0,0,0,0,1 |
+| 11–20 | 0,0,0,0,0,0,0,0,0,0 |
+| 21–27 | 0,0,0,0,0,0,1 |
+
+逐轮路径及计数：logs/kvm-stability/latest-candidate-rounds.json；诊断轮不能冒充正式验收。
+最后一次source-diag-3第7轮，SOURCE_CHANGE 87→89、管线停止并重开一次，VDIN停止计数30→30。
+RX采样每秒5次、最多4000次，仅变化时输出：12:18:16.525时5V/HPD均1，
+PLL/SQO/alignment同时为0；16.726线缆时钟为0；16.926恢复720×400及28.32MHz。
+Mac有效观察器在该失锁区间无显示重配，24.407的回调对应测试退出恢复EDID。
+证据：source-diag-3/rx-observations.jsonl、candidate.log、focused-7.log，
+以及source-display-events-3b.jsonl；此前两个空回调日志无效，不用于推断源稳定。
+
+这是真实接收链路失锁，不是单独的FDET无效值、VDIN队列错误或应用永久停止。
+尚不能区分发送端瞬断、线缆与RX PHY；Mac无重配不等于电气信号未变。
+需受控HDMI源／电气观测或厂商5.15同链路对照，不能凭现有证据继续猜寄存器或掩盖失锁。
+因此停止正式部署，未执行最新候选部署后的九类全量回归及四次失锁音频门禁。
+最终final-restored-health.json确认7b8372b8…、三服务active、configured、isolated=0、taint=0及运行哈希；
+source-diag-3/restored-hid.log确认键盘按下/释放、绝对/相对鼠标、点击和滚轮。两锁已释放。
+
+## 窗口回退保障
+
+针对M1事故中停止manager卡住的问题，final-board的stop统一限30秒，
+超时／非零返回只报告，继续恢复文件；先sync，再有界daemon-reload。
+save先将恢复程序、元数据和rollback.sh写入备份，不依赖Mac或staging。
+sudo执行rollback.sh reboot恢复并重启，verify核对文件／模块／身份，另查隔离状态及实际HID。
+首窗口入口：`/var/backups/vim4-kvm-stability-diag6/rollback.sh`。
+故障测试覆盖两个stop及daemon-reload全部超时仍恢复和sync，以及删除payload后执行回退脚本。
