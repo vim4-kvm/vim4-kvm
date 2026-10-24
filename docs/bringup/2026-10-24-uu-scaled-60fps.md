@@ -40,6 +40,9 @@ pad 进出墙钟时间，包含该阶段内部调用，不是单独的硬件执�
 1080p 的每帧约为 24.86 + 4.31 ms，直接解释约 34–35fps。
 原尺寸没有 GE2D，所以不是所有 4K60 编码都只能到 35fps。
 UU sequence gaps 为 0；不能将这些低速率归因于网络补帧。
+五档 feedback totals 的 NACK/PLI/FIR 均为 0，RR 持续增加，total_lost 与
+fraction_lost 均为 0；各档平均 jitter 约 1.02/2.81/2.51/1.77/1.90ms，
+平均 RTCP RTT 约 1.43/1.16/1.29/1.34/1.32ms，不支持网络丢包导致 35fps。
 `vfm_cap frames_dropped=0` 也不等于 HDMI 端没有损失：采集受下游背压后，
 frames_received/delivered 已降至相同速率，未计入的输入帧不能凭该计数重建。
 用户早先看到 1440p 约 15fps，但独占稳态为 27.75fps；不把切换时显示平均值当稳态。
