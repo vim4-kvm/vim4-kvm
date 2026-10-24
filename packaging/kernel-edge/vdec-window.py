@@ -22,7 +22,7 @@ import time
 
 
 BOOT_ACTIONS = ('boot-install', 'arm-baseline', 'verify-baseline')
-ACTIONS = (*BOOT_ACTIONS, 'probe', 'power', 'mdec', 'compliance', 'h264', 'h264-1080p', 'wave')
+ACTIONS = (*BOOT_ACTIONS, 'probe', 'power', 'snapshot', 'mdec', 'compliance', 'h264', 'h264-1080p', 'wave')
 BASE_ID = 'f283ab1f8a001a19bab5247afc4f9b0c00c1da99'
 BASE_RELEASE = '7.3.0-vim4kvm-uhd1+'
 BASE_FILES = {
@@ -263,7 +263,7 @@ def begin_stage(args, path=Path('/tmp/vim4-vdec-stages.json')):
     state = json.loads(path.read_text()) if path.exists() else {}
     if state.get('identity') != identity:
         state = {'identity': identity, 'passed': []}
-    previous = {'power': 'probe', 'mdec': 'power', 'compliance': 'mdec',
+    previous = {'power': 'probe', 'snapshot': 'power', 'mdec': 'power', 'compliance': 'mdec',
                 'h264': 'compliance', 'h264-1080p': 'h264', 'wave': 'h264'}
     if state.get('pending') or state.get('failed'):
         raise ValueError('Previous stage did not finish; collect evidence and restore baseline')
@@ -378,6 +378,44 @@ def mdec_cycle():
     set_power_permission(False)
 
 
+def outer_register_snapshot(payload):
+    """Stop at step eight; the reader independently denies all internal DOS addresses."""
+    if Path('/sys/module/aml_vdec_drv/parameters/t7_snapshot_only').read_text().strip() != 'Y':
+        raise ValueError('Snapshot requires the kernel-enforced eight-step limit')
+    power_cycle()
+    device = t7_device()
+    set_power_permission(True)
+    for step, description in enumerate(REGISTER_STEPS[:8], 1):
+        print('REGISTER_STEP_BEGIN', step, description, flush=True)
+        run('python3', '-c', 'from pathlib import Path; '
+            f'Path({str(device / "register_step")!r}).write_text({str(step)!r})', timeout=8)
+        status = (device / 'register_step').read_text().strip()
+        if not status.startswith(f'step={step} ') or not status.endswith(' failed=0'):
+            raise RuntimeError('Register step failed: ' + status)
+        print('REGISTER_STEP_COMPLETE', step, status, flush=True)
+    for name, path in (('clk', '/sys/kernel/debug/clk/clk_summary'),
+                       ('genpd', '/sys/kernel/debug/pm_genpd/pm_genpd_summary')):
+        try:
+            value = Path(path).read_text()
+        except OSError as error:
+            value = str(error)
+        (Path(payload) / f'active-{name}.txt').write_text(value)
+        print('ACTIVE_STATE', name, value, flush=True)
+    print('OUTER_SNAPSHOT_BEGIN', flush=True)
+    subprocess.run([str(Path(payload) / 'register-reader'), '--devmem',
+                    str(Path(payload) / 'addresses.txt')], check=True, timeout=20)
+    print('OUTER_SNAPSHOT_COMPLETE', flush=True)
+    # Zero never touches DOS and is valid even with the snapshot limit enabled.
+    run('python3', '-c', 'from pathlib import Path; '
+        f'Path({str(device / "register_step")!r}).write_text("0")', timeout=8)
+    state = (device / 'power_state').read_text().strip()
+    if not state.startswith('VDEC[4]=1 '):
+        raise RuntimeError('Snapshot abort did not power off VDEC')
+    print('POST_SNAPSHOT_STATE', state, flush=True)
+    require_suspended(device)
+    set_power_permission(False)
+
+
 def board_window(args):
     if os.geteuid() != 0:
         raise ValueError('Board subprocess requires root')
@@ -445,7 +483,12 @@ def board_window(args):
             run('modprobe', 'wave5', 't7_decode_test=1')
             candidate = 'wave5'
         else:
-            run('modprobe', 'aml-vdec-drv', 'enable_t7=1')
+            parameters = ['enable_t7=1']
+            # Only an explicit higher stage may leave the eight-step limit.
+            # Open still needs allow_t7_power and a successful full MDEC test.
+            if args.action in ('mdec', 'compliance', 'h264', 'h264-1080p'):
+                parameters.append('t7_snapshot_only=0')
+            run('modprobe', 'aml-vdec-drv', *parameters)
             candidate = 'aml_vdec_drv'
         if args.action == 'probe':
             probe_without_power()
@@ -455,6 +498,8 @@ def board_window(args):
             power_cycle()
         elif args.action == 'mdec':
             mdec_cycle()
+        elif args.action == 'snapshot':
+            outer_register_snapshot(args.payload)
         elif args.action == 'compliance':
             mdec_cycle()
             set_power_permission(True)
@@ -552,6 +597,7 @@ def main():
                           'order': ['heavy then board locks', 'RAM-only boot or supervised baseline recovery',
                                     'probe: gate off, EPERM, read-only SMC status',
                                     'power: explicit opt-in, one DOS read, verified power off',
+                                    'snapshot: stop after step 8; read outer controls, then abort/power off',
                                     'mdec: thirteen separate steps; EN0 before domain, GCLK read before write',
                                     'compliance only after probe + power + mdec receipts',
                                     'stop clients', 'exclusive codec lease', args.action,

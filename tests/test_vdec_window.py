@@ -238,7 +238,7 @@ class DecoderWindowTests(unittest.TestCase):
             args.action = 'power'
             state = window.begin_stage(args, path)
             window.finish_stage(state, False, path)
-            for action in ('probe', 'power', 'mdec', 'compliance', 'h264', 'wave'):
+            for action in ('probe', 'power', 'snapshot', 'mdec', 'compliance', 'h264', 'wave'):
                 args.action = action
                 with self.subTest(action=action), self.assertRaises(ValueError):
                     window.begin_stage(args, path)
@@ -268,6 +268,7 @@ class DecoderWindowTests(unittest.TestCase):
             path.touch()
             identity = {'boot': 'boot-test', 'build': 'test'}
             for action, previous, passed in [('compliance', 'mdec', ['probe', 'power']),
+                                             ('compliance', 'mdec', ['probe', 'power', 'snapshot']),
                                              ('h264-1080p', 'h264', ['probe', 'power', 'mdec', 'compliance'])]:
                 state = {'identity': identity, 'passed': passed}
                 with self.subTest(action=action), patch.object(window.json, 'loads', return_value=state):
