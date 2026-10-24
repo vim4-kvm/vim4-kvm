@@ -12,11 +12,17 @@ H/M 为风险；估计单位人日，音频共享时钟工作只计一次。
 A14 仅有正常录音时的检测候选。没有上板，状态不因离线候选升级；
 [批量上板清单](audio-board-checklist.md)逐项标出所需外设及无法验证的范围。
 
+2026-10-23 显示窗口已取得 HDMI-TX 物理声音、M2 997Hz 录音与 RX/TX 同时 RUNNING
+证据，见 [M2](../bringup/2026-10-23-display-m2-window3.md)及
+[M3](../bringup/2026-10-23-display-m3-window4.md#tx-实际出声采集共存与拔插)。
+A03 仍为部分：正式 M0 未启用 TX，采样率/长期声音与完整恢复未全验。
+音频 routes 合入源码不提升 A07/A11–A14 的硬件验收状态，处理组件保持 disabled DT。
+
 | ID / 厂商能力及来源 | 7.3 状态 | 差异与证据 | 路线、依赖 / 人日 / 风险 / 验证硬件 |
 |---|---|---|---|
 | A01 HDMI RX LPCM、采样率变化与失锁恢复；V1:604,1003 | 部分对齐 | E3:1260 AIF/ACR、独立ASoC RX/TODDR与Opus；七档采样率离线、48/44.1/32k现场证据。ENOLINK/EAGAIN 是必要保护；应用 ready→hw_params 有竞态。[动态音频](../bringup/2026-10-22-edge-hdmi-audio.md)、[ENOLINK对照](../bringup/2026-10-23-hdmirx-audio-enolink.md) | 主线ASoC，承接正在进行的音频/采集稳定性任务：generation资格确认、可取消重开、错误分类；保留无效时零硬件启动。R01、2–5 / H / 可切七档LPCM源、真实失锁和浏览器连续性探针 |
 | A02 多声道/压缩音频、HBR、通道分配；V1:TDMB/extn，V2:HDMIRX/ARC | 缺失 | 当前产品只验双声道LPCM/Opus，不能把SPDIF或解析AIF当作IEC61937/HBR透传已通；E3未交付全部路由 | 主线ASoC/IEC958 controls、按厂商T7路径确定DMA/通道布局；A01/A03，8–15 / H / 多声道发生器、AVR/音频分析仪，授权codec由用户态合法解码 |
-| A03 HDMI-TX 播放；V1:1848、audio TDM路由，V2:amhdmitx | 部分对齐 | E0:481/E1:1903有FRDDR→TDM→TOHDMITX，E7 bridge双声道；E2 audio-test:34删除通用sound，当前仅RX声卡。M0/M1亮屏不等于HDMI声音 | 主线ASoC＋DRM HDMI codec/ELD；承接显示M3，D02、共享时钟与RX并存；5–10 / H / 带声音sink或HDMI音频提取器、48/44.1k实测 |
+| A03 HDMI-TX 播放；V1:1848、audio TDM路由，V2:amhdmitx | 部分对齐 | M2 有997Hz物理录音，M3 用户确认出声且 RX/TX 同时 RUNNING，48k/S16/2ch、ELD/Audio InfoFrame 已读回；正式 M0 仍仅 RX。未覆盖所有采样率、长期及恢复 | ASoC＋DRM HDMI codec/ELD；修显示颜色后复验采样率、RX/TX并行与HPD/ELD恢复；D02，5–10 / H / 带声音sink、音频提取器与分析仪 |
 | A04 TDMA PCM 全双工；V1:643,978 | 缺失 | E0普通DT描述不代表专用运行DT已接播放/录音；未验外部PCM引脚/BT音频 | 主线ASoC dai-link/DAI格式，复用AXG FIFO/TDM；先核对板图/BT路由、A03时钟层；3–6 / M / PCM loopback夹具、逻辑分析仪、BT音频对端 |
 | A05 TDMB 外部I²S双向及HDMI输入选择；V1:604,1003 | 部分对齐 | E3接HDMI输入，但未实现厂商TDMB所有外部pin/源切换和全双工；不重建厂商私有mixer ABI | 主线ASoC DAPM/mux、显式pin与RX源选择；A01/A03，4–8 / H / 外部I²S codec/loopback、逻辑分析仪 |
 | A06 TDMC parser/I²S路由；V1:677,1051 | 缺失 | E2运行时无该DAI完整接入，厂商dummy codec不证明物理模拟输出存在 | 主线ASoC；先证明parser实际消费者与输出布线，A03基础层；3–6 / M / I²S codec/内存回环、板图 |

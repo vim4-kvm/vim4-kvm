@@ -4,6 +4,11 @@
 范围与计数见 [总表](../vendor-parity.md)。
 H/M 是高/中风险；估算为一人有效人日，等待固件/现场窗口另计，共用依赖不能重复累加。
 
+2026-10-23 重计按已提交窗口：E02 单列“已上板验证待部署”；E01 动态参数、
+LTR、分层 GOP 与多实例恢复已有[实际码流证据](../bringup/2026-10-23-wave5-e01-window.md)，
+但 ROI、任意 GOP、VUI/SEI 和真实固件硬锁仍欠账。C01 最新候选有 IRQ/超时诊断，
+尚无正确首帧；合入源码时 VDEC DT 和试验参数仍默认关闭。
+
 | ID / 厂商能力及来源 | 7.3 状态 | 差异、现有证据 | 路线、依赖 / 人日 / 风险 / 验证硬件 |
 |---|---|---|---|
 | R01 HDMI RX/DDC/EDID/HPD 与自动恢复；V1:541–594 | 部分对齐 | E3 标准 EDID/时序接口、源端读回与 19 档通过；仍有 FDET 无效快照触发错误停流。[模式](../bringup/2026-10-22-edge-hdmi-modes-final.md)、[停流审计](../bringup/2026-10-22-wave5-first-failure-audit.md) | 重写/完善 V4L2 subdev＋source events；承接现有音频/采集稳定性任务，统一活动租约测量错误分类，不能靠反复 HPD 自愈；4–8 / H / 可切分辨率/断信号 HDMI 源，浏览器运动源 |
@@ -14,8 +19,8 @@ H/M 是高/中风险；估算为一人有效人日，等待固件/现场窗口�
 | R06 原生 4:4:4 采集；V1:1858，厂商 vfm_cap 扩展 | 缺失 | 5.15 4K60 原始444已验；E3 VDIN 只暴露 NV12/RGB24，RGB24转换不能当原生444 planes。[厂商444](../bringup/2026-10-16-4k60-yuv444-raw-capture.md) | 重写 V4L2 YUV444/NV24 等真实 DMA 布局及 CPU access 同步；R02/R05；5–10 / M / 单像素色度/同帧标记源、原始文件检查 |
 | R07 多路 RX、特殊 PHY/板型；V1:541 port_map，V2:HDMIRX | 部分对齐 | E2 固定 input-port=1，实际板载输入可用；其他 T7 RX port 并无本板连接验收。不能把 SoC 全端口列成 VIM4 多物理输入 | 重写 PHY/端口/标准路由描述；先查板图和实际接线，无布线端口不做产品入口；3–6 / M / 两版 VIM4、原理图/可接端口夹具 |
 | E01 MultiEnc AVC/HEVC、码率/GOP/IDR/逐行刷新；V2:2566，V3:149–179 | 部分对齐 | E4 标准 V4L2 M2M 可达4K60，IDR/profile/刷新已有回归；未覆盖厂商全部控制、多实例/高位深。[Wave5](../bringup/2026-10-19-wave521-uhd.md)、[IDR](../bringup/2026-10-20-onekvm-wave5.md) | 重写/完善 V4L2 controls、调度和固件协议；E02/E03 后做厂商参数逐项等效，8–15 / H / 固定录制输入、参考解码、双实例与运动场景 |
-| E02 非8对齐 HEVC 可见尺寸；V3:155/161，V5 | 部分对齐 | E4 enc.c:33 强制八像素步进，应用回退 AVC 是**临时绕过**；尺寸防护已部署。[现场保护](../bringup/2026-10-22-wave5-hevc-field.md) | 标准 V4L2 中修正式 padding/conformance window/固件协议；先 E03 安全恢复、再对照 SDK/固件确认可见尺寸，不能简单删保护。5–12，需新固件时不可排期 / H / 可现场 RESET 的板子、720×400等安全分级输入；本轮禁测 |
-| E03 Wave5 超时隔离、取消与恢复；V5:436,1390,3421 | 部分对齐 | M0 E4只有保留；当前E8已部署watchdog/job_abort、DMA引用保留到重启与故障状态API，十次软件超时注入/重启恢复通过。无运行时硬件复位/固件重载/多实例恢复，真实挂死未验。[正式隔离](../bringup/2026-10-23-wave5-isolation-final.md) | 主线 V4L2 M2M，复用已完成取消/隔离，继续停止DMA证明→共享域reset→固件重载→实例重建；承接现有恢复任务，不以自动重启当终态。10–20起 / H / 串口、现场 RESET、受控故障注入、多个活跃实例 |
+| E02 非8对齐 HEVC 可见尺寸；V3:155/161，V5 | 已上板验证待部署 | 内核已有标准 selection、内部 padding/conformance window；[十组 NV12/NV12M 码流、1366×768 非零 crop](../bringup/2026-10-23-wave5-parity-window.md#e02b-帧与多实例)逐帧解码通过，含行列补边和 drain。正式 eeddb005 不含该能力 | 限偶数 4:2:0 可见矩形；One-KVM `20d8010d` 无旧内核探测，保持功能分支和生产 AVC 回退。待匹配内核批次；共享同 fd 多 plane 非零 offset 等布局另验，不扩张本行范围 |
+| E03 Wave5 超时隔离、取消与恢复；V5:436,1390,3421 | 部分对齐 | 正式 eeddb005 含[受控 power-cycle/固件重载](../bringup/2026-10-23-wave5-runtime-window.md)，失败仍保留 DMA；[E01 候选](../bringup/2026-10-23-wave5-e01-window.md)验证 SET_PARAM、多实例注入及同页恢复、失败隔离。健康固件注入不代表真实挂死已解决 | V4L2 M2M/genpd：继续真实硬锁的 DMA 停止、总线状态和长期多实例验收；不可用 job_finish 提前归还缓冲。10–20起 / H / 串口、独立复位、受控故障注入 |
 | E04 HCODEC/JPEG 静态与连续编码；V2:2541，V3:167 | 部分对齐 | E5 V4L2 M2M/TEE固件加载、DMA导入与缩放已过；UHD60吞吐/画质边界、厂商全部格式/质量档未齐。[JPEG](../bringup/2026-10-21-edge-scaling-jpeg.md) | 重写/完善 V4L2 M2M controls 与标准内存模型；Q01、R02，禁止用超频替代正确性；5–10 / M / 运动源、参考JPEG解码、固定输入哈希 |
 | E05 HCODEC AVC 与旧 venc ABI；V3:149,155，V2:2541 | 缺失 | 已加载 amvenc_multi/jpegenc；未证明旧 amvenc_avc 在 T7 实际承担编码。不能因 Kconfig 有H264就再算一个已验AVC硬核 | 先查真实消费者/芯片条件；功能由 Wave5 标准 AVC 提供，旧 ioctl ABI 不做。调查2–4，确认独立HCODEC AVC后另估8–15 / H / 厂商基准镜像/真实旧程序；禁止抢占JPEG域 |
 | C01 H.264 单/多实例、MVC；V4:237，V3:40–57 | 缺失 | E5 平台基线没有已验 T7 解码帧；独立 vdec 候选曾发生 MDEC SError，不能按能probe计部分解码。[最新门禁](../bringup/2026-10-22-vdec-mdec-offline.md) | 主线 V4L2 Request/stateless 路线；承接进行中的 vdec，先时钟/genpd/DBUS/TEE/安全退出，再1080p I/P/B逐帧参考；15–30（已有成果抵扣）/ H / 串口、现场RESET、B帧/MVC样本；MVC另5–10 |

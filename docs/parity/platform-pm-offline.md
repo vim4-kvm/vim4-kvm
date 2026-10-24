@@ -7,6 +7,11 @@ CPU PSCI idle 描述、风扇 PM 回滚及 Panfrost 恢复错误处理。RX/VDIN
 **全程仅开发机与 OrbStack VM，未连接板子、部署、写电压或请求挂起。**
 批量窗口和逐项时长见 [上板清单](platform-pm-board-checklist.md)。
 
+2026-10-23 [统一合入](../bringup/2026-10-23-mainline-integration.md)已纳入源码：
+CPU power-down idle 在公共 DT 中为 disabled，GPU passive cooling map 仅在显式
+`pm-test.dtb` 中出现，两项均**待验证**；既有 critical 温控保留。下文保留原候选
+审查与构建快照，所列工作树和旧构建产物在合入后清理；本轮仍未部署或请求挂起。
+
 ## 固定来源与候选
 
 | 对象 | 固定提交 / 位置 |
@@ -133,4 +138,4 @@ Image SHA256: 7e6b2bb4586f25726790247648a5219bb2484fed478bcd75c0dc0e44573e0951
 ```
 
 候选已推送 [vim4-platform-pm](https://github.com/vim4-kvm/linux/tree/vim4-platform-pm)，
-未合入正式内核、未部署，P04/P06/P08/P09/P10 不提升验收状态。
+随后按上述默认关闭条件合入源码；未部署，P04/P06/P08/P09/P10 不提升验收状态。

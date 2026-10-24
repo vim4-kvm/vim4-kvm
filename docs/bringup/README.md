@@ -7,6 +7,7 @@
 
 ## 2026-10-23
 
+- [统一合入主线，保留稳定 KVM 部署](2026-10-23-mainline-integration.md) — kernel application deployment board
 - [RX 阶段收尾：矩阵残留问题与稳定 KVM](2026-10-23-hdmirx-lowclock-closeout.md) — kernel video usb deployment board
 - [M3 4K 显示器窗口：链路与出声，颜色和 GPU 阻塞](2026-10-23-display-m3-window4.md) — kernel video audio usb deployment board
 - [HDMI 模式切换失锁：基线对照与稳定判定](2026-10-23-hdmirx-lowclock.md) — kernel video deployment board

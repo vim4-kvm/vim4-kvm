@@ -1,8 +1,12 @@
 # 7.3 补丁清单与主线跟进
 
-本次只在开发机和 OrbStack VM 离线审计、编译，不访问板子、不安装产物。
+2026-10-23 [统一合入记录](bringup/2026-10-23-mainline-integration.md)另记正式源码整合、
+默认关闭项和构建检查；以下 580/291 仍是固定 `0a775305` 历史审计，不能当最终 HEAD 计数。
+本轮合入不移动已部署锁，不安装新内核。maintenance 的 7.3 整理与 next 迁移分开。
+
+原审计只在开发机和 OrbStack VM 离线审计、编译，不访问板子、不安装产物。
 审计固定用户指定的 `0a775305f0ad81475f65d33b15f79099c8445c75`；正式工作树当时在
-`0196fe22ecf01`，它是固定版本的祖先。两个正式引用均未由本任务更新。
+`0196fe22ecf01`，它是固定版本的祖先。两个正式引用均未由原审计更新。
 新增整理位于 `maintenance/upstream-20261023`，前移试验位于 `maintenance/next-20261023`。
 硬件能力与退出条件继续以[厂商能力对照](vendor-parity.md)为准。
 
@@ -147,6 +151,13 @@ python3 "$RECIPE/maintain.py" verify --source ~/src/linux-7.3-maintenance \
   --base v7.3 --config "$RECIPE/uhd1.config" \
   --output ~/build/vim4-verify-new --build
 ```
+
+整合后的统一 host 入口需要本地厂商 C 对照，先设置
+`export VIM4_VENDOR=$HOME/src/linux/common_drivers`；不自动 fetch/修改该目录。
+音频路由合入后还须指定 `VIM4_AUDIO_BASELINE` 或 `--audio-baseline`，指向路由系列
+合入前独立编译的 audio-test DTB，来源与哈希见统一合入记录；不可拿待测 DTB 自比。
+也可直接向 `scripts/vim4/offline-tests.py` 传 `--vendor`。
+新入口包含显示新增 fixture、VDEC lifetime 和 Panfrost resume；34/34 仅指下述历史快照。
 
 `forward`只在新分支 rebase，遇冲突保留现场和 JSON；第一次停止数不冒充总冲突数。
 VM 无配置身份时，先通过环境传入与开发机 `git var GIT_COMMITTER_IDENT` 一致的

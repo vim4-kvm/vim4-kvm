@@ -4,12 +4,19 @@
 路线“重写”指进入主线框架，不承诺补丁已被上游接收；工作量是一人有效人日，含定向验证，
 不含文档/授权等待。H=高风险，M=中风险；每行估计不可直接相加，依赖可共用。
 
+2026-10-23 增量：M2/M3 已有独立实验 DTB、原生 modeset、多平面和 HDMI-TX 声音。
+[M2 窗口](../bringup/2026-10-23-display-m2-window3.md)有相对颜色、997Hz 录音及拔插证据；
+[M3 4K 窗口](../bringup/2026-10-23-display-m3-window4.md)有用户出画/出声反馈，
+但 RGB 偏色、有效 CSC/HDR2 路由与 4K GPU 分配仍阻塞。D01–D03 保持部分，
+D04 因 10bpc 打包/TMDS/SCDC 读回转为部分；D05 只有离线 CEC 实现，保持缺失。
+正式板仍用 M0；以下 E0–E7 只表示原审计源码，不能覆盖这些增量。
+
 | ID / 厂商能力及来源 | 7.3 状态 | 差异、现有证据 | 建议路线、依赖 / 人日 / 风险 / 验证硬件 |
 |---|---|---|---|
 | D01 固定 HDMI 亮屏；V1:1788,1848，V2:amhdmitx | 部分对齐 | M0 simpledrm/tty0 已过；依赖固件已设定的静态 framebuffer，不能控制真实模式。[M0](../bringup/2026-10-23-display-m0-r4.md)，E2 display-m0 | 重写 DRM/KMS；承接正在进行的 M1 固定模式/共存任务，M0 为临时；共享资源归属→atomic scanout。剩余 5–12 / H / HDMI-OUT 采集卡、1080p sink、运动源 |
 | D02 EDID、HPD、原生 modeset、多分辨率；V1:1848，V2:amhdmitx | 部分对齐 | E7 有 TMDS bridge，但 M0 的 native VPU disabled；M1 固定 sink 也不是动态 HPD。[显示调查](../bringup/2026-10-23-display-feasibility.md) | 重写 DRM connector/bridge/PHY/CCF；D01 共存通过后 M2，补无屏启动、反复插拔/切模式、4K/SCDC；4–8 / H / 两类 sink、可人工插拔、4K60 采集卡 |
 | D03 多 OSD/视频平面、缩放、AFBC、VPP/RDMA/色彩；V1:1788,2078，V2:rdma/vpu/amlvecm | 部分对齐 | E7 有部分 T7 OSD/VENC 代码，部署只保留 M0；未验 atomic planes、AFBC、HDR 输出、multi-vout。VOUT2/3 节点不证明板上有三路屏 | 重写 DRM planes/atomic/color properties；D01/D02＋DMA/fence/共享 VCBUS；15–30 / H / 4K/HDR sink、测试图/多平面播放器。逐项清点可路由输出，禁止以 DTS 节点数承诺多屏 |
-| D04 HDMI 输出高级链路与色深；V1:1848，V2:amhdmitx | 缺失 | E7 限 TMDS≤600MHz、RGB8、无 HDCP；厂商 HDMITX21/DSC 开关跨 SoC 共用，不能据名称承诺 T7 FRL/DSC/VRR。当前缺 444/422/深色与完整 infoframe 验收 | 重写 DRM HDMI helpers/色彩、PHY；先按厂商 T7 分支确认硬件能力，再 D02/D03；10–25 / H / HDMI 分析仪、10/12-bit HDR sink；若某协议无 T7 实现则从目标剔除并附证据 |
+| D04 HDMI 输出高级链路与色深；V1:1848，V2:amhdmitx | 部分对齐 | M3 4K60 SCDC config/status=0x03/0x0f，1080p10bpc GCP/P2T 与 TMDS185.625MHz 读回；用户确认多模式出画但 RGB 偏紫。420 EDID map 越界、HDR 未物理测试，无完整深色验收；正式 M0 未变 | DRM HDMI helpers/色彩、PHY；先修有效 CSC/HDR2 所有权，再物理颜色、10/12bit/420；厂商跨 SoC 开关不证明 T7 FRL/DSC/VRR。10–25 / H / HDMI 分析仪、深色 HDR sink |
 | D05 CEC 与 ARC 控制；V2:2438（enabled，AO mailbox） | 缺失 | E1/E7 没有本板已接通/验收的 CEC adapter；普通 HDMI 图像不证明 CEC 工作 | 重写 CEC framework，复用厂商 T7 寄存器/固件协议；D02、mailbox/唤醒归属；5–10 / M / 支持 CEC/ARC 的电视、CEC 分析器 |
 | D06 VDIN1 输出回写/截图；V1:1877，V0:1792 | 缺失 | E2 只有 VDIN0；simpledrm 读缓冲不等价于 VDIN1 writeback，旧 video71 不是 HDMI 输入 | 重写 DRM writeback connector 或 V4L2 capture；D01/D03 与 VDIN 仲裁；6–12 / H / HDMI-OUT 图案源、独立采集器 |
 | D07 GE2D blit/缩放/格式转换；V2o:3354，V1:2237 | 部分对齐 | E 树有 `drivers/media/platform/amlogic/meson-ge2d`，没有本板 T7 使能/验收证据；VDIN 缩放已过不能替代任意内存 blit。[缩放](../bringup/2026-10-21-edge-scaling-jpeg.md) | 重写/扩展标准 V4L2 M2M，按 T7 DMA/时钟/域核对；genpd＋dma-buf fences；8–15 / M / VIM4、离线图案与 DMA 压力 |
