@@ -319,7 +319,7 @@ class Board:
 
         def ir():
             assert '[nec]' in Path('/sys/class/rc/rc0/protocols').read_text()
-            keytable = shutil.which('ir-keytable') or '/var/tmp/vim4-dtnodes-ir-keytable'
+            keytable = shutil.which('ir-keytable') or str(self.payload / 'ir-keytable')
             table = subprocess.check_output([keytable], text=True, stderr=subprocess.STDOUT)
             assert 'rc-khadas' in table
             return table

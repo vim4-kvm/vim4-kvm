@@ -109,6 +109,8 @@ def stage(args):
         assert sha(args.kernel_payload / name) == expected, name
     elf_arm64(args.one_kvm_binary)
     elf_arm64(args.manager_binary)
+    if args.ir_keytable:
+        elf_arm64(args.ir_keytable)
     # Go embeds source identity. Reject binaries built before the manager commit.
     metadata = subprocess.check_output(['go', 'version', '-m', str(args.manager_binary)],
                                        env={k: v for k, v in os.environ.items() if k != 'GOROOT'}, text=True)
@@ -116,6 +118,8 @@ def stage(args):
     assert 'vcs.modified=false' in metadata
     plan = checks(json.loads(args.regression.read_text()))
     args.bundle.mkdir()
+    if args.ir_keytable:
+        shutil.copy2(args.ir_keytable, args.bundle / 'ir-keytable')
     for name in ('Image', 'vim4.dtb', 'modules.tar.gz', 'manifest.json', 'runtime-proof.json'):
         shutil.copy2(args.kernel_payload / name, args.bundle / name)
     install = []
@@ -307,6 +311,7 @@ def main():
     for name in ('kernel', 'one-kvm', 'manager'):
         staging.add_argument('--' + name + '-commit', required=True)
     staging.add_argument('--bundle', required=True, type=Path)
+    staging.add_argument('--ir-keytable', type=Path, help='ARM64 IR health tool, kept inside the bundle')
     staging.add_argument('--baseline-release', default='7.3.0-rc7-vim4kvm-uhd1+')
     staging.add_argument('--baseline-build-id', default='52d5e46fb006230785110a1fa5ba0dd1383b732f')
     staging.add_argument('--kernel-only', action='store_true', help='Verify staged userspace files without replacing them')

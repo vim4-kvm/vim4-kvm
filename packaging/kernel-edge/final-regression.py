@@ -92,6 +92,9 @@ def prepare(args):
         '../../../tools/manager-login.mjs': (ROOT / 'tools/manager-login.mjs').as_uri(),
         "HERE.parent/'mac-hdr-mode'": repr(str(ROOT / 'build/kernel-edge/mac-hdr-mode')),
     }
+    if args.gpu_load:
+        replacements['/var/tmp/vim4-gpu-devfreq-20261021/gles-load'] = REMOTE + '/gles-load'
+        shutil.copy2(args.gpu_load, destination / 'gles-load')
 
     def copy(source, target):
         shutil.copy2(source, target)
@@ -171,6 +174,8 @@ def run(args):
         extra = ['--hid-only'] if identifier == 'hid' else ['--service=one-kvm', '--image=' + str(destination / 'usb-edge-transfer.img')]
         execute(sys.executable, video / 'run-tool.py', 'tools/' + tool, '--exclusive', *extra)
     elif identifier == 'gpu':
+        if 'gles-load' in receipt['sha256']:
+            execute('scp', destination / 'gles-load', 'vim4:' + REMOTE + '/gles-load')
         execute(sys.executable, video / 'gpu-check.py')
     elif identifier == 'manager':
         execute('node', Path(__file__).with_name('final-manager-check.mjs'))
@@ -215,6 +220,7 @@ def main():
     prep.add_argument('--sample-modes', help='Comma-separated IDs; default checks all 19 modes')
     prep.add_argument('--hevc-visible-sizes', action='store_true',
                       help='Require E02-capable kernel; test non-8-aligned HEVC in the browser')
+    prep.add_argument('--gpu-load', type=Path, help='ARM64 GLES workload to snapshot and upload for the GPU check')
     prep.add_argument('--wifi-scan', action='store_true', help='Explicitly authorize a scan with radio/autoconnect restoration')
     check = commands.add_parser('run')
     check.add_argument('--destination', type=Path, required=True)
