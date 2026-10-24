@@ -239,7 +239,12 @@ def snapshot(vendor=False):
             return struct.pack('<I', int(match[2], 16))
         with mmap.mmap(fd, mmap.PAGESIZE, flags=mmap.MAP_SHARED, prot=mmap.PROT_READ,
                        offset=address & -mmap.PAGESIZE) as page:
-            return page[address % mmap.PAGESIZE:address % mmap.PAGESIZE + size]
+            offset = address % mmap.PAGESIZE
+            # COR only accepts byte accesses. A slice uses memcpy, which may
+            # issue unsupported wide loads even though the result is bytes.
+            if size != 4:
+                return bytes(page[offset + i] for i in range(size))
+            return page[offset:offset + size]
     try:
         # amlogic-t7.dtsi: RX COR is fe000000 + 3a0000, AVI packet at 1140.
         packet = vendor_rx_avi() if vendor else read(0xfe3a1140, 17)

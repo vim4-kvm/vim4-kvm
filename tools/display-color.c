@@ -179,8 +179,9 @@ static int transmit(char **args, int vendor)
         add(fd, req, conn->connector_id, DRM_MODE_OBJECT_CONNECTOR, "max bpc", 8);
         add(fd, req, conn->connector_id, DRM_MODE_OBJECT_CONNECTOR, "color format",
             enum_value(fd, conn->connector_id, "color format", format));
-        add(fd, req, conn->connector_id, DRM_MODE_OBJECT_CONNECTOR, "Broadcast RGB",
-            !strcmp(args[5], "full") ? 1 : 2);
+        if (!strcmp(args[4], "rgb"))
+            add(fd, req, conn->connector_id, DRM_MODE_OBJECT_CONNECTOR, "Broadcast RGB",
+                !strcmp(args[5], "full") ? 1 : 2);
     }
     add(fd, req, crtc, DRM_MODE_OBJECT_CRTC, "MODE_ID", blob);
     add(fd, req, crtc, DRM_MODE_OBJECT_CRTC, "ACTIVE", 1);
