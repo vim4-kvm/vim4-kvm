@@ -7,6 +7,10 @@
 
 ## 2026-10-24
 
+- [UU 缩小输出的 GE2D 时钟与流水线修复](2026-10-24-uu-scaled-60fps.md) — video application uu deployment board
+- [厂商 5.15 透传 OUT 热插拔恢复](2026-10-24-vendor-passthrough-hpd.md) — kernel video manager deployment board
+- [厂商 5.15 透传 TEE 离线设计](2026-10-24-vendor-passthrough-design.md) — kernel video audio manager deployment
+- [厂商 5.15 周期黑屏诊断与修复](2026-10-24-vendor-passthrough-blackout.md) — video manager deployment board
 - [厂商 5.15 HDMI 透传交付与待验证项](2026-10-24-vendor-passthrough.md) — kernel video audio manager deployment board
 - [颜色候选交付门禁失败与管理器预览](2026-10-24-display-color-user-handoff.md) — kernel video usb manager deployment board
 - [HDMI 透传第二阶段暂停与恢复入口](2026-10-24-hdmi-passthrough.md) — kernel video deployment board

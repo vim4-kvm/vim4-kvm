@@ -1,5 +1,7 @@
 # 2026-10-24：厂商 5.15 HDMI 透传
 
+后续 OUT 热插拔问题与修复见 [HPD 恢复记录](2026-10-24-vendor-passthrough-hpd.md)。
+
 独立于 [7.3 透传](2026-10-24-hdmi-passthrough.md)，不相互替代。
 本记录区分源码判断、配置实验和验收结果；未完成项不能写成通过。
 
@@ -23,55 +25,13 @@ taint=12288（厂商树外/未签名模块），不写成零。
 
 ## 第一阶段：离线源码结论
 
-最初核对 VM `~/src/linux/common_drivers@4cfb128d3`，构建前同步到主仓基线 `563cff9da`；候选分支
-`vim4-5.15-passthrough`，管理器从 `passthrough-ui` 建 `passthrough-5.15`。
-
-原生链：RX port 1 → VDIN0 → VFM tvpath → amvideo → VPP VD1 → hdmitx21。
-`drivers/media/common/vfm/vfm.c:vfm_init()` 原始 tvpath 包含 deinterlace，可含 ppmgr；
-当前板级 `tools/hdmi-setup.sh` 将其替换为 `vdin0 vfm_cap` 并运行 `hdmiin-demo`。
-tvserver 管理 RX 的打开、信号事件与 VDIN 解码；`vdin_drv.c` 的
-`TVIN_IOC_OPEN/START_DEC/STOP_DEC/CLOSE` 是底层接口，不再增加第二个 VDIN0 所有者。
-
-VFM 本身不是广播：`vf_get_receiver_name()` / `vf_get_provider_name()` 返回首个匹配端点。
-给 vdin0 加两个 map 不会获得两份有独立归还语义的帧。现有 `vfm_cap.c` 则已有真正的 TEE：
-注册上游 receiver 与下游 provider；显示、V4L2 token、DMA-buf 分别持引用，最后归还才 vf_put。
-最小实验优先用 `vdin0 vfm_cap amvideo`，逐行输入绕开 deinterlace/ppmgr 的额外处理。
-VDIN 8-bit NV21、3840×2160、completed-frame game_mode=3 及 KVM 编码设置均不降低。
-KVM 原有上一帧完整帧保护保留；显示读取不增加 CPU 拷贝，也不增加一次 VDIN 写入。
-
-UHD60 NV21 每次整帧读写约 746.5 MB/s；直接 TEE 的新增负载主要是 VD1 读约 746.5 MB/s。
-FHD60 对应约 186.6 MB/s。这是理论有效载荷，不是 DDR 实测或零丢帧承诺。
-显示持帧会占用共享 VDIN 缓冲；现有 ready_list 未限长、源重置强制回收的生命周期需重点验证。
-不能为了显示关掉 KVM 的完整帧保护、降低码率/尺寸/帧率或开启同缓冲读写 game-mode bit2。
-
-备选 VDIN1/2：驱动确有多个实例和 `start_tvin_service()`，但 RX frontend/时钟/端口控制共享；
-双实例直接接同一 RX 的 4K60 能力不能从实例数推断。额外采集至少增加一次约 746.5 MB/s 写入，
-CMA 与仲裁也增加，先不选。amvideo 后经 VDIN1 的 VIU writeback 可取 VD1/VPP，
-但受输出缩放、OUT 热插拔与显示时钟影响，并增加读写/整帧等待，会把 KVM 质量绑定显示器，拒绝作为默认。
-video_composer 是显示提交/合成层而不是 VFM 自动广播，首轮无需引入。
-
-输出颜色采用 [厂商对照](../display-color-vendor.md) 已验证的 SDR YCbCr444 8-bit limited，
-4K60 可在 sink 实际允许时用 420；不使用已测原色误差最高 23 的 RGB 路径。
-首轮保持真实 2160p60，不通过重命名刷新率或降低采集尺寸制造成功。
-后续跟随输入真实帧率与 sink 能力交集；OUT 热插拔不重写 RX EDID、不脉冲 PC HPD。
-
-音频：`sound/soc/amlogic/auge/card.c` 的 `HDMITX Audio Source Select` 仅列
-Spdif/Spdif_b/Tdm_A/B/C，不含直接 RX；RX 由 `extn.c/frhdmirx_hw.c` 进入采集路径。
-不能把 SPDIF→RX ARC 路由当作 RX→TX 直通。tvserver/audio HAL 是否有可与现有 KVM
-PCM 所有者共存的路由仍待实机核对；不并发独占打开同一个 RX PCM，不承诺声音已支持。
+详细源码、带宽和备选路线分析见 [5.15 TEE 设计](2026-10-24-vendor-passthrough-design.md)。
+选择 `vdin0 vfm_cap amvideo`，不增加第二个采集所有者、不降低 KVM 设置。
 
 ## 实验与接入原则
 
-先在双锁内暂停 KVM，备份当前输出/map/服务状态，干净停止 HDMI source 后接入 TEE，
-设置 TX 为 sink 允许的 YCbCr4448、启用 VD1 并隐藏遮挡视频的 OSD，先请求用户目视。
-之后恢复 One-KVM，分别核对输入/显示/编码计数推进和丢帧，而非只看配置写入成功。
-候选内核模块部署需单独确认。用户最后要求停止后续上板测试、合入并推送，
-保留已安装版本和当前日常 KVM；本次收尾不再重启，不用合入代替未完成验收。
-
-管理器维持既有 API 和前端；provider 必须探测实际 sysfs/TEE 路由，不能仅凭 5.15 版本
-报告 supported。开关优先只控制 VD1 可见性，保持 TEE/采集所有者不变；若停显示导致队列积压，
-先修引用/有界队列，再接受开关。输入、sink、输出、缩放与无信号状态必须来自读回。
-若需要新内核包，部署前另行说明并请求用户确认；manager 仅在验证通过后备份并部署。
+双锁内备份并接入 TEE，分别核对输入/显示/编码推进与丢帧，未完成项不写通过。
+候选内核部署需独立确认；用户最终授权保留现状、合入推送，不能以合入代替验收。
 
 ## 首次画面与字节序修复
 
@@ -169,41 +129,11 @@ One-KVM、manager、HDMI 与生产透传跟随服务 active，UDC configured。
 
 ## 周期黑屏：诊断与修复
 
-用户报告正式使用中周期黑屏、自动恢复，暂停合入并追加定向修复授权。
-只读诊断不改 TX、VDIN 或请求文件：35 秒记录 227 次读回变化，RX 报告
-59.86–59.99Hz，其中 59.98/59.99 各 102/94 次；41 次不匹配全部为
-`frac_rate_policy`，没有 attr、sname 或 ready 不匹配。原始例：
-RX 59.97Hz 时旧算法选 fractional=true，而 TX 仍为 `"0\\n"`；
-attr 为 `"444,8bit\\n\\n"`、ready 为 `"1\\n"`、sname 为 `2160p60hz`。
-旧代码已 strip 外围空白，实际根因不是 attr 换行，而是每次取最接近的 60/59.94Hz，
-在约 59.970Hz 分界两侧反复翻转，再以读回不相等为由整批重设 TX。
-相应 78 秒内 kernel 日志有 18 次 `hdmitx_set_dispmode`，HPLL frac_rate 0/1 交替。
-证据：`blackout-readonly-diagnosis.jsonl`、`blackout-readonly-kernel.log`（同一日志目录）。
-
-代码审计及回归测试确认 status 路径只读，没有调用 tick；与 manager 轮询交错不是
-多个 writer 的证据。实际写入者为独占 flock 的 watch 服务。
-`vim4-manager@bf878a5` 修复如下：
-
-- 七次 RX 采样中值，60/59.94 分界 ±0.005Hz 滞回，新输入/sink 模式稳定两秒才允许重配。
-- 缓存输入尺寸、稳定刷新率类别与 sink EDID 指纹；同一意图不因 TX 读回漂移反复 modeset。
-- 规范化 sname 别名、颜色空白/后缀、数值字段；ready=0 先防抖两秒，不能触发 modeset。
-- 重配失败也不每 0.5 秒重试；异常状态保留读回，真正重配记录原因、不匹配字段和原始值。
-- status 不写硬件、不触发 tick；第二个 watch 在获得写权限之前被 flock 拒绝。
-
-离线新增回归覆盖真实刷新率轨迹回放、59.94/60 真实切换、输入抖动撤销、
-模式更改一次性提交、失败不循环、别名规范化、ready 瞬态/持续下降、只读轮询与双 writer。
-manager Python 全套 174 项（12 跳过），Go 全套与 vet 通过。
-备份 `/var/backups/vim4-passthrough-blackout-20261024`，仅替换
-`/usr/libexec/vim4-passthrough` 并重启 `vim4-passthrough.service`；
-新脚本 SHA-256 `0f99b055660f1fffafb61a6761a26653183733ef0253c67d1c33c7791c45118f`。
-未重启 One-KVM、manager 或板子，不改内核与默认启动项。
-修复后 15:16:56–15:26:56 UTC（排除服务初启五秒）的 600 秒 kernel 日志
-`hdmitx_set_dispmode` 为 **0 次**；服务持续 running，实际 RX/VDIN/TX 仍为 4K60。
-证据 `blackout-fixed-actual-4k-600.json`、`blackout-fixed-observe.jsonl`。
-真实 1080p60 的 kernel cursor 观察未开始，未将 4K 替代 1080p 门禁。
-用户最终明确取消 1080p 十分钟观察与新的目视请求，认可修复后从 15:16:51 起
-`hdmitx_set_dispmode` 为 0 次的现状，要求保持板子不变、直接合入推送。
-这属于取消剩余验收，不写成真实 1080p 或修复后长期目视无黑屏已通过。
+细节与证据见 [周期黑屏修复](2026-10-24-vendor-passthrough-blackout.md)。
+RX 报告在约 59.970Hz 的 60/59.94 分界两侧抖动，导致旧跟随逻辑反复重设 TX。
+`bf878a5` 加中值、滞回、稳定防抖和每意图单次提交；状态轮询只读、watch 单写入者。
+修复后 15:16:56–15:26:56 UTC 的 600 秒 TX 重设为零，实际为 4K60。
+用户随后取消 1080p 观察与额外目视，授权按现状合入，不将取消验收写成通过。
 
 ## 最终合入
 
