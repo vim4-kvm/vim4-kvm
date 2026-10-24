@@ -355,7 +355,8 @@ def run_matrix(args):
                         row.update(status='register-snapshot', actual_avi=avi)
                     else:
                         subprocess.run([str(args.binary), 'capture', args.video, str(width), str(height),
-                                        str(hz), str(directory / 'capture')], check=True, timeout=45)
+                                        str(hz), str(directory / 'capture'), str(args.warmup)],
+                                       check=True, timeout=45)
                         after = snapshot()
                         save(directory / 'after.json', after)
                         if before['rx_avi'] != after['rx_avi'] or after['taint'] != '0':
@@ -405,6 +406,8 @@ def main():
     run.add_argument('--binary', type=Path, required=True)
     run.add_argument('--card', required=True)
     run.add_argument('--video', default='/dev/video0')
+    run.add_argument('--warmup', type=int, choices=range(61), default=8,
+                     help='discard frames before three samples (default 8); saved in metadata')
     run.add_argument('--output', type=Path, required=True)
     snap = sub.add_parser('snapshot')
     snap.add_argument('--vendor', action='store_true')

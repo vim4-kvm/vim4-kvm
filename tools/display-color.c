@@ -234,8 +234,13 @@ static int transmit(char **args, int vendor)
 
 static int capture(char **args)
 {
+    unsigned int warmup = args[5] ? (!strcmp(args[5], "0") ? 0 : number(args[5])) : 8;
+    require(warmup <= 60, "warmup must be 0..60 frames");
     int fd = open(args[0], O_RDWR | O_NONBLOCK | O_CLOEXEC);
     require(fd >= 0, "open capture");
+    struct v4l2_capability caps = {0};
+    require(ioctl(fd, VIDIOC_QUERYCAP, &caps) == 0 &&
+            !strcmp((char *)caps.driver, "t7-vdin-test"), "T7 VDIN layout required");
     struct v4l2_format format = {.type=V4L2_BUF_TYPE_VIDEO_CAPTURE};
     format.fmt.pix.width = number(args[1]);
     format.fmt.pix.height = number(args[2]);
@@ -243,7 +248,10 @@ static int capture(char **args)
     format.fmt.pix.field = V4L2_FIELD_NONE;
     struct v4l2_dv_timings timings = {0};
     int stable = 0;
-    for (int attempt = 0; attempt < 100 && stable < 2 && !stop; attempt++) {
+    /* A pair of timing reads can precede RX's asynchronous PHY settling.
+     * Require two seconds of continuous qualification before starting DMA.
+     */
+    for (int attempt = 0; attempt < 400 && stable < 20 && !stop; attempt++) {
         memset(&timings, 0, sizeof(timings));
         if (ioctl(fd, VIDIOC_QUERY_DV_TIMINGS, &timings) == 0 &&
             timings.type == V4L2_DV_BT_656_1120 && !timings.bt.interlaced &&
@@ -261,12 +269,17 @@ static int capture(char **args)
         struct timespec delay = {.tv_nsec=100000000};
         nanosleep(&delay, NULL);
     }
-    require(stable == 2 && !stop, "native RX DV timings/rate did not qualify");
+    require(stable == 20 && !stop, "native RX DV timings/rate did not qualify");
     require(ioctl(fd, VIDIOC_S_FMT, &format) == 0, "capture S_FMT");
     struct v4l2_pix_format *f = &format.fmt.pix;
     require(f->width == number(args[1]) && f->height == number(args[2]) &&
             f->pixelformat == V4L2_PIX_FMT_NV12 && f->bytesperline >= f->width,
             "capture must be native NV12 geometry");
+    /* VDIN writes tightly packed planes; sizeimage includes tail room for
+     * encoder views, not padding between Y and UV (t7_vdin_ring_arm).
+     */
+    unsigned int uv_offset = f->bytesperline * f->height;
+    unsigned int payload = uv_offset + f->bytesperline * f->height / 2;
     struct v4l2_requestbuffers req = {.count=4, .type=format.type, .memory=V4L2_MEMORY_MMAP};
     require(ioctl(fd, VIDIOC_REQBUFS, &req) == 0 && req.count == 4, "capture REQBUFS");
     void *data[4]; size_t length[4];
@@ -285,29 +298,34 @@ static int capture(char **args)
     require(meta != NULL, "new capture metadata");
     fprintf(meta, "{\"width\":%u,\"height\":%u,\"stride\":%u,\"sizeimage\":%u,"
             "\"format\":\"NV12\",\"uv_offset\":%u,\"colorspace\":%u,"
-            "\"ycbcr_enc\":%u,\"quantization\":%u,\"rx_pixelclock\":%llu,\"frames\":[",
+            "\"ycbcr_enc\":%u,\"quantization\":%u,\"rx_pixelclock\":%llu,\"warmup\":%u,\"frames\":[",
             f->width, f->height, f->bytesperline, f->sizeimage,
-            f->bytesperline * ((f->height + 15) & ~15U),
-            f->colorspace, f->ycbcr_enc, f->quantization, (unsigned long long)timings.bt.pixelclock);
+            uv_offset,
+            f->colorspace, f->ycbcr_enc, f->quantization, (unsigned long long)timings.bt.pixelclock,
+            warmup);
     uint32_t previous = 0;
-    for (unsigned int i = 0; i < 11 && !stop; i++) {
+    for (unsigned int i = 0; i < warmup + 3 && !stop; i++) {
         struct pollfd pollfd = {.fd=fd, .events=POLLIN};
         require(poll(&pollfd, 1, 10000) > 0 && (pollfd.revents & POLLIN), "capture poll");
         struct v4l2_buffer b = {.type=format.type, .memory=req.memory};
         require(ioctl(fd, VIDIOC_DQBUF, &b) == 0 && b.index < 4, "capture DQBUF");
-        require(!(b.flags & V4L2_BUF_FLAG_ERROR) && b.bytesused >= f->sizeimage &&
-                b.bytesused <= length[b.index] && (!i || b.sequence > previous),
-                "capture completeness/sequence");
+        if ((b.flags & V4L2_BUF_FLAG_ERROR) || b.bytesused < payload ||
+            b.bytesused > length[b.index] || (i && b.sequence <= previous)) {
+            fprintf(stderr, "capture rejected: flags=%#x bytesused=%u payload=%u "
+                    "allocation=%zu sequence=%u previous=%u frame=%u\n",
+                    b.flags, b.bytesused, payload, length[b.index], b.sequence, previous, i);
+            exit(1);
+        }
         previous = b.sequence;
-        if (i >= 8) {
-            require(snprintf(path, sizeof(path), "%s-%u.raw", args[4], i-8) <
+        if (i >= warmup) {
+            require(snprintf(path, sizeof(path), "%s-%u.raw", args[4], i-warmup) <
                     (int)sizeof(path), "raw path");
             FILE *raw = fopen(path, "wx");
             require(raw != NULL, "new raw frame");
             require(fwrite(data[b.index], 1, b.bytesused, raw) == b.bytesused &&
                     fclose(raw) == 0, "write raw frame");
             fprintf(meta, "%s{\"index\":%u,\"sequence\":%u,\"timestamp_us\":%lld,"
-                    "\"bytesused\":%u}", i==8?"":",", i-8, b.sequence,
+                    "\"bytesused\":%u}", i==warmup?"":",", i-warmup, b.sequence,
                     (long long)b.timestamp.tv_sec*1000000+b.timestamp.tv_usec, b.bytesused);
         }
         require(ioctl(fd, VIDIOC_QBUF, &b) == 0, "capture requeue");
@@ -349,7 +367,7 @@ int main(int argc, char **argv)
     if (argc == 3 && !strcmp(argv[1], "probe")) return probe(argv[2]);
     if (argc == 10 && !strcmp(argv[1], "tx")) return transmit(argv+2, 0);
     if (argc == 10 && !strcmp(argv[1], "tx-vendor")) return transmit(argv+2, 1);
-    if (argc == 7 && !strcmp(argv[1], "capture")) return capture(argv+2);
+    if ((argc == 7 || argc == 8) && !strcmp(argv[1], "capture")) return capture(argv+2);
     fprintf(stderr, "See display-color.c for tx/capture arguments\n");
     return 2;
 }

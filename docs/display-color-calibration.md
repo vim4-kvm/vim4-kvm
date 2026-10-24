@@ -23,8 +23,14 @@ TX 创建线性 XRGB8888 dumb buffer，使用 EDID 中精确整数 Hz 的 progre
 
 RX 使用现有动态模式 NV12 VDIN 驱动，必须保持原始可见分辨率、不缩放、不经过编码器。
 工具申请4个MMAP buffer，丢弃8个预热帧，再保存3个完整帧的sequence/timestamp/raw。
+`run --warmup 0` 可记录资格确认后的前三帧，用于分离颜色和后续流故障；
+预热数量写入 capture.json，坏帧、缺帧、序列回退仍拒绝。短窗口颜色通过不能替代
+默认8帧预热窗口或持续采集稳定性，失败窗口必须与短窗口一起报告。
 保存实际stride、allocation height对应的UV offset及V4L2色彩元数据。
-当前UV偏移合同是 T7 VDIN 的 `stride * ALIGN(height,16)`；不能把此合同用于任意V4L2设备。
+当前UV偏移合同是 T7 VDIN 的 `stride * height`，有效payload为其3/2；
+`sizeimage` 按 ALIGN(height,16) 分配的额外空间在尾部，不能当作平面间padding。
+采集工具核对驱动名，只对这个已核对的布局生效，不推断任意V4L2设备的布局。
+开始DMA前要求连续2秒原生时序匹配，资格确认上限40秒，之后仍丢弃8个预热帧。
 服务关闭、模块参数和输入EDID由窗口控制器保存与恢复，不由工具隐式改动。
 
 ## 判定和证据边界

@@ -16,8 +16,9 @@ def avi(fmt=0, quantization=2):
     return packet
 
 
-def fixture():
+def fixture(packed=False):
     width, height, stride, padded = 1920, 130, 1952, 144
+    uv_offset = stride * (height if packed else padded)
     _, layout = COLOR.chart(width, height)
     raw = bytearray([73]) * (stride * padded * 3 // 2)
     # Independent BT.709 equations populate each patch, with deliberately
@@ -32,9 +33,9 @@ def fixture():
             raw[y * stride + x0:y * stride + x1] = bytes([yuv[0]]) * (x1 - x0)
         for y in range((y0 + 1) // 2, y1 // 2):
             for x in range((x0 + 1) & ~1, x1 - 1, 2):
-                offset = stride * padded + y * stride + x
+                offset = uv_offset + y * stride + x
                 raw[offset:offset + 2] = bytes(yuv[1:])
-    meta = dict(width=width, height=height, stride=stride, uv_offset=stride * padded,
+    meta = dict(width=width, height=height, stride=stride, uv_offset=uv_offset,
                 format='NV12', colorspace=3, ycbcr_enc=2, quantization=2)
     return layout, meta, raw
 
@@ -61,6 +62,13 @@ class DisplayColorTest(unittest.TestCase):
         result = COLOR.analyze(layout, meta, [raw] * 3, COLOR.avi_decode(avi()))
         self.assertTrue(result['passed'], [b for b in result['blocks'] if not b['passed']][:2])
         self.assertEqual(len([b for b in result['blocks'] if b['name'].startswith('ramp-')]), 256)
+
+    def test_tightly_packed_planes_with_unused_allocation_tail(self):
+        layout, meta, raw = fixture(packed=True)
+        self.assertTrue(COLOR.analyze(layout, meta, [raw] * 3, COLOR.avi_decode(avi()))['passed'])
+        # Mistaking allocation height for plane offset reads the next row/tail.
+        meta['uv_offset'] = meta['stride'] * 144
+        self.assertFalse(COLOR.analyze(layout, meta, [raw] * 3, COLOR.avi_decode(avi()))['passed'])
 
     def test_single_frame_corruption_and_swapped_chroma_fail(self):
         layout, meta, raw = fixture()
