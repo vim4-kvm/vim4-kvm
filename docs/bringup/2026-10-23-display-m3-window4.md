@@ -89,6 +89,11 @@ GPU 确认 renderer=`Mali-G52 r1 (Panfrost)`、OpenGL ES3.1 / Mesa25.2.8，
 - `9137809a908cc`：dumb allocation 允许最多 4096 行 tailroom；可见 framebuffer /
   mode 上限及完整行 DMA 边界不变，固定 M1 尺寸合同不变。实际 callback 测试覆盖
   3840×2178 和上界、零尺寸、M1 拒绝路径。**两项尚未复验上板。**
+- `ca1ff12502e76`：CSC/P2T/GCP 配置读回不符合请求时保持 AVMUTE、关闭 PHY 并
+  撤销音频连接；只提供失败保护，没有解决 CSC 不保持的根因。完整构建未完成。
+
+本阶段已停止开发；`c916015a6dbb4` 完整离线检查通过并推送 M3，后两项保存在
+已推送的 `wip/display-m3-hdr2`。构建、归档与清理见[收尾清单](2026-10-23-display-m3-hdmi-validation.md)。
 
 ## TX 实际出声、采集共存与拔插
 
