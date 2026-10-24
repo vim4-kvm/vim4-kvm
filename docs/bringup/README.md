@@ -7,6 +7,7 @@
 
 ## 2026-10-24
 
+- [颜色候选交付门禁失败与管理器预览](2026-10-24-display-color-user-handoff.md) — kernel video usb manager deployment board
 - [HDMI 透传前置稳定性调查（离线准备，待独占窗口）](2026-10-24-hdmi-passthrough.md) — kernel video deployment
 - [HDMI OUT 颜色自环校准与厂商基准](2026-10-24-display-color-loop.md) — kernel video deployment board
 
