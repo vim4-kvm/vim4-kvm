@@ -5,6 +5,10 @@
 
 新记录：新建 `bringup/YYYY-MM-DD-英文短名.md`，首行 `# YYYY-MM-DD：标题`，并在本页对应日期下追加一行。
 
+## 2026-10-24
+
+- [HDMI OUT 颜色自环校准与厂商基准](2026-10-24-display-color-loop.md) — kernel video deployment board
+
 ## 2026-10-23
 
 - [统一合入主线，保留稳定 KVM 部署](2026-10-23-mainline-integration.md) — kernel application deployment board
