@@ -8,6 +8,7 @@
 ## 2026-10-23
 
 - [M3 视频 MIF、PPS 相位与 VD2 SRAM（离线，尚无 video plane）](2026-10-23-display-m3-video-parameters.md) — kernel video deployment
+- [T7 VDEC p0 访问通过、compliance 阻塞与 RX 停顿归类](2026-10-23-vdec-p0-window.md) — kernel video usb deployment board
 - [M3 DMA 边界修复、启动接管与剩余视频路径合同（离线）](2026-10-23-display-m3-dma-contracts.md) — kernel video deployment
 - [T7 VDEC 外部控制寄存器全量差分](2026-10-23-vdec-register-diff.md) — kernel video usb deployment board
 - [M3 多层退休、SRAM 所有权与 OSD overlay/cursor（离线）](2026-10-23-display-m3-layers.md) — kernel video audio deployment

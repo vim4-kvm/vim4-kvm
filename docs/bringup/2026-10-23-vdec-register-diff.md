@@ -5,6 +5,8 @@
 本轮比较厂商 5.15 的实际 H.264 解码状态与 7.3 的第八步状态，
 不重新执行已失败的 `c7e7e28f…`，不访问内部 GCLK/PIC，不进入 compliance 或解码。
 原始证据保留在本机 `logs/vdec-register-diff/`；下文区分已采集数据与未完成步骤。
+后续 [p0 现场窗口](2026-10-23-vdec-p0-window.md) 已通过 GCLK/MDEC 访问，停在 compliance；
+同时补录本文恢复采样的一次停顿的历史 journal 与 RX 归类。
 
 ## 相同地址清单与边界
 
