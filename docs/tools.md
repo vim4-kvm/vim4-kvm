@@ -114,6 +114,7 @@ PiKVM smoke 可用 `PIKVM_CDP` 接入专用测试 Chrome；结束时关闭测试
 
 | 入口 | 运行位置 | 影响 | 用途 | 文档 |
 |---|---|---|---|---|
+| tools/display-color.py、tools/display-color.c | 离线 / 板（root） | chart/analyze/diff 无；run 独占显示/采集；snapshot 只读控制和矩阵 | KMS dumb 图案、V4L2 原始 NV12 三帧、≤2 码值色块分析；5.15 同 sink 寄存器对照、TX/RX AVI；调用者持双锁并管理服务/一次性启动 | [颜色校准](display-color-calibration.md) |
 | tools/perf-baseline.py | 离线 | 无 | 5.15/7.3命令计划与三组A/B/A单指标门禁；缺失/受干扰不算通过，不执行命令 | [性能基线](performance-baseline.md) |
 | tools/perf-sensors.py | 板 | 读；性能窗口内 | 1Hz温度/功率/频率/runtime状态JSONL，不改时钟；缺传感器不记0 | [性能基线](performance-baseline.md) |
 | tools/vendor-boot-plan.py | 离线 | 无 | 从启动快照和已解析厂商profile生成一次性配置；不stage、不改默认、不重启 | [厂商对照启动](vendor-boot-baseline.md) |
