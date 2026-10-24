@@ -25,9 +25,11 @@ EAGAIN 有界重试。每轮和异常收尾恢复原 EDID，原始 SHA256 为
 | 基线第二轮 | 19/19 | 无 |
 | 基线额外 800×600 ↔ 1024×768 十轮往返 | 20/20 | 无 |
 | 原候选第一轮 | 18/19 | 1600×900 QUERY_DV_TIMINGS ENOLINK |
-| 原候选第二轮 | 17/19 | 1080p60、4K60 QUERY_DV_TIMINGS ENOLINK |
+| 原候选第二轮 | 17/19 | 1080p30、4K60 QUERY_DV_TIMINGS ENOLINK |
+| 基线，改用标准EDID接口，两轮 | 38/38 | 无；所有总行长/总场长匹配，像素时钟偏差均小于0.05% |
 
-本轮1024×768：基线累计12/12、原候选2/2通过，未复现上一轮同模式失败。
+本轮1024×768：旧fixture下基线12/12、原候选2/2，标准接口下基线另2/2通过，
+未复现上一轮同模式失败。
 两版均有偶发模式切换失败，不能将上一轮单次失败归为候选独有回归；
 当前没有稳定的候选独有复现供bisect。该对照也不证明所有失败都只有同一个原因。
 
@@ -42,6 +44,18 @@ PLL=0可能来自接收器恢复动作，不能据此断言PLL是初始故障。
 每模式日志保存前后增量；主动切换EDID引起的预期HPD事件不能当成独立的自发失锁。
 原始帧矩阵没有持续V4L2 streaming，`stream_stops=0`、`faulted=0`；
 不能将它表述为持续流恢复测试。
+
+后续连续采样分析发现，1080p24曾在ready保持约4秒后才失锁，因此不能将全部失败
+归因于初次判稳过早。Mac的mac-hdr-mode无参数调用只读取状态，图案程序不设置显示模式；
+这些代码事实也不能排除源端后续重训、内容相关PHY问题等其他原因。
+
+旧正式fixture通过/dev/mem直接写EDID RAM、拉HPD，绕过驱动的标准接口及link锁。
+补充对照在停止One-KVM后，用相同EDID生成器、模式表、图案与判定，仅将传输层改为
+VIDIOC_S_EDID/G_EDID：实际基线两轮38/38通过，原EDID已通过标准接口恢复并读回。
+ABI与ARM64 Linux UAPI编译结果核对：结构大小40、指针偏移32、G/S命令
+`0xc0285628`/`0xc0285629`。该结果提示必须区分测试协议与驱动故障，但样本量不支持
+断言旧fixture就是全部故障根因。持续流源端变化测试不能替换成停服务后写EDID；
+修复候选同时保留旧fixture测试与标准接口测试，不放宽ENOLINK判定。
 
 原候选对照后正常重启回基线，独立inventory比对实际build ID、默认文件、
 完整7.3/5.15模块文件、cmdline、UDC与taint一致，实际输出
@@ -76,9 +90,17 @@ EDID替换主动拉低HPD时，旧驱动也保留ready，直到异步link worker
 RX目录全部13个离线测试通过，提交strict checkpatch：0 errors/warnings/checks。
 这修复了可证明的准入缺口；是否消除现场所有模式切换失锁仍须上板验证。
 
+完整Image、dtbs、modules构建通过，GCC13.3，无编译warning/error。
+配置SHA256仍为 `8af98a1fbefdf163c407f9f04bb31372178b8f8d7d6f00f5dff162b930c968bf`，
+Image SHA256为 `7b76924878e6d1e501a55da64882d1c99368348adab35271ead90b5a16f0cf3b`。
+使用独立源码worktree `linux-7.3-hdmirx-lowclock`、O=`~/build/hdmirx-lowclock`，
+未修改或切换内核主工作树。开始构建时再次fetch并检查远端基线为候选祖先；
+当时仍为 `8b2553f7b3c62`。
+
 ## 证据位置
 
-本地忽略目录 `logs/rx-lowclock/` 保存baseline/results.json、samples.jsonl、
-baseline-stress/results.json、original-candidate/results.json、每模式前后状态与
-串口候选/回基线记录。构建和后续候选验证追加到同目录；临时诊断脚本在
+本地忽略目录 `logs/rx-lowclock/` 保存baseline/results.json、baseline/samples.jsonl、
+baseline-stress/results.json、original-candidate/results.json、baseline-api/results.json、
+baseline-api/samples.jsonl，以及每模式前后状态、串口候选/回基线记录。
+构建和后续候选验证追加到同目录；临时诊断脚本在
 `build/rx-lowclock/`，不作为产品运行时依赖。
