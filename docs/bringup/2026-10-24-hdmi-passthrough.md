@@ -7,7 +7,7 @@
 
 | 范围 | 当前状态 |
 |---|---|
-| 采集稳定性 | 已修复FDET量化拒帧；长测另现TOP meter暂不可用，有限重测候选待上板 |
+| 采集稳定性 | FDET量化及TOP meter有限重测修复；真实源两档各610秒通过，自环待完成 |
 | 无换线一次性启动 | 源码检查完成；仍需安全支持U-Boot自环720p回退 |
 | VDIN→VD1、60fps、退休/fence | 尚未进入实现，保留原退休期 |
 | 能力探测ABI | 尚未定义已实现能力，不以NV12枚举单独宣告支持 |
@@ -72,4 +72,40 @@ VALID低脉冲：观测长度p50 715.720µs、p90 1063.184µs、p99 1082.726µs�
 一个覆盖采样相位；24MHz时最多约1.37–1.57ms。保留新VALID、2MHz匹配阈值、
 每轮物理检查及超时拒绝，未调整PHY或硬件meas_tolerance。
 实际C测试覆盖四个允许恢复点和第五窗口超时；68项host fixtures和strict checkpatch通过。
-完整构建进行中，真实源/自环长测仍待通过。原始证据 `meter-observe*`、`fix2-4k-long*`。
+完整Image/DTBs/2339模块构建完成，build ID `890406629692236532d2cfaa2346ee052fa85755`，
+Image SHA256 `647754467dab353c57693c562d9f5598e812d68985ee158754f71d2f652c134b`。
+真实源/自环长测仍需逐档完成。原始证据 `meter-observe*`、`fix2-4k-long*`。
+
+## 四窗口候选的稳定性窗口（仍非透传验收）
+
+| 输入 | 完成/有效/ERROR | 有效计时 / fps | 画面标记 | 状态 |
+|---|---|---|---|---|
+| Mac mini 4K60 SDR/444/8bit | 36601/36601/0 | 610.019695s /59.998063 | 坏0、重复51 | 本档原始采集通过 |
+| Mac mini 1080p60 SDR/444/8bit | 36601/36601/0 | 610.019815s /59.998051 | 坏0、重复36 | 本档原始采集通过 |
+| 自环 | 未运行 | — | — | 未判定 |
+
+4K窗口的610个完整一秒桶中每秒有效帧59–61、ERROR均0；1Hz状态全部ready=1，
+invalid_frames/stream_stops/faulted/stream_copy_bytes均0，source_changes始终为入场时的3。
+有效帧IRQ→DQBUF：p50 0.121358ms、p95 0.167821ms、p99 0.187798ms、最大1.009081ms。
+有源帧号重复，因此只证明有效完成帧率约60，不声称每帧都是新源内容。
+证据 `fix3-4k-long*`、`fix3-4k-monitor.jsonl`、`fix3-4k.dmesg`。
+
+1080切换先发现两类fixture陷阱：`CGDisplaySetDisplayMode` 的效果只在调用进程存活时保持，
+进程退出恢复用户设置（见 [Apple API说明](https://developer.apple.com/documentation/coregraphics/cgdisplaysetdisplaymode%28_%3A_%3A_%3A%29)）；
+保持进程后，CG桌面尺寸仍不能代表HDMI线上时序，RX实际仍为4K。这些尝试均未计作1080测试。
+最终备份原RTK EDID，通过标准V4L2 S_EDID临时公布仅1080p60、SDR/8bit/48k立体声的
+EDID（SHA256 `9c95c89c67d2b9aafea2112b1b9cf319bb8379aaca1f2162f0e1f8feaffd17bb`），
+保留显示器身份和名称，不写用户持久配置。RX确认1920×1080、2200×1125、约148.497MHz
+后才开始计时。结束已通过标准S_EDID恢复原始字节，SHA256重新匹配 `32c6a608…`，
+Mac恢复原模式81（逻辑1920×1080、像素3840×2160、60Hz）。
+
+1080窗口同为610个完整秒桶、每秒有效59–61、ERROR均0；全部1Hz状态ready=1，
+invalid_frames/stream_stops/faulted/stream_copy_bytes均0，source_changes始终为入场时的5。
+有效帧IRQ→DQBUF：p50 0.118737ms、p95 0.152561ms、p99 0.171256ms、最大0.916356ms。
+实际NV12 stride1920、UV offset2073600、payload3110400、sizeimage3133440；
+尾部对齐空间不能被误当成Y/UV间隙。证据 `fix3-1080-long*`、1Hz监控及同名dmesg。
+基线十个完整秒桶（无像素读取）的有效帧37–60/s、ERROR 0–23/s；
+带标记且受传输部分干扰的另段为31–59/s、ERROR 1–29/s，分别保留，不混为同条件对比。
+
+已通过need-user协议请求一次OUT→IN自环接线；两路ALSA PCM均closed，无音频回送。
+这还不是自环通过或透传实现完成，仍持双锁等待回复。
