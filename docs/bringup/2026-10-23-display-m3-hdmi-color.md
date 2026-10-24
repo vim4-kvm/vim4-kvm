@@ -71,6 +71,20 @@ connector 标准 `HDR_OUTPUT_METADATA`、`max bpc`、`Colorspace`、`Broadcast R
 vendor 参数对照和物理读回；不能挪用 VDIN HDR 核、S5 寄存器或仅按矩阵地址猜测。
 已取得物理相对颜色证据的 M2 路径保留，尚不能宣称矩阵与 AVI 的完整物理验收。
 
+4K 窗口后的厂商复核进一步缩小了范围：`hdr_func()` 的 `always_full_func` 只对
+G12A / G12B rev-A workaround 置位，T7 不应照搬。T7 的 OSD HDR_BYPASS 选择
+RGB_OSD→709 limited 输入矩阵、输出 identity、`MTX_ONLY` / `MTX_OFF`，并关闭
+EOTF/OETF/ogain/cgain；`set_hdr_matrix()` 对 matrix-only 且 core-off 的输入矩阵
+仍写 EN_CTRL=1。不能把“关 core”简化为所有矩阵一起关掉。
+
+`set_hdr_matrix()` 的 T7 条件包含在 CPU≤S4D、排除T3的分支，涉及 CLK_GATE=0xaaa
+和 CTRL bit13 的启停次序；另一函数 `hdr_gclk_ctrl_switch()` 则只支持 T3/T5W/T5M，
+在 T7 上直接返回，不能据其名字给 T7 添加共享时钟操作。固件读回的 CTRL=0xe05f
+仍有 bit13 及 LUT enable 位，尚未完成从这组继承状态到已知 SDR/HDR 状态的接管。
+需先落实 fetch-off/排空后的每层 HDR2 bank 与 clock 所有权，再按厂商分支生成
+输入/输出矩阵与禁用 LUT 的完整事务，覆盖 HDR→SDR 和故障保持缓冲引用。
+当前不以推测实现替换该合同，HDR/BT2020 guard 保留。
+
 新增窗口为 HDMI_FMT_CTRL 0xff009d0c/4 和 OSD matrix 0xff00e440/0x38；
 M3 OSD profile 共 24 个 display resource，video profile 共 44 个。schema 同时保留
 旧资源列表兼容。测试核对与 VDIN split MMIO 不相交；不写 VDIN arbitration、
