@@ -2,7 +2,9 @@
 
 承接[多 fd 与 STREAMOFF 修正](2026-10-23-vdec-multifd.md)。本轮定位
 `dec timeout=500`，不正式部署。原始证据保存在本机 `logs/vdec-timeout/`。
-厂商同一样本 600 帧/EOS 对照已完成；本轮 7.3 候选仍待共享锁，尚无正确帧结论。
+厂商同一样本输出 600 帧/EOS；7.3 候选 compliance 47/47，但输出 20 帧全零图像
+后超时。43 次硬/线程 IRQ 证明固件已执行；STREAMOFF 两侧均成功，未再崩溃。
+按首错停止，已恢复入口基线并完成 300 秒编码和真实 HID 冒烟。
 
 ## 启动链审计
 
@@ -103,3 +105,79 @@ raw/encoded=18336、last_frame_ms=0；336.125 秒浏览器结束 H.265 后切 H.
 336.169 秒重开采集，339.195 秒预览自动停止，之后才读状态（stream_frames=176）。
 本启动 journal 无 tmds-invalid 或 readiness revoked；据此归为采样后的管线
 切换/关闭记录，未观察到采样内 RX 失锁，仍保留该计数，不把它写成零。
+
+## 7.3 候选现场结果
+
+排队等待显示任务释放双锁，UTC 2026-10-24 04:30:22–04:38:00 执行一次窗口。
+命令入口如下；辅助脚本和完整输出保存在本机 build/logs，不是正式部署工具。
+
+```sh
+/usr/bin/lockf /tmp/vim4-heavy.lock /usr/bin/lockf /tmp/vim4-board.lock \
+  python3 -u build/vdec-timeout/field.py
+```
+
+入口仍是 `eeddb005…`，候选为上列 `2084efcdfe05c` 同次完整包。PID1 持 watchdog，
+Runtime=30s；候选 panic=20、panic_on_oops=1。安全固件预装服务退出状态为零，
+包 SHA-256 与厂商相同；journal 记载 `tee preload video fw ok`。
+
+| 步骤 | 实际结果 |
+|---|---|
+| probe | 通过；默认上电门禁拒绝自动 open，无 SError |
+| power | 通过；SMC 域核验与 RESET0 单读、下电成功 |
+| MDEC 十三步 | 全部通过，最后下电；`mdec.log` |
+| compliance | **47/47，Failed 0、Warnings 0**；`compliance.log` |
+| 640×368 H.264 | **失败**；20 帧全零后首次 `dec timeout=500`，停止后续阶段 |
+| STREAMOFF | OUTPUT、CAPTURE 均返回 0；runtime suspended、faulted=0 |
+| 1080p、4K | 小样本失败，均未运行；不报告解码速度或 CPU 占用 |
+
+```text
+Total for aml-vdec-drv device /dev/video1: 47, Succeeded: 47, Failed: 0, Warnings: 0
+[56.478241] dec timeout=500
+[56.478366] h264 snapshot timeout irq=42 hard=43 thread=43 swap=0x6a68000
+42: 43 0 0 0 0 0 0 0 GICv2 124 Edge vdec-1
+04:32:01.135112 VIDIOC_STREAMOFF [VIDEO_OUTPUT_MPLANE] = 0
+04:32:01.135370 VIDIOC_STREAMOFF [VIDEO_CAPTURE_MPLANE] = 0
+RAW_BYTES 7065600 REFERENCE_BYTES 211968000 COMPLETE_FRAMES 20 EXACT_ALL False
+```
+
+以上 ioctl 行是保留参数/返回值的摘录，完整 strace 见 `h264-ioctl.log`。
+每帧 I420 为 353280 字节，20 帧 MD5 均为
+`a45154bf88428c38ee1781a029385aac`，与同尺寸全零帧一致；逐帧软件参考均不匹配。
+不能把 buffer 完成数当作正确帧。超时只出现一次，之后同 fd 队列 EIO、QBUF
+被拒绝，未再次启动硬件；85b32081 的 STREAMOFF 修复已在此次真实超时路径验证。
+
+43/43 同组寄存器对照见[审计表](2026-10-23-vdec-timeout-audit.md#现场寄存器差分)。
+候选超时 PC=0x35b、MPSR=1，SPS scratch 已从主机初值变为与厂商相同的
+0x81039828，FIFO RP/CURR 已前进、WP 落在 END 内。当前可排除“完全没有加载/
+启动固件”或“mailbox IRQ 完全未接通”；不能据此证明 secure 微码 ABI 全部兼容。
+超时状态为 DECODE_NEWPIC=0xf3，尚缺的是像素输出及该作业的完成，不是简单增大
+500ms 就能验收。优先对照 canvas LUT、实际输出 DMA 地址/内容和逐帧协议状态；
+本轮没有证明具体的 DDR 安全权限或 canvas 时钟故障，不据猜测写全局控制位。
+
+## 恢复、提交与清理
+
+候选通过普通 reboot 回基线，04:32:42 已响应，未触发 SError、NULL panic 或
+watchdog 兜底。UART、上次 kernel journal、现场 dmesg 均无这些异常。pstore
+归档前后两个 dmesg 条目哈希相同；console 条目更新为正常启动/重启日志。
+阶段脚本失败时打印的保守 `RESET_REQUIRED` 提示不是实际复位原因，也不代表
+DMA 停机失败；驱动只读状态和 STREAMOFF 成功证据保存在 `h264-ownership.txt`。
+
+`candidate/restoration-complete.json` 和恢复前后快照证明：
+
+- build ID 回到 `eeddb005df059a850853876d52ef603aa1af192b`；五个保护文件、
+  cmdline、taint=0、panic 配置、原 Wave5 文件及加载 ID 均与本次入口逐项相同。
+- One-KVM、manager、wave5-monitor active，UDC configured；无私有模块挂载或实验
+  模块，未需 usb-pd-init。watchdog 仍由 PID1 持有，Runtime=30s、Reboot=60s。
+- 300 秒 3840×2160 H.265 动画采样 **60.00185 fps**，freeze/drop/loss/PLI
+  增量均 0，最大呈现间隔 38.3ms。RX stream_stops 前后均 0、faulted=0。
+- 真实键盘 down/up、绝对/相对鼠标、点击和滚轮全部通过。
+
+板上两次窗口各自的 payload、一次性启动目录、输出与 stage receipt 已清理，
+双锁已释放；默认启动和正式部署锁未改变。`vim4-vdec` 的 `2084efcdfe05c` 已推送。
+本轮新代码依赖尚未正确解码的实验前端，不合入正式分支；已通过的时钟提供者、
+binding 与默认 disabled 节点已在此前合入，不重复合入或把本轮失败路径正式启用。
+
+保留当前 Mac/VM bundle、精确 debug 输入及原始证据；核对其全部哈希后，仅删除
+本任务旧 multifd 包与完整 O= 输出，明细见 `logs/vdec-timeout/cleanup.json`。
+下一轮先离线补齐像素 DMA/固件协议差分，现场仍从同一小样本开始；正确帧通过
+前不推进 1080p/4K。
