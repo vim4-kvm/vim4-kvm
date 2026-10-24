@@ -7,6 +7,8 @@
 
 ## 2026-10-23
 
+- [M2 第三窗口：物理颜色对照、TX 录音与 HPD 修复](2026-10-23-display-m2-window3.md) — kernel video audio deployment board
+- [M3 HDMI HDR、10-bit、420 与跳行缩放（离线候选，未上板）](2026-10-23-display-m3-hdmi-color.md) — kernel video audio deployment
 - [M3 VD1/VD2、PPS 与 NV12 atomic scanout（离线候选，未上板）](2026-10-23-display-m3-video-planes.md) — kernel video deployment
 - [T7 VDEC 多 fd 所有权与分级解码窗口](2026-10-23-vdec-multifd.md) — kernel video usb deployment board
 - [M3 视频 MIF、PPS 相位与 VD2 SRAM（离线，尚无 video plane）](2026-10-23-display-m3-video-parameters.md) — kernel video deployment
