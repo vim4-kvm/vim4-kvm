@@ -7,6 +7,7 @@
 
 ## 2026-10-23
 
+- [HDMI 模式切换失锁：基线对照与稳定判定](2026-10-23-hdmirx-lowclock.md) — kernel video deployment board
 - [Wave5 正式批次：HDMI 模式门禁失败并回退](2026-10-23-wave5-formal-deploy.md) — kernel video audio usb application deployment board
 - [M2 第三窗口：物理颜色对照、TX 录音与 HPD 修复](2026-10-23-display-m2-window3.md) — kernel video audio deployment board
 - [M3 HDMI HDR、10-bit、420 与跳行缩放（离线候选，未上板）](2026-10-23-display-m3-hdmi-color.md) — kernel video audio deployment
