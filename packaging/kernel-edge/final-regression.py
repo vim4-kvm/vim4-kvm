@@ -103,6 +103,10 @@ def prepare(args):
                 marker = "        emit({'switch':mode,"
                 assert text.count(marker) == 1, 'Unexpected raw mode fixture layout'
                 text = text.replace(marker, "        if mode['id'] not in " + repr(samples) + ": continue\n" + marker)
+            if target.name == 'browser-modes.mjs' and args.hevc_visible_sizes:
+                guard = "if(codec==='h265')assert(selected.every(id=>modes[id].width%8===0&&modes[id].height%8===0),'HEVC geometry unsafe');"
+                assert text.count(guard) == 1, 'Unexpected HEVC fixture safety guard'
+                text = text.replace(guard, "if(codec==='h265')assert(selected.every(id=>modes[id].width%2===0&&modes[id].height%2===0),'HEVC requires even 4:2:0 geometry');")
             target.write_text(text)
 
     for name in ('fixture.py', 'modes.jsonl', 'configure', 'watch-source-events', 'display-list',
@@ -112,7 +116,8 @@ def prepare(args):
     for name in ('browser-rates.py', 'browser-audio.mjs', 'run-browser.py', 'tone', 'mac-audio'):
         copy(args.audio_assets / name, audio / name)
     copy(ROOT / 'build/kernel-edge/usb-edge-transfer.img', destination / 'usb-edge-transfer.img')
-    receipt = dict(logs=str(logs), sample_modes=samples, sha256={str(p.relative_to(destination)): sha(p)
+    receipt = dict(logs=str(logs), sample_modes=samples, hevc_visible_sizes=args.hevc_visible_sizes,
+                   sha256={str(p.relative_to(destination)): sha(p)
                                          for p in destination.rglob('*') if p.is_file()})
     (destination / 'fixtures.json').write_text(json.dumps(receipt, indent=2) + '\n')
     plan = [dict(id=identifier, timeout=900, argv=[sys.executable, str(Path(__file__).resolve()), 'run',
@@ -154,6 +159,8 @@ def run(args):
         assert passed == set(receipt.get('sample_modes', range(19))), ('Requested modes not pattern-qualified', passed)
     elif identifier in ('h264', 'h265'):
         modes = '0,1,5,7,8,10,14,17,18' if identifier == 'h264' else '0,1,5,11,14,16,17,18'
+        if identifier == 'h265' and receipt.get('hevc_visible_sizes'):
+            modes = '0,1,5,7,8,10,11,14,16,17,18'
         execute(sys.executable, '-u', video / 'run-browser.py', identifier, modes)
     elif identifier == '4k60':
         execute(sys.executable, '-u', video / 'smoke-4k.py')
@@ -206,6 +213,8 @@ def main():
     prep.add_argument('--logs', type=Path, required=True)
     prep.add_argument('--destination', type=Path, required=True)
     prep.add_argument('--sample-modes', help='Comma-separated IDs; default checks all 19 modes')
+    prep.add_argument('--hevc-visible-sizes', action='store_true',
+                      help='Require E02-capable kernel; test non-8-aligned HEVC in the browser')
     prep.add_argument('--wifi-scan', action='store_true', help='Explicitly authorize a scan with radio/autoconnect restoration')
     check = commands.add_parser('run')
     check.add_argument('--destination', type=Path, required=True)
