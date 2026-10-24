@@ -5,7 +5,8 @@
 架构与所有权合同见 [设计文档](../hdmi-passthrough-design.md)；
 根因及厂商对照见 [周期量化调查](2026-10-24-hdmi-capture-quantization.md)，
 计量器现场及持续采集数据见 [稳定性复测](2026-10-24-hdmi-capture-stability.md)。
-本轮7.3测试保留默认eeddb005与manager974ab40，不合入正式内核、不正式部署。
+测试保留默认eeddb005与manager974ab40；后续已离线合入正式源码，见
+[合入与默认关闭记录](2026-10-24-hdmi-integration.md)，未打包、部署或改变板子。
 
 | 范围 | 当前状态 |
 |---|---|
@@ -20,8 +21,8 @@
 
 VM `~/src/linux-7.3-hdmi-passthrough` 的 `vim4-hdmi-passthrough` 基于c24465df，
 没有切换原内核主工作树。提交按RX、启动接管、视频退休分组，见下表。
-RX候选41c31fc及启动候选cf6e238均完成Image/DTBs/2339模块构建；最终VD1提交仅完成
-受影响arm64对象编译和69项host fixtures，未做最终整包构建、KUnit或上板。
+RX候选41c31fc及启动候选cf6e238均完成Image/DTBs/2339模块构建。VD1收尾时仅完成对象编译；
+后续正式分支合入已完成Image/DTBs/2339模块、69项fixtures及schema检查，仍未运行KUnit或VD1上板。
 主仓新增 [hdmirx-soak.c](../../tools/hdmirx-soak.c)，已登记工具目录；Mac全套243测试通过
 （7跳过），Linux故障注入和C严格编译通过。
 
@@ -71,8 +72,8 @@ faulted、stream_copy_bytes均0，source_changes保持各自入场值。
 
 `c24465df..41c31fc123935` 的七个RX/VDIN提交仅涉及采集诊断、元数据和测量策略，
 对7.3 KVM采集本身有价值，不依赖VD1显示消费者或透传管理开关。
-恢复工作时可单独评审、摘取到正式采集基线并做KVM回归；不要整体合入带颜色/显示实验的分支。
-**本轮没有合入vim4-kvm-7.3，没有正式部署。**
+七提交可单独评审；恢复工作时在正式分支做KVM回归，颜色/显示实验仍需显式选择DT profile。
+**后续已随源码合入vim4-kvm-7.3，未正式部署；RX仍可按七提交单独评审。**
 
 ## 自环启动接管（已上板）
 
@@ -137,10 +138,10 @@ U-Boot仍无EDID并回退720p，内核成功发布meson-t7-handoff显示card。
 `/var/tmp/hdmi-passthrough-20261024`，临时厂商入口为
 `/boot/hdmi-passthrough-vendor-20261024.conf`；未在对方占锁时删除或改动它们。
 
-恢复7.3时从本分支HEAD与本文开始，先确认当前5.15任务状态和锁，再做以下工作：
+恢复7.3时从正式分支与[合入记录](2026-10-24-hdmi-integration.md)开始，先确认5.15任务和锁：
 
-1. 优先单独评审RX七提交，在正式采集基线上验证One-KVM实际有效帧率/ERROR及编码回归。
-2. 对VD1三提交做最终整包构建，一次性启动后验证NV12真实stride/UV offset、60fps地址更新、
+1. 在已合入的正式采集基线上验证RX修复下One-KVM实际有效帧率/ERROR及编码回归。
+2. 从已完成整包构建的正式分支准备一次性候选，验证NV12真实stride/UV offset、60fps地址更新、
    所有行的帧一致性、原退休期及fault pin；现有离线通过不能替代这些硬件检查。
 3. 实现并记录单一能力探测ABI；旧内核也枚举NV12，不能仅凭格式判定透传支持。
    当前没有新增能力属性。参考方向为标准DRM属性/IN_FORMATS/PRIME与采集所有者实际EXPBUF组合。
@@ -149,4 +150,4 @@ U-Boot仍无EDID并回退720p，内核成功发布meson-t7-handoff显示card。
    提交后导出WRITE等待方向的sync_file以等待所有READ退休；OUT_FENCE只证明锁存，不能据此QBUF。
 5. 批量完成Mac两档各≥10分钟透传、热插拔、分辨率恢复和独立48k/S16_LE/2ch ALSA路由。
    自环仍禁音频回送。参考工具与One-KVM不能各占一个VDIN队列；下一轮在原生采集者内
-   以generation感知的帧租约分发编码/显示，管理器只控制该所有者。
+   以generation感知的帧租约分发编码/显示；manager provider查询并控制该所有者。
