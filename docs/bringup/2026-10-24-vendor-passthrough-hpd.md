@@ -1,7 +1,8 @@
 # 2026-10-24：厂商 5.15 透传 OUT 热插拔恢复
 
 接续 [5.15 透传交付](2026-10-24-vendor-passthrough.md)。本次只修用户态 HPD 恢复和
-控制台遮挡，不改内核、启动项、源 EDID、编码参数或前端。UU 帧率调查持锁期间只读取证，
+控制台遮挡，不改内核、启动项、编码参数或前端。真实 1080p 测试须另获临时 EDID 授权。
+UU 帧率调查持锁期间只读取证，
 部署及用户拔插验证等待 `/tmp/vim4-board.lock` 与 `/tmp/vim4-heavy.lock`。
 
 ## 只读证据与“报错”内容
@@ -64,4 +65,31 @@ HPD 同时使用内核 `amhdmitx/hdmitx_hpd` uevent 与 sysfs 轮询，压缩到
 清理失败仍能处理下一轮。Python 全套 181 项（12 跳过）通过。
 现有刷新率抖动/单写入者/只读状态回归保留。
 
-硬件部署、用户一次合并拔插确认与最终提交：待获得 UU 会话释放的锁后填写，不预先写通过。
+## 19:11 UTC 部署与现场确认
+
+无超时阻塞等待双锁，UU 会话释放后取得板子。OUT 保持拔出，内核仍为
+`5.15.137-vim4kvm`，原脚本 SHA256 为
+`0f99b055660f1fffafb61a6761a26653183733ef0253c67d1c33c7791c45118f`。
+备份脚本、runtime 状态和两路原 OSD 策略至
+`/var/backups/vim4-passthrough-hpd-20261024-1911/`，仅替换脚本并重启透传服务。
+部署内容为 manager 分支上的 `6e9f063`、`54257a0`、`2b00fc8`；新脚本 SHA256 为
+`6866c94464e355f2f95ed8f115f9dcd473e2ccf3c7e964bfc30f531afc8fa165`。
+
+19:11:49 启动后服务 active、PID 77955、NRestarts=0；HPD=0，manager helper
+返回 supported=true、enabled=true、state=no-monitor，对应原界面“未连接显示器”。
+两路 OSD 持久 blank 均为 1，保存的原策略均为 0；One-KVM 和管理器保持运行，未重启或改编码。
+部署后再次运行 Python 全套 181 项（12 跳过）、Go 全套测试及 go vet，均通过。
+前端布局与文案没有修改。
+
+已通过共享 need-user 协议合并请求一次物理插回/目视确认和临时 EDID 授权。
+插回自动恢复、软件 HPD 重测与真实 1080p→4K 跟随结果待用户回复后补记；此处不预先写通过。
+截至 23:20 UTC（部署后约四小时）仍未收到 user-done，HPD=0、state=no-monitor；
+透传、One-KVM、manager 均 active，PID 未变、NRestarts=0。
+这是持续断开状态的存活检查，不是插回恢复或连接状态长期无黑屏验收。
+保留 need-user 请求，结束本轮本机等待进程并释放双锁；恢复验证前须重新取得锁。
+临时 EDID 切换没有执行，源仍是原 RTK-CONTROL；硬件验收前不合入或推送 manager 修复。
+主仓全套 243 项（7 跳过）通过。
+
+Mac 显示“1080p”不代表线缆上就是 1080p：此前 Mac 报告 1920×1080，但 RX 实测
+3840×2160、约 59.98Hz；服务 input=3840×2160、output=2160p60、scaled=false。
+这是 Mac 桌面逻辑缩放后仍发送 4K 时序，透传按真实输入跟随的行为正确。
