@@ -2,9 +2,11 @@
 
 接续 [VD1/VD2 与 NV12](2026-10-23-display-m3-video-planes.md)。本批接入标准
 HDMI atomic state、HDR DRM infoframe、max bpc、Colorspace 和 YUV420，并补齐
-4K NV12 → 1080p60 的逐行跳行读取。**新路径仅离线实现，HDR/BT.2020 有明确阻塞。**
+4K NV12 → 1080p60 的逐行跳行读取。**HDR/BT.2020 有明确阻塞，M3 尚未通过上板验收。**
 中途按用户指令完成 [M2 第三窗口](2026-10-23-display-m2-window3.md)，随后恢复离线工作。
 该窗口没有启用 M3 atomic-color 或视频层，不是这些新路径的物理验证。
+其后 [4K 显示器窗口](2026-10-23-display-m3-window4.md) 启用 M3，确认出声和部分
+链路读回，但发现 RGB 偏色、video 初次提交及 GPU 分配边界问题；不计为整体通过。
 
 ## 实现与提交
 
@@ -31,7 +33,7 @@ connector 标准 `HDR_OUTPUT_METADATA`、`max bpc`、`Colorspace`、`Broadcast R
 | 属性 / 传输 | 本候选行为与限制 |
 |---|---|
 | max bpc | 8..10；EDID 不支持的深色由 helper 拒绝或降低实际 bpc |
-| RGB444 | BT.709 转 RGB full；AUTO / FULL 为 full，LIMITED 拒绝 |
+| RGB444 | 代码请求 BT.709 转 RGB full；物理窗口 CSC 读回为0且偏色，仍阻塞；LIMITED 拒绝 |
 | YUV444 / YUV420 | limited；AVI YCC 范围声明 limited，不支持 YUV422；有效矩阵路由待核实 |
 | Colorspace | Default / BT709_YCC / BT2020_YCC；Default 也使用 BT.709 |
 | BT2020_YCC | 最终提交返回 `-EOPNOTSUPP`，日志说明需要独占 T7 OSD HDR2 |

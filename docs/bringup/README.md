@@ -7,11 +7,12 @@
 
 ## 2026-10-23
 
+- [M3 4K 显示器窗口：链路与出声，颜色和 GPU 阻塞](2026-10-23-display-m3-window4.md) — kernel video audio usb deployment board
 - [HDMI 模式切换失锁：基线对照与稳定判定](2026-10-23-hdmirx-lowclock.md) — kernel video deployment board
 - [Wave5 正式批次：HDMI 模式门禁失败并回退](2026-10-23-wave5-formal-deploy.md) — kernel video audio usb application deployment board
 - [M3 HDMI 离线验证与一次性启动清单](2026-10-23-display-m3-hdmi-validation.md) — kernel video audio deployment
 - [M2 第三窗口：物理颜色对照、TX 录音与 HPD 修复](2026-10-23-display-m2-window3.md) — kernel video audio deployment board
-- [M3 HDMI HDR、10-bit、420 与跳行缩放（离线候选，未上板）](2026-10-23-display-m3-hdmi-color.md) — kernel video audio deployment
+- [M3 HDMI HDR、10-bit、420 与跳行缩放（候选，HDR 与颜色阻塞）](2026-10-23-display-m3-hdmi-color.md) — kernel video audio deployment
 - [M3 VD1/VD2、PPS 与 NV12 atomic scanout（离线候选，未上板）](2026-10-23-display-m3-video-planes.md) — kernel video deployment
 - [T7 H.264 首次超时与厂商启动链对照](2026-10-23-vdec-timeout.md) — kernel video usb deployment board
 - [T7 H.264 启动链与安全微码审计明细](2026-10-23-vdec-timeout-audit.md) — kernel video
