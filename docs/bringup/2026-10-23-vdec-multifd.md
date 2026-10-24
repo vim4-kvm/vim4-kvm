@@ -161,3 +161,25 @@ UTC 02:47:30 前已回到入口基线，02:52:53 完成冒烟及清理并释放�
 
 已删除板上本轮 payload、一次性候选目录、硬件输出和本轮 stage receipt；
 pstore 归档保留作为证据，默认启动与正式部署锁未改变。
+
+## 修正候选与产物保留
+
+`82ae76b512a6d` 已完成 Image/两种 DTB/2335 模块增量重建及重新打包，
+source、vermagic、split BTF、文件哈希核验通过；**未再次上板**。
+仅保留 Mac `build/vdec-multifd/current-bundle` 与
+VM `~/build/vim4-vdec-multifd-current-bundle`（含精确 debug 输入）。
+Image/DTB 哈希与上板包一致，VDEC 模块 ID 改为
+`616061ff0048cbaf102fb61ac18d760bb5fcea1c`，以模块与 source 区分候选。
+
+| 修正产物 | SHA-256 |
+|---|---|
+| 模块包 | `e07bf09b1e9526543f67ecd522e60a4143f8e68620c07bab407e2f9865510c6e` |
+| VDEC 安装模块 | `68830c478179679c7f1e3598ca1bf967aa04f173f1e1fb9c43f876bf11f89631` |
+
+失败模块和 manifest 存于 logs；其 vmlinux SHA-256 与当前 debug 输入相同，
+不用保留整个失败包。主仓更新后全量测试 236 项通过、6 项跳过；记录和索引已推送。
+
+UTC 03:04 已持 heavy 锁删除本任务 VM 构建 O=（7.5G）、三份旧包（各 396M）
+和 DT 校验输出（30M）；Mac 删除三份旧包、启动 tar 及旧窗口目录，约 314M。
+删除前核对保留包和 debug 的全部哈希，未删除其他任务产物。明细在
+`vm-cleanup.log`、`mac-cleanup.log`，VM/Mac 的本任务 build 仅剩当前候选与小脚本。
