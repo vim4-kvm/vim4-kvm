@@ -19,7 +19,7 @@ class CaptureSoakTest(unittest.TestCase):
             subprocess.run(['cc', '-std=c11', '-O2', '-Wall', '-Wextra', '-Werror',
                             str(ROOT / 'tests/fixtures/hdmirx-soak-harness.c'),
                             '-o', str(binary)], check=True, capture_output=True, text=True)
-            for scenario in ('success', 'error', 'gap', 'stale', 'unplug', 'stop-failure'):
+            for scenario in ('success', 'error', 'count-errors', 'gap', 'stale', 'unplug', 'stop-failure'):
                 with self.subTest(scenario=scenario):
                     result = subprocess.run([str(binary), scenario], text=True,
                                             capture_output=True, timeout=10)
@@ -30,13 +30,21 @@ class CaptureSoakTest(unittest.TestCase):
                     self.assertEqual(summary['event'], 'summary')
                     self.assertEqual(summary['success'], scenario == 'success')
                     if scenario == 'success':
-                        self.assertEqual(summary['completed'], 600)
-                        self.assertAlmostEqual(summary['capture_fps'], 60, places=3)
+                        self.assertEqual(summary['valid'], 600)
+                        self.assertAlmostEqual(summary['usable_fps'], 60, places=3)
                     if scenario == 'error':
                         self.assertEqual(summary['errors'], 1)
-                        self.assertEqual(summary['completed'], 250)
+                        self.assertEqual(summary['valid'], 250)
                         self.assertEqual(rows[-2]['sequence'], 0)
                         self.assertEqual(rows[-2]['timestamp_ns'], 0)
+                    if scenario == 'count-errors':
+                        self.assertEqual(summary['dequeued'], 600)
+                        self.assertEqual(summary['valid'], 599)
+                        self.assertEqual(summary['errors'], 1)
+                        self.assertAlmostEqual(summary['dequeue_fps'], 60, places=3)
+                        self.assertLess(summary['usable_fps'], 60)
+                        self.assertGreater(summary['usable_fps'], 59.8)
+                        self.assertAlmostEqual(summary['error_fraction'], 1 / 600, places=8)
 
 
 if __name__ == '__main__':

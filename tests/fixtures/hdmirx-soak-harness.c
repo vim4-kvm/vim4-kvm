@@ -73,7 +73,7 @@ static int fake_ioctl(int fd, unsigned long request, ...)
         b->timestamp.tv_sec = clock_ns / 1000000000;
         b->timestamp.tv_usec = clock_ns % 1000000000 / 1000;
         if (frame == 250) {
-            if (!strcmp(scenario, "error")) {
+            if (!strcmp(scenario, "error") || !strcmp(scenario, "count-errors")) {
                 b->flags |= V4L2_BUF_FLAG_ERROR;
                 b->sequence = 0;
                 b->timestamp.tv_sec = b->timestamp.tv_usec = 0;
@@ -99,11 +99,36 @@ static int fake_ioctl(int fd, unsigned long request, ...)
 #include "../../tools/hdmirx-soak.c"
 #undef main
 
+static void marker_fixture(void)
+{
+    unsigned int width = 1920, height = 1080, stride = 1952, id = 0;
+    unsigned char *data = calloc(stride * height * 3 / 2, 1);
+    assert(data);
+    memset(data + stride * height, 128, stride * height / 2);
+    const unsigned int rows[] = {85, 540, 995};
+    for (unsigned int row = 0; row < 3; row++)
+        for (unsigned int bit = 0; bit < 32; bit++) {
+            unsigned int x = (20 + (2 * bit + 1) * 1880 / 64);
+            data[rows[row] * stride + x] = (UINT32_C(0xa5002a8f) >> (31 - bit)) & 1 ? 235 : 16;
+        }
+    assert(!markers(data, width, height, stride, &id) && id == 42);
+    /* A complete but different lower marker is a torn-frame observation. */
+    for (unsigned int bit = 0; bit < 32; bit++) {
+        unsigned int x = (20 + (2 * bit + 1) * 1880 / 64);
+        data[rows[2] * stride + x] = (UINT32_C(0xa5002b8e) >> (31 - bit)) & 1 ? 235 : 16;
+    }
+    assert(markers(data, width, height, stride, &id) == -3);
+    data[rows[0] * stride + 49] = 100;
+    assert(markers(data, width, height, stride, &id) == -1);
+    free(data);
+}
+
 int main(int argc, char **argv)
 {
     assert(argc == 2);
+    marker_fixture();
     scenario = argv[1];
-    int result = capture(123, 600);
+    int result = capture(123, 600, !strcmp(scenario, "count-errors"), false);
     assert(streamoff == 1 && released == 1);
     return result;
 }

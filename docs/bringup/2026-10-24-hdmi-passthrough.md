@@ -1,6 +1,6 @@
 # 2026-10-24：HDMI 透传前置稳定性调查
 
-当前仍在前置条件阶段，**未证明持续采集稳定，未进入 VD1 透传实现或上板验收**。
+当前仍在前置条件阶段，**未证明持续采集稳定，未进入 VD1 透传实现或透传验收**。
 设计合同见 [HDMI 透传](../hdmi-passthrough-design.md)，颜色失败现场见
 [颜色自环](2026-10-24-display-color-loop.md)。不合入正式内核、不正式部署。
 另一个会话持有板子和 heavy 锁期间，本任务只做离线工作，不改变其候选启动状态。
@@ -67,5 +67,38 @@ cc -std=c11 -O2 -Wall -Wextra -Werror tools/hdmirx-soak.c -o /var/tmp/hdmirx-soa
 再执行 `vout output` 不能解决该路径。不能删除 Linux 的 fetch/AFBC/保留内存/RDMA/SRAM
 安全检查来绕过；后续须验证有界的原生接管合同或可证明不依赖 EDID 的固件命令路径。
 
-本任务日志在 `logs/hdmi-passthrough/`。当前无本任务上板数据；后续实现、构建与验收
-随实际进展追加，不能以历史颜色样本或此次离线测试代替。
+## 第一批真实源诊断（短测，非长测验收）
+
+用户通过文件协议确认暂停 KVM 使用后取得双锁，入场确认正式 eeddb005、manager974ab40、
+UDC configured、taint0，保存保护文件。保持 Mac mini → IN、OUT → 真实显示器；
+不改 EDID。新增证据接续 [另一会话交付失败](2026-10-24-display-color-user-handoff.md)。
+
+采集工具的 `--count-errors` 持续出队并统计，ERROR 仍报失败且不算可用帧。
+`--markers` 使用物理桌面的运动源，按实际 stride 在上/中/下三处检查 magic、校验和、
+相同16bit帧号及NV12黑白/中性色度；这能发现采样位置的撕裂，不能证明全图每个像素。
+另计源帧号重复，避免将重复画面当作新内容；每帧保存原始 V4L2 标志。
+
+| 对象，4K60 | 出队/有效/ERROR | 出队fps /有效fps | ERROR率 | ERROR帧三处标记完整 |
+|---|---|---|---|---|
+| 正式基线，无像素读取 | 601/509/92 | 59.999/50.899 | 15.31% | 未检查 |
+| 正式基线，运动标记 | 601/462/139 | 59.999/46.099 | 23.13% | 139/139 |
+| 诊断1，运动标记 | 601/569/32 | 59.999/56.799 | 5.32% | 32/32 |
+
+每段仅约10秒；基线标记段还与候选文件传输部分重叠，不能作为公平性能对比或长期结论。
+诊断1所有601帧标记一致、仅3次源帧号重复；RX保持ready、stream_stops=0。
+错误现场均为 `measurement error=-11`，PLL/SQO/align=1，两路meter VALID且时钟匹配，
+无 `invalid qualified FDET`。暂定位于双次测量不一致；仍需取得两个原始快照差异。
+
+诊断候选1为 `99093e68cb8b6`，build ID `749015c8d8c567fe54e073701d676defbe6fcd02`，
+完整 Image/DTBs/2339模块构建完成；68项host fixtures及三提交strict checkpatch通过。
+除RX拒绝日志外，两个确定性回归先在旧代码失败、修复后通过：
+`0758b280a2ca6` 保留拒绝的READY帧时间戳/序号；`99093e68cb8b6` 防止正常STREAMOFF
+继承上一帧EAGAIN而误报stream_stops，保留真正ring错误与DMA停止失败。
+这些改动没有去掉ERROR标志或改变图像准入。
+
+第一次选择候选时，操作者未等待stage完成即重启，UART证明未找到已发布候选，
+自动回正式基线；记为无效启动尝试。第二次确认stage退出0、STAGED_ONLY及完整路径后，
+RAM sysboot成功，PID1使用该build ID私有完整模块，watchdog30s、panic_on_oops1。
+
+本任务日志在 `logs/hdmi-passthrough/`；后续实现、构建与验收随实际进展追加，
+不能以历史颜色样本或离线测试代替。本条为进行中的记录，尚未执行最终恢复与交付。
