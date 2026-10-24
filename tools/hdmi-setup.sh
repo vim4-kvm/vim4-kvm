@@ -63,7 +63,9 @@ else
 	echo "game_mode 0" > $VDIN
 fi
 
-if ! grep -q 'tvpath { vdin0([0-9]*) vfm_cap}' $MAP; then
+if [ "${HDMI_DISPLAY_TEE:-0}" = 1 ] && /usr/libexec/vim4-passthrough prepare; then
+	:
+elif ! grep -q 'tvpath { vdin0([0-9]*) vfm_cap}' $MAP; then
 	echo "rm tvpath" > $MAP 2>/dev/null || true
 	echo "add tvpath vdin0 vfm_cap" > $MAP
 fi

@@ -271,6 +271,8 @@ def manager(stage):
     copy(deploy / 'vim4-manager-helper', stage, 'usr/libexec/vim4-manager-helper', 0o755)
     copy(deploy / 'vim4-manager-helper.sudoers', stage, 'etc/sudoers.d/vim4-manager-helper', 0o440)
     copy(deploy / 'vim4-manager.service', stage, 'usr/lib/systemd/system/vim4-manager.service')
+    copy(deploy / 'vim4-passthrough', stage, 'usr/libexec/vim4-passthrough', 0o755)
+    copy(deploy / 'vim4-passthrough.service', stage, 'usr/lib/systemd/system/vim4-passthrough.service')
     copy(ROOT / 'build/vim4-nasdisk', stage, 'usr/libexec/vim4-nasdisk', 0o755)
     copy(deploy / 'vim4-nasdisk.service', stage, 'usr/lib/systemd/system/vim4-nasdisk.service')
     for file in (deploy / 'edid').iterdir():

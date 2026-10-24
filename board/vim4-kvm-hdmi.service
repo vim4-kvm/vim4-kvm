@@ -9,6 +9,7 @@ NotifyAccess=all
 EnvironmentFile=-/etc/default/vim4-kvm-hdmi
 # HDR_SDR_WHITE/HDR_SDR_PEAK; kept apart because NanoKVM rewrites the file above
 EnvironmentFile=-/etc/default/vim4-kvm-hdr
+EnvironmentFile=-/etc/default/vim4-kvm-passthrough
 # Set the route before this unit is considered started: NanoKVM is ordered after
 # us and must never open the PCM on the default external TDM pins.
 ExecStartPre=/usr/libexec/vim4-board-runtime audio-route
