@@ -151,6 +151,7 @@ release:
 int main(int argc, char **argv)
 {
     char *end;
+    setvbuf(stdout, NULL, _IOLBF, 0);
     if (argc != 3) {
         fprintf(stderr, "usage: hdmirx-soak DEVICE FRAMES\n");
         return 1;
