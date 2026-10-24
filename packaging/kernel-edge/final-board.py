@@ -272,6 +272,9 @@ class Board:
         assert tree(MODULES) == {k: {'sha256': v} for k, v in self.report['modules'].items()}
         for item in self.deployment['install']:
             assert sha(item['target']) == self.deployment['sha256'][item['file']]
+            if item['target'] == '/usr/lib/sysctl.d/60-vim4-panic.conf':
+                assert Path('/proc/sys/kernel/panic_on_oops').read_text().strip() == '1'
+                assert Path('/proc/sys/kernel/panic').read_text().strip() == '20'
         for service in ('one-kvm', 'vim4-manager', 'vim4-kvm-hdmi', 'vim4-kvm-gadget'):
             assert run('systemctl', 'is-active', service) == 'active', service
         for service, binary in (('one-kvm', 'one-kvm'), ('vim4-manager', 'vim4-manager')):

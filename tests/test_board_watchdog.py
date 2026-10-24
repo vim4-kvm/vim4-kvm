@@ -13,6 +13,29 @@ spec.loader.exec_module(packages)
 
 
 class WatchdogPolicyTests(unittest.TestCase):
+    def test_board_package_installs_panic_policy_for_next_boot(self):
+        with tempfile.TemporaryDirectory() as directory:
+            stage = Path(directory)
+            real_copy = packages.copy
+
+            def copy(source, target, destination, mode=0o644):
+                if str(source).endswith('60-vim4-panic.conf'):
+                    return real_copy(source, target, destination, mode)
+                return packages.write(target, destination, '', mode)
+
+            with patch.object(packages, 'ROOT', ROOT), patch.object(packages, 'copy', copy):
+                packages.board(stage)
+            config = stage / 'usr/lib/sysctl.d/60-vim4-panic.conf'
+            settings = dict(line.split('=', 1) for line in config.read_text().splitlines()
+                            if line and not line.startswith('#'))
+            self.assertEqual({key.strip(): value.strip() for key, value in settings.items()},
+                             {'kernel.panic_on_oops': '1'})
+            self.assertEqual(config.stat().st_mode & 0o777, 0o644)
+            # Package creation/configuration must not modify the builder's kernel.
+            self.assertNotIn('sysctl', (stage / 'DEBIAN/postinst').read_text())
+            self.assertIn('60-vim4-panic.conf /usr/lib/sysctl.d/60-vim4-panic.conf',
+                          (ROOT / 'board/install.sh').read_text())
+
     def test_board_package_installs_shared_pid1_policy(self):
         with tempfile.TemporaryDirectory() as directory:
             stage = Path(directory)

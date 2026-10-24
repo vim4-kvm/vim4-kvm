@@ -76,6 +76,13 @@ T7 的 Meson GXBB Watchdog 已在正式 7.3 基线上以停止喂狗验证：15 
 管理员可用 `/etc/systemd/system.conf.d/` 中同名或字典序更后的 drop-in 覆盖；
 关闭需设置 `RuntimeWatchdogSec=off`，再 reexec 或重启。本轮未启动 5.15 验证其驱动。
 
+`board/60-vim4-panic.conf` 经同样的板级安装与 Ubuntu board 包路径安装到
+`/usr/lib/sysctl.d/60-vim4-panic.conf`，正式部署窗口也将它纳入备份、安装与回退。
+下一次启动由 systemd-sysctl 设置 `kernel.panic_on_oops=1`，配合启动参数
+`panic=20` 与上述看门狗。安装包不在构建容器中修改宿主内核参数。
+重启后须用 `sysctl kernel.panic kernel.panic_on_oops` 核实实际值；管理员可在
+`/etc/sysctl.d/` 用同名文件覆盖。该策略不替代驱动的超时恢复与设备隔离。
+
 ## 错题
 
 | 触发条件 / 错误 | 原因与正确做法 | 验证入口 |

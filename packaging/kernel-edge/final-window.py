@@ -126,6 +126,9 @@ def stage(args):
 
     for name in ('vim4-board-runtime', 'vim4-kvm-run'):
         add(ROOT / 'board' / name, name, '/usr/libexec/' + name)
+    if not args.kernel_only:
+        add(ROOT / 'board/60-vim4-panic.conf', '60-vim4-panic.conf',
+            '/usr/lib/sysctl.d/60-vim4-panic.conf', 0o644)
     add(ROOT / 'board/vim4pd.py', 'vim4pd.py', '/usr/lib/vim4-kvm/python/vim4pd.py', 0o644)
     add(ROOT / 'board/vim4-kvm-pd.service', 'vim4-kvm-pd.service', '/usr/lib/systemd/system/vim4-kvm-pd.service', 0o644)
     # board/install.sh may have installed a higher-priority /etc unit.
