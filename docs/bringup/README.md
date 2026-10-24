@@ -8,6 +8,7 @@
 ## 2026-10-23
 
 - [M3 VD1/VD2、PPS 与 NV12 atomic scanout（离线候选，未上板）](2026-10-23-display-m3-video-planes.md) — kernel video deployment
+- [T7 VDEC 多 fd 所有权与分级解码窗口](2026-10-23-vdec-multifd.md) — kernel video usb deployment board
 - [M3 视频 MIF、PPS 相位与 VD2 SRAM（离线，尚无 video plane）](2026-10-23-display-m3-video-parameters.md) — kernel video deployment
 - [T7 VDEC p0 访问通过、compliance 阻塞与 RX 停顿归类](2026-10-23-vdec-p0-window.md) — kernel video usb deployment board
 - [M3 DMA 边界修复、启动接管与剩余视频路径合同（离线）](2026-10-23-display-m3-dma-contracts.md) — kernel video deployment

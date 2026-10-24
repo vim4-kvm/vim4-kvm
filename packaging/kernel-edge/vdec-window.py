@@ -585,6 +585,8 @@ def main():
     parser.add_argument('--build-id', help=argparse.SUPPRESS)
     args = parser.parse_args()
     if args.remote:
+        # Remove experimental device factories with the temporary payload.
+        os.environ['GST_REGISTRY'] = str(Path(args.payload) / 'gst-registry.bin')
         # Keep missing diagnostic tools in the temporary payload, off the rootfs
         # package database. Their shared libraries are checked before installation.
         tool_bin = Path(args.payload) / 'tools/usr/bin'
