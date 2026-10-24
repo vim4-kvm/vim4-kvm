@@ -65,7 +65,12 @@ PLL=0可能来自接收器恢复动作，不能据此断言PLL是初始故障。
 已经准入的持续流不增加逐帧延迟。保留现有有界EAGAIN处理与DMA lease保护，
 等待稳定本身不重训PLL、不复位PCS；debugfs增加 `video_stable_samples`。
 
-分支 `fix/hdmirx-lowclock`，候选 `b1e6e76c1f739db2eb787e4e9191df1409b1d98a`，
+EDID替换主动拉低HPD时，旧驱动也保留ready，直到异步link worker发现失锁。
+第二个修复在link锁内先撤销ready并清除判稳计数；写入失败恢复旧EDID也须重新判稳。
+相同EDID的无操作更新和因DMA lease拒绝的更新保持旧状态。实际EDID操作测试覆盖这些边界。
+
+分支 `fix/hdmirx-lowclock`，两个提交 `b1e6e76c1f739`、
+`28f714cb714debc43fc9af610004c5cd13a336ce`，已推送fork；
 基于fetch后的 `8b2553f7b3c62`。确定性测试执行实际link worker，覆盖短暂有效后失锁、
 稳定恢复不重训、时序变化、色彩变化及未稳定前拒绝DMA。
 RX目录全部13个离线测试通过，提交strict checkpatch：0 errors/warnings/checks。
