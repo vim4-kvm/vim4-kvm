@@ -18,6 +18,8 @@ sudo python3 tools/display-color.py run --exclusive --binary /tmp/display-color 
 TX 创建线性 XRGB8888 dumb buffer，使用 EDID 中精确整数 Hz 的 progressive timing，
 通过标准 color format、max bpc=8、Broadcast RGB 属性作 TEST_ONLY 再提交。
 持有 framebuffer 至接到SIGTERM，再 atomic disable、RMFB、销毁dumb，保存退出状态。
+`display-color probe CARD` 通过标准 GetConnector 刷新 modes/EDID；`run` 在读取 sink
+能力前调用它，避免把 sysfs 缓存中的旧显示器 EDID 当作当前 sink。
 
 RX 使用现有动态模式 NV12 VDIN 驱动，必须保持原始可见分辨率、不缩放、不经过编码器。
 工具申请4个MMAP buffer，丢弃8个预热帧，再保存3个完整帧的sequence/timestamp/raw。

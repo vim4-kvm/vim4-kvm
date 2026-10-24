@@ -294,6 +294,7 @@ def snapshot(vendor=False):
 
 def run_matrix(args):
     args.output.mkdir(parents=True, exist_ok=False)
+    subprocess.run([str(args.binary), 'probe', args.card], check=True, timeout=20)
     edids = [p.read_bytes() for p in Path('/sys/class/drm').glob('*HDMI-A-*/edid')]
     edids = [data for data in edids if data]
     if len(edids) != 1:

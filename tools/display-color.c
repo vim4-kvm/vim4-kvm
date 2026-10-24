@@ -323,10 +323,30 @@ static int capture(char **args)
     return 0;
 }
 
+static int probe(const char *card)
+{
+    int fd = open(card, O_RDWR | O_CLOEXEC);
+    require(fd >= 0, "open DRM card for probe");
+    drmModeResPtr res = drmModeGetResources(fd);
+    require(res != NULL, "probe DRM resources");
+    for (int i = 0; i < res->count_connectors; i++) {
+        /* GetConnector forces get_modes; sysfs EDID can retain an old sink. */
+        drmModeConnectorPtr connector = drmModeGetConnector(fd, res->connectors[i]);
+        require(connector != NULL, "probe connector");
+        printf("connector=%u connected=%d modes=%d\n", connector->connector_id,
+               connector->connection == DRM_MODE_CONNECTED, connector->count_modes);
+        drmModeFreeConnector(connector);
+    }
+    drmModeFreeResources(res);
+    close(fd);
+    return 0;
+}
+
 int main(int argc, char **argv)
 {
     signal(SIGTERM, stopped);
     signal(SIGINT, stopped);
+    if (argc == 3 && !strcmp(argv[1], "probe")) return probe(argv[2]);
     if (argc == 10 && !strcmp(argv[1], "tx")) return transmit(argv+2, 0);
     if (argc == 10 && !strcmp(argv[1], "tx-vendor")) return transmit(argv+2, 1);
     if (argc == 7 && !strcmp(argv[1], "capture")) return capture(argv+2);
