@@ -97,6 +97,33 @@ Image SHA256为 `7b76924878e6d1e501a55da64882d1c99368348adab35271ead90b5a16f0cf3
 未修改或切换内核主工作树。开始构建时再次fetch并检查远端基线为候选祖先；
 当时仍为 `8b2553f7b3c62`。
 
+## 第一版一次性验证与后续校准候选
+
+第一版实际build ID `6179d3d853b838e0872cf6a31fc7b2446ee37c3f`，
+RAM sysboot与完整模块核验通过。旧fixture首轮19/19、第二轮18/19；
+第二轮4K30抓帧ENOLINK，1024×768两轮通过。因此未合入、未安装正式包，
+后续标准接口与5分钟冒烟未执行，九类正式门禁未开始。
+
+250ms连续采样显示4K30约356.876秒发布ready，359.887秒时PLL/SQO/align及
+两路时钟读数归零，360.137秒ready撤销，361.895秒重新就绪；HPD请求与5V保持1。
+失败后PHY只读快照与+3秒恢复快照均保留。计数器读数也可能受恢复动作影响，
+不能仅凭这组异步快照断言源端停钟或模拟PHY是初始原因。
+默认重启后inventory逐项比对kernel ID、默认文件、完整模块、cmdline、UDC、taint，
+输出 `DEFAULT_FILES_MODULES_BASELINE_RESTORED`，仍为eeddb005、taint=0、UDC configured。
+窗口释放双锁；正式版本锁保持原值。
+
+进一步核对厂商 `hdmi_rx_hw_t7.c:497` 的 `aml_hyper_gain_tuning_t7()`，
+由同文件 `aml_eq_cfg_t7():854` 在DFE收敛后、启用CDR锁检测前无条件调用：
+选DFE tap0状态，等待100us，三路分别以tap0<0x12决定DCHA0[14:12]。
+当前驱动遗漏这步。失败快照DCHD_STAT=`0x333534`，三路均高于阈值，
+但DCHA0=`0x13270fff`仍保留初始全开增益；这证明与厂商初始化流程有差异，
+不证明它就是本次ENOLINK的根因。
+
+追加提交 `329be18274d5459937651ab73bd05758e41746f8`，仅恢复上述逐通道校准，
+不猜测新PHY表参数；仍在既有DMA lease排除区间执行。测试实际PHY函数，覆盖三路
+全部8种组合、0x12阈值、旧调试选择器、无关位保留、DFE/CDR先后顺序。
+RX全部13测试与逐提交strict checkpatch通过，功能分支已推送，下一版仍须一次性验证。
+
 ## 证据位置
 
 本地忽略目录 `logs/rx-lowclock/` 保存baseline/results.json、baseline/samples.jsonl、
