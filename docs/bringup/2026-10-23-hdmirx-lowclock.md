@@ -124,10 +124,28 @@ RAM sysboot与完整模块核验通过。旧fixture首轮19/19、第二轮18/19�
 全部8种组合、0x12阈值、旧调试选择器、无关位保留、DFE/CDR先后顺序。
 RX全部13测试与逐提交strict checkpatch通过，功能分支已推送，下一版仍须一次性验证。
 
+增益校准版实际build ID `a6376319dfbb7d9094e84f9a30e3b5fa2ba5d6c4`，
+旧fixture两轮34/38：640×480、800×600各失败两次，1024×768两轮通过。
+640×480出现lease-timing拒绝，但日志只有宽高与ticks；其ticks差在现有500ppm范围内，
+尚缺同步脉冲/前后肩的同次快照，不能据此修改比较容差。
+该版也正常回eeddb005并通过相同完整inventory比对，没有合入或正式部署。
+增益差异证据来自高频PHY band3；低频表的增益本来就是0，不能将校准描述为所有低频
+失败的已证实修复。
+
+追加 `ac7da8e03e8588302424306b49e8ef2292d1bb9f`，扩展原有ratelimited
+lease-timing日志，打印前后两组全部FDET计数器，不改变比较规则。
+时序离线测试、strict checkpatch及完整目标构建通过；实际build ID
+`10eca3504dc2a2d6b1963137200c72cdf7964085`，2334个模块清单核验通过。
+这个诊断版与上一版没有功能语义差异：短矩阵8/8、原19模式两轮38/38通过，
+未抓到新的完整lease差异；这些通过不能覆盖上一版的失败或证明问题全部消失。
+两次窗口均回默认eeddb005并输出完整恢复核验标记。Mac只读轮询记录模式变化，
+不设置显示模式。随后标准接口候选两轮36/38，持续流冒烟未执行；
+本阶段按用户指令结束，详见[收尾与待办](2026-10-23-hdmirx-lowclock-closeout.md)。
+
 ## 证据位置
 
 本地忽略目录 `logs/rx-lowclock/` 保存baseline/results.json、baseline/samples.jsonl、
 baseline-stress/results.json、original-candidate/results.json、baseline-api/results.json、
 baseline-api/samples.jsonl，以及每模式前后状态、串口候选/回基线记录。
-构建和后续候选验证追加到同目录；临时诊断脚本在
-`build/rx-lowclock/`，不作为产品运行时依赖。
+构建和候选验证追加到同目录；临时诊断脚本与小型构建元数据已归档到
+`logs/rx-lowclock/reproduction/`，`build/rx-lowclock/` 已在收尾时删除。
