@@ -60,8 +60,19 @@ python3 tools/display-color.py diff vendor-before.json candidate-before.json --o
 
 vendor模式只取得寄存器参考，不把它标成数值颜色通过。TX寄存器经厂商debug接口的
 `rh`单地址读命令，AVI用厂商已有packet getter读回并解码；完整RX AVI单独保存。
+5.15 没有 `/dev/mem` 时，VPU 控制字经 `aml_reg/paddr` 的选址后读接口取得，
+RX COR 经 `rhd` 字节读两次并核对。不能用 32bit 物理读替代 COR 字节访问；其结果会
+复制同一个字节到四条 lane。debug 回读只接受本次命令之后的新 dmesg 时间戳。
 `diff`逐项输出VPU、TX控制与AVI语义，包含相同项；差异原因在bringup记录逐组说明，
 工具不自动豁免差异。
+
+校准 sink 使用 [SDR EDID](../packaging/kernel-edge/display-color-sdr-edid.hex)：
+1080p60、4K30、4K60，8bpc、709、600MHz/SCDC、可选量化范围，420 仅声明 VIC97。
+运行时加载后必须逐字节比对 TX 读回的 EDID；不能只检查显示器名字。厂商 repeater
+自环需临时设置 `rpt_edid_selection 1`，避免 TX 插入回调改写本板 RX 的 EDID。
+5.15 正在运行的 RX FSM 可能与 EDID 写入交错，需 `pause1`，调用现有 helper 的
+runtime `load`，再执行 `reset40` 同步刷新，最后在 finally 中 `pause0`。
+不调用 helper 的 persist/apply，不替换用户保存的 EDID；重启恢复原服务加载流程。
 
 结束后按need-user文件协议恢复PC输入，再重启回正式eeddb005，核对受保护文件哈希、
 服务active、UDC configured、HID和H.265冒烟。第二阶段仅有[设计草案](hdmi-passthrough-design.md)。

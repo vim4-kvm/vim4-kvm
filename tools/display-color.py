@@ -202,17 +202,48 @@ def vendor_tx_snapshot():
     return packet_dump, avi, {hex(reg): values[reg] for reg in regs}
 
 
+def vendor_rx_avi():
+    debug = Path('/sys/class/hdmirx/hdmirx0/debug')
+    samples = []
+    for _ in range(2):
+        started = time.clock_gettime(time.CLOCK_BOOTTIME)
+        for reg in range(0x1140, 0x1151):
+            debug.write_text(f'rhd{reg:x} 1\n')
+        kernel = subprocess.check_output(['dmesg', '--color=never'], text=True)
+        kernel = '\n'.join(line for line in kernel.splitlines()
+                           if (stamp := re.search(r'\[\s*(\d+\.\d+)\]', line)) and
+                           float(stamp[1]) >= started)
+        values = {int(reg, 16): int(value, 16) for reg, value in
+                  re.findall(r'DWC \[([0-9a-f]+)\]=([0-9a-f]+)', kernel, re.I)}
+        if any(reg not in values for reg in range(0x1140, 0x1151)):
+            raise ValueError('missing vendor RX AVI register read')
+        samples.append(bytes(values[reg] for reg in range(0x1140, 0x1151)))
+    if samples[0] != samples[1]:
+        raise ValueError('vendor RX AVI changed during snapshot')
+    return samples[0]
+
+
 def snapshot(vendor=False):
     """Read only documented control/matrix windows; never touch LUT ports."""
-    fd = os.open('/dev/mem', os.O_RDONLY | os.O_SYNC)
+    fd = None if vendor else os.open('/dev/mem', os.O_RDONLY | os.O_SYNC)
     def read(address, size):
+        if vendor:
+            if address % 4 or size != 4:
+                raise ValueError('vendor physical interface only reads aligned control words')
+            paddr = Path('/sys/kernel/debug/aml_reg/paddr')
+            paddr.write_text(f'{address:x}')
+            match = re.fullmatch(r'\[0x([0-9a-f]+)\] = 0x([0-9a-f]+)\s*',
+                                 paddr.read_text(), re.I)
+            if not match or int(match[1], 16) != address:
+                raise ValueError('vendor physical read returned another address')
+            return struct.pack('<I', int(match[2], 16))
         with mmap.mmap(fd, mmap.PAGESIZE, flags=mmap.MAP_SHARED, prot=mmap.PROT_READ,
                        offset=address & -mmap.PAGESIZE) as page:
             return page[address % mmap.PAGESIZE:address % mmap.PAGESIZE + size]
     try:
         # amlogic-t7.dtsi: RX COR is fe000000 + 3a0000, AVI packet at 1140.
-        packet = read(0xfe3a1140, 17)
-        if packet != read(0xfe3a1140, 17):
+        packet = vendor_rx_avi() if vendor else read(0xfe3a1140, 17)
+        if not vendor and packet != read(0xfe3a1140, 17):
             raise ValueError('RX AVI changed during snapshot')
         regs = [0x271b, 0x2743, 0x1d5f, 0x1a0c, 0x1a0d,
                 *range(0x3910, 0x391e), *range(0x39a0, 0x39ae)]
@@ -222,7 +253,8 @@ def snapshot(vendor=False):
         vpu = {hex(word): struct.unpack('<I', read(0xff000000 + word * 4, 4))[0]
                for word in regs}
     finally:
-        os.close(fd)
+        if fd is not None:
+            os.close(fd)
     if vendor:
         tx, tx_avi, tx_regs = vendor_tx_snapshot()
     else:
