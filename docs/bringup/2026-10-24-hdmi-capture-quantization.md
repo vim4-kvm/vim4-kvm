@@ -39,10 +39,11 @@
 
 ```sh
 cc -std=c11 -O2 -Wall -Wextra -Werror tools/hdmirx-soak.c -o /var/tmp/hdmirx-soak
-/var/tmp/hdmirx-soak /dev/video0 36001 > NEW.jsonl
+/var/tmp/hdmirx-soak /dev/video0 36601 > NEW.jsonl
 ```
 
-36001 个连续60Hz完成帧覆盖约600秒；不使用包含启动时间的进程墙钟充当有效采集时长。
+36601个连续60Hz完成帧覆盖约610秒，避免边界取整导致不足600秒；
+不使用包含启动时间的进程墙钟充当有效采集时长。
 同时保存 RX/VDIN 只读状态和内核日志，区分预期 modeset 失锁与计时区间内自发错误。
 离线真实 C harness 注入第250帧错误、序号跳变、时间倒退、POLLERR与停流失败，
 验证报告失败、保留首个错误及 STREAMOFF/REQBUFS(0) 清理；正常路径覆盖 u32 sequence 回绕。

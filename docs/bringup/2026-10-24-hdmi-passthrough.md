@@ -52,3 +52,24 @@ PLL/SQO/alignment均1，RX ready保持1、stream_stops=0、VDIN faulted=0。
 持续无效仍返回EAGAIN；真实失锁仍返回ENOLINK。正常路径不等待，恢复时限频记录轮数。
 实际C故障注入覆盖第一/第二轮恢复、持续无效及等待期间失锁；68项host fixtures与
 strict checkpatch通过，完整候选构建中，尚未取得该修复的上板结果。
+
+两窗口候选build ID `40c03d84ae2210909c7ab458748c429928955c76` 上板后，
+实际多次取得第一/第二轮有效测量，但严格4K长测仍在151.189963秒停止：
+9072个完成、9071有效、1 ERROR，ERROR帧标记完整；没有失锁、stream_stops或fault。
+这表明两个窗口的边界不足，不能以短测或个别重测成功宣布修复。
+
+随后进行180秒**诊断采样**：`/dev/mem`只读映射已核对的RX TOP页，仅轮询
+METER_CABLE_STAT/METER_HDMI_STAT及5V/SQO/alignment，不写寄存器、不复位meter。
+同时持续采集以避免空闲link worker的周期重装干扰。1547722次采样捕获936个
+VALID低脉冲：观测长度p50 715.720µs、p90 1063.184µs、p99 1082.726µs、
+最大1101.935µs；采样粒度及调度会影响边界，不能当作精确硬件脉宽。
+所有低脉冲的5V/SQO/alignment正常，HDMI原始计数仅 `0x317fc/0x317fe`，
+恢复VALID后为 `0x317fc/0x317fd`。未确认硬件VALID内部判稳算法，不推测其精确语义。
+本段同步11101帧、185.006075秒、59.998030fps、0 ERROR/坏标记，9次重复；
+它带高频寄存器观察且不足10分钟，不是验收窗口，也不能覆盖前一段失败。
+
+`41c31fc123935` 据实际观测将有限等待扩为四个meter窗口：三个覆盖已测低脉冲，
+一个覆盖采样相位；24MHz时最多约1.37–1.57ms。保留新VALID、2MHz匹配阈值、
+每轮物理检查及超时拒绝，未调整PHY或硬件meas_tolerance。
+实际C测试覆盖四个允许恢复点和第五窗口超时；68项host fixtures和strict checkpatch通过。
+完整构建进行中，真实源/自环长测仍待通过。原始证据 `meter-observe*`、`fix2-4k-long*`。
