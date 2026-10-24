@@ -26,7 +26,7 @@ PLL/SQO/alignment均1，RX ready保持1、stream_stops=0、VDIN faulted=0。
 每轮重新检查5V/alignment/SQO；不接受保留的旧计数，不改变2MHz时钟匹配阈值。
 持续无效仍返回EAGAIN；真实失锁仍返回ENOLINK。正常路径不等待，恢复时限频记录轮数。
 实际C故障注入覆盖第一/第二轮恢复、持续无效及等待期间失锁；68项host fixtures与
-strict checkpatch通过，完整候选构建中，尚未取得该修复的上板结果。
+strict checkpatch通过；随后完整构建并上板，结果见下段。
 
 两窗口候选build ID `40c03d84ae2210909c7ab458748c429928955c76` 上板后，
 实际多次取得第一/第二轮有效测量，但严格4K长测仍在151.189963秒停止：
@@ -49,7 +49,7 @@ VALID低脉冲：观测长度p50 715.720µs、p90 1063.184µs、p99 1082.726µs�
 实际C测试覆盖四个允许恢复点和第五窗口超时；68项host fixtures和strict checkpatch通过。
 完整Image/DTBs/2339模块构建完成，build ID `890406629692236532d2cfaa2346ee052fa85755`，
 Image SHA256 `647754467dab353c57693c562d9f5598e812d68985ee158754f71d2f652c134b`。
-真实源/自环长测仍需逐档完成。原始证据 `meter-observe*`、`fix2-4k-long*`。
+真实源/自环逐档长测结果见下节。原始证据 `meter-observe*`、`fix2-4k-long*`。
 
 ## 四窗口候选的稳定性窗口（仍非透传验收）
 

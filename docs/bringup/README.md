@@ -8,7 +8,7 @@
 ## 2026-10-24
 
 - [颜色候选交付门禁失败与管理器预览](2026-10-24-display-color-user-handoff.md) — kernel video usb manager deployment board
-- [HDMI 透传第二阶段实现记录（进行中）](2026-10-24-hdmi-passthrough.md) — kernel video deployment board
+- [HDMI 透传第二阶段暂停与恢复入口](2026-10-24-hdmi-passthrough.md) — kernel video deployment board
 - [HDMI 采集 ERROR、周期量化与厂商对照（进行中）](2026-10-24-hdmi-capture-quantization.md) — kernel video deployment board
 - [HDMI RX 计量器与持续采集复测（进行中）](2026-10-24-hdmi-capture-stability.md) — kernel video deployment board
 - [HDMI OUT 颜色自环校准与厂商基准](2026-10-24-display-color-loop.md) — kernel video deployment board
