@@ -340,9 +340,10 @@ class Board:
         wrong = [name for name in components if installed.get(name) != version]
         if wrong:
             raise RuntimeError('Installed versions differ for ' + ', '.join(wrong))
-        # The gateway can be alive before the selected backend is ready.
+        # Either process may become ready first after the installer restarts both.
         for _ in range(15):
-            if not self.ssh('curl -fsS --max-time 2 -o /dev/null http://127.0.0.1:8081/', check=False).returncode:
+            if all(not self.ssh(f'curl -fsS --max-time 2 -o /dev/null http://127.0.0.1:{port}/',
+                                check=False).returncode for port in (8080, 8081)):
                 break
             time.sleep(1)
         self.check()

@@ -236,6 +236,28 @@ class BoardToolsTests(unittest.TestCase):
             self.assertTrue(any(path.endswith('tools/install-components.sh') for path in copied))
             self.assertTrue(any(path.endswith('SHA256SUMS') for path in copied))
 
+    def test_deploy_waits_for_gateway_and_backend_before_health_check(self):
+        with tempfile.TemporaryDirectory() as directory:
+            metadata = board.package_metadata(self.packages(directory, component='onekvm-board'))
+            version, debs, _ = metadata
+            installed = {path.name.split('_')[0]: version for path in debs}
+            instance = board.Board(SimpleNamespace(host='vim4'), io.StringIO())
+            probes = []
+            def ssh(command, **kwargs):
+                if command.startswith('curl '):
+                    probes.append(command)
+                    return SimpleNamespace(stdout='', returncode=1 if len(probes) == 1 else 0)
+                return SimpleNamespace(stdout='/tmp/vim4-deploy.x\n', returncode=0)
+            with patch.object(instance, 'ssh', side_effect=ssh), patch.object(instance, 'run'), \
+                 patch.object(instance, 'sudo'), patch.object(instance, 'check') as check, \
+                 patch.object(instance, 'installed_versions', return_value=installed), \
+                 patch.object(board.time, 'sleep') as sleep:
+                instance.deploy(metadata)
+            self.assertEqual([8080 if ':8080/' in probe else 8081 for probe in probes],
+                             [8080, 8080, 8081])
+            sleep.assert_called_once_with(1)
+            check.assert_called_once()
+
     def test_sudo_password_never_reaches_command_stdin(self):
         instance = board.Board(SimpleNamespace(sudo_password_stdin=True), io.StringIO())
         with patch('sys.stdin', io.StringIO('secret\n')), patch.object(instance, 'ssh') as ssh:
