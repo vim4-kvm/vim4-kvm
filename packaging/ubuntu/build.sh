@@ -16,11 +16,12 @@ if has platform || [ "$COMPONENT" = onekvm-board ]; then
 fi
 if has platform || has capture; then
     python3 tools/workspace.py build capture
+    meson test -C gst-plugin-vfmcap/build --print-errorlogs
 fi
 if has platform || has encoder; then
     python3 tools/workspace.py build encoder
 fi
-if has platform || has encoder || has onekvm; then
+if has platform || has encoder || has onekvm || has capture; then
     gst_work=$(mktemp -d)
     trap 'rm -rf "$gst_work"' EXIT
     python3 packaging/kernel-edge/build-gstreamer.py "$gst_work"

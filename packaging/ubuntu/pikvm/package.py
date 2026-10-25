@@ -78,7 +78,7 @@ def main():
                'libpcre2-8-0, libcrypt1, zlib1g, python3, sudo, util-linux, ca-certificates, '
                'gstreamer1.0-plugins-base, gstreamer1.0-plugins-good, gstreamer1.0-plugins-bad, '
                'vim4-kvm-board (>= 2.5.1+vim4.20261014.24), vim4-media-api-1, vim4-runtime-api-1, vim4-wave5-api-1, vim4-vfmcap (>= 2.5.1+vim4.20261014.24), '
-               'vim4-amlvenc (>= 2.5.1+vim4.20261014.24), vim4-nanokvm')
+               'vim4-amlvenc (>= 2.5.1+vim4.20261014.24), vim4-vdin1-api-1, vim4-nanokvm')
     package('vim4-pikvm', version, output, pikvm, depends)
     if len(sys.argv) < 4 or sys.argv[3] == 'pikvm':
         package('vim4-manager', version, output, manager, 'libc6 (>= 2.38), python3, sudo, systemd, vim4-media-api-1, vim4-runtime-api-1, vim4-nanokvm')

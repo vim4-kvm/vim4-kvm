@@ -34,6 +34,7 @@ if has vim4-kvm-board; then
     PYTHONPATH=/tmp/package-check/root/usr/lib/vim4-kvm/python python3 -c 'import vim4media, vim4video, vim4boot'
 fi
 if has vim4-amlvenc; then dpkg-deb -f ./vim4-amlvenc_*.deb Provides | grep -qw vim4-wave5-api-1; fi
+if has vim4-vfmcap; then dpkg-deb -f ./vim4-vfmcap_*.deb Provides | grep -qw vim4-vdin1-api-1; fi
 for app in vim4-nanokvm vim4-jetkvm vim4-onekvm vim4-manager; do
     if has "$app"; then dpkg-deb -f ./"${app}"_*.deb Depends | grep -qw vim4-media-api-1; fi
 done
@@ -41,6 +42,7 @@ binaries=''
 has vim4-kvm-board && binaries="$binaries usr/sbin/usb-pd-init"
 has vim4-vfmcap && binaries="$binaries usr/lib/aarch64-linux-gnu/gstreamer-1.0/libgstvfmcap.so"
 has vim4-amlvenc && binaries="$binaries usr/lib/vim4-kvm/gstreamer-1.0/libgstamlvenc.so usr/lib/vim4-kvm/gstreamer-1.0/libgstvim4jpegenc.so usr/lib/vim4-kvm/mainline-gstreamer-1.0/libgstvim4wave5.so usr/lib/vim4-kvm/mainline-gstreamer-1.0/libgstvideo4linux2.so"
+has vim4-vfmcap && binaries="$binaries usr/lib/vim4-kvm/vendor-gstreamer-1.0/libgstvideo4linux2.so"
 has vim4-nanokvm && binaries="$binaries opt/vim4-nanokvm/NanoKVM-Server"
 has vim4-jetkvm && binaries="$binaries opt/vim4-jetkvm/jetkvm"
 has vim4-onekvm && binaries="$binaries opt/vim4-onekvm/one-kvm opt/vim4-onekvm/lib/libgst-aml-dma-allocator.so"
@@ -54,6 +56,15 @@ for binary in $binaries; do
         exit 1
     fi
 done
+if has vim4-vfmcap; then
+    capture_root=/tmp/package-check/root
+    if ldd "$capture_root/usr/lib/vim4-kvm/vendor-gstreamer-1.0/libgstvideo4linux2.so" | grep -q libamlv4l2src; then
+        echo 'VDIN1 requires the standard V4L2 plugin, not the vendor HDMI controller' >&2
+        exit 1
+    fi
+    GST_PLUGIN_PATH="$capture_root/usr/lib/vim4-kvm/vendor-gstreamer-1.0:$capture_root/usr/lib/aarch64-linux-gnu/gstreamer-1.0" \
+        GST_REGISTRY=/tmp/package-check/capture-registry.bin gst-inspect-1.0 vim4vdin1src >/dev/null
+fi
 python3 - /tmp/package-check/root <<'PY'
 import configparser
 from pathlib import Path

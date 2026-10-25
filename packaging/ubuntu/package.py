@@ -47,6 +47,8 @@ def package(name, version, output, populate, depends):
         provides = 'Provides: vim4-media-api-1, vim4-media-transfer-api-1, vim4-runtime-api-1\n' if name == 'vim4-kvm-board' else ''
         if name == 'vim4-amlvenc':
             provides = 'Provides: vim4-wave5-api-1\n'
+        if name == 'vim4-vfmcap':
+            provides = 'Provides: vim4-vdin1-api-1\n'
         if name == 'vim4-manager':
             provides = 'Provides: vim4-nas-api-1\n'
         write(stage, 'DEBIAN/control', f'Package: {name}\nVersion: {version}\nArchitecture: arm64\n'
@@ -107,6 +109,8 @@ if [ "${1:-}" = configure ]; then /usr/libexec/vim4-logging; fi
 def capture(stage):
     copy(ROOT / 'gst-plugin-vfmcap/build/libgstvfmcap.so', stage,
          'usr/lib/aarch64-linux-gnu/gstreamer-1.0/libgstvfmcap.so', 0o644)
+    copy(ROOT / 'build/mainline-gstreamer/libgstvideo4linux2.so', stage,
+         'usr/lib/vim4-kvm/vendor-gstreamer-1.0/libgstvideo4linux2.so', 0o644)
     copy(ROOT / 'gst-plugin-vfmcap/README.md', stage, 'usr/share/doc/vim4-vfmcap/README.md')
     copy(ROOT / 'gst-plugin-vfmcap/src/gstvfmcapsrc.c', stage, 'usr/share/doc/vim4-vfmcap/gstvfmcapsrc.c')
     copy('/usr/share/common-licenses/LGPL-2.1', stage, 'usr/share/doc/vim4-vfmcap/copyright')
@@ -296,7 +300,7 @@ fi
 GST = 'libc6 (>= 2.38), libglib2.0-0t64, libgstreamer1.0-0 (>= 1.24), libgstreamer-plugins-base1.0-0 (>= 1.24)'
 # Applications state lower bounds only: their web updaters replace one package
 # and refuse any plan that would also upgrade the platform.
-PLATFORM = ('vim4-kvm-board (>= 1.0.3+vim4.20261013.18), vim4-media-api-1, vim4-runtime-api-1, vim4-wave5-api-1, vim4-vfmcap, '
+PLATFORM = ('vim4-kvm-board (>= 1.0.3+vim4.20261013.18), vim4-media-api-1, vim4-runtime-api-1, vim4-wave5-api-1, vim4-vdin1-api-1, vim4-vfmcap, '
             'vim4-amlvenc (>= 1.0.3+vim4.20261013.18)')
 PACKAGES = {
     'platform': [

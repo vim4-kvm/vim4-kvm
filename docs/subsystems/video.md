@@ -38,8 +38,10 @@ JetKVM 的“空闲时隐藏显示器”是用户主动选择的例外，默认�
 内核在 vdin0 用 HDR2 核把 HDR10/HLG 输入映射到 SDR，SDR 直通；曲线由 `vim4-hdr-curve`
 生成，参数在 `/etc/default/vim4-kvm-hdr`，管理器可实时调节。改 HDR 映射或曲线时读 [HDR 输入映射](../hdr.md)。
 5.15 原生显示模式 `aml_media.vdin0_native_hdr=1` 例外：VDIN0 保留10-bit HDR，
-VDIN1 同源独立映射 SDR，One-KVM 由启动器选 `/dev/video71` 和私有标准 V4L2 插件。
-该模式不是普通 vfm_cap NV21 采集，其他 KVM 应用及 MJPEG 支路未接入；
+VDIN1 同源独立映射 SDR，四套应用由启动器选 `/dev/video71` 和私有标准 V4L2 插件。
+该模式不是普通 vfm_cap NV21 采集：NanoKVM、JetKVM、PiKVM 及 One-KVM 的独立
+MJPEG 分支使用公共 `vim4vdin1src`；One-KVM 的 H.264/H.265 保留原有 VDIN1 接入。
+采集包提供 `vim4-vdin1-api-1` 和标准插件，须先于依赖它的应用部署；
 实际 HDR10 4K60、元数据与默认部署见 [双路径交付](../bringup/2026-10-25-native-hdr-dual-path.md)。
 以上为 5.15 路径；7.x 已接通 [HDR10 4K60 采集与映射](../bringup/2026-10-20-edge-hdr-capture.md)，
 限 PQ / BT.2020 / 420 10bit。专用 `hdr_curve` 原子提交两张表，帧边界重载；
