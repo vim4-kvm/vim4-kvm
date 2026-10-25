@@ -5,6 +5,10 @@
 
 新记录：新建 `bringup/YYYY-MM-DD-英文短名.md`，首行 `# YYYY-MM-DD：标题`，并在本页对应日期下追加一行。
 
+## 2026-10-25
+
+- [厂商 5.15 真实 1080p60 EDID 跟随](2026-10-25-vendor-passthrough-1080p.md) — video manager uu deployment board
+
 ## 2026-10-24
 
 - [UU 缩小输出的 GE2D 时钟与流水线修复](2026-10-24-uu-scaled-60fps.md) — video application uu deployment board
