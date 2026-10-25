@@ -38,6 +38,9 @@ case "$(uname -r)" in
         export GST_PLUGIN_PATH=/usr/lib/vim4-kvm/mainline-gstreamer-1.0
         export GST_REGISTRY="$state/gstreamer-mainline-registry.bin"
         unset VIM4_SECONDARY_HDMI_CAPTURE
+        # Wave5 imports separate plane views. The vendor allocation preference
+        # would make the V4L2 encoder expect one contiguous DMA-buf instead.
+        unset GST_V4L2_PREFER_CONTIGUOUS
         unset LD_LIBRARY_PATH
         # Match the validated mainline runtime's higher-capacity CPU group.
         taskset -pc 0-3 "$$" >/dev/null

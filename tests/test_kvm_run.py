@@ -43,17 +43,21 @@ class KVMRunTests(unittest.TestCase):
                 ('5.15.137-vim4kvm-hdrdual6', 'Y', True),
                 ('5.15.137-vim4kvm', 'N', False),
                 ('7.3.0-vim4kvm-uhd1+', 'Y', False),
+                ('7.3.0-rc7-vim4kvm-uhd1+', 'Y', False),
             ):
                 native.write_text(enabled)
                 for app in ('nanokvm', 'jetkvm', 'pikvm', 'onekvm'):
                     with self.subTest(kernel=kernel, app=app):
                         result = subprocess.run(['sh', str(launcher), app], capture_output=True, text=True,
                             env={**os.environ, 'PATH': str(bin_dir) + os.pathsep + os.environ['PATH'],
-                                 'TEST_KERNEL': kernel, 'VIM4_SECONDARY_HDMI_CAPTURE': '1'})
+                                 'TEST_KERNEL': kernel, 'VIM4_SECONDARY_HDMI_CAPTURE': '1',
+                                 'GST_V4L2_PREFER_CONTIGUOUS': '1'})
                         self.assertEqual(result.returncode, 0, result.stderr)
                         actual = json.loads(result.stdout)
                         self.assertEqual(actual.get('VIM4_SECONDARY_HDMI_CAPTURE'), '1' if secondary else None)
                         self.assertEqual(actual['VIM4_VIDEO_BACKEND'], 'wave5' if kernel.startswith('7.') else 'vendor')
+                        self.assertEqual(actual.get('GST_V4L2_PREFER_CONTIGUOUS'),
+                                         None if kernel.startswith('7.') else '1')
                         if secondary:
                             self.assertIn('/vendor-gstreamer-1.0:', actual['GST_PLUGIN_PATH'])
 

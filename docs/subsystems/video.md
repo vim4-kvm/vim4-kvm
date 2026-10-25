@@ -42,6 +42,8 @@ VDIN1 同源独立映射 SDR，四套应用由启动器选 `/dev/video71` 和私
 该模式不是普通 vfm_cap NV21 采集：NanoKVM、JetKVM、PiKVM 及 One-KVM 的独立
 MJPEG 分支使用公共 `vim4vdin1src`；One-KVM 的 H.264/H.265 保留原有 VDIN1 接入。
 采集包提供 `vim4-vdin1-api-1` 和标准插件，须先于依赖它的应用部署；
+`GST_V4L2_PREFER_CONTIGUOUS` 仅保留在厂商后端，7.3 启动器必须清除它：
+否则 Wave5 选择单平面输入，拒绝应用提供的两个 DMA 平面视图，第一帧即失败。
 实际 HDR10 4K60、元数据与默认部署见 [双路径交付](../bringup/2026-10-25-native-hdr-dual-path.md)。
 以上为 5.15 路径；7.x 已接通 [HDR10 4K60 采集与映射](../bringup/2026-10-20-edge-hdr-capture.md)，
 限 PQ / BT.2020 / 420 10bit。专用 `hdr_curve` 原子提交两张表，帧边界重载；
