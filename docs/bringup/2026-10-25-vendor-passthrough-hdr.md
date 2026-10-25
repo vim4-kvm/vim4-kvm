@@ -10,8 +10,9 @@ VPP，造成重复映射。不能靠删除拒绝条件、改 TX HDR 标志冒充
 包括显示器本身支持 HDR 的情况。原生 10/12-bit HDR10/HLG 输出、DRM 元数据逐值传递
 尚未实现，不应宣称原任务完整通过。Dolby Vision 明确拒绝画面、声音独立继续。
 
-默认内核保持 `5.15.137-vim4kvm-vapb1`；通过串口 RAM sysboot 一次性启动
-`5.15.137-vim4kvm-hdr1` 做验证，不更改默认配置。One-KVM 源码、安装及编码偏好未修改。
+先通过串口 RAM sysboot 一次性验证 `5.15.137-vim4kvm-hdr1`；用户目视确认后明确授权
+将其设为默认。原 `vapb1` 保留为 `VendorVapb1`，7.3 和 Stock 入口保留。
+One-KVM 源码、安装及编码偏好未修改。原生 HDR 双路径另立候选，不替代本次 SDR 修复。
 
 ## 故障取证（UTC）
 
@@ -50,11 +51,12 @@ manager：
 
 - 规范化 PQ/HLG/Dolby Vision 输入类型；捕获格式失败与 RX 失锁分开，保留真实 input。
 - 确认驱动 hdr_sdr=1 后才允许 HDR 映射画面输出，output.hdrToSdr=true，保持 SDR TX；
-  旧内核没有该事实接口时明确报 unsupported-format，不伪造成功。
+  旧内核没有该事实接口时报告映射尚未就绪的 video-error，不伪造成功。
 - 新状态 unsupported-format、video-error 及 reason 给出中文解释；声音可在这两种状态及
   视频 starting 时独立工作，仍对断信号、无显示器、受保护输入停止。
 - 异常只在内容变化时记录，避免每秒重复同一句错误；status 仍只读，modeset 单写入者不变。
-- 布局/CSS 不改。已先向用户列出“暂不支持此输入格式”“画面暂不可用”及说明文案供审阅。
+- 布局/CSS 不改。采用用户定稿：输出正常事实“**HDR 已转为 SDR**”；真正不能处理的输入
+  显示“暂不支持此输入格式”及具体原因；采集异常显示“输入信号异常”并提示检查线缆/信号源。
 
 ## 厂商原生 HDR 路径与能力缺口
 
@@ -113,13 +115,41 @@ OSD blank 均1，HDR 输入、SDR 输出与声音恢复，无控制台策略解�
 记录为未反馈，不能推定用户确认原生 HDR。原回复已读后删除，无第二次物理/目视请求。
 manager 已合入推送 main `381fe28`（实现 `d397f9b`）；驱动已合入推送
 `vim4-kvm-5.15@28b3dfef6`。部署 manager 为合入后 main 构建，仍保留原 manager/助手备份
-`/var/backups/vim4-hdr-20261025/before.tar`。默认配置 SHA-256 核对未变，
-**目前运行一次性 hdr1；重启回默认 vapb1 时本地 HDR 显示仍须候选驱动，不能宣称已永久修复。**
-正式安装/设默认已另行征询，未获明确回复之前不操作。One-KVM 无源码或安装改动。
+`/var/backups/vim4-hdr-20261025/before.tar`。随后用户明确授权默认交付，文案定稿合入并推送
+manager main `3c6ade7`，部署为该干净提交构建，额外备份在
+`/var/backups/vim4-hdr-final-20261025/`。One-KVM 无源码或安装改动。
+
+### 默认启动交付与回退
+
+`packaging/kernel/promote.py` 复用标准 `vim4boot` 清单、校验和原子写入；只提升已运行的
+匹配候选，完整比较候选/已安装 `.ko` 集合，保留全部旧入口与 APPEND。
+启动分区原仅剩4.8MiB；将 Stock 与7.3的原始 Image 备份到根分区，再无损 gzip，
+逐字节解压比较并更新7.3文件哈希，内核内容、模块及默认参数不变。旧原件在
+`/var/backups/vim4-hdr-default-20261025-pre-compression/`；未将这些压缩变化冒充7.3新启动验收。
+提升过程中脚本从 `/tmp` 运行时出现路径导入错误，未改默认项；修正后清理本次部分复制文件，
+保留首次备份，再完成提升。正式工具已去除源树路径依赖。
+
+默认 `5.15.137-vim4kvm-hdr1`，保留原 `vapb1` 的 Image、initrd、DTB、完整模块与
+`VendorVapb1` 入口。旧默认/校验清单备份在 `/var/backups/vim4-hdr-default-20261025/`。
+回退先检查（不重启）：
+
+```sh
+sudo python3 /usr/local/lib/vim4-kvm/promote-vendor.py rollback --backup /var/backups/vim4-hdr-default-20261025 --check
+```
+
+去掉 `--check` 恢复旧默认，再 `sudo systemctl reboot`；不会修改 KVM 用户设置。
+本轮回退检查已通过，未实际重启回 vapb1（它不含这次 HDR 修复）。
+
+正常默认重启35.664秒到登录；One-KVM 等公共 PD 初始化完成后03:38:42自动 active。
+HDR10 RX 仍4K59.98，输出2160p60、hdrToSdr=true、音频running，UDC configured，
+四项服务 active。物理 HDMI 动态图/短音源与60秒网页窗口实测 H.264 4K59.993fps，
+drop/lost/freeze/PLI 增量全0，音频解码峰值0.1027；呈现 p95 17.8ms、最大23.5ms。
+无新增 oops/panic/格式越界。UU host online；本次尚无新的 UU 客户端接收回报，
+不把在线状态冒充此次重启后 UU 客户端已重新实测。
 
 manager Python全量203项通过、12跳过，Go全量/vet通过，前端构建和48张状态截图回归通过。
 common_drivers 三项离线fixture及完整内核构建通过；checkpatch为0错误、1警告
-（新增Python测试未加SPDX头，按任务不添加许可头）。主仓全量244项通过、7跳过，提交前再跑。
+（新增Python测试未加SPDX头，按任务不添加许可头）。交付主仓全量246项通过、7跳过。
 
 未实现项必须保留：
 原生 HDR10/HLG 10/12-bit 1:1输出及元数据逐值透传、真实 SDR 显示器、真实HLG源、
