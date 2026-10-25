@@ -1,10 +1,10 @@
 # 2026-10-25：厂商 5.15 VAPB 共享时钟需求
 
 当前状态：时钟修复已合入 common_drivers `vim4-kvm-5.15` 并复编；One-KVM
-`vim4` 已移除 debugfs 写时钟，仅保留检查与告警。候选上板验证、默认项切换待完成。
+`vim4` 已移除 debugfs 写时钟，仅保留检查与告警。候选短测通过并已设为默认。
 用户允许资格元数据同时列出旧、新内核；声音偏好、路由和 EDID 保持原样。
 按最新要求，只做启动、4K/1080p 约 60fps、透传视频/声音的基本自动检查后转默认，
-其余尺寸和长期使用由用户继续实测，不重复完整长测。
+其余尺寸和长期使用由用户继续实测。
 
 ## 根因和时钟树
 
@@ -47,14 +47,14 @@ GE2D 将已有 SoC/VPU 策略计算出的目标转换为最低需求，附着在
 消费者上，直到驱动释放。T7 在共享 `CLKID_VAPB` 上投票，所以 CCF 取两者最低
 需求的最大值；旧 JPEG 精确请求低于 GE2D 下限时被拒绝，不能覆盖已有频率。
 先 `clk_round_rate()` 再设置下限，避免把名义 667000000Hz 当作实际可达下限。
-这保留 GE2D 原有驱动存续期的频率策略，不新增按帧调频或空闲降频。
+保留 GE2D 原有频率策略。
 
 `drivers/media_modules/frame_sink/encoder/multi/test_shared_clock.py` 编译真实
 GE2D 请求函数及 MultiEnc 请求、开关和 open 函数，覆盖两种初始化顺序、20 次重开、
 旧 JPEG 竞争、低编码器参数、取整和请求失败；验证请求失败没有分配/上电，后续
 内存或 IRQ 失败也不遗留投票。时钟 mock 只模拟每消费者下限，不能替代真实
 CCF/时钟树的上板验证。Mac 和 ARM64 VM 均通过；checkpatch 零错误、零警告。
-该回归已接入 common_drivers CI 的内核构建前门禁。
+回归已接入 CI。
 
 ## 7.3 结论
 
@@ -70,30 +70,25 @@ VAPB 500/250MHz；当前 T7 GE2D 没有使能/验收，不能据此声称所有�
 
 ## 构建与基线窗口
 
-音频会话完成后取得 heavy 锁，在 `orb vim4-build` 独立工作树
-`~/src/linux-vapb-5.15` 完成 Image、DTB、全部 modules 和外部 vfm_cap 构建。
-没有修改音频任务使用的 `~/src/linux` 或其未提交驱动文件。
-随后持 board/heavy 双锁进行板端步骤；没有并行编译和性能采样。
+在 `orb vim4-build` 独立树 `~/src/linux-vapb-5.15` 构建完整内核/模块及 vfm_cap，
+保留音频任务原树。板端持 board/heavy 双锁，没有并行编译和性能采样。
 
-候选 Linux `80a07ad5406d`、驱动 `25d2aa57f808815254fa1e8de7703f8df53babdc`，
-两个提交为 `3185aa677`（MultiEnc）与 `25d2aa57f`（GE2D、回归/CI），已推送生产分支。
+候选 Linux `80a07ad5406d`，驱动 `3185aa677`（MultiEnc）、`25d2aa57f`（GE2D/回归）
+均已推送生产分支。
 完整构建 release 为 `5.15.137-vim4kvm-vapb1`，build ID
 `db19fc96a2df75099a7335c7bde326d85275e316`。
 配置与板上原配置仅 LOCALVERSION 不同，SHA256 为
 `37cb2ed8b2293ccd7b32e65c245bc01e49bbbd49360ab7d2b9b99a3ec1236095`。
-厂商 Makefile 向 worktree 的 `.git/hooks` 安装钩子失败被其标为 ignored，
-另有原有 Kconfig choice 警告；编译、链接、模块安装均成功。
+构建有原厂 Kconfig choice 和 worktree `.git/hooks` 警告；编译、链接、模块安装成功。
 
 默认原内核为 `5.15.137-vim4kvm`、build ID
 `389f77352dc8ab21aa80d8cf36819bb9da31d7ee`。旧 Image、initrd、DTB、config、
 extlinux、uEnv、kernels.json、运行登记和资格记录备份于
 `/var/backups/vapb-kernel-20261025/`；旧模块目录未覆盖。
-01:52:49 入场快照曾见透传 off；偏好文件于 01:52:51 由外部状态变更为 on。
 本任务没有写透传偏好，正式窗口开始前已核对视频/声音双 running。
 
-仅在 One-KVM 服务挂载命名空间内绑定临时助手，`video-clock` 只读并输出
-`test_clock_write_disabled=true`，实际 399999994Hz；不改安装文件或生产源码。
-临时暂停 UU 云连接以保持单一浏览器观看者，结束恢复原 enabled 设置。
+旧基线在服务挂载命名空间绑定临时只读助手，实际 399999994Hz；不改生产安装文件。
+暂停 UU 云连接以保持单一观看者，结束恢复原设置。
 每档独立预热 15 秒、采样 120 秒，4K60 SDR/YUV444 运动标记及 48kHz 测试音输入，
 透传/音频开启；One-KVM 保留已部署的 DMA 缓存、有界队列和编码设置。
 
@@ -106,48 +101,76 @@ extlinux、uEnv、kernels.json、运行登记和资格记录备份于
 | 1280×720 / H.265 | 02:04:16–02:06:16 | 44.578 | 44.581 |
 | 1920×1080 / H.264 | 02:06:36–02:08:36 | 43.635 | 43.640 |
 
-发送端以窗口内 `VIM4 capture progress encoded=` 首末计数差/日志时间差计算，
-不是配置上限。六窗零浏览器 drop/loss/freeze；各抓三帧，三处帧号一致并推进、
-原色块全部通过。音频非静音峰值约 0.103–0.105，透传/音频始终 running。
-这仅是旧内核无时钟恢复的对照，不是新内核通过证据。
+发送端以 `VIM4 capture progress encoded=` 计数差/时间差计算。六窗零浏览器
+drop/loss/freeze；18 帧的帧号推进/一致性和原色块通过。音频峰值约 0.103–0.105，
+透传双 running。这是旧内核禁恢复对照。
 
 ## 看门狗与启动安全网
 
-原 5.15 的看门狗为 Meson GXBB，PID 1 持有，Runtime 30s / Reboot 60s。
-只在 `/run` 暂停 PID 1 喂狗并 reexec，独立程序 SETTIMEOUT(15)、KEEPALIVE 一次，
-保持 fd 打开而停止喂狗。02:13:06 UTC armed，随后实际复位，串口确认
-`reboot_mode : watchdog_reboot`，回到原默认 5.15、相同 build ID，视频/声音恢复 running。
-未测精确复位墙钟延迟，也不把运行时复位等同于全部早期引导/硬件故障覆盖。
-临时 Runtime override 随复位消失，PID 1 恢复持有 /dev/watchdog0。
+原 5.15 看门狗为 Meson GXBB，PID 1 持有，Runtime 30s / Reboot 60s。
+只在 `/run` 暂停 PID 1 喂狗，独立程序 SETTIMEOUT(15)、KEEPALIVE 一次后停止喂狗。
+02:13:06 UTC armed，实际复位，串口确认 `watchdog_reboot`；原默认 build ID 与
+透传视频/声音恢复，临时 override 消失。未测精确复位延迟，不代表全部早期故障覆盖。
 
-`/boot` 只有约 13MiB 空闲。候选完整模块存放独立 release 目录，启动文件与
-完整匹配 initrd 暂存根分区 `/var/lib/vim4-kvm/vapb-clock/candidate/`，未写默认启动项。
-新 initrd 使用已启用的 Zstd 解压支持；因尚未放置 `/boot/config-<新release>`，
-mkinitramfs 提示无法检查 CONFIG_RD_ZSTD，已与构建配置的 `=y` 单独核对。
-候选 DTB 与已装 kvim4n DTB 字节一致；候选尚未启动，不能把暂存当验收。
-
-先以原 Image 的 gzip 副本、原 initrd/DTB，从根分区做一次 RAM sysboot：
-U-Boot 实际环境含 kernel_comp_addr_r=0x0d080000、kernel_comp_size=0x2000000，
-串口确认读取私有 Image.gz 并解压，约 29.9 秒到登录；原 build ID、透传/声音 running，
-默认启动文件与登记哈希未变。此验证只涉及原内核，不是新驱动验收。
-
-随后正常重启再次进入原默认、相同 build ID，临时 panic=20 参数消失，
-证明 RAM 选择未持久化。原 Image/initrd/extlinux/uEnv、内核登记、资格文件、
-One-KVM/manager 文件哈希均与入场相同，视频/声音 running。
-临时服务内禁写视图随重启消失，恢复 UU enabled=true（当前无客户端会话）。
-主仓完整离线测试 243 项通过、7 项跳过。旧内核窗口 soc_thermal 为 54.7–60.5°C，
-温度随时间缓慢下降，尚无新内核配对对照；未提供整板 power_input，不能给功耗结论。
+`/boot` 原仅约 13MiB 空闲。候选完整模块与启动文件先放独立 release/根分区，
+完整 initrd 使用配置已有的 CONFIG_RD_ZSTD=y；候选 DTB 与旧 kvim4n 字节一致。
+先以旧 Image 的 gzip 副本、原 initrd/DTB 做 RAM sysboot，串口确认解压并约 29.9 秒
+到登录；再正常重启回原默认，两次原 build ID、视频/声音均正常。
+原启动文件/登记/生产助手哈希不变，临时 panic 参数消失，证明单次选择未持久化。
+旧内核窗口 soc_thermal 54.7–60.5°C；没有整板 power_input，不能给功耗结论。
 
 资格记录采用 `abi:1` 与 `kernels` 数组，同时列出旧、新 release/module note 指纹，
 manager `0755278` 保留旧单条记录兼容，严格匹配两项并保留原权限检查。
 One-KVM `7fdbf3ed` 只读检查实际总线频率，低频或检查失败只告警并继续出流。
-空间方案可使用已验证的压缩 Image 和 Zstd initrd，调试用 System.map 移至根分区并
-保留原路径链接；原厂 Stock、7.3 和旧 5.15 回退产物均须保留，尚未执行此空间调整。
+空间调整已执行：新旧 Image 使用已验证的 gzip 格式，新完整 initrd 为 Zstd；
+调试用 System.map 移至根分区并保留原路径链接。Stock、7.3、旧 5.15 产物均保留。
 
-## 尚未完成
+## 主线构建、短测与交付
 
-新内核的一次性启动、五档 60fps、编码/透传/音频共存及温度对照均待执行。
-One-KVM/manager 尚待重打包部署；默认内核未替换。
+common_drivers 生产分支复编得到相同 Image SHA256 与 build ID；完整模块集与
+外部 vfm_cap 均匹配此构建。One-KVM `7fdbf3ed`、manager `0755278` 从各自生产
+分支构建于固定 ARM64 builder（镜像 `8f0e51877aaf`），没有从板子获取构建输入。
+One-KVM 35 项部署测试、DMA 生命周期检查、744 项 Rust 测试通过（2 ignored）；
+manager Go 测试通过，Mac 部署测试 198 项通过（12 skipped）。
+包为 `2.5.1+vim4.20261025.2`、`.3`，离线核验后部署；manager 网关启动完成后重检
+通过，资格读取进程重启后原内核透传双 running。主仓 244 项离线测试通过（7 skipped）。
+
+一次性从根分区启动候选，默认项仍是旧内核；28.741 秒到登录。
+运行 release/build ID、aml_media note 指纹均匹配完整构建；taint 12288 与旧内核一致。
+GE2D/VAPB 实际 666666656Hz，编码器打开后保持，生产助手仅只读检查。
+4K60 SDR/YUV444 运动输入、48kHz 测试音，透传视频/声音开启；每档预热 10 秒、
+采样 30 秒，以窗口内发送端 encoded 首末计数/时间差计算吞吐。
+
+| H.265 输出 | 旧内核禁恢复 fps | 新内核发送 fps | 浏览器解码 fps |
+|---|---:|---:|---:|
+| 3840×2160 | 59.998 | 60.000 | 59.988 |
+| 1920×1080 | 43.661 | 59.998 | 60.019 |
+
+新窗口 UTC 为 02:40:36–02:41:06、02:41:25–02:41:55，发送端计数区间约 25.05 秒。
+零浏览器 drop/loss/freeze；每档三帧的帧号一致并推进、原色块通过。
+WebRTC 音频峰值 0.103/0.102。透传双 running，独立连续音补检 PCM frames
+6686976→6831360、peak 3277，证明声音数据非静音且持续推进。
+内核没有新增 Oops/panic；采集重连时仍有
+`unknown vframe ... passing through` 日志，后续应单独整理，不能宣称日志全零。
+新内核结束时 soc_thermal 59.8°C；短窗与旧温区范围重叠，非配对热稳态试验，
+没有整板功耗传感器，不能给出温升/功耗差结论。
+
+通过后，`Default` 显式指向新 release 的 Image/initrd/DTB；`VendorPrevious`
+保留旧启动字段。`kernels.json` 更新 vendor 的完整产物哈希，mainline 登记不变。
+资格记录同时保留两个 release/note；旧模块未覆盖，原 extlinux 和清单备份可恢复。
+正常重启 35.686 秒回到新默认和相同 build ID，视频/声音 running；管理器登记可用，
+常规检查通过。临时统计移除，UU/输出恢复；声音偏好与 uEnv 哈希未变。
+
+用户可直接用 One-KVM 或 UU 选择 4K、3200、2560、1920、1280 输出测试；本次
+按要求仅复验 4K/1080p，未重复其余尺寸、H.264 或长期稳定性测试。
+回退脚本 `--check` 已核验旧 gzip Image、initrd、DTB、完整模块与 7.3；永久回旧 5.15：
+
+```sh
+ssh vim4 'sudo python3 /var/backups/vapb-kernel-20261025/rollback.py --reboot'
+```
+
+也可在串口启动菜单选择 `VendorPrevious` 单次回旧内核。新 One-KVM 在旧内核仅告警，
+缩放可能恢复低吞吐；如需完整恢复旧用户态 workaround，旧 `.1` deb 也已备份在同目录。
 44.1kHz One-KVM 既有变调见[音频交付](2026-10-25-vendor-passthrough-audio.md)，不在本修复范围。
 本任务没有创建或修改 `/tmp/codex-kernel/need-user.txt`。
-原始证据目录为 `logs/vapb-kernel-20261025/`，包含构建、UART、计数、PNG 和传感器日志。
+证据在 `logs/vapb-kernel-20261025/`。
