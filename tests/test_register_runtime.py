@@ -1,4 +1,5 @@
 import importlib.util
+import gzip
 import json
 from pathlib import Path
 import sys
@@ -22,6 +23,14 @@ boot = load('profile_boot', 'board/vim4boot.py')
 
 
 class BootProfileTest(unittest.TestCase):
+    def test_vendor_release_can_be_read_after_boot_image_compression(self):
+        with tempfile.TemporaryDirectory() as directory:
+            image = Path(directory) / 'Image'
+            data = b'\0Linux version 5.15.137-vim4kvm-vapb1 (builder)\0'
+            for payload in (data, gzip.compress(data)):
+                image.write_bytes(payload)
+                self.assertEqual(runtime.release(image), '5.15.137-vim4kvm-vapb1')
+
     def test_final_release_still_requires_matching_installed_artifacts(self):
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)

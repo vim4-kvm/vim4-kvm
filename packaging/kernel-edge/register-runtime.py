@@ -9,6 +9,7 @@ DTB and complete module set. It preserves the current default and data. It does
 not install files, enable applications, reboot or promise automatic fallback.
 """
 import argparse
+import gzip
 import hashlib
 import json
 import os
@@ -23,7 +24,10 @@ def digest(path):
 
 
 def release(image):
-    found = re.search(rb'Linux version ([^ ]+) ', image.read_bytes())
+    data = image.read_bytes()
+    if data.startswith(b'\x1f\x8b'):
+        data = gzip.decompress(data)
+    found = re.search(rb'Linux version ([^ ]+) ', data)
     if not found:
         raise ValueError('Image does not contain its kernel release')
     return found[1].decode('ascii')
