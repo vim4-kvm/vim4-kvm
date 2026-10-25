@@ -40,7 +40,7 @@ HDR10 显示与 KVM 使用同一 white/peak；HLG 保留与采集相同的厂商
 
 ## 自动验收
 
-候选阶段直接点击真实页面 HDR 开关，保持同一 4K WebRTC 会话：
+候选阶段直接点击真实页面 HDR 开关，保持同一 4K H.264 WebRTC 会话：
 关/开两段解码速率分别 60.00/60.04fps，dropped/lost/freezes/PLI 都为 0。
 API 点击至 running 与正确包读回分别约 4.00/2.82 秒，包含 HTTP、轮询与 SSH 采样成本，
 **不是显示器光学黑屏时间**。无 TX modeset；HDR 恢复的 VPP mute 20 帧，
@@ -54,7 +54,7 @@ API 点击至 running 与正确包读回分别约 4.00/2.82 秒，包含 HTTP、
 关闭读回 BT.709、`DRM PKT not enable`，开启读回 PQ、BT.2020 与原始零静态元数据。
 日志 VPP mute-on→mute-off 为 352.3ms，整个切换没有 `hdmitx_set_dispmode` 或 RX 失锁。
 
-恢复 HDR 后保持动态图案与同一 WebRTC 会话 **600 秒**：解码 60.0004fps，
+恢复 HDR 后保持动态图案与同一 H.264 WebRTC 会话 **600 秒**：解码 60.0004fps，
 dropped/lost/freezes/PLI 均为 0。包含切换与稳定段的 650 秒只读健康监测共 651 样本，
 TX modeset、RX 失锁、扫描停顿、ready 丢失全部为 0。One-KVM 的 127 个相邻约五秒
 编码进度窗口为 59.989–60.007fps，整体 59.998fps，采样时 last_frame_ms 最大为 0。
