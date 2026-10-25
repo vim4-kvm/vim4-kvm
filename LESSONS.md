@@ -6,6 +6,7 @@
 
 | 触发条件 / 错误 | 原因与正确做法 | 验证入口 |
 |---|---|---|
+| 读取 debugfs audiobus regmap 导致 external abort 和自动重启 | 只读回调也可能访问未上电 MMIO；通用 dump 不受管道 head 限制。硬件诊断同样遵守板锁，只读已审阅的具名状态接口，不盲扫寄存器 | [音频诊断事故](docs/bringup/2026-10-25-audiobus-read-abort.md) |
 | 临时窗口进程死亡或内核 oops，finally 恢复被卡住，留下半安装 | 回退不能依赖候选 Linux 或窗口清理；保留默认基线，候选只在当次 U-Boot RAM 中选择。恢复 stop 必须有界，失败仍写回启动文件并同步；中断安装与无清理进程退出须离线注入测试 | [M1 事故与安全网](docs/bringup/2026-10-23-display-m1-safety.md) |
 | U-Boot 主机测试通过便刷入 eMMC，随后早期循环复位 | 主机 mock 不覆盖上电顺序、总线不返回或供电复位。候选先从 microSD 验证，失败断电拔卡回退；FUNCTION+RESET 依赖 eMMC U-Boot 到达按键检测，早期故障须拔 SD、按住 FUNCTION 冷上电进 OOWOW | [现场失败与恢复](docs/bringup/2026-10-22-p2-uboot-combined.md) |
 | 为抓滚轮写入而对正在传视频的 One-KVM 使用 strace，UU 明显卡顿 | 即使按 HID fd 过滤输出，ptrace 仍会干扰多线程视频进程；本轮发送降至约 23–34fps，解除跟踪后恢复 60fps。实时音视频进程优先使用程序内有界计数、低频汇总或独立接收窗口，不能把过滤日志当作低开销采样 | [UU 滚轮调查](docs/uu-scroll.md) |

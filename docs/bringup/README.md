@@ -7,6 +7,8 @@
 
 ## 2026-10-25
 
+- [厂商 5.15 HDMI 音频桥与 KVM 共存](2026-10-25-vendor-passthrough-audio.md) — audio video manager deployment board
+- [音频寄存器只读诊断触发重启](2026-10-25-audiobus-read-abort.md) — audio kernel deployment board uu
 - [厂商 5.15 真实 1080p60 EDID 跟随](2026-10-25-vendor-passthrough-1080p.md) — video manager uu deployment board
 - [UU 缩放生产合入与时钟失败降级](2026-10-25-uu-scaling-production.md) — video application uu deployment board
 
