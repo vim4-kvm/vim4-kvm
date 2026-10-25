@@ -199,6 +199,8 @@ def onekvm(stage):
     copy(ROOT / 'build/onekvm', stage, 'opt/vim4-onekvm/one-kvm', 0o755)
     copy(ROOT / 'One-KVM/target/vim4/libgst-aml-dma-allocator.so', stage,
          'opt/vim4-onekvm/lib/libgst-aml-dma-allocator.so', 0o755)
+    copy(ROOT / 'One-KVM/target/vim4/gstreamer-1.0/libgstvideo4linux2.so', stage,
+         'opt/vim4-onekvm/lib/gstreamer-1.0/libgstvideo4linux2.so', 0o755)
     copy(deploy / 'one-kvm.service', stage, 'usr/lib/systemd/system/one-kvm.service')
     copy(deploy / 'vim4-onekvm', stage, 'usr/libexec/vim4-onekvm', 0o755)
     copy(deploy / 'vim4-onekvm-update', stage, 'usr/libexec/vim4-onekvm-update', 0o755)

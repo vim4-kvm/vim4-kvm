@@ -31,6 +31,12 @@ SDR_PEAK=${HDR_SDR_PEAK:-1000}
 HDR_CURVE=$(dirname "$0")/vim4-hdr-curve
 MAP=/sys/class/vfm/map
 VDIN=/sys/class/vdin/vdin0/attr
+NATIVE_HDR=0
+if [ -r /sys/module/aml_media/parameters/vdin0_native_hdr ] &&
+    [ "$(cat /sys/module/aml_media/parameters/vdin0_native_hdr)" = Y ]; then
+    NATIVE_HDR=1
+    CONVERSION=1
+fi
 
 modprobe vfm_cap
 # Invalid values stop the service, like the capture size checks above; a
@@ -46,8 +52,13 @@ fi
 pkill -x hdmiin-demo 2>/dev/null && sleep 2 || true
 
 # 8-bit only: the 4K 10-bit default is Amlogic packed 422 (AMLY)
-echo "color_depth_support 0x1" > $VDIN
-echo "color_depth 8" > $VDIN
+if [ "$NATIVE_HDR" = 1 ]; then
+    echo "color_depth_support 0x235" > $VDIN
+    echo "color_depth 10" > $VDIN
+else
+    echo "color_depth_support 0x1" > $VDIN
+    echo "color_depth 8" > $VDIN
+fi
 # linear little-endian writes, as the CPU/encoder read them
 echo "no_swap_en 1" > $VDIN
 # Capture is shared by every viewer. YUV444 requires a compatible downstream

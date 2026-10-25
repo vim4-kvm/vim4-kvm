@@ -16,6 +16,12 @@ case "$(uname -r)" in
         export GST_REGISTRY="$state/gstreamer-vendor-registry.bin"
         if [ "$app" = onekvm ]; then
             export LD_LIBRARY_PATH=/opt/vim4-onekvm/lib
+            if [ -r /sys/module/aml_media/parameters/vdin0_native_hdr ] &&
+                [ "$(cat /sys/module/aml_media/parameters/vdin0_native_hdr)" = Y ]; then
+                export VIM4_SECONDARY_HDMI_CAPTURE=1
+                export GST_PLUGIN_PATH=/opt/vim4-onekvm/lib/gstreamer-1.0:$GST_PLUGIN_PATH
+                test -r /opt/vim4-onekvm/lib/gstreamer-1.0/libgstvideo4linux2.so
+            fi
         fi
         ;;
     7.3.0-rc7-vim4kvm-uhd1+|7.3.0-vim4kvm-uhd1+)
