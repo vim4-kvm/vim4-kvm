@@ -129,7 +129,8 @@ frame_rate5999→5998、tmds_invalid→unready、READY→WAIT_CLK_STABLE，
 正式默认重启后的无声动态灰阶、60秒 H.264：3840×2160 **60.0101fps**，
 drop/lost/freeze/PLI增量0，呈现p95 18.0ms、最大32.7ms、无>50ms。
 不创建音频分析器、不播音；仅只读确认声音服务 active。
-自动30分钟只读链路/扫描监测结果见后续记录；该工具不是光学黑屏探测器。
+随后复核发现 modeset 后 AVI 色域退回709，原观察提前结束；修复及重新验收见
+[正式部署收尾](2026-10-25-native-hdr-production.md)，不把该窗口记作30分钟成功。
 
 ## 版本、验证与限制
 

@@ -63,6 +63,14 @@ def qualification_records(current, version, note):
     return updated
 
 
+def update_boot_aliases(boot, fields):
+    for alias, key in (('Image', 'LINUX'), ('initrd.img', 'INITRD'), ('dtb', 'FDTDIR')):
+        path = boot.BOOT / alias
+        if path.is_symlink():
+            path.unlink()
+            path.symlink_to(fields[key].lstrip('/'))
+
+
 def retire_entry(text, label, records, boot):
     entries = boot.boot_entries(text)
     if label == boot.default_label(text) or any(record['label'] == label for record in records):
@@ -183,7 +191,9 @@ def promote(args, boot):
     fields = {**vendor['boot'], 'LINUX': '/' + image.name, 'INITRD': '/' + initrd.name,
               'FDTDIR': '/' + dtb.name}
     if args.native_hdr:
-        fields['APPEND'] += ' aml_media.vdin0_native_hdr=1'
+        words = [word for word in fields['APPEND'].split()
+                 if not word.startswith('aml_media.vdin0_native_hdr=')]
+        fields['APPEND'] = ' '.join(words + ['aml_media.vdin0_native_hdr=1'])
     updated = replacement(text, vendor['label'], fields, args.rollback_label, boot)
     files = {image, initrd}
     files.update(path for path in dtb.rglob('*') if path.is_file())
@@ -198,12 +208,7 @@ def promote(args, boot):
     subprocess.run(['sync'], check=True)
     boot.atomic_write(boot.MANIFEST, (json.dumps(records, indent=2) + '\n').encode())
     boot.atomic_write(boot.CONFIG, updated.encode())
-    if args.retire_label:
-        for alias, target in (('Image', image), ('initrd.img', initrd), ('dtb', dtb)):
-            path = boot.BOOT / alias
-            if path.is_symlink():
-                path.unlink()
-            path.symlink_to(target.name)
+    update_boot_aliases(boot, fields)
     subprocess.run(['sync'], check=True)
     print(json.dumps(boot.status(), ensure_ascii=False))
 

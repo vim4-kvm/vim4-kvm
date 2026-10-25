@@ -16,6 +16,19 @@ spec.loader.exec_module(boot)
 
 
 class VendorPromotionTest(unittest.TestCase):
+    def test_promotion_refreshes_existing_aliases_without_overwriting_regular_files(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            (root / 'Image').symlink_to('old-kernel')
+            (root / 'dtb').symlink_to('old-dtb')
+            (root / 'initrd.img').write_bytes(b'independent regular file')
+            fields = {'LINUX': '/new-kernel', 'INITRD': '/new-initrd', 'FDTDIR': '/new-dtb'}
+            with patch.object(boot, 'BOOT', root):
+                promote.update_boot_aliases(boot, fields)
+            self.assertEqual((root / 'Image').readlink(), Path('new-kernel'))
+            self.assertEqual((root / 'dtb').readlink(), Path('new-dtb'))
+            self.assertEqual((root / 'initrd.img').read_bytes(), b'independent regular file')
+
     def test_retirement_rejects_shared_files_and_keeps_selected_kernel(self):
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)
