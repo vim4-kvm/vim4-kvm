@@ -116,6 +116,7 @@ SOURCE_DATE_EPOCH 来自主仓库提交；当前尚未证明所有工具链产�
 | nanokvm | NanoKVM | vim4-nanokvm | NanoKVM 设置 → 更新（`nanokvm_pro_latest.json` 与 tar.gz） |
 | jetkvm | kvm | vim4-jetkvm | JetKVM 设置 → 更新（`releases`） |
 | onekvm | One-KVM | vim4-onekvm | One-KVM 设置 → 更新（`onekvm-*.json`） |
+| onekvm-board | vim4-kvm | 板级＋One-KVM 两包 | 涉及共享介质 API 的组合部署，不做网页更新 |
 | pikvm-app | kvmd | vim4-pikvm | 管理面板 → 更新（`vim4-pikvm-latest.json`） |
 | manager | vim4-manager | vim4-manager | 管理面板 → 更新（`vim4-manager-latest.json`） |
 | platform | vim4-kvm | 板级、采集、编码三包 | 组件部署或镜像，不做网页更新 |

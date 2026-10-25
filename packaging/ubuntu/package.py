@@ -321,6 +321,7 @@ PACKAGES = {
         ('vim4-manager', manager, 'libc6 (>= 2.38), python3, libasound2t64, alsa-utils, sudo, systemd, fuse3, cifs-utils, nfs-common, vim4-media-api-1, vim4-runtime-api-1, vim4-nanokvm (>= 1.0.3+vim4.20261013.18)')],
 }
 PACKAGES['all'] = [entry for name in ('platform', 'nanokvm', 'jetkvm', 'onekvm', 'manager') for entry in PACKAGES[name]]
+PACKAGES['onekvm-board'] = [PACKAGES['platform'][0], *PACKAGES['onekvm']]
 PACKAGES['capture'] = [PACKAGES['platform'][1]]
 PACKAGES['encoder'] = [PACKAGES['platform'][2]]
 
@@ -333,7 +334,7 @@ def main():
         package(name, version, output, populate, depends)
     shutil.copy('/opt/build-inputs/ubuntu-packages.txt', output)
     shutil.copy('/opt/build-inputs/downloads.lock.json', output)
-    if component in ('all', 'onekvm'):
+    if component in ('all', 'onekvm', 'onekvm-board'):
         shutil.copy('/opt/build-inputs/extensions.lock.json', output)
     subprocess.run([sys.executable, str(ROOT / 'packaging/ubuntu/feeds.py'), str(output), version], check=True)
     checksums = []

@@ -20,6 +20,7 @@ case "$component" in
     pikvm-app) components=(vim4-pikvm) ;;
     manager) components=(vim4-manager) ;;
     onekvm) components=(vim4-onekvm) ;;
+    onekvm-board) components=(vim4-kvm-board vim4-onekvm) ;;
     nanokvm) components=(vim4-nanokvm) ;;
     jetkvm) components=(vim4-jetkvm) ;;
     platform) components=(vim4-kvm-board vim4-vfmcap vim4-amlvenc) ;;

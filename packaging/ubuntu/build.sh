@@ -8,8 +8,8 @@ rsync -a --exclude=.git --exclude=node_modules --exclude=build --exclude=dist \
 cd /work
 mkdir -p build
 python3 -m unittest discover -s tests -p 'test_*.py'
-has() { [ "$COMPONENT" = all ] || [ "$COMPONENT" = "$1" ]; }
-if has platform; then
+has() { [ "$COMPONENT" = all ] || [ "$COMPONENT" = "$1" ] || { [ "$COMPONENT" = onekvm-board ] && [ "$1" = onekvm ]; }; }
+if has platform || [ "$COMPONENT" = onekvm-board ]; then
     cc -O2 -Wall -Wextra -Werror tools/usb-pd-init.c -o build/usb-pd-init
     cc -Wall -Wextra -Werror tests/pd-request.c -o build/pd-test
     build/pd-test

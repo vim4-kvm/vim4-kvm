@@ -21,6 +21,7 @@ REPOS = {
     'nanokvm': ('.', 'NanoKVM'),
     'jetkvm': ('.', 'kvm'),
     'onekvm': ('.', 'One-KVM'),
+    'onekvm-board': ('.', 'One-KVM'),
     'manager': ('.', 'vim4-manager'),
     'pikvm': ('.', 'kvmd', 'ustreamer', 'vim4-manager'),
     'pikvm-app': ('.', 'kvmd', 'ustreamer'),
@@ -28,7 +29,7 @@ REPOS = {
 # Repository whose GitHub releases carry each set; development versions build on its latest tag.
 OWNERS = {'all': '.', 'platform': '.', 'capture': 'gst-plugin-vfmcap', 'encoder': 'gst-plugin-venc',
           'nanokvm': 'NanoKVM', 'jetkvm': 'kvm', 'onekvm': 'One-KVM', 'manager': 'vim4-manager',
-          'pikvm': 'kvmd', 'pikvm-app': 'kvmd'}
+          'pikvm': 'kvmd', 'pikvm-app': 'kvmd', 'onekvm-board': '.'}
 RELEASE = re.compile(r'\d+\.\d+\.\d+\+vim4\.\d{8}\.\d+', re.ASCII)
 # A development build sorts after its base release and before the next one in dpkg and every updater.
 DEVELOPMENT = re.compile(r'(?P<base>' + RELEASE.pattern + r')\.dev\.(?P<n>\d+)\.g[0-9a-f]{7,40}(?:\.dirty)?', re.ASCII)

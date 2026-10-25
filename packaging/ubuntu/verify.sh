@@ -8,6 +8,7 @@ sha256sum -c SHA256SUMS
 case "${COMPONENT:-all}" in
     all) expected='vim4-kvm-board vim4-vfmcap vim4-amlvenc vim4-nanokvm vim4-jetkvm vim4-onekvm vim4-manager' ;;
     platform) expected='vim4-kvm-board vim4-vfmcap vim4-amlvenc' ;;
+    onekvm-board) expected='vim4-kvm-board vim4-onekvm' ;;
     capture) expected='vim4-vfmcap' ;;
     encoder) expected='vim4-amlvenc' ;;
     nanokvm|jetkvm|onekvm) expected="vim4-$COMPONENT" ;;

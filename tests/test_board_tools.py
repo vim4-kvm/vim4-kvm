@@ -157,7 +157,8 @@ class BoardToolsTests(unittest.TestCase):
         folder = Path(directory) / version
         folder.mkdir()
         components = {'all': board.COMPONENTS, 'pikvm': board.PIKVM_COMPONENTS,
-                      'manager': ('vim4-manager',), 'onekvm': ('vim4-onekvm',)}[component]
+                      'manager': ('vim4-manager',), 'onekvm': ('vim4-onekvm',),
+                      'onekvm-board': ('vim4-kvm-board', 'vim4-onekvm')}[component]
         files = [folder / f'{name}_{version}_arm64.deb' for name in components]
         for path in files:
             path.write_bytes(path.name.encode())
@@ -196,6 +197,16 @@ class BoardToolsTests(unittest.TestCase):
                 debs[0].write_bytes(b'corrupt component')
                 with self.assertRaisesRegex(ValueError, 'SHA256'):
                     board.package_metadata(folder)
+
+    def test_onekvm_board_deployment_requires_both_verified_packages(self):
+        with tempfile.TemporaryDirectory() as directory:
+            folder = self.packages(directory, component='onekvm-board')
+            _, debs, _ = board.package_metadata(folder)
+            self.assertEqual([p.name.split('_')[0] for p in debs],
+                             ['vim4-kvm-board', 'vim4-onekvm'])
+            debs[0].unlink()
+            with self.assertRaisesRegex(ValueError, 'vim4-kvm-board'):
+                board.package_metadata(folder)
 
     def test_deploy_requires_exclusivity_and_dry_run_is_offline(self):
         with tempfile.TemporaryDirectory() as directory:
