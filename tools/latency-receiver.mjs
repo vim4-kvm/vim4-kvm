@@ -1,5 +1,6 @@
 import { loginManager } from './manager-login.mjs';
 // Usage: PLAYWRIGHT_MODULE=/absolute/path/to/playwright/index.mjs node ... URL SECONDS
+// --expect-codec=h264|h265 rejects an unexpected negotiated codec before sampling.
 // Read frame IDs from actual decoded pixels. Source and receiver must run on
 // the same Mac; no device clock or RTP sender clock is used for latency.
 const { chromium } = await import(process.env.PLAYWRIGHT_MODULE || 'playwright');
@@ -11,6 +12,10 @@ if (!Number.isFinite(statsInterval) || statsInterval < 0 || (statsInterval > 0 &
 }
 const verifyCoherence = process.argv.includes('--verify-coherence');
 const noPixels = process.argv.includes('--no-pixels');
+const expectedCodec = process.argv.find(arg => arg.startsWith('--expect-codec='))?.split('=')[1];
+if (expectedCodec && !['h264', 'h265'].includes(expectedCodec)) {
+  throw new Error('Invalid --expect-codec (h264 or h265)');
+}
 // A CPU-backed canvas can read the entire 4K video texture before cropping.
 // Prefer GPU drawing of the tiny marker; keep the old hint for overhead controls.
 const cpuReadback = process.argv.includes('--cpu-readback');
@@ -83,8 +88,11 @@ try {
   const stats = () => page.evaluate(async () => {
     for (const peer of window.peers) {
       if (peer.connectionState !== 'connected') continue;
-      for (const stat of (await peer.getStats()).values()) {
-        if (stat.type === 'inbound-rtp' && stat.kind === 'video') return stat;
+      const reports = await peer.getStats();
+      for (const stat of reports.values()) {
+        if (stat.type === 'inbound-rtp' && stat.kind === 'video') {
+          return { ...stat, codecMimeType: reports.get(stat.codecId)?.mimeType };
+        }
       }
     }
   });
@@ -146,6 +154,9 @@ try {
         }
         if (id !== previous && window.keepLatency) {
           window.latencyFrames.push({ id, readStartMs,
+            rtpTimestamp: metadata.rtpTimestamp,
+            receiveMs: Number.isFinite(metadata.receiveTime)
+              ? performance.timeOrigin + metadata.receiveTime + clockOffsetMs : undefined,
             observedMs: performance.timeOrigin + performance.now() + clockOffsetMs,
             presentationMs: performance.timeOrigin + metadata.presentationTime + clockOffsetMs,
             expectedDisplayMs: performance.timeOrigin + metadata.expectedDisplayTime + clockOffsetMs,
@@ -161,6 +172,12 @@ try {
   // Warm up canvas allocation and GPU readback before measuring.
   await page.waitForTimeout(3000);
   const before = await stats();
+  const checkCodec = snapshot => {
+    if (expectedCodec && snapshot?.codecMimeType?.toLowerCase() !== `video/${expectedCodec}`) {
+      throw new Error(`Expected ${expectedCodec}, received ${snapshot?.codecMimeType || 'unknown codec'}`);
+    }
+  };
+  checkCodec(before);
   const startedMs = await page.evaluate(() => {
     window.keepLatency = true;
     return performance.timeOrigin + performance.now();
@@ -191,6 +208,7 @@ try {
     await page.waitForTimeout(seconds * 1000);
     after = await stats();
   }
+  checkCodec(after);
   const result = await page.evaluate(() => {
     window.measureLatency = false;
     return { endedMs: performance.timeOrigin + performance.now(),

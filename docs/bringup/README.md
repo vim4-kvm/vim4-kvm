@@ -7,6 +7,7 @@
 
 ## 2026-10-25
 
+- [One-KVM 同帧分段延迟](2026-10-25-video-stage-latency.md) — video application board
 - [VDIN1 逐缓冲交付与 RDMA 时序核实](2026-10-25-vdin1-frame-handoff.md) — video kernel board
 - [5.15 / 7.3 视频延迟对照与 Wave5 启动修复](2026-10-25-kernel-video-latency.md) — video kernel application deployment board
 - [原生 HDR 双路径的四应用采集修复](2026-10-25-native-hdr-all-kvm.md) — video application pikvm deployment board

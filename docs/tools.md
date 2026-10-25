@@ -124,7 +124,7 @@ PiKVM smoke 可用 `PIKVM_CDP` 接入专用测试 Chrome；结束时关闭测试
 | tools/latency-source.swift | Mac | 占用 HDMI 画面；可输出 HDMI 音频 | 把帧号画进 HDMI 输出；`--motion` 运动网格，`--verify-coherence` 三处标记，`--hdr-chart` 灰阶，`--color-chart` 16色块，`--no-labels` 避免绘制字体；仅显式 `--sync-audio=设备名` 输出同步闪块/音调，不改默认音频设备 | [延迟测量](latency.md) |
 | tools/hdmi-resolution-source.swift | Mac | 临时覆盖所选 HDMI 桌面 | 原生 UHD 单像素条纹与参考 PNG；不切模式、不注入输入 | [清晰度复核](bringup/2026-10-20-edge-uhd-detail.md) |
 | tools/hdmi-resolution-check.py | 离线 | 无 | Pillow 检查原生解码帧的亮度空间细节，拒绝 1080p 放大负例 | [清晰度复核](bringup/2026-10-20-edge-uhd-detail.md) |
-| tools/latency-receiver.mjs | Mac | 独占 | 像素帧号与呈现节奏；GPU 裁剪、`--cpu-readback` 开销对照、逐样本时钟校准；`--stats-interval` 记录长测窗口 | [延迟测量](latency.md) |
+| tools/latency-receiver.mjs | Mac | 独占 | 像素帧号、RTP 时间戳、收帧时间与呈现节奏；逐样本时钟校准，`--expect-codec` 拒绝非预期编码，`--stats-interval` 记录长测窗口；GPU 裁剪及 `--cpu-readback` 对照 | [延迟测量](latency.md) |
 | tools/latency-summary.py | Mac | 无 | 匹配时间戳与呈现节奏；`--window-start`/`--window-seconds` 比较长测首尾，拒绝错误帧号匹配及失准时钟 | [延迟测量](latency.md) |
 | tools/video-timing-summary.py | Mac | 无 | 汇总 VIM4_VIDEO_TIMING 分段计时 | [延迟测量](latency.md) |
 | tools/input-target.swift | Mac | 覆盖显示器 | input-check 的临时接收窗口 | [输入验证](input-latency.md) |
