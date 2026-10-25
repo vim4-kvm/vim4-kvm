@@ -95,7 +95,7 @@ tested_module_sha256 = "22537cb61b113c449d65e31ba1c1df4d57b9743099a86497c5ee9bbd
 [gstreamer]
 source_url = "https://gstreamer.freedesktop.org/src/gst-plugins-good/gst-plugins-good-1.24.2.tar.xz"
 source_sha256 = "6e347c72d4b8b2886d890ffe9f6767a9edb02f201588e8c3a572dcd08d9852bd"
-patches = ["gstreamer-v4l2-offset.patch", "gstreamer-v4l2-pool-lifetime.patch", "gstreamer-v4l2-eos-buffer.patch", "gstreamer-v4l2-orphan-order.patch"]
+patches = ["gstreamer-v4l2-offset.patch", "gstreamer-v4l2-pool-lifetime.patch", "gstreamer-v4l2-eos-buffer.patch", "gstreamer-v4l2-orphan-order.patch", "gstreamer-v4l2-contiguous-capture.patch"]
 tested_plugin_sha256 = "5302d0fa8c6f1089173634206815f6a9709782263a343915e24b95b5e9eddaca"
 
 [armbian]

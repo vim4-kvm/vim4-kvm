@@ -1,0 +1,43 @@
+--- a/sys/v4l2/gstv4l2object.c
++++ b/sys/v4l2/gstv4l2object.c
+@@ -1909,0 +1910,25 @@
++}
++
++/* Some DMA consumers only balance memory references for a single fd. Prefer
++ * the packed format when requested, retaining the normal multi-planar fallback
++ * for devices that do not implement its contiguous variant. */
++static struct v4l2_fmtdesc *
++gst_v4l2_object_choose_raw_layout (GstV4l2Object * obj, guint32 contiguous,
++    guint32 separate, gboolean raw)
++{
++  struct v4l2_fmtdesc *fmt = NULL;
++  gboolean prefer_contiguous =
++      raw && g_strcmp0 (g_getenv ("GST_V4L2_PREFER_CONTIGUOUS"), "1") == 0;
++
++  obj->prefered_non_contiguous = FALSE;
++  if (prefer_contiguous && contiguous)
++    fmt = gst_v4l2_object_get_format_from_fourcc (obj, contiguous);
++  if (!fmt && separate) {
++    fmt = gst_v4l2_object_get_format_from_fourcc (obj, separate);
++    obj->prefered_non_contiguous = fmt != NULL;
++  }
++  if (!fmt && contiguous) {
++    fmt = gst_v4l2_object_get_format_from_fourcc (obj, contiguous);
++    obj->prefered_non_contiguous = FALSE;
++  }
++  return fmt;
+@@ -2144,6 +2169 @@
+-  /* Prefer the non-contiguous if supported */
+-  v4l2object->prefered_non_contiguous = TRUE;
+-
+-  if (fourcc_nc)
+-    fmt = gst_v4l2_object_get_format_from_fourcc (v4l2object, fourcc_nc);
+-  else if (fourcc == 0)
++  if (!fourcc_nc && fourcc == 0)
+@@ -2152,4 +2172,2 @@
+-  if (fmt == NULL) {
+-    fmt = gst_v4l2_object_get_format_from_fourcc (v4l2object, fourcc);
+-    v4l2object->prefered_non_contiguous = FALSE;
+-  }
++  fmt = gst_v4l2_object_choose_raw_layout (v4l2object, fourcc, fourcc_nc,
++      g_str_equal (mimetype, "video/x-raw"));

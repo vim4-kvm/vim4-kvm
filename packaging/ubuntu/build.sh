@@ -19,6 +19,8 @@ if has platform || has capture; then
 fi
 if has platform || has encoder; then
     python3 tools/workspace.py build encoder
+fi
+if has platform || has encoder || has onekvm; then
     gst_work=$(mktemp -d)
     trap 'rm -rf "$gst_work"' EXIT
     python3 packaging/kernel-edge/build-gstreamer.py "$gst_work"
