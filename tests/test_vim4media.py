@@ -75,6 +75,31 @@ class MediaTest(unittest.TestCase):
                 with media.edit_disk('disk.img'):
                     pass
 
+    def test_image_transfer_lock_blocks_mount_and_live_lun_blocks_writes(self):
+        image_root = self.images / 'images'
+        image_root.mkdir()
+        image = image_root / 'transfer.img'
+        image.write_bytes(b'\0' * 512)
+        gadget = self.root / 'gadgets'
+        lun = gadget / 'other/functions/mass_storage.test/lun.1/file'
+        lun.parent.mkdir(parents=True)
+        lun.write_text('')
+        with patch.dict(media.IMAGE_ROOTS, {'onekvm': self.images}), patch.object(media, 'GADGET_ROOT', gadget):
+            with image.open('r+b') as writer:
+                fcntl.flock(writer, fcntl.LOCK_EX | fcntl.LOCK_NB)
+                media.check_image_transfer('onekvm/images/transfer.img')
+                with self.assertRaisesRegex(ValueError, '文件传输'):
+                    media.open_image('onekvm/images/transfer.img', True)
+                lun.write_text(str(image))
+                with self.assertRaisesRegex(ValueError, '已挂载'):
+                    media.check_image_transfer('onekvm/images/transfer.img')
+                # Fail closed if the mounted backing file cannot be inspected.
+                lun.write_text(str(image.with_name('missing.img')))
+                with self.assertRaises(OSError):
+                    media.check_image_transfer('onekvm/images/transfer.img')
+            fd = media.open_image('onekvm/images/transfer.img', True)
+            os.close(fd)
+
     def test_attached_disk_allows_stale_reads_but_refuses_edits(self):
         self.lun.write_text(str(self.data / 'disk.img'))
         with media.read_disk('disk.img') as (fd, stale):

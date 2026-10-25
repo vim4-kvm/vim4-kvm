@@ -28,6 +28,7 @@ fi
 if has vim4-kvm-board; then
     dpkg-deb -f ./vim4-kvm-board_*.deb Depends | grep -qw alsa-utils
     dpkg-deb -f ./vim4-kvm-board_*.deb Provides | grep -qw vim4-media-api-1
+    dpkg-deb -f ./vim4-kvm-board_*.deb Provides | grep -qw vim4-media-transfer-api-1
     dpkg-deb -f ./vim4-kvm-board_*.deb Provides | grep -qw vim4-runtime-api-1
     PYTHONPATH=/tmp/package-check/root/usr/lib/vim4-kvm/python python3 -c 'import vim4media, vim4video, vim4boot'
 fi

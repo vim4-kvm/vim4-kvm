@@ -7,6 +7,7 @@ import re
 import stat
 
 LUN_FILE = Path('/sys/kernel/config/usb_gadget/kvm/functions/mass_storage.disk0/lun.0/file')
+GADGET_ROOT = Path('/sys/kernel/config/usb_gadget')
 IMAGE_ROOTS: dict[str, Path] = {
     'shared': Path('/var/lib/vim4-kvm/images'),
     'jetkvm': Path('/var/lib/jetkvm/images'),
@@ -50,7 +51,7 @@ def _directory(source, parts=()):
         os.close(fd)
 
 
-def _open(identifier, readonly, create=False):
+def _open(identifier, readonly, create=False, allow_empty=False):
     parts = identifier.split('/')
     if (len(parts) < 2 or len(parts) > 10 or
             parts[0] not in (*IMAGE_ROOTS, 'data') or
@@ -66,7 +67,7 @@ def _open(identifier, readonly, create=False):
     try:
         info = os.fstat(fd)
         if (not stat.S_ISREG(info.st_mode) or info.st_nlink != 1 or
-                (not create and info.st_size < 512)):
+                (not create and not allow_empty and info.st_size < 512)):
             raise ValueError('镜像必须是至少 512 字节、无硬链接的普通文件')
         return fd
     except BaseException:
@@ -80,11 +81,13 @@ def _open(identifier, readonly, create=False):
 def open_image(identifier, readonly):
     fd = _open(identifier, readonly)
     try:
-        if identifier.startswith('data/'):
-            try:
-                fcntl.flock(fd, fcntl.LOCK_SH | fcntl.LOCK_NB)
-            except BlockingIOError:
+        try:
+            fcntl.flock(fd, fcntl.LOCK_SH | fcntl.LOCK_NB)
+        except BlockingIOError:
+            if identifier.startswith('data/'):
                 raise ValueError('数据盘正在管理面板中编辑，请稍后再挂载') from None
+            raise ValueError('镜像正在文件传输中，请稍后再挂载') from None
+        if identifier.startswith('data/'):
             # A reader may have opened the old inode just before atomic replacement.
             with _directory('data') as directory:
                 current = os.stat(identifier.split('/')[1], dir_fd=directory, follow_symlinks=False)
@@ -95,6 +98,30 @@ def open_image(identifier, readonly):
     except BaseException:
         os.close(fd)
         raise
+
+
+def check_image_transfer(identifier):
+    """Called after the application holds an exclusive flock, before any writes.
+
+    Mount helpers take shared file locks under these same global locks. Checking
+    every live LUN here closes the race with a mount that completed just before
+    the writer acquired its file lock; configfs does not retain advisory locks.
+    """
+    if not identifier.startswith('onekvm/images/'):
+        raise ValueError('Only One-KVM image files may be transferred')
+    with media_locks(wait=True):
+        fd = _open(identifier, True, allow_empty=True)
+        try:
+            image = os.fstat(fd)
+            for lun in GADGET_ROOT.glob('*/functions/mass_storage*/lun.*/file'):
+                path = lun.read_text().strip()
+                if not path:
+                    continue
+                mounted = os.stat(path)
+                if (mounted.st_dev, mounted.st_ino) == (image.st_dev, image.st_ino):
+                    raise ValueError('镜像已挂载，请先在被控机安全弹出，再在管理面板卸载')
+        finally:
+            os.close(fd)
 
 
 def catalog(sources=None):
