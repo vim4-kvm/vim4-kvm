@@ -1,5 +1,8 @@
 # 2026-10-24：厂商 5.15 透传 OUT 热插拔恢复
 
+结论：10 月 25 日用户插回后自动恢复；随后驱动软件 HPD 重测通过，约 7 秒恢复到
+2160p60 YCbCr444，OSD 持久屏蔽保持有效。真实 1080p EDID 测试未授权，跳过。
+
 接续 [5.15 透传交付](2026-10-24-vendor-passthrough.md)。本次只修用户态 HPD 恢复和
 控制台遮挡，不改内核、启动项、编码参数或前端。真实 1080p 测试须另获临时 EDID 授权。
 UU 帧率调查持锁期间只读取证，
@@ -93,3 +96,68 @@ HPD 同时使用内核 `amhdmitx/hdmitx_hpd` uevent 与 sysfs 轮询，压缩到
 Mac 显示“1080p”不代表线缆上就是 1080p：此前 Mac 报告 1920×1080，但 RX 实测
 3840×2160、约 59.98Hz；服务 input=3840×2160、output=2160p60、scaled=false。
 这是 Mac 桌面逻辑缩放后仍发送 4K 时序，透传按真实输入跟随的行为正确。
+
+## 10 月 25 日插回恢复与软件 HPD 重测
+
+用户随后确认已插回显示器。本轮先只读取证，再阻塞取得 board/heavy 双锁进行软件重测，
+没有替换、停启 One-KVM，也没有改编码、内核、默认启动项或调用 EDID 预设切换。
+用户仍未明确同意临时 EDID 测试，本轮不执行；Mac 手动选“1080p”后 RX 仍为
+3840×2160、59.98Hz，不能把这一轮记录为真实 1080p 跟随通过。
+
+### 物理插回时间线（UTC）
+
+| 时间 | 事件 |
+|---|---|
+| 00:03:28.493 / .693 | HPD LOW / HIGH，插回时有一次约 200ms 的边沿变化 |
+| 00:03:29.221 | TX plugin；随后 RX notifier 重新协商输入，DRM 强制默认模式 |
+| 00:03:29.422 | TX modeset 为 RGB（cs=0） |
+| 00:03:30.493 / .521 / .553 | DRM 三次明确记录 osd-0 被持久 blank 强制禁用 |
+| 00:03:31.805 | 输入重新稳定，VDIN / vfm_cap 恢复 TEE |
+| 00:03:36.415–.462 | watch 检出 RGB，应用 4448；TX cs=2，VD1 on |
+
+从 HPD HIGH 到 VD1 on 为 7.769 秒（从 plugin 算为 7.240 秒），这是日志确定的
+硬件恢复耗时，不冒充没有采集到的首个 running 状态时间。00:06:43 只读状态确认
+running、2160p60、YCbCr444 8-bit limited、scaled=false、ready=1、disable_video=0。
+watch 仍为 PID 77955、NRestarts=0，不依赖服务重启恢复。
+
+OSD 证据：19:11:49 两路 enable blank，此后日志没有 disable blank；上述三次 DRM
+提交明确被强制禁用，插回后的两路持久标志仍为 1。不能回溯补造物理插回期间的逐帧采样，
+也没有额外取得用户“全程没有文字”的目视答复；结论依据持久策略和实际 DRM 拒绝提交，
+而非把内核没有报错当作屏幕没有文字。原有 DRM/HDCP 日志仍可存在，只是不应显示在 OSD。
+证据：`logs/passthrough-515/hpd-physical-recovery.log`、`hpd-physical-timeline.log`。
+
+### 厂商 fake_plug 重测
+
+源码 `hdmitx_sysfs_common.c` 的 `fake_plug` 接口会设置 TX HPD 状态并通知 DRM/RX。
+持锁后通过 `/sys/class/amhdmitx/amhdmitx0/fake_plug` 写 0，约两秒后写 1，
+带 finally 恢复保护；不是伪造用户态 uevent，也不要求用户再次拔插。
+厂商 notifier 自身仍会短暂重新协商 RX，与物理 OUT 插回相同；没有切换输入 EDID 预设。
+
+- 00:07:48.625 fake 0；00:07:50.561 fake 1；00:07:50.730 驱动默认 RGB。
+- 00:07:51.801–.861 DRM 再次三次强制禁用 osd-0；00:07:57.469 恢复 TX cs=2，
+  00:07:57.510 VD1 on，即 fake 1 后约 6.949 秒。
+- 35 秒、344 次约 100ms 间隔采样：所有 osd0/osd1 持久 blank 均为 1，watch error 均为空。
+  状态依次为 running → no-monitor → no-signal → starting → running；首次恢复 running
+  在 fake 1 后约 7.021 秒。最终 HPD=1、ready=1、4448、disable_video=0，显示帧计数持续推进。
+- 重测后 DRM state 中 osd0（fbcon）与 osd1 的 enable 均为 0；结合驱动的
+  `osd_permanent_blank` atomic-check 强制禁用和连续标志采样，确认控制台图层没有恢复启用。
+- One-KVM PID 58916、透传 PID 77955、manager PID 50691 前后不变，均 active、NRestarts=0。
+  保存的原 EDID SHA256 前后均为
+  `32c6a60823dd676e848f8423feff1b469d07f5bac52885723dfa70b74cfda33d`，预设仍为 RTK-CONTROL。
+- 只有一次 watch 恢复 modeset；35 秒采样结束至最终读取没有新增 TX 重设。
+  这不是长期无黑屏或 UU 端到端性能验收。
+
+原始证据：`logs/passthrough-515/hpd-software-retest.jsonl`（含 PASS 与前后服务状态）、
+`hpd-software-journal.log`（含 DRM plane state）、`hpd-software-final.log`。
+测试后释放双锁，没有遗留板上监控进程；保留已部署且与修复分支一致的脚本。
+
+### 合入与边界
+
+manager 三个修复提交合入 main：`5cfaf7e`；前端源码与用户 passthrough-ui 设计相同。
+主仓保留部署记录提交 `e5a322d`，本节补充现场验收，不把此前等待状态改写成当时已经通过。
+合入后 Python 181 项（12 跳过）、Go 全套及 go vet 均通过；
+主仓提交前完整离线测试 243 项（7 跳过）通过。
+
+待验证：获明确授权后的真实 1080p60 EDID 输入及 1080p→4K 跟随、真实 1080p 长测、
+连接状态长期无黑屏、HDMI IN 拔插恢复、音频直通、管理面板开关的实际开/关动作。
+物理 OUT 插回自动恢复与软件 HPD 恢复已通过；不再把这两项笼统列作未测。
