@@ -4,8 +4,12 @@ EDID 预设声明 HDR10/HLG，主机开启 HDR 时发送 PQ/HLG 10bit 信号。�
 未处理时画面发白。T7 的 vdin0 有独立 HDR2 核，内核在 HDMI 输入为
 HDR10/HDR10+/HLG 时将其映射到 SDR，SDR 输入直通（`dmesg` 中
 `vdin_set_hdr vdin0 fmt:N`，0=SDR、1=HDR10）。切换由驱动的信号变化处理完成，
-不重启服务。vframe 的 signal_type 仍描述源信号；将来 HDMI 环出需要原样输出 HDR 时，
-在 vdin0 上设置 `vdin1_bypass_hdr 1` 关闭入口映射，网页另走 vdin1 回写。
+不重启服务。显示与 KVM 共享的 NV21 帧已经是 8-bit SDR，不能只保留源 HDR 标签再向 TX
+发送 HDR infoframe，否则会重复色调映射或把 SDR 冒充 HDR。HDR 修复候选同步清除映射后
+帧的 HDR 元数据，输出 BT.709 SDR，并通过 `vdin0/hdr_sdr` 只读状态提供映射资格。
+输入状态仍通过 RX 报告 HDR10/HLG，与实际输出域分开。原生 HDR 显示需要拆分 HDR 显示
+与 SDR KVM 捕获；仅设置 `vdin1_bypass_hdr 1` 只会跳过后续配置，不证明已有 HDR 核已旁路，
+VDIN1 回写又会把 KVM 绑定输出时钟/热插拔，不能直接当作已验证替代方案。
 Dolby Vision 未支持，EDID 也不声明。
 
 映射表由 `vim4-hdr-curve`（tools/hdr-curve.sh）生成：增益曲线 `oo_y_lut_hdr_sdr`

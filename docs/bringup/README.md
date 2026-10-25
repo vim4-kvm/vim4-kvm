@@ -7,6 +7,7 @@
 
 ## 2026-10-25
 
+- [厂商 HDR 输入黑屏、采集位深与输出域](2026-10-25-vendor-passthrough-hdr.md) — kernel video audio manager board
 - [厂商 VAPB 最低需求修复、60fps 与默认内核部署](2026-10-25-vapb-clock.md) — kernel video audio uu deployment board
 - [厂商 5.15 HDMI 音频桥与 KVM 共存](2026-10-25-vendor-passthrough-audio.md) — audio video manager deployment board
 - [音频寄存器只读诊断触发重启](2026-10-25-audiobus-read-abort.md) — audio kernel deployment board uu
