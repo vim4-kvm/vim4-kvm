@@ -14,6 +14,7 @@ let duration = Double(CommandLine.arguments.dropFirst().first ?? "35") ?? 35
 let moving = CommandLine.arguments.contains("--motion")
 let verifyCoherence = CommandLine.arguments.contains("--verify-coherence")
 let hdrChart = CommandLine.arguments.contains("--hdr-chart")
+let colorChart = CommandLine.arguments.contains("--color-chart")
 // Mode-switch fixtures can skip text if CoreText fails during display changes.
 // The pixel markers and moving grid are sufficient for mode recovery tests.
 let drawLabels = !CommandLine.arguments.contains("--no-labels")
@@ -99,6 +100,20 @@ class LatencyView: NSView {
                 }
             }
         }
+        if colorChart {
+            let colors: [[CGFloat]] = [
+                [0, 0, 0], [1, 1, 1], [1, 0, 0], [0, 1, 0],
+                [0, 0, 1], [0, 1, 1], [1, 0, 1], [1, 1, 0],
+                [0.5, 0.5, 0.5], [0.5, 0, 0], [0, 0.5, 0], [0, 0, 0.5],
+                [0.25, 0.5, 0.75], [0.75, 0.5, 0.25], [0.2, 0.4, 0.6], [0.6, 0.4, 0.2]
+            ]
+            for (index, color) in colors.enumerated() {
+                NSColor(srgbRed: color[0], green: color[1], blue: color[2], alpha: 1).setFill()
+                NSRect(x: CGFloat(index % 8) * bounds.width / 8,
+                       y: bounds.height * (1 - CGFloat(index / 8 + 1) / 2),
+                       width: bounds.width / 8, height: bounds.height / 2).fill()
+            }
+        }
         if hdrChart {
             // Explicit sRGB UI values let HDR-to-SDR capture be compared against
             // the same SDR source. macOS maps this UI into its HDR reference white.
@@ -159,7 +174,7 @@ let window = NSWindow(contentRect: screen.frame, styleMask: .borderless,
                       backing: .buffered, defer: false, screen: screen)
 window.setFrame(screen.frame, display: false)
 // Coherence checks need all three markers unobscured, including by Dock popovers.
-window.level = verifyCoherence ? .screenSaver : .floating
+window.level = verifyCoherence || colorChart ? .screenSaver : .floating
 window.isReleasedWhenClosed = false
 let view = LatencyView(frame: NSRect(origin: .zero, size: screen.frame.size))
 window.contentView = view

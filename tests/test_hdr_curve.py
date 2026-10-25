@@ -46,6 +46,9 @@ class HDRCurveTests(unittest.TestCase):
                 '/sys/module/aml_media/parameters/oo_y_lut_hdr_sdr': root / 'gain',
                 '/sys/module/aml_media/parameters/oe_y_lut_sdr': root / 'encoding',
                 '/sys/class/vdin/vdin0/attr': root / 'reload',
+                '/sys/class/vdin/vdin1/attr': root / 'secondary',
+                '/sys/module/aml_media/parameters/vdin0_native_hdr': root / 'native',
+                '/sys/module/aml_media/parameters/vdin_oo_y_lut_hdr_sdr': root / 'capture-gain',
                 '/sys/bus/platform/devices/ff000000.video-capture/hdr_curve': root / 'edge',
             }
             script = TOOL.read_text()
@@ -70,6 +73,11 @@ class HDRCurveTests(unittest.TestCase):
             self.assertEqual((root / 'gain').read_text(), gain + '\n')
             self.assertEqual((root / 'encoding').read_text(), encoding + '\n')
             self.assertEqual((root / 'reload').read_text(), 'reload_hdr\n')
+            self.assertEqual((root / 'capture-gain').read_text(), gain + '\n')
+            self.assertEqual((root / 'secondary').read_text(), 'unchanged')
+            (root / 'native').write_text('Y\n')
+            self.assertEqual(apply(203, 1000).returncode, 0)
+            self.assertEqual((root / 'secondary').read_text(), 'reload_hdr\n')
 
     def test_edge_curve_preserves_midtones_and_distinguishes_highlights(self):
         positions = ([0] + [2 ** (i + 3) for i in range(1, 8)]

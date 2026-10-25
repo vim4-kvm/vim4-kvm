@@ -26,6 +26,13 @@ hdmi-setup.sh 在打开输入前写入；运行中由 vdin0 attr 的 `reload_hdr
 `oe_y_lut_sdr` 与 VPP/OSD 的 HDR→SDR 共用，将来接 HDMI 输出时同样生效。
 HLG 输入仍用厂商 HLG 曲线。
 
+原生显示双路径的新版5.15另有 `vdin_oo_y_lut_hdr_sdr`：完整149点写入后只供VDIN0/1
+使用，避免VPP的动态映射/回落覆盖用户设定的增益曲线。`vim4-hdr-curve apply` 同时写入
+此独立增益；原生模式还请求VDIN1在帧边界重载。VDIN1直接借用HDMI RX时由自己的V4L2
+中断跟随颜色格式、范围、位深和HDR EOTF，而不是依赖仅为VDIN0运行的接收状态机。
+切换残留和变暗的复现、实际寄存器及误差边界见
+[HDR切换颜色修复](bringup/2026-10-25-native-hdr-color.md)。
+
 7.x 的独立 edge 服务已接通 PQ / BT.2020 / YCbCr420 10bit 4K60，见
 [采集与映射实测](bringup/2026-10-20-edge-hdr-capture.md)；HLG 等其他格式未适配。
 `vim4-hdr-curve` 在此内核向平台设备 `hdr_curve` 一次提交两行表，由 IRQ 在安全帧边界

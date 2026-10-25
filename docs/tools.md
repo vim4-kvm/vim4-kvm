@@ -69,7 +69,7 @@ PiKVM smoke 可用 `PIKVM_CDP` 接入专用测试 Chrome；结束时关闭测试
 | 入口 | 安装为 | 用途 | 文档 |
 |---|---|---|---|
 | tools/hdmi-setup.sh | /usr/local/sbin/hdmi-setup.sh | vdin0 + vfm_cap 配置并打开 HDMI 源 | [音视频](subsystems/video.md) |
-| tools/hdr-curve.sh | vim4-hdr-curve | HDR10→SDR 映射表生成与写入；`tables` 为 5.15，`tables-edge` 保留高光，`apply` 自动选择可写内核接口 | [音视频](subsystems/video.md#hdr-输入) |
+| tools/hdr-curve.sh | vim4-hdr-curve | HDR10→SDR 映射表生成与写入；`tables` 为 5.15，`tables-edge` 保留高光，`apply` 自动选择接口；新5.15独立保存VDIN增益，原生模式同时请求VDIN1重载 | [音视频](subsystems/video.md#hdr-输入) |
 | tools/kvm-gadget.sh | /usr/local/sbin/kvm-gadget.sh | USB gadget：键盘、绝对/相对鼠标、NCM | [USB](subsystems/usb.md) |
 | tools/usb-pd-init.c | /usr/sbin/usb-pd-init | FUSB302B 5V PD 协商；成功调用板级 Python 模块原子保存合同；`--status` 只读 VBUS 状态 | [USB-PD](usb-pd.md) |
 | board/vim4-wave5-monitor.py | /usr/libexec/vim4-wave5-monitor | 轮询 Wave5 隔离状态并记 journal；自动重启默认关闭，启用后仍要求应用均已停止且虚拟盘为空 | [音视频](subsystems/video.md#wave5-隔离告警) |
@@ -117,10 +117,11 @@ PiKVM smoke 可用 `PIKVM_CDP` 接入专用测试 Chrome；结束时关闭测试
 | 入口 | 运行位置 | 影响 | 用途 | 文档 |
 |---|---|---|---|---|
 | tools/display-color.py、tools/display-color.c | 离线 / 板（root） | chart/analyze/diff 无；run 独占显示/采集；snapshot 只读控制和矩阵 | KMS dumb 图案、V4L2 原始 NV12 三帧、≤2 码值色块分析；5.15 同 sink 寄存器对照、TX/RX AVI；调用者持双锁并管理服务/一次性启动 | [颜色校准](display-color-calibration.md) |
+| tools/hdmi-color-check.py | 离线，PNG分析需Pillow | 不接触板子 | 按16色块的RX前矩阵10-bit Y/Cb/Cr探针值，计算SDR709或PQ2020→SDR参考并统计解码帧码值误差；不替代显示器测色 | [HDR切换颜色修复](bringup/2026-10-25-native-hdr-color.md) |
 | tools/perf-baseline.py | 离线 | 无 | 5.15/7.3命令计划与三组A/B/A单指标门禁；缺失/受干扰不算通过，不执行命令 | [性能基线](performance-baseline.md) |
 | tools/perf-sensors.py | 板 | 读；性能窗口内 | 1Hz温度/功率/频率/runtime状态JSONL，不改时钟；缺传感器不记0 | [性能基线](performance-baseline.md) |
 | tools/vendor-boot-plan.py | 离线 | 无 | 从启动快照和已解析厂商profile生成一次性配置；不stage、不改默认、不重启 | [厂商对照启动](vendor-boot-baseline.md) |
-| tools/latency-source.swift | Mac | 占用 HDMI 画面；可输出 HDMI 音频 | 把帧号画进 HDMI 输出；`--motion` 运动网格，`--verify-coherence` 三处标记，`--hdr-chart` 灰阶，`--no-labels` 避免模式切换时绘制字体；`--sync-audio=设备名` 以同一主机时钟输出两秒一次的闪块和音调，不改系统默认音频设备 | [延迟测量](latency.md) |
+| tools/latency-source.swift | Mac | 占用 HDMI 画面；可输出 HDMI 音频 | 把帧号画进 HDMI 输出；`--motion` 运动网格，`--verify-coherence` 三处标记，`--hdr-chart` 灰阶，`--color-chart` 16色块，`--no-labels` 避免绘制字体；仅显式 `--sync-audio=设备名` 输出同步闪块/音调，不改默认音频设备 | [延迟测量](latency.md) |
 | tools/hdmi-resolution-source.swift | Mac | 临时覆盖所选 HDMI 桌面 | 原生 UHD 单像素条纹与参考 PNG；不切模式、不注入输入 | [清晰度复核](bringup/2026-10-20-edge-uhd-detail.md) |
 | tools/hdmi-resolution-check.py | 离线 | 无 | Pillow 检查原生解码帧的亮度空间细节，拒绝 1080p 放大负例 | [清晰度复核](bringup/2026-10-20-edge-uhd-detail.md) |
 | tools/latency-receiver.mjs | Mac | 独占 | 像素帧号与呈现节奏；GPU 裁剪、`--cpu-readback` 开销对照、逐样本时钟校准；`--stats-interval` 记录长测窗口 | [延迟测量](latency.md) |

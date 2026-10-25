@@ -15,6 +15,9 @@ set -eu
 OOTF=/sys/module/aml_media/parameters/oo_y_lut_hdr_sdr
 OETF=/sys/module/aml_media/parameters/oe_y_lut_sdr
 VDIN=/sys/class/vdin/vdin0/attr
+CAPTURE_GAIN=/sys/module/aml_media/parameters/vdin_oo_y_lut_hdr_sdr
+SECONDARY=/sys/class/vdin/vdin1/attr
+NATIVE_HDR=/sys/module/aml_media/parameters/vdin0_native_hdr
 EDGE_CURVE=/sys/bus/platform/devices/ff000000.video-capture/hdr_curve
 
 usage() {
@@ -129,7 +132,13 @@ tables | {
 	read -r oetf
 	echo "$gain" > "$OOTF"
 	echo "$oetf" > "$OETF"
+	if [ -w "$CAPTURE_GAIN" ]; then
+		echo "$gain" > "$CAPTURE_GAIN"
+	fi
 }
 # The capture ISR applies the request at a frame boundary. Without an active
 # input it stays pending until capture starts; a failed write is a real error.
 echo reload_hdr > "$VDIN"
+if [ -r "$NATIVE_HDR" ] && [ "$(cat "$NATIVE_HDR")" = Y ] && [ -w "$SECONDARY" ]; then
+	echo reload_hdr > "$SECONDARY"
+fi

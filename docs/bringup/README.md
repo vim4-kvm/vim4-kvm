@@ -10,6 +10,7 @@
 - [厂商 HDR 输入黑屏、采集位深与输出域](2026-10-25-vendor-passthrough-hdr.md) — kernel video audio manager board
 - [厂商原生 HDR 与 SDR KVM 双路径交付](2026-10-25-native-hdr-dual-path.md) — kernel video audio onekvm board
 - [原生 HDR 正式部署与 AVI 色域恢复](2026-10-25-native-hdr-production.md) — kernel video manager onekvm board
+- [原生 HDR↔SDR 采集颜色跟随与独立曲线](2026-10-25-native-hdr-color.md) — kernel video uu onekvm board
 - [厂商 VAPB 最低需求修复、60fps 与默认内核部署](2026-10-25-vapb-clock.md) — kernel video audio uu deployment board
 - [厂商 5.15 HDMI 音频桥与 KVM 共存](2026-10-25-vendor-passthrough-audio.md) — audio video manager deployment board
 - [音频寄存器只读诊断触发重启](2026-10-25-audiobus-read-abort.md) — audio kernel deployment board uu
