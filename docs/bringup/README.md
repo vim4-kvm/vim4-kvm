@@ -7,6 +7,7 @@
 
 ## 2026-10-25
 
+- [5.15 / 7.3 视频延迟对照与 Wave5 启动修复](2026-10-25-kernel-video-latency.md) — video kernel application deployment board
 - [原生 HDR 双路径的四应用采集修复](2026-10-25-native-hdr-all-kvm.md) — video application pikvm deployment board
 - [管理面板前端重构验收与部署](2026-10-25-manager-ui.md) — manager application deployment
 - [UU 协议审查与 P1 修复验收](2026-10-25-uu-protocol-audit.md) — uu application video audio usb audit
