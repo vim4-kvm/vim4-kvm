@@ -124,6 +124,7 @@ manager 的 `GET /api/status` 新增 `encoder`，包含 `known`、`isolated`、
 
 | 触发条件 / 错误 | 原因与正确做法 | 验证入口 |
 |---|---|---|
+| 见到 `last_wr_vfe` 就认为已完成图像多等一帧 | 当前 VDIN1 RDMA 提前一拍提交地址、下一拍执行、再下一拍交付。匹配实际缓冲与 pending/已执行表；寄存器 DMA 完成不能当图像写完 | [逐缓冲核实](../bringup/2026-10-25-vdin1-frame-handoff.md) |
 | 7.x JPEG DMA 导入触发 reservation-lock WARN | 新内核 map/unmap_attachment 要求调用者持锁；使用对应 unlocked helpers 管理锁，不忽略 taint 后继续验收 | t7-jpeg/test_import.py、[MJPEG 记录](../bringup/2026-10-21-edge-scaling-jpeg.md) |
 | 切分辨率后没有视频 fd，仍残留一组 CMA 分配 | GStreamer 先停用池，STREAMOFF 后另一个线程归还缓冲仍可 QBUF，随后 orphan 已无流可冲刷。先停止获取，在 QBUF 锁内停流并完成 orphan，再停用池；仅关闭 last-sample 缓存不足以修复 | packaging/kernel-edge/test_gstreamer_orphan.py、[动态模式记录](../bringup/2026-10-20-edge-dynamic-modes.md) |
 | 7.x 无周期 IDR，仍每约 250ms 短顿 | ENUMINPUT 误用双次稳定检查，持有采集 ioctl 锁等待 20ms。实时状态使用即时读取并清除旧状态，STREAMON 保留稳定性资格检查；仅将应用查询移到另一线程仍会争用队列锁 | t7-hdmirx/test_core.py、[状态查询实测](../bringup/2026-10-20-edge-status-latency.md) |
