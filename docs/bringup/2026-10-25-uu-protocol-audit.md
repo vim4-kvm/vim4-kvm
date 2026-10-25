@@ -26,7 +26,7 @@ E1–E7 已独立修复并推送 `vim4/a168d726`，各有回归；原尺寸4K60�
 | 编号/优先级 | 参考；我们 | 适用性、影响与建议 | 人日 |
 |---|---|---|---|
 | G1/P2 手机文本、正向粘贴 | R/control_protocol.rs:64；R/webrtc.rs:1351；U/input.rs:240；U/peer.rs:752 | 忽略text_input/TEXT，手机IME失效。HID适用已知布局字符；先支持受限字符并报失败，Unicode需输入法约定/串口/SSH。 | 2–4 |
-| G2/P2 文件传输 | R/file_trans.rs:495,624；U/mod.rs:830 | 忽略type=5。适用板子限定目录/未挂载虚拟盘，不能访问目标任意目录。实现FILE回复、压缩列表、取消/续传、介质互斥。 | 5–10 |
+| G2/P2 已修：文件传输 | R/file_trans.rs:495,624；U/files/mod.rs:174 | `5b80d0cd`：FILE回复、限定板子目录/未挂载镜像、取消/续传及跨入口介质互斥；8MiB往返哈希、600秒验收通过。[记录](2026-10-25-uu-files.md)。 | 5–10 |
 | G3/P2 端口映射 | R/port_mapping.rs:156；U/mod.rs:830 | 忽略type=9。适用板子可达的SSH/管理端口；显式启用、限定目的地址、独立peer，经FILE Message27转发。 | 3–5 |
 | G4/P2 已修：工具连接转桌面 | R/webrtc.rs:1318；R/desktop_control_tests.rs:220；U/peer.rs:1475；U/mod.rs:830 | `1c1a790d`：同peer幂等取得桌面、保留终端、统一接管/清理；双端回归与官方终端→桌面、600秒缩放验收通过。 | 2–4 |
 | G5/P2 结束自动锁屏 | R/system_actions.rs:246,269；U/peer.rs:1577；U/wire.rs:166 | 手动HID锁屏已有；可持久化action19的2/1开关，最终断开按Windows/Mac发锁屏键，无法确认目标锁态。 | 1–2 |
