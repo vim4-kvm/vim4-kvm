@@ -7,6 +7,8 @@
 
 ## 2026-10-25
 
+- [UU 协议审查与 P1 修复验收](2026-10-25-uu-protocol-audit.md) — uu application video audio usb audit
+- [UU P1 修复部署与自动验证](2026-10-25-uu-p1-validation.md) — uu onekvm video board
 - [厂商 HDR 输入黑屏、采集位深与输出域](2026-10-25-vendor-passthrough-hdr.md) — kernel video audio manager board
 - [厂商原生 HDR 与 SDR KVM 双路径交付](2026-10-25-native-hdr-dual-path.md) — kernel video audio onekvm board
 - [原生 HDR 正式部署与 AVI 色域恢复](2026-10-25-native-hdr-production.md) — kernel video manager onekvm board
