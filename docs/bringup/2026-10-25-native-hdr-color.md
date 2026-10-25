@@ -83,6 +83,20 @@ common_drivers已合入推送`a7ca8b05c`，One-KVM仍为`24d35af8`、manager仍�
 
 UU在`peer.rs`直接订阅`subscribe_encoded_frames()`并发送同一帧数据，未二次转换颜色；
 本轮自动验收读取网页解码帧，不冒称重新目视了远端UU客户端。
-正式默认重启后的复测与性能数据完成后补齐。
+正式默认重启后再次维持同一活动网页会话自动HDR→SDR→HDR：
+最大误差HDR 3.43、SDR 2.23、恢复HDR 3.43；平均分别0.65/0.52/0.73。
+随后物理16色块及动态帧号、各独占60秒：H.264 3840×2160 **59.9947fps**，
+H.265 **59.9926fps**，drop/lost/freeze/PLI增量均0；呈现p95均17.5ms，
+最大33.0/33.5ms，无>50ms间隔。两种编码各三帧的HDR最大残差均3.43、平均0.73码。
+HDR gamut读回CTRL=0x1b、系数3401/-1204/-149、-255/2320/-17、-37/-206/2291，
+与11位小数配方一致，不再是8位小数配置。
+One-KVM/manager/透传/声音服务active，UDC configured；管理器实际页面支持、开关勾选，
+显示“透传中”，输出hdrToSdr=false。原RTK-CONTROL EDID及Mac HDR已恢复，测试源退出恢复桌面。
+
+主仓254项通过、7跳过；驱动针对性C fixture及完整Image/DTB/模块构建通过，
+checkpatch 0错误、1警告（新增Python fixture未加SPDX头）。Swift图案构建通过，
+仅有原同步音频代码的macOS弃用告警，本轮没有调用声音功能。
+新增工具误差是对**RX实际码值的软件转换参考**，不是保证Mac绘图API原常数或显示器光子
+也只差几个码；源端PQ/YUV编码本身的量化已在探针里，不能误算成KVM新引入的偏色。
 驱动C fixture覆盖同一活动采集的HDR/SDR、范围/位深跟随，以及VPP不能覆盖采集增益。
 本机忽略证据：`logs/passthrough-hdr/color-cycle-*`、`color-old-48fps.log`及color4构建/启动记录。
