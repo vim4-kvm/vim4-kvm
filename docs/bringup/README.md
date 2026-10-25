@@ -8,6 +8,7 @@
 ## 2026-10-25
 
 - [厂商 5.15 真实 1080p60 EDID 跟随](2026-10-25-vendor-passthrough-1080p.md) — video manager uu deployment board
+- [UU 缩放生产合入与时钟失败降级](2026-10-25-uu-scaling-production.md) — video application uu deployment board
 
 ## 2026-10-24
 
