@@ -36,9 +36,31 @@ H.264 3840×2160 60.0101fps，H.265 59.9926fps，两者 drop/lost/freeze/PLI 增
 呈现p95分别18.0/18.4ms、最大32.7/22.9ms。其后因发现 AVI 问题，不把这些数据
 当作 HDR 色域正确的证明。KVM 实际 SDR 灰阶及10-bit显示源证据见双路径记录。
 
-hdrdual2 的默认启动、包读回、网页视频及30分钟只读观察结果在完成后补齐。
+hdrdual2 一次性启动及正式默认重启均成功；实际运行/default 为
+`5.15.137-vim4kvm-hdrdual2`，标准 boot alias 同步指向它。
+为腾出空间仅删除已不被 extlinux/登记清单引用的 hdr1 旧 boot 产物，未新增备份。
+重启后 TX 为2160p60、422 12-bit limited、DRM ST2084、AVI Extended/BT.2020，
+静态元数据各值仍与源端合法零值匹配；不再出现“PQ但709”。
+页面实际开关 enabled/checked、显示“透传中”，supported/running、hdrToSdr=false；
+One-KVM、manager、视频透传、声音服务均 active、NRestarts=0，UDC configured。
+
+hdrdual2 正式主线无声动态源、各60秒：H.264 4K **59.9950fps**，
+H.265 4K **59.9937fps**，两者 drop/lost/freeze/PLI 增量0。
+H.264浏览器呈现p95为31.9ms、195次回调未逐帧到达，但实际呈现/解码约60fps、
+无>50ms间隔；H.265 p95为18.1ms、最大23.7ms，回调缺口0。
+六张解码帧的16档灰阶均为0/17/34/50…236/252，RGB通道相等，与SDR基线一致。
+不拿这些网页图像代替显示器 HDR 色差/光度测量。
+
+默认重启后的05:33:55–06:03:55 UTC，完整1800秒、1799次采样：
+TX modeset **0**、RX READY→WAIT_CLK_STABLE **0**、扫描停顿≥2秒 **0**、
+ready持续丢失≥2秒 **0**。所有采样 signal/ready=true；1797次running、2次单次starting，
+后两次前后扫描仍各推进60帧、下次恢复running，没有对应重设/失锁日志；状态瞬态原因未定。
+结束时仍为PQ/BT.2020、422 12-bit、2160p60，四项服务active、无新增内核告警。
 监测读取 TX modeset、RX 状态机、ready 及显示扫描帧推进，不是光学黑屏探测器。
 声音仅检查服务 active，不播放测试音、不请用户听、不再做音频验收。
+
+离线验证：主仓252项通过、7跳过；manager205项、12跳过及Go全量通过；
+One-KVM746项通过、2忽略；原驱动fixture及新增 AVI fixture通过，完整内核构建通过。
 
 ## 已知边界
 
