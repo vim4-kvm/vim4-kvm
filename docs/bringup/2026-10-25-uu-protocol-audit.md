@@ -6,7 +6,7 @@
 
 ## 错误
 
-E1–E7 已独立修复并推送 `vim4/a168d726`，各有回归；原尺寸4K60稳定600秒通过。缩放重配CMA崩溃及低码率超调见验收记录，其余保留待办。
+E1–E7 已独立修复并推送 `vim4/a168d726`，各有回归；原尺寸4K60稳定600秒通过。后续缩放CMA、最低HEVC码率与G4已在 `vim4/1c1a790d` 修复验收，见[后续记录](2026-10-25-uu-cma-tools.md)。
 
 | 编号/优先级 | 参考；我们 | 影响、建议修复 | 人日 |
 |---|---|---|---|
@@ -28,7 +28,7 @@ E1–E7 已独立修复并推送 `vim4/a168d726`，各有回归；原尺寸4K60�
 | G1/P2 手机文本、正向粘贴 | R/control_protocol.rs:64；R/webrtc.rs:1351；U/input.rs:240；U/peer.rs:752 | 忽略text_input/TEXT，手机IME失效。HID适用已知布局字符；先支持受限字符并报失败，Unicode需输入法约定/串口/SSH。 | 2–4 |
 | G2/P2 文件传输 | R/file_trans.rs:495,624；U/mod.rs:830 | 忽略type=5。适用板子限定目录/未挂载虚拟盘，不能访问目标任意目录。实现FILE回复、压缩列表、取消/续传、介质互斥。 | 5–10 |
 | G3/P2 端口映射 | R/port_mapping.rs:156；U/mod.rs:830 | 忽略type=9。适用板子可达的SSH/管理端口；显式启用、限定目的地址、独立peer，经FILE Message27转发。 | 3–5 |
-| G4/P2 工具连接转桌面 | R/webrtc.rs:1318；R/desktop_control_tests.rs:220；U/peer.rs:1475；U/mod.rs:830 | 忽略工具peer的capture_desktop(4)，不能从终端连接开画面。适用；保留终端，幂等添加视频并统一接管。 | 2–4 |
+| G4/P2 已修：工具连接转桌面 | R/webrtc.rs:1318；R/desktop_control_tests.rs:220；U/peer.rs:1475；U/mod.rs:830 | `1c1a790d`：同peer幂等取得桌面、保留终端、统一接管/清理；双端回归与官方终端→桌面、600秒缩放验收通过。 | 2–4 |
 | G5/P2 结束自动锁屏 | R/system_actions.rs:246,269；U/peer.rs:1577；U/wire.rs:166 | 手动HID锁屏已有；可持久化action19的2/1开关，最终断开按Windows/Mac发锁屏键，无法确认目标锁态。 | 1–2 |
 | G6/P2 WOL/电源 | R/wol.rs:40,87；R/system_actions.rs:219；U/mod.rs:734；U/peer.rs:1603 | 未接WOL push/电源动作。WOL适用但参考也未实测；目标重启需ATX/明确SSH，不能照搬systemctl重启板子。 | 2–4 |
 | G7/P3 访客/分享协助 | R/assist.rs:1；U/cloud.rs:324；U/mod.rs:741 | 缺协助挑战/签名；适用临时授权，需开关、撤销和终端权限。 | 4–7 |
@@ -101,7 +101,9 @@ E1–E7 已独立修复并推送 `vim4/a168d726`，各有回归；原尺寸4K60�
 
 部署/实测范围与失败窗口见[修复验收记录](2026-10-25-uu-p1-validation.md)。扫码云端流程未重新绑定，QR以本地HTTP协议回归覆盖；未测试声音。
 
-P2暂缓，等用户决定：G1手机文本/粘贴、G4 capture_desktop角色提升、G2文件传输。其余补测：双端初始化/echo/RPC失败/BINARY、三通道释放、I5鉴权、音频恢复、PLI/NACK重配、TURN实传、弱网/HID；用容量1/屏障协调。
+用户后续决定：先修复缩放 CMA，再做 G4 capture_desktop 与 G2 限定板子文件传输，实施状态见[后续记录](2026-10-25-uu-cma-tools.md)。G1 手机文本输入/粘贴暂缓，等用户决定。G3 端口映射、G5 结束自动锁屏、G6 WOL/电源、G7 访客协助、G8 反向剪贴板、G9 多屏/真彩均为**用户决定不做**。
+
+其余补测：双端初始化/echo/RPC失败/BINARY、三通道释放、I5鉴权、音频恢复、PLI/NACK重配、TURN实传、弱网/HID；用容量1/屏障协调。本轮不测声音。
 
 ## 许可证
 

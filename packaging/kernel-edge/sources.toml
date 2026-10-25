@@ -1,4 +1,5 @@
-# Experimental branch; not used by the 5.15 image builder.
+# Experimental kernel pins; the private GStreamer recipe below is also used
+# by the 5.15 One-KVM image builder.
 [kernel]
 url = "https://github.com/vim4-kvm/linux.git"
 branch = "vim4-kvm-7.3"
@@ -91,7 +92,8 @@ hcodec_clock_hz = 666666656
 hcodec_clock_parent = "hcodec_0"
 tested_module_sha256 = "22537cb61b113c449d65e31ba1c1df4d57b9743099a86497c5ee9bbd699c0ea0"
 
-# The private edge plugin is separate from the system and 5.15 plugins.
+# Private standard V4L2 plugin for edge and 5.15 One-KVM capture. The tested hash
+# below belongs to the historical edge build, before the contiguous-layout patch.
 [gstreamer]
 source_url = "https://gstreamer.freedesktop.org/src/gst-plugins-good/gst-plugins-good-1.24.2.tar.xz"
 source_sha256 = "6e347c72d4b8b2886d890ffe9f6767a9edb02f201588e8c3a572dcd08d9852bd"
