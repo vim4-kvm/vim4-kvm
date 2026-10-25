@@ -86,7 +86,7 @@ def run(seconds, output):
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument('--seconds', type=int, default=1800)
+    parser.add_argument('--seconds', type=int, default=600)
     parser.add_argument('--output', type=Path, required=True)
     arguments = parser.parse_args()
     if not 1 <= arguments.seconds <= 86400:

@@ -61,7 +61,7 @@ PiKVM smoke 可用 `PIKVM_CDP` 接入专用测试 Chrome；结束时关闭测试
 | tools/oowow-flash.sh | Mac（板在 OOWOW） | 破坏 | 手工 URL 刷写，优先用 board.py flash | [板级工具](board-tools.md) |
 | tools/kernel-install.sh | 板（root） | 改启动项 | 安装厂商内核包并保留 Stock；7.x 在解包前拒绝，走独立 edge 窗口 | [内核](kernel.md) |
 | packaging/kernel/promote.py | 板（root，双锁） | 改默认；可删除显式淘汰的未登记旧产物 | 将已运行验证的厂商候选登记至标准 vim4boot 和透传资格清单；可备份回退或显式不备份，不重启 | [原生 HDR 交付](bringup/2026-10-25-native-hdr-dual-path.md) |
-| tools/passthrough-monitor.py | 板（只读硬件，写指定日志） | 不控制硬件 | 定时观察 TX 重设、RX 失锁与扫描输出停顿；排除无输入/主动关闭，不代替光学黑屏检测 | [原生 HDR 交付](bringup/2026-10-25-native-hdr-dual-path.md) |
+| tools/passthrough-monitor.py | 板（只读硬件，写指定日志） | 不控制硬件 | 默认十分钟观察 TX 重设、RX 失锁与扫描输出停顿；排除无输入/主动关闭，不代替光学黑屏检测 | [HDR 输出开关](bringup/2026-10-25-passthrough-hdr-switch.md) |
 | tools/rootfs-policy.py | 板（root，随包安装） | 改启动项 | 根分区 ordered/commit=5，重启生效 | [Ubuntu 构建](ubuntu-build.md) |
 
 ## 板级服务源码（由 board/install.sh 或组件包安装）
