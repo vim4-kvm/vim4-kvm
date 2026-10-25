@@ -1,0 +1,21 @@
+{
+  "sources": {
+    ".": {
+      "revision": "64c0ec18d18de1d119e305e70a4558cbd9849ad2",
+      "dirty": false,
+      "diff_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "tree_sha256": "e5c1a46cc851d7ae6831a76eba0876b79e59eaf73d22b8f468317089ae411e8c"
+    },
+    "vim4-manager": {
+      "revision": "b44a4b812cb9b2bcceab023b472c6747144f2624",
+      "dirty": false,
+      "diff_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "tree_sha256": "99bc3f3a47e250ac78bac20a7c62c9bc302e0c23111efba4fe3b9beea889c3f9"
+    }
+  },
+  "builder": "sha256:8f0e51877aaf0a46d9646369aeb72370e32a88b764aeaad88dd4249b6831c896",
+  "component": "manager",
+  "source_date_epoch": "1792932571",
+  "version": "2.5.1+vim4.20261025.9",
+  "development": false
+}

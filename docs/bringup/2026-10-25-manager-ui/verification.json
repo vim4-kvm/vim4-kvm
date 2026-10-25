@@ -1,0 +1,74 @@
+{
+  "base": "http://192.168.50.210",
+  "version": "2.5.1+vim4.20261025.9",
+  "reads": [
+    {
+      "page": "overview",
+      "status": 200
+    },
+    {
+      "page": "apps",
+      "status": 200
+    },
+    {
+      "page": "media",
+      "status": 200
+    },
+    {
+      "page": "disks",
+      "status": 200
+    },
+    {
+      "page": "storage",
+      "status": 200
+    },
+    {
+      "page": "video",
+      "status": 200
+    },
+    {
+      "page": "output",
+      "status": 200
+    },
+    {
+      "page": "cooling",
+      "status": 200
+    },
+    {
+      "page": "network",
+      "status": 200
+    },
+    {
+      "page": "services",
+      "status": 200
+    },
+    {
+      "page": "updates",
+      "status": 200
+    },
+    {
+      "page": "account",
+      "status": 200
+    }
+  ],
+  "errors": [],
+  "captures": [
+    "login-light-1280.png",
+    "overview-light-1280.png",
+    "apps-light-1280.png",
+    "media-light-1280.png",
+    "disks-light-1280.png",
+    "storage-light-1280.png",
+    "video-light-1280.png",
+    "output-light-1280.png",
+    "cooling-light-1280.png",
+    "network-light-1280.png",
+    "services-light-1280.png",
+    "updates-light-1280.png",
+    "account-light-1280.png",
+    "overview-dark-390.png",
+    "video-dark-390.png",
+    "output-dark-390.png"
+  ],
+  "writes": "login only; no setting changes"
+}

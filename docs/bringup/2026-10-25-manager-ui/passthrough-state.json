@@ -1,0 +1,32 @@
+{
+  "supported": true,
+  "enabled": true,
+  "audio": true,
+  "hdr": true,
+  "audioState": "running",
+  "state": "running",
+  "input": {
+    "width": 3840,
+    "height": 2160,
+    "refreshHz": 59.99,
+    "hdr": "HDR10",
+    "colorFormat": "YUV422",
+    "audio": true
+  },
+  "monitor": {
+    "name": "RTK UHD HDR",
+    "maxWidth": 3840,
+    "maxHeight": 2160,
+    "maxRefreshHz": 60,
+    "hdr": true,
+    "audio": true
+  },
+  "output": {
+    "width": 3840,
+    "height": 2160,
+    "refreshHz": 60,
+    "colorFormat": "YCbCr422 12-bit limited",
+    "scaled": false,
+    "hdrToSdr": false
+  }
+}
