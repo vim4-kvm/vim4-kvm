@@ -7,6 +7,7 @@
 
 ## 2026-10-25
 
+- [原生 HDR 双路径的四应用采集修复](2026-10-25-native-hdr-all-kvm.md) — video application pikvm deployment board
 - [管理面板前端重构验收与部署](2026-10-25-manager-ui.md) — manager application deployment
 - [UU 协议审查与 P1 修复验收](2026-10-25-uu-protocol-audit.md) — uu application video audio usb audit
 - [UU P1 修复部署与自动验证](2026-10-25-uu-p1-validation.md) — uu onekvm video board

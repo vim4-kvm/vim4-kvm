@@ -33,6 +33,7 @@ await page.addInitScript(() => {
 });
 const sample = () => page.evaluate(async () => {
   for (const peer of window.switchPeers) {
+    if (peer.connectionState !== 'connected') continue;
     for (const stat of (await peer.getStats()).values()) {
       if (stat.type === 'inbound-rtp' && stat.kind === 'video') {
         return { timestamp: stat.timestamp, frames: stat.framesDecoded, dropped: stat.framesDropped,
@@ -83,10 +84,15 @@ try {
       target.searchParams.set('kvm', app);
       await page.goto(target.href);
     }
-    await page.waitForFunction(() => document.querySelector('video')?.videoWidth > 0, {}, { timeout: 45000 });
+    let start;
+    const deadline = Date.now() + 45000;
+    while (Date.now() < deadline) {
+      start = await sample();
+      if (start?.frames > 0) break;
+      await page.waitForTimeout(200);
+    }
     const firstFrameMs = Date.now() - begin;
-    const start = await sample();
-    assert(start, 'missing inbound video');
+    assert(start?.frames > 0, 'missing decoded inbound video');
     await page.waitForTimeout(10000);
     const end = await sample();
     assert.equal(end.state, 'connected');
