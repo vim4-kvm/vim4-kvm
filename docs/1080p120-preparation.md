@@ -49,7 +49,7 @@ build ID `6802376f07c793d9e5cdca045d22d13f2cb0d95d`。
 One-KVM候选ARM64 release二进制已构建，SHA256为
 `7f9d168c24a893bae5ade473c7b2645fdb04aa5ba449d9383455aaf20ec61570`。
 源码提交：common_drivers `52f9e8431`、NanoKVM `9f72f71`、manager `5829d86`、
-One-KVM `1ce65ba7`；尚未推送。它们是已离线验证的候选，不是实板交付记录。
+One-KVM `1ce65ba7`；上述源码已推送。最终枚举修复与实板结果以上述上板记录为准。
 VM候选基线与Mac正式common_drivers的运行C代码一致，后者只多两处测试补充；
 已撤回VM原生HDR树的临时RX改动并重建基线模块；未改VM主 `~/src/linux` 的既有
 未提交VDIN改动。候选模块独立保存在本地，不能拿基线重建后的VM模块替代它。
