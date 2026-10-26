@@ -34,7 +34,7 @@ Mac 上部署助手测试依赖 Linux/root 环境，随后在正确的 Linux 板
 ## 正式依赖的板端回放
 
 5.15.137-vim4kvm-hdrdual6，测试进程固定自身 CPU0/1；既有频率与 governor 不变。
-使用相同四个真实 4K60/30Mbps AU、生产 release/LTO、AArch64 cfg 与 VIM4 track 行为，
+每种编码使用相同四个真实 4K60/30Mbps AU、生产 release/LTO、AArch64 cfg 与 VIM4 track 行为，
 比较 feature 关→开→关；每窗口三组、每 case100帧。全部 complete/valid、失败段数0。
 四组 codec/profile 完整密文 transcript 在三个窗口逐个相同，每包解密内容校验通过。
 原始数据 `logs/hmac-formal-replay-{a1,b,a2}.json`，不是早期独立补丁的旧结果。
@@ -101,10 +101,46 @@ H.265 为68.095→68.014→68.056ms，尚未检出明确的整链路中位数改
 最初两个基线pilot被诊断探针中断，分别为 RTLD_NEXT 看不到 GStreamer 局部加载库，
 以及回退查找误用了不导出函数的 libamvenc_api.so；均未进入候选测量。改用已经加载的
 libamvenc.so 后六窗口通过，失败记录保留在 `logs/hmac-live{,2}-run.log`，未纳入对照。
-每次退出均恢复原二进制，首轮后另做 H.265 冒烟通过；最终无探针drop-in，原文件SHA256
+每次退出均恢复原二进制，首轮后另做 H.265 冒烟通过；对照结束时无探针drop-in，原文件SHA256
 恢复为 `3e0c82ac311557afaf0c1471d79cdcbcb00af599f006d529b80ea1131e3dbf72`，
 HDMI服务PID1094未变，内核仍为5.15。
 
 ## 安装包交付
 
-标准组件打包与部署结果待验证，本节不构成已部署证明。
+随后按标准流程从干净源码完整冷构建，不把诊断二进制直接留作生产文件：
+
+```sh
+python3 tools/ubuntu-build.py package --component onekvm --version 2.5.1+vim4.20261025.20
+python3 tools/ubuntu-build.py verify --component onekvm --version 2.5.1+vim4.20261025.20
+python3 tools/board.py deploy --exclusive --packages build/packages/2.5.1+vim4.20261025.20 --kernel 5.15.137-vim4kvm-hdrdual6
+```
+
+来源为 One-KVM `b6b8057c`、主仓库 `2d721d5`，实际镜像及完整树哈希见包内
+`sources.json`。重新构建前端、私有GStreamer插件、DMA helper，debug应用单测再次
+774 passed、2 ignored，部署助手35项通过。隔离包验证通过校验和、ARM64 ELF、动态库、
+sudoers、配置保留、损坏文件拒绝、更新feed、真实dpkg锁争用、升级、同版本/降级拒绝、
+认证更新API与安装重启。两份SRTP许可证均在deb中，包内来源元数据与外部一致。
+
+最初省略版本生成的开发号基于较旧的已发布版本，低于板端；安装前已主动终止该构建，
+未安装，日志为 `logs/hmac-official-package-outdated-base.log`。正式包实际部署时漏传
+`--kernel`，安装已完成，随后默认7.3的板级检查在5.15上退出1；未重复安装，改为
+`tools/board.py check --kernel 5.15.137-vim4kvm-hdrdual6` 后通过。上例列出完整正确参数。
+部署等待循环访问管理器根路径得到401并多等15秒，公共auth/state端点正常；不是服务
+未启动。实际安装与复核日志分别为 `logs/hmac-official-deploy.log`、
+`logs/hmac-official-check-515.log`，不把首次命令退出1记成成功。
+
+最终已安装 One-KVM `2.5.1+vim4.20261025.20`，二进制SHA256与包内相同：
+`b0a48759cd6cd3d42755364fab0ea538f59b6c256ef294f6ae3d5c23b634e527`。
+保留另一任务刚部署的 manager `2.5.1+vim4.20261026.1`。内核仍5.15，HDMI服务PID1094
+未变，原视频/stream/audio配置逐项相等，恢复H.265，WebRTC session_count=0。
+临时探针、板端私有备份/基准目录、采集tmpfs均清理，无探针映射或drop-in。
+
+实际安装包另用物理HDMI运动源和指定RTK音频设备的440Hz脉冲验证：H.264/H.265均
+3840×2160、约59.99fps，15秒窗口零丢包/掉帧/freeze，两者解码音频峰值分别0.1019、
+0.1014。它证明非静音互通，不是音频长期连续性或光学延迟验收。补充MJPEG冒烟返回400，
+原因为既有UU配置锁定H.264/H.265；该行为在原基线源码也存在，未关闭UU或修改配置，
+该项未计通过。原始 `logs/hmac-final-{h264,h265}.jsonl`、`hmac-final-mjpeg.err`、
+`hmac-final-settings-check.json` 和 `hmac-final-cleanup-check.json`。真实UU客户端本轮未复测。
+
+主仓库259项测试通过（7项按环境跳过）。本轮源码已提交，尚未推送；未启用批量UDP、
+编码fast packing或超频，也未把单段改善称为端到端性能验收。

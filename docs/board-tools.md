@@ -53,6 +53,10 @@ python3 tools/board.py deploy --exclusive --packages "build/packages/$version"
 PLAYWRIGHT_MODULE=/absolute/path/to/playwright/index.mjs python3 tools/board.py verify
 ```
 
+`deploy` 和 `check` 默认检查7.3内核；在5.15系统上应增加 `--kernel`，值为板上实际
+`uname -r` 输出。它不会自动切内核。若安装后只在内核检查处失败，先核对已安装版本，
+再以正确参数运行 `check`，不要重复安装同一版本。
+
 board.py deploy 先在本地按 SHA256SUMS 校验七个 deb 和 sources.json 并输出脏源码仓库
 （--dry-run 到此为止），记录板上原有版本（Previous 行，回退时用对应目录再次 deploy），
 上传整个包目录与安装脚本到板上临时目录，以 sudo 运行 install-components.sh，
