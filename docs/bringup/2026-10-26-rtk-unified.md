@@ -37,5 +37,8 @@ IORegistry已识别合并表：1080p120模式VRR 48–120Hz，4K60模式VRR 48�
 One-KVM H.264 4K60在预热3秒后测10秒，约59.96fps；测量窗口新增丢包、解码丢帧、
 freeze、PLI均为0。此轮是固定刷新桌面视频冒烟，不是运动性能或延迟测试，未切换其他
 应用重新资格验证VRR。UU保持启用，当前无客户端连接，不作为UU实测。
+本次安装窗口仍出现先前记录的 `pdmin0/1 already disabled/unprepared` 时钟告警，
+未见Oops/BUG/panic；不能把视频冒烟通过表述为内核无告警。
+
 安装/网页/视频日志位于忽略目录 `logs/vrr-deploy/rtk-unified-*`，构建与软件检查日志
 位于 `build/vrr/rtk-*`。源码版本固定在本次更新的 `workspace.toml`。
