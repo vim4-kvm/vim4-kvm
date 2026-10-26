@@ -37,6 +37,7 @@ PiKVM smoke 可用 `PIKVM_CDP` 接入专用测试 Chrome；结束时关闭测试
 | packaging/kernel-edge/vdec-register-dump.c | 板 | 双锁、已上电期间只读 MMIO | 先校验完整地址清单；/dev/mem 只读映射，厂商 debugfs 只缓存单地址；拒绝内部 DOS/GCLK，每次读取前输出地址 | [寄存器差分](bringup/2026-10-23-vdec-register-diff.md) |
 | packaging/kernel-edge/check-wifi-p2p.py | 板 | 独占、临时接管 Wi-Fi 后恢复 | 已保存 SAE 客户端与 P2P 扫描、监听、双频 GO 启停；不代替真实对端传输 | [Wi-Fi Direct](bringup/2026-10-21-edge-wifi-p2p.md) |
 | tools/workspace.py | Mac / CI | 无 | bootstrap/status 子仓库（`--override` 供发布 CI 替换单个仓库提交），build 各目标（kernel 走 OrbStack） | [工作区](workspace.md) |
+| tools/vrr-edid.py | Mac / Linux | 只写指定的新文件，不访问板子 | 显式实验范围生成远程VRR EDID；本地模式必须提供同协议sink并取交集，不安装预设或触发HPD | [VRR准备](vrr-preparation.md) |
 | tools/ubuntu-build.py | Mac / CI → Docker | 无 | package/verify 七组件；支持 platform、capture、encoder、nanokvm、jetkvm、onekvm、manager、pikvm、pikvm-app | [Ubuntu 构建](ubuntu-build.md) |
 | tools/ubuntu-image.py | Mac → OrbStack | 无 | 内核包、候选镜像 assemble/verify/export | [候选镜像](ubuntu-image.md) |
 | packaging/ubuntu/ | 容器 | 无 | Dockerfile、锁文件、fetch.py、build.sh、package.py、verify.sh；manager-config.py 迁移网关配置；check-audio-startup.py、check-onekvm-update.py 与 pikvm/check-janus.py 为打包门禁 | [Ubuntu 构建](ubuntu-build.md) |
