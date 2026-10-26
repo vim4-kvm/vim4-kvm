@@ -52,11 +52,13 @@ table or uploaded EDIDs. Both kernels can use it; the original preset remains.
 
 `rtk-uhd-hdr-1080p120.bin` 基于上面的 RTK 原表，预设标识为 `RTK-1080P120`。
 原表没有 CTA VIC 63/64（1080p120/100），垂直扫描范围上限为 61Hz。
-派生表在原有两个保留 SVD 槽位 `0x8c/0x8d` 写入 63/64，将 `0x72` 的垂直范围
-上限改为 120，再重算 `0x7f/0xff` 校验和；总共改动 5 字节。原有 SVD 索引不移动，
+首版在原有两个保留 SVD 槽位 `0x8c/0x8d` 写入 63/64，将 `0x72` 的垂直范围
+上限改为 120，再重算 `0x7f/0xff` 校验和；当时共改动 5 字节。原有 SVD 索引不移动，
 避免改变 Y420 capability map 的对应关系。首选模式仍为 4K60，1080p60/1440p60 DTD、
-音频、HDR、深色及厂商数据块保留；FreeSync 范围仍是 40–61Hz，不声明 120Hz VRR。
-SHA256：`75c822f7e6c747dc9f8bbe235e9e9fd49a2a7a318810a7d4f9525eb6c1491d07`。
+音频、HDR和深色保留。后续在同一实验表内加入HDMI Forum VRR 48–60Hz，移除原AMD
+FreeSync 40–61Hz声明，避免源协商到候选以外的范围；不新增菜单项，不声明120Hz VRR。
+当前SHA256：`085a5b2ffeadf88c17a4d0e8d6a48ef9d92e14ec71a02c43dc21e4fedbf74ea1`。
+历史固定高刷版本SHA256：`75c822f7e6c747dc9f8bbe235e9e9fd49a2a7a318810a7d4f9525eb6c1491d07`。
 
 这只是输入能力声明，需要配套 RX 高刷格式映射与应用编码上限。首次实板验收从
 SDR 8-bit 开始；增加声明不等于已经验证 HDR120、远程120帧或本地 HDMI OUT120。
@@ -69,5 +71,10 @@ SDR 8-bit 开始；增加声明不等于已经验证 HDR120、远程120帧或本
 `tools/vrr-edid.py` 可按显式范围生成单独候选，不覆盖原表、不写接收端。
 远程模式不依赖OUT；本地模式要求显示器EDID，并取同协议的接收/请求/显示器范围交集。
 原RTK只有AMD FreeSync 40–61Hz，不能当作HDMI Forum VRR显示器。
-此工具没有建立硬件资格或新增可用的VRR预设，使用方法与待验边界见
+此工具没有建立硬件资格，使用方法与待验边界见
 [VRR离线准备](../../docs/vrr-preparation.md)。
+
+VRR实验复用上面的 `RTK-1080P120` 表；原始 `RTK-CONTROL` 不变，默认选择也不变。
+需配套5.15 VRR输入驱动与应用，首次测试主动选择1080p60 SDR 8-bit。
+48–60Hz尚未经过真实VRR源验收，不能视为硬件极限；不启用本地输出VRR，
+不代表7.3支持VRR，也不声明原生1Hz输入。固定1080p120模式仍独立保留。
