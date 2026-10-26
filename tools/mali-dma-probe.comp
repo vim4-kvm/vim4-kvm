@@ -1,0 +1,8 @@
+#version 450
+layout(local_size_x = 256) in;
+layout(set = 0, binding = 0, std430) buffer Output { uint words[]; } output_data;
+void main() {
+    uint index = gl_GlobalInvocationID.x;
+    if (index < output_data.words.length())
+        output_data.words[index] = index ^ 0x5a39c6e1u;
+}
