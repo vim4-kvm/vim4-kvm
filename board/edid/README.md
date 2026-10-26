@@ -55,9 +55,13 @@ table or uploaded EDIDs. Both kernels can use it; the original preset remains.
 首版在原有两个保留 SVD 槽位 `0x8c/0x8d` 写入 63/64，将 `0x72` 的垂直范围
 上限改为 120，再重算 `0x7f/0xff` 校验和；当时共改动 5 字节。原有 SVD 索引不移动，
 避免改变 Y420 capability map 的对应关系。首选模式仍为 4K60，1080p60/1440p60 DTD、
-音频、HDR和深色保留。后续在同一实验表内加入HDMI Forum VRR 48–60Hz，移除原AMD
-FreeSync 40–61Hz声明，避免源协商到候选以外的范围；不新增菜单项，不声明120Hz VRR。
-当前SHA256：`085a5b2ffeadf88c17a4d0e8d6a48ef9d92e14ec71a02c43dc21e4fedbf74ea1`。
+音频、HDR和深色保留。同一实验表内加入HDMI Forum VRR 48–120Hz，移除原AMD
+FreeSync 40–61Hz声明；不新增菜单项。按所选模式限定上限：当前Mac的1080p最高120，
+4K最高60，声明VRRmax=120不增加4K120时序。首版错误写入保留值VRRmax=60，
+经Mac单字段对照与edid-decode检查后修正；最大值1–99不可用于声明保守上限。
+当前SHA256：`45ed44250763f39561961829ff5f9f5f18a8fba6847afd088f8aab2636ceaf45`。
+首版VRR实验表SHA256：`085a5b2ffeadf88c17a4d0e8d6a48ef9d92e14ec71a02c43dc21e4fedbf74ea1`。
+字段对照和4K变频结果见[范围声明纠正与4K输入验证](../../docs/bringup/2026-10-26-vrr-range-4k.md)。
 历史固定高刷版本SHA256：`75c822f7e6c747dc9f8bbe235e9e9fd49a2a7a318810a7d4f9525eb6c1491d07`。
 
 这只是输入能力声明，需要配套 RX 高刷格式映射与应用编码上限。首次实板验收从
@@ -76,5 +80,5 @@ SDR 8-bit 开始；增加声明不等于已经验证 HDR120、远程120帧或本
 
 VRR实验复用上面的 `RTK-1080P120` 表；原始 `RTK-CONTROL` 不变，默认选择也不变。
 需配套5.15 VRR输入驱动与应用，首次测试主动选择1080p60 SDR 8-bit。
-48–60Hz尚未经过真实VRR源验收，不能视为硬件极限；不启用本地输出VRR，
+1080p约49–120Hz已有[真实源验证](../../docs/bringup/2026-10-26-vrr-live.md)，不能视为硬件极限；不启用本地输出VRR，
 不代表7.3支持VRR，也不声明原生1Hz输入。固定1080p120模式仍独立保留。

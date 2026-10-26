@@ -63,7 +63,11 @@ HDMI_LOW_LATENCY=0 恢复厂商自动策略。模式含义、对照结果及帧�
 
 - [本地视频基准](../local-video-benchmark.md)：容器或板子当前内核的 buffer benchmark、离线驱动回归与复制候选对比。
 - [RTP 发送优化](../rtp-send-optimization-audit.md)：正式加密后端、逐包路径、协商约束与离线验证；[编码 fast packing](../encoder-fast-packing-audit.md) 记录厂商 API 与硬件验证边界。
-- [VBV 对照](../bringup/2026-10-26-encoder-vbv.md)：固定输入的码率峰值、画质与编码耗时；[1080p120 审查](../1080p120-audit.md)的[候选已部署](../bringup/2026-10-26-1080p120.md)，裸编码与H.264网页吞吐通过，UU/本地120待验；[VRR离线准备](../vrr-preparation.md)含EDID策略与基准帧率修复，真实输入/本地输出尚未验收，[本地VRR审查](../vrr-passthrough-audit.md)保留资格约束。
+- [VBV 对照](../bringup/2026-10-26-encoder-vbv.md)：固定输入的码率峰值、画质与编码耗时；[1080p120 审查](../1080p120-audit.md)的[候选已部署](../bringup/2026-10-26-1080p120.md)，裸编码与H.264网页吞吐通过，UU/本地120待验。
+- [VRR准备](../vrr-preparation.md)含EDID策略与基准帧率修复；5.15 One-KVM的
+  [1080p真实输入](../bringup/2026-10-26-vrr-live.md)与[4K变频、范围纠正](../bringup/2026-10-26-vrr-range-4k.md)
+  已短测H.264/H.265 SDR8。Forum最大值1–99为保留值，不能用60声明保守上限；
+  本地输出仍未验收，[本地VRR审查](../vrr-passthrough-audit.md)保留资格约束。
 - [驱动基准](../driver-benchmark.md)：原生纯采集/硬编码，排除 Python、解析、写盘与网络，支持 7.x 与 5.15。
 - [7.x 缩放与硬件 MJPEG](../bringup/2026-10-21-edge-scaling-jpeg.md)：VDIN 下采样、HCODEC/OP-TEE 接入与 4K 帧率边界。
 - [UHD 清晰度复核](../bringup/2026-10-20-edge-uhd-detail.md)：Mac 实际渲染栅格、原生单像素细节与 1080p 放大负对照。

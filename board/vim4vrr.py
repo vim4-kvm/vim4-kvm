@@ -56,6 +56,20 @@ def cta_blocks(extension):
     return blocks, end
 
 
+def _forum_range(minimum, maximum):
+    # HF-VSDB reserves maxima 1..99; zero means the selected mode's base rate,
+    # not a zero-Hz ceiling. This tool only represents explicit bounded ranges.
+    if not 1 <= minimum <= 48:
+        raise ValueError('HDMI Forum VRR minimum must be between 1 and 48 Hz')
+    if maximum == 0:
+        raise ValueError('HDMI Forum VRRmax=0 depends on the video mode; '
+                         'an explicitly qualified maximum is required')
+    if maximum < 100:
+        raise ValueError('HDMI Forum VRR maxima 1..99 are reserved; '
+                         'an explicit maximum must be at least 100 Hz')
+    return Range(minimum, maximum)
+
+
 def capabilities(edid):
     validate(edid)
     result = {}
@@ -79,7 +93,8 @@ def capabilities(edid):
                 continue
             if protocol in result:
                 raise ValueError('Duplicate VRR capability blocks')
-            result[protocol] = Range(low, high)
+            result[protocol] = (_forum_range(low, high) if protocol == 'hdmi-forum'
+                                else Range(low, high))
     return result
 
 
@@ -109,8 +124,8 @@ def rewrite(edid, protocol, selected):
     capabilities(edid)  # Reject ambiguous/malformed existing declarations.
     if protocol not in PROTOCOLS:
         raise ValueError('Unknown VRR protocol')
-    if protocol == 'hdmi-forum' and selected.minimum > 63:
-        raise ValueError('HDMI Forum VRR minimum is a six-bit field')
+    if protocol == 'hdmi-forum':
+        _forum_range(selected.minimum, selected.maximum)
     if protocol == 'amd-freesync' and selected.maximum > 255:
         raise ValueError('AMD FreeSync v1 maximum is an eight-bit field')
     extensions = [bytearray(edid[i:i + 128]) for i in range(128, len(edid), 128)]

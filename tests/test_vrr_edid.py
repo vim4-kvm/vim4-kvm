@@ -30,18 +30,16 @@ class VrrEdidTest(unittest.TestCase):
             base[offset + 127] = -sum(base[offset:offset + 127]) % 256
         base = bytes(base)
         candidate = (ROOT / 'board/edid/rtk-uhd-hdr-1080p120.bin').read_bytes()
-        self.assertEqual(candidate, rewrite(base, 'hdmi-forum', Range(48, 60)))
+        self.assertEqual(candidate, rewrite(base, 'hdmi-forum', Range(48, 120)))
         self.assertEqual(candidate[:128], base[:128])
-        self.assertEqual(capabilities(candidate), {'hdmi-forum': Range(48, 60)})
+        self.assertEqual(capabilities(candidate), {'hdmi-forum': Range(48, 120)})
 
     def test_remote_range_is_independent_of_output_but_local_intersects(self):
         self.assertEqual(select_range(self.receiver, Range(40, 100), 'hdmi-forum'), Range(48, 100))
-        sink = rewrite(self.rtk, 'hdmi-forum', Range(55, 75))
-        self.assertEqual(select_range(self.receiver, Range(40, 100), 'hdmi-forum', sink), Range(55, 75))
-        for sink_range in (Range(30, 48), Range(61, 120)):
-            sink = rewrite(self.rtk, 'hdmi-forum', sink_range)
-            with self.assertRaises(ValueError):
-                select_range(self.receiver, Range(48, 60), 'hdmi-forum', sink)
+        sink = rewrite(self.rtk, 'hdmi-forum', Range(40, 100))
+        self.assertEqual(select_range(self.receiver, Range(40, 120), 'hdmi-forum', sink), Range(48, 100))
+        with self.assertRaises(ValueError):
+            select_range(Range(20, 30), Range(20, 30), 'hdmi-forum', sink)
 
     def test_rewriting_preserves_audio_hdr_video_dtds_and_base_edid(self):
         candidate = rewrite(self.rtk, 'hdmi-forum', Range(48, 120))
@@ -61,7 +59,7 @@ class VrrEdidTest(unittest.TestCase):
         self.assertEqual(capabilities(candidate), {'hdmi-forum': Range(40, 1023)})
         candidate = rewrite(candidate, 'amd-freesync', Range(48, 120))
         self.assertEqual(capabilities(candidate), {'amd-freesync': Range(48, 120)})
-        for protocol, limits in [('hdmi-forum', Range(64, 120)), ('amd-freesync', Range(40, 256))]:
+        for protocol, limits in [('hdmi-forum', Range(49, 120)), ('amd-freesync', Range(40, 256))]:
             with self.assertRaises(ValueError):
                 rewrite(self.rtk, protocol, limits)
 
@@ -82,20 +80,46 @@ class VrrEdidTest(unittest.TestCase):
         full[132:128 + end] = b''.join(bytes([(tag << 5) | len(p)]) + p for tag, p in blocks)
         full[255] = -sum(full[128:255]) % 256
         with self.assertRaisesRegex(ValueError, 'no room'):
-            rewrite(bytes(full), 'hdmi-forum', Range(48, 60))
+            rewrite(bytes(full), 'hdmi-forum', Range(48, 120))
+
+    def test_reserved_forum_values_never_generate_or_qualify_a_sink(self):
+        for maximum in (49, 60, 99):
+            with self.assertRaisesRegex(ValueError, 'reserved'):
+                rewrite(self.rtk, 'hdmi-forum', Range(48, maximum))
+        valid = rewrite(self.rtk, 'hdmi-forum', Range(48, 100))
+        self.assertEqual(capabilities(valid), {'hdmi-forum': Range(48, 100)})
+        offset = valid.index(FORUM)
+        for minimum, maximum, error in [(48, 60, 'reserved'), (49, 120, 'minimum'),
+                                        (48, 0, 'depends on the video mode')]:
+            broken = bytearray(valid)
+            broken[offset + 8:offset + 10] = bytes([minimum, maximum])
+            broken[255] = -sum(broken[128:255]) % 256
+            with self.assertRaisesRegex(ValueError, error):
+                select_range(self.receiver, self.receiver, 'hdmi-forum', bytes(broken))
 
     def test_cli_never_loads_edid_and_rejects_missing_local_monitor(self):
         with tempfile.TemporaryDirectory() as temporary:
             output = Path(temporary) / 'candidate.bin'
             command = [sys.executable, str(ROOT / 'tools/vrr-edid.py'),
-                       str(ROOT / 'board/edid/rtk-uhd-hdr.bin'), '--receiver', '48', '60',
-                       '--request', '40', '61', '--protocol', 'hdmi-forum', '--output', str(output)]
+                       str(ROOT / 'board/edid/rtk-uhd-hdr.bin'), '--receiver', '48', '120',
+                       '--request', '48', '120', '--protocol', 'hdmi-forum', '--output', str(output)]
             result = subprocess.run(command + ['--mode', 'local'], capture_output=True, text=True)
             self.assertNotEqual(result.returncode, 0)
             self.assertFalse(output.exists())
             subprocess.run(command + ['--mode', 'remote'], capture_output=True, check=True)
-            self.assertEqual(capabilities(output.read_bytes()), {'hdmi-forum': Range(48, 60)})
+            self.assertEqual(capabilities(output.read_bytes()), {'hdmi-forum': Range(48, 120)})
             self.assertNotEqual(subprocess.run(command + ['--mode', 'remote'], capture_output=True).returncode, 0)
+
+    def test_cli_rejects_unencodable_intersection_without_widening_it(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            output = Path(temporary) / 'candidate.bin'
+            result = subprocess.run([sys.executable, str(ROOT / 'tools/vrr-edid.py'),
+                str(ROOT / 'board/edid/rtk-uhd-hdr.bin'), '--receiver', '48', '120',
+                '--request', '48', '60', '--protocol', 'hdmi-forum', '--mode', 'remote',
+                '--output', str(output)], capture_output=True, text=True)
+            self.assertNotEqual(result.returncode, 0)
+            self.assertIn('reserved', result.stderr)
+            self.assertFalse(output.exists())
 
 
 if __name__ == '__main__':

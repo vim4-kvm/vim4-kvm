@@ -15,7 +15,9 @@ def main():
     parser.add_argument('--receiver', nargs=2, type=int, required=True, metavar=('MIN', 'MAX'),
                         help='explicit candidate receiver range; not inferred from fixed timings')
     parser.add_argument('--request', nargs=2, type=int, required=True, metavar=('MIN', 'MAX'))
-    parser.add_argument('--protocol', choices=('hdmi-forum', 'amd-freesync'), required=True)
+    parser.add_argument('--protocol', choices=('hdmi-forum', 'amd-freesync'), required=True,
+                        help='Forum requires minimum <=48 and explicit maximum >=100 Hz; '
+                             'mode-dependent VRRmax=0 is not generated')
     parser.add_argument('--mode', choices=('remote', 'local'), required=True)
     parser.add_argument('--sink', type=Path, help='raw HDMI OUT EDID; required for local mode')
     parser.add_argument('--output', type=Path, required=True)

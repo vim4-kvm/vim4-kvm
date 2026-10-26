@@ -7,6 +7,7 @@
 
 ## 2026-10-26
 
+- [VRR 范围声明纠正与 4K 输入验证](2026-10-26-vrr-range-4k.md) — video kernel application board
 - [真实 VRR 输入与 One-KVM 连续画面](2026-10-26-vrr-live.md) — video kernel application board
 - [VRR 输入候选部署与 KVM 回归](2026-10-26-vrr-input.md) — video kernel application manager board deployment
 - [5.15 1080p120 候选部署](2026-10-26-1080p120.md) — video kernel application board deployment
