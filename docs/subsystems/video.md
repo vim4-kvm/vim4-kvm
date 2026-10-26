@@ -38,6 +38,8 @@ JetKVM 的“空闲时隐藏显示器”是用户主动选择的例外，默认�
 5.15 One-KVM 新增[远程 Main10 HDR 与扩展尺寸](../bringup/2026-10-26-remote-hdr-modes.md)：
 默认映射 SDR，可选择保留 PQ/BT.2020 十位；UU 的 HDR 请求临时覆盖、断开恢复默认。
 4K HDR 完整网页约34fps，不能当作4K60；HLG、7.x Main10与本地新模式未验收。
+后续[像素复核](../bringup/2026-10-26-remote-hdr-pixels.md)修正 AMLY 解包花屏，
+保留 HDR 偏好时 SDR 输入自动走八位 DMA；源端切换的 CMA 分配修复仍待往返验收。
 
 内核在 vdin0 用 HDR2 核把 HDR10/HLG 输入映射到 SDR，SDR 直通；曲线由 `vim4-hdr-curve`
 生成，参数在 `/etc/default/vim4-kvm-hdr`，管理器可实时调节。改 HDR 映射或曲线时读 [HDR 输入映射](../hdr.md)。

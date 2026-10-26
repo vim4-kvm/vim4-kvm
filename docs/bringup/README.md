@@ -7,6 +7,7 @@
 
 ## 2026-10-26
 
+- [远程 HDR 像素修复与 SDR 自动选择](2026-10-26-remote-hdr-pixels.md) — video application kernel deployment board
 - [远程 Main10 HDR 与高刷超宽屏](2026-10-26-remote-hdr-modes.md) — video kernel uu application deployment board
 - [统一 RTK UHD HDR 入口](2026-10-26-rtk-unified.md) — video application manager board deployment
 - [VRR 范围声明纠正与 4K 输入验证](2026-10-26-vrr-range-4k.md) — video kernel application board
