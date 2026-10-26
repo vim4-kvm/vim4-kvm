@@ -82,6 +82,7 @@ set -eu
 if [ "${1:-}" = configure ]; then /usr/libexec/vim4-logging; fi
 ''', 0o755)
     copy(ROOT / 'board/edid/1080p60-sdr8.bin', stage, 'usr/share/vim4-kvm/edid/1080p60-sdr8.bin', 0o644)
+    copy(ROOT / 'board/edid/rtk-uhd-hdr-1080p120.bin', stage, 'usr/share/vim4-kvm/edid/rtk-uhd-hdr-1080p120.bin', 0o644)
     copy(ROOT / 'board/vim4media.py', stage, 'usr/lib/vim4-kvm/python/vim4media.py', 0o644)
     copy(ROOT / 'board/vim4video.py', stage, 'usr/lib/vim4-kvm/python/vim4video.py', 0o644)
     copy(ROOT / 'board/vim4boot.py', stage, 'usr/lib/vim4-kvm/python/vim4boot.py', 0o644)

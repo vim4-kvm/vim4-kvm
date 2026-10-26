@@ -12,6 +12,7 @@ install -D -m 0644 vim4media.py /usr/lib/vim4-kvm/python/vim4media.py
 install -D -m 0644 vim4video.py /usr/lib/vim4-kvm/python/vim4video.py
 install -D -m 0644 vim4boot.py /usr/lib/vim4-kvm/python/vim4boot.py
 install -D -m 0644 edid/1080p60-sdr8.bin /usr/share/vim4-kvm/edid/1080p60-sdr8.bin
+install -D -m 0644 edid/rtk-uhd-hdr-1080p120.bin /usr/share/vim4-kvm/edid/rtk-uhd-hdr-1080p120.bin
 install -D -m 0755 vim4-board-runtime /usr/libexec/vim4-board-runtime
 install -D -m 0755 vim4-wave5-monitor.py /usr/libexec/vim4-wave5-monitor
 if [ ! -e /etc/default/vim4-wave5-monitor ]; then

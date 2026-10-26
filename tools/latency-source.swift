@@ -3,7 +3,10 @@
 // Set VIM4_HDMI_DISPLAY=RTK for the RTK UHD HDR EDID (default name match: AML).
 // --sync-audio=NAME adds clock-aligned 440Hz/visual pulses for steady-state A/V
 // checks. It selects that audio device only and leaves the default unchanged.
+// --display-link follows the selected screen's refresh callbacks (macOS 14+).
+// Draw/callback counts do not prove physical presentation; check captured IDs.
 import Cocoa
+import QuartzCore
 import AVFoundation
 import AudioToolbox
 import CoreAudio
@@ -12,6 +15,7 @@ let app = NSApplication.shared
 app.setActivationPolicy(.accessory)
 let duration = Double(CommandLine.arguments.dropFirst().first ?? "35") ?? 35
 let moving = CommandLine.arguments.contains("--motion")
+let useDisplayLink = CommandLine.arguments.contains("--display-link")
 let verifyCoherence = CommandLine.arguments.contains("--verify-coherence")
 let hdrChart = CommandLine.arguments.contains("--hdr-chart")
 let colorChart = CommandLine.arguments.contains("--color-chart")
@@ -76,6 +80,14 @@ let syncAudioEngine = syncAudioName.map(startSyncAudio)
 
 class LatencyView: NSView {
     var sequence: UInt32 = 0
+    var displayTimestamp: CFTimeInterval = 0
+    var displayTargetTimestamp: CFTimeInterval = 0
+    @objc func displayTick(_ link: CADisplayLink) {
+        displayTimestamp = link.timestamp
+        displayTargetTimestamp = link.targetTimestamp
+        needsDisplay = true
+        displayIfNeeded()
+    }
     override func draw(_ dirtyRect: NSRect) {
         sequence += 1
         let sourceTime = Date().timeIntervalSince1970 * 1000
@@ -94,7 +106,7 @@ class LatencyView: NSView {
                 NSRect(x: CGFloat(col) * bounds.width / 8, y: y,
                        width: bounds.width / 8 - 3, height: 45).fill()
                 if let attrs {
-                    ("VIM4 4K60 | Row \(row) Column \(col)" as NSString).draw(
+                    ("VIM4 | Row \(row) Column \(col)" as NSString).draw(
                         at: NSPoint(x: CGFloat(col) * bounds.width / 8 + 8, y: y + 10),
                         withAttributes: attrs)
                 }
@@ -166,7 +178,9 @@ class LatencyView: NSView {
                        height: bounds.height * 128 / 1080).fill()
             }
         }
-        print("{\"id\":\(id),\"sourceMs\":\(sourceTime),\"drawEndMs\":\(Date().timeIntervalSince1970 * 1000)}")
+        let displayClock = useDisplayLink
+            ? ",\"displayTimestamp\":\(displayTimestamp),\"displayTargetTimestamp\":\(displayTargetTimestamp)" : ""
+        print("{\"id\":\(id),\"sourceMs\":\(sourceTime),\"drawEndMs\":\(Date().timeIntervalSince1970 * 1000)\(displayClock)}")
     }
 }
 
@@ -179,6 +193,16 @@ window.isReleasedWhenClosed = false
 let view = LatencyView(frame: NSRect(origin: .zero, size: screen.frame.size))
 window.contentView = view
 window.orderFrontRegardless()
+var frameDisplayLink: CADisplayLink?
+func startDisplayLink(_ target: NSScreen) {
+    frameDisplayLink?.invalidate()
+    let link = target.displayLink(target: view, selector: #selector(LatencyView.displayTick(_:)))
+    let rate = Float(target.maximumFramesPerSecond)
+    link.preferredFrameRateRange = CAFrameRateRange(minimum: rate, maximum: rate, preferred: rate)
+    link.add(to: .main, forMode: .common)
+    frameDisplayLink = link
+}
+if useDisplayLink { startDisplayLink(screen) }
 let displayObserver = NotificationCenter.default.addObserver(
     forName: NSApplication.didChangeScreenParametersNotification, object: nil, queue: .main
 ) { _ in
@@ -189,16 +213,20 @@ let displayObserver = NotificationCenter.default.addObserver(
         // Do not let the audio engine fall back to the Mac's default output.
         // A/V soak needs a continuous source; reconnect tests use a fresh tone.
         syncAudioEngine?.stop()
+        frameDisplayLink?.invalidate()
+        frameDisplayLink = nil
         return
     }
     window.setFrame(target.frame, display: true)
     window.orderFrontRegardless()
+    if useDisplayLink { startDisplayLink(target) }
 }
-let timer = Timer.scheduledTimer(withTimeInterval: 1.0 / 60, repeats: true) { _ in
+let timer: Timer? = useDisplayLink ? nil : Timer.scheduledTimer(withTimeInterval: 1.0 / 60, repeats: true) { _ in
     view.needsDisplay = true
 }
 Timer.scheduledTimer(withTimeInterval: duration, repeats: false) { _ in
-    timer.invalidate()
+    timer?.invalidate()
+    frameDisplayLink?.invalidate()
     window.close()
     app.terminate(nil)
 }

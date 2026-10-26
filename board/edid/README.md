@@ -1,4 +1,4 @@
-# 已验证的自定义 EDID
+# 自定义 EDID
 
 `rtk-uhd-hdr.bin` 是从用户连接的 RTK UHD HDR 物理显示器读取的完整
 256 字节 EDID，未经字段修改。SHA256：
@@ -47,3 +47,19 @@ The vendor table makes the test Mac transmit 1080p60 YUV444 10-bit at
 185.625 MHz, which the current mainline receiver does not support. This separate
 named preset advertises the supported 8-bit path without rewriting the vendor
 table or uploaded EDIDs. Both kernels can use it; the original preset remains.
+
+## RTK 4K60 + 1080p120（实验）
+
+`rtk-uhd-hdr-1080p120.bin` 基于上面的 RTK 原表，预设标识为 `RTK-1080P120`。
+原表没有 CTA VIC 63/64（1080p120/100），垂直扫描范围上限为 61Hz。
+派生表在原有两个保留 SVD 槽位 `0x8c/0x8d` 写入 63/64，将 `0x72` 的垂直范围
+上限改为 120，再重算 `0x7f/0xff` 校验和；总共改动 5 字节。原有 SVD 索引不移动，
+避免改变 Y420 capability map 的对应关系。首选模式仍为 4K60，1080p60/1440p60 DTD、
+音频、HDR、深色及厂商数据块保留；FreeSync 范围仍是 40–61Hz，不声明 120Hz VRR。
+SHA256：`75c822f7e6c747dc9f8bbe235e9e9fd49a2a7a318810a7d4f9525eb6c1491d07`。
+
+这只是输入能力声明，需要配套 RX 高刷格式映射与应用编码上限。首次实板验收从
+SDR 8-bit 开始；增加声明不等于已经验证 HDR120、远程120帧或本地 HDMI OUT120。
+原表内的其他保留 VIC/能力声明沿用，不能把校验和正确当作整表协议符合性证明。
+加载后需在源端主动选择 1920×1080 120Hz；完整验收步骤见
+[1080p120 审查](../../docs/1080p120-audit.md)。当前尚未加载到板子。
