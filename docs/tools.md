@@ -117,6 +117,9 @@ PiKVM smoke 可用 `PIKVM_CDP` 接入专用测试 Chrome；结束时关闭测试
 | 入口 | 运行位置 | 影响 | 用途 | 文档 |
 |---|---|---|---|---|
 | tools/rtp-udp-bench.c | Linux ARM64 容器 / 板 | 无硬件访问；板端占 CPU，须协调测量窗口 | sendto 与 sendmmsg 8/32/64 的逐帧 loopback 对照，完整包校验、失败保留；不含 SRTP/ICE | [发送基准](bringup/2026-10-25-rtp-send-benchmark.md) |
+| tools/encoder-vbv-bench.c、tools/encoder-vbv-probe.c | Linux ARM64 / 板 | bench run 独占编码；fixture/reference 无；probe 仅限私有测试进程 | 固定4K输入、同PTS编码计时、完整AU记录；匹配厂商头文件的VPU_EncOpen探针只改变VBV，0为观察对照，不安装到应用 | [VBV 对照](bringup/2026-10-26-encoder-vbv.md) |
+| tools/encoder-vbv-run.py | 板 | 独占；临时停启One-KVM并恢复原active状态 | 24窗口原库/观察/500ms/100ms固定输入对照，其他KVM须已停止；调用者持双锁，失败保留证据 | [VBV 对照](bringup/2026-10-26-encoder-vbv.md) |
+| tools/encoder-vbv-summary.py、tools/encoder-vbv-quality.py | 离线；quality需ffmpeg | 不访问硬件；解码需避开性能窗口 | 分场景峰值、编码耗时、固定带宽FIFO模型；选定帧与原始输入的PSNR/SSIM，不代表真实网络或全片画质 | [VBV 对照](bringup/2026-10-26-encoder-vbv.md) |
 | tools/display-color.py、tools/display-color.c | 离线 / 板（root） | chart/analyze/diff 无；run 独占显示/采集；snapshot 只读控制和矩阵 | KMS dumb 图案、V4L2 原始 NV12 三帧、≤2 码值色块分析；5.15 同 sink 寄存器对照、TX/RX AVI；调用者持双锁并管理服务/一次性启动 | [颜色校准](display-color-calibration.md) |
 | tools/hdmi-color-check.py | 离线，PNG分析需Pillow | 不接触板子 | 按16色块的RX前矩阵10-bit Y/Cb/Cr探针值，计算SDR709或PQ2020→SDR参考并统计解码帧码值误差；不替代显示器测色 | [HDR切换颜色修复](bringup/2026-10-25-native-hdr-color.md) |
 | tools/perf-baseline.py | 离线 | 无 | 5.15/7.3命令计划与三组A/B/A单指标门禁；缺失/受干扰不算通过，不执行命令 | [性能基线](performance-baseline.md) |

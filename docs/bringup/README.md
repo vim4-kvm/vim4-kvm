@@ -5,6 +5,10 @@
 
 新记录：新建 `bringup/YYYY-MM-DD-英文短名.md`，首行 `# YYYY-MM-DD：标题`，并在本页对应日期下追加一行。
 
+## 2026-10-26
+
+- [厂商编码器码率峰值与 VBV 对照](2026-10-26-encoder-vbv.md) — video board benchmark
+
 ## 2026-10-25
 
 - [VIM4 SRTP HMAC 后端正式接入](2026-10-25-srtp-openssl-hmac.md) — video application board benchmark
