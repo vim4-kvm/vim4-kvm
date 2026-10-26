@@ -7,6 +7,7 @@
 
 ## 2026-10-25
 
+- [交帧之后的编码、发送与浏览器分段](2026-10-25-video-downstream-latency.md) — video application board
 - [显示与采集交付边界核实](2026-10-25-video-front-boundaries.md) — video kernel application board
 - [One-KVM 同帧分段延迟](2026-10-25-video-stage-latency.md) — video application board
 - [VDIN1 逐缓冲交付与 RDMA 时序核实](2026-10-25-vdin1-frame-handoff.md) — video kernel board

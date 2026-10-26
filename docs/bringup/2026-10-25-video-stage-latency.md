@@ -6,6 +6,8 @@
 不能全算成驱动等待。网络最后一包传递接近校时分辨率，不能报告负延迟。
 后续[显示与采集边界核实](2026-10-25-video-front-boundaries.md)加入内核 kprobe 与
 WindowServer 显示时间，并区分首次采到新 ID 与重复画面的年龄；旧 35/52ms 两档仍未全部定因。
+后续[编码、发送与浏览器细分](2026-10-25-video-downstream-latency.md)核实编码中断等待、
+同一 RTP 包的双端内核时间和 VideoToolbox 解码阶段，并保留像素/RTP 串帧的拒绝样本。
 
 ## 配置与测量边界
 
