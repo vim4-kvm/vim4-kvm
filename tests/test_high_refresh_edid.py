@@ -1,4 +1,4 @@
-"""The RTK experiment preserves fixed high refresh and unrelated HDR/audio capabilities."""
+"""The shared RTK profile preserves fixed high refresh and unrelated HDR/audio capabilities."""
 from pathlib import Path
 import unittest
 

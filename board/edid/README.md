@@ -9,9 +9,9 @@ Screen Sharing 高性能会话退出后自动恢复；实际协商为 4K60 YUV44
 没有验证该表声明的全部模式、HDR 或所有主机。它是可复现的自定义配置，
 不是已替换的系统默认预设。对照记录见 [上板记录](../../docs/bringup/2026-10-15-screen-sharing-desktop-not-restored.md)。
 
-板级助手 vim4-edid 内置同一张表作为 `RTK-CONTROL` 预设，NanoKVM、One-KVM
-与 JetKVM 菜单中显示为 RTK UHD HDR 4K60；vim4-manager 仍用本文件的安装副本。
-`apply RTK-CONTROL` 只接受与内置表一致的数据。
+本文件保留原始物理表作离线回退。当前板级助手、管理面板、NanoKVM、One-KVM
+与JetKVM的「RTK UHD HDR」（`RTK-CONTROL`）统一使用下文合并后的高刷/VRR表。
+`apply RTK-CONTROL` 只接受与当前内置表一致的数据；回退原始文件需用自定义名称上传。
 
 加载并保存到板级配置（会重新协商 HDMI）：
 
@@ -29,12 +29,9 @@ NanoKVM 使用板级共享 EDID 配置；One-KVM 通过同一助手修改它，P
 沿用板级输入。JetKVM 有独立保存的 EDID，启动时会加载，不能仅写板级
 配置就假设四套应用切换后都保持同一张表。
 
-当前开发板的 JetKVM 独立配置也已同步此表：
-`/var/lib/jetkvm/config.json` 的 `hdmi_edid_string` 为本文件的十六进制内容。
-这属于该板保存的自定义配置；没有修改 JetKVM 内置默认预设。同步时 JetKVM
-处于停止状态，先备份配置再原子替换，只改该字段；不要覆盖运行中应用的配置。
-JetKVM 的 edid-apply 助手返回 loaded=false，确认与当前接收端加载的表一致。
-应用切换与重启的后续验收见 [双内核集成](../../docs/bringup/2026-10-21-dual-kernel-integration.md)。
+管理面板应用RTK预设时，同步JetKVM的 `hdmi_edid_string`，只改该字段并保留其他设置；
+运行中的JetKVM先停止再保存。JetKVM内置RTK项使用同一张合并表，厂商默认项不变。
+历史原表的应用切换与重启验收见 [双内核集成](../../docs/bringup/2026-10-21-dual-kernel-integration.md)。
 
 ## 1080p60 SDR 8-bit
 
@@ -48,14 +45,16 @@ The vendor table makes the test Mac transmit 1080p60 YUV444 10-bit at
 named preset advertises the supported 8-bit path without rewriting the vendor
 table or uploaded EDIDs. Both kernels can use it; the original preset remains.
 
-## RTK 4K60 + 1080p120（实验）
+## RTK UHD HDR：4K60、1080p120与VRR
 
-`rtk-uhd-hdr-1080p120.bin` 基于上面的 RTK 原表，预设标识为 `RTK-1080P120`。
+`rtk-uhd-hdr-1080p120.bin` 基于上面的 RTK 原表，是当前 `RTK-CONTROL` 使用的数据。
+文件名沿用高刷实验的历史名称；菜单只有一个「RTK UHD HDR」，不再列实验项。
+旧 `RTK-1080P120` 标识仅作兼容别名，选择后保存为 `RTK-CONTROL`。
 原表没有 CTA VIC 63/64（1080p120/100），垂直扫描范围上限为 61Hz。
 首版在原有两个保留 SVD 槽位 `0x8c/0x8d` 写入 63/64，将 `0x72` 的垂直范围
 上限改为 120，再重算 `0x7f/0xff` 校验和；当时共改动 5 字节。原有 SVD 索引不移动，
 避免改变 Y420 capability map 的对应关系。首选模式仍为 4K60，1080p60/1440p60 DTD、
-音频、HDR和深色保留。同一实验表内加入HDMI Forum VRR 48–120Hz，移除原AMD
+音频、HDR和深色保留。同一表内加入HDMI Forum VRR 48–120Hz，移除原AMD
 FreeSync 40–61Hz声明；不新增菜单项。按所选模式限定上限：当前Mac的1080p最高120，
 4K最高60，声明VRRmax=120不增加4K120时序。首版错误写入保留值VRRmax=60，
 经Mac单字段对照与edid-decode检查后修正；最大值1–99不可用于声明保守上限。
@@ -68,7 +67,7 @@ FreeSync 40–61Hz声明；不新增菜单项。按所选模式限定上限：�
 SDR 8-bit 开始；增加声明不等于已经验证 HDR120、远程120帧或本地 HDMI OUT120。
 原表内的其他保留 VIC/能力声明沿用，不能把校验和正确当作整表协议符合性证明。
 加载后需在源端主动选择 1920×1080 120Hz；完整验收步骤见
-[1080p120 审查](../../docs/1080p120-audit.md)。该表已用于[1080p120实板验收](../../docs/bringup/2026-10-26-1080p120.md)，测后恢复原RTK表。
+[1080p120 审查](../../docs/1080p120-audit.md)。历史[1080p120实板验收](../../docs/bringup/2026-10-26-1080p120.md)测后曾恢复原表；当前合并部署见[统一RTK入口](../../docs/bringup/2026-10-26-rtk-unified.md)。
 
 ## VRR EDID 离线候选
 
@@ -78,7 +77,7 @@ SDR 8-bit 开始；增加声明不等于已经验证 HDR120、远程120帧或本
 此工具没有建立硬件资格，使用方法与待验边界见
 [VRR离线准备](../../docs/vrr-preparation.md)。
 
-VRR实验复用上面的 `RTK-1080P120` 表；原始 `RTK-CONTROL` 不变，默认选择也不变。
+VRR能力合并到 `RTK-CONTROL`；不再要求用户选择另一张实验表，厂商默认选择不变。
 需配套5.15 VRR输入驱动与应用，首次测试主动选择1080p60 SDR 8-bit。
 1080p约49–120Hz已有[真实源验证](../../docs/bringup/2026-10-26-vrr-live.md)，不能视为硬件极限；不启用本地输出VRR，
 不代表7.3支持VRR，也不声明原生1Hz输入。固定1080p120模式仍独立保留。
