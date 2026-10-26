@@ -149,5 +149,5 @@ PiKVM smoke 可用 `PIKVM_CDP` 接入专用测试 Chrome；结束时关闭测试
 | tools/hdmirx-encode-check.py | 板（root）/ Linux | capture 独占实验采集；verify 离线 | DMA-buf 采集后软件 H.264 或 Wave5 H.264/H.265；记录整机 CPU/pad 时间，可指定逐行刷新与非周期关键帧请求；verify 离线检查运动标记和颜色 | [4K 与编码](bringup/2026-10-19-wave521-uhd.md) |
 | tools/wave5-lifecycle-check.py | 板 | 独占编码；停视频应用 | 实验 7.3 的 H.264/H.265 图案编码反复 EOS；检查视频句柄与 CMA 回收，首轮泄漏即停止 | [One-KVM 接入](bringup/2026-10-20-onekvm-wave5.md) |
 | tools/onekvm-local-bench.py | Mac → 容器；可选当前内核板子 | 默认无；--board 占 CPU/内存带宽，不停服务 | DMA 平面、压缩缓存与复制基准；可先跑离线所有权、输入状态等待、profile 和逐行刷新回归 | [本地基准](local-video-benchmark.md) |
-| tools/vim4-driver-bench.c | 板；需先编译 | 独占采集/编码；调用者停启应用 | 原生纯采集、H.264/H.265/JPEG 驱动基准；预热后 CPU、pad 耗时、CMA，支持 7.x/5.15；独立录像验证 | [驱动基准](driver-benchmark.md) |
+| tools/vim4-driver-bench.c | 板；需先编译 | 独占采集/编码；调用者停启应用 | 原生纯采集、H.264/H.265/JPEG 驱动基准；CPU、pad 耗时、CMA；支持 7.x/5.15，`--secondary --fps=120`测1080p独立采集；独立录像验证 | [驱动基准](driver-benchmark.md) |
 | tools/test-fan-policy.sh | VM | 无 | 编译内核风扇插值函数做断言 | [内核](kernel.md) |

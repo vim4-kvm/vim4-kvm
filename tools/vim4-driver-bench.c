@@ -343,8 +343,8 @@ int main(int argc, char **argv)
 {
     gchar *backend = NULL, *codec = NULL, *output = NULL, *device = NULL, *save_bitstream = NULL;
     gint frames = 1800, warmup = 120, bitrate = 20000000, gop = 60, width = 3840, height = 2160;
-    gint timeout = 90, quality = 80;
-    gboolean exclusive = FALSE;
+    gint timeout = 90, quality = 80, fps = 60;
+    gboolean exclusive = FALSE, secondary = FALSE;
     GOptionEntry options[] = {
         {"backend", 0, 0, G_OPTION_ARG_STRING, &backend, "edge or stock", "BACKEND"},
         {"codec", 0, 0, G_OPTION_ARG_STRING, &codec, "capture, h264, h265 or jpeg", "CODEC"},
@@ -358,6 +358,8 @@ int main(int argc, char **argv)
         {"gop", 0, 0, G_OPTION_ARG_INT, &gop, "GOP length; intra refresh disabled", "N"},
         {"width", 0, 0, G_OPTION_ARG_INT, &width, "1920 or 3840", "PIXELS"},
         {"height", 0, 0, G_OPTION_ARG_INT, &height, "1080 or 2160", "PIXELS"},
+        {"fps", 0, 0, G_OPTION_ARG_INT, &fps, "Negotiated capture and encoder rate", "FPS"},
+        {"secondary", 0, 0, G_OPTION_ARG_NONE, &secondary, "Stock native-HDR VDIN1 HDMI capture", NULL},
         {"timeout", 0, 0, G_OPTION_ARG_INT, &timeout, "Pipeline deadline in seconds", "SECONDS"},
         {"exclusive", 0, 0, G_OPTION_ARG_NONE, &exclusive, "Caller has exclusive use of capture/encoder", NULL},
         {NULL, 0, 0, 0, NULL, NULL, NULL}
@@ -375,6 +377,8 @@ int main(int argc, char **argv)
         frames < 2 || frames > 100000 || warmup < 1 || warmup > 10000 ||
         bitrate < 1000000 || bitrate > 60000000 || gop < 1 || gop > 1000 ||
         timeout < 1 || (save_bitstream && codec && !strcmp(codec, "capture")) ||
+        fps < 1 || fps > 120 || (secondary && strcmp(backend, "stock")) ||
+        (fps > 60 && (!secondary || width != 1920 || height != 1080 || !strcmp(codec, "jpeg"))) ||
         !((width == 3840 && height == 2160) || (width == 1920 && height == 1080))) {
         g_printerr("Require --exclusive --backend=edge|stock --codec=capture|h264|h265|jpeg --output=NEW.json and valid limits\n");
         return 1;
@@ -416,24 +420,25 @@ int main(int argc, char **argv)
     bench.encoder_ms = g_array_new(FALSE, FALSE, sizeof(gdouble));
     bench.total_ms = g_array_new(FALSE, FALSE, sizeof(gdouble));
     bench.gaps_ms = g_array_new(FALSE, FALSE, sizeof(gdouble));
-    gchar *source = edge ? g_strdup("v4l2src name=source io-mode=dmabuf") : g_strdup("vfmcapsrc name=source");
-    gchar *raw_caps = g_strdup_printf("video/x-raw,format=%s,width=%d,height=%d,framerate=60/1",
-                                      edge ? "NV12" : "NV21", width, height);
+    gchar *source = edge ? g_strdup("v4l2src name=source io-mode=dmabuf") :
+        g_strdup(secondary ? "vim4vdin1src name=source" : "vfmcapsrc name=source");
+    gchar *raw_caps = g_strdup_printf("video/x-raw,format=%s,width=%d,height=%d,framerate=%d/1",
+                                      edge ? "NV12" : "NV21", width, height, fps);
     gchar *encoding = NULL;
     if (capture_only) encoding = g_strdup("");
     else if (jpeg) encoding = g_strdup_printf("vim4jpegenc name=encoder quality=%d ! ", quality);
     else if (edge) encoding = g_strdup_printf(
         "appsink name=bridge emit-signals=true sync=false async=false max-buffers=1 "
         "appsrc name=encoder_source is-live=true format=time block=true max-buffers=2 "
-        "caps=\"video/x-raw,format=NV12,width=%d,height=%d,framerate=60/1,colorimetry=bt709,"
+        "caps=\"video/x-raw,format=NV12,width=%d,height=%d,framerate=%d/1,colorimetry=bt709,"
         "interlace-mode=progressive,pixel-aspect-ratio=1/1\" ! "
         "v4l2%senc name=encoder output-io-mode=dmabuf-import ! "
         "video/x-%s,profile=%s,level=(string)%s ! ",
-        width, height, codec, codec, !strcmp(codec, "h264") ? "high" : "main",
+        width, height, fps, codec, codec, !strcmp(codec, "h264") ? "high" : "main",
         "5.1");
     else encoding = g_strdup_printf(
-        "amlvenc name=encoder bitrate=%d gop=%d framerate=60 i-qp-min=-1 qp-max=-1 intra-refresh-rows=0 ! "
-        "video/x-%s ! ", bitrate / 1000, gop, codec);
+        "amlvenc name=encoder bitrate=%d gop=%d framerate=%d i-qp-min=-1 qp-max=-1 intra-refresh-rows=0 ! "
+        "video/x-%s ! ", bitrate / 1000, gop, fps, codec);
     gchar *description = g_strdup_printf("%s ! %s ! %s%s name=output sync=false async=false",
                                          source, raw_caps, encoding, save_bitstream ? "filesink" : "fakesink");
     bench.pipeline = gst_parse_launch(description, &error);
