@@ -21,6 +21,8 @@ RUN test "$(dpkg --print-architecture)" = arm64 \
  && rm -rf /var/lib/apt/lists/*
 COPY downloads.lock.json fetch.py /opt/build-inputs/
 RUN python3 /opt/build-inputs/fetch.py /opt/build-inputs/downloads.lock.json /opt/downloads \
+ && mkdir /opt/vim4-hdr-encoder \
+ && tar -xzf /opt/downloads/hdr-encoder.tar.gz -C /opt/vim4-hdr-encoder --strip-components=1 \
  && tar -xzf /opt/downloads/go.tar.gz -C /opt \
  && tar -xJf /opt/downloads/rust.tar.xz -C /tmp \
  && /tmp/rust-1.99.0-aarch64-unknown-linux-gnu/install.sh --prefix=/opt/rust --disable-ldconfig --without=rust-docs \

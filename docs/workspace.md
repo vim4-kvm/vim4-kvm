@@ -56,6 +56,8 @@ all 顺序构建 capture、encoder、server、frontend、jetkvm、onekvm、manag
 
 前端需要 pnpm/Node；Linux 后端需要 Go、Meson、GCC、GStreamer 开发库，
 编码插件还需要 libamvenc、GE2D、DRM allocator/bufferpool 厂商开发库。
+Main10 另用下载锁固定的编码 SDK（构建器 `/opt/vim4-hdr-encoder`），
+`hdr/build-codec.sh` 应用 CPU P010 修复并输出私有库，不替换系统八位编码库。
 具体依赖见子仓库 VIM4.md/README。脚本不自动安装系统包，不 SSH 到板子，
 不部署、不安装插件、不停启服务。缺失依赖会报错；dry-run 仅打印构建命令。
 

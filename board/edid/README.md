@@ -45,7 +45,7 @@ The vendor table makes the test Mac transmit 1080p60 YUV444 10-bit at
 named preset advertises the supported 8-bit path without rewriting the vendor
 table or uploaded EDIDs. Both kernels can use it; the original preset remains.
 
-## RTK UHD HDR：4K60、1080p120与VRR
+## RTK UHD HDR：4K60、高刷、超宽屏与VRR
 
 `rtk-uhd-hdr-1080p120.bin` 基于上面的 RTK 原表，是当前 `RTK-CONTROL` 使用的数据。
 文件名沿用高刷实验的历史名称；菜单只有一个「RTK UHD HDR」，不再列实验项。
@@ -58,7 +58,12 @@ table or uploaded EDIDs. Both kernels can use it; the original preset remains.
 FreeSync 40–61Hz声明；不新增菜单项。按所选模式限定上限：当前Mac的1080p最高120，
 4K最高60，声明VRRmax=120不增加4K120时序。首版错误写入保留值VRRmax=60，
 经Mac单字段对照与edid-decode检查后修正；最大值1–99不可用于声明保守上限。
-当前SHA256：`45ed44250763f39561961829ff5f9f5f18a8fba6847afd088f8aab2636ceaf45`。
+当前表由 [vim4edid.py](../vim4edid.py) 从原始256字节表生成，增加第二个CTA块，
+用DTD声明2560×1440p120、3440×1440p60，用VIC90声明2560×1080p60。
+水平扫描上限同步提高到180kHz，保留首选4K60和原有时序、音频、HDR块。
+当前384字节表SHA256：`ec7f330a18d36bed31f4de4ce104fa4e8844f1ef9d6dbdd89a2ab8f955792f92`。
+配套5.15 One-KVM的动态画面与HDR边界见[远程HDR与扩展尺寸验收](../../docs/bringup/2026-10-26-remote-hdr-modes.md)。
+此前256字节合并表SHA256：`45ed44250763f39561961829ff5f9f5f18a8fba6847afd088f8aab2636ceaf45`。
 首版VRR实验表SHA256：`085a5b2ffeadf88c17a4d0e8d6a48ef9d92e14ec71a02c43dc21e4fedbf74ea1`。
 字段对照和4K变频结果见[范围声明纠正与4K输入验证](../../docs/bringup/2026-10-26-vrr-range-4k.md)。
 历史固定高刷版本SHA256：`75c822f7e6c747dc9f8bbe235e9e9fd49a2a7a318810a7d4f9525eb6c1491d07`。

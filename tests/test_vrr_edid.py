@@ -23,15 +23,10 @@ class VrrEdidTest(unittest.TestCase):
             select_range(self.receiver, Range(40, 120), 'amd-freesync', self.rtk)
 
     def test_rtk_experiment_is_reproducible_without_changing_fixed_timings(self):
-        base = bytearray(self.rtk)
-        base[0x8c:0x8e] = bytes([63, 64])
-        base[0x72] = 120
-        for offset in (0, 128):
-            base[offset + 127] = -sum(base[offset:offset + 127]) % 256
-        base = bytes(base)
+        from board.vim4edid import rtk_extended
         candidate = (ROOT / 'board/edid/rtk-uhd-hdr-1080p120.bin').read_bytes()
-        self.assertEqual(candidate, rewrite(base, 'hdmi-forum', Range(48, 120)))
-        self.assertEqual(candidate[:128], base[:128])
+        self.assertEqual(candidate, rtk_extended(self.rtk))
+        self.assertEqual(candidate, rewrite(candidate, 'hdmi-forum', Range(48, 120)))
         self.assertEqual(capabilities(candidate), {'hdmi-forum': Range(48, 120)})
 
     def test_remote_range_is_independent_of_output_but_local_intersects(self):

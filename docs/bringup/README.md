@@ -7,6 +7,7 @@
 
 ## 2026-10-26
 
+- [远程 Main10 HDR 与高刷超宽屏](2026-10-26-remote-hdr-modes.md) — video kernel uu application deployment board
 - [统一 RTK UHD HDR 入口](2026-10-26-rtk-unified.md) — video application manager board deployment
 - [VRR 范围声明纠正与 4K 输入验证](2026-10-26-vrr-range-4k.md) — video kernel application board
 - [真实 VRR 输入与 One-KVM 连续画面](2026-10-26-vrr-live.md) — video kernel application board

@@ -1,5 +1,9 @@
 # HDR 输入映射
 
+5.15 原生双路径的 One-KVM 可选择保留远程 HDR10，见
+[Main10 交付记录](bringup/2026-10-26-remote-hdr-modes.md)。以下默认 SDR 映射仍用于
+H.264、JPEG、截图以及开启「HDR 转 SDR」的 H.265；HDMI OUT 偏好独立。
+
 EDID 预设声明 HDR10/HLG，主机开启 HDR 时发送 PQ/HLG 10bit 信号。采集为 8bit，
 未处理时画面发白。T7 的 vdin0 有独立 HDR2 核，内核在 HDMI 输入为
 HDR10/HDR10+/HLG 时将其映射到 SDR，SDR 输入直通（`dmesg` 中

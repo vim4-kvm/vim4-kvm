@@ -79,8 +79,8 @@ def build_plan(target, jobs, kernel_dir, vm):
     output = ROOT / 'build'
     plans = {
         'frontend': [('NanoKVM/web', 'pnpm install --frozen-lockfile && VITE_PLATFORM=vim4 pnpm build')],
-        'capture': [('gst-plugin-vfmcap', 'if [ -f build/build.ninja ]; then meson setup --reconfigure build; else meson setup build; fi && meson compile -C build')],
-        'encoder': [('gst-plugin-venc', f'make -C amlvenc PKG_CONFIG=pkg-config CC=gcc -j{jobs} && make -C jpeg/vim4 -j{jobs} && make -C wave5 -j{jobs} test')],
+        'capture': [('gst-plugin-vfmcap', 'if [ -f build/build.ninja ]; then meson setup --reconfigure build --buildtype=release; else meson setup build --buildtype=release; fi && meson compile -C build')],
+        'encoder': [('gst-plugin-venc', f'make -C amlvenc PKG_CONFIG=pkg-config CC=gcc -j{jobs} && make -C jpeg/vim4 -j{jobs} && make -C wave5 -j{jobs} test && sh hdr/build-codec.sh /opt/vim4-hdr-encoder ../build/hdr-codec && make -C hdr -j{jobs}')],
         'server': [('NanoKVM/server', 'go test -tags vim4 ./... && go build -tags vim4 -o '
                     + shlex.quote(str(output / 'NanoKVM-Server')) + ' .')],
         # JetKVM embeds its UI, so the device build must precede the Go build.

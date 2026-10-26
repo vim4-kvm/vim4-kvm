@@ -114,6 +114,8 @@ def capture(stage):
          'usr/lib/vim4-kvm/vendor-gstreamer-1.0/libgstvideo4linux2.so', 0o644)
     copy(ROOT / 'gst-plugin-vfmcap/README.md', stage, 'usr/share/doc/vim4-vfmcap/README.md')
     copy(ROOT / 'gst-plugin-vfmcap/src/gstvfmcapsrc.c', stage, 'usr/share/doc/vim4-vfmcap/gstvfmcapsrc.c')
+    for source in (ROOT / 'gst-plugin-vfmcap/src').glob('*.h'):
+        copy(source, stage, 'usr/share/doc/vim4-vfmcap/' + source.name)
     copy('/usr/share/common-licenses/LGPL-2.1', stage, 'usr/share/doc/vim4-vfmcap/copyright')
 
 
@@ -128,6 +130,17 @@ def encoder(stage):
          'usr/share/doc/vim4-amlvenc/source/gstvim4jpegenc.c')
     copy(ROOT / 'gst-plugin-venc/amlvenc/libgstamlvenc.so', stage,
          'usr/lib/vim4-kvm/gstreamer-1.0/libgstamlvenc.so', 0o644)
+    copy(ROOT / 'gst-plugin-venc/hdr/libgstvim4hevc10.so', stage,
+         'usr/lib/vim4-kvm/gstreamer-1.0/libgstvim4hevc10.so', 0o644)
+    for name in ('libvpcodec.so', 'libamvenc_api.so'):
+        copy(ROOT / 'build/hdr-codec' / name, stage, 'usr/lib/vim4-kvm/hdr/' + name, 0o644)
+    for name in ('gstvim4hevc10.c', 'p010-cpu-input.patch', 'build-codec.sh', 'Makefile'):
+        copy(ROOT / 'gst-plugin-venc/hdr' / name, stage,
+             'usr/share/doc/vim4-amlvenc/source/hdr/' + name)
+    copy('/opt/build-inputs/downloads.lock.json', stage,
+         'usr/share/doc/vim4-amlvenc/encoder-inputs.json')
+    copy('/opt/downloads/hdr-encoder.tar.gz', stage,
+         'usr/share/doc/vim4-amlvenc/source/hdr-encoder.tar.gz')
     write(stage, 'usr/lib/systemd/system/nanokvm.service.d/encoder.conf',
           '[Service]\nEnvironment=GST_PLUGIN_PATH=/usr/lib/vim4-kvm/gstreamer-1.0\n')
     for source in (ROOT / 'gst-plugin-venc/amlvenc').glob('*.[ch]'):
