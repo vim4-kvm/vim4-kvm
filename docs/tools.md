@@ -116,6 +116,7 @@ PiKVM smoke 可用 `PIKVM_CDP` 接入专用测试 Chrome；结束时关闭测试
 
 | 入口 | 运行位置 | 影响 | 用途 | 文档 |
 |---|---|---|---|---|
+| tools/rtp-udp-bench.c | Linux ARM64 容器 / 板 | 无硬件访问；板端占 CPU，须协调测量窗口 | sendto 与 sendmmsg 8/32/64 的逐帧 loopback 对照，完整包校验、失败保留；不含 SRTP/ICE | [发送基准](bringup/2026-10-25-rtp-send-benchmark.md) |
 | tools/display-color.py、tools/display-color.c | 离线 / 板（root） | chart/analyze/diff 无；run 独占显示/采集；snapshot 只读控制和矩阵 | KMS dumb 图案、V4L2 原始 NV12 三帧、≤2 码值色块分析；5.15 同 sink 寄存器对照、TX/RX AVI；调用者持双锁并管理服务/一次性启动 | [颜色校准](display-color-calibration.md) |
 | tools/hdmi-color-check.py | 离线，PNG分析需Pillow | 不接触板子 | 按16色块的RX前矩阵10-bit Y/Cb/Cr探针值，计算SDR709或PQ2020→SDR参考并统计解码帧码值误差；不替代显示器测色 | [HDR切换颜色修复](bringup/2026-10-25-native-hdr-color.md) |
 | tools/perf-baseline.py | 离线 | 无 | 5.15/7.3命令计划与三组A/B/A单指标门禁；缺失/受干扰不算通过，不执行命令 | [性能基线](performance-baseline.md) |

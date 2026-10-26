@@ -3,6 +3,10 @@
 日常先测不接触采集/编码设备的生产 buffer helper，再用离线驱动回归验证所有权。
 最后在 7.x 测真实采集、编码和网页解码。无需为每次用户态改动重启或更新内核。
 
+RTP 分包、默认 interceptor、真实 SRTP 和 UDP 批量发送另见
+[发送基准](bringup/2026-10-25-rtp-send-benchmark.md)。编码器的
+[fast packing 审查](encoder-fast-packing-audit.md) 区分离线可验证行为与硬件 A/B。
+
 ## 软件路径
 
 复用已运行的 Linux ARM64 `vim4-wave5-build` 容器，要求当前 `One-KVM` 绑定到

@@ -7,6 +7,7 @@
 
 ## 2026-10-25
 
+- [RTP 发送离线基准与板端 CPU 回放](2026-10-25-rtp-send-benchmark.md) — video application board benchmark
 - [交帧之后的编码、发送与浏览器分段](2026-10-25-video-downstream-latency.md) — video application board
 - [显示与采集交付边界核实](2026-10-25-video-front-boundaries.md) — video kernel application board
 - [One-KVM 同帧分段延迟](2026-10-25-video-stage-latency.md) — video application board

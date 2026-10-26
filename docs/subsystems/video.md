@@ -62,6 +62,7 @@ HDMI_LOW_LATENCY=0 恢复厂商自动策略。模式含义、对照结果及帧�
 按改动范围读取（只读与任务相关的一项）：
 
 - [本地视频基准](../local-video-benchmark.md)：容器或板子当前内核的 buffer benchmark、离线驱动回归与复制候选对比。
+- [RTP 发送优化](../rtp-send-optimization-audit.md)：正式加密后端、逐包路径、协商约束与离线验证；[编码 fast packing](../encoder-fast-packing-audit.md) 记录厂商 API 与硬件验证边界。
 - [驱动基准](../driver-benchmark.md)：原生纯采集/硬编码，排除 Python、解析、写盘与网络，支持 7.x 与 5.15。
 - [7.x 缩放与硬件 MJPEG](../bringup/2026-10-21-edge-scaling-jpeg.md)：VDIN 下采样、HCODEC/OP-TEE 接入与 4K 帧率边界。
 - [UHD 清晰度复核](../bringup/2026-10-20-edge-uhd-detail.md)：Mac 实际渲染栅格、原生单像素细节与 1080p 放大负对照。
