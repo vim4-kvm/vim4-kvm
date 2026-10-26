@@ -7,7 +7,7 @@
 
 ## 2026-10-26
 
-- [VRR 输入候选部署准备](2026-10-26-vrr-input.md) — video kernel application manager board deployment
+- [VRR 输入候选部署与 KVM 回归](2026-10-26-vrr-input.md) — video kernel application manager board deployment
 - [5.15 1080p120 候选部署](2026-10-26-1080p120.md) — video kernel application board deployment
 - [厂商编码器码率峰值与 VBV 对照](2026-10-26-encoder-vbv.md) — video board benchmark
 
