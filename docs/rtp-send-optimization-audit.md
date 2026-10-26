@@ -2,6 +2,8 @@
 
 本次先区分加密、RTP/interceptor、UDP 交付三个成本，再决定实现方案。离线基准必须复现正式构建的 Cargo features、ARM cfg、包长和帧内包数；单项 HMAC 或 Context 加密结果不能直接当作屏幕显示延迟。本文记录源码审查和复现方法，性能结论以对应原始日志为准。
 
+后续已将单一 HMAC 后端接入 VIM4 构建，见[正式接入与验证](bringup/2026-10-25-srtp-openssl-hmac.md)。下文的上游实现与实验限制保留为该决策的审查依据；批量 UDP 和 GCM 策略仍未变更。
+
 ## 正式路径与构建条件
 
 [One-KVM Cargo.toml](../One-KVM/Cargo.toml) 锁定的 WebRTC 系列为 0.17.2，启用 `webrtc/vendored-openssl`。实际 `cargo tree` 已确认它经 `srtp/vendored-openssl` 激活 `srtp/openssl`；不能只根据 feature 名称推断 `cfg(feature="openssl")` 未开启。证据为 `logs/rtp-bench-cargo-features.txt`；[10 月 15 日记录](bringup/2026-10-15-uu-h265-picture-send-stalls.md) 也核实过正式程序的 OpenSSL 后端。本次未读取现有板端二进制或其构建 fingerprint，不能声称重新证明了当前运行制品的全部构建参数。
