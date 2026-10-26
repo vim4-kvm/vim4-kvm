@@ -211,6 +211,10 @@ def onekvm(stage):
     copy(deploy / 'vim4-onekvm.sudoers', stage, 'etc/sudoers.d/vim4-onekvm', 0o440)
     copy(deploy / '71-onekvm-hid.rules', stage, 'usr/lib/udev/rules.d/71-onekvm-hid.rules')
     copy(ROOT / 'One-KVM/LICENSE', stage, 'usr/share/doc/vim4-onekvm/copyright')
+    copy(ROOT / 'One-KVM/libs/srtp/LICENSE-MIT', stage,
+         'usr/share/doc/vim4-onekvm/LICENSE-srtp-MIT')
+    copy(ROOT / 'One-KVM/libs/srtp/LICENSE-APACHE', stage,
+         'usr/share/doc/vim4-onekvm/LICENSE-srtp-APACHE')
     # Ship only the terminal executable: depending on ttyd also enables its
     # standalone daemon, while One-KVM owns the authenticated Unix socket.
     copy('/usr/bin/ttyd', stage, 'opt/vim4-onekvm/bin/ttyd', 0o755)
