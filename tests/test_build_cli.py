@@ -140,11 +140,15 @@ class VersionTests(unittest.TestCase):
         base = self.build.IMAGE
         fingerprint = self.build.builder_fingerprint(base)
         metadata = {'Id': 'sha256:old', 'Config': {'Labels': None}}
-        with patch.object(self.build, 'output', side_effect=lambda *args: json.dumps([metadata])):
+        with patch.object(self.build, 'output', side_effect=lambda *args: json.dumps([metadata])), \
+             patch.object(self.build.subprocess, 'run') as docker:
             with self.assertRaisesRegex(ValueError, 'environment --component encoder'):
                 self.build.builder_image(base, 'encoder')
+            docker.assert_not_called()
             metadata['Config']['Labels'] = {self.build.BUILDER_INPUTS_LABEL: fingerprint}
             self.assertEqual(self.build.builder_image(base, 'encoder'), 'sha256:old')
+            docker.assert_called_once_with(['docker', 'image', 'tag', 'sha256:old',
+                                           'vim4-package-builder:old'], check=True)
             with patch.object(self.build, 'builder_fingerprint', return_value='updated-sdk-lock'):
                 with self.assertRaisesRegex(ValueError, 'stale'):
                     self.build.builder_image(base, 'encoder')

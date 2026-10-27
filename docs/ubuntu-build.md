@@ -36,6 +36,8 @@ python3 tools/ubuntu-build.py verify --component manager --version 2.5.1+vim4.20
 已有目录会拒绝覆盖。失败目录保留以便诊断，重跑请选新版本或人工清理该次产物。
 打包前会比对构建镜像记录的 Dockerfile、下载锁及构建脚本摘要；旧镜像或输入变化
 会明确要求先重跑 `environment`，避免沿用缺少新 SDK 的同名标签。
+构建使用的镜像另以 `vim4-package-builder:<镜像摘要>` 保留，重建可变 builder 标签
+不会移除 `sources.json` 记录的镜像；该保留镜像供后续 `verify` 使用。
 APT 对暂时下载失败重试三次，索引仍不完整则停止，不继续使用部分索引安装。
 
 verify 在新的临时容器检查校验和、ARM64 ELF、动态库解析、sudoers 和网页文件，

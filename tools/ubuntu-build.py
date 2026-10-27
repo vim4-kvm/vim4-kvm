@@ -59,6 +59,11 @@ def builder_image(image, component):
     if labels.get(BUILDER_INPUTS_LABEL) != builder_fingerprint(image):
         raise ValueError(f'{image} is stale or untracked; rebuild with '
                          f'python3 tools/ubuntu-build.py environment --component {component}')
+    # Docker's containerd store can retire an untagged image index as soon as
+    # environment rebuilds its mutable tag, even during a package build.
+    # Keep the exact recorded image addressable for later isolated verification.
+    retained = 'vim4-package-builder:' + metadata['Id'].removeprefix('sha256:')
+    subprocess.run(['docker', 'image', 'tag', metadata['Id'], retained], check=True)
     return metadata['Id']
 
 
