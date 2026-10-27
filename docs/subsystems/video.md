@@ -44,6 +44,8 @@ JetKVM 的“空闲时隐藏显示器”是用户主动选择的例外，默认�
 [HDR GPU 前置验证](../bringup/2026-10-26-hdr-gpu.md)补齐匹配的私有 Mali Vulkan 驱动；
 现已接通小端 AMLY→P010 compute 与 Wave521 DMA_TYPE，固定双缓冲，保持输入退休后归还。
 HDR 专用 SDR 快照通道单独缩减下游缓冲预算，保留原分辨率，避免挤占编码器连续内存。
+后续[全局 HDR 默认与源端切换](../bringup/2026-10-26-hdr-global.md)增加视频输入页开关，
+结合主采集池预算、编码器优先预留及完整释放，修复5.15 PQ/SDR往返的CMA问题。
 
 内核在 vdin0 用 HDR2 核把 HDR10/HLG 输入映射到 SDR，SDR 直通；曲线由 `vim4-hdr-curve`
 生成，参数在 `/etc/default/vim4-kvm-hdr`，管理器可实时调节。改 HDR 映射或曲线时读 [HDR 输入映射](../hdr.md)。
@@ -163,3 +165,4 @@ manager 的 `GET /api/status` 新增 `encoder`，包含 `known`、`isolated`、
 | One-KVM WebRTC H.264 每秒短顿，H.265 较顺，统计仍是 60fps/零 freeze | H.264 的一秒 GOP 产生大 IDR，编码和发送峰值使浏览器先停后追。VIM4 两种编码均逐行刷新，保留新订阅与 PLI/FIR 的完整关键帧；验证间隔尾部和恢复能力，不能只延长 GOP 或看平均帧率 | tools/one-kvm-smoke.mjs、[上板记录](../bringup/2026-10-18-onekvm-h264-periodic-stutter.md) |
 | PiKVM HDMI 声音约每 1.37 秒啪一声，网络零丢包，arecord 录音正常 | 采集未设置周期/缓冲，TDM 驱动默认 241 帧周期配 65536 帧缓冲，每次回绕前 16 帧是上一圈旧数据。ALSA 采集显式设置与编码帧对齐的周期和有限缓冲；用应用实际协商的参数复现，arecord 的默认参数不同，不能代表应用路径 | ustreamer/janus/src/acap.c、[上板记录](../bringup/2026-10-16-pikvm-hdmi-audio-pops.md) |
 | HDMI 重采样仍每圈跳变，客户缓冲明明是五周期 | ALSA rate 可给原生环增加插值帧，96kHz 实际为 9602/1920。核对原生 hw_params，T7 约束整数周期；应用原生采集后另做重采样 | [动态 LPCM](../bringup/2026-10-22-edge-hdmi-audio.md) |
+| 原生HDR初次60fps，源端往返后编码器CMA失败或GPU回落CPU | 主采集池、VDIN1、GPU与编码器共用连续内存；先保留编码器200MiB，约束各池并完整释放旧管线。必须测真实PQ/SDR双向切换及期间截图；首次打开成功不能代表可重复 | [全局HDR与源端切换](../bringup/2026-10-26-hdr-global.md) |

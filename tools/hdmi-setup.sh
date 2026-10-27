@@ -36,6 +36,14 @@ if [ -r /sys/module/aml_media/parameters/vdin0_native_hdr ] &&
     [ "$(cat /sys/module/aml_media/parameters/vdin0_native_hdr)" = Y ]; then
     NATIVE_HDR=1
     CONVERSION=1
+    # The DT's ten full-size frames can fragment codec CMA on EOTF changes,
+    # starving the 200 MiB encoder reservation or the GPU's P010 pair. Native
+    # dual capture needs at most six primary slots; VDIN1's explicit V4L2
+    # requests remain independent. Keep an administrator's smaller limit.
+    MAX_BUFFERS=/sys/module/aml_media/parameters/max_buf_num
+    if [ -w "$MAX_BUFFERS" ] && [ "$(cat "$MAX_BUFFERS")" -gt 6 ]; then
+        echo 6 > "$MAX_BUFFERS"
+    fi
 fi
 
 modprobe vfm_cap
