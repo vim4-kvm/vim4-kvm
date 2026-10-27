@@ -95,6 +95,7 @@ class VersionTests(unittest.TestCase):
                     return '1'
                 return '49c45f25a29b'
             with patch.object(self.build, 'ROOT', root), patch.object(self.build, 'output', side_effect=output), \
+                 patch.object(self.build, 'builder_image', return_value='sha256:builder'), \
                  patch.object(self.build.subprocess, 'check_output', return_value=b''), \
                  patch.object(self.build.subprocess, 'run') as docker, \
                  patch.object(self.build, 'latest_component_release', return_value='2.5.1+vim4.20261016.1020'), \
@@ -110,6 +111,37 @@ class VersionTests(unittest.TestCase):
                 self.assertTrue(metadata['development'])
                 self.assertEqual(metadata['version'], '2.5.1+vim4.20261016.1020.dev.2.g49c45f2.dirty')
                 self.assertIn('PACKAGE_VERSION=' + metadata['version'], docker.call_args.args[0])
+
+    def test_builder_rejects_old_tag_and_changed_locked_inputs(self):
+        base = self.build.IMAGE
+        fingerprint = self.build.builder_fingerprint(base)
+        metadata = {'Id': 'sha256:old', 'Config': {'Labels': None}}
+        with patch.object(self.build, 'output', side_effect=lambda *args: json.dumps([metadata])):
+            with self.assertRaisesRegex(ValueError, 'environment --component encoder'):
+                self.build.builder_image(base, 'encoder')
+            metadata['Config']['Labels'] = {self.build.BUILDER_INPUTS_LABEL: fingerprint}
+            self.assertEqual(self.build.builder_image(base, 'encoder'), 'sha256:old')
+            with patch.object(self.build, 'builder_fingerprint', return_value='updated-sdk-lock'):
+                with self.assertRaisesRegex(ValueError, 'stale'):
+                    self.build.builder_image(base, 'encoder')
+
+    def test_pikvm_builder_tracks_base_and_private_python_inputs(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            shutil.copytree(self.build.ROOT / 'packaging/ubuntu', root / 'packaging/ubuntu')
+            with patch.object(self.build, 'ROOT', root):
+                base = self.build.builder_fingerprint(self.build.IMAGE)
+                pikvm = self.build.builder_fingerprint('vim4-pikvm-builder:ubuntu24.04')
+                sdk = root / 'packaging/ubuntu/downloads.lock.json'
+                sdk.write_bytes(sdk.read_bytes() + b'\n')
+                self.assertNotEqual(self.build.builder_fingerprint(self.build.IMAGE), base)
+                self.assertNotEqual(self.build.builder_fingerprint('vim4-pikvm-builder:ubuntu24.04'), pikvm)
+                base = self.build.builder_fingerprint(self.build.IMAGE)
+                pikvm = self.build.builder_fingerprint('vim4-pikvm-builder:ubuntu24.04')
+                private = root / 'packaging/ubuntu/pikvm/requirements.lock'
+                private.write_bytes(private.read_bytes() + b'\n')
+                self.assertEqual(self.build.builder_fingerprint(self.build.IMAGE), base)
+                self.assertNotEqual(self.build.builder_fingerprint('vim4-pikvm-builder:ubuntu24.04'), pikvm)
 
     @unittest.skipUnless(shutil.which('dpkg'), 'dpkg is available in the Ubuntu builder')
     def test_generated_development_versions_sort_between_releases_in_dpkg(self):

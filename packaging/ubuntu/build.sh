@@ -34,6 +34,7 @@ if has nanokvm; then
     python3 -m unittest discover -s NanoKVM/deploy/vim4 -p 'test_*.py'
     python3 tools/workspace.py build server
     python3 tools/workspace.py build frontend
+    node --test NanoKVM/web/tests/hevc.mjs
     cd NanoKVM/server
     cc -shared -fPIC -Iinclude /work/tests/kvm-abi-stub.c -o dl_lib/libkvm.so
     LD_LIBRARY_PATH="$PWD/dl_lib" go test ./...

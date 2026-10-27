@@ -11,6 +11,7 @@ import sys
 
 ROOT = Path(__file__).resolve().parent.parent
 IMAGE = 'vim4-kvm-builder:ubuntu24.04'
+BUILDER_INPUTS_LABEL = 'io.vim4-kvm.builder-inputs'
 # Component sets and their source repositories. 'all' is the established
 # seven-package set used for images; the others are independent releases.
 REPOS = {
@@ -38,6 +39,27 @@ NO_RELEASE = '0.0.0+vim4.00000000.0'
 
 def output(*args):
     return subprocess.check_output(args, cwd=ROOT, text=True).strip()
+
+
+def builder_fingerprint(image):
+    directory = ROOT / 'packaging/ubuntu'
+    inputs = ['Dockerfile', 'fetch.py', 'downloads.lock.json', 'extensions.lock.json']
+    if image != IMAGE:
+        inputs += ['pikvm/Dockerfile', 'pikvm/downloads.lock.json',
+                   'pikvm/bootstrap.lock', 'pikvm/requirements.lock']
+    digest = hashlib.sha256()
+    for name in inputs:
+        digest.update(name.encode() + b'\0' + (directory / name).read_bytes() + b'\0')
+    return digest.hexdigest()
+
+
+def builder_image(image, component):
+    metadata = json.loads(output('docker', 'image', 'inspect', image))[0]
+    labels = metadata['Config'].get('Labels') or {}
+    if labels.get(BUILDER_INPUTS_LABEL) != builder_fingerprint(image):
+        raise ValueError(f'{image} is stale or untracked; rebuild with '
+                         f'python3 tools/ubuntu-build.py environment --component {component}')
+    return metadata['Id']
 
 
 def release_key(version):
@@ -108,6 +130,7 @@ def main():
         for tag, dockerfile in ([(IMAGE, 'packaging/ubuntu/Dockerfile')] if image == IMAGE else
                                 [(IMAGE, 'packaging/ubuntu/Dockerfile'), (image, recipes + '/Dockerfile')]):
             subprocess.run(['docker', 'build', '--platform', 'linux/arm64', '-t', tag,
+                            '--label', f'{BUILDER_INPUTS_LABEL}={builder_fingerprint(tag)}',
                             '-f', str(ROOT / dockerfile), str(ROOT / 'packaging/ubuntu')], check=True)
         return
     if args.command == 'verify':
@@ -151,7 +174,7 @@ def main():
         owner = OWNERS[args.component]
         base = latest_component_release(args.component)
     # Resolve the tag before running so metadata describes the actual image used.
-    image_id = output('docker', 'image', 'inspect', '--format', '{{.Id}}', image)
+    image_id = builder_image(image, args.component)
     epoch = output('git', 'show', '-s', '--format=%ct', 'HEAD')
     packages = ROOT / 'build/packages'
     packages.mkdir(parents=True, exist_ok=True)

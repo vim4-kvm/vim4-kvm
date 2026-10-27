@@ -9,7 +9,8 @@ RUN dpkg-deb -x /tmp/ca-certificates.deb / \
 # PiKVM installation uses its private Python; NanoKVM needs no YAML migration.
 RUN test "$(dpkg --print-architecture)" = arm64 \
  && rm /etc/apt/sources.list.d/ubuntu.sources \
- && printf 'deb [signed-by=/usr/share/keyrings/ubuntu-archive-keyring.gpg check-valid-until=no] http://snapshot.ubuntu.com/ubuntu/20261012T000000Z %s main universe\n' noble noble-updates noble-security > /etc/apt/sources.list \
+ && printf 'Acquire::Retries "3";\nAPT::Update::Error-Mode "any";\n' > /etc/apt/apt.conf.d/80vim4-build \
+ && printf 'deb [signed-by=/usr/share/keyrings/ubuntu-archive-keyring.gpg check-valid-until=no] https://snapshot.ubuntu.com/ubuntu/20261012T000000Z %s main universe\n' noble noble-updates noble-security > /etc/apt/sources.list \
  && apt-get update \
  && apt-get install -y --no-install-recommends \
     ca-certificates curl xz-utils git build-essential gcc-12 pkg-config python3 python3-ruamel.yaml \

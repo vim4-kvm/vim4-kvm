@@ -6,7 +6,7 @@ for name in kvmd ustreamer vim4-manager packaging tools board; do
         --exclude=__pycache__ "/src/$name/" "/work/$name/"
 done
 cp /src/workspace.toml /work/workspace.toml
-node --test /work/kvmd/deploy/vim4/test_msd_ui.mjs
+node --test /work/kvmd/deploy/vim4/test_msd_ui.mjs /work/kvmd/deploy/vim4/test_stream_hevc.mjs
 sh /work/packaging/ubuntu/pikvm/build-janus.sh
 export PATH=/opt/vim4-pikvm/python/bin:$PATH
 cd /work/ustreamer
