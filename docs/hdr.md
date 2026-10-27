@@ -8,6 +8,9 @@ H.264、JPEG、截图以及开启「HDR 转 SDR」的 H.265；HDMI OUT 偏好独
 开启时输出 SDR；关闭时，支持的 5.15 One-KVM H.265 会话保留 PQ/BT.2020 Main10。
 H.264、截图及其他不支持真 HDR 的应用仍输出 SDR。切换不改 EDID、不重启 HDMI；
 已打开的 One-KVM 网页会重新协商编码 profile。7.x 目前继续使用 SDR。
+关闭转换不会自动切换编码，观看 HDR 仍需选择 H.265。
+[浏览器复核](bringup/2026-10-26-hdr-browser-compatibility.md)确认 Chrome 156 保留 PQ/BT.2020，
+Safari 27.0.1 当前 WebRTC 播放帧为八位 BT.709，不能视作 Safari 远程 HDR 已支持。
 参数 `HDR_SDR_ENABLED=1|0` 与曲线共存于 `/etc/default/vim4-kvm-hdr`；
 旧安装未保存此项时沿用原应用偏好。UU 的 HDR 设置只覆盖当前会话，
 断开后恢复最新全局默认值，期间修改全局开关不会打断 UU 的临时设置。

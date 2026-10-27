@@ -7,6 +7,7 @@
 
 ## 2026-10-26
 
+- [Chrome 与 Safari 的远程 HDR 兼容性复核](2026-10-26-hdr-browser-compatibility.md) — video application board
 - [远程 HDR 全局默认与源端切换](2026-10-26-hdr-global.md) — video manager uu application deployment board
 - [GPU 转换、DMA Main10 与网页真 HDR 60fps](2026-10-26-hdr-gpu-pipeline.md) — video application deployment board benchmark
 - [HDR 分段测量与私有 Mali Vulkan 驱动](2026-10-26-hdr-gpu.md) — video kernel deployment board benchmark

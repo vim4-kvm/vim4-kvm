@@ -46,6 +46,9 @@ JetKVM 的“空闲时隐藏显示器”是用户主动选择的例外，默认�
 HDR 专用 SDR 快照通道单独缩减下游缓冲预算，保留原分辨率，避免挤占编码器连续内存。
 后续[全局 HDR 默认与源端切换](../bringup/2026-10-26-hdr-global.md)增加视频输入页开关，
 结合主采集池预算、编码器优先预留及完整释放，修复5.15 PQ/SDR往返的CMA问题。
+[浏览器兼容性复核](../bringup/2026-10-26-hdr-browser-compatibility.md)确认 Chrome 156
+收到真实 Main10 并保留 PQ/BT.2020；Safari 27.0.1 当前 WebRTC 帧变为八位 BT.709。
+关闭全局转换不会自动把 H.264 切换为 H.265；码流、解码 HDR 与屏幕光度分别验收。
 
 内核在 vdin0 用 HDR2 核把 HDR10/HLG 输入映射到 SDR，SDR 直通；曲线由 `vim4-hdr-curve`
 生成，参数在 `/etc/default/vim4-kvm-hdr`，管理器可实时调节。改 HDR 映射或曲线时读 [HDR 输入映射](../hdr.md)。
