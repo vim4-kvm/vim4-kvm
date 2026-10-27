@@ -113,9 +113,13 @@ def capture(stage):
     copy(ROOT / 'build/mainline-gstreamer/libgstvideo4linux2.so', stage,
          'usr/lib/vim4-kvm/vendor-gstreamer-1.0/libgstvideo4linux2.so', 0o644)
     copy(ROOT / 'gst-plugin-vfmcap/README.md', stage, 'usr/share/doc/vim4-vfmcap/README.md')
-    copy(ROOT / 'gst-plugin-vfmcap/src/gstvfmcapsrc.c', stage, 'usr/share/doc/vim4-vfmcap/gstvfmcapsrc.c')
-    for source in (ROOT / 'gst-plugin-vfmcap/src').glob('*.h'):
-        copy(source, stage, 'usr/share/doc/vim4-vfmcap/' + source.name)
+    capture_root = ROOT / 'gst-plugin-vfmcap'
+    for relative in ('meson.build', 'LICENSE', 'scripts/embed-spirv.py'):
+        copy(capture_root / relative, stage, 'usr/share/doc/vim4-vfmcap/source/' + relative)
+    for folder in ('src', 'tests'):
+        for source in (capture_root / folder).iterdir():
+            if source.suffix in ('.c', '.h', '.comp'):
+                copy(source, stage, 'usr/share/doc/vim4-vfmcap/source/' + folder + '/' + source.name)
     copy('/usr/share/common-licenses/LGPL-2.1', stage, 'usr/share/doc/vim4-vfmcap/copyright')
 
 
@@ -132,6 +136,10 @@ def encoder(stage):
          'usr/lib/vim4-kvm/gstreamer-1.0/libgstamlvenc.so', 0o644)
     copy(ROOT / 'gst-plugin-venc/hdr/libgstvim4hevc10.so', stage,
          'usr/lib/vim4-kvm/gstreamer-1.0/libgstvim4hevc10.so', 0o644)
+    copy('/opt/downloads/mali-r44p0.so', stage, 'usr/lib/vim4-kvm/gpu/libMali.so', 0o644)
+    write(stage, 'usr/lib/vim4-kvm/gpu/mali.json', json.dumps({
+        'file_format_version': '1.0.0', 'ICD': {
+            'library_path': '/usr/lib/vim4-kvm/gpu/libMali.so', 'api_version': '1.3.231'}}, indent=2) + '\n')
     for name in ('libvpcodec.so', 'libamvenc_api.so'):
         copy(ROOT / 'build/hdr-codec' / name, stage, 'usr/lib/vim4-kvm/hdr/' + name, 0o644)
     for name in ('gstvim4hevc10.c', 'p010-cpu-input.patch', 'build-codec.sh', 'Makefile'):
@@ -323,8 +331,8 @@ PLATFORM = ('vim4-kvm-board (>= 1.0.3+vim4.20261013.18), vim4-media-api-1, vim4-
 PACKAGES = {
     'platform': [
         ('vim4-kvm-board', board, 'libc6 (>= 2.38), python3, mtools, dosfstools, systemd, udev, kmod, psmisc, iproute2, alsa-utils, hdmiin-demo (= 0.8-202305~noble)'),
-        ('vim4-vfmcap', capture, GST),
-        ('vim4-amlvenc', encoder, GST + ', libamvenc (= 0.2-202406~noble), libge2d (= 0.4-202406), gst-aml-drmbufferpool-plugins (= 0.2-202311)')],
+        ('vim4-vfmcap', capture, GST + ', libvulkan1'),
+        ('vim4-amlvenc', encoder, GST + ', libdrm2, libwayland-client0, libwayland-server0, libstdc++6, libamvenc (= 0.2-202406~noble), libge2d (= 0.4-202406), gst-aml-drmbufferpool-plugins (= 0.2-202311)')],
     'nanokvm': [
         ('vim4-nanokvm', application, GST + ', libopus0, sudo, python3, dosfstools, curl, ca-certificates, picocom, network-manager, avahi-daemon, openssh-server, chrony, alsa-utils, gstreamer1.0-alsa, gstreamer1.0-plugins-base, gstreamer1.0-plugins-good, gstreamer1.0-plugins-bad, gstreamer1.0-libav, ' + PLATFORM)],
     'jetkvm': [

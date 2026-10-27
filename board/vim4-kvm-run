@@ -24,6 +24,9 @@ case "$(uname -r)" in
         fi
         if [ "$app" = onekvm ]; then
             export LD_LIBRARY_PATH=/opt/vim4-onekvm/lib
+            if [ -r /usr/lib/vim4-kvm/gpu/mali.json ]; then
+                export VK_ICD_FILENAMES=/usr/lib/vim4-kvm/gpu/mali.json
+            fi
             if [ -r /sys/module/aml_media/parameters/vdin0_native_hdr ] &&
                 [ "$(cat /sys/module/aml_media/parameters/vdin0_native_hdr)" = Y ]; then
                 export VIM4_SECONDARY_HDMI_CAPTURE=1
@@ -42,6 +45,7 @@ case "$(uname -r)" in
         # would make the V4L2 encoder expect one contiguous DMA-buf instead.
         unset GST_V4L2_PREFER_CONTIGUOUS
         unset LD_LIBRARY_PATH
+        unset VK_ICD_FILENAMES
         # Match the validated mainline runtime's higher-capacity CPU group.
         taskset -pc 0-3 "$$" >/dev/null
         ;;

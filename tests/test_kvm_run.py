@@ -27,7 +27,8 @@ class KVMRunTests(unittest.TestCase):
                 path.write_text(f'#!{sys.executable}\nimport json, os\nprint(json.dumps(dict(os.environ)))\n')
                 path.chmod(0o755)
             for plugin in ('usr/lib/vim4-kvm/vendor-gstreamer-1.0/libgstvideo4linux2.so',
-                           'opt/vim4-onekvm/lib/gstreamer-1.0/libgstvideo4linux2.so'):
+                           'opt/vim4-onekvm/lib/gstreamer-1.0/libgstvideo4linux2.so',
+                           'usr/lib/vim4-kvm/gpu/mali.json'):
                 path = root / plugin
                 path.parent.mkdir(parents=True, exist_ok=True)
                 path.touch()
@@ -51,13 +52,18 @@ class KVMRunTests(unittest.TestCase):
                         result = subprocess.run(['sh', str(launcher), app], capture_output=True, text=True,
                             env={**os.environ, 'PATH': str(bin_dir) + os.pathsep + os.environ['PATH'],
                                  'TEST_KERNEL': kernel, 'VIM4_SECONDARY_HDMI_CAPTURE': '1',
-                                 'GST_V4L2_PREFER_CONTIGUOUS': '1'})
+                                 'GST_V4L2_PREFER_CONTIGUOUS': '1',
+                                 'VK_ICD_FILENAMES': '/usr/lib/vim4-kvm/gpu/mali.json'})
                         self.assertEqual(result.returncode, 0, result.stderr)
                         actual = json.loads(result.stdout)
                         self.assertEqual(actual.get('VIM4_SECONDARY_HDMI_CAPTURE'), '1' if secondary else None)
                         self.assertEqual(actual['VIM4_VIDEO_BACKEND'], 'wave5' if kernel.startswith('7.') else 'vendor')
                         self.assertEqual(actual.get('GST_V4L2_PREFER_CONTIGUOUS'),
                                          None if kernel.startswith('7.') else '1')
+                        if kernel.startswith('7.'):
+                            self.assertNotIn('VK_ICD_FILENAMES', actual)
+                        elif app == 'onekvm':
+                            self.assertEqual(actual['VK_ICD_FILENAMES'], str(root / 'usr/lib/vim4-kvm/gpu/mali.json'))
                         if secondary:
                             self.assertIn('/vendor-gstreamer-1.0:', actual['GST_PLUGIN_PATH'])
 

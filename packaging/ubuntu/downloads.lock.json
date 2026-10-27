@@ -1,5 +1,12 @@
 [
   {
+    "name": "mali-r44p0.so",
+    "url": "https://raw.githubusercontent.com/aml-streambox/meson_mali/51e81d36fccb1340b2dab9490da74ded29f849e1/lib/arm64/gondul/r44p0/wayland/drm/libMali_r1p0_dmaheap.so",
+    "sha256": "536ee80c17dc5c54e7c6ff029ca43270da8efc3fdc5b3aeb263f364419368494",
+    "version": "r44p0-g52-r1p0-dmaheap",
+    "license": "CLOSED"
+  },
+  {
     "name": "hdr-encoder.tar.gz",
     "url": "https://codeload.github.com/aml-streambox/libencoder/tar.gz/d4ed7c0d088283da44470de157a3587d3addd2c0",
     "sha256": "9af25c8485d06d3300f0ea221b51ccbf22b31a547574766ec4efb23978a130e5",

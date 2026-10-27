@@ -37,11 +37,13 @@ JetKVM 的“空闲时隐藏显示器”是用户主动选择的例外，默认�
 
 5.15 One-KVM 新增[远程 Main10 HDR 与扩展尺寸](../bringup/2026-10-26-remote-hdr-modes.md)：
 默认映射 SDR，可选择保留 PQ/BT.2020 十位；UU 的 HDR 请求临时覆盖、断开恢复默认。
-4K HDR 完整网页约34fps，不能当作4K60；HLG、7.x Main10与本地新模式未验收。
+4K HDR 最初完整网页约34fps；后续[GPU/DMA 链路](../bringup/2026-10-26-hdr-gpu-pipeline.md)
+已实测真实 PQ Main10 网页约60fps。HLG、7.x Main10与本地新模式未验收。
 后续[像素复核](../bringup/2026-10-26-remote-hdr-pixels.md)修正 AMLY 解包花屏，
 保留 HDR 偏好时 SDR 输入自动走八位 DMA；源端切换的 CMA 分配候选复测失败，已撤回。
-[HDR GPU 前置验证](../bringup/2026-10-26-hdr-gpu.md)已安装匹配的私有 Mali Vulkan 驱动，
-通过连续 DMA 内存计算/读回；GPU 转换与编码器 DMA 接入尚未完成。
+[HDR GPU 前置验证](../bringup/2026-10-26-hdr-gpu.md)补齐匹配的私有 Mali Vulkan 驱动；
+现已接通小端 AMLY→P010 compute 与 Wave521 DMA_TYPE，固定双缓冲，保持输入退休后归还。
+HDR 专用 SDR 快照通道单独缩减下游缓冲预算，保留原分辨率，避免挤占编码器连续内存。
 
 内核在 vdin0 用 HDR2 核把 HDR10/HLG 输入映射到 SDR，SDR 直通；曲线由 `vim4-hdr-curve`
 生成，参数在 `/etc/default/vim4-kvm-hdr`，管理器可实时调节。改 HDR 映射或曲线时读 [HDR 输入映射](../hdr.md)。

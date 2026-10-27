@@ -17,13 +17,13 @@ revision = "6558c1eee6d5359bca16e43fbbf81fa5bbb9ff5d"
 name = "gst-plugin-venc"
 url = "https://github.com/vim4-kvm/gst-plugin-venc.git"
 branch = "vim4"
-revision = "3ecacdb23dbd3916301b68730c04bedacdcbf199"
+revision = "0cd588d09807c802c742e64a7b68da4ced985d45"
 
 [[repos]]
 name = "gst-plugin-vfmcap"
 url = "https://github.com/vim4-kvm/gst-plugin-vfmcap.git"
 branch = "main"
-revision = "a2b5c709fc6f4a5a42e1f287e3214f22c2881e88"
+revision = "99433a9d9ae48910ed836027b7650cd1ce223a35"
 
 [[repos]]
 name = "kvm"
@@ -35,7 +35,7 @@ revision = "84d6d51113c18f645810f6f73fc066b044ddba68"
 name = "One-KVM"
 url = "https://github.com/vim4-kvm/One-KVM.git"
 branch = "vim4"
-revision = "5dd4a82affbb106fb50b327a3609de0389121407"
+revision = "4f473f54617c8105d6a7500ad8a0abaaea60ee16"
 
 [[repos]]
 name = "kvmd"

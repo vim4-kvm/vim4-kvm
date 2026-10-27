@@ -13,7 +13,7 @@ RUN test "$(dpkg --print-architecture)" = arm64 \
  && apt-get update \
  && apt-get install -y --no-install-recommends \
     ca-certificates curl xz-utils git build-essential gcc-12 pkg-config python3 python3-ruamel.yaml \
-    meson ninja-build libgstreamer1.0-dev libgstreamer-plugins-base1.0-dev \
+    meson ninja-build libgstreamer1.0-dev libgstreamer-plugins-base1.0-dev libvulkan-dev glslang-tools \
     libopus-dev libdrm-dev dpkg-dev file sudo libssl-dev bc bison flex \
     device-tree-compiler kmod rsync clang libclang-dev cmake nasm \
     libavcodec-dev libavutil-dev libavformat-dev libyuv-dev libasound2-dev \

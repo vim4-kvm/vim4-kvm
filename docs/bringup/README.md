@@ -7,6 +7,7 @@
 
 ## 2026-10-26
 
+- [GPU 转换、DMA Main10 与网页真 HDR 60fps](2026-10-26-hdr-gpu-pipeline.md) — video application deployment board benchmark
 - [HDR 分段测量与私有 Mali Vulkan 驱动](2026-10-26-hdr-gpu.md) — video kernel deployment board benchmark
 - [远程 HDR 像素修复与 SDR 自动选择](2026-10-26-remote-hdr-pixels.md) — video application kernel deployment board
 - [远程 Main10 HDR 与高刷超宽屏](2026-10-26-remote-hdr-modes.md) — video kernel uu application deployment board
