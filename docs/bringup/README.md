@@ -5,6 +5,10 @@
 
 新记录：新建 `bringup/YYYY-MM-DD-英文短名.md`，首行 `# YYYY-MM-DD：标题`，并在本页对应日期下追加一行。
 
+## 2026-10-27
+
+- [UU 原生 HDR 能力与非对齐行宽修复](2026-10-27-uu-hdr.md) — video uu application deployment board
+
 ## 2026-10-26
 
 - [四套 KVM 的远程 HDR 接入](2026-10-26-all-kvm-hdr.md) — video application manager deployment board
