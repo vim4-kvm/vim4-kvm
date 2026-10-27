@@ -31,6 +31,7 @@ if has vim4-kvm-board; then
     dpkg-deb -f ./vim4-kvm-board_*.deb Provides | grep -qw vim4-media-api-1
     dpkg-deb -f ./vim4-kvm-board_*.deb Provides | grep -qw vim4-media-transfer-api-1
     dpkg-deb -f ./vim4-kvm-board_*.deb Provides | grep -qw vim4-runtime-api-1
+    dpkg-deb -f ./vim4-kvm-board_*.deb Provides | grep -qw vim4-dma-capture-api-1
     PYTHONPATH=/tmp/package-check/root/usr/lib/vim4-kvm/python python3 -c 'import vim4media, vim4video, vim4boot'
 fi
 if has vim4-amlvenc; then
@@ -43,6 +44,7 @@ fi
 if has vim4-vfmcap; then
     dpkg-deb -f ./vim4-vfmcap_*.deb Provides | grep -qw vim4-vdin1-api-1
     dpkg-deb -f ./vim4-vfmcap_*.deb Provides | grep -qw vim4-hdr-scale-api-1
+    dpkg-deb -f ./vim4-vfmcap_*.deb Provides | grep -qw vim4-sdr-scale-api-1
 fi
 for app in vim4-nanokvm vim4-jetkvm vim4-onekvm vim4-manager; do
     if has "$app"; then dpkg-deb -f ./"${app}"_*.deb Depends | grep -qw vim4-media-api-1; fi
@@ -73,6 +75,8 @@ if has vim4-vfmcap; then
     fi
     GST_PLUGIN_PATH="$capture_root/usr/lib/vim4-kvm/vendor-gstreamer-1.0:$capture_root/usr/lib/aarch64-linux-gnu/gstreamer-1.0" \
         GST_REGISTRY=/tmp/package-check/capture-registry.bin gst-inspect-1.0 vim4vdin1src >/dev/null
+    GST_PLUGIN_PATH="$capture_root/usr/lib/aarch64-linux-gnu/gstreamer-1.0" \
+        GST_REGISTRY=/tmp/package-check/capture-registry.bin gst-inspect-1.0 vim4scale >/dev/null
     GST_PLUGIN_PATH="$capture_root/usr/lib/aarch64-linux-gnu/gstreamer-1.0" \
         GST_REGISTRY=/tmp/package-check/capture-registry.bin gst-inspect-1.0 vfmcapsrc |
         grep -q '^[[:space:]]*height[[:space:]]*:'

@@ -44,11 +44,11 @@ def package(name, version, output, populate, depends):
             write(stage, 'DEBIAN/postinst', '#!/bin/sh\nset -eu\n', 0o755)
         with postinst.open('a') as script:
             script.write('sync\n')
-        provides = 'Provides: vim4-media-api-1, vim4-media-transfer-api-1, vim4-runtime-api-1\n' if name == 'vim4-kvm-board' else ''
+        provides = 'Provides: vim4-media-api-1, vim4-media-transfer-api-1, vim4-runtime-api-1, vim4-dma-capture-api-1\n' if name == 'vim4-kvm-board' else ''
         if name == 'vim4-amlvenc':
             provides = 'Provides: vim4-wave5-api-1, vim4-hevc-hdr-api-1\n'
         if name == 'vim4-vfmcap':
-            provides = 'Provides: vim4-vdin1-api-1, vim4-hdr-scale-api-1\n'
+            provides = 'Provides: vim4-vdin1-api-1, vim4-hdr-scale-api-1, vim4-sdr-scale-api-1\n'
         if name == 'vim4-manager':
             provides = 'Provides: vim4-nas-api-1\n'
         write(stage, 'DEBIAN/control', f'Package: {name}\nVersion: {version}\nArchitecture: arm64\n'
@@ -331,22 +331,22 @@ PLATFORM = ('vim4-kvm-board (>= 1.0.3+vim4.20261013.18), vim4-media-api-1, vim4-
 PACKAGES = {
     'platform': [
         ('vim4-kvm-board', board, 'libc6 (>= 2.38), python3, mtools, dosfstools, systemd, udev, kmod, psmisc, iproute2, alsa-utils, hdmiin-demo (= 0.8-202305~noble)'),
-        ('vim4-vfmcap', capture, GST + ', libvulkan1'),
-        ('vim4-amlvenc', encoder, GST + ', vim4-hdr-scale-api-1, libdrm2, libwayland-client0, libwayland-server0, libstdc++6, libamvenc (= 0.2-202406~noble), libge2d (= 0.4-202406), gst-aml-drmbufferpool-plugins (= 0.2-202311)')],
+        ('vim4-vfmcap', capture, GST + ', vim4-dma-capture-api-1, libvulkan1, libge2d (= 0.4-202406)'),
+        ('vim4-amlvenc', encoder, GST + ', vim4-hdr-scale-api-1, vim4-sdr-scale-api-1, libdrm2, libwayland-client0, libwayland-server0, libstdc++6, libamvenc (= 0.2-202406~noble), libge2d (= 0.4-202406), gst-aml-drmbufferpool-plugins (= 0.2-202311)')],
     'nanokvm': [
         ('vim4-nanokvm', application, GST + ', libopus0, sudo, python3, dosfstools, curl, ca-certificates, picocom, network-manager, avahi-daemon, openssh-server, chrony, alsa-utils, gstreamer1.0-alsa, gstreamer1.0-plugins-base, gstreamer1.0-plugins-good, gstreamer1.0-plugins-bad, gstreamer1.0-libav, ' + PLATFORM)],
     'jetkvm': [
         ('vim4-jetkvm', jetkvm, 'libc6 (>= 2.38), libglib2.0-0t64, libgstreamer1.0-0 (>= 1.24), '
          'libgstreamer-plugins-base1.0-0 (>= 1.24), gstreamer1.0-plugins-bad, ' + PLATFORM + ', '
          # The NanoKVM package owns the shared HID udev rule.
-         'vim4-nanokvm (>= 1.0.3+vim4.20261013.18), sudo, python3, network-manager, avahi-daemon')],
+         'vim4-nanokvm (>= 1.0.3+vim4.20261013.18), vim4-sdr-scale-api-1, sudo, python3, network-manager, avahi-daemon')],
     'onekvm': [
         ('vim4-onekvm', onekvm, GST + ', libavcodec60, libavutil58, libdrm2, libyuv0, '
          'libasound2t64, libudev1, libdbus-1-3, libopus0, libstdc++6, '
          'gstreamer1.0-plugins-good, gstreamer1.0-plugins-bad, gstreamer-aml (= 0.6-202406), sudo, python3, libcap2-bin, '
          'libjson-c5, libuv1t64, libssl3t64, libcap2, zlib1g, libwebsockets-evlib-uv, '
          'network-manager, dnsmasq-base, openssh-client, ' + PLATFORM + ', vim4-nanokvm (>= 1.0.3+vim4.20261013.18), '
-         'vim4-manager (>= 2.5.1+vim4.20261014.4), vim4-media-transfer-api-1, vim4-hdr-scale-api-1')],
+         'vim4-manager (>= 2.5.1+vim4.20261014.4), vim4-media-transfer-api-1, vim4-hdr-scale-api-1, vim4-sdr-scale-api-1')],
     'manager': [
         ('vim4-manager', manager, 'libc6 (>= 2.38), python3, libasound2t64, alsa-utils, sudo, systemd, fuse3, cifs-utils, nfs-common, vim4-media-api-1, vim4-runtime-api-1, vim4-nanokvm (>= 1.0.3+vim4.20261013.18)')],
 }

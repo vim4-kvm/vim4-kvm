@@ -10,6 +10,7 @@
 - [UU 原生 HDR 能力与非对齐行宽修复](2026-10-27-uu-hdr.md) — video uu application deployment board
 - [UU HDR 降分辨率的 GPU 缩放](2026-10-27-uu-hdr-scale.md) — video uu application deployment board benchmark
 - [四套 KVM 共用 HDR GPU 缩放](2026-10-27-all-kvm-hdr-scale.md) — video application deployment board benchmark
+- [超宽屏 SDR 硬件缩放与尺寸控制](2026-10-27-sdr-scale-controls.md) — video application pikvm deployment board benchmark
 
 ## 2026-10-26
 

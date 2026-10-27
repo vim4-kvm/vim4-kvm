@@ -70,8 +70,8 @@ CI 发布前再次拒绝开发版本号、开发标记或脏源码；网页更�
 | 包 | 内容 |
 |---|---|
 | vim4-kvm-board | PD 工具、HDMI/gadget 脚本、udev 和 systemd 配置 |
-| vim4-vfmcap | vfmcapsrc / vim4vdin1src、原生 HDR 的私有标准 V4L2 插件；提供 vim4-vdin1-api-1、vim4-hdr-scale-api-1 |
-| vim4-amlvenc | /usr/lib/vim4-kvm 下的编码插件及服务搜索路径；依赖 vim4-hdr-scale-api-1 |
+| vim4-vfmcap | vfmcapsrc / vim4vdin1src、vim4scale GE2D、原生 HDR 的私有标准 V4L2 插件；提供 vim4-vdin1-api-1、vim4-hdr-scale-api-1、vim4-sdr-scale-api-1 |
+| vim4-amlvenc | /usr/lib/vim4-kvm 下的编码插件及服务搜索路径；依赖 vim4-hdr-scale-api-1、vim4-sdr-scale-api-1 |
 | vim4-nanokvm | /opt 应用与网页、/usr/libexec 特权工具、sudoers 与应用服务 |
 | vim4-jetkvm | JetKVM 应用、特权工具与服务 |
 | vim4-onekvm | One-KVM 应用（嵌入网页）、Ventoy 引导资源、虚拟介质助手与互斥服务 |
@@ -86,6 +86,8 @@ NanoKVM 特权调用与手工安装脚本同步改为 /usr/libexec，新服务�
 固件、自编内核及厂商运行库；不能单独把普通 Ubuntu 容器变成可启动 VIM4 系统。
 编码包明确依赖固定的厂商运行库版本，下载清单中的 deb 不随组件包重新发布。
 板级包依赖固定版本 hdmiin-demo，它同时提供 tvserver.service。
+采集包依赖 libge2d 和板级 `vim4-dma-capture-api-1`，后者保证5.15启动器选择连续DMA；
+One-KVM、JetKVM、PiKVM的SDR缩放版本依赖 `vim4-sdr-scale-api-1`，应先部署匹配平台三包。
 
 安装不自动启用或重启服务，不在 postinst 操作 configfs、I2C、网络或密码。
 应用首次配置建立所需目录，只在 server.yaml 不存在时写入既定默认值，升级保留

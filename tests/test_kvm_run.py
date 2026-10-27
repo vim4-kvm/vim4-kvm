@@ -52,7 +52,7 @@ class KVMRunTests(unittest.TestCase):
                         result = subprocess.run(['sh', str(launcher), app], capture_output=True, text=True,
                             env={**os.environ, 'PATH': str(bin_dir) + os.pathsep + os.environ['PATH'],
                                  'TEST_KERNEL': kernel, 'VIM4_SECONDARY_HDMI_CAPTURE': '1',
-                                 'GST_V4L2_PREFER_CONTIGUOUS': '1',
+                                 'GST_V4L2_PREFER_CONTIGUOUS': '0',
                                  'VK_ICD_FILENAMES': '/usr/lib/vim4-kvm/gpu/mali.json'})
                         self.assertEqual(result.returncode, 0, result.stderr)
                         actual = json.loads(result.stdout)
