@@ -7,6 +7,7 @@
 
 ## 2026-10-27
 
+- [UU 分辨率请求被 HDR 能力检查阻塞](2026-10-27-uu-resolution-hdr-preference.md) — uu video application deployment board
 - [管理器资源趋势 GPU 使用率](2026-10-27-manager-gpu-trends.md) — manager application deployment board
 - [信号变化自动恢复与切换停顿](2026-10-27-signal-recovery.md) — video application deployment board benchmark
 - [UU 原生 HDR 能力与非对齐行宽修复](2026-10-27-uu-hdr.md) — video uu application deployment board
