@@ -92,3 +92,27 @@ manager 65c7d3efcff50256cdf03a0e529d1abd7eba537200ee63fc6df7c04779ca7ac6
 `uu-global-live-final.log`、`uu-default-restored.log`、`final-codec-smoke.log`、
 `final-mjpeg-smoke.log`、`final-board-state.log`。
 桌面和移动版截图为`global-manager-desktop.png`、`global-manager-mobile.png`。
+
+## 后续：集中管理 HDR 入口
+
+One-KVM `2e670914` 移除设置页与视频弹窗中的HDR转SDR、SDR白点及峰值调节，
+统一使用管理器「视频输入」。输出保存请求不再携带HDR字段；
+API区分省略`output.hdr`与显式false，省略时保留现值、不写全局文件，
+避免仅修改分辨率、帧率或JPEG质量就关闭HDR。
+兼容原API的显式HDR修改与曲线调用，UU会话的临时覆盖语义保持不变。
+新增回归覆盖两种原HDR偏好与省略/显式开关六种组合。
+前端9项测试和构建通过；VIM4 Rust 786项通过、忽略3项。
+release构建和部署完成；二进制SHA256为
+`d6a83ef58e316eee1c07602bfe73d34ce70d112c778124e0672dde855334339a`。
+实际浏览器检查设置页、视频弹窗均移除入口；页面打开后由manager分别切换两种默认，
+再保存JPEG质量71/72，请求不含HDR字段，应用和manager默认值均保持正确。
+最终恢复测试前设置；真PQ/Main10网页复测59.953fps，记录`ui-cleanup-video-smoke.log`。
+记录`ui-cleanup-browser.log`、`one-kvm-ui-cleanup-*-tests.log`；
+部署前应用备份位于`/var/backups/vim4-hdr-ui-cleanup-20261026/`。
+
+同时查明管理器显示「已保存 RTK-CONTROL」是板上预设资源漏部署：
+正在保存/加载的RTK为384字节增强表，而管理器目录仍是256字节旧表，按内容无法匹配。
+补齐源码中已有的384字节预设后，selected/active均识别为`RTK-CONTROL`，
+网页显示「RTK UHD HDR」。没有重新应用EDID或重启HDMI；保存值哈希不变，
+HDMI服务PID1105、boot ID均保持原值。JetKVM的配置不同是独立状态，未替用户重写。
+记录`edid-catalog-current.log`、`edid-name-check.log`和`manager-edid-name-current.png`。
