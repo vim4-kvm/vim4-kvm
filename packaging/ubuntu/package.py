@@ -46,7 +46,7 @@ def package(name, version, output, populate, depends):
             script.write('sync\n')
         provides = 'Provides: vim4-media-api-1, vim4-media-transfer-api-1, vim4-runtime-api-1\n' if name == 'vim4-kvm-board' else ''
         if name == 'vim4-amlvenc':
-            provides = 'Provides: vim4-wave5-api-1\n'
+            provides = 'Provides: vim4-wave5-api-1, vim4-hevc-hdr-api-1\n'
         if name == 'vim4-vfmcap':
             provides = 'Provides: vim4-vdin1-api-1\n'
         if name == 'vim4-manager':
@@ -142,7 +142,7 @@ def encoder(stage):
             'library_path': '/usr/lib/vim4-kvm/gpu/libMali.so', 'api_version': '1.3.231'}}, indent=2) + '\n')
     for name in ('libvpcodec.so', 'libamvenc_api.so'):
         copy(ROOT / 'build/hdr-codec' / name, stage, 'usr/lib/vim4-kvm/hdr/' + name, 0o644)
-    for name in ('gstvim4hevc10.c', 'p010-cpu-input.patch', 'build-codec.sh', 'Makefile'):
+    for name in ('gstvim4hevc10.c', 'gstvim4h265src.c', 'p010-cpu-input.patch', 'build-codec.sh', 'Makefile'):
         copy(ROOT / 'gst-plugin-venc/hdr' / name, stage,
              'usr/share/doc/vim4-amlvenc/source/hdr/' + name)
     copy('/opt/build-inputs/downloads.lock.json', stage,
@@ -326,7 +326,7 @@ fi
 GST = 'libc6 (>= 2.38), libglib2.0-0t64, libgstreamer1.0-0 (>= 1.24), libgstreamer-plugins-base1.0-0 (>= 1.24)'
 # Applications state lower bounds only: their web updaters replace one package
 # and refuse any plan that would also upgrade the platform.
-PLATFORM = ('vim4-kvm-board (>= 1.0.3+vim4.20261013.18), vim4-media-api-1, vim4-runtime-api-1, vim4-wave5-api-1, vim4-vdin1-api-1, vim4-vfmcap, '
+PLATFORM = ('vim4-kvm-board (>= 1.0.3+vim4.20261013.18), vim4-media-api-1, vim4-runtime-api-1, vim4-wave5-api-1, vim4-vdin1-api-1, vim4-hevc-hdr-api-1, vim4-vfmcap, '
             'vim4-amlvenc (>= 1.0.3+vim4.20261013.18)')
 PACKAGES = {
     'platform': [

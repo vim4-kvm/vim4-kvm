@@ -40,6 +40,9 @@ VIM4 后端使用 -tags vim4，保留上游目标实现。共享代码修改检�
 
 One-KVM 的视频菜单和设置页支持 HDMI 输入状态、输出尺寸/帧率上限、码率、
 MJPEG 质量和 EDID 预设；HDR 转 SDR 开关及白点/峰值曲线统一在管理器「视频输入」设置。
+5.15 原生双路径的四套应用均支持 H.265 PQ/Main10，见
+[全应用 HDR 接入](../bringup/2026-10-26-all-kvm-hdr.md)；H.264/JPEG 保留 SDR，
+Safari 真 HDR 尚未支持。
 输出缩放使用 GE2D，不重启 HDMI 服务；
 修改 EDID 才重新协商显示器。其私有 DMA 分配器避免厂商库重复关闭 fd，
 随 vim4-onekvm 包安装；服务使用独立 GStreamer 注册缓存。参数与边界见

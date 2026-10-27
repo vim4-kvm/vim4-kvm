@@ -1,13 +1,14 @@
 # HDR 输入映射
 
-5.15 原生双路径的 One-KVM 可选择保留远程 HDR10，见
-[Main10 交付记录](bringup/2026-10-26-remote-hdr-modes.md)。以下默认 SDR 映射仍用于
+5.15 原生双路径的四套 KVM 均可选择保留远程 HDR10，见
+[全应用 HDR 接入](bringup/2026-10-26-all-kvm-hdr.md)。以下默认 SDR 映射仍用于
 H.264、JPEG、截图以及开启「HDR 转 SDR」的 H.265；HDMI OUT 偏好独立。
 
 管理器「视频输入 → HDR 转 SDR → 启用 HDR 转 SDR」保存全局远程画面默认值。
-开启时输出 SDR；关闭时，支持的 5.15 One-KVM H.265 会话保留 PQ/BT.2020 Main10。
-H.264、截图及其他不支持真 HDR 的应用仍输出 SDR。切换不改 EDID、不重启 HDMI；
-已打开的 One-KVM 网页会重新协商编码 profile。7.x 目前继续使用 SDR。
+开启时输出 SDR；关闭且输入为 PQ 时，四套应用的 5.15 H.265 可保留 PQ/BT.2020 Main10。
+H.264、JPEG 和截图仍输出 SDR。NanoKVM、JetKVM 与 PiKVM 预先协商 Main10，
+开关切换只重建采集编码，不更换 WebRTC 连接；One-KVM 沿用 profile 重新协商。
+切换不改 EDID、不重启 HDMI；7.x 目前继续使用 SDR。
 关闭转换不会自动切换编码，观看 HDR 仍需选择 H.265。
 [浏览器复核](bringup/2026-10-26-hdr-browser-compatibility.md)确认 Chrome 156 保留 PQ/BT.2020，
 Safari 27.0.1 当前 WebRTC 播放帧为八位 BT.709，不能视作 Safari 远程 HDR 已支持。

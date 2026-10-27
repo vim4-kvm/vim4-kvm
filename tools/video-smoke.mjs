@@ -78,12 +78,12 @@ try {
     }
   } else {
     // The worker reports dimensions after rendering its first decoded frame.
-    await page.waitForFunction(() => Number(document.querySelector('canvas#screen')?.dataset.mediaWidth) > 300, {}, { timeout: 45000 });
+    await page.waitForFunction(() => Number(document.querySelector('#screen')?.dataset.mediaWidth) > 300, {}, { timeout: 45000 });
     const start = { ...direct, at: performance.now() };
     await page.waitForTimeout(seconds * 1000);
     const end = { ...direct, at: performance.now() };
     const canvas = await page.evaluate(() => {
-      const c = document.querySelector('canvas#screen');
+      const c = document.querySelector('#screen');
       return { width: Number(c.dataset.mediaWidth), height: Number(c.dataset.mediaHeight) };
     });
     const elapsed = (end.at - start.at) / 1000;

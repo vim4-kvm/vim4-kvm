@@ -49,6 +49,9 @@ HDR 专用 SDR 快照通道单独缩减下游缓冲预算，保留原分辨率�
 [浏览器兼容性复核](../bringup/2026-10-26-hdr-browser-compatibility.md)确认 Chrome 156
 收到真实 Main10 并保留 PQ/BT.2020；Safari 27.0.1 当前 WebRTC 帧变为八位 BT.709。
 关闭全局转换不会自动把 H.264 切换为 H.265；码流、解码 HDR 与屏幕光度分别验收。
+[全应用 HDR 接入](../bringup/2026-10-26-all-kvm-hdr.md)将 NanoKVM、JetKVM 和 PiKVM
+接入公共 `vim4h265src`，跟随同一全局开关；WebRTC 明确协商 Main10，Direct 原生视频
+轨道保留 PQ，H.264/JPEG 继续 SDR。编码包新增 `vim4-hevc-hdr-api-1`，须先于应用部署。
 
 内核在 vdin0 用 HDR2 核把 HDR10/HLG 输入映射到 SDR，SDR 直通；曲线由 `vim4-hdr-curve`
 生成，参数在 `/etc/default/vim4-kvm-hdr`，管理器可实时调节。改 HDR 映射或曲线时读 [HDR 输入映射](../hdr.md)。

@@ -36,7 +36,7 @@ try {
     () =>
       document.querySelector("video")?.videoWidth > 0 ||
       document.querySelector("img[src*=\"/api/stream/mjpeg\"]")?.naturalWidth > 0 ||
-      document.querySelector("canvas#screen")?.width > 300,
+      Number(document.querySelector("#screen")?.dataset.mediaWidth) > 300,
     {},
     { timeout: 45000 },
   );
