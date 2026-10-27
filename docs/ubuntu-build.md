@@ -70,8 +70,8 @@ CI 发布前再次拒绝开发版本号、开发标记或脏源码；网页更�
 | 包 | 内容 |
 |---|---|
 | vim4-kvm-board | PD 工具、HDMI/gadget 脚本、udev 和 systemd 配置 |
-| vim4-vfmcap | vfmcapsrc / vim4vdin1src、原生 HDR 的私有标准 V4L2 插件；提供 vim4-vdin1-api-1 |
-| vim4-amlvenc | /usr/lib/vim4-kvm 下的编码插件及服务搜索路径 |
+| vim4-vfmcap | vfmcapsrc / vim4vdin1src、原生 HDR 的私有标准 V4L2 插件；提供 vim4-vdin1-api-1、vim4-hdr-scale-api-1 |
+| vim4-amlvenc | /usr/lib/vim4-kvm 下的编码插件及服务搜索路径；依赖 vim4-hdr-scale-api-1 |
 | vim4-nanokvm | /opt 应用与网页、/usr/libexec 特权工具、sudoers 与应用服务 |
 | vim4-jetkvm | JetKVM 应用、特权工具与服务 |
 | vim4-onekvm | One-KVM 应用（嵌入网页）、Ventoy 引导资源、虚拟介质助手与互斥服务 |

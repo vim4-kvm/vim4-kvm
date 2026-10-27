@@ -37,7 +37,8 @@ JetKVM 的“空闲时隐藏显示器”是用户主动选择的例外，默认�
 
 5.15 One-KVM 新增[远程 Main10 HDR 与扩展尺寸](../bringup/2026-10-26-remote-hdr-modes.md)：
 默认映射 SDR，可选择保留 PQ/BT.2020 十位；UU 的 HDR 请求临时覆盖、断开恢复默认。
-HDR降分辨率另见[UU GPU 缩放](../bringup/2026-10-27-uu-hdr-scale.md)，不能套用原尺寸性能。
+HDR降分辨率见[UU GPU 缩放](../bringup/2026-10-27-uu-hdr-scale.md)及
+[四应用公共路径](../bringup/2026-10-27-all-kvm-hdr-scale.md)，不能套用原尺寸性能。
 4K HDR 最初完整网页约34fps；后续[GPU/DMA 链路](../bringup/2026-10-26-hdr-gpu-pipeline.md)
 已实测真实 PQ Main10 网页约60fps。HLG、7.x Main10与本地新模式未验收。
 后续[像素复核](../bringup/2026-10-26-remote-hdr-pixels.md)修正 AMLY 解包花屏，
