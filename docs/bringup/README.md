@@ -7,6 +7,7 @@
 
 ## 2026-10-27
 
+- [信号变化自动恢复与切换停顿](2026-10-27-signal-recovery.md) — video application deployment board benchmark
 - [UU 原生 HDR 能力与非对齐行宽修复](2026-10-27-uu-hdr.md) — video uu application deployment board
 - [UU HDR 降分辨率的 GPU 缩放](2026-10-27-uu-hdr-scale.md) — video uu application deployment board benchmark
 - [四套 KVM 共用 HDR GPU 缩放](2026-10-27-all-kvm-hdr-scale.md) — video application deployment board benchmark
