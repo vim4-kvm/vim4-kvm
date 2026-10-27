@@ -72,3 +72,31 @@ uStreamer `d2867f1`，编码插件 `29eccd1`，管理器 `b9e703a`；主仓库�
 板上原文件与设置备份为 `/var/backups/vim4-all-hdr-20261026/`；未重启、未改内核或 EDID。
 结束时恢复 One-KVM H.264、关闭全局 HDR 转 SDR；NanoKVM/JetKVM 视频设置、
 PiKVM 原 H.264 偏好及全局曲线文件均与测试前备份逐字节一致。
+
+## 后续完整组件打包复验
+
+已用正式构建入口重建两套 Ubuntu ARM64 builder，固定快照、下载摘要和签名校验不变。
+修复旧镜像缺 SDK 时仍继续打包的问题：镜像记录 Dockerfile、下载锁及下载脚本摘要，
+输入变化后要求重建；APT 下载失败重试三次，索引不完整立即停止。
+PiKVM 完整组件模式的 CI 缓存也补全了私有 builder。
+
+首轮七包编译成功，但重建基础 builder 时 Docker 移除了旧镜像索引，无法启动验包。
+现按镜像摘要保留 `vim4-package-builder` 标签；实际替换可变标签后，精确 ARM64
+构建器仍能启动。修复后的七包已完整重跑，未改写失败批次来源，也未复用 Mac 编译产物。
+
+以下两个开发版分别完成 `package` 与新临时容器中的 `verify`，来源仓库均干净：
+
+| 组件集 | 版本 | 结果 |
+|---|---|---|
+| all：七个基础包 | `2.5.1+vim4.20261018.44.dev.9.gb9bf67c` | 构建、隔离验收通过 |
+| pikvm：PiKVM 与管理器两包 | `2.5.1+vim4.20261018.44.dev.8.g410f89e` | 构建、隔离验收通过 |
+
+验收包括校验和、ARM64 ELF、动态库、sudoers、服务互斥、首次/重复配置保留、
+损坏文件拒绝、真实 dpkg 锁竞争与升级、认证更新 API，以及 Janus WebSocket 插件会话。
+构建也运行 NanoKVM/JetKVM Go、HDR SPS 和公共源回归；One-KVM Rust 为 786 项通过、
+3 项忽略。主仓库本机 282 项测试完成，7 项跳过；独立克隆 CI 也已通过。
+
+产物位于 `build/packages/` 的上述两个版本目录；原始记录在
+`build/package-repair/package-all-final.log`、`verify-all-final.log`、
+`package-pikvm.log`、`verify-pikvm.log`。这是完整用户态组件打包验证，
+未制作或刷入新系统镜像，本轮也未变更板子运行文件。
