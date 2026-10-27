@@ -38,7 +38,7 @@ ENV PATH=/opt/rust/bin:/opt/go/bin:/opt/node/bin:/opt/pnpm/bin:$PATH GOTOOLCHAIN
 RUN ln -s /opt/pnpm/bin/pnpm.mjs /opt/node/bin/pnpm
 RUN apt-get update && apt-get install -y --no-install-recommends \
     gstreamer1.0-tools gstreamer1.0-plugins-base gstreamer1.0-plugins-good \
-    gstreamer1.0-plugins-bad \
+    gstreamer1.0-plugins-bad gstreamer1.0-libav ffmpeg \
  && dpkg-query -W > /opt/build-inputs/ubuntu-packages.txt \
  && rm -rf /var/lib/apt/lists/*
 WORKDIR /work

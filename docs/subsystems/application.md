@@ -60,6 +60,10 @@ One-KVM 的 UU 远程让网易UU远程官方客户端经云端控制被控机：
 原生 UU 的独立十位解码声明、HDR 开关和非对齐缩放停帧修复见
 [UU HDR 验证](../bringup/2026-10-27-uu-hdr.md)；MacBook持续显示与屏幕光度单独验收。
 
+One-KVM 的「第三方接入」提供共享编码 SRT 与 RTMP/RTMPS 输出，默认关闭。
+SRT 支持 H.264/H.265，RTMP 使用 H.264；可共享 HDMI 声音并转换为 AAC。
+独立队列、断线重连和接收方式见 One-KVM/VIM4.md 的「共享编码 SRT / RTMP 输出」。
+
 One-KVM 的外部 MCP（设置「扩展 → MCP」）让 Claude Code、Codex 等客户端经 `/api/mcp` 截图并操作键鼠，
 工具沿用 computer use 命名与截图像素坐标，手动键鼠随时接管并冷却 2 秒。鉴权、截图管线、输入法与自然滚动限制见
 One-KVM/VIM4.md 的 MCP 一节。被控机就是开发用 Mac mini 时，键鼠实测前须让用户停手并限定在测试窗口内。
