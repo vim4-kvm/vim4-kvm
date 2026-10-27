@@ -14,6 +14,9 @@ case "$(uname -r)" in
         export VIM4_VIDEO_BACKEND=vendor
         export GST_PLUGIN_PATH=/usr/lib/vim4-kvm/gstreamer-1.0
         export GST_REGISTRY="$state/gstreamer-vendor-registry.bin"
+        # GE2D and the vendor encoder import NV21 as one physical allocation.
+        # Prefer the private V4L2 plugin's single-plane export for every app.
+        export GST_V4L2_PREFER_CONTIGUOUS=1
         if [ -r /usr/lib/vim4-kvm/gpu/mali.json ]; then
             export VK_ICD_FILENAMES=/usr/lib/vim4-kvm/gpu/mali.json
         fi
