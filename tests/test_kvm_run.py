@@ -67,6 +67,7 @@ class KVMRunTests(unittest.TestCase):
                         if secondary:
                             self.assertIn('/vendor-gstreamer-1.0:', actual['GST_PLUGIN_PATH'])
 
+    @unittest.skipUnless((ROOT / 'NanoKVM').is_dir(), 'NanoKVM is not checked out')
     def test_nanokvm_scaling_preserves_the_native_display(self):
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)
