@@ -115,7 +115,9 @@ jobs:
         if: steps.builder-cache.outputs.cache-hit != 'true'
         run: |
           images=(vim4-kvm-builder:ubuntu24.04)
-          if [ "$COMPONENT" = pikvm-app ]; then images+=(vim4-pikvm-builder:ubuntu24.04); fi
+          if [ "$COMPONENT" = pikvm-app ] || [ "$COMPONENT" = pikvm ]; then
+            images+=(vim4-pikvm-builder:ubuntu24.04)
+          fi
           docker save "${images[@]}" | zstd -T2 -3 > "$RUNNER_TEMP/vim4-builder.tar.zst"
 
       - name: Save locked builder cache

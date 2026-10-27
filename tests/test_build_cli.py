@@ -3,15 +3,39 @@ import contextlib
 import importlib.util
 import io
 import json
+import os
 from pathlib import Path
 import shutil
 import subprocess
 import tempfile
+import textwrap
 import unittest
 from unittest.mock import patch
 
 
 class BuildCliTests(unittest.TestCase):
+    def test_image_and_standalone_pikvm_cache_both_builders(self):
+        root = Path(__file__).resolve().parents[1]
+        workflow = (root / '.github/workflows/release-component.yml').read_text()
+        step = workflow.split('name: Archive locked builder\n', 1)[1].split('\n      - name:', 1)[0]
+        script = textwrap.dedent(step.split('        run: |\n', 1)[1])
+        with tempfile.TemporaryDirectory() as directory:
+            work = Path(directory)
+            for tool, body in [('docker', 'printf "%s\\n" "$@" > "$VIM4_DOCKER_ARGS"'),
+                               ('zstd', 'cat')]:
+                binary = work / tool
+                binary.write_text('#!/bin/sh\n' + body + '\n')
+                binary.chmod(0o755)
+            for component in ('pikvm', 'pikvm-app', 'all'):
+                with self.subTest(component=component):
+                    env = dict(os.environ, PATH=str(work) + os.pathsep + os.environ['PATH'],
+                               RUNNER_TEMP=directory, COMPONENT=component,
+                               VIM4_DOCKER_ARGS=str(work / 'arguments'))
+                    subprocess.run(['bash', '-e', '-c', script], env=env, check=True)
+                    images = (work / 'arguments').read_text().splitlines()
+                    self.assertEqual(images, ['save', 'vim4-kvm-builder:ubuntu24.04'] +
+                                     (['vim4-pikvm-builder:ubuntu24.04'] if component.startswith('pikvm') else []))
+
     def test_package_consumers_require_an_explicit_version(self):
         root = Path(__file__).resolve().parents[1]
         for tool, action, flag in [('ubuntu-build', 'verify', '--version'),
