@@ -116,3 +116,5 @@ release构建和部署完成；二进制SHA256为
 网页显示「RTK UHD HDR」。没有重新应用EDID或重启HDMI；保存值哈希不变，
 HDMI服务PID1105、boot ID均保持原值。JetKVM的配置不同是独立状态，未替用户重写。
 记录`edid-catalog-current.log`、`edid-name-check.log`和`manager-edid-name-current.png`。
+管理器后续`7c225c0e`将RTK说明精简为能力摘要，从选择列表移除1080p60 SDR 8-bit，
+保留RTK UHD HDR、VIM4 4K60、VIM4 1080p60三项；仅更新清单，不重新加载EDID。
