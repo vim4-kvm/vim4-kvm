@@ -36,10 +36,14 @@ fi
 if has vim4-amlvenc; then
     dpkg-deb -f ./vim4-amlvenc_*.deb Provides | grep -qw vim4-wave5-api-1
     dpkg-deb -f ./vim4-amlvenc_*.deb Provides | grep -qw vim4-hevc-hdr-api-1
+    dpkg-deb -f ./vim4-amlvenc_*.deb Depends | grep -qw vim4-hdr-scale-api-1
     GST_PLUGIN_PATH=/tmp/package-check/root/usr/lib/vim4-kvm/gstreamer-1.0 \
         GST_REGISTRY=/tmp/package-check/encoder-registry.bin gst-inspect-1.0 vim4h265src >/dev/null
 fi
-if has vim4-vfmcap; then dpkg-deb -f ./vim4-vfmcap_*.deb Provides | grep -qw vim4-vdin1-api-1; fi
+if has vim4-vfmcap; then
+    dpkg-deb -f ./vim4-vfmcap_*.deb Provides | grep -qw vim4-vdin1-api-1
+    dpkg-deb -f ./vim4-vfmcap_*.deb Provides | grep -qw vim4-hdr-scale-api-1
+fi
 for app in vim4-nanokvm vim4-jetkvm vim4-onekvm vim4-manager; do
     if has "$app"; then dpkg-deb -f ./"${app}"_*.deb Depends | grep -qw vim4-media-api-1; fi
 done
@@ -69,6 +73,9 @@ if has vim4-vfmcap; then
     fi
     GST_PLUGIN_PATH="$capture_root/usr/lib/vim4-kvm/vendor-gstreamer-1.0:$capture_root/usr/lib/aarch64-linux-gnu/gstreamer-1.0" \
         GST_REGISTRY=/tmp/package-check/capture-registry.bin gst-inspect-1.0 vim4vdin1src >/dev/null
+    GST_PLUGIN_PATH="$capture_root/usr/lib/aarch64-linux-gnu/gstreamer-1.0" \
+        GST_REGISTRY=/tmp/package-check/capture-registry.bin gst-inspect-1.0 vfmcapsrc |
+        grep -q '^[[:space:]]*height[[:space:]]*:'
 fi
 python3 - /tmp/package-check/root <<'PY'
 import configparser

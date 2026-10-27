@@ -19,7 +19,10 @@ if has platform || has capture; then
     meson test -C gst-plugin-vfmcap/build --print-errorlogs
 fi
 if has platform || has encoder; then
-    python3 tools/workspace.py build encoder
+    # The source contract test parses the real HDR chain in NULL state. A
+    # platform build includes its companion capture plugin without devices.
+    GST_PLUGIN_PATH="$PWD/gst-plugin-vfmcap/build${GST_PLUGIN_PATH:+:$GST_PLUGIN_PATH}" \
+        python3 tools/workspace.py build encoder
 fi
 if has platform || has encoder || has onekvm || has capture; then
     gst_work=$(mktemp -d)
