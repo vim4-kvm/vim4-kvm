@@ -5,6 +5,10 @@
 
 新记录：新建 `bringup/YYYY-MM-DD-英文短名.md`，首行 `# YYYY-MM-DD：标题`，并在本页对应日期下追加一行。
 
+## 2026-10-28
+
+- [UDP 同帧批量发送候选与延迟对照](2026-10-28-udp-batch-latency.md) — video application board benchmark
+
 ## 2026-10-27
 
 - [当前 One-KVM 延迟与 SDR 缩放瓶颈](2026-10-27-current-video-latency.md) — video application board benchmark
