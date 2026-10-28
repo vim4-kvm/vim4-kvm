@@ -12,6 +12,7 @@ if (!Number.isFinite(statsInterval) || statsInterval < 0 || (statsInterval > 0 &
 }
 const verifyCoherence = process.argv.includes('--verify-coherence');
 const noPixels = process.argv.includes('--no-pixels');
+const rtpTimeline = process.argv.includes('--rtp-timeline');
 const expectedCodec = process.argv.find(arg => arg.startsWith('--expect-codec='))?.split('=')[1];
 if (expectedCodec && !['h264', 'h265'].includes(expectedCodec)) {
   throw new Error('Invalid --expect-codec (h264 or h265)');
@@ -96,7 +97,7 @@ try {
       }
     }
   });
-  await page.evaluate(({verifyCoherence, noPixels, cpuReadback}) => {
+  await page.evaluate(({verifyCoherence, noPixels, cpuReadback, rtpTimeline}) => {
     const video = document.querySelector('video');
     const canvas = document.createElement('canvas');
     canvas.width = 32; canvas.height = verifyCoherence ? 216 : 1;
@@ -111,25 +112,39 @@ try {
     window.measureLatency = true;
     const frame = (now, metadata) => {
       if (!window.measureLatency) return;
+      const samplePixels = !noPixels && ++callbacks % 6 === 0;
+      // timeOrigin is fixed at navigation, while the host wall clock may slew
+      // during a soak. Map each sample back to the source's current Date clock.
+      let clockOffsetMs, clockUncertaintyMs;
+      if (samplePixels || rtpTimeline) {
+        const clockBefore = performance.timeOrigin + performance.now();
+        const wallClock = Date.now();
+        const clockAfter = performance.timeOrigin + performance.now();
+        clockOffsetMs = wallClock - (clockBefore + clockAfter) / 2;
+        clockUncertaintyMs = 1 + (clockAfter - clockBefore) / 2;
+        if (window.keepLatency && previousClockOffset !== undefined &&
+            Math.abs(clockOffsetMs - previousClockOffset) > 2) window.clockDiscontinuities++;
+        previousClockOffset = clockOffsetMs;
+      }
       if (window.keepLatency) window.latencyTimeline.push({
+        // Keep cadence on the monotonic browser clock. The optional wall-clock
+        // fields allow every callback to join an independently decoded AU by
+        // RTP timestamp, without increasing intrusive pixel readback frequency.
         presentationMs: performance.timeOrigin + metadata.presentationTime,
-        callbackMs: performance.timeOrigin + now, presentedFrames: metadata.presentedFrames});
+        callbackMs: performance.timeOrigin + now, presentedFrames: metadata.presentedFrames,
+        ...(rtpTimeline ? {
+          rtpTimestamp: metadata.rtpTimestamp,
+          presentationWallMs: performance.timeOrigin + metadata.presentationTime + clockOffsetMs,
+          receiveWallMs: Number.isFinite(metadata.receiveTime)
+            ? performance.timeOrigin + metadata.receiveTime + clockOffsetMs : undefined,
+          decodeSeconds: metadata.processingDuration, clockOffsetMs, clockUncertaintyMs,
+        } : {})});
       // GPU-to-CPU readback is intrusive at 4K. Sample about 10 times/second,
       // and report its cost separately rather than calling it transport delay.
-      if (noPixels || ++callbacks % 6 !== 0) {
+      if (!samplePixels) {
         video.requestVideoFrameCallback(frame);
         return;
       }
-      // timeOrigin is fixed at navigation, while the host wall clock may slew
-      // during a soak. Map each sample back to the source's current Date clock.
-      const clockBefore = performance.timeOrigin + performance.now();
-      const wallClock = Date.now();
-      const clockAfter = performance.timeOrigin + performance.now();
-      const clockOffsetMs = wallClock - (clockBefore + clockAfter) / 2;
-      const clockUncertaintyMs = 1 + (clockAfter - clockBefore) / 2;
-      if (window.keepLatency && previousClockOffset !== undefined &&
-          Math.abs(clockOffsetMs - previousClockOffset) > 2) window.clockDiscontinuities++;
-      previousClockOffset = clockOffsetMs;
       const readStartMs = performance.timeOrigin + performance.now() + clockOffsetMs;
       // Coordinates are normalized to the source window's logical 1920x1080.
       ctx.drawImage(video, 20 / 1920 * video.videoWidth,
@@ -168,7 +183,7 @@ try {
       video.requestVideoFrameCallback(frame);
     };
     video.requestVideoFrameCallback(frame);
-  }, {verifyCoherence, noPixels, cpuReadback});
+  }, {verifyCoherence, noPixels, cpuReadback, rtpTimeline});
   // Warm up canvas allocation and GPU readback before measuring.
   await page.waitForTimeout(3000);
   const before = await stats();
@@ -222,7 +237,7 @@ try {
         ['codec', 'transport', 'candidate-pair', 'local-candidate', 'remote-candidate'].includes(s.type))})));
   });
   const streamerAfter = await streamerState();
-  console.log(JSON.stringify({ before, after, startedMs, noPixels, statsInterval, statsHistory,
+  console.log(JSON.stringify({ before, after, startedMs, noPixels, rtpTimeline, statsInterval, statsHistory,
     clockMapping: 'per-sample-wall-offset',
     readbackMode: cpuReadback ? 'cpu-preferred' : 'gpu-preferred', browserVersion: browser.version(),
     streamerBefore, streamerAfter, negotiation, verifyCoherence, ...result }, null, 2));

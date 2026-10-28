@@ -140,6 +140,18 @@ are browser hints, not a guarantee of canvas placement. Always report
 `readbackCostMs` and use a separate no-pixels run for cadence: a CPU canvas may
 read the full 4K video texture before cropping, perturbing decode and presentation.
 
+For a staged capture, add `--rtp-timeline` to retain each callback's RTP timestamp,
+receive/compositor wall times and clock uncertainty, without increasing pixel
+readback frequency. Cadence still uses monotonic browser timestamps. Independently
+decode the captured access units and associate each AU uniquely with its transmitted
+RTP frame; do not infer source identity from a nominal frame period. Supply that
+verified mapping to `tools/latency-rtp-summary.py SOURCE.jsonl RECEIVER.json MAP.json`.
+The map schema is `{"ssrc":123,"frames":[{"rtpTimestamp":9000,"id":42,"valid":true}]}`.
+The report keeps unmatched callbacks visible, rejects ambiguous mappings/clock
+faults, and reports canvas readbacks that advanced beyond the callback's frame.
+All-callback and sparse pixel-sample distributions are separate measurements;
+neither includes frames for which the browser did not deliver a callback.
+
 `VIM4_TEST_CHROME=/absolute/path/to/browser` selects a fixed browser executable
 for this receiver and `one-kvm-smoke.mjs`; otherwise both use the installed Chrome
 channel. Record the actual version in every run. Automatic updates between runs
