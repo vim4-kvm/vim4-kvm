@@ -152,6 +152,12 @@ faults, and reports canvas readbacks that advanced beyond the callback's frame.
 All-callback and sparse pixel-sample distributions are separate measurements;
 neither includes frames for which the browser did not deliver a callback.
 
+For a continuous soak, `latency-source.swift --motion --motion-cycle=480,900`
+scrolls the background for eight minutes of each fifteen-minute cycle. Frame IDs
+and optional audio/visual pulses continue during the stationary background.
+Source records include `moving`; verify that both comparison windows contain
+the same motion state. Use bounded summary windows when the 16-bit ID wraps.
+
 `VIM4_TEST_CHROME=/absolute/path/to/browser` selects a fixed browser executable
 for this receiver and `one-kvm-smoke.mjs`; otherwise both use the installed Chrome
 channel. Record the actual version in every run. Automatic updates between runs

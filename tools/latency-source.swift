@@ -15,6 +15,17 @@ let app = NSApplication.shared
 app.setActivationPolicy(.accessory)
 let duration = Double(CommandLine.arguments.dropFirst().first ?? "35") ?? 35
 let moving = CommandLine.arguments.contains("--motion")
+// Alternate scrolling and a stationary background during a continuous soak.
+// Markers continue advancing so the receiver can still verify fresh content.
+let motionCycle: (active: Double, period: Double)? = CommandLine.arguments
+    .first(where: { $0.hasPrefix("--motion-cycle=") }).map { argument in
+        let parts = argument.dropFirst("--motion-cycle=".count).split(separator: ",")
+        guard parts.count == 2, let active = Double(parts[0]), let period = Double(parts[1]),
+              active.isFinite, period.isFinite, active > 0, period > active, moving else {
+            fatalError("Use --motion --motion-cycle=ACTIVE_SECONDS,PERIOD_SECONDS with 0 < active < period")
+        }
+        return (active, period)
+    }
 let useDisplayLink = CommandLine.arguments.contains("--display-link")
 let verifyCoherence = CommandLine.arguments.contains("--verify-coherence")
 let hdrChart = CommandLine.arguments.contains("--hdr-chart")
@@ -77,6 +88,7 @@ func startSyncAudio(_ name: String) -> AVAudioEngine {
     return engine
 }
 let syncAudioEngine = syncAudioName.map(startSyncAudio)
+let motionEpoch = hostSeconds()
 
 class LatencyView: NSView {
     var sequence: UInt32 = 0
@@ -97,7 +109,10 @@ class LatencyView: NSView {
             .font: NSFont.monospacedSystemFont(ofSize: 22, weight: .regular),
             .foregroundColor: NSColor.white
         ] : nil
-        let offset = moving ? CGFloat(sequence * 5 % 48) : 0
+        let isMoving = motionCycle.map {
+            (hostSeconds() - motionEpoch).truncatingRemainder(dividingBy: $0.period) < $0.active
+        } ?? moving
+        let offset = isMoving ? CGFloat(sequence * 5 % 48) : 0
         for row in -1...Int(bounds.height / 48) + 1 {
             let y = CGFloat(row * 48) + offset
             for col in 0..<8 {
@@ -180,7 +195,7 @@ class LatencyView: NSView {
         }
         let displayClock = useDisplayLink
             ? ",\"displayTimestamp\":\(displayTimestamp),\"displayTargetTimestamp\":\(displayTargetTimestamp)" : ""
-        print("{\"id\":\(id),\"sourceMs\":\(sourceTime),\"drawEndMs\":\(Date().timeIntervalSince1970 * 1000)\(displayClock)}")
+        print("{\"id\":\(id),\"sourceMs\":\(sourceTime),\"drawEndMs\":\(Date().timeIntervalSince1970 * 1000),\"moving\":\(isMoving)\(displayClock)}")
     }
 }
 
