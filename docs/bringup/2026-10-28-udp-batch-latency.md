@@ -118,7 +118,7 @@ ssh vim4 sudo -n python3 /var/backups/vim4-onekvm-udp-batch-20261028.2IxaBM4U/ro
 ```
 
 回退恢复原二进制、移除本次开关并恢复备份时的流模式；保留当前用户设置。
-未推送或发布 release。12/60Mbps、HDR、7.3、其他浏览器和其他 KVM 的性能验收未做。
+未发布 release。12/60Mbps、HDR、7.3、其他浏览器和其他 KVM 的性能验收未做。
 
 ## 证据与复测
 
