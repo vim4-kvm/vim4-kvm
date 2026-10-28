@@ -137,6 +137,7 @@ PiKVM smoke 可用 `PIKVM_CDP` 接入专用测试 Chrome；结束时关闭测试
 | tools/video-timing-summary.py | Mac | 无 | 汇总 VIM4_VIDEO_TIMING 分段计时 | [延迟测量](latency.md) |
 | tools/input-target.swift | Mac | 覆盖显示器 | input-check 的临时接收窗口 | [输入验证](input-latency.md) |
 | tools/input-summary.py | Mac | 无 | 汇总 input-check 日志 | [输入验证](input-latency.md) |
+| tools/key-repeat.html | 被控电脑浏览器 | 只接收本页面手动输入，不注入键鼠 | Backspace 直连 / KVM 长按频率、首次重复等待、释放事件对照，导出 JSON | [输入验证](input-latency.md#手动对照-backspace-长按) |
 | tools/uu-scroll-probe.swift | Mac | 无 | 只测本窗口收到的滚轮事件，不注入输入 | [UU 滚轮](uu-scroll.md) |
 | tools/hdmi-audio-tone.c | Mac | 无 | 只向 HDMI 设备播放 440Hz | [功能状态](feature-status.md) |
 | tools/uac-record-level.swift | Mac | 无（需麦克风权限） | 录 UAC2 电平与主频 | [板级工具](board-tools.md) |
