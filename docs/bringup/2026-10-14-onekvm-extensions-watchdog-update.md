@@ -37,4 +37,4 @@ HDMI InvocationID 始终为 `5adb6d1c9b494584996befd0f64d2877`。
 普通 ARM 默认目标的额外编译检查被 Ubuntu FFmpeg 缺少 AV_HWDEVICE_TYPE_RKMPP
 阻塞；VIM4 feature 构建与测试通过，未将该通用目标检查报告为通过。
 日志位于 `logs/one-kvm/features-*.log`。其余未接硬件和未验收功能见
-[功能复核](../one-kvm-audit.md)。
+[功能复核](../archive/one-kvm-audit.md)。

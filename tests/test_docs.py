@@ -11,8 +11,9 @@ LINK = re.compile(r'\]\(([^)\s]+)\)')
 
 
 def tracked(pattern):
-    output = subprocess.run(['git', 'ls-files', pattern], cwd=ROOT, capture_output=True, text=True, check=True).stdout
-    return [ROOT / line for line in output.split()]
+    # Validate moves before staging too: include new files and omit removed paths.
+    output = subprocess.run(['git', 'ls-files', '--cached', '--others', '--exclude-standard', '--', pattern], cwd=ROOT, capture_output=True, text=True, check=True).stdout
+    return sorted({ROOT / line for line in output.splitlines() if (ROOT / line).is_file()})
 
 
 def anchor(heading):
@@ -58,6 +59,29 @@ class DocsTest(unittest.TestCase):
     def test_always_loaded_docs_stay_small(self):
         sizes = {name: len((ROOT / name).read_bytes()) for name in ('CLAUDE.md', 'AGENTS.md', 'LESSONS.md')}
         self.assertLessEqual(sum(sizes.values()), 6000, sizes)
+
+    def test_subsystem_entries_stay_small(self):
+        oversized = {p.name: p.stat().st_size for p in (ROOT / 'docs/subsystems').glob('*.md')
+                     if p.stat().st_size > 14000}
+        self.assertEqual(oversized, {})
+
+    def test_archive_snapshots_are_labelled_and_indexed(self):
+        archive = ROOT / 'docs/archive'
+        index = archive / 'README.md'
+        indexed = {(index.parent / target.split('#')[0]).resolve()
+                   for target in LINK.findall(index.read_text()) if not re.match(r'[a-z]+:', target)}
+        for doc in archive.rglob('*.md'):
+            if doc.name == 'README.md':
+                continue
+            with self.subTest(doc=doc.relative_to(ROOT)):
+                self.assertRegex(doc.read_text(), r'\A# [^\n]+\n\n> 归档快照（\d{4}-\d{2}-\d{2}）：[^\n]+')
+                self.assertIn(doc.resolve(), indexed)
+
+    def test_task_routes_do_not_link_directly_to_evidence(self):
+        for target in LINK.findall((ROOT / 'AGENTS.md').read_text()):
+            path = target.split('#')[0]
+            if path.startswith(('docs/archive/', 'docs/bringup/')):
+                self.assertEqual(path.rsplit('/', 1)[-1], 'README.md', target)
 
     def test_bringup_entries_are_indexed_and_bounded(self):
         index = (ROOT / 'docs/bringup/README.md').read_text()

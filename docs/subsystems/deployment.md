@@ -65,7 +65,7 @@ T7 的 Meson GXBB Watchdog 已在正式 7.3 基线上以停止喂狗验证：15 
 系统挂起另有限制：`meson_gxbb_wdt` 的 suspend 回调会停止活动计数器，resume
 才重启；上面的运行时复位验证不能保证睡眠阶段硬锁自动恢复。真正 s2idle/deep
 试验须先具备独立复位或经验证的睡眠期 watchdog 契约，见
-[PM 离线审查](../parity/platform-pm-offline.md#系统挂起与唤醒缺口)。
+[PM 离线审查](../archive/platform-pm-offline.md#系统挂起与唤醒缺口)。
 
 `board/60-vim4-watchdog.conf` 由 board/install.sh 和 Ubuntu board 组件包安装到
 `/usr/lib/systemd/system.conf.d/60-vim4-watchdog.conf`，两种内核共用：

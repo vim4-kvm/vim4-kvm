@@ -1,11 +1,13 @@
 # T7 GPU 电压、CPU DVFS 与系统 PM 离线候选
 
+> 归档快照（2026-10-24）：固定版本的T7 GPU 电压、CPU DVFS 与系统 PM 离线候选，不代表当前状态，现行入口见 [平台能力](../parity/platform.md)。
+
 结论：未取得可信的 GPU 逐频电压表，保留启动 PWM 电压，不添加
 `opp-microvolt`。CPU 两簇四档 bin 与厂商表一致；补 GPU 被动降频绑定、
 CPU PSCI idle 描述、风扇 PM 回滚及 Panfrost 恢复错误处理。RX/VDIN/Wave5
 仍缺系统上下文恢复，本候选显式拒绝 sleep，不把保护记作恢复能力。
 **全程仅开发机与 OrbStack VM，未连接板子、部署、写电压或请求挂起。**
-批量窗口和逐项时长见 [上板清单](platform-pm-board-checklist.md)。
+批量窗口和逐项时长见 [上板清单](../parity/platform-pm-board-checklist.md)。
 
 2026-10-23 [统一合入](../bringup/2026-10-23-mainline-integration.md)已纳入源码：
 CPU power-down idle 在公共 DT 中为 disabled，GPU passive cooling map 仅在显式
@@ -37,7 +39,7 @@ CPU power-down idle 在公共 DT 中为 disabled，GPU passive cooling map 仅�
 
 ## GPU 电压结论
 
-来源相对路径沿用 [固定证据索引](sources.md)。本轮在固定 V/C/B 下核对：
+来源相对路径沿用 [固定证据索引](../parity/sources.md)。本轮在固定 V/C/B 下核对：
 
 | 追查路径 | 结果 |
 |---|---|

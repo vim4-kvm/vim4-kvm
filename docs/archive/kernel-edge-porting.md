@@ -1,11 +1,13 @@
 # 7.3 USB 与音视频适配拆解
 
+> 归档快照（2026-10-20）：固定版本的7.3 USB 与音视频适配拆解，不代表当前状态，现行入口见 [新内核基线](../kernel-edge.md)。
+
 2026-10-19 对固定 7.3 源码和 common_drivers `563cff9dab2c8cd44590bf57c8ffaa7e2dae35e1`
 做静态核对，并对照首次启动日志。结论：USB 缺少 CRG UDC 实现与设备树接入，
 也缺 configfs 功能配置；后续已加入实验 CRG 驱动，见下方实现记录。
 HDMI 输入和编码需要独立适配，不能靠启用同名驱动解决。
-首次基础启动见 [首次启动](bringup/2026-10-19-edge-firstboot.md)，后续 USB 结果见
-[CRG 实测](bringup/2026-10-19-crg-udc.md)。下文保留各阶段验证边界。
+首次基础启动见 [首次启动](../bringup/2026-10-19-edge-firstboot.md)，后续 USB 结果见
+[CRG 实测](../bringup/2026-10-19-crg-udc.md)。下文保留各阶段验证边界。
 
 ## USB：已定位的缺口
 
@@ -90,8 +92,8 @@ olddefconfig 的结果完全一致。主仓库 83 项离线测试通过、4 项�
 断开/复位路径。当前编译结果不能证明 USB 已能使用，也不能作为完整 KVM 内核部署。
 
 后续已完成上述首次上板，发现并修复解绑后状态残留（`9610500b6fee`）；
-测试版本、日志和验收范围见 [CRG 实测](bringup/2026-10-19-crg-udc.md)。
-后续三轮真实键鼠＋只读存储组合也通过，见 [组合实测](bringup/2026-10-19-crg-composite.md)；
+测试版本、日志和验收范围见 [CRG 实测](../bringup/2026-10-19-crg-udc.md)。
+后续三轮真实键鼠＋只读存储组合也通过，见 [组合实测](../bringup/2026-10-19-crg-composite.md)；
 主机主动 reset、休眠、可写介质和 UAC2 等仍需验证。
 
 ## HDMI 输入、编码与音频依赖
@@ -101,11 +103,11 @@ olddefconfig 的结果完全一致。主仓库 83 项离线测试通过、4 项�
 Mac 发送端已精确读回两份不同的 128 字节 EDID 及一份 256 字节 EDID。
 后续固定 148.5 MHz PHY 实验路径已扩展至 COR 对齐、1080p60 时序检测及 VDIN
 RGB24 完整快照，三处帧号一致且重复采集推进。当前版本与测试边界见
-[HDMI 取帧实测](bringup/2026-10-19-hdmirx-frames.md)。随后通过私有 cached DMA 环实现
+[HDMI 取帧实测](../bringup/2026-10-19-hdmirx-frames.md)。随后通过私有 cached DMA 环实现
 V4L2 MMAP 稳定段约 60fps，5400 帧运动校验通过，见
-[1080p60 实测](bringup/2026-10-19-hdmirx-dma-ring.md)。
+[1080p60 实测](../bringup/2026-10-19-hdmirx-dma-ring.md)。
 后续通过连续 DMA-buf 导出、跨驱动重载的缓冲持有和 180 帧软件 H.264 编解码，
-见 [DMA-buf 实测](bringup/2026-10-19-hdmirx-dmabuf.md)；尚未验证硬件编码 DMA 导入。
+见 [DMA-buf 实测](../bringup/2026-10-19-hdmirx-dmabuf.md)；尚未验证硬件编码 DMA 导入。
 
 | 功能 | 当前厂商实现入口 | 主要依赖 / 新内核缺口 |
 |---|---|---|

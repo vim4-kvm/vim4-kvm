@@ -1,6 +1,6 @@
 # VIM4 厂商 5.15 → 7.3 能力对照与总体路线图
 
-2026-10-28 对当前产品功能的[差距复核](bringup/2026-10-28-kernel73-parity-audit.md)
+2026-10-28 对当前产品功能的[差距复核](../bringup/2026-10-28-kernel73-parity-audit.md)
 固定比较正式7.3源码、保留运行时和当前5.15，补齐近期HDR/高刷/画质/NPU等差距。
 下方97项及子表是历史BSP全能力审计，不代表当前产品完成率；已合入、已启用、已部署分别核对。
 
@@ -10,15 +10,15 @@ DMA/电源生命周期进入 DRM/KMS、V4L2、ASoC、genpd 等主线框架，持
 “主线框架”不等于“补丁已被上游接收”。旧私有 ABI 的功能应有标准接口替代，
 无需复制其接口；确实只有闭源用户态可消费的功能，另列授权/兼容约束。
 
-2026-10-23 上板证据重计，10-24 完成整合收尾；[统一合入记录](bringup/2026-10-23-mainline-integration.md)
+2026-10-23 上板证据重计，10-24 完成整合收尾；[统一合入记录](../bringup/2026-10-23-mainline-integration.md)
 区分源码合入、一次性启动验证与正式部署。正式部署仍为 `b1300eb808f43`，build ID
 `eeddb005df059a850853876d52ef603aa1af192b`，本轮不安装新内核或更新部署锁。
 厂商固定来源仍为 Linux `80a07ad5406d` / common_drivers `4cfb128d36f8`；
-[证据索引](parity/sources.md)中的 E0–E8 保留原审计快照，不将旧行号套在新 HEAD。
-增量取自 [Wave5 尺寸窗口](bringup/2026-10-23-wave5-parity-window.md)、
-[E01 控件窗口](bringup/2026-10-23-wave5-e01-window.md)、
-[M2 物理窗口](bringup/2026-10-23-display-m2-window3.md)与
-[M3 4K 窗口](bringup/2026-10-23-display-m3-window4.md)。
+[证据索引](sources.md)中的 E0–E8 保留原审计快照，不将旧行号套在新 HEAD。
+增量取自 [Wave5 尺寸窗口](../bringup/2026-10-23-wave5-parity-window.md)、
+[E01 控件窗口](../bringup/2026-10-23-wave5-e01-window.md)、
+[M2 物理窗口](../bringup/2026-10-23-display-m2-window3.md)与
+[M3 4K 窗口](../bringup/2026-10-23-display-m3-window4.md)。
 
 ## 总表与计数
 
@@ -32,13 +32,13 @@ DMA/电源生命周期进入 DRM/KMS、V4L2、ASoC、genpd 等主线框架，持
 
 | 子表 | 追平项 | 完全对齐 | 已上板验证待部署 | 部分对齐 | 缺失 | 无法做到 |
 |---|---:|---:|---:|---:|---:|---:|
-| [显示/VPU/HDMI-TX/图像处理](parity/display.md) | 13 | 0 | 0 | 6 | 5 | 2 |
-| [HDMI-RX/VDIN、编码、解码](parity/media.md) | 16 | 0 | 1 | 8 | 6 | 1 |
-| [音频全部路由/ASRC/VAD/DSP](parity/audio.md) | 16 | 0 | 0 | 5 | 11 | 0 |
-| [GPU/NPU/USB/网络/存储/电源](parity/platform.md) | 23 | 3 | 0 | 17 | 3 | 0 |
-| [安全/固件/调试](parity/security-debug.md) | 11 | 1 | 0 | 5 | 2 | 3 |
-| [IR/按键/LED/MCU/RTC/ADC等外设](parity/peripherals.md) | 15 | 0 | 0 | 12 | 3 | 0 |
-| [MIPI DSI/CSI/ISP/相机](parity/imaging.md) | 3 | 0 | 0 | 0 | 3 | 0 |
+| [显示/VPU/HDMI-TX/图像处理](display.md) | 13 | 0 | 0 | 6 | 5 | 2 |
+| [HDMI-RX/VDIN、编码、解码](media.md) | 16 | 0 | 1 | 8 | 6 | 1 |
+| [音频全部路由/ASRC/VAD/DSP](audio.md) | 16 | 0 | 0 | 5 | 11 | 0 |
+| [GPU/NPU/USB/网络/存储/电源](platform.md) | 23 | 3 | 0 | 17 | 3 | 0 |
+| [安全/固件/调试](security-debug.md) | 11 | 1 | 0 | 5 | 2 | 3 |
+| [IR/按键/LED/MCU/RTC/ADC等外设](peripherals.md) | 15 | 0 | 0 | 12 | 3 | 0 |
+| [MIPI DSI/CSI/ISP/相机](imaging.md) | 3 | 0 | 0 | 0 | 3 | 0 |
 | **必须追平的合计** | **97** | **4** | **1** | **53** | **33** | **6** |
 
 相对原表：E02 从部分转为待部署，限定偶数 4:2:0 可见矩形的 padding/conformance
@@ -54,17 +54,17 @@ eDP/LVDS/VbyOne/CVBS等选装输出（后四类厂商默认禁用或当前布线
 已上板验证待部署1、部分54、缺失38、无法做到6。
 w1、DVB/CI/smartcard等无当前板消费者者仅列范围说明，不另计。
 
-[原始节点清单](parity/vendor-nodes.tsv)包含两板型所有compatible节点及最终父子status：
+[原始节点清单](vendor-nodes.tsv)包含两板型所有compatible节点及最终父子status：
 kvim4 274项/242启用，kvim4n 261项/227启用。启用LCD/触摸/传感器候选不代表已插扩展件；
 模块加载不代表codec适用于T7。新板ADLA与旧板四NNA wrapper分别保留，不能套用另一套NPU SDK。
 
 ## 性能维度（独立门禁）
 
-能力通过不代表性能通过。两内核同板同用户空间，按 [性能基线协议](performance-baseline.md)
+能力通过不代表性能通过。两内核同板同用户空间，按 [性能基线协议](../performance-baseline.md)
 的三组A/B/A、命令、固定容差与互斥规则执行；全部保留原始证据。
 目前仅有下列GPU短测/栈识别，其余性能对照待测；旧单轮FPS不充当配对验收。
-5.15临时启动见 [一次性对照方案](vendor-boot-baseline.md)，整夜任务见
-[待确认执行计划](overnight-performance-plan.md)。
+5.15临时启动见 [一次性对照方案](../vendor-boot-baseline.md)，整夜任务见
+[待确认执行计划](../overnight-performance-plan.md)。
 
 | 性能范围 | 5.15 | 7.3 | 对齐结论 |
 |---|---|---|---|
@@ -73,7 +73,7 @@ kvim4 274项/242启用，kvim4n 261项/227启用。启用LCD/触摸/传感器候
 | 软件/光学端到端视频延迟、呈现尾部与30分钟增长 | 待测 | 待测 | 待测 |
 | 音频绝对延迟、AV偏移/连续性 | 待测 | 待测 | 待测 |
 | Wave5/vdec逐codec解码吞吐 | 待测 | 待测；当前C01–C04能力缺失 | 待测；缺失不记0fps |
-| GPU离屏/DRM场景、kmscube帧节奏 | 已识别Mesa/llvmpipe：glmark2短测19分，4096×2160；缺专有libMali | M1候选Panfrost短测925分，1920×1080；正式基线待测 | [本次证据](bringup/2026-10-23-vendor-boot-gpu.md)；后端/尺寸不同不可比，硬件对照与DRM/kmscube待测 |
+| GPU离屏/DRM场景、kmscube帧节奏 | 已识别Mesa/llvmpipe：glmark2短测19分，4096×2160；缺专有libMali | M1候选Panfrost短测925分，1920×1080；正式基线待测 | [本次证据](../bringup/2026-10-23-vendor-boot-gpu.md)；后端/尺寸不同不可比，硬件对照与DRM/kmscube待测 |
 | CPU各簇单核/全核、内存读写带宽 | 待测 | 待测 | 待测 |
 | eMMC/SD/USB存储吞吐与IO尾延迟 | 待测 | 待测 | 待测 |
 | 有线/Wi-Fi网络吞吐、丢包/jitter | 待测 | 待测 | 待测 |
@@ -104,7 +104,7 @@ kvim4 274项/242启用，kvim4n 261项/227启用。启用LCD/触摸/传感器候
 
 | 阶段 | 里程碑与门禁 | 承接已有任务 / 工作量量级 |
 |---|---|---|
-| F0 KVM稳定性收口 | 按内核开发门禁做一次性针对性测试和约5分钟冒烟；多子系统正式部署跑一次九类；真实失锁自动恢复单独计数 | [PCM/SARADC正式发布](bringup/2026-10-23-kvm-audio-capture-stability-deploy.md)九类通过；[RX正式修复](bringup/2026-10-23-hdmirx-vendor-comparison.md)已保留b1300eb8／eeddb005，候选十分钟零冻结、四次HPD恢复，正式五分钟及音频/HID/管理面通过，无ASoC错误；长期及多源待覆盖 |
+| F0 KVM稳定性收口 | 按内核开发门禁做一次性针对性测试和约5分钟冒烟；多子系统正式部署跑一次九类；真实失锁自动恢复单独计数 | [PCM/SARADC正式发布](../bringup/2026-10-23-kvm-audio-capture-stability-deploy.md)九类通过；[RX正式修复](../bringup/2026-10-23-hdmirx-vendor-comparison.md)已保留b1300eb8／eeddb005，候选十分钟零冻结、四次HPD恢复，正式五分钟及音频/HID/管理面通过，无ASoC错误；长期及多源待覆盖 |
 | F1 核心绕过替换 | E03先证明DMA停止/取消与恢复，再E02正式HEVC尺寸；R02与D01共享VCBUS/MMIO/时钟最低需求一次归一；M1固定scanout与KVM共存只是本阶段子里程碑 | Wave5恢复任务＋显示M1；10–20日恢复起、M1/共享资源剩余5–12日，不能用“隔离通过”提前退出 |
 | F2 标准通用显示/媒体 | D02/M2原生EDID/HPD/modeset→A03/M3声音→D03/M4多平面/桌面；C01先安全上电/退出与1080p H.264正确帧，再C02/C03逐codec；R03/R04/R05补HLG/隔行/真实深色 | 既有M1后续和vdec任务；显示/输出音频约15–30日，vdec平台/首codec15–30日，其他codec分别估；风险上板须有人可RESET |
 | F3 电源与启动正式化 | P06/P08所有DMA/PCM/DRM上下文恢复→P09明确RTC/AO唤醒源→整机PM；P04有可信电压表后补调压；Q05先SD启动验证 | 挂起离线审查、GPU电压审查、KASLR/PD SD恢复方案；PM20–40日，GPU3–7日＋资料，种子3–6日；本轮禁止挂起、引导区写入 |
@@ -120,16 +120,16 @@ kvim4 274项/242启用，kvim4n 261项/227启用。启用LCD/触摸/传感器候
 
 | 现有任务 | 本表只跟踪的增量 | 不重复的边界 |
 |---|---|---|
-| 显示M1，`vim4-display-m1` | D01/R02共享资源和固定模式共存；后接M2/M3/M4 | 当前本地记录 `docs/bringup/2026-10-23-display-m1*.md` 仍由该任务维护；正式起点/目标见[显示调查](bringup/2026-10-23-display-feasibility.md)，固定handoff不算原生全栈完成 |
-| Wave5恢复，`vim4-wave5-recovery` | E03取消/隔离已正式部署，运行时硬件复位/重载仍缺，再解E02 | 复用[最新隔离正式窗口](bringup/2026-10-23-wave5-isolation-final.md)和[复位证据](bringup/2026-10-23-wave5-recovery.md)，不重做watchdog/job_abort，也不另造不明复位掩码 |
-| KVM音频/采集稳定性，`fix/hdmi-capture-stability` | R01测量分类、A01重开资格及有界计数 | [稳定性记录](bringup/2026-10-23-kvm-audio-capture-stability.md)保留旧严格门禁结果与用户更改后的自动恢复验收；保留失锁拒绝与非零声音验证，不能宣称物理链路已修复 |
-| 音频全路由，`vim4-audio-routes` | [离线基础](parity/audio-routes-offline.md)＋[处理续篇](parity/audio-processing-offline.md)：38提交覆盖TDMOUT/TDMD、loopback、ASRC、AED及VAD检测，完整Image/DTB/modules构建 | RX DT合同保留，VIM4HDMITX归显示任务；A07/A11/A12/A13四类新增候选、A14检测候选。低功耗VAD及DSP仍有明确缺口；[上板与外设](parity/audio-board-checklist.md)未执行，16项仍0完全/5部分/11缺失 |
-| vdec，`vim4-vdec`及其候选分支 | C01先解决MDEC/DBUS/安全退出，首个正确帧之后再扩codec | 复用[最新MDEC门禁](bringup/2026-10-22-vdec-mdec-offline.md)，不从staging旧ESPARSER或Wave产品名另起未经证明的捷径 |
+| 显示M1，`vim4-display-m1` | D01/R02共享资源和固定模式共存；后接M2/M3/M4 | 当前本地记录 `docs/bringup/2026-10-23-display-m1*.md` 仍由该任务维护；正式起点/目标见[显示调查](../bringup/2026-10-23-display-feasibility.md)，固定handoff不算原生全栈完成 |
+| Wave5恢复，`vim4-wave5-recovery` | E03取消/隔离已正式部署，运行时硬件复位/重载仍缺，再解E02 | 复用[最新隔离正式窗口](../bringup/2026-10-23-wave5-isolation-final.md)和[复位证据](../bringup/2026-10-23-wave5-recovery.md)，不重做watchdog/job_abort，也不另造不明复位掩码 |
+| KVM音频/采集稳定性，`fix/hdmi-capture-stability` | R01测量分类、A01重开资格及有界计数 | [稳定性记录](../bringup/2026-10-23-kvm-audio-capture-stability.md)保留旧严格门禁结果与用户更改后的自动恢复验收；保留失锁拒绝与非零声音验证，不能宣称物理链路已修复 |
+| 音频全路由，`vim4-audio-routes` | [离线基础](../archive/audio-routes-offline.md)＋[处理续篇](../archive/audio-processing-offline.md)：38提交覆盖TDMOUT/TDMD、loopback、ASRC、AED及VAD检测，完整Image/DTB/modules构建 | RX DT合同保留，VIM4HDMITX归显示任务；A07/A11/A12/A13四类新增候选、A14检测候选。低功耗VAD及DSP仍有明确缺口；[上板与外设](audio-board-checklist.md)未执行，16项仍0完全/5部分/11缺失 |
+| vdec，`vim4-vdec`及其候选分支 | C01先解决MDEC/DBUS/安全退出，首个正确帧之后再扩codec | 复用[最新MDEC门禁](../bringup/2026-10-22-vdec-mdec-offline.md)，不从staging旧ESPARSER或Wave产品名另起未经证明的捷径 |
 
 ## 最重要的十项缺口与建议顺序
 
 RX稳定性待办：旧27轮中3次自动恢复，恢复期间有SQO/PLL/alignment丢失和线缆时钟归零，
-不能据恢复后的快照确定起因。[同链路十分钟对照](bringup/2026-10-23-hdmirx-vendor-comparison.md)
+不能据恢复后的快照确定起因。[同链路十分钟对照](../bringup/2026-10-23-hdmirx-vendor-comparison.md)
 在同源同线4K60运动场景中，7.3出现12次冻结/TMDS拒绝，厂商5.15零冻结/零RX失锁。
 拒绝瞬间诊断确认TOP TMDS计数仍匹配594MHz，但VALID位暂不可用，被7.3误判为ENOLINK；
 `b1300eb808f43`将测量空窗归为有界EAGAIN，候选十分钟零冻结/停流，四次HPD自动恢复；

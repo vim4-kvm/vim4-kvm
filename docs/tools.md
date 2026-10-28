@@ -26,7 +26,7 @@ PiKVM smoke 可用 `PIKVM_CDP` 接入专用测试 Chrome；结束时关闭测试
 | 入口 | 运行位置 | 影响 | 用途 | 文档 |
 |---|---|---|---|---|
 | packaging/kernel-edge/build-gstreamer.py | 容器/VM | 无 | 校验固定源码、应用 V4L2 生命周期补丁并构建私有插件，不改系统库 | [音视频](subsystems/video.md) |
-| packaging/kernel-edge/maintain.py | Linux ARM64 VM | 无 | inventory 导出按主题存放的保序补丁并证明 tree 一致；forward 在新分支 rebase；verify 汇总 host C/KUnit 入口、strict checkpatch、schema/DTB 与可选完整构建，不自动 fetch、部署 | [补丁清单](kernel-patch-inventory.md) |
+| packaging/kernel-edge/maintain.py | Linux ARM64 VM | 无 | inventory 导出按主题存放的保序补丁并证明 tree 一致；forward 在新分支 rebase；verify 汇总 host C/KUnit 入口、strict checkpatch、schema/DTB 与可选完整构建，不自动 fetch、部署 | [补丁清单](archive/kernel-patch-inventory.md) |
 | packaging/kernel-edge/register-runtime.py | VM / 板 | inventory 无；register 改启动配置 | 核对完整 Image/模块清单后登记双内核，保留当前默认项；不安装、不重启 | [双内核集成](bringup/2026-10-21-dual-kernel-integration.md) |
 | packaging/kernel-edge/package-final.py | VM | 无 | 打包 UHD 完整构建，生成哈希/build ID 清单；--dtb 显式选择 audio-test/display-m0/display-m1；M1 检查驱动与 DT 互斥；不编译 Image、不上板 | [M1 合入](bringup/2026-10-23-display-m2.md) |
 | packaging/kernel-edge/display-once.py、display-once-init.c | VM / 板 | prepare 无；stage 独占；串口选择后重启 | 私有归档与静态 PID 1 模块 bind；保留默认启动项；一次性启动、预检失败回退及重启回默认已实测，物理 RESET 未测 | [M1 安全网](bringup/2026-10-23-display-m1-safety.md) |
@@ -84,7 +84,7 @@ PiKVM smoke 可用 `PIKVM_CDP` 接入专用测试 Chrome；结束时关闭测试
 | 入口 | 应用 | 影响 | 覆盖 | 文档 |
 |---|---|---|---|---|
 | tools/video-smoke.mjs | NanoKVM | 独占 | WebRTC 实际编码、解码帧数/丢帧/丢包；Direct 首帧尺寸与持续收包（不等于持续呈现） | [板级工具](board-tools.md) |
-| tools/audio-smoke.mjs | NanoKVM | 独占 | 音量控件与解码音频；配 hdmi-audio-tone | [功能状态](feature-status.md) |
+| tools/audio-smoke.mjs | NanoKVM | 独占 | 音量控件与解码音频；配 hdmi-audio-tone | [功能状态](archive/feature-status.md) |
 | tools/mic-smoke.mjs | NanoKVM | 独占，重新枚举 USB | Chrome 合成麦克风到 UAC2 播放 | 脚本头注释 |
 | tools/usb-switch-check.mjs | NanoKVM | 独占，断开 USB | 麦克风/镜像组合切换与恢复 | [板级工具](board-tools.md#usb-切换回归) |
 | tools/media-upload-check.mjs | NanoKVM | 独占，留下上传文件 | 镜像上传与网页终端 | [板级工具](board-tools.md#工具验证边界) |
@@ -139,10 +139,10 @@ PiKVM smoke 可用 `PIKVM_CDP` 接入专用测试 Chrome；结束时关闭测试
 | tools/input-summary.py | Mac | 无 | 汇总 input-check 日志 | [输入验证](input-latency.md) |
 | tools/key-repeat.html | 被控电脑浏览器 | 只接收本页面手动输入，不注入键鼠 | Backspace 直连 / KVM 长按频率、首次重复等待、释放事件对照，导出 JSON | [输入验证](input-latency.md#手动对照-backspace-长按) |
 | tools/uu-scroll-probe.swift | Mac | 无 | 只测本窗口收到的滚轮事件，不注入输入 | [UU 滚轮](uu-scroll.md) |
-| tools/hdmi-audio-tone.c | Mac | 无 | 只向 HDMI 设备播放 440Hz | [功能状态](feature-status.md) |
+| tools/hdmi-audio-tone.c | Mac | 无 | 只向 HDMI 设备播放 440Hz | [功能状态](archive/feature-status.md) |
 | tools/uac-record-level.swift | Mac | 无（需麦克风权限） | 录 UAC2 电平与主频 | [板级工具](board-tools.md) |
 | tools/hdmi-capture.sh | 板（root） | 独占采集 | 经 vfm_cap 抓一帧 PNG | [内核](kernel.md) |
-| tools/hdmi-control-watch.py | 板（root） | 读 | 采样 RX port 1 控制状态 | [HDMI 恢复审查](hdmi-recovery-review.md#控制状态采样工具) |
+| tools/hdmi-control-watch.py | 板（root） | 读 | 采样 RX port 1 控制状态 | [HDMI 恢复审查](archive/hdmi-recovery-review.md#控制状态采样工具) |
 | tools/hid-rebind-check.py | 板（root） | 独占，应用停止；旧内核会 panic | HID epoll 跨 UDC 重新绑定 | [内核](kernel.md) |
 | tools/crg-udc-check.py | 板（root） | 独占，仅 7.3 CRG 测试内核 | 最小 HID 重绑定；`--storage-image` 增加三种 HID＋只读盘，等待主机弹出确认；可保留旧 fd/epoll | [CRG 实测](bringup/2026-10-19-crg-udc.md) |
 | tools/crg-composite-host-check.py | Mac → 板 | 独占，移动光标、临时窗口接收按键、枚举测试盘 | 配合 CRG 板端工具，核对键鼠、只读盘文件哈希、安全弹出与重绑定 | [CRG 组合实测](bringup/2026-10-19-crg-composite.md) |

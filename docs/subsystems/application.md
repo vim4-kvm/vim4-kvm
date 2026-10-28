@@ -4,14 +4,15 @@
 NanoKVM 默认 12000 kbps、JetKVM 原质量档 12/6/1.2 Mbps、One-KVM 快捷档
 1/4/8/12 Mbps 保留。JetKVM 通过 custom_bitrate 能力显示自定义输入。
 部署这些版本时须同时升级 vim4-amlvenc（旧插件上限 12000 kbps），不能只更新网页。
-高码率测试依据和局限见 [高码率实验](../encoder-high-bitrate.md)。
+高码率测试依据和局限见 [高码率实验](../bringup/2026-10-14-4k60-high-bitrate-experiment.md)。
 
 改 NanoKVM 读 [NanoKVM VIM4 集成](../../NanoKVM/VIM4.md)（功能覆盖、构建、安装和限制）；
 其他应用读下方对应的 VIM4.md，只读与任务相关的一份。
 
-当前可用功能、缺项与实测边界见 [功能状态](../feature-status.md)。
-当前基线的迁移范围与软件验证见 [NanoKVM 基线切换](../nanokvm-migration.md)；
-切换前的功能差异评估见 [NanoKVM 功能差异](../nanokvm-feature-review.md)，One-KVM 复核见 [One-KVM 审查](../one-kvm-audit.md)。
+当前功能、缺项与验证边界以 [NanoKVM](../../NanoKVM/VIM4.md)、[JetKVM](../../kvm/VIM4.md)、[One-KVM](../../One-KVM/VIM4.md) 和 [PiKVM](../../kvmd/VIM4.md) 的现行说明为准。
+旧 [NanoKVM-Pro 功能表](../archive/feature-status.md) 仅作历史证据。
+当前基线的迁移范围与软件验证见 [NanoKVM 基线切换](../archive/nanokvm-migration.md)；
+切换前的功能差异评估见 [NanoKVM 功能差异](../archive/nanokvm-feature-review.md)，One-KVM 复核见 [One-KVM 审查](../archive/one-kvm-audit.md)。
 
 JetKVM 的功能映射、特权助手和验证见 [JetKVM VIM4 集成](../../kvm/VIM4.md)。
 

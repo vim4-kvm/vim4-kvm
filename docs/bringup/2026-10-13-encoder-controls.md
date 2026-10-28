@@ -1,4 +1,4 @@
-# 编码可靠性与关键帧实验（2026-10-13）
+# 2026-10-13：编码可靠性与关键帧实验
 
 源码：NanoKVM-Pro `970f4f9`、gst-plugin-venc `2212f99`。
 开发包 `1.0.3+vim4.20261013.3` 已部署，内核为 `5.15.137-vim4kvm`。
@@ -36,8 +36,8 @@
 `amvenc.h` 定义 qp_mode=1 使用自定义 QP 范围；插件新增 `i-qp-min`，
 默认 -1 保留厂商行为。`intra-refresh-rows` 默认 0，正值映射行刷新模式及行数。
 两个属性只在启动前设置。应用可通过临时 service 环境变量测试；操作见
-[VIDEO.md](../NanoKVM/deploy/vim4/VIDEO.md) 和
-[插件说明](../gst-plugin-venc/VIM4.md)。
+[VIDEO.md](../../NanoKVM/deploy/vim4/VIDEO.md) 和
+[插件说明](../../gst-plugin-venc/VIM4.md)。
 
 停止应用后，按顺序对同一 HDMI 输入运行各 720 帧，设置 12000 Kbps、60fps 预算。
 下面是编码输出到 Python appsink 的观测，不包含网络和浏览器，也非严格同步回放。
@@ -69,42 +69,3 @@ QP34 的 Chrome 单 viewer 测试为 15s/900 帧、零丢帧/丢包，但尚未�
 板子最初处于 OOWOW，经只读核对 eMMC 后重启回 Ubuntu，没有刷盘。SSH 新主机密钥
 已通过串口核对，随后恢复开发公钥与已有开发工作流的免密 sudo。
 
-## Wave521 时钟与 4K 编码耗时（2026-10-14）
-
-内核 5.15.137-vim4kvm，已安装 amlvenc（`/usr/lib/vim4-kvm/gstreamer-1.0`）。
-停止 NanoKVM 后以 khadas 独占编码器；HDMI 3840×2160 约 60Hz 桌面，
-12000 Kbps、60fps 预算、GOP120。耗时为 amlvenc sink→src pad probe 间隔，
-输入为 vfmcapsrc DMA-buf，不含网络和浏览器。
-
-| Wave b/c 时钟 | H.264 每帧 p50 / p99 ms | H.265 每帧 p50 / p99 ms |
-|---|---|---|
-| 500 MHz（fclk_div4） | 15.17 / 15.44 | 17.11 / 17.52 |
-| 666 MHz（fclk_div3，当前） | 11.55 / 11.71 | 12.96 / 13.23 |
-| 800 MHz（gp1_pll/3，实验） | 9.75 / 10.05 | 未取得有效数据 |
-
-40000 Kbps 与 12000 Kbps 耗时相同；插件进程 CPU 约 3%。耗时与时钟成反比，
-瓶颈是编码核本身。单独降低 clock_a 不影响耗时，b、c 任一降低都会变慢。
-当前 666 MHz 下 4K60 剩余约 5ms（H.264）/ 3.7ms（H.265）。
-
-### 超频正确性
-
-可选父时钟中 fclk_div3 是最高固定源；更高频率只能借用闲置的 gp1_pll
-（clk_msr 实测 0Hz）。实验模块把 gp1_pll 设为内核表中的 2400/3000 MHz 并保持开启，
-再通过 amvenc_multi 的 clock_b/c 参数设置目标频率，clk_msr 核对实际频率。
-同一段录制的 120 帧 NV21 原始画面（filesrc → rawvideoparse，非 DMA）每档编码三次，
-比较完整码流 SHA256。666 MHz 下 H.264/H.265 多轮输出逐字节一致。
-
-| 时钟 | H.264 | H.265 |
-|---|---|---|
-| 600 MHz（gp1_pll/4，对照） | 3/3 与 666 MHz 参考一致 | 3/3 一致 |
-| 750 MHz（gp1_pll 3000/4） | 2/3 一致，1 次不同 | 3 次互不相同 |
-| 800 MHz（gp1_pll 2400/3） | 3 次互不相同 | 未完成（期间录制文件被清除，作废） |
-
-600 MHz 对照排除了 gp1_pll 来源本身的问题；750/800 MHz 输出不再确定，
-视为硬件计算错误，**不采用超频**。gp1_pll 表中没有 666–750 MHz 之间的档位，
-未测试其他 PLL 配置，也未做长时温度测试（各轮约 49–52°C）。
-恢复 666 MHz 后参考码流复现，NanoKVM 4K H.264 浏览器 10 秒 60.07fps、
-零丢帧/丢包。实验模块已卸载，未改动安装的模块参数或内核。
-
-注意：khadas 的最后一个 SSH 会话退出时 logind 会清空其 /dev/shm 文件，
-长测试的数据放 /var/tmp。实验源码和脚本在忽略入库的 `logs/encoder-clock/`。

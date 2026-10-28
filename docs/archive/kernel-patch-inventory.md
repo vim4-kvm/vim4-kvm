@@ -1,10 +1,12 @@
 # 7.3 补丁清单与主线跟进
 
-2026-10-23 [统一合入记录](bringup/2026-10-23-mainline-integration.md)另记正式源码整合、
+> 归档快照（2026-10-24）：固定版本的7.3 补丁清单与主线跟进，不代表当前状态，现行入口见 [补丁维护方法](../kernel-edge.md#补丁维护方法)。
+
+2026-10-23 [统一合入记录](../bringup/2026-10-23-mainline-integration.md)另记正式源码整合、
 默认关闭项和构建检查；以下 580/291 仍是固定 `0a775305` 历史审计，不能当最终 HEAD 计数。
 本轮合入不移动已部署锁，不安装新内核。maintenance 的 7.3 整理与 next 迁移分开。
 
-2026-10-24 [颜色与透传源码合入](bringup/2026-10-24-hdmi-integration.md)继续整合
+2026-10-24 [颜色与透传源码合入](../bringup/2026-10-24-hdmi-integration.md)继续整合
 颜色10条、透传12条普通提交，另补1条默认关闭状态的bus回归测试；两个主题merge，
 正式HEAD为 `213f271505411`。RX测量修复有四档长测，VD1 reader/退休/地址更新和bus
 协商仍需硬件验收，沿用M3/M3-video显式DT开关；正式M0不启用。它们不混入历史580/291计数，
@@ -14,18 +16,18 @@
 审计固定用户指定的 `0a775305f0ad81475f65d33b15f79099c8445c75`；正式工作树当时在
 `0196fe22ecf01`，它是固定版本的祖先。两个正式引用均未由原审计更新。
 新增整理位于 `maintenance/upstream-20261023`，前移试验位于 `maintenance/next-20261023`。
-硬件能力与退出条件继续以[厂商能力对照](vendor-parity.md)为准。
+硬件能力与退出条件继续以[厂商能力对照](../parity/README.md)为准。
 
 后续独立音频候选 `vim4-audio-routes` 基于正式远端 `cb3b9f1a69051`，
 38 个提交至 `e3eb8eb1e400e`，不混入下方固定审计的 580/291 计数。
-[基础记录](parity/audio-routes-offline.md)与[处理续篇](parity/audio-processing-offline.md)
+[基础记录](audio-routes-offline.md)与[处理续篇](audio-processing-offline.md)
 给出逐提交、寄存器差异、DT/schema、实际C测试与完整Image/DTB/modules构建证据。
 未合入正式分支、未部署；低功耗VAD、DSP与真实板级端点仍有交付缺口。
 
 平台 PM 独立候选 `vim4-platform-pm` 基于 `1d80e6ccc3641`，六个小提交至
-`62724cd3d00ab`，不混入下方固定计数。[离线审查](parity/platform-pm-offline.md)
+`62724cd3d00ab`，不混入下方固定计数。[离线审查](platform-pm-offline.md)
 覆盖 GPU 电压来源、thermal/cpuidle、PM 失败恢复和设备拒绝保护；
-[批量清单](parity/platform-pm-board-checklist.md)保留整机挂起与唤醒验收欠账。
+[批量清单](../parity/platform-pm-board-checklist.md)保留整机挂起与唤醒验收欠账。
 
 ## 计数口径与全部提交
 
@@ -39,7 +41,7 @@
 | `v7.3..0a775305`，实际下游 | 291 | 290 | 1 |
 
 [逐提交清单](kernel-audit/commits.tsv)覆盖全部 580 条，包含完整哈希、主题、分类、
-strict checkpatch 计数和私有/临时标记；[机器清单](../packaging/kernel-edge/series/inventory.json)
+strict checkpatch 计数和私有/临时标记；[机器清单](../../packaging/kernel-edge/series/inventory.json)
 另含路径、补丁名和 SHA256。[汇总](kernel-audit/summary.json)固定比较端点。
 不能把 580 都称为待上游下游补丁，也不能把已在上游的 T7 pinctrl/pwrc 基础支持再次投递。
 
@@ -130,7 +132,7 @@ RX/VDIN 的旧 1080p/copy-only 帮助已更新为当前实际行为。`COMPILE_T
 
 ## 主题序列与一键离线验证
 
-[series](../packaging/kernel-edge/series/series)按原始拓扑顺序列出 290 个保留作者的邮件补丁，
+[series](../../packaging/kernel-edge/series/series)按原始拓扑顺序列出 290 个保留作者的邮件补丁，
 文件按主题分目录。**目录分组不改变应用顺序**，跨主题依赖仍按总 series 应用。
 已在独立 Git index 从 v7.3 逐个应用并比较 tree，结果与 `0a775305` 完全相同
 （`e35abde9a3661a84746427495ddc0f727bf33dda`）；不是只证明补丁能导出。
@@ -138,7 +140,7 @@ RX/VDIN 的旧 1080p/copy-only 帮助已更新为当前实际行为。`COMPILE_T
 
 工具在 Linux VM 运行，不自动 fetch。以下 `$RECIPE` 指主仓 `packaging/kernel-edge` 的副本，
 输出目录须不存在；完整构建需预留磁盘。准备独立 Python venv，安装
-[验证依赖](../packaging/kernel-edge/maintenance-requirements.txt)，并将其 bin 加到 PATH。
+[验证依赖](../../packaging/kernel-edge/maintenance-requirements.txt)，并将其 bin 加到 PATH。
 
 ```sh
 python3 "$RECIPE/maintain.py" inventory --source ~/src/linux-7.3 \
@@ -235,5 +237,5 @@ VM 原始日志与产物：`/home/deepdream/build/kernel-maintenance-20261023/`�
 评审的小系列；`integration/next-日期` 固定目标、系列清单和配置，定期记录冲突/构建/测试成本；
 `experiment/*` 隔离 handoff、私有 ABI、故障注入和受控上电。topic 之间写明 DT/clock/pwrc
 依赖，避免跨主题随意重排。保留原作者和提交签名，先吸收上游已有实现，再删除对应下游补丁。
-离线门禁通过后，占板回归按[部署门禁](subsystems/deployment.md#内核开发流程与部署门禁)
+离线门禁通过后，占板回归按[部署门禁](../subsystems/deployment.md#内核开发流程与部署门禁)
 批量安排；rebase/全局改动仍需九类回归和性能对照，当前工作不证明可部署。

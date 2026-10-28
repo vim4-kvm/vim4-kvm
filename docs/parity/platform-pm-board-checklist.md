@@ -1,7 +1,7 @@
 # T7 平台电源候选批量上板清单
 
 本页仅排队，**本轮未执行**。源码、六个小提交和离线结论见
-[离线审查](platform-pm-offline.md)。先跑不请求系统睡眠的候选验证；
+[离线审查](../archive/platform-pm-offline.md)。先跑不请求系统睡眠的候选验证；
 整机 sleep 必须等设备恢复和唤醒契约就绪后另开窗口，不以本候选的 EBUSY 保护充当通过。
 
 ## 批量窗口 A：CPU idle、GPU cooling、功耗与回归

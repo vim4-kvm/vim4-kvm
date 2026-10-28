@@ -5,6 +5,16 @@
 
 新记录：新建 `bringup/YYYY-MM-DD-英文短名.md`，首行 `# YYYY-MM-DD：标题`，并在本页对应日期下追加一行。
 
+## 按任务查找
+
+- 内核：[启动](2026-10-19-edge-firstboot.md) → [合入](2026-10-23-mainline-integration.md) → [差距](2026-10-28-kernel73-parity-audit.md)。
+- 音视频：[双路径](2026-10-25-native-hdr-dual-path.md)、[HDR](2026-10-26-all-kvm-hdr.md)、[延迟](2026-10-27-current-video-latency.md)。
+- USB：[PD](2026-10-12-pd-boot-init.md)、[组合](2026-10-21-edge-usb-functions.md)、[介质](2026-10-18-nas-storage-usb-disk.md)。
+- 应用：[切换](2026-10-13-nanokvm-deploy-jetkvm-switch.md)、[登录](2026-10-18-unified-auth-gateway.md)、[UU](2026-10-25-uu-protocol-audit.md)。
+- 部署：[组件](2026-10-13-component-deploy-loop.md)、[双内核](2026-10-21-dual-kernel-integration.md)、[回退](2026-10-22-edge-7-3-final-deploy.md)。
+
+以下保留完整日期索引。这些里程碑记录的是历史证据；查找当前架构和约束时，仍应先读对应子系统入口。
+
 ## 2026-10-28
 
 - [7.3 对当前 5.15 功能的差距复核](2026-10-28-kernel73-parity-audit.md) — kernel video audio usb application audit
@@ -339,6 +349,8 @@
 - [NanoKVM 码率滑块部署](2026-10-14-nanokvm-bitrate-slider.md) — application
 
 ## 2026-10-13
+
+- [编码可靠性与关键帧实验](2026-10-13-encoder-controls.md) — video
 
 - [组件包部署闭环验证](2026-10-13-component-deploy-loop.md) — deployment
 - [无人值守部署](2026-10-13-unattended-deploy.md) — deployment

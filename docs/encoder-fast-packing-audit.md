@@ -132,3 +132,7 @@ H.265 的 90 秒段带 Chrome trace 与双端抓包，对照关闭这两项，�
 离线可检查 ABI、单 bit 配置差异、WAIT 重试行为和上述日志统计；mock 或桌面
 benchmark 不运行 WAVE521C，不能量化 mode1 的硬件性能、固件兼容性或画质。
 IRQ→tasklet→用户态的直接分段，以及真正的 fast packing A/B 均仍待上板。
+
+## 相关记录
+
+- [编码实验记录](bringup/2026-10-13-encoder-controls.md)：旧插件降级、帧率重建、QP 与行刷新验证。

@@ -1,5 +1,7 @@
 # NanoKVM 功能差异评估
 
+> 归档快照（2026-10-13）：固定版本的NanoKVM 功能差异评估，不代表当前状态，现行入口见 [应用](../subsystems/application.md)。
+
 2026-10-13：官方 https://github.com/sipeed/NanoKVM 的 main 已浅克隆到
 `NanoKVM/`，提交 `d0ff328db81c8d08a9133639ce63d32cba54f172`。
 对比当前 `NanoKVM-Pro` 的 VIM4 提交 `60afb9e`。仅静态阅读源码、路由和更新记录，

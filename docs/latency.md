@@ -376,3 +376,10 @@ The board retains 4K, 12000 Kbps and GOP 120, with no experimental QP/intra-refr
 or timing environment settings. Package integrity and service checks passed.
 This establishes a measured operating point, not an absolute minimum or a guarantee
 of zero drops for arbitrary content, browsers or networks.
+
+## 相关记录
+
+- [VBV 对照](bringup/2026-10-26-encoder-vbv.md)：固定输入的码率峰值、画质与编码耗时；[1080p120 审查](1080p120-audit.md)的[候选已部署](bringup/2026-10-26-1080p120.md)，裸编码与H.264网页吞吐通过，UU/本地120待验。
+- [端到端测量](#优化指标与验收协议)：软件端点定义和观测开销。
+- [当前5.15延迟复测](bringup/2026-10-27-current-video-latency.md)：原尺寸交帧、编码、发送与浏览器分段，SDR缩放A/B/A及优化优先级。
+- [UDP批量发送候选](bringup/2026-10-28-udp-batch-latency.md)：带探针发送尾部改善，但无板探针端到端未达3ms门槛；默认关闭，板上按用户要求试用。

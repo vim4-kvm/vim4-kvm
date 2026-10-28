@@ -85,7 +85,20 @@ VM 工作树为 `~/src/u-boot`，版本记在 workspace.toml 的 `uboot` 表。
 
 ## 文档维护
 
-按需加载，控制每次会话的固定上下文：
+文档按以下层次按需加载：
+
+- L0：CLAUDE.md、AGENTS.md 和 LESSONS.md 是自动加载入口。
+- L1：docs/subsystems/ 只维护当前架构、约束、精选链接和错题，每篇不超过 14000 字节。
+- L2：docs/ 下仍有效的专题说明承载详细方法和接口合同。
+- L3：docs/bringup/ 保存实验记录，docs/archive/ 保存固定版本快照。
+
+AGENTS.md 可指向证据索引，不直接路由到 L3 的具体条目。每个事实只在一处维护，
+“当前状态”必须链接现行来源。新增操作说明和专题放入 L2，实验与调查证据放入 L3。
+已完成或被取代的调查应归档，但必须保留独有版本、失败、回退、测量边界和未验范围。
+归档文档在标题下添加 `> 归档快照（YYYY-MM-DD）：…不代表当前状态，现行入口见 [..](..)。`，
+日期取最后一次实质内容提交，并在 docs/archive/README.md 登记。移动或合并时同步所有链接、锚点和附件。
+
+固定上下文约定：
 
 - 自动加载：CLAUDE.md 只引用 AGENTS.md 与 LESSONS.md。AGENTS.md 只做路由；
   LESSONS.md 只收跨子系统教训。tests/test_docs.py 限制两者体积。

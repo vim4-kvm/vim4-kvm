@@ -1,5 +1,7 @@
 # NanoKVM 基线切换
 
+> 归档快照（2026-10-15）：固定版本的NanoKVM 基线切换，不代表当前状态，现行入口见 [应用](../subsystems/application.md)。
+
 2026-10-13：应用仓库切换到 [vim4-kvm/NanoKVM](https://github.com/vim4-kvm/NanoKVM)，
 基于官方 main `d0ff328db81c8d08a9133639ce63d32cba54f172`，工作分支为 `vim4`。
 旧 NanoKVM-Pro 已退役并从工作区与 GitHub 移除，历史提交以 git bundle 离线归档。
@@ -55,7 +57,7 @@ Chrome 实机完成 NanoKVM → JetKVM → NanoKVM → JetKVM → NanoKVM，
 每次采样 10 秒均为 3840×2160、约 60fps、零丢帧/丢包；切换到首帧
 1.89–2.12 秒。这是当前桌面场景的切换恢复测试，不是端到端输入延迟或长时间
 运动场景测试。最终 NanoKVM 启用，JetKVM 停用；详情见
-[NanoKVM 正式部署与 JetKVM 往返切换](bringup/2026-10-13-nanokvm-deploy-jetkvm-switch.md)。
+[NanoKVM 正式部署与 JetKVM 往返切换](../bringup/2026-10-13-nanokvm-deploy-jetkvm-switch.md)。
 
 ## 移除旧 Smart Assistant
 

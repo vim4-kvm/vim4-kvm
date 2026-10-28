@@ -19,7 +19,7 @@
 本轮以 `git show`/正式工作树读取，不检出或覆盖任何分支。
 
 以下“缺实现”指源码/应用合同确有缺口；“待交付”指实现已有但未形成匹配部署；
-“待验证”不能当作已知故障。旧[厂商全能力表](../vendor-parity.md)的97项分母包含
+“待验证”不能当作已知故障。旧[厂商全能力表](../parity/README.md)的97项分母包含
 大量扩展硬件、解码和音频处理，不等于当前KVM产品的功能数，也不能用旧百分比判断是否可切换。
 
 ## 当前使用会遇到的差距
@@ -79,7 +79,7 @@ CEC/ARC、VDIN1 writeback、GE2D通用blit、完整显示planes/AFBC/色彩输�
 TDM/SPDIF/PDM、loopback/ASRC/AED/VAD、DSP的板级端点与实际声音；
 GPU逐频调压、runtime PM、整机suspend/resume和唤醒；Wi-Fi历史固件崩溃根因、P2P真实传输、
 Bluetooth、PCIe/NVMe、存储模式/吞吐及MIPI/ISP等扩展外设。
-分项继续看[总表](../vendor-parity.md)，不将未接线外设或缺授权的Dolby/HDCP当作当前可用功能。
+分项继续看[总表](../parity/README.md)，不将未接线外设或缺授权的Dolby/HDCP当作当前可用功能。
 
 音频routes、平台PM、VDEC、显示颜色/透传、Wave5尺寸等引用，经`git rev-list --left-right --count`
 确认已全部进入213f2715历史；**源码合入不等于启用或上板通过**。

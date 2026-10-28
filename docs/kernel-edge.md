@@ -66,7 +66,7 @@ H.264/H.265 硬编码已取得实验结果，见
 
 目标是追平厂商5.15全部适用能力，核心进入DRM/KMS、V4L2、ASoC、genpd等主线框架，
 外围可先移植后整理；绕过和保护不能作为终态。完整范围、固定源码/DT行号、缺口依赖、
-工作量与硬件见 [厂商能力对照与总体规划](vendor-parity.md)。该表固定比较M0 `47878a0c611d`，
+工作量与硬件见 [厂商能力对照与总体规划](parity/README.md)。该表固定比较M0 `47878a0c611d`，
 并叠加当前`b1300eb8`正式增量；未合入候选不算已部署能力。
 以下顺序与F0–F5一致，不代表硬件验收通过。
 
@@ -202,7 +202,7 @@ GCC 12 构建 BL33 与 bl33z 成功；厂商代码存在编译警告和 CONFIG_O
 ## 审查边界与后续验证
 
 原始 164 个 Armbian 补丁涉及 108 个文件，未修改 HDMI RX、VDIN、Wave5 或 USB gadget 路径。
-后续本地 CRG 实验驱动及验证范围见 [适配记录](kernel-edge-porting.md#crg-实验驱动2026-10-19)。
+后续本地 CRG 实验驱动及验证范围见 [适配记录](archive/kernel-edge-porting.md#crg-实验驱动2026-10-19)。
 GPU 纯调频已完成[专项验证](bringup/2026-10-21-edge-gpu-devfreq.md)及上述合并部署；
 音频输出和显示输出仍需上板验证，不能用编译成功替代。
 
@@ -214,5 +214,61 @@ GPU 纯调频已完成[专项验证](bringup/2026-10-21-edge-gpu-devfreq.md)及�
 - `0073–0080`：USB Host 接入，不是 HID/虚拟介质需要的 CRG UDC。
 
 基础启动结果见上述首次启动记录；下一阶段依赖与验收见
-[USB 与音视频适配拆解](kernel-edge-porting.md)。
+[USB 与音视频适配拆解](archive/kernel-edge-porting.md)。
 新板 `kvim4n` 的硬件差异和启动固件要求也必须核对，不能直接复用厂商 DTB。
+
+## 补丁维护方法
+
+正式 `vim4-kvm-7.3` 只接已通过门禁的提交；`topic/*` 保存可独立评审的小系列，
+并写明 DT、clock 和 pwrc 依赖。`integration/next-日期` 固定目标、系列清单与配置，
+定期记录冲突、构建和测试成本；`experiment/*` 隔离私有 ABI、故障注入和受控上电。
+保留原作者和提交签名，先吸收上游已有实现，再删除对应下游补丁。
+
+逐提交运行 strict checkpatch、宿主 fixture、binding 和 DT 实例检查，再用同次配置构建
+Image、DTB 和完整模块。保留失败、跳过和产物哈希；宿主 fixture 不能代替 KUnit 或硬件验收。
+`packaging/kernel-edge/maintain.py` 提供 inventory、forward 和 verify；具体用法、
+厂商对照与音频基线依赖见[维护快照](archive/kernel-patch-inventory.md#主题序列与一键离线验证)。
+forward 遇冲突须保留现场，解决后对完整结果运行 verify；构建成功不能覆盖其他阶段失败。
+离线检查通过后按[部署门禁](subsystems/deployment.md#内核开发流程与部署门禁)安排独占回归；
+全局改动仍需九类回归和性能配对，离线通过不代表可部署。
+
+## Wave5 隔离告警
+
+内核 sysfs 的 `isolated`、`isolation_reason`、`isolation_time_ns`
+提供状态，触发时发出 `WAVE5_ISOLATED=1` uevent。隔离后保留 DMA 内存与映射，
+只允许重启清除。当前正式内核先尝试 T7 WAVE genpd 循环和固件冷加载，旧实例 EIO、
+新实例重开；复位失败才进入隔离，见[运行时复位窗口](bringup/2026-10-23-wave5-runtime-window.md)。
+隔离的十轮软件注入及九类门禁见[正式窗口](bringup/2026-10-23-wave5-isolation-final.md)。
+非 8 对齐 HEVC crop、B 帧和控件增量的实测边界另见
+[编码器批量窗口](bringup/2026-10-23-wave5-parity-window.md)；内核合入不代表正式安装。
+
+`vim4-wave5-monitor.service` 默认只记录 journal，写 `/run/vim4-wave5/alert.json`。
+`/etc/default/vim4-wave5-monitor` 的 `WAVE5_AUTO_REBOOT=1` 可启用一次受控重启，
+但仅在全部 KVM 应用 inactive、所有虚拟介质为空持续至少 30 秒后请求；默认 60 秒。
+运行中但空闲的 One-KVM 不计为已确认无需求，因为 clients 未覆盖 UU、RTSP、录屏等
+消费者。读取失败会取消空闲计时；同次启动已有 reboot-attempted 标记时不重试。
+manager 的 `GET /api/status` 新增 `encoder`，包含 `known`、`isolated`、
+`needsReboot`、`reason`、字符串 `timeBoottimeNs`；本轮没有前端变更。
+
+常规板级安装或组件安装会启用监控单元；独立候选窗口用 final-window 的
+`stage --wave5-monitor` 纳入脚本、单元和 manager Wants drop-in，随窗口备份和回退，
+不覆盖管理员的自动重启配置。自动重启配置的板端实测范围须看专项记录。
+
+## 相关记录
+
+- [7.x 缩放与硬件 MJPEG](bringup/2026-10-21-edge-scaling-jpeg.md)：VDIN 下采样、HCODEC/OP-TEE 接入与 4K 帧率边界。
+- [UHD 清晰度复核](bringup/2026-10-20-edge-uhd-detail.md)：Mac 实际渲染栅格、原生单像素细节与 1080p 放大负对照。
+- [7.3 HDMI 音频](bringup/2026-10-20-edge-hdmi-audio.md)：独立 ALSA 声卡及网页 Opus；[动态 LPCM](bringup/2026-10-22-edge-hdmi-audio.md)记录 ACR/AIF 检测、七档采样率、重采样缓冲与无链路恢复。
+- [7.x 逐行刷新](bringup/2026-10-20-edge-cyclic-refresh.md)：固定 UHD60 的周期关键帧、呈现间隔与重复对照。
+- [7.x 状态查询与端到端](bringup/2026-10-20-edge-status-latency.md)：去除实时查询的 20ms 等待、校准时钟与测量开销。
+- [7.x HDMI 真实时序](bringup/2026-10-20-edge-input-timings.md)：标准 V4L2 查询、测量帧率与动态重配的剩余限制。
+- [7.x 失锁查询与队列锁](bringup/2026-10-20-edge-queue-lock.md)：状态/停流锁分离，格式与缓冲生命周期回归。
+- [7.x 动态分辨率](bringup/2026-10-20-edge-dynamic-modes.md)：RGB8 1080p60/4K60 的 PHY、音频、队列和应用重建，以及孤儿缓冲回收。
+- [7.3 HDMI 输入模式覆盖](bringup/2026-10-22-edge-hdmi-modes.md)：实测时序分档、原生 YUV/深色转换和 DMA 行对齐；[最终复核](bringup/2026-10-22-edge-hdmi-modes-final.md)记录浏览器覆盖、HEVC 回退与恢复证据。
+- [VDIN 直接 DMA](bringup/2026-10-20-direct-dma-benchmark.md)：持有/隔离语义、本地回归与 4K60 应用 CPU 对照。
+- [7.3 One-KVM 接入](bringup/2026-10-20-onekvm-wave5.md)：独立后端、网页 4K60 与重配回收故障。
+- [7.3 CPU 性能定位](bringup/2026-10-20-onekvm-performance.md)：真实应用基线、压缩码流缓存和剩余原始帧复制开销。
+- [7.3 HDMI 1080p60](bringup/2026-10-19-hdmirx-dma-ring.md)：实验私有 DMA 环、V4L2 MMAP 复制队列及剩余接入缺口。
+- [7.3 HDMI DMA-buf](bringup/2026-10-19-hdmirx-dmabuf.md)：此前的连续导出、缓冲跨驱动重载及软件 H.264 校验。
+- [7.3 Wave521 与 4K60](bringup/2026-10-19-wave521-uhd.md)：固定 RGB8 输入、NV12、H.264/H.265 硬编码与实测边界。
+- [HDMI 恢复路径对照](archive/hdmi-recovery-review.md)、[UU 虚拟屏恢复](bringup/2026-10-15-uu-virtual-screen-recovery.md)：显示器恢复故障的源码审查与现场取证。

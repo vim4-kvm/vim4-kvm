@@ -1,7 +1,7 @@
 # 音频批量上板验证清单（尚未执行）
 
 这是后续统一硬件窗口的计划，本轮没有连接板子。实现状态、固定版本、提交及离线证据见
-[基础系列](audio-routes-offline.md)与[处理组件续篇](audio-processing-offline.md)；
+[基础系列](../archive/audio-routes-offline.md)与[处理组件续篇](../archive/audio-processing-offline.md)；
 尚缺代码或固件的子项先补齐依赖，不安排空验收。
 按[内核开发门禁](../subsystems/deployment.md#内核开发流程与部署门禁)一次性启动候选，
 复位回正式基线；先完成完整 Image/匹配模块/DTB 构建和清单登记。

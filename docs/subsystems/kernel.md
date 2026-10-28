@@ -11,10 +11,10 @@ P2P 已移除能力屏蔽，修正 discovery、扫描版本、ARP/ND 控制和�
 构建、安装或回退内核时读 [内核构建、安装与回退](../kernel.md)；需要 VM 中的主内核工作树时读 [工作区](../workspace.md#构建)。
 
 7.3 下游补丁分类、私有接口整改、linux-next 迁移成本与统一离线验证见
-[补丁清单](../kernel-patch-inventory.md)。它固定审计版本，不代表正式分支或部署版本。
+[补丁清单](../archive/kernel-patch-inventory.md)。它固定审计版本，不代表正式分支或部署版本。
 
 GPU 电压来源、CPU 分档/thermal 对照、PSCI idle 及设备系统 PM 缺口见
-[平台 PM 离线审查](../parity/platform-pm-offline.md)；
+[平台 PM 离线审查](../archive/platform-pm-offline.md)；
 [批量清单](../parity/platform-pm-board-checklist.md)区分正常负载和真正挂起窗口。
 
 MCU 风扇在 VM 主内核 drivers/misc/khadas-mcu.c，策略验证用 tools/test-fan-policy.sh。

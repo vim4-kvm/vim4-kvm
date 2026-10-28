@@ -38,88 +38,25 @@ JetKVM 的“空闲时隐藏显示器”是用户主动选择的例外，默认�
 
 ## HDR 输入
 
-5.15 One-KVM 新增[远程 Main10 HDR 与扩展尺寸](../bringup/2026-10-26-remote-hdr-modes.md)：
-默认映射 SDR，可选择保留 PQ/BT.2020 十位；UU 的 HDR 请求临时覆盖、断开恢复默认。
-HDR降分辨率见[UU GPU 缩放](../bringup/2026-10-27-uu-hdr-scale.md)及
-[四应用公共路径](../bringup/2026-10-27-all-kvm-hdr-scale.md)，不能套用原尺寸性能。
-SDR 超宽屏硬件缩放及 JetKVM/PiKVM 尺寸入口见
-[缩放与尺寸控制](../bringup/2026-10-27-sdr-scale-controls.md)；5.15 统一使用连续 V4L2 DMA。
-4K HDR 最初完整网页约34fps；后续[GPU/DMA 链路](../bringup/2026-10-26-hdr-gpu-pipeline.md)
-已实测真实 PQ Main10 网页约60fps。HLG、7.x Main10与本地新模式未验收。
-后续[像素复核](../bringup/2026-10-26-remote-hdr-pixels.md)修正 AMLY 解包花屏，
-保留 HDR 偏好时 SDR 输入自动走八位 DMA；源端切换的 CMA 分配候选复测失败，已撤回。
-[HDR GPU 前置验证](../bringup/2026-10-26-hdr-gpu.md)补齐匹配的私有 Mali Vulkan 驱动；
-现已接通小端 AMLY→P010 compute 与 Wave521 DMA_TYPE，固定双缓冲，保持输入退休后归还。
-HDR 专用 SDR 快照通道单独缩减下游缓冲预算，保留原分辨率，避免挤占编码器连续内存。
-后续[全局 HDR 默认与源端切换](../bringup/2026-10-26-hdr-global.md)增加视频输入页开关，
-结合主采集池预算、编码器优先预留及完整释放，修复5.15 PQ/SDR往返的CMA问题。
-[浏览器兼容性复核](../bringup/2026-10-26-hdr-browser-compatibility.md)确认 Chrome 156
-收到真实 Main10 并保留 PQ/BT.2020；Safari 27.0.1 当前 WebRTC 帧变为八位 BT.709。
-关闭全局转换不会自动把 H.264 切换为 H.265；码流、解码 HDR 与屏幕光度分别验收。
-[全应用 HDR 接入](../bringup/2026-10-26-all-kvm-hdr.md)将 NanoKVM、JetKVM 和 PiKVM
-接入公共 `vim4h265src`，跟随同一全局开关；WebRTC 明确协商 Main10，Direct 原生视频
-轨道保留 PQ，H.264/JPEG 继续 SDR。编码包新增 `vim4-hevc-hdr-api-1`，须先于应用部署。
+HDR 的全局默认、原生双路径、插件部署顺序及验证边界见 [HDR 输入映射](../hdr.md)。
+5.15 的远程 HDR 与 7.x 的 HDR 到 SDR 映射是两条不同路径，不能互相代替验收。
 
-内核在 vdin0 用 HDR2 核把 HDR10/HLG 输入映射到 SDR，SDR 直通；曲线由 `vim4-hdr-curve`
-生成，参数在 `/etc/default/vim4-kvm-hdr`，管理器可实时调节。改 HDR 映射或曲线时读 [HDR 输入映射](../hdr.md)。
-5.15 原生显示模式 `aml_media.vdin0_native_hdr=1` 例外：VDIN0 保留10-bit HDR，
-VDIN1 同源独立映射 SDR，四套应用由启动器选 `/dev/video71` 和私有标准 V4L2 插件。
-该模式不是普通 vfm_cap NV21 采集：NanoKVM、JetKVM、PiKVM 及 One-KVM 的独立
-MJPEG 分支使用公共 `vim4vdin1src`；One-KVM 的 H.264/H.265 保留原有 VDIN1 接入。
-采集包提供 `vim4-vdin1-api-1` 和标准插件，须先于依赖它的应用部署；
-`GST_V4L2_PREFER_CONTIGUOUS` 仅保留在厂商后端，7.3 启动器必须清除它：
-否则 Wave5 选择单平面输入，拒绝应用提供的两个 DMA 平面视图，第一帧即失败。
-实际 HDR10 4K60、元数据与默认部署见 [双路径交付](../bringup/2026-10-25-native-hdr-dual-path.md)。
-以上为 5.15 路径；7.x 已接通 [HDR10 4K60 采集与映射](../bringup/2026-10-20-edge-hdr-capture.md)，
-限 PQ / BT.2020 / 420 10bit。专用 `hdr_curve` 原子提交两张表，帧边界重载；
-SDR 420 和 RGB 分别直通、矩阵转换。[高光与连接优化](../bringup/2026-10-20-edge-hdr-optimization.md)
-给 8bit 高光留出层次，并避免重复输入通知重建健康连接；HDR 桌面白略暗。
-H.265 八轮、H.264 四轮 HDR 往返保持同一连接；HLG/其他格式及长期稳定性未验收。
-后续 [切换与稳定性验收](../bringup/2026-10-21-edge-hdr-stability.md) 补齐启动状态查询、
-后台切换和界面遮罩的事件顺序回归；显示休眠与真实 HDMI 拔插能自动恢复。
-整机休眠由用户暂缓，不能与显示休眠混为已通过。
-音画偏差复核使用 [播放输出回环校准](../bringup/2026-10-21-edge-av-calibration.md)，
-先测已知偏移与观察器偏置；旧独立音轨探针的首尾差不能直接判作内核漂移。
+## 按改动范围读取
 
-HDMI 启动脚本默认使用完整帧低延迟模式（VDIN mask 0x3）；
-HDMI_LOW_LATENCY=0 恢复厂商自动策略。模式含义、对照结果及帧一致性检查见 [测量文档](../latency.md#board-side-isolation-and-completed-frame-mode)。
+- [新内核基线](../kernel-edge.md#相关记录)：7.x 采集、编码、HDMI、音频及故障恢复的历史证据。
+- [延迟测量](../latency.md#相关记录)：软件端点、VBV、发送候选与当前延迟复测。
+- [播放差异调查](../kvm-delay-causes.md)：同步组、队列、媒体时钟及未决问题。
+- [RTP 发送审查](../rtp-send-optimization-audit.md)、[编码库审查](../encoder-fast-packing-audit.md)：发送后端、编码 ABI 与硬件验证边界。
+- [高刷审查](../1080p120-audit.md)、[VRR 准备](../vrr-preparation.md)：分别核对远程输入与本地输出能力。
+- [驱动基准](../driver-benchmark.md)、[本地视频基准](../local-video-benchmark.md)：按测量端点选择工具。
 
-按改动范围读取（只读与任务相关的一项）：
-
-- [本地视频基准](../local-video-benchmark.md)：容器或板子当前内核的 buffer benchmark、离线驱动回归与复制候选对比。
-- [RTP 发送优化](../rtp-send-optimization-audit.md)：正式加密后端、逐包路径、协商约束与离线验证；[编码 fast packing](../encoder-fast-packing-audit.md) 记录厂商 API 与硬件验证边界。
-- [VBV 对照](../bringup/2026-10-26-encoder-vbv.md)：固定输入的码率峰值、画质与编码耗时；[1080p120 审查](../1080p120-audit.md)的[候选已部署](../bringup/2026-10-26-1080p120.md)，裸编码与H.264网页吞吐通过，UU/本地120待验。
-- [VRR准备](../vrr-preparation.md)含EDID策略与基准帧率修复；5.15 One-KVM的
-  [1080p真实输入](../bringup/2026-10-26-vrr-live.md)与[4K变频、范围纠正](../bringup/2026-10-26-vrr-range-4k.md)
-  已短测H.264/H.265 SDR8。Forum最大值1–99为保留值，不能用60声明保守上限；
-  本地输出仍未验收，[本地VRR审查](../vrr-passthrough-audit.md)保留资格约束。
-- [驱动基准](../driver-benchmark.md)：原生纯采集/硬编码，排除 Python、解析、写盘与网络，支持 7.x 与 5.15。
-- [7.x 缩放与硬件 MJPEG](../bringup/2026-10-21-edge-scaling-jpeg.md)：VDIN 下采样、HCODEC/OP-TEE 接入与 4K 帧率边界。
-- [UHD 清晰度复核](../bringup/2026-10-20-edge-uhd-detail.md)：Mac 实际渲染栅格、原生单像素细节与 1080p 放大负对照。
-- [7.3 HDMI 音频](../bringup/2026-10-20-edge-hdmi-audio.md)：独立 ALSA 声卡及网页 Opus；[动态 LPCM](../bringup/2026-10-22-edge-hdmi-audio.md)记录 ACR/AIF 检测、七档采样率、重采样缓冲与无链路恢复。
-- [7.x 逐行刷新](../bringup/2026-10-20-edge-cyclic-refresh.md)：固定 UHD60 的周期关键帧、呈现间隔与重复对照。
-- [7.x 状态查询与端到端](../bringup/2026-10-20-edge-status-latency.md)：去除实时查询的 20ms 等待、校准时钟与测量开销。
-- [7.x HDMI 真实时序](../bringup/2026-10-20-edge-input-timings.md)：标准 V4L2 查询、测量帧率与动态重配的剩余限制。
-- [7.x 失锁查询与队列锁](../bringup/2026-10-20-edge-queue-lock.md)：状态/停流锁分离，格式与缓冲生命周期回归。
-- [7.x 动态分辨率](../bringup/2026-10-20-edge-dynamic-modes.md)：RGB8 1080p60/4K60 的 PHY、音频、队列和应用重建，以及孤儿缓冲回收。
-- [7.3 HDMI 输入模式覆盖](../bringup/2026-10-22-edge-hdmi-modes.md)：实测时序分档、原生 YUV/深色转换和 DMA 行对齐；[最终复核](../bringup/2026-10-22-edge-hdmi-modes-final.md)记录浏览器覆盖、HEVC 回退与恢复证据。
-- [VDIN 直接 DMA](../bringup/2026-10-20-direct-dma-benchmark.md)：持有/隔离语义、本地回归与 4K60 应用 CPU 对照。
-- [7.3 One-KVM 接入](../bringup/2026-10-20-onekvm-wave5.md)：独立后端、网页 4K60 与重配回收故障。
-- [7.3 CPU 性能定位](../bringup/2026-10-20-onekvm-performance.md)：真实应用基线、压缩码流缓存和剩余原始帧复制开销。
-- [7.3 HDMI 1080p60](../bringup/2026-10-19-hdmirx-dma-ring.md)：实验私有 DMA 环、V4L2 MMAP 复制队列及剩余接入缺口。
-- [7.3 HDMI DMA-buf](../bringup/2026-10-19-hdmirx-dmabuf.md)：此前的连续导出、缓冲跨驱动重载及软件 H.264 校验。
-- [7.3 Wave521 与 4K60](../bringup/2026-10-19-wave521-uhd.md)：固定 RGB8 输入、NV12、H.264/H.265 硬编码与实测边界。
 - [采集插件](../../gst-plugin-vfmcap/README.md)：格式和 DMA-buf 生命周期。
 - [编码插件](../../gst-plugin-venc/VIM4.md)：帧率预算、安装和测试。
 - [应用与音频](../../NanoKVM/VIM4.md)：功能覆盖和构建。
 - [视频配置](../../NanoKVM/deploy/vim4/VIDEO.md)：RTP、码率、GOP。
-- [端到端测量](../latency.md)：软件端点定义和观测开销。
-- [当前5.15延迟复测](../bringup/2026-10-27-current-video-latency.md)：原尺寸交帧、编码、发送与浏览器分段，SDR缩放A/B/A及优化优先级。
-- [UDP批量发送候选](../bringup/2026-10-28-udp-batch-latency.md)：带探针发送尾部改善，但无板探针端到端未达3ms门槛；默认关闭，板上按用户要求试用。
-- [KVM 播放延迟复核](../kvm-playout-review.md)：各应用同步组、队列与媒体时钟风险及验证边界。
-- [KVM 延迟差异调查](../kvm-delay-causes.md)：播放策略对照、接收耗时拆分、GOP 与时间戳差异。
-- [编码实验记录](../encoder-experiments.md)：旧插件降级、帧率重建、QP 与行刷新验证。
-- [HDMI 恢复路径对照](../hdmi-recovery-review.md)、[UU 虚拟屏恢复](../hdmi-uu-recovery.md)：显示器恢复故障的源码审查与现场取证。
+
+HDMI 启动脚本默认使用完整帧低延迟模式（VDIN mask 0x3）；
+HDMI_LOW_LATENCY=0 恢复厂商自动策略。模式含义、对照结果及帧一致性检查见 [测量文档](../latency.md#board-side-isolation-and-completed-frame-mode)。
 
 编码器测试不能与应用或其他任务并发占用硬件。
 验证区分静止/运动、分辨率/帧率切换、热插拔、重连和丢包恢复。
@@ -133,25 +70,9 @@ HDMI_LOW_LATENCY=0 恢复厂商自动策略。模式含义、对照结果及帧�
 
 ## Wave5 隔离告警
 
-内核 sysfs 的 `isolated`、`isolation_reason`、`isolation_time_ns`
-提供状态，触发时发出 `WAVE5_ISOLATED=1` uevent。隔离后保留 DMA 内存与映射，
-只允许重启清除。当前正式内核先尝试 T7 WAVE genpd 循环和固件冷加载，旧实例 EIO、
-新实例重开；复位失败才进入隔离，见[运行时复位窗口](../bringup/2026-10-23-wave5-runtime-window.md)。
-隔离的十轮软件注入及九类门禁见[正式窗口](../bringup/2026-10-23-wave5-isolation-final.md)。
-非 8 对齐 HEVC crop、B 帧和控件增量的实测边界另见
-[编码器批量窗口](../bringup/2026-10-23-wave5-parity-window.md)；内核合入不代表正式安装。
-
-`vim4-wave5-monitor.service` 默认只记录 journal，写 `/run/vim4-wave5/alert.json`。
-`/etc/default/vim4-wave5-monitor` 的 `WAVE5_AUTO_REBOOT=1` 可启用一次受控重启，
-但仅在全部 KVM 应用 inactive、所有虚拟介质为空持续至少 30 秒后请求；默认 60 秒。
-运行中但空闲的 One-KVM 不计为已确认无需求，因为 clients 未覆盖 UU、RTSP、录屏等
-消费者。读取失败会取消空闲计时；同次启动已有 reboot-attempted 标记时不重试。
-manager 的 `GET /api/status` 新增 `encoder`，包含 `known`、`isolated`、
-`needsReboot`、`reason`、字符串 `timeBoottimeNs`；本轮没有前端变更。
-
-常规板级安装或组件安装会启用监控单元；独立候选窗口用 final-window 的
-`stage --wave5-monitor` 纳入脚本、单元和 manager Wants drop-in，随窗口备份和回退，
-不覆盖管理员的自动重启配置。自动重启配置的板端实测范围须看专项记录。
+复位失败后必须保留 DMA 内存与映射，直到重启清除隔离。监控服务默认只记录告警；
+自动重启必须确认全部 KVM 应用停用且虚拟介质为空，不能把 One-KVM 空闲视为没有消费者。
+状态接口、计时条件、部署与回退合同见[隔离告警说明](../kernel-edge.md#wave5-隔离告警)。
 
 ## 错题
 
@@ -169,10 +90,10 @@ manager 的 `GET /api/status` 新增 `encoder`，包含 `known`、`isolated`、
 | 30fps 编码预算配 60fps 输入 | 旧 amlvenc 造成实际码率偏大。修正插件并传入输入帧率；预算不是采集节奏 | gst-plugin-venc/VIM4.md |
 | 用 game_mode 0 当作关闭低延迟的实验对照 | 0 恢复自动策略，实际模式可能是 0xb。核对驱动 state 中的当前模式，不能仅看全局参数；完整帧模式使用 0x3 | [采集延迟对照](../latency.md#board-side-isolation-and-completed-frame-mode) |
 | 把 stock video71 当 HDMI 输入 | 原厂 vdin1 默认输出回写；新增原生 HDR 双路径显式共享主 RX 才是例外，普通采集仍用 vdin0 → vfm_cap | [硬件](../hardware.md)、[双路径交付](../bringup/2026-10-25-native-hdr-dual-path.md) |
-| HDMI 有音频包、WebRTC 已连接但始终静音 | TDM-B 默认读外部引脚。HDMI 服务 ExecStartPre 在 ALSA restore 后选 hdmirx，再允许 NanoKVM 启动；零峰值录音不能证明声音正常 | [功能与音频状态](../feature-status.md)、packaging/ubuntu/check-audio-startup.py |
+| HDMI 有音频包、WebRTC 已连接但始终静音 | TDM-B 默认读外部引脚。HDMI 服务 ExecStartPre 在 ALSA restore 后选 hdmirx，再允许 NanoKVM 启动；零峰值录音不能证明声音正常 | [功能与音频状态](../archive/feature-status.md)、packaging/ubuntu/check-audio-startup.py |
 | GE2D 缩放单次成功，切编码后进程报 safe_close EBADF | 厂商 DMA 分配器把同一个 fd 同时交给 GstDmaBufMemory 和附属 qdata 释放。One-KVM 使用私有兼容分配器，fd 只由标准 GStreamer memory 关闭；需验证重复切换与缓冲区持有周期 | One-KVM/deploy/vim4/test-dma-allocator.c、tools/one-kvm-settings-check.mjs |
 | 厂商 JPEG 插件直接输入 DMA 后只出 4 帧 | JPEG NEW_CMD 的直接 DMA 路径未释放导入，耗尽 VDIN 的 4 个采集缓冲。vim4jpegenc 使用 CONFIG_DMA_INPUT / RELEASE_DMA_INPUT 管理每帧生命周期，异常时先关闭编码器再归还输入；验证连续帧和重复启停 | gst-plugin-venc/tests/jpeg-hardware.py、logs/mjpeg-hardware/ |
-| 编码器超频后帧率提升，就以为可用 | 750/800 MHz 下同一输入的码流已不再一致，但不报错、帧数正常。超频必须重复编码同一段录制输入并比较码流哈希，同时用低频对照排除时钟源问题 | [编码实验记录](../encoder-experiments.md#wave521-时钟与-4k-编码耗时2026-10-14) |
+| 编码器超频后帧率提升，就以为可用 | 750/800 MHz 下同一输入的码流已不再一致，但不报错、帧数正常。超频必须重复编码同一段录制输入并比较码流哈希，同时用低频对照排除时钟源问题 | [编码实验记录](../bringup/2026-10-14-wave521-clock-encode-time.md#wave521-时钟与-4k-编码耗时2026-10-14) |
 | HDMI 输入稳定，编码器却不断重建 | sysfs 的 centi-Hz 测量可在 5987–5999 间抖动，原 0.1Hz 容差仍会误重启。改为超过 1Hz 且连续两次稳定读数才重建，并保留无帧看门狗；MJPEG 测试必须匹配真实输入尺寸，不能把离线占位图判为成功 | ustreamer/src/ustreamer/vim4.c、tools/pikvm-smoke.mjs |
 | 网页走有线、WebRTC 报告 IPv4，却仍周期停顿 | Janus aggressive nomination 实测将视频发往客户端 Wi-Fi IPv6，selected candidate pair 统计不足以证明媒体路径。按 SSRC 对照两端网卡收发时间，使用 regular nomination；不通过关掉所有 IPv6 或一味缩短 GOP 掩盖路径问题 | kvmd/deploy/vim4/janus.jcfg、logs/pikvm/h264-client-wire.log、logs/pikvm/h264-regular-soak.log |
 | PiKVM 短测 60fps，隔夜降到约 30fps 并卡顿 | 现场 JPEG 线程与网卡/JPEG IRQ 同在 CPU0；不重启做亲和性对照才能保留证据。uStreamer 避开 CPU0 后恢复 60fps；仍须同时检查浏览器 freeze 与 UDP 发送错误，平均帧率恢复不等于所有停顿消失 | kvmd/deploy/vim4/main.yaml、logs/pikvm/overnight/、tools/pikvm-smoke.mjs |

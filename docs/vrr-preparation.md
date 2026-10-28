@@ -122,3 +122,10 @@ GStreamer 1.24.2 的离线 appsrc→videorate(drop-only)→appsink 实验中，
 保留原 EDID 和关闭的本地 VRR。没有显示器时不能验收输出跟随、关闭包、
 撕裂、失锁或延迟收益；离线构建通过不能替代这些结果。
 完整资格与缓冲约束见[本地VRR审查](vrr-passthrough-audit.md)。
+
+## 相关记录
+
+- [VRR准备](#已实现的基础修复)含EDID策略与基准帧率修复；5.15 One-KVM的
+  [1080p真实输入](bringup/2026-10-26-vrr-live.md)与[4K变频、范围纠正](bringup/2026-10-26-vrr-range-4k.md)
+  已短测H.264/H.265 SDR8。Forum最大值1–99为保留值，不能用60声明保守上限；
+  本地输出仍未验收，[本地VRR审查](vrr-passthrough-audit.md)保留资格约束。

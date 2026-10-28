@@ -19,4 +19,4 @@
   没有擦写板子；此候选镜像的全新刷机启动验收仍未执行。
 - 证据：build/audio-final-{build,verify,image-assemble,image-export}.log，
   logs/audio-final-{deploy,reboot,health,state}.log、audio-final-browser.json、
-  audio-final-video.json。功能缺项纠正见 [功能状态](../feature-status.md)。
+  audio-final-video.json。功能缺项纠正见 [功能状态](../archive/feature-status.md)。

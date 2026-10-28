@@ -1,8 +1,10 @@
 # One-KVM VIM4 功能复核（2026-10-14）
 
+> 归档快照（2026-10-14）：固定版本的One-KVM VIM4 功能复核（2026-10-14），不代表当前状态，现行入口见 [应用](../subsystems/application.md)。
+
 更新基线：One-KVM `98ba6784`，板上 `vim4-onekvm 2.5.1+vim4.20261014.10`，
 管理器 `7489ba1`。初次审查之后已补齐以下本地适配，并完成容器及上板验证。
-“保留实现”不等于“已经在 VIM4 验收”。历史实测细节见 [上板记录](bringup/README.md)。
+“保留实现”不等于“已经在 VIM4 验收”。历史实测细节见 [上板记录](../bringup/README.md)。
 
 ## 本轮已补齐的本地适配
 
@@ -17,11 +19,11 @@
 | USB 麦克风 | UAC2，48 kHz 双声道，原有认证 Opus/PCM WebSocket | 枚举、板侧 ALSA 打开与消费进度通过；macOS 终端尚未授权麦克风，主机录音波形未通过验收，不能把静音录音当成功 |
 
 对应实现：
-[扩展路径](../One-KVM/src/extensions/software_linux.rs)、
-[终端运行目录](../One-KVM/src/extensions/manager.rs)、
-[服务](../One-KVM/deploy/vim4/one-kvm.service)、
-[看门狗](../One-KVM/src/watchdog)、
-[更新限制](../One-KVM/src/update/mod.rs)。
+[扩展路径](../../One-KVM/src/extensions/software_linux.rs)、
+[终端运行目录](../../One-KVM/src/extensions/manager.rs)、
+[服务](../../One-KVM/deploy/vim4/one-kvm.service)、
+[看门狗](../../One-KVM/src/watchdog)、
+[更新限制](../../One-KVM/src/update/mod.rs)。
 
 ## 当前明确不支持或缺外设
 
@@ -33,8 +35,8 @@
 | USB 以太网桥接 | 网卡使用独立 DHCP/NAT；当前不桥接板子的现有以太网连接 |
 | 蓝牙 / CH9329 HID | VIM4 平台只公布 OTG 和 none；额外后端未做本板适配验收 |
 
-对应实现：[平台能力](../One-KVM/src/platform/linux.rs)、
-[OTG 服务](../One-KVM/src/otg/service.rs)。这些边界需要新增适配或外设，不是打开开关即可支持。
+对应实现：[平台能力](../../One-KVM/src/platform/linux.rs)、
+[OTG 服务](../../One-KVM/src/otg/service.rs)。这些边界需要新增适配或外设，不是打开开关即可支持。
 
 ## 已有实现，但尚未完成实机验收
 

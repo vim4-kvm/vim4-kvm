@@ -1,7 +1,9 @@
 # HDMI 恢复路径对照
 
+> 归档快照（2026-10-14）：固定版本的HDMI 恢复路径对照，不代表当前状态，现行入口见 [音视频](../subsystems/video.md)。
+
 2026-10-13；源码审查，不代表新增硬件验证。复现记录见
-[上板记录](bringup/2026-10-13-virtual-display-hdmi-not-restored.md)。
+[上板记录](../bringup/2026-10-13-virtual-display-hdmi-not-restored.md)。
 
 ## 审查范围
 

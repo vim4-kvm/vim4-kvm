@@ -1,17 +1,19 @@
 # T7 音频全路由离线审计与基础驱动系列
 
+> 归档快照（2026-10-23）：固定版本的T7 音频全路由离线审计与基础驱动系列，不代表当前状态，现行入口见 [音频能力](../parity/audio.md)。
+
 本页固定前轮 `e934ed1e3b87f` 的历史交付范围；后续 TDMD/处理组件、完整构建与当前
 剩余项见[第二轮离线记录](audio-processing-offline.md)。下文“未实现/未运行”均指该前轮。
 
 本轮仅操作开发机和 `vim4-build`，没有访问、占用或部署板子。
 **交付的是基础驱动候选，不是全路由追平完成**：ASRC、VAD、AED、DSP、TDMD 等仍有
-代码实现欠账，不能将它们统称为“只待上板”。[能力表](audio.md)的 16 项统计仍为
+代码实现欠账，不能将它们统称为“只待上板”。[能力表](../parity/audio.md)的 16 项统计仍为
 0 完全、5 部分、11 缺失；eARC 是另外一项选装范围。
-批量硬件验收及外设见[上板清单](audio-board-checklist.md)。
+批量硬件验收及外设见[上板清单](../parity/audio-board-checklist.md)。
 
 ## 固定版本与交付
 
-厂商依据沿用[来源表](sources.md)：Linux `80a07ad5406d`、common_drivers
+厂商依据沿用[来源表](../parity/sources.md)：Linux `80a07ad5406d`、common_drivers
 `4cfb128d36f8`。本次重新核对该版本 `kvim4n.dts` 595–778、977–1386，
 以及 `sound/soc/amlogic/auge/{tdm_hw,ddr_mngr,spdif_hw,resample_hw,pdm_hw}.c`、
 `audio_top.h`、`regs.h`、`clks/`。没有修改厂商树。

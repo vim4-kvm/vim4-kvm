@@ -81,3 +81,7 @@ NanoKVM 的 [Pion 配置](../NanoKVM/server/service/stream/webrtc/h264.go) 使�
 4. 若 syscall 占主要尾部，再评估 Linux 发送批处理。要保留帧内顺序、ICE 选路、每包 SRTP、错误返回和音频/HID 调度；不能靠取消认证、随意增大 MTU 或并行乱序发包获取虚假收益。
 
 所有候选最终都要回到相同运动负载的真实接收端，比较完整帧到达、解码、显示及丢包/重传。平均吞吐或离线 p99 改善只是进入该验证的依据。
+
+## 相关记录
+
+- [RTP 发送优化](#正式路径与构建条件)：正式加密后端、逐包路径、协商约束与离线验证；[编码 fast packing](encoder-fast-packing-audit.md) 记录厂商 API 与硬件验证边界。

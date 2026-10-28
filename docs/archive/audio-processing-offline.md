@@ -1,5 +1,7 @@
 # T7 音频处理、TDMD 与完整构建（仅离线）
 
+> 归档快照（2026-10-23）：固定版本的T7 音频处理、TDMD 与完整构建（仅离线），不代表当前状态，现行入口见 [音频能力](../parity/audio.md)。
+
 本轮未访问板子、未安装产物。续接[基础系列](audio-routes-offline.md)，在独立 VM
 工作树 `~/src/linux-7.3-audio-routes` 的 `vim4-audio-routes` 上增加 26 个提交，
 从 `e934ed1e3b87f` 到 `e3eb8eb1e400e`。正式 `vim4-kvm-7.3` 未改动。
@@ -113,5 +115,5 @@ loader 可以直接移植为主线实现。
 完整原始构建输出保留 VM `~/build/kernel-audio-routes/final-full-build.log`。
 2338个匹配模块齐全，12项产物哈希已登记；未执行启动、PCM、声学、功耗或性能测试。
 
-后续按[批量上板清单](audio-board-checklist.md)统一窗口。除已列代码缺口外，板级
+后续按[批量上板清单](../parity/audio-board-checklist.md)统一窗口。除已列代码缺口外，板级
 接线/端点配置、真实参数协商、ASRC漂移、音效响应、低功耗、RX/TX并发都需要各自证据。

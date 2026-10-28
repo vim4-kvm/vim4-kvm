@@ -110,7 +110,7 @@ SARADC d0c36b0f），One-KVM vim4已快进到672b8fd9，均已推送。
 合并后的HDMI实际C测试全过，整体checkpatch为790行0 errors/0 warnings。
 正式完整包沿用最新主仓uhd1.config的M1驱动编译开关，但仍安装已验M0 DTB，不启用M1。
 正式九类回归及finalize结果如下。物理失锁仍为
-[厂商差距待办](../vendor-parity.md)，需用户现场受控源或厂商5.15同链路对照。
+[厂商差距待办](../parity/README.md)，需用户现场受控源或厂商5.15同链路对照。
 
 ## 正式窗口与保留证据
 
