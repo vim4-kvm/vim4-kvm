@@ -5,31 +5,31 @@
 name = "NanoKVM"
 url = "https://github.com/vim4-kvm/NanoKVM.git"
 branch = "vim4"
-revision = "d5e81534e74b3327aca568272f21f1e2354d9374"
+revision = "63fa80f6b03d26d7bf0c66abe8fbfb81793b7183"
 
 [[repos]]
 name = "common_drivers"
 url = "https://github.com/vim4-kvm/common_drivers.git"
 branch = "vim4-kvm-5.15"
-revision = "6558c1eee6d5359bca16e43fbbf81fa5bbb9ff5d"
+revision = "31619c527655514b4c89516ef609b6db1dd47db6"
 
 [[repos]]
 name = "gst-plugin-venc"
 url = "https://github.com/vim4-kvm/gst-plugin-venc.git"
 branch = "vim4"
-revision = "3c9bd56533df575b92eead2f372648b912909f82"
+revision = "c35244de3421dbbd06788c55361787185d152559"
 
 [[repos]]
 name = "gst-plugin-vfmcap"
 url = "https://github.com/vim4-kvm/gst-plugin-vfmcap.git"
 branch = "main"
-revision = "f9383277a8cb2ac96c8d42ae8a41030bdcf782f8"
+revision = "a4937400370bdac40b50dca59df1ee22fff07df7"
 
 [[repos]]
 name = "kvm"
 url = "https://github.com/vim4-kvm/kvm.git"
 branch = "vim4"
-revision = "8217a10f8bafe87725bed1aedd0bc1f13c0d158c"
+revision = "f2b8122505cacda2762948a91c99c1acdb107ef0"
 
 [[repos]]
 name = "One-KVM"
@@ -53,7 +53,7 @@ revision = "8d8a4eec16e774422e67168b221142ec052b46ad"
 name = "vim4-manager"
 url = "https://github.com/vim4-kvm/vim4-manager.git"
 branch = "main"
-revision = "93f49a51a93ad699a05c0bccc9533d09976bcd09"
+revision = "2bb2c92f84e9ffe00305c539d9603e566747a64d"
 
 [kernel]
 url = "https://github.com/vim4-kvm/linux.git"
