@@ -7,6 +7,7 @@
 
 ## 2026-10-27
 
+- [当前 One-KVM 延迟与 SDR 缩放瓶颈](2026-10-27-current-video-latency.md) — video application board benchmark
 - [HEVC 无损与固定 QP](2026-10-27-hevc-quality.md) — video application deployment board
 - [共享编码的 SRT 与 RTMP 输出](2026-10-27-shared-broadcast.md) — video audio application deployment board
 - [NPU 真实推理与分类、文字识别验证](2026-10-27-npu-inference.md) — kernel application board benchmark
