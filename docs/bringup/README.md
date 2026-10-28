@@ -7,6 +7,7 @@
 
 ## 2026-10-28
 
+- [低频原生音频诊断](2026-10-28-audio-diagnostics.md) — audio application board
 - [源端空闲时非静音音频与数字静音恢复](2026-10-28-source-idle-audio.md) — audio uu application board
 - [UDP 同帧批量发送候选与延迟对照](2026-10-28-udp-batch-latency.md) — video application board benchmark
 
