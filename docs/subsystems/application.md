@@ -61,6 +61,7 @@ One-KVM 的 UU 远程让网易UU远程官方客户端经云端控制被控机：
 [UU HDR 验证](../bringup/2026-10-27-uu-hdr.md)；MacBook持续显示与屏幕光度单独验收。
 
 One-KVM 的「第三方接入」提供共享编码 SRT 与 RTMP/RTMPS 输出，默认关闭。
+5.15 视频输出设置还支持 HEVC 固定 QP 与无损，见[画质模式验证](../bringup/2026-10-27-hevc-quality.md)。
 SRT 支持 H.264/H.265，RTMP 使用 H.264；可共享 HDMI 声音并转换为 AAC。
 独立队列、断线重连和接收方式见 One-KVM/VIM4.md 的「共享编码 SRT / RTMP 输出」。
 
