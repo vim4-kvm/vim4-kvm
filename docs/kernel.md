@@ -5,7 +5,9 @@
 [vim4-kvm/common_drivers](https://github.com/vim4-kvm/common_drivers) 的同名分支。
 发布名 `5.15.137-vim4kvm`，与原厂 `5.15.137` 的模块目录并存。
 主内核工作树保留在 VM，Mac 不检出内核文件；不要以第三方整套内核替代官方基线。
-板上当前 FullKvm 为v7.3 M0 `47878a0c611d`，release `7.3.0-vim4kvm-uhd1+`、
+2026-10-28板上实读为 `5.15.137-vim4kvm-hdrdual6`；7.3源码、保留运行时与功能差距见
+[本轮复核](bringup/2026-10-28-kernel73-parity-audit.md)。以下为历史M0部署记录：
+FullKvm 为v7.3 M0 `47878a0c611d`，release `7.3.0-vim4kvm-uhd1+`、
 build ID `f483ea42fee88be39ea67c43478638be67334d6e`，含simpledrm控制台和既有Wave5防护。
 九类完整回归、音频ENOLINK基线对照、专用DTB限制、整包哈希与3a61b75b回退备份见
 [M0正式部署](bringup/2026-10-23-display-m0-r4.md)。下方厂商5.15流程保留。
@@ -100,7 +102,8 @@ make ARCH=arm64 CC=gcc-12 M=drivers/misc khadas-mcu.ko -j10
 此模式由一个内核任务独占控制，不同时注册给 `step_wise`，CPU 过热保护仍保留。
 状态读 `/sys/bus/platform/devices/khadas-mcu-fan-ctrl/{speed_percent,temperature_millic,sensor_fault}`；
 温度是上次采样值，百分比是最后成功写入值，没有测速反馈。
-当前仅迁移默认曲线，5.15 的阈值调节 sysfs/管理页接口没有迁移。
+7.3已通过`trigger_temperatures`提供三档阈值读写，管理器helper及状态页已有7.x后端；
+不能沿用早期“阈值调节未迁移”的结论，具体源码与版本见[差距复核](bringup/2026-10-28-kernel73-parity-audit.md)。
 
 启动参数 `khadas_mcu_fan.quiet_auto=0` 恢复原 thermal cooling device：50°C 触发、
 2°C 回差，`step_wise` 在 30–100 范围内调节。其他 MCU 型号保持此原实现。

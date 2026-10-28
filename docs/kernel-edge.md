@@ -1,11 +1,15 @@
 # VIM4 新内核基线
 
+2026-10-28实读板子运行5.15；当前7.3源码与保留运行时的
+[功能差距复核](bringup/2026-10-28-kernel73-parity-audit.md)另列近期产品功能、默认开关和验收欠账。
+下方7.3部署版本与测试结论保留历史口径，不代表现在正在运行的内核或应用版本。
+
 当前开发分支已接通 HDMI 输入、VDIN 直接 DMA、Wave5 H.264/H.265、硬件 JPEG 与音频，
 并部署完整 manager 和四种 KVM 的双内核运行时；5.15 可保留启动，共用同一应用的数据。
 当前包、匹配内核、安装/回退与实际验收范围见
 [双内核完整系统集成](bringup/2026-10-21-dual-kernel-integration.md)。
 本页保留 Armbian 编译基线与专项历史记录；通用 edge.config 不等于已验收的整板配置。
-当前板上保留 v7.3 `b1300eb808f43`，release `7.3.0-vim4kvm-uhd1+`、
+最近登记的7.3保留运行时为 `b1300eb808f43`，release `7.3.0-vim4kvm-uhd1+`、
 build ID `eeddb005df059a850853876d52ef603aa1af192b`；uhd1.config 同次完整 Image/DTB/
 2334模块，继续M0 simpledrm/tty0，包含HDMI PCM生命周期、FDET竞态与SARADC sample-delay修复，
 以及最新正式分支的Wave5恢复。M1驱动编译启用，M0 DTB不启用其接管。
