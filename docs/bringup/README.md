@@ -17,6 +17,7 @@
 
 ## 2026-10-29
 
+- [管理面板中英文界面](2026-10-29-manager-i18n.md) — manager application deployment
 - [One-KVM 新图标](2026-10-29-onekvm-icon.md) — application deployment
 - [One-KVM 连接统计的采样精度](2026-10-29-onekvm-connection-stats.md) — application deployment board
 
