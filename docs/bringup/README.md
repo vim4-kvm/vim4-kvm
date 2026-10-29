@@ -17,6 +17,9 @@
 
 ## 2026-10-28
 
+- [One-KVM 控制台面板、虚拟键盘与 WebRTC 套接字耗尽](2026-10-28-onekvm-console-panels.md) — application deployment board
+- [One-KVM 终端浮层与断线提示](2026-10-28-onekvm-terminal-polish.md) — application deployment board
+- [One-KVM 板子终端侧栏](2026-10-28-onekvm-board-terminal.md) — application deployment board
 - [管理器界面体验整理](2026-10-28-manager-uiux.md) — manager application deployment board
 - [7.3 对当前 5.15 功能的差距复核](2026-10-28-kernel73-parity-audit.md) — kernel video audio usb application audit
 - [低频原生音频诊断](2026-10-28-audio-diagnostics.md) — audio application board

@@ -19,9 +19,9 @@ if has platform || has capture; then
     meson test -C gst-plugin-vfmcap/build --print-errorlogs
 fi
 if has platform || has encoder; then
-    # The source contract test parses the real HDR chain in NULL state. A
-    # platform build includes its companion capture plugin without devices.
-    GST_PLUGIN_PATH="$PWD/gst-plugin-vfmcap/build${GST_PLUGIN_PATH:+:$GST_PLUGIN_PATH}" \
+    # The source contract tests parse the real HDR and SDR chains in NULL state:
+    # the companion capture plugin plus the amlvenc plugin this build produces.
+    GST_PLUGIN_PATH="$PWD/gst-plugin-vfmcap/build:$PWD/gst-plugin-venc/amlvenc${GST_PLUGIN_PATH:+:$GST_PLUGIN_PATH}" \
         python3 tools/workspace.py build encoder
 fi
 if has platform || has encoder || has onekvm || has capture; then
