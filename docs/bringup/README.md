@@ -15,6 +15,10 @@
 
 以下保留完整日期索引。这些里程碑记录的是历史证据；查找当前架构和约束时，仍应先读对应子系统入口。
 
+## 2026-10-29
+
+- [One-KVM 连接统计的采样精度](2026-10-29-onekvm-connection-stats.md) — application deployment board
+
 ## 2026-10-28
 
 - [One-KVM 控制台面板、虚拟键盘与 WebRTC 套接字耗尽](2026-10-28-onekvm-console-panels.md) — application deployment board
