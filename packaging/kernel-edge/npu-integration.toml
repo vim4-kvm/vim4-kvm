@@ -1,0 +1,27 @@
+# Review draft only. No build/deploy tool reads this instead of sources.toml.
+status = "pending-user-approval"
+runtime_commit = "558bab7"
+baseline = "213f271505411845eecb3c6ef10df7565b895ebc"
+npu4_reference = "34f345566a1b970a1d394304b3bee485c639bbc1"
+
+[kernel]
+branch = "integration/npu-uhd2"
+target_branch = "vim4-kvm-7.3"
+revision = "f71b5c6289cb3254690e57292327e73514f0715f"
+tree = "f3f8877c70e547bc53f2ca0469c25fcffb7f15a6"
+review_branch = "vim4-npu-adla-review"
+worktree = "~/src/linux-7.3-npu-integration"
+
+[candidate]
+release = "7.3.0-vim4kvm-uhd2+"
+localversion = "-vim4kvm-uhd2"
+config_path = "uhd2.config"
+cma = "512M@0x10000000-0xf0000000"
+adla = "module"
+payload = "~/build/uhd2-candidate"
+build_id = "b5f919294867c4a1853406d10bf1f8997bf135de"
+image_sha256 = "a391ca015375ca6e063bda5497dd3b262f6df544cb1792783b49c915b790e289"
+module_count = 2338
+default_boot = "unchanged-5.15"
+board_verified = false
+reset_failure_exception = "agent-provisional-awaiting-user-confirmation"

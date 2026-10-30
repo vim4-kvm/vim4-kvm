@@ -1,5 +1,6 @@
 # Experimental kernel pins; the private GStreamer recipe below is also used
 # by the 5.15 One-KVM image builder.
+# NPU integration draft: npu-integration.toml and uhd2.config. Not approved/pinned.
 [kernel]
 url = "https://github.com/vim4-kvm/linux.git"
 branch = "vim4-kvm-7.3"
