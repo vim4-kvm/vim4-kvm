@@ -15,6 +15,10 @@
 
 以下保留完整日期索引。这些里程碑记录的是历史证据；查找当前架构和约束时，仍应先读对应子系统入口。
 
+## 2026-10-30
+
+- [7.3 差距补齐批量验证](2026-10-30-kernel73-gap-validation.md) — kernel video usb manager deployment
+
 ## 2026-10-29
 
 - [管理面板中英文界面](2026-10-29-manager-i18n.md) — manager application deployment

@@ -100,13 +100,15 @@ Khadas 40-pin 编号**与树莓派不同**：一排为 1–20，另一排为 21�
 
 ## 开发拓扑
 
-Mac mini 同时充当被控机。当前 USB-C 单线供电与 HID；VIN 和 HDMI 输出假负载均非当前配置的必需项：
+2026-10-30 拓扑：开发机为 Mac mini M4，被控机为另一台 Mac mini M6。
+M4 只能通过 LAN 和 USB-UART 访问板子，不能从本机访问 M6 上的 USB ACM。
+当前 USB-C 单线供电与 HID；VIN 和 HDMI 输出假负载均非当前配置的必需项：
 
 ```
                Ethernet (192.168.50.210)
   Mac mini M4 ───────────────────────────────── VIM4
      │ USB-UART ── GPIO 17/18/19 (921600) ────────┤
-     │ HDMI out ── micro-HDMI ─────── HDMI-IN ────┤
+  Mac mini M6 HDMI out ─ micro-HDMI ─ HDMI-IN ────┤
      │ USB ──────── USB-C (OTG: HID/ECM/MSD) ─────┤
                       可选独立电源 ── VIN ────────┤
                       HDMI-OUT（当前未连接）──────┘

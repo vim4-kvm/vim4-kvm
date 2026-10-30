@@ -35,7 +35,8 @@ revision = "f2b8122505cacda2762948a91c99c1acdb107ef0"
 name = "One-KVM"
 url = "https://github.com/vim4-kvm/One-KVM.git"
 branch = "vim4"
-revision = "8a39b619524bd23a775784ec87e1968739daa26e"
+# Local board validation; this child-repository commit has not been pushed.
+revision = "c9f2a7b9d66d96a401a60d5070831cf6b8ac0726"
 
 [[repos]]
 name = "kvmd"
@@ -53,7 +54,8 @@ revision = "8d8a4eec16e774422e67168b221142ec052b46ad"
 name = "vim4-manager"
 url = "https://github.com/vim4-kvm/vim4-manager.git"
 branch = "main"
-revision = "ab7fb6326670d2e12588aafee71f8437c24afe5f"
+# Local board validation; this child-repository commit has not been pushed.
+revision = "c2bd660212761e31b5c211756cfd5e3528611776"
 
 [kernel]
 url = "https://github.com/vim4-kvm/linux.git"
