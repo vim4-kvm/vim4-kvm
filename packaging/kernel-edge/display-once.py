@@ -115,6 +115,11 @@ def prepare(payload, init, baseline, output, release=RELEASE,
     prefix = str(ROOT / build_id)
     candidate_cmdline = trial_cmdline(state)
     if '-npu' in release:
+        # Qualified uhd1 memory placement, absent from the vendor 5.15 cmdline.
+        candidate_cmdline = ' '.join(token for token in candidate_cmdline.split()
+                                     if not token.startswith(('cma=', 'modprobe.blacklist=')))
+        candidate_cmdline += (' cma=512M@0x10000000-0xf0000000'
+                              ' modprobe.blacklist=crg_udc,t7_hdmirx,t7_vdin_test,wave5')
         # udev coldplug precedes the HDMI service. kmod reads these options on
         # its first insertion; later modprobe calls cannot change loaded params.
         video_options = ('t7_hdmirx.edid_firmware=vim4-hdmirx-ddc-test/'

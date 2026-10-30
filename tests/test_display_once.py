@@ -93,6 +93,8 @@ class TrialTest(unittest.TestCase):
             self.assertIn('t7_hdmirx.phy_test=1', config)
             self.assertIn('t7_hdmirx.hdr_capture=1', config)
             self.assertIn('t7_vdin_test.direct_dma=1', config)
+            self.assertIn('cma=512M@0x10000000-0xf0000000', config)
+            self.assertIn('modprobe.blacklist=crg_udc,t7_hdmirx,t7_vdin_test,wave5', config)
             self.assertNotIn('t7_hdmirx.', plan['baseline_cmdline'])
             with tarfile.open(archive) as trial:
                 modules = [name for name in trial.getnames() if name.startswith('modules/')]
