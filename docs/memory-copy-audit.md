@@ -3,6 +3,7 @@
 以下保留离线审查；后续[三方nodebug实测](bringup/2026-10-30-nodebug-memory-window.md)已完成：
 nodebug恢复tmpfs写入与YOLO端到端，但memcpy/pread仍未追平。未动GPU文件、正式配置或push/pin。
 用户授权的[独立nodebug候选](uhd2-nodebug.md)已关闭纯调试开销；正式配置仍待批准。
+后续[原始绑核核对与两启动对门禁](nodebug-performance-gate.md)补逐段实际CPU/频率及大、小核重复分布；旧CPU2亲和已确认，DDR对齐仍缺。
 [YOLO分段记录](bringup/2026-10-30-npu-e2e-window.md)把约3.46ms增量定位到tmpfs fwrite，
 尚未证明整个KVM所有拷贝都退化。**首要配置嫌疑是7.3的锁调试，不是已坐实的DDR低频或ADLA缺陷。**
 
@@ -89,7 +90,7 @@ timeout -k 3 180 python3 tools/memory-bench.py --binary ./memory-bench \
 工具固定自己的CPU亲和并恢复，不控制频点；窗口操作者沿用已验证performance/min/max固定与恢复流程。
 每组原始JSONL记录ns、逻辑传输bytes、minor/major faults、主动/被动切换；不能把逻辑bytes当实际DDR总线流量。
 
-- memcpy hot从4KiB/64KiB/1MiB/4.8384MB/16MiB/64MiB跨尺寸，重复目标64MiB，预触页，
+- memcpy hot从4KiB至64MiB跨11尺寸（含128/256/512KiB、2/8MiB），重复目标64MiB，预触页，
   volatile函数指针调用libc避免编译器消掉；小尺寸主要反映热缓存，不宣称DRAM带宽。
 - fresh tmpfs pwrite、同文件rewrite、resident tmpfs pread到已触页缓冲、fwrite+fclose fresh分别测。
   pread覆盖内核到用户copy路径，但含VFS/页缓存查找，不是裸copy_to_user函数计时。
@@ -113,7 +114,7 @@ timeout -k 3 180 python3 tools/memory-bench.py --binary ./memory-bench \
 14–18分钟回5.15，恢复频率/亲和，核对12文件哈希/权限、服务/UDC，释放锁；留2分钟余量。
 不用HID、声音或ptrace视频进程，不在窗口改配置/驱动，不与编译并行。
 
-离线验证：ARM64 VM实际编译并运行全部30种尺寸/阶段组合，校验读回、nohuge首次fault边界、
+初版离线验证：ARM64 VM实际编译并运行30种尺寸/阶段组合；新版扩展至35组，校验读回、nohuge首次fault边界、
 重复触碰fault减少、亲和恢复及拒绝覆盖；离线阶段五次重复完整跑通，后续板上原始数据见上述实测记录。
 主仓unittest 313项、8跳过，OK（Linux执行测试在Mac跳过，另在ARM64 VM实际通过）；
 `git diff --check`通过。本轮未修改任何正式config或构建新内核候选。

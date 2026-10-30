@@ -6,6 +6,7 @@ import json
 import os
 from pathlib import Path
 import signal
+import statistics
 import subprocess
 import tempfile
 import threading
@@ -110,8 +111,23 @@ def main():
     if code or expired.is_set():
         raise SystemExit('benchmark failed; retain rows.jsonl and state.json')
     rows = [json.loads(line) for line in (args.output / 'rows.jsonl').read_text().splitlines()]
-    if len(rows) != args.repeats * 30 or any(row['ns'] <= 0 for row in rows):
+    if len(rows) != args.repeats * 35 or any(row['ns'] <= 0 for row in rows):
         raise SystemExit('incomplete benchmark')
+    if any(row['cpu_begin'] != args.cpu or row['cpu_end'] != args.cpu for row in rows):
+        raise SystemExit('CPU placement mismatch; results are not qualified')
+    groups = {}
+    for row in rows:
+        groups.setdefault((row['phase'], row['size']), []).append(row)
+    distribution = []
+    for (phase, size), group in sorted(groups.items()):
+        values = sorted(row['ns'] for row in group)
+        distribution.append(dict(phase=phase, size=size, samples=len(values),
+                                 raw_ns=[row['ns'] for row in group],
+                                 first_ns=group[0]['ns'], minimum_ns=values[0],
+                                 mean_ns=statistics.mean(values), median_ns=statistics.median(values),
+                                 p99_ns=values[-1], maximum_ns=values[-1]))
+    # With at most nine samples nearest-rank P99 is the observed maximum.
+    (args.output / 'distribution.json').write_text(json.dumps(distribution, indent=2) + '\n')
 
 
 if __name__ == '__main__':

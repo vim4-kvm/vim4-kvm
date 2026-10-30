@@ -4,6 +4,7 @@
 #include <fcntl.h>
 #include <inttypes.h>
 #include <stdint.h>
+#include <sched.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -28,9 +29,27 @@ static uint64_t clock_ns(void)
 
 static struct rusage before;
 static uint64_t begin;
+static int cpu_begin;
+static char frequency_begin[32];
+
+static void frequency(int cpu, char result[32])
+{
+    char path[160];
+    snprintf(path, sizeof(path), "/sys/devices/system/cpu/cpu%d/cpufreq/scaling_cur_freq", cpu);
+    FILE *file = fopen(path, "r");
+    long value;
+    if (file && fscanf(file, "%ld", &value) == 1 && value > 0)
+        snprintf(result, 32, "%ld", value);
+    else
+        strcpy(result, "null");
+    if (file) fclose(file);
+}
 
 static void start(void)
 {
+    cpu_begin = sched_getcpu();
+    if (cpu_begin < 0) fail("sched_getcpu");
+    frequency(cpu_begin, frequency_begin);
     if (getrusage(RUSAGE_SELF, &before)) fail("getrusage");
     begin = clock_ns();
 }
@@ -40,14 +59,20 @@ static void report(const char *phase, size_t size, unsigned rep, size_t bytes)
     uint64_t elapsed = clock_ns() - begin;
     struct rusage after;
     if (getrusage(RUSAGE_SELF, &after)) fail("getrusage");
+    int cpu_end = sched_getcpu();
+    if (cpu_end < 0) fail("sched_getcpu");
+    char frequency_end[32];
+    frequency(cpu_end, frequency_end);
     if (!elapsed) { fprintf(stderr, "clock resolution too low\n"); exit(1); }
     printf("{\"phase\":\"%s\",\"size\":%zu,\"rep\":%u,\"bytes\":%zu,"
            "\"ns\":%" PRIu64 ",\"begin_ns\":%" PRIu64 ",\"minflt\":%ld,\"majflt\":%ld,"
-           "\"nvcsw\":%ld,\"nivcsw\":%ld,\"mib_s\":%.3f,\"minor_faults_s\":%.3f}\n", phase, size, rep, bytes, elapsed, begin,
+           "\"nvcsw\":%ld,\"nivcsw\":%ld,\"mib_s\":%.3f,\"minor_faults_s\":%.3f,"
+           "\"cpu_begin\":%d,\"cpu_end\":%d,\"freq_begin_khz\":%s,\"freq_end_khz\":%s}\n", phase, size, rep, bytes, elapsed, begin,
            after.ru_minflt - before.ru_minflt, after.ru_majflt - before.ru_majflt,
            after.ru_nvcsw - before.ru_nvcsw, after.ru_nivcsw - before.ru_nivcsw,
            (double)bytes * 1e9 / elapsed / (1024 * 1024),
-           (after.ru_minflt - before.ru_minflt) * 1e9 / elapsed);
+           (after.ru_minflt - before.ru_minflt) * 1e9 / elapsed,
+           cpu_begin, cpu_end, frequency_begin, frequency_end);
 }
 
 static void transfer(int fd, void *buffer, size_t size, int reading)
@@ -71,6 +96,12 @@ int main(int argc, char **argv)
     char *end;
     long repeats = strtol(argv[2], &end, 10);
     if (*end || repeats < 1 || repeats > 9) return 2;
+    cpu_set_t mask;
+    if (sched_getaffinity(0, sizeof(mask), &mask)) fail("sched_getaffinity");
+    if (CPU_COUNT(&mask) != 1) {
+        fprintf(stderr, "requires a single pinned CPU (use the Python runner)\n");
+        return 2;
+    }
     struct statfs fs;
     if (statfs(argv[1], &fs)) fail("statfs");
     if ((unsigned long)fs.f_type != 0x01021994UL) {
@@ -88,7 +119,8 @@ int main(int argc, char **argv)
     memset(src, 0x5a, maximum);
     memset(dst, 0, maximum);
     void *(*volatile copy)(void *, const void *, size_t) = memcpy;
-    const size_t sizes[] = {4096, 65536, 1048576, 4838400, 16777216, 67108864};
+    const size_t sizes[] = {4096, 65536, 131072, 262144, 524288, 1048576,
+                           2097152, 4838400, 8388608, 16777216, 67108864};
     for (size_t k = 0; k < sizeof(sizes) / sizeof(sizes[0]); ++k) {
         size_t size = sizes[k];
         unsigned loops = (unsigned)(maximum / size);
@@ -118,8 +150,9 @@ int main(int argc, char **argv)
         }
     }
     /* pread goes through the resident tmpfs -> user buffer copy path. */
-    for (size_t k = 0; k < 5; ++k) {
-        size_t size = sizes[k];
+    const size_t file_sizes[] = {4096, 65536, 1048576, 4838400, 16777216};
+    for (size_t k = 0; k < sizeof(file_sizes) / sizeof(file_sizes[0]); ++k) {
+        size_t size = file_sizes[k];
         for (unsigned rep = 0; rep < (unsigned)repeats; ++rep) {
             char path[4096];
             int n = snprintf(path, sizeof(path), "%s/data-XXXXXX", argv[1]);
