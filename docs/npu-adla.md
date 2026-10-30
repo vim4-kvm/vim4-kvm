@@ -41,7 +41,7 @@ WAIT改用可中断等待，按invoke查询完成状态；超时返回ETIMEDOUT�
 
 **无法确认DMA停止时不允许释放可能仍被硬件访问的页。** 当前实现锁定故障状态、
 拒绝后续请求、保留模块与相关DMA/IOVA资源直到重启，并禁止sysfs解绑。
-用户在本轮已接受此例外：语义与DRM wedged一致，不能计作“全部资源回收”。
+本轮按DRM wedged语义暂定此例外（代理决定，待用户确认），不能计作“全部资源回收”。
 故障必须对用户态可见：后续open/ioctl返回EIO，WAIT/GET_STAT报告失败；
 `adlak_device.c:44`用一次性故障转换，`:59`打印
 `recovery failed: <error>; reboot required`。这些为源码合同，
