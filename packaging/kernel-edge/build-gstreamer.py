@@ -33,11 +33,15 @@ def main():
     with tarfile.open(archive) as source:
         source.extractall(work, filter='data')
     tree = work / 'gst-plugins-good-1.24.2'
-    for patch in locked['patches']:
+    # Keep the retained runtime lock unchanged while building the application
+    # compatibility fix for padded Wave5 visible rectangles.
+    for patch in [*locked['patches'], 'gstreamer-v4l2-visible-crop.patch']:
         subprocess.run(['patch', '-p1', '--forward', '-i', str(recipe / patch)], cwd=tree, check=True)
     subprocess.run([sys.executable, str(recipe / 'test_gstreamer_orphan.py'),
                     str(tree / 'sys/v4l2/gstv4l2bufferpool.c')], check=True)
     subprocess.run([sys.executable, str(recipe / 'test_gstreamer_contiguous.py'),
+                    str(tree / 'sys/v4l2/gstv4l2object.c')], check=True)
+    subprocess.run([sys.executable, str(recipe / 'test_gstreamer_visible_crop.py'),
                     str(tree / 'sys/v4l2/gstv4l2object.c')], check=True)
     subprocess.run(['meson', 'setup', 'build', '-Dauto_features=disabled', '-Dv4l2=enabled',
                     '-Dtests=disabled', '-Dexamples=disabled', '-Ddoc=disabled', '-Dnls=disabled'],
