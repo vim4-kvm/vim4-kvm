@@ -17,7 +17,7 @@ revision = "31619c527655514b4c89516ef609b6db1dd47db6"
 name = "gst-plugin-venc"
 url = "https://github.com/vim4-kvm/gst-plugin-venc.git"
 branch = "vim4"
-# Local board validation; the Wave5 update has not been pushed.
+# Board-validated Wave5 update; remote vim4 matches this revision.
 revision = "b3b82a98cac16c4e845fad6357189b57cf8b2db4"
 
 [[repos]]
@@ -36,7 +36,7 @@ revision = "f2b8122505cacda2762948a91c99c1acdb107ef0"
 name = "One-KVM"
 url = "https://github.com/vim4-kvm/One-KVM.git"
 branch = "vim4"
-# Local board validation; this child-repository commit has not been pushed.
+# Board-validated application; remote vim4 matches this revision.
 revision = "3649a8c8f12d8bcd3f2d394de848dc486a270ecc"
 
 [[repos]]
@@ -55,7 +55,7 @@ revision = "8d8a4eec16e774422e67168b221142ec052b46ad"
 name = "vim4-manager"
 url = "https://github.com/vim4-kvm/vim4-manager.git"
 branch = "main"
-# Local board validation; this child-repository commit has not been pushed.
+# Board-validated manager; remote main matches this revision.
 revision = "81c6cc562b0086eb5650709b15d55df7a69937a1"
 
 [kernel]

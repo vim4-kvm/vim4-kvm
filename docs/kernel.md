@@ -5,8 +5,11 @@
 [vim4-kvm/common_drivers](https://github.com/vim4-kvm/common_drivers) 的同名分支。
 发布名 `5.15.137-vim4kvm`，与原厂 `5.15.137` 的模块目录并存。
 主内核工作树保留在 VM，Mac 不检出内核文件；不要以第三方整套内核替代官方基线。
-2026-10-28板上实读为 `5.15.137-vim4kvm-hdrdual6`；7.3源码、保留运行时与功能差距见
-[本轮复核](bringup/2026-10-28-kernel73-parity-audit.md)。以下为历史M0部署记录：
+2026-10-30默认启动仍为 `5.15.137-vim4kvm-hdrdual6`；7.3保留项已更新为正式
+`213f271505411`＋ACM配置，build ID `7a473adf9353013fd1ab01908d20bbf503a063fb`、
+M0 DTB与完整2337模块，登记FullKvm但不设为默认。来源、模块/应用哈希和未验范围见
+[部署锁更新](bringup/2026-10-30-kernel73-retained-pin.md)。
+功能差距的历史复核见[10月28日审查](bringup/2026-10-28-kernel73-parity-audit.md)。以下为历史M0部署记录：
 FullKvm 为v7.3 M0 `47878a0c611d`，release `7.3.0-vim4kvm-uhd1+`、
 build ID `f483ea42fee88be39ea67c43478638be67334d6e`，含simpledrm控制台和既有Wave5防护。
 九类完整回归、音频ENOLINK基线对照、专用DTB限制、整包哈希与3a61b75b回退备份见

@@ -1,22 +1,22 @@
 # VIM4 新内核基线
 
-2026-10-28实读板子运行5.15；当前7.3源码与保留运行时的
+2026-10-30 默认启动保持5.15；当前7.3源码与保留运行时的
 [功能差距复核](bringup/2026-10-28-kernel73-parity-audit.md)另列近期产品功能、默认开关和验收欠账。
-下方7.3部署版本与测试结论保留历史口径，不代表现在正在运行的内核或应用版本。
+最新保留构建见[部署锁更新](bringup/2026-10-30-kernel73-retained-pin.md)；历史测试不代表本次重新全量验收。
 
 当前开发分支已接通 HDMI 输入、VDIN 直接 DMA、Wave5 H.264/H.265、硬件 JPEG 与音频，
 并部署完整 manager 和四种 KVM 的双内核运行时；5.15 可保留启动，共用同一应用的数据。
 当前包、匹配内核、安装/回退与实际验收范围见
 [双内核完整系统集成](bringup/2026-10-21-dual-kernel-integration.md)。
 本页保留 Armbian 编译基线与专项历史记录；通用 edge.config 不等于已验收的整板配置。
-最近登记的7.3保留运行时为 `b1300eb808f43`，release `7.3.0-vim4kvm-uhd1+`、
-build ID `eeddb005df059a850853876d52ef603aa1af192b`；uhd1.config 同次完整 Image/DTB/
-2334模块，继续M0 simpledrm/tty0，包含HDMI PCM生命周期、FDET竞态与SARADC sample-delay修复，
-以及最新正式分支的Wave5恢复。M1驱动编译启用，M0 DTB不启用其接管。
-One-KVM为 `672b8fd9fdec`，manager为 `9b141c5833c0`。
-此前PCM/SARADC正式19档、编码往返、4K60、音频、USB、GPU和管理页九类通过；
-本次单一RX改动按针对性及五分钟冒烟门禁部署。
-最终taint=0、无新增警告或ASoC错误；未做长期零中断验收。
+最近登记的7.3保留运行时为正式 `vim4-kvm-7.3@213f271505411`，release
+`7.3.0-vim4kvm-uhd1+`、build ID `7a473adf9353013fd1ab01908d20bbf503a063fb`；
+使用含ACM的uhd1.config、M0 simpledrm/tty0和同次完整2337模块。M1编译启用，M0 DTB不启用其接管。
+One-KVM为 `3649a8c8`，manager为 `81c6cc5`，共享Wave5插件为 `b3b82a9`。
+尺寸、QP/无损、ACM板侧及GPU的实际通过/未验证边界见[批量验证](bringup/2026-10-30-kernel73-gap-validation.md)
+和[第三/四轮复验](bringup/2026-10-30-kernel73-gap-r3.md)。GPU真实sudo CPU预算仍未达标，
+不将旧九类回归、音频或HID历史结果算作本轮重测。构建产物尚未发布到Release。
+以下RX/PCM/SARADC叙述为此前b1300eb及更早窗口的历史证据：
 [同链路对照](bringup/2026-10-23-hdmirx-vendor-comparison.md)为7.3十分钟12次冻结、厂商5.15零次；
 已定位TOP测量VALID空窗被误判ENOLINK，修复一次性候选十分钟零冻结、四次HPD恢复，
 正式五分钟60.00038fps、零冻结/停流，音频/HID/管理面及finalize通过。
@@ -67,7 +67,7 @@ H.264/H.265 硬编码已取得实验结果，见
 目标是追平厂商5.15全部适用能力，核心进入DRM/KMS、V4L2、ASoC、genpd等主线框架，
 外围可先移植后整理；绕过和保护不能作为终态。完整范围、固定源码/DT行号、缺口依赖、
 工作量与硬件见 [厂商能力对照与总体规划](parity/README.md)。该表固定比较M0 `47878a0c611d`，
-并叠加当前`b1300eb8`正式增量；未合入候选不算已部署能力。
+并叠加当时`b1300eb8`正式增量；10月30日保留锁已更新为213f2715，不能把该历史对照表当最新验收。
 以下顺序与F0–F5一致，不代表硬件验收通过。
 
 | 优先级 | 方向 | 当前边界与下一步 |
@@ -112,9 +112,13 @@ DTB/固件和完整模块的安装与登记按双内核记录执行，保留当�
 两份配置均启用 `CONFIG_USB_CONFIGFS_ACM=y`；`olddefconfig` 会选择
 `CONFIG_USB_F_ACM=m` 与 `CONFIG_USB_U_SERIAL=m`。`uhd1.config` 是独立保存的完整配置，
 构建时不会从 `edge.config` 重新派生，修改公共功能须同步两者。
-此配置已增加 ACM，因而不再与旧 tested_build 的配置校验和一致；版本锁仍保持不变，
-不能视为 ACM 已部署或验收。正式 213f2715 的配置核对须用独立输出目录执行
-`make olddefconfig`；锁定构建入口仍只接受 sources.toml 中的 revision。
+tested_build 已与正式213f2715及该ACM配置配套更新。ACM板侧已验，M6主机数据传输未验。
+锁定构建入口只接受 sources.toml 中的精确revision和干净源码，输出必须为新的外部目录。
+第四参数 `--validate-only` 执行相同版本/目录检查和olddefconfig后退出，不编译、不部署；
+本轮已在VM实际验证并比对最终配置哈希。完整构建省略该参数。
+`tested_build.image_sha256` 是适应当前启动分区容量的确定性gzip Image，
+`uncompressed_image_sha256` 是build.sh原始Image；manifest和安装proof对应gzip版本，
+`source_manifest_sha256` 保留原始候选清单来源，`live_proof_sha256` 对应板上运行快照。
 
 下方是最初 Armbian rc7 导入的历史步骤；当前分支已基于 v7.3 重放并合入板级修复，
 准确复现应检出 sources.toml 的提交，不重新执行这段导入。固定 Armbian 快照为 7.3 选择 rc7，

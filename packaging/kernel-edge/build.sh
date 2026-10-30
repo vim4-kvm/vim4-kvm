@@ -1,11 +1,12 @@
 #!/bin/bash
-# Usage: build.sh SOURCE OUTPUT [CONFIG]; defaults to the generic edge.config.
+# Usage: build.sh SOURCE OUTPUT [CONFIG] [--validate-only]; defaults to edge.config.
 # Compile into an external directory; never install or reboot.
 set -euo pipefail
 source_dir=$(realpath "${1:?kernel source directory required}")
 output=$(realpath -m "${2:?external build directory required}")
 recipe=$(cd "$(dirname "$0")" && pwd)
 config=$(realpath "${3:-$recipe/edge.config}")
+[[ ${4:-} == '' || ${4:-} == --validate-only ]] || { echo 'Unknown build option' >&2; exit 2; }
 [[ $(uname -s) == Linux && $(uname -m) == aarch64 ]] || { echo 'Requires Linux ARM64' >&2; exit 1; }
 python3 - "$recipe" "$source_dir" "$output" <<'PY'
 import pathlib, subprocess, sys, tomllib
@@ -26,6 +27,10 @@ export SOURCE_DATE_EPOCH=$(git -C "$source_dir" show -s --format=%ct HEAD)
 export KBUILD_BUILD_TIMESTAMP=$(date -u -d "@$SOURCE_DATE_EPOCH")
 args=(-C "$source_dir" O="$output" ARCH=arm64 CC=gcc KBUILD_BUILD_VERSION=1 KBUILD_BUILD_USER=vim4-kvm KBUILD_BUILD_HOST=vim4-build)
 make "${args[@]}" olddefconfig
+if [[ ${4:-} == --validate-only ]]; then
+    echo 'Validated locked source and generated configuration; compilation not requested'
+    exit 0
+fi
 make "${args[@]}" -j"${JOBS:-8}" Image dtbs modules
 python3 - "$source_dir" "$output" <<'PY'
 import hashlib, json, pathlib, subprocess, sys

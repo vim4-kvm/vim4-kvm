@@ -17,6 +17,7 @@
 
 ## 2026-10-30
 
+- [7.3 保留运行时与发布锁同步](2026-10-30-kernel73-retained-pin.md) — kernel deployment application
 - [第三轮尺寸与原生 GPU 定向复验](2026-10-30-kernel73-gap-r3.md) — kernel video manager deployment
 - [7.3 差距补齐批量验证](2026-10-30-kernel73-gap-validation.md) — kernel video usb manager deployment
 

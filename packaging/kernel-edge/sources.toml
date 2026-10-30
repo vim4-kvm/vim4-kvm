@@ -3,65 +3,69 @@
 [kernel]
 url = "https://github.com/vim4-kvm/linux.git"
 branch = "vim4-kvm-7.3"
-revision = "b1300eb808f43e7161d4971d47c689af28e67e83"
-tree = "c65c7d9b6f88b50d544ac72d56ff0e33b47cb54b"
+revision = "213f271505411845eecb3c6ef10df7565b895ebc"
+tree = "9b70de878174c786b5a5d1cf4f2d446598fe8f61"
 upstream_url = "https://github.com/gregkh/linux.git"
-# Retained final-release deployment (published).
-# Evidence and limits: docs/bringup/2026-10-23-hdmirx-vendor-comparison.md.
+# Retained board build; artifacts have not been published.
+# Evidence: docs/bringup/2026-10-30-kernel73-retained-pin.md.
 upstream_tag = "v7.3"
 upstream_revision = "c03c1a14507dfaf8b856c2608f9ac216021fc222"
 
-# Separate experimental application; does not change workspace.toml production pins.
+# Shared production One-KVM; matches workspace.toml and the installed binary.
 [onekvm]
 url = "https://github.com/vim4-kvm/One-KVM.git"
 branch = "vim4"
-revision = "a8136d9c53c16e05b152199dd6026c567206fabf"
+revision = "3649a8c8f12d8bcd3f2d394de848dc486a270ecc"
 features = ["vim4"]
-tested_binary_sha256 = "0b537561096ee5dfb5f15839738c8ac4ea87ba0dbb3a5127a25c241de3f99c56"
+tested_binary_sha256 = "aacd3d977a0e169e1ee869486fc1846e9b360f83e96309cad734b9f5b2737b4d"
 
 # Complete matched build includes the former Wave5 and VDIN overlays.
-# build.sh uses the general edge.config; this tested profile changes LOCALVERSION.
+# build.sh defaults to edge.config; retained build explicitly uses uhd1.config.
 [tested_build]
 release = "7.3.0-vim4kvm-uhd1+"
 localversion = "-vim4kvm-uhd1"
-build_id = "eeddb005df059a850853876d52ef603aa1af192b"
-image_sha256 = "33d108070f6643476cecea90f24f26c088a25dda325e8aa87542781c96ab4ae6"
-config_sha256 = "8af98a1fbefdf163c407f9f04bb31372178b8f8d7d6f00f5dff162b930c968bf"
+build_id = "7a473adf9353013fd1ab01908d20bbf503a063fb"
+image_sha256 = "61dda2420c55623baf7c1f5f5d2a4af1a79c7f528dceb24f3462e373e93eca9d"
+config_sha256 = "4f8f254d60a37b7cdd7842a1ea7e40f0b036491185efa056179de15628e8dfa6"
 config_path = "uhd1.config"
-modules_sha256 = "a3272e074fa19ed3eda97673abc7b86496781a4211860cded0f7e92f854c20cc"
-module_count = 2334
+modules_sha256 = "3f08147903a15cd211db0276e0b8c209d20c731b0bb8e0dcc6392123edae1875"
+module_count = 2337
 module_btf = true
 board_dtb_path = "arch/arm64/boot/dts/amlogic/amlogic-t7-a311d2-khadas-vim4-display-m0.dtb"
 framebuffer_console = true
-board_dtb_sha256 = "a635f8947ee77f67a43714aaa87276aff70edc0952bf40188d46853e055ce652"
-manifest_sha256 = "6c71af705c9ba80ec16e9cbfe9d789fe27f6eb4ef3407324f1d1fd02a89fd607"
-runtime_proof_sha256 = "da8ed4069e55fbb4ef4646654f8e1a8beea69618fb09cf2458d9b2ee70c218dc"
-wave5_module_sha256 = "e88df353c730e5d82bbef8335788a28d5f71cfc7a4e1b8b5854ef00046d4b667"
+board_dtb_sha256 = "893ea6c8990860f1ee0d8c1910fc210e39728e941128d52f465618a5f0c3958d"
+manifest_sha256 = "09cbe93b9a5659fcab40994a5650ea4fb16c6ad4ffe4a6e933989f21a48feb14"
+runtime_proof_sha256 = "b5342302d05513a14bc3d05550060bae61ef649771b06ef8fc56943166a70f42"
+uncompressed_image_sha256 = "3171ff8eda8e45b149fef1fb92dbfeddfd20dccdf2db78fdaa626fdf03af003b"
+source_manifest_sha256 = "bf7a7652508f84c9ee58e9d61a2905a8b18b7758b20c0cc9a7c521e5069fcbb7"
+live_proof_sha256 = "de7678426e1a5c510a722a83a70d6548259a9af6e8530e8a58cad63927c97d21"
+wave5_module_sha256 = "01255bc49a040269475f378e3452b929a21f040de40ef6619c4387e38218030b"
 
 [tested_build.loaded_module_build_ids]
-meson_ir = "1ef2e6c71b739486d3356d1aafb131c63be49a7c"
-rc_khadas = "6eb8770e0c3dc54202e8f3a07f4dc0105519485a"
-ir_nec_decoder = "1fc911fb7abb746b98d2b10a95b4e29f591609db"
-dwmac_meson8b = "c2d73a4529dc94d006263886abb270c83dadfe71"
-panfrost = "d573b3dc322735c60a569634ba46d842e4d2df5b"
-brcmfmac = "377b4ea3f944dc7072e3f2ed8d43c2d1278fc8e8"
-wave5 = "8e2dedd2579d126adb8ba710eec2082ec1753b05"
-t7_hdmirx = "93dfabd64fa7cca88caf7b97a0357e2470ea59a2"
-t7_vdin_test = "fac1231e782c9035439deee2031f32b287c0231c"
-t7_jpeg = "be8cbd7c285fb0be281688bb4de3b78c9e301b70"
-crg_udc = "bbd01bc197cb11f4cd6383e8bf641c6a8d0b77fe"
+meson_ir = "92853fa94642effabd2deea3ae729c8f8b58702b"
+rc_khadas = "e8da445783350cb333b1cff9a57abadd4dd851d0"
+ir_nec_decoder = "c7c44cac69e296663d609e19301028812af0ec65"
+dwmac_meson8b = "0af818b2bfdd24e81b4447a363c5da4e87f72cba"
+panfrost = "12ff0c819f944b5dc3e6803e0312483c3d3a70b8"
+brcmfmac = "cae2dcb02b9b98f172876a122cde9a8ae67c8f44"
+wave5 = "094483467b5d6ca423ac151b8f2ba71a404c748c"
+t7_hdmirx = "ab1613e6d327ef5ae19870eb5ebfc8b227442178"
+t7_vdin_test = "6fd55b8ffc62c3ca14fe32d31989d353146d3809"
+t7_jpeg = "1bb45a85cd15bb529ca7a42111f4aba752bbfb06"
+crg_udc = "e5a8f26166bc0f5797139d764953bc3376a3cbca"
 
-# Shared application sources are pinned in workspace.toml; the old independent
-# One-KVM and its private plugin above/below remain historical separate inputs.
+# Shared application sources are pinned in workspace.toml; hashes are read from the board.
 [integrated_runtime]
 boot_label = "FullKvm"
-board_packages = "2.5.1+vim4.20261018.44.dev.1.g111d83b.dirty"
-pikvm_package = "2.5.1+vim4.20261018.16.dev.2.g391a6eb"
+board_packages = "2.5.1+vim4.20261027.3.dev.12.gcd09e1e.dirty"
+pikvm_package = "2.5.1+vim4.20261025.13"
 manifest_path = "/etc/vim4-kvm/runtime-build.json"
-wave5_plugin_sha256 = "1d90f0d36f0eae0dca3e847663d6c5f16b4c3f02da2a6a128ed62a9746eb6b5f"
-v4l2_plugin_sha256 = "7fea3773c028de64ec7da4e87b2acc28206465e2cb09fb6530fe597c00868443"
-one_kvm_binary_sha256 = "3d3cf2769577c867a3cd2788c7c98c1166ca447facbac117098f0bd64f9825f5"
-manager_binary_sha256 = "d7a15868e4b0b2a9fcf7342e1ffb69ed63db9b983d7b55aeedb99b0faaa59901"
+onekvm_package = "2.5.1+vim4.20261027.3.dev.15.g3649a8c"
+manager_package = "2.5.1+vim4.20261029.102.dev.2.g81c6cc5"
+wave5_plugin_sha256 = "0240de1c003974d97316ff3f73f771a5cc8db2ced1b7330bcbe64c4ba9cbe229"
+v4l2_plugin_sha256 = "a80d41a3d758a5af1794a324eed44c9f47a88e0d3b30dfafe3207d32d7be26fe"
+one_kvm_binary_sha256 = "aacd3d977a0e169e1ee869486fc1846e9b360f83e96309cad734b9f5b2737b4d"
+manager_binary_sha256 = "80cec3f1d6b100ace123c6947f639c850a07fdc415d925471f6deb726e6d7fd7"
 
 # Diagnostic capability, not proof that the historical firmware crash is fixed.
 [wifi_diagnostics]
@@ -90,15 +94,14 @@ firmware_path = "/lib/firmware/video/video_ucode.bin"
 firmware_sha256 = "59e242bd63d6372d6462d2a2d6815e7bdea1a2cd12cd29fac093f38e73294e4b"
 hcodec_clock_hz = 666666656
 hcodec_clock_parent = "hcodec_0"
-tested_module_sha256 = "22537cb61b113c449d65e31ba1c1df4d57b9743099a86497c5ee9bbd699c0ea0"
+tested_module_sha256 = "4643305619fdb929ef5c488e4fea9007c16244503fc6e3eed4ff1b4e29554faf"
 
-# Private standard V4L2 plugin for edge and 5.15 One-KVM capture. The tested hash
-# below belongs to the historical edge build, before the contiguous-layout patch.
+# Private V4L2 plugin tested on 5.15 and the retained 7.3 build, including visible crop.
 [gstreamer]
 source_url = "https://gstreamer.freedesktop.org/src/gst-plugins-good/gst-plugins-good-1.24.2.tar.xz"
 source_sha256 = "6e347c72d4b8b2886d890ffe9f6767a9edb02f201588e8c3a572dcd08d9852bd"
-patches = ["gstreamer-v4l2-offset.patch", "gstreamer-v4l2-pool-lifetime.patch", "gstreamer-v4l2-eos-buffer.patch", "gstreamer-v4l2-orphan-order.patch", "gstreamer-v4l2-contiguous-capture.patch"]
-tested_plugin_sha256 = "5302d0fa8c6f1089173634206815f6a9709782263a343915e24b95b5e9eddaca"
+patches = ["gstreamer-v4l2-offset.patch", "gstreamer-v4l2-pool-lifetime.patch", "gstreamer-v4l2-eos-buffer.patch", "gstreamer-v4l2-orphan-order.patch", "gstreamer-v4l2-contiguous-capture.patch", "gstreamer-v4l2-visible-crop.patch"]
+tested_plugin_sha256 = "a80d41a3d758a5af1794a324eed44c9f47a88e0d3b30dfafe3207d32d7be26fe"
 
 [armbian]
 url = "https://github.com/armbian/build.git"
