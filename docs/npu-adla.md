@@ -11,6 +11,7 @@ VGG16/DenseNet/YOLO均值配对差+4.050%/+2.346%/−0.352%，95% CI分别
 [六段审查序列与uhd2集成草案](npu-adla-integration.md)仍待批准，正式pin/默认启动不变。
 旧候选保留，保页例外保持“代理暂定，待用户确认”。
 [端到端分段与下一窗口](npu-e2e-timing.md)：旧YOLO进程wall摊销约+9.56%，新增probe --timing，尚无可确认的驱动冗余，未生成uhd3。
+[分段实测](bringup/2026-10-30-npu-e2e-window.md)：YOLO fwrite增加3.463ms、扫描近似相同；扰动<1%及DDR/累计静止计数资格未闭合，仅作定位，未改驱动。
 
 ## 2026-10-30 上板结论：多启动后仍不确定，不pin
 
