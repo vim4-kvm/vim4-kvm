@@ -1,6 +1,7 @@
 # 7.3 内存与拷贝性能：离线审查及微基准
 
 本轮离线，不访问板子、GPU文件，不改正式配置、不push/pin。
+后续用户授权的[独立nodebug候选](uhd2-nodebug.md)关闭纯调试开销；正式配置仍待批准。
 [YOLO分段记录](bringup/2026-10-30-npu-e2e-window.md)把约3.46ms增量定位到tmpfs fwrite，
 尚未证明整个KVM所有拷贝都退化。**首要配置嫌疑是7.3的锁调试，不是已坐实的DDR低频或ADLA缺陷。**
 
@@ -65,8 +66,8 @@ LPDDR4项DRAMFreq={2016,0,0,0}；:476另一配置也只有首档。它证明有b
 1. **优先建议独立锁调试关闭候选**：DEBUG_LOCK_ALLOC、DEBUG_RT_MUTEXES、DEBUG_SPINLOCK、
    DEBUG_MUTEXES、DEBUG_WW_MUTEX_SLOWPATH、DEBUG_RWSEMS设n，让olddefconfig重算LOCKDEP依赖。
    与正式uhd1也存在的同类配置区分，不能称NPU补丁引入。保留单独调试构建。
-   这减少错误锁使用/生命周期问题的早期检测，不是关闭内存访问隔离；仍属于诊断覆盖取舍，
-   **需用户批准后才做新候选A/B，不修改本轮正式配置**，效果尚未测定。
+   这减少错误锁使用/生命周期问题的早期检测，不是安全取舍；用户已明确纯调试关闭无需额外批准，
+   本轮据此做独立候选A/B，**正式配置/pin/push仍需批准**。
 2. THP改madvise、zswap关闭、NUMA移除仅列实验假设；需要对应fault/交换/迁移证据及用户批准，
    不捆绑到锁调试实验。清零、安全边界和加固不作性能删减；符号/BTF也不因体积而删。
 3. 首窗沿用原uhd2，只定位通用路径；如果fresh慢、rewrite/read相近，优先查分配/记账/锁；
