@@ -63,7 +63,7 @@ class TrialTest(unittest.TestCase):
         state = dict(cmdline='root=PARTUUID=bcb80000-02 rootwait rw', files={name: 'f' * 64 for name in (
             '/boot/edge/Image', '/boot/edge/vim4.dtb', '/boot/extlinux/extlinux.conf',
             '/etc/vim4-kvm/kernels.json', '/etc/vim4-kvm/runtime-build.json')})
-        if '-npu' in release:
+        if '-npu' in release or release == '7.3.0-vim4kvm-uhd2+':
             runtime = {}
             for index, target in enumerate(('/usr/libexec/vim4-board-runtime',
                     '/usr/libexec/vim4-kvm-run', '/usr/libexec/vim4-mainline-prepare',
@@ -106,6 +106,24 @@ class TrialTest(unittest.TestCase):
             with self.assertRaisesRegex(ValueError, 'helper differs'):
                 once.prepare(root / 'payload', root / 'init', root / 'baseline.json',
                              root / 'rejected', release='7.3.0-vim4kvm-npu1+')
+
+    def test_uhd2_keeps_npu_memory_and_runtime_proof_contract(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            archive = self.fixture(root, release='7.3.0-vim4kvm-uhd2+',
+                                   baseline_release='5.15.137-vim4kvm-hdrdual6')
+            with tarfile.open(archive) as trial:
+                config = trial.extractfile('extlinux.conf').read().decode()
+                modules = [p for p in trial.getnames() if p.startswith('modules/')]
+            self.assertIn('cma=512M@0x10000000-0xf0000000', config)
+            self.assertIn('t7_hdmirx.hdr_capture=1', config)
+            self.assertTrue(all('/7.3.0-vim4kvm-uhd2+/' in p for p in modules))
+            state = json.loads((root / 'baseline.json').read_text())
+            state['files']['/usr/libexec/vim4-kvm-run'] = '0' * 64
+            (root / 'baseline.json').write_text(json.dumps(state))
+            with self.assertRaisesRegex(ValueError, 'helper differs'):
+                once.prepare(root / 'payload', root / 'init', root / 'baseline.json',
+                             root / 'rejected', release='7.3.0-vim4kvm-uhd2+')
 
     def test_boot_files_remain_default_through_stage_reset_and_interruption(self):
         for fail_after in (None, 1, 4):

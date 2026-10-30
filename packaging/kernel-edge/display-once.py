@@ -74,7 +74,7 @@ def trial_cmdline(state):
 
 def prepare(payload, init, baseline, output, release=RELEASE,
             baseline_release=RELEASE, baseline_id=BASE_ID):
-    if not re.fullmatch(r'7\.3\.0-vim4kvm-(?:uhd1|npu[0-9]+)\+', release):
+    if not re.fullmatch(r'7\.3\.0-vim4kvm-(?:uhd[12]|npu[0-9]+)\+', release):
         raise ValueError('unsupported candidate release')
     if not re.fullmatch(r'[0-9a-f]{40}', baseline_id):
         raise ValueError('baseline build ID must be explicit and complete')
@@ -89,7 +89,7 @@ def prepare(payload, init, baseline, output, release=RELEASE,
         if sha(payload / name) != report['artifacts'][name]:
             raise ValueError('candidate artifact hash mismatch: ' + name)
     state = json.loads(baseline.read_text())
-    if '-npu' in release:
+    if '-npu' in release or release == '7.3.0-vim4kvm-uhd2+':
         runtime = json.loads((payload / 'runtime-files.json').read_text())
         required = {'/usr/libexec/vim4-board-runtime', '/usr/libexec/vim4-kvm-run',
                     '/usr/libexec/vim4-mainline-prepare',
@@ -114,7 +114,7 @@ def prepare(payload, init, baseline, output, release=RELEASE,
         raise ValueError('unexpected baseline command line')
     prefix = str(ROOT / build_id)
     candidate_cmdline = trial_cmdline(state)
-    if '-npu' in release:
+    if '-npu' in release or release == '7.3.0-vim4kvm-uhd2+':
         # Qualified uhd1 memory placement, absent from the vendor 5.15 cmdline.
         candidate_cmdline = ' '.join(token for token in candidate_cmdline.split()
                                      if not token.startswith(('cma=', 'modprobe.blacklist=')))
@@ -203,7 +203,7 @@ def preflight(plan):
             or running_build_id() != plan['baseline_id']):
         raise RuntimeError('stage only as root on the approved running baseline')
     if (not re.fullmatch(r'[0-9a-f]{40}', plan['baseline_id']) or
-            not re.fullmatch(r'7\.3\.0-vim4kvm-(?:uhd1|npu[0-9]+)\+', plan['release'])):
+            not re.fullmatch(r'7\.3\.0-vim4kvm-(?:uhd[12]|npu[0-9]+)\+', plan['release'])):
         raise ValueError('bundle baseline mismatch')
     if Path('/proc/cmdline').read_text().strip() != plan['baseline_cmdline']:
         raise RuntimeError('baseline command line changed')

@@ -48,12 +48,13 @@ class EdgeUsbTest(unittest.TestCase):
         self.run.assert_not_called()
 
     def test_npu_candidate_preserves_live_gadget_without_input_or_rebind(self):
-        with patch.object(usb.platform, 'release', return_value='7.3.0-vim4kvm-npu1+'):
-            gadget = self.existing()
-            before = {p: p.read_bytes() for p in gadget.rglob('*') if p.is_file()}
-            usb.prepare()
-            self.assertEqual(before, {p: p.read_bytes() for p in gadget.rglob('*') if p.is_file()})
-            self.run.assert_not_called()
+        gadget = self.existing()
+        before = {p: p.read_bytes() for p in gadget.rglob('*') if p.is_file()}
+        for release in ('7.3.0-vim4kvm-npu1+', '7.3.0-vim4kvm-uhd2+'):
+            with self.subTest(release=release), patch.object(usb.platform, 'release', return_value=release):
+                usb.prepare()
+                self.assertEqual(before, {p: p.read_bytes() for p in gadget.rglob('*') if p.is_file()})
+                self.run.assert_not_called()
 
     def test_foreign_and_unmarked_gadgets_are_refused_before_module_loading(self):
         for name in ('other-application', 'kvm'):
