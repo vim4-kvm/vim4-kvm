@@ -29,6 +29,8 @@ typedef struct {
 static gboolean capable;
 static unsigned opens, closes, selections;
 static struct v4l2_rect visible;
+static struct v4l2_capability querycap;
+static gboolean hevc = TRUE;
 static int fake_open(const char *path, int flags, ...) {
   assert(!strcmp(path,"fake-wave5")); assert(flags&O_RDWR); opens++; return 42;
 }
@@ -36,6 +38,12 @@ static int fake_close(int fd) { assert(fd==42); closes++; return 0; }
 static int fake_ioctl(int fd,unsigned long request,...) {
   va_list args; va_start(args,request); void *arg=va_arg(args,void*); va_end(args);
   assert(fd==42);
+  if(request==VIDIOC_QUERYCAP) { *(struct v4l2_capability*)arg=querycap; return 0; }
+  if(request==VIDIOC_ENUM_FMT) {
+    struct v4l2_fmtdesc *f=arg;
+    if(f->index || !hevc) { errno=EINVAL; return -1; }
+    f->pixelformat=V4L2_PIX_FMT_HEVC; return 0;
+  }
   if(request==VIDIOC_S_FMT) return 0;
   if(request==VIDIOC_S_SELECTION) {
     struct v4l2_selection *s=arg;
@@ -92,14 +100,34 @@ int main(int argc,char **argv) {
   gst_init(&argc,&argv);
   GstV4l2Object obj={.videodev="fake-wave5",.video_fd=42,
     .type=V4L2_BUF_TYPE_VIDEO_OUTPUT_MPLANE,.ioctl=fake_ioctl};
-  strcpy((char*)obj.vcap.card,"C&M Wave5 VPU encoder");
-  capable=TRUE;
+  /* Both kernels: querycap() sets driver/card to VPU_ENC_DRV_NAME;
+   * V4L2 core supplies bus_info/device_caps. Evidence: r3 kernel-querycap-source.txt,
+   * b1300-controls.log and both revisions' v4l2-ioctl.c/vdev registration. */
+  strcpy((char*)querycap.driver,"wave5-enc");
+  strcpy((char*)querycap.card,"wave5-enc");
+  strcpy((char*)querycap.bus_info,"platform:fe310000.video-codec");
+  querycap.device_caps=V4L2_CAP_VIDEO_M2M_MPLANE|V4L2_CAP_STREAMING;
+  querycap.capabilities=querycap.device_caps|V4L2_CAP_DEVICE_CAPS;
+  obj.vcap=querycap;
+  capable=TRUE; /* 213f2715 */
   check_steps(&obj,V4L2_PIX_FMT_NV12M,16,TRUE);
   check_steps(&obj,V4L2_PIX_FMT_HEVC,8,TRUE);
-  capable=FALSE;
+  capable=FALSE; /* b1300eb: identical identity, selection rejects the crop */
   check_steps(&obj,V4L2_PIX_FMT_HEVC,8,FALSE);
   check_steps(&obj,V4L2_PIX_FMT_NV12M,16,FALSE);
-  capable=TRUE; strcpy((char*)obj.vcap.card,"other encoder");
+  capable=TRUE;
+  strcpy((char*)querycap.driver,"renamed-driver");
+  strcpy((char*)querycap.card,"arbitrary card");
+  strcpy((char*)querycap.bus_info,"arbitrary bus");
+  obj.vcap=querycap;
+  check_steps(&obj,V4L2_PIX_FMT_NV12M,16,TRUE);
+  querycap.capabilities=querycap.device_caps; /* Older QUERYCAP convention */
+  check_steps(&obj,V4L2_PIX_FMT_NV12M,16,TRUE);
+  querycap.capabilities=querycap.device_caps|V4L2_CAP_DEVICE_CAPS;
+  querycap.device_caps=V4L2_CAP_VIDEO_CAPTURE_MPLANE|V4L2_CAP_STREAMING;
+  check_steps(&obj,V4L2_PIX_FMT_NV12M,16,FALSE);
+  querycap.device_caps=V4L2_CAP_VIDEO_M2M_MPLANE|V4L2_CAP_STREAMING;
+  hevc=FALSE;
   check_steps(&obj,V4L2_PIX_FMT_NV12M,16,FALSE);
   assert(opens==closes && opens>0 && selections>=8);
   return 0;

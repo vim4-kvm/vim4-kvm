@@ -1,7 +1,6 @@
 --- a/sys/v4l2/gstv4l2object.c
 +++ b/sys/v4l2/gstv4l2object.c
-@@ -2989,0 +2990,11 @@
-+
+@@ -2990,0 +2991,63 @@
 +/* ENUM_FRAMESIZES describes Wave5 storage, whereas GstCaps describes the
 + * visible rectangle. Prove the crop contract on a separate bufferless fd,
 + * leaving the encoder's format and control state untouched. */
@@ -10,23 +9,43 @@
 +{
 +  struct v4l2_format fmt = { 0 };
 +  struct v4l2_selection sel = { 0 };
++  struct v4l2_capability cap = { 0 };
++  struct v4l2_fmtdesc format = { 0 };
++  guint32 caps;
 +  gboolean supported = FALSE;
 +  int fd;
-@@ -2990,0 +3002,32 @@
-+  if (strcmp ((const char *) obj->vcap.card, "C&M Wave5 VPU encoder"))
-+    return FALSE;
++
 +  fd = open (obj->videodev, O_RDWR | O_NONBLOCK | O_CLOEXEC, 0);
 +  if (fd < 0)
 +    return FALSE;
++  if (ioctl (fd, VIDIOC_QUERYCAP, &cap) < 0)
++    goto done;
++  caps = (cap.capabilities & V4L2_CAP_DEVICE_CAPS) ?
++      cap.device_caps : cap.capabilities;
++  if ((caps & (V4L2_CAP_VIDEO_M2M_MPLANE | V4L2_CAP_STREAMING)) !=
++      (V4L2_CAP_VIDEO_M2M_MPLANE | V4L2_CAP_STREAMING))
++    goto done;
++  format.type = V4L2_BUF_TYPE_VIDEO_CAPTURE_MPLANE;
++  while (ioctl (fd, VIDIOC_ENUM_FMT, &format) == 0) {
++    if (format.pixelformat == V4L2_PIX_FMT_HEVC)
++      break;
++    format.index++;
++  }
++  if (format.pixelformat != V4L2_PIX_FMT_HEVC)
++    goto done;
 +  fmt.type = V4L2_BUF_TYPE_VIDEO_CAPTURE_MPLANE;
 +  fmt.fmt.pix_mp.pixelformat = V4L2_PIX_FMT_HEVC;
 +  if (ioctl (fd, VIDIOC_S_FMT, &fmt) < 0)
++    goto done;
++  if (fmt.fmt.pix_mp.pixelformat != V4L2_PIX_FMT_HEVC)
 +    goto done;
 +  fmt.type = V4L2_BUF_TYPE_VIDEO_OUTPUT_MPLANE;
 +  fmt.fmt.pix_mp.pixelformat = V4L2_PIX_FMT_NV12M;
 +  fmt.fmt.pix_mp.width = 1376;
 +  fmt.fmt.pix_mp.height = 912;
 +  if (ioctl (fd, VIDIOC_S_FMT, &fmt) < 0)
++    goto done;
++  if (fmt.fmt.pix_mp.pixelformat != V4L2_PIX_FMT_NV12M)
 +    goto done;
 +  sel.type = V4L2_BUF_TYPE_VIDEO_OUTPUT;
 +  sel.target = V4L2_SEL_TGT_CROP;
@@ -45,7 +64,7 @@
 +  return supported;
 +}
 +
-@@ -3067,0 +3111,6 @@
+@@ -3067,0 +3131,6 @@
 +    if ((pixelformat == V4L2_PIX_FMT_NV12 ||
 +            pixelformat == V4L2_PIX_FMT_NV12M ||
 +            pixelformat == V4L2_PIX_FMT_HEVC) &&
