@@ -1,11 +1,20 @@
 #define _POSIX_C_SOURCE 200809L
+#ifdef __APPLE__
+#define _DARWIN_C_SOURCE
+#endif
 #include <stddef.h>
+#include <stdint.h>
 #include <nn_sdk.h>
 #include <math.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <sys/resource.h>
 #include <time.h>
+
+struct iteration_timing {
+    double begin, end, sdk, open, write, close, scan, other;
+};
 
 static double now_ms(void) {
     struct timespec t;
@@ -30,15 +39,36 @@ static unsigned char *read_input(const char *path, size_t *size) {
 
 int main(int argc, char **argv) {
     if (argc < 4) {
-        fprintf(stderr, "usage: probe MODEL INPUT.f32 ITERATIONS\n");
+        fprintf(stderr, "usage: probe MODEL INPUT.f32 ITERATIONS [--profile] [--timing]\n");
         return 2;
     }
     setvbuf(stdout, NULL, _IOLBF, 0);
     int count = atoi(argv[3]);
     if (count < 1 || count > 1000) return 2;
+    int timing = 0, profiling = 0;
+    for (int i = 4; i < argc; ++i) {
+        if (!strcmp(argv[i], "--timing")) timing = 1;
+        else if (!strcmp(argv[i], "--profile")) profiling = 1;
+        else { fprintf(stderr, "unknown option: %s\n", argv[i]); return 2; }
+    }
+    struct iteration_timing *segments = NULL;
+    if (timing) {
+        segments = calloc((size_t)count, sizeof(*segments));
+        if (!segments) return 1;
+        /* Touch every record before inference, rather than faulting in the loop. */
+        for (int i = 0; i < count; ++i) segments[i].end = -1;
+    }
+    double input_begin = timing ? now_ms() : 0;
     size_t size = 0;
     unsigned char *input = read_input(argv[2], &size);
-    if (!input) { perror("input"); return 1; }
+    if (!input) { perror("input"); free(segments); return 1; }
+    double input_ms = timing ? now_ms() - input_begin : 0;
+    double clock_cost = 0;
+    if (timing) {
+        double begin = now_ms();
+        for (int i = 0; i < 20000; ++i) (void)now_ms();
+        clock_cost = (now_ms() - begin) / 20000;
+    }
     aml_config config = {0};
     config.typeSize = sizeof(config);
     config.path = argv[1];
@@ -49,16 +79,23 @@ int main(int argc, char **argv) {
     double start = now_ms();
     void *context = aml_module_create(&config);
     printf("create_ms=%.3f context=%s\n", now_ms() - start, context ? "ok" : "failed");
-    if (!context) { free(input); return 1; }
+    if (!context) { free(input); free(segments); return 1; }
 	aml_profile_config_t profile = { .profile_type = AML_PROFILE_PERFORMANCE };
-	int profiling = argc > 4 && !strcmp(argv[4], "--profile");
 	if (profiling && aml_util_enableProfile(context, &profile)) {
 		aml_module_destroy(context);
 		free(input);
+		free(segments);
 		return 1;
 	}
     double sum = 0, low = 1e9, high = 0;
     int status = 0;
+    struct rusage before = {0}, after = {0};
+    unsigned max_timer_calls = 0;
+    uintptr_t output_addresses[OUTPUT_MAX_NUM] = {0};
+    unsigned output_sizes[OUTPUT_MAX_NUM] = {0}, output_count = 0;
+    if (timing && getrusage(RUSAGE_SELF, &before)) {
+        aml_module_destroy(context); free(input); free(segments); return 1;
+    }
     for (int i = 0; i < count; ++i) {
         nn_input in = {0};
         in.typeSize = sizeof(in);
@@ -72,9 +109,22 @@ int main(int argc, char **argv) {
         output_config.typeSize = sizeof(output_config);
         output_config.format = AML_OUTDATA_FLOAT32;
         nn_output *output = aml_module_output_get(context, output_config);
-        double elapsed = now_ms() - start;
+        double sdk_end = now_ms();
+        double elapsed = sdk_end - start;
+        struct iteration_timing *segment = timing ? &segments[i] : NULL;
+        double mark = sdk_end;
+        if (segment) { segment->begin = start; segment->sdk = elapsed; }
         if (!output || output->num == 0 || output->num > OUTPUT_MAX_NUM) {
             fprintf(stderr, "invalid output\n"); status = 1; break;
+        }
+        if (segment && 4 * output->num + 2 > max_timer_calls)
+            max_timer_calls = 4 * output->num + 2;
+        if (segment && i == 0) {
+            output_count = output->num;
+            for (unsigned j = 0; j < output_count; ++j) {
+                output_addresses[j] = (uintptr_t)output->out[j].buf;
+                output_sizes[j] = output->out[j].size;
+            }
         }
         printf("iteration=%d elapsed_ms=%.9f\n", i, elapsed);
         {
@@ -83,12 +133,26 @@ int main(int argc, char **argv) {
                 if (output->out[j].size % sizeof(float) || !output->out[j].buf) { status = 1; break; }
                 char path[128];
                 snprintf(path, sizeof(path), "iteration-%04d-output-%u.f32", i, j);
+                if (segment) {
+                    double t = now_ms(); segment->other += t - mark; mark = t;
+                }
                 FILE *f = fopen(path, "wb");
-                if (!f || fwrite(output->out[j].buf, 1, output->out[j].size, f) != output->out[j].size) {
+                if (segment) {
+                    double t = now_ms(); segment->open += t - mark; mark = t;
+                }
+                size_t written = f ? fwrite(output->out[j].buf, 1, output->out[j].size, f) : 0;
+                if (segment) {
+                    double t = now_ms(); segment->write += t - mark; mark = t;
+                }
+                if (!f || written != output->out[j].size) {
                     if (f) fclose(f);
                     status = 1; break;
                 }
-                fclose(f);
+                if (fclose(f)) status = 1;
+                if (segment) {
+                    double t = now_ms(); segment->close += t - mark; mark = t;
+                }
+                if (status) break;
             }
             printf("first_set_and_infer_ms=%.3f\n", elapsed);
         }
@@ -98,14 +162,21 @@ int main(int argc, char **argv) {
             if (elapsed > high) high = elapsed;
         }
         if (status) break;
+        if (segment) {
+            double t = now_ms(); segment->other += t - mark; mark = t;
+        }
         for (unsigned j = 0; j < output->num; ++j) {
             const float *values = (const float *)output->out[j].buf;
             for (unsigned k = 0; k < output->out[j].size / sizeof(float); ++k) {
                 if (!isfinite(values[k])) { status = 1; break; }
             }
         }
+        if (segment) {
+            segment->end = now_ms(); segment->scan = segment->end - mark;
+        }
         if (status) { fprintf(stderr, "nonfinite output\n"); break; }
     }
+    if (timing && getrusage(RUSAGE_SELF, &after)) status = 1;
     if (count > 1 && !status) printf("warm_iterations=%d mean_set_and_infer_ms=%.3f min_ms=%.3f max_ms=%.3f\n", count - 1, sum / (count - 1), low, high);
     start = now_ms();
     if (profiling) {
@@ -119,5 +190,26 @@ int main(int argc, char **argv) {
     int rc = aml_module_destroy(context);
     printf("destroy_ms=%.3f rc=%d status=%d\n", now_ms() - start, rc, status);
     free(input);
+    /* Emit diagnostics after the measured workload; no per-round extra output. */
+    if (timing) {
+        double emit_begin = now_ms();
+        printf("timing_input_ms=%.9f clock_call_ms=%.9f calibration_ms=%.9f extra_clock_calls_max=%u minor_faults=%ld major_faults=%ld voluntary_switches=%ld involuntary_switches=%ld\n",
+               input_ms, clock_cost, clock_cost * 20000, max_timer_calls, after.ru_minflt - before.ru_minflt,
+               after.ru_majflt - before.ru_majflt, after.ru_nvcsw - before.ru_nvcsw,
+               after.ru_nivcsw - before.ru_nivcsw);
+        for (int i = 0; i < count; ++i) {
+            struct iteration_timing *s = &segments[i];
+            if (s->end < 0) continue;
+            double gap = i && segments[i - 1].end >= 0 ? s->begin - segments[i - 1].end : 0;
+            printf("timing_iteration=%d sdk_ms=%.9f open_ms=%.9f write_ms=%.9f close_ms=%.9f scan_ms=%.9f other_ms=%.9f e2e_ms=%.9f begin_ms=%.9f end_ms=%.9f gap_ms=%.9f\n",
+                   i, s->sdk, s->open, s->write, s->close, s->scan, s->other,
+                   s->end - s->begin, s->begin, s->end, gap);
+        }
+        for (unsigned j = 0; j < output_count; ++j)
+            printf("timing_first_output=%u address=0x%llx bytes=%u\n", j,
+                   (unsigned long long)output_addresses[j], output_sizes[j]);
+        printf("timing_emit_ms=%.9f\n", now_ms() - emit_begin);
+    }
+    free(segments);
     return status || rc != 0;
 }

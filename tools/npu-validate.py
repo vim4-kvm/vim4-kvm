@@ -65,10 +65,13 @@ def run(args):
     output = Path(args.output).resolve()
     output.mkdir()  # Never mix with or remove an existing run.
     started = time.time()
-    bounded_probe([str(probe), str(model), str(data), str(args.iterations)],
-                  output, args.timeout)
+    command = [str(probe), str(model), str(data), str(args.iterations)]
+    if args.timing:
+        command.append('--timing')
+    bounded_probe(command, output, args.timeout)
+    log = (output / 'probe.log').read_text()
     samples = re.findall(r'iteration=(\d+) elapsed_ms=([\d.]+)',
-                         (output / 'probe.log').read_text())
+                         log)
     if [int(i) for i, _ in samples] != list(range(args.iterations)):
         raise ValueError('incomplete iteration sequence')
     files = sorted(output.glob('iteration-*-output-*.f32'))
@@ -82,6 +85,13 @@ def run(args):
                   outputs={p.name: dict(sha256=digest(p), bytes=p.stat().st_size)
                            for p in files})
     report['statistics_ms'] = statistics(report['samples'])
+    if args.timing:
+        segments = re.findall(r'^timing_iteration=(\d+) (.+)$', log, re.M)
+        if [int(i) for i, _ in segments] != list(range(args.iterations)):
+            raise ValueError('missing segmented timings; use a probe supporting --timing')
+        report['stage_timings_ms'] = [
+            {key: float(value) for key, value in re.findall(r'(\w+)=([\d.]+)', line)}
+            for _, line in segments]
     (output / 'result.json').write_text(json.dumps(report, indent=2) + '\n')
 
 
@@ -137,6 +147,8 @@ def main():
     fetch = sub.add_parser('prepare')
     fetch.add_argument('destination', type=Path)
     trial = sub.add_parser('run')
+    trial.add_argument('--timing', action='store_true',
+                       help='record probe SDK/external stage timings in probe.log')
     for name in ('probe', 'model', 'input', 'output', 'model-sha256', 'input-sha256'):
         trial.add_argument('--' + name, required=True)
     trial.add_argument('--iterations', type=int, default=101)
