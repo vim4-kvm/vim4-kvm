@@ -24,6 +24,9 @@ case "$variant" in
  loop-jumps)
   changes=(0003-bifrost-loop-invariants.patch 0004-bifrost-jump-cleanup.patch)
   runtime_name=vim4-mesa-26.2.6-jumps2 ;;
+ loop-repair)
+  changes=(0003-bifrost-loop-invariants.patch 0004-bifrost-jump-cleanup.patch 0005-bifrost-uniform-backedges.patch 0006-bifrost-self-branch-offset.patch)
+  runtime_name=vim4-mesa-26.2.6-repair3 ;;
  *) echo 'Unknown GPU_VARIANT' >&2; exit 2 ;;
 esac
 for change in "${changes[@]}"; do

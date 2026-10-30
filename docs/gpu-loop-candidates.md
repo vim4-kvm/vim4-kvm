@@ -10,6 +10,11 @@ QoS候选冷首发约4.90ms、暖2.01ms，夹限通过；power_on约2.42ms在boo
 以下保留离线统计，不能解释成该失败系列的实际运行收益。
 实测内核e992有workqueue弃用告警，已离线以88b3d1626e2ae修正；新模块未上板，不复用下方旧模块SHA作其证明。
 
+最新[离线故障隔离与修复](gpu-loop-repair.md)：0005暴露`bi_block_offset`同块回跳偏移错误，
+条件回边误指前置clause_0，重置循环计数。新增0006与旧函数失败/新函数通过的layout单元测试；
+`loop-repair`仍须全帧像素相等、GPU timeout增量为0后再测性能，默认只GCM不变。
+冷恢复另有4ccae3570a97e短忙等后回退睡眠的候选，不把离线构建当作2.42ms已改善。
+
 ## Mesa三个独立补丁
 
 固定26.2.6及sealed builder与[上轮输入](gpu-performance-candidates.md)相同；新卷`vim4-gpu-loop2`，旧卷不改。
