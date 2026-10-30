@@ -4,23 +4,24 @@
 `213f271505411`。正式部署锁不变。驱动在 `drivers/misc/adla`：其接口是
 下游闭源 SDK 字符设备兼容接口，本轮不声明 DRM accel 支持。
 
-最新[npu3离线修复与30分钟窗口](npu-adla-npu3.md)：修复可复现的fixup误拒绝、取消终态与排空、
-迟到close的回收所有权；恢复uhd1的512MiB CMA与首次模块加载策略。尚未上板确认YOLO/视频。
+最新[npu3上板记录](bringup/2026-10-30-npu3-acceptance.md)：512MiB CMA恢复视频基线，
+YOLO仍因缓存fixup复用合同被拒绝；取消可回收，但唤醒慢、故障后NPU延迟异常仍需离线修复。
 旧候选保留，保页例外保持“代理暂定，待用户确认”。
 
 ## 2026-10-30 上板结论：未通过
 
-最新[npu2上板记录](bringup/2026-10-30-npu2-acceptance.md)：
-ADLA probe与HDMI参数问题已消除，/dev/adla0正常，ATTACH与正负profiling通过。
-VGG16/DenseNet完整输出与原5.15基线字节一致，平均退化分别+0.428%/-1.376%。
-YOLOv8n第三输出101轮均错误：56664/57600浮点值不同，最大绝对差29.1773，
-同时记录101次task create fail。即使计时均值退化仅+2.049%，也不能通过验收。
-PM观察到0→约800MHz→0，runtime active→suspended；超时/取消/kill后正常推理可恢复，
-但超时出现SDK释放失败，取消探针达到外层12秒超时，DMA/IOVA全回收尚未证明。
-Wave5在NPU关闭时即报帧缓冲分配-ENOMEM、零编码输出，未能建立有效并行对照。
-最终回到默认5.15，12文件哈希/权限与窗口前一致，四服务active、UDC configured。
-本轮不改驱动、不写PWM、不猜电压；不登记整机NPU性能追平。
-历史[npu1失败记录](bringup/2026-10-30-npu-adla-acceptance.md)及5.15完整基线继续保留。
+npu3的VGG16/DenseNet完整输出101轮一致，均值退化-1.489%/-1.538%；
+YOLO第三输出仍有56664/57600值不同、最大差29.1773，主测101次task create fail。
+参数取证确认：SDK零count复用此前两个fixup，新检查误按当前0判task 380越界，返回EINVAL。
+YOLO观测均值退化+5.210%，因第三段未执行不能作为等量工作性能证明。
+同context取消/WAIT超时后继续执行、close/kill后新context均可用，无释放失败日志；
+IOVA/CMA计数回到原值、模块引用0，最终clock gating+suspended，但取消仍需约5.2秒。
+非可中断排空等待配合wake_up_interruptible的通知类型需离线修复；真实复位失败仍未验证。
+Wave5关闭NPU时60.03fps，并行视频59.99fps、丢帧/丢包0；NPU首组15秒超时，
+故障后停止视频请求下仍约104ms，不能将延迟归因于视频，也不能判并行通过。
+ATTACH/负向PROFILE_CFG可用；正向profiling输出正确但时序异常，待查IRQ/复位状态。
+交接时已回5.15，12文件哈希/权限一致，四服务active、UDC configured，全部锁释放。
+历史[npu2记录](bringup/2026-10-30-npu2-acceptance.md)及[npu1/5.15基线](bringup/2026-10-30-npu-adla-acceptance.md)保留。
 
 ## 第三轮离线状态
 
@@ -45,7 +46,7 @@ WAIT改用可中断等待，按invoke查询完成状态；超时返回ETIMEDOUT�
 故障必须对用户态可见：后续open/ioctl返回EIO，WAIT/GET_STAT报告失败；
 `adlak_device.c:44`用一次性故障转换，`:59`打印
 `recovery failed: <error>; reboot required`。这些为源码合同，
-npu2本轮仍未验证真实软复位失败及DMA停止效果。
+npu3本轮仍未验证真实软复位失败及DMA停止效果。
 
 标准PM路径处理resume-and-get、父时钟、设频和启钟失败；引用失败回滚，
 regulator由devres行动成对释放。IRQ注册先于worker启动，避免probe失败时
@@ -99,7 +100,7 @@ npu2活动时钟已读回799999987 Hz，但候选电压框架读回仍缺失，�
 ## 模型和工具
 
 固定 Khadas 提交与六个文件的 SHA256 在 `tools/npu-models.json`。
-不提交模型二进制。检测模型选YOLOv8n，本次已完成5.15基线，7.3尚未验证。
+不提交模型二进制。检测模型选YOLOv8n；5.15基线完成，7.3第三张量仍未通过。
 
 ```sh
 python3 tools/npu-validate.py prepare build/npu-models
@@ -172,8 +173,8 @@ prepare只读输入并写新目录，不stage、不SSH、不重启。下一轮st
 
 ## 下一轮上板顺序
 
-下一轮使用[npu3专项清单](npu-adla-npu3.md#下一窗口30分钟)，
-仅跑7.3部分，复用本次5.15张量/计时基线，刷新当前stage证明；以下保留原完整流程供查。
+下一轮先完成缓存fixup、取消通知与恢复后延迟的离线修复，再按[npu3记录末尾](bringup/2026-10-30-npu3-acceptance.md#回退与后续)
+仅复验7.3，复用5.15张量/计时基线并刷新stage证明；以下保留原完整流程供查。
 
 1. 先在5.15持板锁和媒体锁，记录SDK/模型/输入/内核哈希、实际频率和电压。
    用同一工具采集三模型逐轮完整输出与计时，外部物理地址导入和profiling另测。

@@ -17,6 +17,7 @@
 
 ## 2026-10-30
 
+- [npu3 视频恢复与 YOLO缓存合同、恢复后延迟失败](2026-10-30-npu3-acceptance.md) — kernel board benchmark video
 - [npu2 双模型通过与 YOLO/视频门禁失败](2026-10-30-npu2-acceptance.md) — kernel board benchmark video
 - [GPU 三栈上板验收](2026-10-30-gpu-acceptance.md) — kernel gpu board benchmark
 - [ADLA 首次上板验收与 npu1 probe 失败](2026-10-30-npu-adla-acceptance.md) — kernel board benchmark
