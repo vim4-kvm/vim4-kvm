@@ -1,6 +1,7 @@
 # nodebug：绑核证据、DDR边界与两启动对门禁
 
-本轮离线，不访问板子、GPU文件，不改正式配置、不push/pin。
+后续[两对实测](bringup/2026-10-30-nodebug-paired-gate.md)已完成：大核memcpy未复现退化，
+tmpfs/端到端均值更快但联合区间和条件缺口令门禁不确定。以下保留预登记方案；正式配置/push/pin不变。
 [三方记录](bringup/2026-10-30-nodebug-memory-window.md)的tmpfs恢复结论保留；memcpy慢尚未定因。
 
 ## 旧记录究竟证明了什么

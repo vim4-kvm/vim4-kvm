@@ -4,6 +4,7 @@
 nodebug恢复tmpfs写入与YOLO端到端，但memcpy/pread仍未追平。未动GPU文件、正式配置或push/pin。
 用户授权的[独立nodebug候选](uhd2-nodebug.md)已关闭纯调试开销；正式配置仍待批准。
 后续[原始绑核核对与两启动对门禁](nodebug-performance-gate.md)补逐段实际CPU/频率及大、小核重复分布；旧CPU2亲和已确认，DDR对齐仍缺。
+最新[两对上板](bringup/2026-10-30-nodebug-paired-gate.md)：大核64MiB耗时差−4.106% [−9.912,+1.699]%，未复现变慢；tmpfs/端到端门禁仍不确定。
 [YOLO分段记录](bringup/2026-10-30-npu-e2e-window.md)把约3.46ms增量定位到tmpfs fwrite，
 尚未证明整个KVM所有拷贝都退化。**首要配置嫌疑是7.3的锁调试，不是已坐实的DDR低频或ADLA缺陷。**
 

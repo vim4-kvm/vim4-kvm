@@ -2,6 +2,7 @@
 
 最新[三方上板结果](bringup/2026-10-30-nodebug-memory-window.md)：tmpfs/YOLO端到端恢复、视频约60fps；memcpy仍慢。默认5.15与正式配置不变。
 后续[绑核证据与两对门禁](nodebug-performance-gate.md)含正式配置最小diff草案，尚未应用。
+最新[两对实测](bringup/2026-10-30-nodebug-paired-gate.md)输出/60fps通过，性能资格仍不确定，大核memcpy未复现退化。
 
 用户授权本轮关闭纯调试开销，不需要额外批准；正式配置/pin/push仍需批准。
 **uhd1同样开启锁调试，历史7.3视频/GPU/NPU数据均包含该层成本。** 不是NPU补丁新增。

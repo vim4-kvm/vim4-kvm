@@ -17,6 +17,7 @@
 
 ## 2026-10-30
 
+- [nodebug两启动对门禁与绑核尺寸曲线](2026-10-30-nodebug-paired-gate.md) — kernel board benchmark video
 - [nodebug消除tmpfs写入差距与60fps回归](2026-10-30-nodebug-memory-window.md) — kernel board benchmark video
 - [YOLO端到端差距定位到文件写入](2026-10-30-npu-e2e-window.md) — kernel board benchmark
 - [GPU同块回跳修复与快轮询窗口](2026-10-30-gpu-repair-window.md) — kernel board video benchmark
