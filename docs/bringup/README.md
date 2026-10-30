@@ -17,6 +17,7 @@
 
 ## 2026-10-30
 
+- [私有 Mesa 26.2.6 离线运行时](2026-10-30-gpu-runtime.md) — kernel gpu packaging
 - [GPU 完整性审查与默认降频候选](2026-10-30-gpu-parity.md) — kernel gpu audit
 - [7.3 保留运行时与发布锁同步](2026-10-30-kernel73-retained-pin.md) — kernel deployment application
 - [第三轮尺寸与原生 GPU 定向复验](2026-10-30-kernel73-gap-r3.md) — kernel video manager deployment

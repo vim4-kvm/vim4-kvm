@@ -20,7 +20,8 @@ T7时钟/复位门控正常化仍需独立候选和恢复证据；本轮不改�
 `CONFIG_THERMAL_OF=y`、`CONFIG_THERMAL_GOV_STEP_WISE=y`、
 `CONFIG_PM_OPP=y`、`CONFIG_PM_GENERIC_DOMAINS=y`。
 profiling是运行时选择，不因有fdinfo便默认常开；无需增加虚构的GPU perf PMU配置。
-调压需要可信表后修改DTS的opp-microvolt，不是新增CONFIG开关。
+电压策略与厂商一致：固定电压，非缺口；不再追求逐频电压表。
+闭源固件是否另行调压未证，不从Linux只切频的证据推断固件行为。
 
 构建复制uhd1.config到私有O=目录；不经要求正式锁匹配的build.sh冒充发布构建：
 
@@ -48,7 +49,10 @@ Ubuntu sparse0.6.4被内核checker-valid拒绝，不能把退出0当已检查；
 补入原源码默认值VIDEO_MESON_T7_DOS=m、四个T7音频选项=n及U_SERIAL_CONSOLE=n；
 这些是版本/默认项差异，不是本轮要求修改主仓的GPU配置。
 
-## 用户态可复现打包方案
+## 首轮用户态方案（由第二轮实现替代）
+
+以下保留首轮25.2.8探测的历史结果；当前私有运行时实现见
+[第二轮构建记录](bringup/2026-10-30-gpu-runtime.md)。系统25.2.8保留作对照。
 
 优先保持安装版本25.2.8进行依赖/行为对照，不凭“升级最新版”许诺GLES3.2。
 本轮已下载并校验官方25.2.8 tarball、检查PanVK v7实验门控和AFRC版本判断；
@@ -113,7 +117,7 @@ G52 PanVK实验成熟度和GLES3.2缺口都不能由这个打包方案消除。
 | 2分钟 | GPU ID、shader/L2 masks、features/issues；EGL/GLES设备版本/extensions、Vulkan device properties、CL platform/device版本/extensions | 真实GPU探测，拒绝llvmpipe/lavapipe；CL符号版本不代替clGetDeviceInfo。先确认两侧共同API与负载 |
 | 5分钟 | 复用logs/gpu-devfreq/gles-load.c离屏回读或固定glmark2，双方相同pbuffer实际尺寸、shader、迭代数、CPU亲和、温度、频率/电压状态 | 各三轮：吞吐、帧时间p50/p95/p99、进程/整机CPU、错误和像素；实际surface不同则作废。保留原始值，不以异后端旧分数相除 |
 | 5分钟 | vkmark或仓库mali-dma-probe同一shader/尺寸，CL用clpeak相同数据量并保存能力扩展 | 先证明PanVK import/external memory能力，缺扩展记失败；实验开关记录入结果。CL版本可选能力逐项比较，不能以3.0数字替代2.x功能 |
-| 5分钟 | userspace governor五档升降各20秒，读取clk_summary与OPP/devfreq驻留；已审核的regulator_summary/PWM具名状态 | 不写PWM/猜电压。model µV不是实测；可信表未取得前逐频调压继续未验，不可能凭本清单证明完成 |
+| 5分钟 | userspace governor五档升降各20秒，读取clk_summary与OPP/devfreq驻留；已审核的regulator_summary/PWM具名状态 | 与厂商一致采用固定电压，非缺口；不写PWM/猜电压。model µV不是实测，闭源固件是否另行调压未证 |
 | 5分钟 | 正常负载温区、cooling type/max_state/cur_state、GPU最大频率；有THERMAL_EMULATION临时配置的专用候选可做95°C/回落软件注入 | 不堵风扇、不人为烤到临界温度；温度未达trip则降频未验。软件注入仅证明绑定/恢复，不证明真实传感器闭环；生产config无需开emulation |
 | 3分钟 | 渲染→空闲→渲染，runtime_status/active_time/suspended_time、genpd和时钟状态、实际功耗仪读数（若有） | 空闲应autosuspend且恢复像素正确，无timeout/MMU fault；cur_freq在挂起时是缓存，不证明关钟功耗。无功耗仪不宣称功耗追平 |
 | 8分钟 | 固定HDMI采集/Wave5并行GPU导入/处理，脚本记录帧序、回读、DMA/CMA驻留、编码吞吐/丢帧、GPU fence与kernel errors | 与无GPU并发基线同场景比较；逐帧输入退休再复用，结果应无新增损坏/停流/池泄漏；不用截图、高频ptrace或HID触发场景 |
@@ -124,7 +128,7 @@ G52 PanVK实验成熟度和GLES3.2缺口都不能由这个打包方案消除。
 
 ## 风险与需要决策的事项
 
-- 需要板型/bin/温度适用的GPU频率—微伏表、SMC契约及PWMAO_E电路标定；从Khadas/SoC资料取得，或另行安排仪器测量。没有这些不能安全实施调压。
+- 固定电压与厂商Linux一致，非缺口，不再追求电压表；闭源固件是否另行调压未证。功耗对照无需以新增调压功能为前提。
 - 上游G52 GLES3.1低于厂商3.2，PanVK仍实验。需决定是否投入G52上游API/CTS补齐；实验PanVK只能进入隔离验证候选，不能作为现有严格产品目标的完成证明。
 - OpenCL厂商实际device版本/扩展、双方CTS、GPU/视频DMA格式及同步、真实热降频和功耗均未离线证明。后续是否安排一次性启动独占窗口由用户确定，本轮不部署。
 
