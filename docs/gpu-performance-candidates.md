@@ -6,6 +6,10 @@
 结论：通用展开候选已将原循环编译到显式展开版的相同统计；实际 FPS、功耗和广泛正确性待上板。
 10ms 轮询是可回退的调频实验，不能承诺解决首个约2ms提交。
 
+后续[上板窗口](bringup/2026-10-30-gpu-candidate-window.md)：候选原循环587.8fps，
+10ms暖Vulkan约2.03ms但冷首发仍8.1ms；active空闲CPU约+0.107个百分点。
+[循环/语料审查](gpu-loop-codegen.md)发现局部代码最多膨胀9.5倍，展开保留为绕过实验，暂不默认推广。
+
 ## 循环上限和后端证据
 
 M 为 Mesa26.2.6 原始 tarball，SHA256 `b9436b3e1a8be76fbd4823dc884f90596ab7c6ac5e1867a305e66ffccfb31a92`。

@@ -19,6 +19,9 @@ GPU timer通过`GPU_TIMER_QUERY=1`或`gpu-compare.py --gpu-timer`单独启用，
 原循环已得到与显式展开相同的G52统计且无spill；内核4e239aec051a4将devfreq轮询改为10ms。
 均未上板，不能把编译统计或构建通过当作FPS、功耗与产品HDR性能验收；下一窗口测量预算20分钟。
 
+该窗口后已完成[候选配对实测](bringup/2026-10-30-gpu-candidate-window.md)：
+展开绕过生效，10ms改善暖提交但不解决冷首发；[后端循环分析](gpu-loop-codegen.md)定位不变量重复计算及reconvergence保护下的额外回跳。
+
 ## 测量是否同条件
 
 复核原始`logs/gpu-board-20261030/`的vendor-final.json、gbm-candidate.json及compute.json：

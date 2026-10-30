@@ -17,6 +17,10 @@ Vulkan4.25倍为冷提交主机等待口径，clpeak120秒是全程序预算；�
 [离线候选](gpu-performance-candidates.md)实现通用成本约束展开和10ms devfreq采样，尚待下一独占窗口确认。
 私有Mesa候选另用`/opt/vim4-mesa-26.2.6-unroll1`，默认部署与原版保持并存。
 
+[候选配对窗口](bringup/2026-10-30-gpu-candidate-window.md)已验证约2.50倍GLES绕过收益与10ms暖提交收益，
+冷首发仍未改善。下一优先级是[循环代码生成本身](gpu-loop-codegen.md)，不将展开作为已完成的后端修复；
+大语料局部代码增长最高9.5倍，暂不默认推广。10ms默认化仍需更长功耗/后台负载回归。
+
 ## 内核候选
 
 VM `~/src/linux-7.3-gpu`，分支 `vim4-gpu-panfrost`，基于`213f271505411`。

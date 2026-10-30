@@ -1,0 +1,17 @@
+[
+  {
+    "name": "shader-db-pinned.tar.gz",
+    "url": "https://gitlab.freedesktop.org/mesa/shader-db/-/archive/6ec450899fb1cb9d6d4829bbf864288c4e7a5dbb/shader-db-6ec450899fb1cb9d6d4829bbf864288c4e7a5dbb.tar.gz",
+    "sha256": "c32024f380407a9aec409cabfbd52bfc97f33d8952fa264a525f464d5c486f99"
+  },
+  {
+    "name": "libepoxy-dev_1.5.10-1build1_arm64.deb",
+    "url": "https://snapshot.ubuntu.com/ubuntu/20261012T000000Z/pool/main/libe/libepoxy/libepoxy-dev_1.5.10-1build1_arm64.deb",
+    "sha256": "976557dd0a474f859db69f092c15ae83c366c7a42400be45ccf7921b314c257f"
+  },
+  {
+    "name": "libepoxy0_1.5.10-1build1_arm64.deb",
+    "url": "https://snapshot.ubuntu.com/ubuntu/20261012T000000Z/pool/main/libe/libepoxy/libepoxy0_1.5.10-1build1_arm64.deb",
+    "sha256": "103381283fcdbb4af06c155568c1e945f0a647d75f2522e0c2418ebb70b855ba"
+  }
+]
