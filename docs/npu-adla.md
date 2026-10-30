@@ -1,8 +1,26 @@
-# ADLA 离线候选
+# ADLA 候选与验收
 
 本轮工作在 VM `~/src/linux-7.3-npu`、分支 `vim4-npu-adla`，基于
 `213f271505411`。正式部署锁不变。驱动在 `drivers/misc/adla`：其接口是
 下游闭源 SDK 字符设备兼容接口，本轮不声明 DRM accel 支持。
+
+## 2026-10-30 上板结论：未通过
+
+完整记录见[首次上板验收](bringup/2026-10-30-npu-adla-acceptance.md)。
+5.15三模型各101轮完成，逐轮完整张量已保留；去首轮后均值分别为
+VGG16 0.560168 ms、DenseNet CTC 1.951742 ms、YOLOv8n 30.133937 ms。
+修正初始化握手后的ATTACH别名检查、SDK正向profiling通过。
+
+npu1通过RAM一次性启动，但ADLA probe失败，没有`/dev/adla0`：
+`adlak_platform_config.c:269`仍通过资源表取IRQ，7.3的OF平台设备不再在该表
+填入IRQ，须改为`platform_get_irq_byname()`并保留负错误码/延迟probe语义。
+因此7.3完整输出差异、配对退化、PM/恢复及视频并行数据均缺失，不能登记性能追平。
+HDMI运行时另报接收器已加载参数与实验配置不匹配；该问题也阻塞并行验收。
+
+首次RAM启动还暴露无initramfs候选不能直接沿用5.15的`root=UUID=`；
+打包器现要求根分区PARTUUID证明，stage核对其为当前根分区，仅转换候选参数。
+修正后候选启动成功。最终恢复5.15默认，所有备份文件哈希/权限一致，
+One-KVM、manager、HDMI、gadget为active，UDC为configured。未改正式部署锁。
 
 ## 第三轮离线状态
 
@@ -23,8 +41,11 @@ WAIT改用可中断等待，按invoke查询完成状态；超时返回ETIMEDOUT�
 
 **无法确认DMA停止时不允许释放可能仍被硬件访问的页。** 当前实现锁定故障状态、
 拒绝后续请求、保留模块与相关DMA/IOVA资源直到重启，并禁止sysfs解绑。
-这不等于该异常路径已经满足“全部资源回收”；该例外仍需用户决策，
-且故障停止/复位的硬件效果不能由宿主测试证明。
+用户在本轮已接受此例外：语义与DRM wedged一致，不能计作“全部资源回收”。
+故障必须对用户态可见：后续open/ioctl返回EIO，WAIT/GET_STAT报告失败；
+`adlak_device.c:44`用一次性故障转换，`:59`打印
+`recovery failed: <error>; reboot required`。这些为源码合同，
+本次因probe失败未验证真实软复位失败及DMA停止效果。
 
 标准PM路径处理resume-and-get、父时钟、设频和启钟失败；引用失败回滚，
 regulator由devres行动成对释放。IRQ注册先于worker启动，避免probe失败时
@@ -70,14 +91,15 @@ hw_info 文本标签属于兼容合同，不以 debugfs 取代。
 nn_efuse_type = 2`，随后打印 `regulator_set_voltage 890000mv OK`。
 厂商实现见 `common_drivers/drivers/adla/kmd/drv/port/platform/linux/adlak_regulator.c:159`
 （890000常量）、`:198`（nn_adj_vol=0分支）、`:231`（regulator_set_voltage）。
-这是驱动请求值及API成功日志，**不是物理电压测量，也不是regulator_get_voltage读回**；
-下一轮须核对5.15 regulator读回与7.3读回，并记录对应频率和板型。
-DT 计算时钟设 800 MHz，实际工作频率需下轮基线记录，不能当作本轮实测。
+本次5.15另读`/sys/class/regulator/regulator.4/{name,microvolts}`得到
+`vddnpu`、890000，这是regulator框架读回，仍不是物理电压测量。
+5.15设定核心频率800 MHz；活动/空闲读回见上板记录。
+7.3因probe失败未得到ADLA运行工作点，不把DT的800 MHz当作实测。
 
 ## 模型和工具
 
 固定 Khadas 提交与六个文件的 SHA256 在 `tools/npu-models.json`。
-不提交模型二进制。检测模型选 YOLOv8n，尚未在本板执行，不能称为已验证。
+不提交模型二进制。检测模型选YOLOv8n，本次已完成5.15基线，7.3尚未验证。
 
 ```sh
 python3 tools/npu-validate.py prepare build/npu-models
@@ -108,9 +130,12 @@ timeout 30 ./npu-uapi-probe profile
 ```
 
 attach从REQBUF取得连续页后再导入同一物理页，验证映射别名并先detach再free；
-不会导入任意猜测的物理地址。profile连续两次测试无network错误路径，覆盖互斥锁释放。
+不会导入任意猜测的物理地址。必须先SET_CONTEXT_ATTRIBUTE建立MMU上下文；
+初版探针漏掉此握手，曾在5.15的REQBUF触发空指针panic，已修正并通过ATTACH。
+profile连续两次测试无network错误路径，覆盖互斥锁释放；厂商5.15该路径会漏解锁，
+工具主动拒绝在5.15运行该负向测试，须待修正候选设备初始化后再验。
 正向profiling另用同一C probe追加第五参数 `--profile`，执行SDK的enable/get/disable，
-须与普通性能测量分开运行。本轮只编译，没有运行这些硬件程序。
+须与普通性能测量分开运行。本次5.15正向profiling得到371 µs、3298400 bytes。
 
 ## 独立候选产物与一次性启动准备
 
@@ -122,9 +147,10 @@ attach从REQBUF取得连续页后再导入同一物理页，验证映射别名�
 校验运行build ID后创建独立模块挂载点，失败重启回默认。
 现有启动器按release白名单分派，npu1须配套更新vim4-board-runtime、vim4-kvm-run、
 one-kvm-edge、mainline-prepare和mainline-gadget-prepare，才能沿用Wave5运行时。
-这些候选文件另放载荷的runtime目录并记录哈希；本轮不安装。下一轮先备份并核对
+这些候选文件另放载荷的runtime目录并记录哈希；第三轮未安装。上板先备份并核对
 5.15路径行为，再安装这些仅增加npu1分派的文件，不重启服务，随后采集baseline证明。
 baseline证明还须包含这五份运行时文件的哈希，避免一次性启动使用不同路由。
+本次上板已完成临时安装及恢复，备份、原始/最终证明保留在板上验收工作目录。
 
 最终一次性bundle须使用下一轮刚读出的5.15证明，不能拿历史启动文件哈希冒充当前状态：
 
@@ -137,11 +163,17 @@ python3 packaging/kernel-edge/display-once.py prepare \
 ```
 
 BASELINE_BUILD_ID必须替换为实际40位GNU build ID；proof须含cmdline、启动文件与运行时登记哈希。
+若基线是`root=UUID=`，proof另需`root_partuuid`（由当前根挂载对应块设备的blkid读取）；
+候选APPEND转换为PARTUUID并加rootwait，stage核对该分区的设备号与当前根挂载一致。
+原始baseline_cmdline不改，仍用于stage身份核验。
 prepare只读输入并写新目录，不stage、不SSH、不重启。下一轮stage仍须root、板锁/媒体锁、
 当前release/build ID、cmdline和全部文件哈希一致；U-Boot只在RAM执行生成的sysboot命令。
-已经离线测试跨release归档和基线身份保持；真实启动、模块加载和用户态适配不能离线证明。
+跨release归档和基线身份保持有离线测试；真实上板结果以上述失败结论为准。
 
 ## 下一轮上板顺序
+
+先修复IRQ获取、复验probe与HDMI参数加载顺序，重新构建独立候选并完成离线门禁；
+不能继续使用本次npu1失败产物宣称追平。以下完整验收仍需重跑配对窗口。
 
 1. 先在5.15持板锁和媒体锁，记录SDK/模型/输入/内核哈希、实际频率和电压。
    用同一工具采集三模型逐轮完整输出与计时，外部物理地址导入和profiling另测。

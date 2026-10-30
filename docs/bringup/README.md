@@ -17,6 +17,7 @@
 
 ## 2026-10-30
 
+- [ADLA 首次上板验收与 npu1 probe 失败](2026-10-30-npu-adla-acceptance.md) — kernel board benchmark
 - [私有 Mesa 26.2.6 离线运行时](2026-10-30-gpu-runtime.md) — kernel gpu packaging
 - [GPU 完整性审查与默认降频候选](2026-10-30-gpu-parity.md) — kernel gpu audit
 - [7.3 保留运行时与发布锁同步](2026-10-30-kernel73-retained-pin.md) — kernel deployment application
