@@ -4,35 +4,57 @@
 `213f271505411`。正式部署锁不变。驱动在 `drivers/misc/adla`：其接口是
 下游闭源 SDK 字符设备兼容接口，本轮不声明 DRM accel 支持。
 
-## 实施状态与离线门禁欠账
+## 第三轮离线状态
 
-这是未取得上板资格的实现进度，不能当作P0–P4全部完成。
-内核已有原始执行核心、binding、DT及平台API适配提交；配置启用模块。
-源码和输出分别为VM `~/src/linux-7.3-npu`、`~/build/npu-adla`。
-已有完整Image/dtbs/modules构建成功记录；最终复验日志为
-`verified-full.log`，schema与目标DTB日志为`schema.log`、`dtbs-check.log`，
-W=1/sparse记录为`w1-sparse.log`、`w1-sparse-final.log`。
-新增适配代码strict checkpatch日志为`checkpatch-commit.log`。
-厂商原有告警没有通过全文件机械格式化掩盖。
+内核分支为 `vim4-npu-adla`，第三轮提交：
+`efd8fb22f425d`（恢复顺序、错误传播、PM回滚、范围检查与宿主测试），
+`ec52a0f711cd7`（取消计数与供电失败测试），
+`40c653d43f711`（移除端口适配引入的未使用探测函数）。
+输出目录为VM `~/build/npu-adla1`，独立release为
+`7.3.0-vim4kvm-npu1+`，不修改正式源码锁或uhd1模块目录。
+最终完整构建与打包通过，载荷有2338个模块，内核build ID为
+`5f66186d0cc2e53b89c4bbf91226ec7b0b70d6ce`；M0 DTB的ADLA状态为okay。
+主仓配套提交为`306c744`，303项unittest通过、7项跳过。
 
-当前宿主覆盖外层ABI布局和task范围的负数、越界、整数边界，尚未覆盖
-完整嵌套fixup内容、IOVA分配回收、失败回滚及wait/cancel/close状态机。
-验收工具五项离线测试覆盖输出差异拒绝、5%性能边界、非法计时、
-超时终止和进程失败；C probe用板上头文件通过语法检查，没有执行推理。
-六份固定来源下载与预处理已离线执行；VGG16、DenseNet输入SHA与历史文件一致。
+恢复先完成软复位，再发布失败完成事件，避免close提前释放DMA页。
+WAIT改用可中断等待，按invoke查询完成状态；超时返回ETIMEDOUT，
+硬件/恢复失败返回EIO，信号中断保留内核等待错误。GET_STAT同样报告失败。
+正常取消/close释放资源；close等待DMA静止有界，不能在等待失败后继续释放。
 
-必须继续完成以下事项后才能进入下一轮上板：
+**无法确认DMA停止时不允许释放可能仍被硬件访问的页。** 当前实现锁定故障状态、
+拒绝后续请求、保留模块与相关DMA/IOVA资源直到重启，并禁止sysfs解绑。
+这不等于该异常路径已经满足“全部资源回收”；该例外仍需用户决策，
+且故障停止/复位的硬件效果不能由宿主测试证明。
 
-- 硬复位函数已返回不可用错误，reset-and-start已传播错误；但旧inference状态机
-  仍忽略该返回值。必须完成错误传播、后续请求失败策略以及DMA生命周期处理。
-- 电源获取与时钟错误仍有仅记录日志的旧路径；PM引用和probe失败回滚须补齐验证。
-- ioctl自动映射已适配VMA写锁，映射失败路径尚需受控故障测试。
-- 外部物理地址导入、profiling和必要sysfs策略还缺独立测试。
-- 尚无KUnit/宿主生命周期测试闭环、独立候选打包或一次性启动脚本闭环。
-  当前构建release与原uhd1同名，禁止直接覆盖正式模块目录。
+标准PM路径处理resume-and-get、父时钟、设频和启钟失败；引用失败回滚，
+regulator由devres行动成对释放。IRQ注册先于worker启动，避免probe失败时
+在持有dev_mutex期间等待需要该锁的worker退出。
+worker所需定时器在启动前分配，创建失败不再被解锁的返回值覆盖。
 
-固定工作点不需要裸SMC读取efuse；多频OPP/动态分档尚未实现。
-现有NNA温度计继续由thermal框架管理，不宣称已实现新的NPU降频策略。
+宿主测试运行实际C函数或实际错误状态分支，以控制事件替代硬件：
+`test_iova.py`覆盖分配失败、排除区、碎片复用、耗尽和回收；
+`test_platform.py`覆盖PM/时钟及regulator各步失败回滚；
+`test_lifecycle.py`覆盖复位与完成顺序、WAIT错误、信号和close；
+`test_cancel.py`覆盖pending/finished计数及scheduled取消时保留任务。
+IOVA、生命周期和取消测试启用ASan/UBSan；边界与ABI测试继续保留。
+这些测试不证明真实页表、缓存、中断、电源域或DMA停止。
+
+构建/验证日志位于上述输出目录：
+`r3-delivery-build.log`、`r3-delivery-package.log`、`r3-w1-all.log`、`r3-sparse-real.log`、
+`r3-schema.log`、`r3-dtb.log`。
+系统sparse 0.6.4曾被内核跳过，旧C=2成功退出不能算sparse通过；
+实际检查使用私有sparse 84ec0658c81d，安装在 `~/build/sparse-npu`。
+新增核心适配strict checkpatch清零；取消测试提交的MAINTAINERS提醒由已有
+`F: drivers/misc/adla/test*.py`覆盖，单独记录该元数据提示，不隐藏代码诊断。
+
+W=1存量诊断分类：未使用赋值变量13、缺失原型11、旧式inline声明5、
+printf属性建议4、fallthrough 1、格式符1；另有旧模板kernel-doc警告。
+按相对上一轮的新增行范围比对，W=1诊断没有命中新改代码。
+这些是存量清单，不代表整个驱动无告警；sparse另按实际日志记录。
+实际sparse执行了24个CHECK；新增行未命中诊断。存量包括类型/地址空间不匹配49、
+gfp_t退化6、整数NULL 3、符号未声明13（其中1个来自内核vDSO），以及上述编译器告警。
+这些诊断没有通过关闭W=1、sparse或全文件格式化规避。
+T7C固定启用内部MMU后产生的未使用属性探测函数已删除，不归入厂商存量免责项。
 
 ## 兼容合同
 
@@ -44,6 +66,12 @@ hw_info 文本标签属于兼容合同，不以 debugfs 取代。
 
 5.15 本板只读启动日志确认 `nn_adj_vol=0, package=1, efuse=2`，设置
 890000 µV；原日志的 `mv` 标签错误，代码单位是 µV。候选不引入多频 OPP。
+证据来自第二轮只读 `dmesg`：`ADLA KMD nn_adj_vol = 0, nn_package_id = 1,
+nn_efuse_type = 2`，随后打印 `regulator_set_voltage 890000mv OK`。
+厂商实现见 `common_drivers/drivers/adla/kmd/drv/port/platform/linux/adlak_regulator.c:159`
+（890000常量）、`:198`（nn_adj_vol=0分支）、`:231`（regulator_set_voltage）。
+这是驱动请求值及API成功日志，**不是物理电压测量，也不是regulator_get_voltage读回**；
+下一轮须核对5.15 regulator读回与7.3读回，并记录对应频率和板型。
 DT 计算时钟设 800 MHz，实际工作频率需下轮基线记录，不能当作本轮实测。
 
 ## 模型和工具
@@ -68,6 +96,51 @@ run 要求显式模型/输入 SHA，输出目录必须不存在。101轮包含�
 超时先 TERM 后 KILL，均有界；D态进程不能靠用户态清理保证消失，必须报告，
 不能继续复用硬件。工具不删除旧目录，不发 HID、不测声音、不 ptrace 视频进程。
 
+独立UAPI程序在VM编译，须使用候选内核UAPI头：
+
+```sh
+cc -Wall -Wextra -Werror \
+  -I ~/src/linux-7.3-npu/drivers/misc/adla/drv/uapi \
+  -I ~/src/linux-7.3-npu/drivers/misc/adla/drv/uapi/linux \
+  tools/npu-uapi-probe.c -o npu-uapi-probe
+timeout 30 ./npu-uapi-probe attach
+timeout 30 ./npu-uapi-probe profile
+```
+
+attach从REQBUF取得连续页后再导入同一物理页，验证映射别名并先detach再free；
+不会导入任意猜测的物理地址。profile连续两次测试无network错误路径，覆盖互斥锁释放。
+正向profiling另用同一C probe追加第五参数 `--profile`，执行SDK的enable/get/disable，
+须与普通性能测量分开运行。本轮只编译，没有运行这些硬件程序。
+
+## 独立候选产物与一次性启动准备
+
+完整构建、DTB和匹配模块来自VM `~/build/npu-adla1`；载荷目录为
+`~/build/npu1-candidate`，manifest记录源码、build ID、配置和全模块哈希。
+不向正式sources.toml登记，不发布、不修改板上启动文件。
+打包器新增显式 `--release 7.3.0-vim4kvm-npu1+`，默认uhd1合同保持。
+静态PID 1由display-once-init.c以 `-DADLA_TRIAL` 和独立RELEASE构建；
+校验运行build ID后创建独立模块挂载点，失败重启回默认。
+现有启动器按release白名单分派，npu1须配套更新vim4-board-runtime、vim4-kvm-run、
+one-kvm-edge、mainline-prepare和mainline-gadget-prepare，才能沿用Wave5运行时。
+这些候选文件另放载荷的runtime目录并记录哈希；本轮不安装。下一轮先备份并核对
+5.15路径行为，再安装这些仅增加npu1分派的文件，不重启服务，随后采集baseline证明。
+baseline证明还须包含这五份运行时文件的哈希，避免一次性启动使用不同路由。
+
+最终一次性bundle须使用下一轮刚读出的5.15证明，不能拿历史启动文件哈希冒充当前状态：
+
+```sh
+python3 packaging/kernel-edge/display-once.py prepare \
+  --payload ~/build/npu1-candidate --init ~/build/npu-adla1/npu-once-init \
+  --baseline baseline-515.json --output ~/build/npu1-once \
+  --release 7.3.0-vim4kvm-npu1+ \
+  --baseline-release 5.15.137-vim4kvm-hdrdual6 --baseline-id BASELINE_BUILD_ID
+```
+
+BASELINE_BUILD_ID必须替换为实际40位GNU build ID；proof须含cmdline、启动文件与运行时登记哈希。
+prepare只读输入并写新目录，不stage、不SSH、不重启。下一轮stage仍须root、板锁/媒体锁、
+当前release/build ID、cmdline和全部文件哈希一致；U-Boot只在RAM执行生成的sysboot命令。
+已经离线测试跨release归档和基线身份保持；真实启动、模块加载和用户态适配不能离线证明。
+
 ## 下一轮上板顺序
 
 1. 先在5.15持板锁和媒体锁，记录SDK/模型/输入/内核哈希、实际频率和电压。
@@ -81,3 +154,6 @@ run 要求显式模型/输入 SHA，输出目录必须不存在。101轮包含�
 
 每项≤10分钟，只用脚本和计数器；不发HID（被控机为Mac mini M6），不测声音。
 整机挂起另需平台PM资格，不能用设备clock-gating替代。
+预计板上独占约55–75分钟：5.15基线与接口测试10–15分钟，候选准备/启动/回退10–15分钟，
+三模型输出与配对性能10–15分钟，PM/超时/退出10–15分钟，视频并行10分钟，收尾5分钟。
+按多个≤10分钟小项执行；任何oops、DMA错误或输出不一致立即停止本项，不扩大故障注入。
