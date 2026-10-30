@@ -17,6 +17,7 @@
 
 ## 2026-10-30
 
+- [npu4三模型、取消与视频并行门禁通过](2026-10-30-npu4-acceptance.md) — kernel board benchmark video
 - [GPU 性能差距分解窗口](2026-10-30-gpu-diagnosis-window.md) — kernel gpu board benchmark
 - [npu3 视频恢复与 YOLO缓存合同、恢复后延迟失败](2026-10-30-npu3-acceptance.md) — kernel board benchmark video
 - [npu2 双模型通过与 YOLO/视频门禁失败](2026-10-30-npu2-acceptance.md) — kernel board benchmark video
