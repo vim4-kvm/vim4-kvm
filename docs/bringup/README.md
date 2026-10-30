@@ -17,6 +17,7 @@
 
 ## 2026-10-30
 
+- [uhd2四启动对性能门禁仍不确定](2026-10-30-npu-boot-pairs.md) — kernel board benchmark
 - [保留循环候选、正确性与冷恢复实测](2026-10-30-gpu-loop-window.md) — kernel gpu board benchmark
 - [uhd2集成输出与并行通过，DenseNet性能阻断pin](2026-10-30-npu-uhd2-acceptance.md) — kernel board benchmark video
 - [Mesa展开候选与10ms调频配对窗口](2026-10-30-gpu-candidate-window.md) — kernel gpu board benchmark
