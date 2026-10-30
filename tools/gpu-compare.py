@@ -65,6 +65,8 @@ def main():
     parser.add_argument('--output', required=True, type=Path)
     parser.add_argument('--seconds', type=int, choices=range(1, 61), default=20)
     parser.add_argument('--capabilities-only', action='store_true')
+    parser.add_argument('--probe', type=Path, help='Override the versioned GLES probe binary')
+    parser.add_argument('--gbm-device', type=Path, help='Use GBM with a fixed-size offscreen FBO')
     args = parser.parse_args()
     env = environment(args.mode, args.runtime)
     args.output.mkdir(parents=True, exist_ok=False)
@@ -75,7 +77,10 @@ def main():
         env['OCL_ICD_VENDORS'] = str(icd)
     # Load the same utility binary through the system loader. Its RUNPATH makes
     # bundled dependencies available; API dispatch is controlled above.
-    commands = [(str(args.runtime / 'bin/gpu-probe'), str(0 if args.capabilities_only else args.seconds)),
+    probe = [str(args.probe or args.runtime / 'bin/gpu-probe'), str(0 if args.capabilities_only else args.seconds)]
+    if args.gbm_device:
+        probe.append(str(args.gbm_device))
+    commands = [tuple(probe),
                 (str(args.runtime / 'bin/vulkaninfo'),), (str(args.runtime / 'bin/clinfo'),)]
     if not args.capabilities_only:
         commands.append((str(args.runtime / 'bin/clpeak'),))

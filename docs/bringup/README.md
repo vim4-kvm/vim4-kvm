@@ -17,6 +17,7 @@
 
 ## 2026-10-30
 
+- [GPU 三栈上板验收](2026-10-30-gpu-acceptance.md) — kernel gpu board benchmark
 - [ADLA 首次上板验收与 npu1 probe 失败](2026-10-30-npu-adla-acceptance.md) — kernel board benchmark
 - [私有 Mesa 26.2.6 离线运行时](2026-10-30-gpu-runtime.md) — kernel gpu packaging
 - [GPU 完整性审查与默认降频候选](2026-10-30-gpu-parity.md) — kernel gpu audit

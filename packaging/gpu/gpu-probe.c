@@ -2,9 +2,12 @@
 #include <EGL/egl.h>
 #include <EGL/eglext.h>
 #include <GLES2/gl2.h>
+#include <fcntl.h>
+#include <gbm.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <time.h>
+#include <unistd.h>
 
 static double now(void)
 {
@@ -27,18 +30,38 @@ static GLuint shader(GLenum type, const char *source)
 int main(int argc, char **argv)
 {
  const EGLint config_attrs[] = {EGL_SURFACE_TYPE, EGL_PBUFFER_BIT, EGL_RENDERABLE_TYPE, EGL_OPENGL_ES2_BIT, EGL_RED_SIZE, 8, EGL_GREEN_SIZE, 8, EGL_BLUE_SIZE, 8, EGL_NONE};
+ const EGLint gbm_attrs[] = {EGL_RENDERABLE_TYPE, EGL_OPENGL_ES2_BIT, EGL_RED_SIZE, 8, EGL_GREEN_SIZE, 8, EGL_BLUE_SIZE, 8, EGL_NONE};
  const EGLint surface_attrs[] = {EGL_WIDTH, 512, EGL_HEIGHT, 512, EGL_NONE};
  const EGLint context_attrs[] = {EGL_CONTEXT_CLIENT_VERSION, 2, EGL_NONE};
  EGLDisplay display = eglGetDisplay(EGL_DEFAULT_DISPLAY);
+ struct gbm_device *gbm = NULL;
+ int drm_fd = -1;
+ /* Some vendor libraries support GBM but not Mesa's surfaceless platform. */
+ if (argc > 2) {
+  drm_fd = open(argv[2], O_RDWR | O_CLOEXEC);
+  if (drm_fd < 0 || !(gbm = gbm_create_device(drm_fd))) return 2;
+  PFNEGLGETPLATFORMDISPLAYEXTPROC get_display = (PFNEGLGETPLATFORMDISPLAYEXTPROC)eglGetProcAddress("eglGetPlatformDisplayEXT");
+  if (!get_display) return 2;
+  display = get_display(EGL_PLATFORM_GBM_KHR, gbm, NULL);
+ }
  EGLConfig config;
  EGLint count, major, minor;
  if (!eglInitialize(display, &major, &minor)) { fprintf(stderr, "eglInitialize: 0x%x\n", eglGetError()); return 2; }
  printf("EGL %d.%d vendor=%s extensions=%s\n", major, minor, eglQueryString(display, EGL_VENDOR), eglQueryString(display, EGL_EXTENSIONS));
- if (!eglBindAPI(EGL_OPENGL_ES_API) || !eglChooseConfig(display, config_attrs, &config, 1, &count) || count != 1) return 2;
- EGLSurface surface = eglCreatePbufferSurface(display, config, surface_attrs);
+ if (!eglBindAPI(EGL_OPENGL_ES_API) || !eglChooseConfig(display, gbm ? gbm_attrs : config_attrs, &config, 1, &count) || count != 1) return 2;
+ EGLSurface surface = gbm ? EGL_NO_SURFACE : eglCreatePbufferSurface(display, config, surface_attrs);
  EGLContext context = eglCreateContext(display, config, EGL_NO_CONTEXT, context_attrs);
  if (!eglMakeCurrent(display, surface, surface, context)) return 2;
  printf("GL vendor=%s renderer=%s version=%s extensions=%s\n", glGetString(GL_VENDOR), glGetString(GL_RENDERER), glGetString(GL_VERSION), glGetString(GL_EXTENSIONS));
+ GLuint framebuffer = 0, texture = 0;
+ if (gbm) {
+  /* GBM configs need not support pbuffers; render into a fixed-size FBO. */
+  glGenTextures(1, &texture); glBindTexture(GL_TEXTURE_2D, texture);
+  glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, 512, 512, 0, GL_RGBA, GL_UNSIGNED_BYTE, NULL);
+  glGenFramebuffers(1, &framebuffer); glBindFramebuffer(GL_FRAMEBUFFER, framebuffer);
+  glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, texture, 0);
+  if (glCheckFramebufferStatus(GL_FRAMEBUFFER) != GL_FRAMEBUFFER_COMPLETE) return 2;
+ }
  GLuint program = glCreateProgram();
  glAttachShader(program, shader(GL_VERTEX_SHADER, "attribute vec2 position;void main(){gl_Position=vec4(position,0.,1.);}"));
  glAttachShader(program, shader(GL_FRAGMENT_SHADER, "precision highp float;void main(){vec2 p=gl_FragCoord.xy/512.;float v=p.x;for(int i=0;i<128;i++)v=fract(v*1.01+p.y*0.01);gl_FragColor=vec4(v,p.y,0.5,1.);}"));
@@ -60,6 +83,11 @@ int main(int argc, char **argv)
  GLenum error = glGetError();
  printf("size=512x512 frames=%u seconds=%.6f pixel=%u,%u,%u,%u gl_error=%u\n", frames, now()-start, pixel[0], pixel[1], pixel[2], pixel[3], error);
  eglMakeCurrent(display, EGL_NO_SURFACE, EGL_NO_SURFACE, EGL_NO_CONTEXT);
- eglDestroyContext(display, context); eglDestroySurface(display, surface); eglTerminate(display);
+ glDeleteFramebuffers(1, &framebuffer); glDeleteTextures(1, &texture);
+ eglDestroyContext(display, context);
+ if (surface != EGL_NO_SURFACE) eglDestroySurface(display, surface);
+ eglTerminate(display);
+ if (gbm) gbm_device_destroy(gbm);
+ if (drm_fd >= 0) close(drm_fd);
  return error != GL_NO_ERROR || pixel[1] < 120 || pixel[1] > 136 || pixel[2] < 120 || pixel[2] > 136;
 }

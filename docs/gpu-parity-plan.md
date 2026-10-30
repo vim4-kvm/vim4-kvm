@@ -4,6 +4,13 @@
 [2026-10-30 GPU 审查](bringup/2026-10-30-gpu-parity.md)。目标仍是7.x功能与性能不低于
 厂商5.15；下列候选尚未达到这一验收条件，不能据离线构建改正式部署锁。
 
+2026-10-30[三栈上板验收](bringup/2026-10-30-gpu-acceptance.md)：默认GPU cooling绑定、
+五档调频、runtime恢复和4K60 Wave5并发窗口已取得限定通过证据；未人为触发过温降频。
+同一GBM/FBO shader三轮平均：厂商622.659fps、系统Mesa231.714fps、私有Mesa233.730fps。
+私有GLES仍3.1、Vulkan设备仅1.0.354；CL设备3.0但OpenCL C1.2，完整clpeak三轮map阶段超时。
+严格功能/性能目标未达成。优先定位G52编译器性能、API能力及CL map边界；固定电压与厂商一致，非缺口。
+方针“上游实现、kbase/libmali必要时临时后备”仍是代理建议，尚待用户确认。
+
 ## 内核候选
 
 VM `~/src/linux-7.3-gpu`，分支 `vim4-gpu-panfrost`，基于`213f271505411`。

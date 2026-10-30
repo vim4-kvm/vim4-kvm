@@ -38,7 +38,8 @@ static void cpu_sync(int fd, uint64_t flags)
 
 int main(int argc, char **argv)
 {
-    REQUIRE(argc == 2, "Usage: mali-dma-probe shader.spv");
+    REQUIRE(argc == 2 || argc == 3, "Usage: mali-dma-probe shader.spv [contiguous-heap-path]");
+    const char *heap_path = argc == 3 ? argv[2] : "/dev/dma_heap/heap-codecmm";
     FILE *shader_file = fopen(argv[1], "rb");
     REQUIRE(shader_file != NULL, "Cannot open shader");
     REQUIRE(fseek(shader_file, 0, SEEK_END) == 0, "Cannot seek shader");
@@ -108,8 +109,8 @@ int main(int argc, char **argv)
     VK_CHECK(vkCreateBuffer(device, &buffer_info, NULL, &buffer));
     VkMemoryRequirements requirements;
     vkGetBufferMemoryRequirements(device, buffer, &requirements);
-    int heap_fd = open("/dev/dma_heap/heap-codecmm", O_RDONLY | O_CLOEXEC);
-    REQUIRE(heap_fd >= 0, "Cannot open contiguous codecmm heap");
+    int heap_fd = open(heap_path, O_RDONLY | O_CLOEXEC);
+    REQUIRE(heap_fd >= 0, "Cannot open requested contiguous DMA heap");
     struct dma_heap_allocation_data allocation = { .len = requirements.size, .fd_flags = O_RDWR | O_CLOEXEC };
     REQUIRE(ioctl(heap_fd, DMA_HEAP_IOCTL_ALLOC, &allocation) == 0, "Contiguous DMA heap allocation failed");
     close(heap_fd);
@@ -216,8 +217,8 @@ int main(int argc, char **argv)
         }
     }
     cpu_sync(dma_fd, DMA_BUF_SYNC_END | DMA_BUF_SYNC_READ);
-    printf("PASS heap=heap-codecmm bytes=%" PRIu64 " words=%" PRIu64 " submit_wait_ms=%.3f\n",
-        (uint64_t)bytes, (uint64_t)(bytes / 4), elapsed);
+    printf("PASS heap=%s bytes=%" PRIu64 " words=%" PRIu64 " submit_wait_ms=%.3f\n",
+        heap_path, (uint64_t)bytes, (uint64_t)(bytes / 4), elapsed);
     vkDestroyFence(device, fence, NULL);
     vkDestroyCommandPool(device, command_pool, NULL);
     vkDestroyDescriptorPool(device, descriptor_pool, NULL);

@@ -19,7 +19,7 @@ meson test -C build --print-errorlogs --num-processes 4
 DESTDIR=/output/stage meson install -C build
 prefix=/output/stage/opt/vim4-mesa-26.2.6
 mkdir -p "$prefix/bin"
-cc -O2 -Wall -Wextra -Werror "$recipe/gpu-probe.c" -o "$prefix/bin/gpu-probe" -lEGL -lGLESv2
+cc -O2 -Wall -Wextra -Werror "$recipe/gpu-probe.c" -o "$prefix/bin/gpu-probe" -lEGL -lGLESv2 -lgbm
 cp /usr/bin/clinfo /usr/bin/clpeak /usr/bin/vulkaninfo /usr/bin/vkmark "$prefix/bin/"
 cp -a /usr/share/vkmark "$prefix/share/"
 cp -a /usr/lib/aarch64-linux-gnu/vkmark "$prefix/lib/"
