@@ -43,7 +43,7 @@ class EdgeLauncherTest(unittest.TestCase):
         self.assertFalse(self.trace.exists())
 
     def test_npu_candidate_still_requires_verified_video_firmware(self):
-        result = self.run_script('one-kvm-edge-prepare', '7.3.0-vim4kvm-npu1+')
+        result = self.run_script('one-kvm-edge-prepare', '7.3.0-vim4kvm-npu2+')
         self.assertNotEqual(result.returncode, 0)
         self.assertIn('firmware is missing or has changed', result.stderr)
         self.assertFalse(self.trace.exists())

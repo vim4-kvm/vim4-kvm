@@ -113,9 +113,20 @@ def prepare(payload, init, baseline, output, release=RELEASE,
             token.startswith(('init=', 'rdinit=')) for token in cmdline.split()):
         raise ValueError('unexpected baseline command line')
     prefix = str(ROOT / build_id)
+    candidate_cmdline = trial_cmdline(state)
+    if '-npu' in release:
+        # udev coldplug precedes the HDMI service. kmod reads these options on
+        # its first insertion; later modprobe calls cannot change loaded params.
+        video_options = ('t7_hdmirx.edid_firmware=vim4-hdmirx-ddc-test/'
+                         'uhd60-hdr10-audio-edid.bin ' + ' '.join(
+                             't7_hdmirx.' + name + '=1' for name in (
+                                 'phy_test', 'core_test', 'uhd60', 'dynamic_modes',
+                                 'audio_test', 'hdr_probe', 'hdr_capture')) +
+                         ' t7_vdin_test.nv12=1 t7_vdin_test.direct_dma=1')
+        candidate_cmdline += ' ' + video_options
     config = (f'DEFAULT display-once\nTIMEOUT 1\nLABEL display-once\n'
               f'  LINUX {prefix}/Image\n  FDT {prefix}/vim4.dtb\n'
-              f'  APPEND {trial_cmdline(state)} oops=panic panic=20 init={prefix}/init\n')
+              f'  APPEND {candidate_cmdline} oops=panic panic=20 init={prefix}/init\n')
     command = f'sysboot mmc 1:2 any ${{pxefile_addr_r}} {prefix}/extlinux.conf; reset'
     output.mkdir()  # Refuse reuse of an earlier build's bundle.
     with tempfile.TemporaryDirectory(dir=output) as directory:

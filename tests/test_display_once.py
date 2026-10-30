@@ -89,6 +89,12 @@ class TrialTest(unittest.TestCase):
             self.assertEqual(plan['baseline_release'], '5.15.137-vim4kvm-hdrdual6')
             self.assertEqual(plan['release'], '7.3.0-vim4kvm-npu1+')
             with tarfile.open(archive) as trial:
+                config = trial.extractfile('extlinux.conf').read().decode()
+            self.assertIn('t7_hdmirx.phy_test=1', config)
+            self.assertIn('t7_hdmirx.hdr_capture=1', config)
+            self.assertIn('t7_vdin_test.direct_dma=1', config)
+            self.assertNotIn('t7_hdmirx.', plan['baseline_cmdline'])
+            with tarfile.open(archive) as trial:
                 modules = [name for name in trial.getnames() if name.startswith('modules/')]
                 self.assertTrue(modules)
                 self.assertTrue(all('/7.3.0-vim4kvm-npu1+/' in name for name in modules))

@@ -9,7 +9,7 @@ case "$(uname -r)" in
         export VIM4_VIDEO_BACKEND=vendor
         exec /opt/vim4-onekvm/one-kvm --data-dir /var/lib/one-kvm --address 127.0.0.1 --port 8081 --auth-mode managed
         ;;
-    7.3.0-rc7-vim4kvm-uhd1+|7.3.0-vim4kvm-uhd1+|7.3.0-vim4kvm-npu1+)
+    7.3.0-rc7-vim4kvm-uhd1+|7.3.0-vim4kvm-uhd1+|7.3.0-vim4kvm-npu1+|7.3.0-vim4kvm-npu2+)
         export VIM4_VIDEO_BACKEND=wave5
         export GST_PLUGIN_PATH=/opt/vim4-onekvm-edge/gstreamer-1.0
         export GST_REGISTRY=/run/one-kvm-edge/gstreamer-registry.bin
