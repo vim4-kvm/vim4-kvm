@@ -52,6 +52,26 @@ def safe_member(member):
     return name
 
 
+def validate_partuuid(partuuid):
+    if not re.fullmatch(r'(?:[0-9a-f]{8}-[0-9a-f]{2}|'
+                        r'[0-9a-f]{8}(?:-[0-9a-f]{4}){3}-[0-9a-f]{12})', partuuid):
+        raise ValueError('filesystem UUID root requires baseline root_partuuid proof')
+
+
+def trial_cmdline(state):
+    """Boot without an initramfs while retaining the original stage proof."""
+    tokens = state['cmdline'].strip().split()
+    if any(token.startswith('root=UUID=') for token in tokens):
+        partuuid = state.get('root_partuuid', '')
+        validate_partuuid(partuuid)
+        # Mainline resolves PARTUUID in-kernel; filesystem UUID needs userspace.
+        tokens = [('root=PARTUUID=' + partuuid) if token.startswith('root=UUID=')
+                  else token for token in tokens]
+        if 'rootwait' not in tokens:
+            tokens.append('rootwait')
+    return ' '.join(tokens)
+
+
 def prepare(payload, init, baseline, output, release=RELEASE,
             baseline_release=RELEASE, baseline_id=BASE_ID):
     if not re.fullmatch(r'7\.3\.0-vim4kvm-(?:uhd1|npu[0-9]+)\+', release):
@@ -95,7 +115,7 @@ def prepare(payload, init, baseline, output, release=RELEASE,
     prefix = str(ROOT / build_id)
     config = (f'DEFAULT display-once\nTIMEOUT 1\nLABEL display-once\n'
               f'  LINUX {prefix}/Image\n  FDT {prefix}/vim4.dtb\n'
-              f'  APPEND {cmdline} oops=panic panic=20 init={prefix}/init\n')
+              f'  APPEND {trial_cmdline(state)} oops=panic panic=20 init={prefix}/init\n')
     command = f'sysboot mmc 1:2 any ${{pxefile_addr_r}} {prefix}/extlinux.conf; reset'
     output.mkdir()  # Refuse reuse of an earlier build's bundle.
     with tempfile.TemporaryDirectory(dir=output) as directory:
@@ -109,6 +129,8 @@ def prepare(payload, init, baseline, output, release=RELEASE,
                     baseline_release=baseline_release,
                     baseline_files=state['files'], baseline_cmdline=cmdline,
                     files=files, command=command, source=report['source'])
+        if any(token.startswith('root=UUID=') for token in cmdline.split()):
+            plan['root_partuuid'] = state['root_partuuid']
         with tarfile.open(payload / 'modules.tar.gz') as modules, \
                 tarfile.open(output / 'candidate.tar', 'w') as archive:
             seen = set()
@@ -169,6 +191,11 @@ def preflight(plan):
         raise ValueError('bundle baseline mismatch')
     if Path('/proc/cmdline').read_text().strip() != plan['baseline_cmdline']:
         raise RuntimeError('baseline command line changed')
+    if 'root_partuuid' in plan:
+        partuuid = plan['root_partuuid']
+        validate_partuuid(partuuid)
+        if Path('/dev/disk/by-partuuid', partuuid).stat().st_rdev != Path('/').stat().st_dev:
+            raise RuntimeError('root partition differs from baseline proof')
     for name, expected in plan['baseline_files'].items():
         if sha(name) != expected:
             raise RuntimeError('baseline file changed: ' + name)

@@ -9,6 +9,7 @@ import struct
 import subprocess
 import tarfile
 import tempfile
+from types import SimpleNamespace
 import unittest
 from unittest.mock import patch
 
@@ -29,6 +30,18 @@ def static_elf(kind=1):
 
 
 class TrialTest(unittest.TestCase):
+    def test_filesystem_uuid_needs_verified_partition_for_no_initramfs_boot(self):
+        state = dict(cmdline='root=UUID=filesystem rw rootflags=data=ordered')
+        with self.assertRaisesRegex(ValueError, 'root_partuuid proof'):
+            once.trial_cmdline(state)
+        state['root_partuuid'] = '../wrong'
+        with self.assertRaises(ValueError):
+            once.trial_cmdline(state)
+        state['root_partuuid'] = 'bcb80000-02'
+        self.assertEqual(once.trial_cmdline(state),
+                         'root=PARTUUID=bcb80000-02 rw rootflags=data=ordered rootwait')
+        self.assertIn('root=UUID=filesystem', state['cmdline'])
+
     def fixture(self, root, case_pair=False, release=once.RELEASE,
                 baseline_release=once.RELEASE):
         payload = root / 'payload'
@@ -194,6 +207,19 @@ with patch.object(Path, 'lstat', owned), patch.object(once.shutil, 'copyfileobj'
                 with self.assertRaisesRegex(RuntimeError, 'approved running baseline'):
                     once.stage(bundle)
                 self.assertFalse((root / 'trials').exists())
+
+    def test_changed_root_partition_refuses_staging(self):
+        plan = dict(baseline_release=once.RELEASE, baseline_id=once.BASE_ID,
+                    release=once.RELEASE, baseline_cmdline='root=UUID=filesystem rw',
+                    root_partuuid='bcb80000-02', baseline_files={})
+        with patch.object(once.os, 'geteuid', return_value=0), \
+                patch.object(once.os, 'uname') as uname, \
+                patch.object(once, 'running_build_id', return_value=once.BASE_ID), \
+                patch.object(Path, 'read_text', return_value=plan['baseline_cmdline']), \
+                patch.object(Path, 'stat', return_value=SimpleNamespace(st_rdev=1, st_dev=2)):
+            uname.return_value.release = once.RELEASE
+            with self.assertRaisesRegex(RuntimeError, 'root partition differs'):
+                once.preflight(plan)
 
     def test_dynamic_or_truncated_init_and_unsafe_archive_are_rejected(self):
         with tempfile.TemporaryDirectory() as directory:
