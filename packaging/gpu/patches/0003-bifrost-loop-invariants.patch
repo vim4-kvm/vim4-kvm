@@ -1,0 +1,15 @@
+--- a/src/panfrost/compiler/bifrost/bifrost_nir.c
++++ b/src/panfrost/compiler/bifrost/bifrost_nir.c
+@@ -370,6 +370,12 @@
+       NIR_PASS(_, nir, nir_opt_cse);
+    }
+ 
++   /* Keep loop-invariant expressions outside loops before local scheduling.
++    * GCM retains its normal restrictions on speculative operations.
++    */
++   if (pan_arch(gpu_id) <= 7)
++      NIR_PASS(_, nir, nir_opt_gcm, false, false);
++
+    /* Backend scheduler is purely local, so do some global optimizations
+     * to reduce register pressure. */
+    nir_move_options move_all = nir_move_const_undef | nir_move_load_ubo |

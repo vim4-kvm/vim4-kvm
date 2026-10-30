@@ -6,17 +6,28 @@ cd /output
 test ! -e stage
 echo 'b9436b3e1a8be76fbd4823dc884f90596ab7c6ac5e1867a305e66ffccfb31a92  /inputs/mesa.tar.xz' | sha256sum -c -
 cp -a /opt/mesa-26.2.6 .
-variant=${GPU_VARIANT:-baseline}
+variant=${GPU_VARIANT:-loop-codegen}
 runtime_name=vim4-mesa-26.2.6
+changes=()
 case "$variant" in
  baseline) ;;
  bounded-unroll)
-  for change in "$recipe"/patches/*.patch; do
-   (cd mesa-26.2.6 && git apply "$change")
-  done
+  changes=(0001-nir-bounded-bifrost-unroll.patch 0002-nir-test-unroll-cost.patch)
   runtime_name=vim4-mesa-26.2.6-unroll1 ;;
+ loop-codegen)
+  changes=(0003-bifrost-loop-invariants.patch)
+  runtime_name=vim4-mesa-26.2.6-loop2 ;;
+ loop-layout)
+  changes=(0003-bifrost-loop-invariants.patch 0004-bifrost-jump-cleanup.patch 0005-bifrost-uniform-backedges.patch)
+  runtime_name=vim4-mesa-26.2.6-layout2 ;;
+ loop-jumps)
+  changes=(0003-bifrost-loop-invariants.patch 0004-bifrost-jump-cleanup.patch)
+  runtime_name=vim4-mesa-26.2.6-jumps2 ;;
  *) echo 'Unknown GPU_VARIANT' >&2; exit 2 ;;
 esac
+for change in "${changes[@]}"; do
+ (cd mesa-26.2.6 && git apply "$recipe/patches/$change")
+done
 export SOURCE_DATE_EPOCH=1793145600
 export PYTHONHASHSEED=0
 meson setup build mesa-26.2.6 --wrap-mode=nodownload \
@@ -42,7 +53,7 @@ cp /usr/share/doc/vkmark/copyright "$prefix/share/licenses/vkmark"
 cp /usr/share/doc/clpeak/copyright "$prefix/share/licenses/clpeak"
 cp /opt/gpu-packages.txt /opt/gpu-subprojects.sha256 "$recipe/builder.lock.json" "$prefix/share/build-proof/"
 cp build/meson-logs/testlog.json "$prefix/share/build-proof/"
-if [[ $variant != baseline ]]; then cp "$recipe"/patches/*.patch "$prefix/share/build-proof/"; fi
+for change in "${changes[@]}"; do cp "$recipe/patches/$change" "$prefix/share/build-proof/"; done
 meson introspect build --buildoptions > "$prefix/share/build-proof/options.json"
 python3 "$recipe/package.py" "$prefix"
 cp /opt/gpu-packages.txt manifest-packages.txt

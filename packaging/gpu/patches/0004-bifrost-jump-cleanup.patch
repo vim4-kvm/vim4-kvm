@@ -1,0 +1,63 @@
+--- a/src/panfrost/compiler/bifrost/bi_opt_control_flow.c
++++ b/src/panfrost/compiler/bifrost/bi_opt_control_flow.c
+@@ -6,6 +6,12 @@
+ #include "util/set.h"
+ #include "compiler.h"
+ 
++static bool
++is_branch_or_jump(const bi_instr *instr)
++{
++   return instr && (bi_is_branch(instr) || instr->op == BI_OPCODE_JUMP);
++}
++
+ /* A simple block is defined here as:
+  * - a block with only 1 predecessor and 1 successor
+  * - a block with no instruction or a single branch instruction (in which case
+@@ -21,7 +27,7 @@
+       return true;
+    if (!list_is_singular(&block->instructions))
+       return false;
+-   return bi_is_branch(list_first_entry(&block->instructions, bi_instr, link));
++   return is_branch_or_jump(list_first_entry(&block->instructions, bi_instr, link));
+ }
+ 
+ static bi_block *
+@@ -107,9 +113,9 @@
+    bi_block *pred = get_simple_block_predecessor(block);
+    bi_block *succ = block->successors[0];
+ 
+-   bi_instr *last_instr =
++   bi_instr *last_instr = list_is_empty(&pred->instructions) ? NULL :
+       list_last_entry(&(pred->instructions), bi_instr, link);
+-   bool last_instr_is_branch = bi_is_branch(last_instr);
++   bool last_instr_is_branch = is_branch_or_jump(last_instr);
+ 
+    /* if 'succ' has already been seen, it means that the jump between 'block'
+     * and 'succ' is a backward jump. This kind of jump can lead to issue
+@@ -119,6 +125,13 @@
+     */
+    bool succ_seen = _mesa_set_search(blocks_seen, succ) != NULL;
+ 
++   /* An empty forward fallthrough does not change the branch target. */
++   if (pred == prev && succ == next && list_is_empty(&block->instructions) &&
++       (!last_instr_is_branch || last_instr->branch_target != block)) {
++      remove_simple_block(block);
++      return true;
++   }
++
+    if (last_instr_is_branch && !succ_seen &&
+        (last_instr->branch_target == block ||
+         (pred == prev && last_instr->branch_target == next &&
+@@ -171,10 +184,10 @@
+    bi_block *block = NULL;
+    bi_foreach_block(ctx, next) {
+       if (block != NULL) {
+-         bi_instr *last_instr =
++         bi_instr *last_instr = list_is_empty(&block->instructions) ? NULL :
+             list_last_entry(&(block->instructions), bi_instr, link);
+          if (bi_num_successors(block) == 1 && last_instr &&
+-             bi_is_branch(last_instr) && last_instr->branch_target == next) {
++             is_branch_or_jump(last_instr) && last_instr->branch_target == next) {
+             bi_remove_instruction(last_instr);
+          }
+       }

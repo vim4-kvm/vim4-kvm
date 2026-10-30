@@ -88,7 +88,8 @@ docker run --rm --network none -e GPU_VARIANT=bounded-unroll \
   vim4-gpu-builder:26.2.6 bash /repo/packaging/gpu/build.sh
 ```
 
-输出`/output/mesa-26.2.6-unroll1-arm64.tar.xz`；默认不传GPU_VARIANT仍构建原版。
+输出`/output/mesa-26.2.6-unroll1-arm64.tar.xz`；后续[保留循环候选](gpu-loop-candidates.md)将默认改为loop-codegen，
+原版须显式`GPU_VARIANT=baseline`，展开须显式`GPU_VARIANT=bounded-unroll`。
 编译对照需要两个stage前缀可见、分别在`/opt/对应名称`建symlink，然后执行：
 
 ```sh

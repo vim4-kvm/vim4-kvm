@@ -1,0 +1,111 @@
+--- a/src/panfrost/compiler/bifrost/compiler.h
++++ b/src/panfrost/compiler/bifrost/compiler.h
+@@ -1311,6 +1311,9 @@
+ 
+    /* Stats for shader-db */
+    unsigned loop_count;
++
++   /* No invocation can take a different control-flow path or discard. */
++   bool uniform_control_flow;
+    unsigned spills;
+    unsigned fills;
+ 
+--- a/src/panfrost/compiler/bifrost/bifrost_compile.c
++++ b/src/panfrost/compiler/bifrost/bifrost_compile.c
+@@ -4417,6 +4417,19 @@
+       nir_print_shader(nir, stderr);
+    }
+ 
++   if (ctx->arch <= 7) {
++      nir_divergence_analysis(nir);
++      ctx->uniform_control_flow = !nir_has_divergent_loop(nir) &&
++         !(nir->info.stage == MESA_SHADER_FRAGMENT && nir->info.fs.uses_discard);
++      nir_foreach_function_impl(impl, nir) {
++         nir_foreach_block(block, impl) {
++            nir_if *nif = nir_block_get_following_if(block);
++            if (nif && nir_src_is_divergent(&nif->condition))
++               ctx->uniform_control_flow = false;
++         }
++      }
++   }
++
+    ctx->allocated_vec = _mesa_hash_table_u64_create(ctx);
+ 
+    nir_foreach_function_impl(impl, nir) {
+--- a/src/panfrost/compiler/bifrost/test/test-optimizer.cpp
++++ b/src/panfrost/compiler/bifrost/test/test-optimizer.cpp
+@@ -77,6 +77,41 @@
+         bi_fmin_f32_to(b, reg, negabsx, bi_neg(y)));
+ }
+ 
++TEST_F(Optimizer, BackedgeThreadingRequiresUniformControlFlow)
++{
++   for (bool uniform : {false, true}) {
++      bi_builder *b = bit_builder(mem_ctx);
++      bi_context *ctx = b->shader;
++      ctx->uniform_control_flow = uniform;
++      bi_block *header = list_first_entry(&ctx->blocks, bi_block, link);
++      bi_block *exit = bit_block(ctx);
++      bi_block *empty = bit_block(ctx);
++      bi_block *backedge = bit_block(ctx);
++      bi_block *end = bit_block(ctx);
++
++      bi_instr *cond = bi_branchz_i16(b, bi_register(0), bi_zero(), BI_CMPF_EQ);
++      cond->branch_target = empty;
++      bi_block_add_successor(header, empty);
++      bi_block_add_successor(header, exit);
++      b->cursor = bi_after_block(exit);
++      bi_jump(b, bi_zero())->branch_target = end;
++      bi_block_add_successor(exit, end);
++      bi_block_add_successor(empty, backedge);
++      b->cursor = bi_after_block(backedge);
++      bi_jump(b, bi_zero())->branch_target = header;
++      bi_block_add_successor(backedge, header);
++      b->cursor = bi_after_block(end);
++      bi_kaboom(b, bi_register(0));
++
++      ASSERT_EQ(bi_num_successors(exit), 1u);
++      ASSERT_EQ(bi_num_predecessors(backedge), 1u);
++      bi_opt_control_flow(ctx);
++      EXPECT_EQ(list_length(&ctx->blocks), uniform ? 2u : 3u);
++      if (uniform)
++         EXPECT_EQ(cond->branch_target, header);
++   }
++}
++
+ TEST_F(Optimizer, FusedFABSNEGForFP16)
+ {
+    CASE(bi_fadd_v2f16_to(b, reg, bi_fabsneg_v2f16(b, negabsx), y),
+--- a/src/panfrost/compiler/bifrost/bi_opt_control_flow.c
++++ b/src/panfrost/compiler/bifrost/bi_opt_control_flow.c
+@@ -102,7 +102,7 @@
+ 
+ static bool
+ try_remove_simple_block(bi_block *prev, bi_block *block, bi_block *next,
+-                        struct set *blocks_seen)
++                        struct set *blocks_seen, bool uniform_control_flow)
+ {
+    if (block == NULL)
+       return false;
+@@ -132,7 +132,10 @@
+       return true;
+    }
+ 
+-   if (last_instr_is_branch && !succ_seen &&
++   /* With uniform control flow and no discard the active mask is invariant:
++    * threading a backedge cannot reconverge divergent paths.
++    */
++   if (last_instr_is_branch && (!succ_seen || uniform_control_flow) &&
+        (last_instr->branch_target == block ||
+         (pred == prev && last_instr->branch_target == next &&
+          inverse_cmpf(&last_instr->cmpf)))) {
+@@ -167,7 +170,8 @@
+    bi_block *prev = NULL;
+    bi_block *block = NULL;
+    bi_foreach_block(ctx, next) {
+-      bool removed = try_remove_simple_block(prev, block, next, blocks_seen);
++      bool removed = try_remove_simple_block(prev, block, next, blocks_seen,
++                                             ctx->uniform_control_flow);
+       changed |= removed;
+       if (!removed) {
+          prev = block;

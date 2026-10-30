@@ -18,10 +18,12 @@ def parse(text):
         index = counts[path, stage]
         counts[path, stage] += 1
         patterns = {'bytes': r'(\d+) code size', 'instrs': r'(\d+) instrs',
+                    'cycles': r'([\d.]+) cycles',
                     'loops': r'(\d+) loops', 'regs': r'(\d+) registers used',
                     'spills': r'(\d+):\d+ spills', 'fills': r'\d+:(\d+) spills'}
         variants[path, stage, index] = {
-            name: int(re.search(pattern, body)[1]) for name, pattern in patterns.items()}
+            name: (float if name == 'cycles' else int)(re.search(pattern, body)[1])
+            for name, pattern in patterns.items()}
     return variants
 
 
@@ -35,8 +37,11 @@ def compare(before, after):
         'only_baseline': len(before.keys() - after.keys()),
         'only_candidate': len(after.keys() - before.keys()),
         'total': [{name: sum(variants[key][name] for key in keys)
-                   for name in ('bytes', 'instrs', 'loops', 'spills', 'fills')}
+                   for name in ('bytes', 'instrs', 'cycles', 'loops', 'spills', 'fills')}
                   for variants in (before, after)],
+        'max_registers': [max(variants[key]['regs'] for key in keys)
+                          for variants in (before, after)],
+        'register_increases': sum(after[key]['regs'] > before[key]['regs'] for key in keys),
         'changes': [{'key': key, 'before': before[key], 'after': after[key]}
                     for key in keys if before[key] != after[key]],
     }
