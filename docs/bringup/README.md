@@ -17,6 +17,7 @@
 
 ## 2026-10-30
 
+- [uhd2集成输出与并行通过，DenseNet性能阻断pin](2026-10-30-npu-uhd2-acceptance.md) — kernel board benchmark video
 - [Mesa展开候选与10ms调频配对窗口](2026-10-30-gpu-candidate-window.md) — kernel gpu board benchmark
 - [npu4三模型、取消与视频并行门禁通过](2026-10-30-npu4-acceptance.md) — kernel board benchmark video
 - [GPU 性能差距分解窗口](2026-10-30-gpu-diagnosis-window.md) — kernel gpu board benchmark

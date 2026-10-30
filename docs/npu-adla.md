@@ -4,22 +4,22 @@
 `213f271505411`。正式部署锁不变。驱动在 `drivers/misc/adla`：其接口是
 下游闭源 SDK 字符设备兼容接口，本轮不声明 DRM accel 支持。
 
-最新[npu4上板记录](bringup/2026-10-30-npu4-acceptance.md)：三模型、取消及并行门禁通过；
-缓存复用与通知修复有效，本窗口未复现npu3的持续104ms退化，历史成因仍未唯一分解。
-后续[六段审查序列与uhd2集成草案](npu-adla-integration.md)仅本地准备，正式pin/默认启动不变。
+最新[uhd2集成实测](bringup/2026-10-30-npu-uhd2-acceptance.md)：输出、六分钟并行与KVM基本回归通过，
+DenseNet独立均值退化6.445%未过门槛，暂不建议pin；[npu4已验收结果](bringup/2026-10-30-npu4-acceptance.md)保留。
+[六段审查序列与uhd2集成草案](npu-adla-integration.md)仍待批准，正式pin/默认启动不变。
 旧候选保留，保页例外保持“代理暂定，待用户确认”。
 
-## 2026-10-30 上板结论：npu4本轮门禁通过
+## 2026-10-30 上板结论：uhd2性能未通过，不pin
 
-npu4三模型101轮共505张量与既有5.15基线全部字节一致，task create=0。
-VGG16/DenseNet/YOLO均值退化分别+4.720%/+0.389%/+0.772%，均满足≤5%门槛。
-取消0.210ms，WAIT报ECANCELED；短WAIT超时报ETIMEDOUT，同context后续输出正确。
-close/kill后可继续执行，无释放失败；IOVA/CMA前后相同、模块引用0，空闲suspended/0Hz。
-各故障及profiling后DenseNet均约1.95–2.03ms，trace活动频率799999987Hz，复位成功。
-视频关闭NPU基线59.98fps，并行59.98fps、统计期间丢帧/丢包增量0。
-完整重叠6000轮DenseNet输出一致，暖均值2.0135ms，相对本轮单独运行+2.766%，无超时。
-ATTACH与正负profiling可用；真实复位失败、全部DMA页审计及长期/运动场景仍未证明。
-本轮复用历史5.15计时，不声称实时交替配对或所有厂商接口/环境已追平。
+uhd2三模型101轮完整输出与新5.15参考及旧基线一致，task create=0。
+VGG16/DenseNet/YOLO对前置5.15均值退化+2.043%/+6.445%/-3.863%；DenseNet失败。
+DenseNet后置5.15为1.9403ms，候选仍慢6.296%；对旧基线也慢5.674%，不更换参考放宽门槛。
+VGG16独立501轮对前/后参考分别-1.363%/-0.332%，原+4.72%未稳定复现，不能唯一归为噪声。
+六分钟142000轮并行完整完成且输出核验一致；暖均值2.0042ms，P99为2.1918ms，无超时。
+视频NPU关/开60.010/59.998fps，观察期间丢帧/丢包/冻结增量0，无编码错误。
+manager登录/页面/主资源/认证API和One-KVM页面资源均200，视频计数持续推进，未发HID。
+npu4取消/超时/close及ATTACH/profiling资格保留；本轮不测真实复位失败，保页政策仍待确认。
+集成树与npu4相同，但独立组差距根因未定；并行组更快不能抵消独立性能失败。
 交接时已回5.15，12文件哈希/权限一致，四服务active、UDC configured，全部锁释放。
 历史[npu3失败](bringup/2026-10-30-npu3-acceptance.md)、[npu2](bringup/2026-10-30-npu2-acceptance.md)及[npu1/5.15基线](bringup/2026-10-30-npu-adla-acceptance.md)保留。
 
