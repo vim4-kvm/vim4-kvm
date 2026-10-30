@@ -2,6 +2,7 @@
 #include <EGL/egl.h>
 #include <EGL/eglext.h>
 #include <GLES2/gl2.h>
+#include <GLES2/gl2ext.h>
 #include <fcntl.h>
 #include <gbm.h>
 #include <stdio.h>
@@ -94,13 +95,37 @@ int main(int argc, char **argv)
  printf("surface=%s rgba_bits=%d,%d,%d,%d warmup_seconds=2 swap_calls=0\n",
         gbm ? "gbm-fbo" : "pbuffer", red_bits, green_bits, blue_bits, alpha_bits);
  unsigned frames = 0;
+ PFNGLGENQUERIESEXTPROC gen_query = NULL;
+ PFNGLBEGINQUERYEXTPROC begin_query = NULL;
+ PFNGLENDQUERYEXTPROC end_query = NULL;
+ PFNGLGETQUERYOBJECTUI64VEXTPROC query_result = NULL;
+ PFNGLDELETEQUERIESEXTPROC delete_query = NULL;
+ GLuint query = 0;
+ unsigned long long gpu_ns = 0;
+ if (getenv("GPU_TIMER_QUERY") && strstr((const char *)glGetString(GL_EXTENSIONS), "GL_EXT_disjoint_timer_query")) {
+  gen_query = (PFNGLGENQUERIESEXTPROC)eglGetProcAddress("glGenQueriesEXT");
+  begin_query = (PFNGLBEGINQUERYEXTPROC)eglGetProcAddress("glBeginQueryEXT");
+  end_query = (PFNGLENDQUERYEXTPROC)eglGetProcAddress("glEndQueryEXT");
+  query_result = (PFNGLGETQUERYOBJECTUI64VEXTPROC)eglGetProcAddress("glGetQueryObjectui64vEXT");
+  delete_query = (PFNGLDELETEQUERIESEXTPROC)eglGetProcAddress("glDeleteQueriesEXT");
+  if (!gen_query || !begin_query || !end_query || !query_result || !delete_query) return 2;
+  gen_query(1, &query);
+  /* Discard disjoint events during context creation and warmup. */
+  GLint initial_disjoint = 0;
+  glGetIntegerv(GL_GPU_DISJOINT_EXT, &initial_disjoint);
+  printf("gpu_initial_disjoint=%d\n", initial_disjoint);
+ }
  double draw_seconds = 0, finish_seconds = 0;
  struct timespec cpu_start, cpu_end;
  clock_gettime(CLOCK_PROCESS_CPUTIME_ID, &cpu_start);
  double start = now(), seconds = argc > 1 ? atof(argv[1]) : 10;
  do {
+  if (query) begin_query(GL_TIME_ELAPSED_EXT, query);
   double a = now(); glDrawArrays(GL_TRIANGLES, 0, 3);
-  double b = now(); glFinish(); double c = now();
+  double b = now();
+  if (query) end_query(GL_TIME_ELAPSED_EXT);
+  glFinish(); double c = now();
+  if (query) { GLuint64EXT value; query_result(query, GL_QUERY_RESULT_EXT, &value); gpu_ns += value; }
   draw_seconds += b-a; finish_seconds += c-b; frames++;
  } while (now() - start < seconds);
  double elapsed = now() - start;
@@ -114,6 +139,11 @@ int main(int argc, char **argv)
  printf("steady_seconds=%.9f draw_seconds=%.9f finish_seconds=%.9f readback_seconds=%.9f cpu_seconds=%.9f\n",
         elapsed, draw_seconds, finish_seconds, read_seconds,
         cpu_end.tv_sec-cpu_start.tv_sec+(cpu_end.tv_nsec-cpu_start.tv_nsec)/1e9);
+ if (query) {
+  GLint disjoint = 0; glGetIntegerv(GL_GPU_DISJOINT_EXT, &disjoint);
+  printf("gpu_query_ns=%llu gpu_disjoint=%d timer_frames=%u\n", gpu_ns, disjoint, frames);
+  delete_query(1, &query);
+ }
  glDeleteFramebuffers(1, &framebuffer); glDeleteTextures(1, &texture);
  eglMakeCurrent(display, EGL_NO_SURFACE, EGL_NO_SURFACE, EGL_NO_CONTEXT);
  eglDestroyContext(display, context);

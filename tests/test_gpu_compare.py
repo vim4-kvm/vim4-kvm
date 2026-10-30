@@ -15,7 +15,8 @@ class GPUEnvironmentTests(unittest.TestCase):
         with patch.dict(os.environ, {key: 'contaminated' for key in gpu.GPU_ENV}):
             env = gpu.environment('system', Path('/opt/private'))
         for key in ('LD_PRELOAD', 'VK_DRIVER_FILES', 'VK_ICD_FILENAMES',
-                    'RUSTICL_ENABLE', 'PAN_I_WANT_A_BROKEN_VULKAN_DRIVER'):
+                    'RUSTICL_ENABLE', 'PAN_I_WANT_A_BROKEN_VULKAN_DRIVER',
+                    'GPU_TIMER_QUERY', 'GPU_UNROLL128'):
             self.assertNotIn(key, env)
         self.assertTrue(env['LD_LIBRARY_PATH'].startswith('/usr/lib/'))
 

@@ -7,6 +7,14 @@
 本轮没有连接板子，NPU独占会话未受干扰，未读取/修改VM的NPU工作树。
 方针仍为**代理建议，待用户确认**；上板操作需要另一个独占窗口。
 
+后续[实测分解窗口](bringup/2026-10-30-gpu-diagnosis-window.md)：显式展开使私有Mesa由约232升至567fps，
+厂商同展开版约573fps；有效GPU区间由4.133降至1.584ms，厂商同展开版1.515ms。
+连续GLES锁频/PM无显著收益，原循环fdinfo忙碌估计约94%；短Vulkan锁800MHz由3.30降至2.00ms，
+PM on未改善稳态。最小CL map与独立transfer均通过，旧全程序120秒预算不能证明map死锁。
+该shader的性能接近证明了优化可行性，不代表API/所有负载或实际HDR产品链已追平。
+GPU timer通过`GPU_TIMER_QUERY=1`或`gpu-compare.py --gpu-timer`单独启用，预热后清除初始disjoint，
+末尾非零disjoint的数据必须丢弃，不与无query的FPS混算。
+
 ## 测量是否同条件
 
 复核原始`logs/gpu-board-20261030/`的vendor-final.json、gbm-candidate.json及compute.json：
