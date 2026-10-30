@@ -17,6 +17,7 @@
 
 ## 2026-10-30
 
+- [GPU同块回跳修复与快轮询窗口](2026-10-30-gpu-repair-window.md) — kernel board video benchmark
 - [uhd2四启动对性能门禁仍不确定](2026-10-30-npu-boot-pairs.md) — kernel board benchmark
 - [保留循环候选、正确性与冷恢复实测](2026-10-30-gpu-loop-window.md) — kernel gpu board benchmark
 - [uhd2集成输出与并行通过，DenseNet性能阻断pin](2026-10-30-npu-uhd2-acceptance.md) — kernel board benchmark video
