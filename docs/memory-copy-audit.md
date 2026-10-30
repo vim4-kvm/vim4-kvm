@@ -1,7 +1,8 @@
 # 7.3 内存与拷贝性能：离线审查及微基准
 
-本轮离线，不访问板子、GPU文件，不改正式配置、不push/pin。
-后续用户授权的[独立nodebug候选](uhd2-nodebug.md)关闭纯调试开销；正式配置仍待批准。
+以下保留离线审查；后续[三方nodebug实测](bringup/2026-10-30-nodebug-memory-window.md)已完成：
+nodebug恢复tmpfs写入与YOLO端到端，但memcpy/pread仍未追平。未动GPU文件、正式配置或push/pin。
+用户授权的[独立nodebug候选](uhd2-nodebug.md)已关闭纯调试开销；正式配置仍待批准。
 [YOLO分段记录](bringup/2026-10-30-npu-e2e-window.md)把约3.46ms增量定位到tmpfs fwrite，
 尚未证明整个KVM所有拷贝都退化。**首要配置嫌疑是7.3的锁调试，不是已坐实的DDR低频或ADLA缺陷。**
 
@@ -113,6 +114,6 @@ timeout -k 3 180 python3 tools/memory-bench.py --binary ./memory-bench \
 不用HID、声音或ptrace视频进程，不在窗口改配置/驱动，不与编译并行。
 
 离线验证：ARM64 VM实际编译并运行全部30种尺寸/阶段组合，校验读回、nohuge首次fault边界、
-重复触碰fault减少、亲和恢复及拒绝覆盖；五次重复完整跑通，未运行板上微基准。
+重复触碰fault减少、亲和恢复及拒绝覆盖；离线阶段五次重复完整跑通，后续板上原始数据见上述实测记录。
 主仓unittest 313项、8跳过，OK（Linux执行测试在Mac跳过，另在ARM64 VM实际通过）；
 `git diff --check`通过。本轮未修改任何正式config或构建新内核候选。
