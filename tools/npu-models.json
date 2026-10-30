@@ -1,0 +1,11 @@
+{
+  "revision": "3e87c7d2832b7cbd4dc727a325c4a89146e7a952",
+  "files": {
+    "vgg16/data/vgg16_int8.adla": "07520d099d5377d1acd39c6f30bdbdd97490dc7adb3767ac49e7d46b3953572b",
+    "vgg16/data/airplane.jpeg": "6df72eb7159c9e2a24575915a2fe7e19629af76613c424c8d2dd74fb830ac6a1",
+    "densenet_ctc/data/densenet_ctc_int8.adla": "f70943193e429ea08195b422931e205f86e43f2a48fa37148f1454d6aae9c6e9",
+    "densenet_ctc/data/KhadasTeam.png": "43f97893ac567d3a2f23f3bfd6276b61b0e5c39f0484b8a8e8f43c77279f5f6b",
+    "yolov8n/data/yolov8n_int8.adla": "76ba208e7226bdc2502e5f43d131780785f719c2c98b32b96cbbb45192fc40ee",
+    "yolov8n/data/horses.jpg": "c8f0a677a1356569e2ce71d2fa88c1030c0ae57ecf5e14170e02d9a86a20dcb4"
+  }
+}
