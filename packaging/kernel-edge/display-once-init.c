@@ -12,7 +12,9 @@
 #include <sys/utsname.h>
 #include <unistd.h>
 
+#ifndef RELEASE
 #define RELEASE "7.3.0-vim4kvm-uhd1+"
+#endif
 #define MODULES "/lib/modules/" RELEASE
 #define TRIAL_ROOT "/var/lib/vim4-kvm/display-m1/"
 
@@ -109,7 +111,7 @@ int main(void)
 	close(fd);
 	if (size <= 0 || size == (ssize_t)sizeof(notes) || !matches_build(notes, size, id))
 		goto fail;
-	/* Separate storage, same release: existing KVM launchers remain applicable. */
+	/* Match private modules to the running kernel before starting userspace. */
 	*strrchr(executable, '/') = '\0';
 	step = "candidate directory";
 	if (!trusted_directory(executable, &source_info))
@@ -118,6 +120,10 @@ int main(void)
 	    (int)sizeof(source))
 		goto fail;
 	step = "module directories";
+#ifdef ADLA_TRIAL
+	if (mkdir(MODULES, 0755) && errno != EEXIST)
+		goto fail;
+#endif
 	/* The existing mountpoint can retain a package builder's numeric owner.
 	 * Only the private source supplies modules; validate its ownership strictly.
 	 */

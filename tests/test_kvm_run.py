@@ -44,6 +44,7 @@ class KVMRunTests(unittest.TestCase):
                 ('5.15.137-vim4kvm-hdrdual6', 'Y', True),
                 ('5.15.137-vim4kvm', 'N', False),
                 ('7.3.0-vim4kvm-uhd1+', 'Y', False),
+                ('7.3.0-vim4kvm-npu1+', 'Y', False),
                 ('7.3.0-rc7-vim4kvm-uhd1+', 'Y', False),
             ):
                 native.write_text(enabled)

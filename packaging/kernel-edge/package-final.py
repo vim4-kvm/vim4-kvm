@@ -63,7 +63,11 @@ def main():
                                  'amlogic-t7-a311d2-khadas-vim4-display-m0.dtb',
                                  'amlogic-t7-a311d2-khadas-vim4-display-m1.dtb'),
                         help='Qualified profile; display-m0/m1 require matching U-Boot logo layout')
+    parser.add_argument('--release', default=RELEASE)
     args = parser.parse_args()
+    release = args.release
+    if not re.fullmatch(r'7\.3\.0-vim4kvm-(?:uhd1|npu[0-9]+)\+', release):
+        parser.error('Unsupported candidate release')
     source, output, destination = (p.resolve() for p in (args.source, args.output, args.destination))
     assert re.fullmatch(r'[0-9a-f]{40}', args.commit), 'Use the full approved kernel commit'
     assert re.fullmatch(r'(?:[0-9a-fA-F]{2}:){5}[0-9a-fA-F]{2}', args.mac)
@@ -71,10 +75,10 @@ def main():
     assert not run('git', '-C', source, 'status', '--porcelain')
     assert output != source and not output.is_relative_to(source)
     report = json.loads((output / 'build.json').read_text())
-    assert report['kernel'] == args.commit and report['release'] == RELEASE
+    assert report['kernel'] == args.commit and report['release'] == release
     for name, expected in report['sha256'].items():
         assert sha(output / name) == expected, name
-    assert (output / 'include/config/kernel.release').read_text().strip() == RELEASE
+    assert (output / 'include/config/kernel.release').read_text().strip() == release
     verify_display_profile(output, args.dtb)
     destination.mkdir()  # Refuse stale payloads.
     # Mac shared volumes can fold xt_DSCP/xt_dscp into the same filename.
@@ -83,11 +87,11 @@ def main():
         stage = Path(temporary)
         subprocess.run(['make', '-C', str(source), 'O=' + str(output), 'ARCH=arm64',
                         'modules_install', 'INSTALL_MOD_STRIP=1', 'INSTALL_MOD_PATH=' + str(stage)], check=True)
-        modules = stage / 'lib/modules' / RELEASE
+        modules = stage / 'lib/modules' / release
         verify_modules(modules, output / 'modules.order')
         for name in ('build', 'source'):
             (modules / name).unlink(missing_ok=True)
-        subprocess.run(['depmod', '-b', str(stage), RELEASE], check=True)
+        subprocess.run(['depmod', '-b', str(stage), release], check=True)
         shutil.copy2(output / 'arch/arm64/boot/Image', destination / 'Image')
         dtb = output / 'arch/arm64/boot/dts/amlogic' / args.dtb
         shutil.copy2(dtb, destination / 'vim4.dtb')
@@ -95,7 +99,7 @@ def main():
             subprocess.run(['fdtput', '-t', 'bx', str(destination / 'vim4.dtb'),
                             '/ethernet@fdc00000', prop, *args.mac.split(':')], check=True)
         subprocess.run(['tar', '-czf', str(destination / 'modules.tar.gz'), '-C',
-                        str(stage / 'lib/modules'), RELEASE], check=True)
+                        str(stage / 'lib/modules'), release], check=True)
         ids = {}
         # Check every module that will be automatically loaded by the baseline.
         for name, filename in {
@@ -114,7 +118,7 @@ def main():
             ids[name] = build_id(path)
         files = {str(p.relative_to(modules)): sha(p) for p in sorted(modules.rglob('*')) if p.is_file()}
         result = dict(source=args.commit, tree=run('git', '-C', source, 'rev-parse', 'HEAD^{tree}'),
-                      release=RELEASE, kernel_build_id=build_id(output / 'vmlinux'),
+                      release=release, kernel_build_id=build_id(output / 'vmlinux'),
                       config_sha256=sha(output / '.config'), modules=files,
                       module_count=len(list(modules.rglob('*.ko*'))), loaded_module_build_ids=ids,
                       artifacts={name: sha(destination / name) for name in ('Image', 'vim4.dtb', 'modules.tar.gz')})

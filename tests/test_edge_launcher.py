@@ -42,6 +42,12 @@ class EdgeLauncherTest(unittest.TestCase):
         self.assertNotEqual(result.returncode, 0)
         self.assertFalse(self.trace.exists())
 
+    def test_npu_candidate_still_requires_verified_video_firmware(self):
+        result = self.run_script('one-kvm-edge-prepare', '7.3.0-vim4kvm-npu1+')
+        self.assertNotEqual(result.returncode, 0)
+        self.assertIn('firmware is missing or has changed', result.stderr)
+        self.assertFalse(self.trace.exists())
+
     def test_failed_secure_preloader_prevents_module_loading(self):
         (self.bin / 'systemctl').write_text(
             '#!/bin/sh\ncase "$3" in SubState) echo exited ;; ExecMainStatus) echo 1 ;; esac\n')

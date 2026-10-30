@@ -52,18 +52,38 @@ def safe_member(member):
     return name
 
 
-def prepare(payload, init, baseline, output):
+def prepare(payload, init, baseline, output, release=RELEASE,
+            baseline_release=RELEASE, baseline_id=BASE_ID):
+    if not re.fullmatch(r'7\.3\.0-vim4kvm-(?:uhd1|npu[0-9]+)\+', release):
+        raise ValueError('unsupported candidate release')
+    if not re.fullmatch(r'[0-9a-f]{40}', baseline_id):
+        raise ValueError('baseline build ID must be explicit and complete')
     report = json.loads((payload / 'manifest.json').read_text())
     build_id = report['kernel_build_id']
-    if not re.fullmatch('[0-9a-f]{40}', build_id) or build_id == BASE_ID:
+    if not re.fullmatch('[0-9a-f]{40}', build_id) or build_id == baseline_id:
         raise ValueError('expected a separate candidate build ID')
-    if report['release'] != RELEASE:
+    if report['release'] != release:
         raise ValueError('candidate release differs from the tested launcher contract')
     static_arm64(init)
     for name in ('Image', 'vim4.dtb', 'modules.tar.gz'):
         if sha(payload / name) != report['artifacts'][name]:
             raise ValueError('candidate artifact hash mismatch: ' + name)
     state = json.loads(baseline.read_text())
+    if '-npu' in release:
+        runtime = json.loads((payload / 'runtime-files.json').read_text())
+        required = {'/usr/libexec/vim4-board-runtime', '/usr/libexec/vim4-kvm-run',
+                    '/usr/libexec/vim4-mainline-prepare',
+                    '/usr/libexec/vim4-mainline-gadget-prepare',
+                    '/opt/vim4-onekvm-edge/one-kvm-edge'}
+        if {entry['target'] for entry in runtime['files'].values()} != required:
+            raise ValueError('incomplete NPU runtime helper inventory')
+        for relative, entry in runtime['files'].items():
+            path = PurePosixPath(relative)
+            if path.is_absolute() or '..' in path.parts:
+                raise ValueError('unsafe runtime helper path')
+            if (sha(payload / relative) != entry['sha256'] or
+                    state['files'].get(entry['target']) != entry['sha256']):
+                raise ValueError('NPU runtime helper differs from baseline proof')
     if not all(name in state['files'] for name in
                ('/boot/edge/Image', '/boot/edge/vim4.dtb', '/boot/extlinux/extlinux.conf',
                 '/etc/vim4-kvm/kernels.json', '/etc/vim4-kvm/runtime-build.json')):
@@ -85,7 +105,8 @@ def prepare(payload, init, baseline, output):
         shutil.copyfile(init, work / 'init')
         (work / 'extlinux.conf').write_text(config)
         files = {name: sha(work / name) for name in ('Image', 'vim4.dtb', 'init', 'extlinux.conf')}
-        plan = dict(build_id=build_id, baseline_id=BASE_ID, release=RELEASE,
+        plan = dict(build_id=build_id, baseline_id=baseline_id, release=release,
+                    baseline_release=baseline_release,
                     baseline_files=state['files'], baseline_cmdline=cmdline,
                     files=files, command=command, source=report['source'])
         with tarfile.open(payload / 'modules.tar.gz') as modules, \
@@ -93,7 +114,7 @@ def prepare(payload, init, baseline, output):
             seen = set()
             for member in modules:
                 path = safe_member(member)
-                if path.parts[0] != RELEASE:
+                if path.parts[0] != release:
                     raise ValueError('unexpected module release')
                 if member.isdir():
                     continue
@@ -140,9 +161,11 @@ def running_build_id():
 
 
 def preflight(plan):
-    if os.geteuid() or os.uname().release != RELEASE or running_build_id() != BASE_ID:
+    if (os.geteuid() or os.uname().release != plan.get('baseline_release', RELEASE)
+            or running_build_id() != plan['baseline_id']):
         raise RuntimeError('stage only as root on the approved running baseline')
-    if plan['baseline_id'] != BASE_ID or plan['release'] != RELEASE:
+    if (not re.fullmatch(r'[0-9a-f]{40}', plan['baseline_id']) or
+            not re.fullmatch(r'7\.3\.0-vim4kvm-(?:uhd1|npu[0-9]+)\+', plan['release'])):
         raise ValueError('bundle baseline mismatch')
     if Path('/proc/cmdline').read_text().strip() != plan['baseline_cmdline']:
         raise RuntimeError('baseline command line changed')
@@ -216,6 +239,9 @@ def main():
     prepare_parser = commands.add_parser('prepare')
     for name in ('payload', 'init', 'baseline', 'output'):
         prepare_parser.add_argument('--' + name, type=Path, required=True)
+    prepare_parser.add_argument('--release', default=RELEASE)
+    prepare_parser.add_argument('--baseline-release', default=RELEASE)
+    prepare_parser.add_argument('--baseline-id', default=BASE_ID)
     commands.add_parser('stage').add_argument('bundle', type=Path)
     args = vars(parser.parse_args())
     action = args.pop('action')

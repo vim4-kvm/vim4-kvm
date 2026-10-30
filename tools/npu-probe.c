@@ -50,6 +50,13 @@ int main(int argc, char **argv) {
     void *context = aml_module_create(&config);
     printf("create_ms=%.3f context=%s\n", now_ms() - start, context ? "ok" : "failed");
     if (!context) { free(input); return 1; }
+	aml_profile_config_t profile = { .profile_type = AML_PROFILE_PERFORMANCE };
+	int profiling = argc > 4 && !strcmp(argv[4], "--profile");
+	if (profiling && aml_util_enableProfile(context, &profile)) {
+		aml_module_destroy(context);
+		free(input);
+		return 1;
+	}
     double sum = 0, low = 1e9, high = 0;
     int status = 0;
     for (int i = 0; i < count; ++i) {
@@ -101,6 +108,14 @@ int main(int argc, char **argv) {
     }
     if (count > 1 && !status) printf("warm_iterations=%d mean_set_and_infer_ms=%.3f min_ms=%.3f max_ms=%.3f\n", count - 1, sum / (count - 1), low, high);
     start = now_ms();
+    if (profiling) {
+        if (aml_util_getProfileInfo(context, &profile)) status = 1;
+        printf("profile_inference_us=%llu profile_memory_bytes=%llu\n",
+               (unsigned long long)profile.profiling_data.inference_time_us,
+               (unsigned long long)profile.profiling_data.memory_usage_bytes);
+        if (!profile.profiling_data.inference_time_us) status = 1;
+        if (aml_util_disableProfile(context, &profile)) status = 1;
+    }
     int rc = aml_module_destroy(context);
     printf("destroy_ms=%.3f rc=%d status=%d\n", now_ms() - start, rc, status);
     free(input);

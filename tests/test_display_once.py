@@ -29,7 +29,8 @@ def static_elf(kind=1):
 
 
 class TrialTest(unittest.TestCase):
-    def fixture(self, root, case_pair=False):
+    def fixture(self, root, case_pair=False, release=once.RELEASE,
+                baseline_release=once.RELEASE):
         payload = root / 'payload'
         payload.mkdir()
         (root / 'init').write_bytes(static_elf())
@@ -37,21 +38,53 @@ class TrialTest(unittest.TestCase):
         modules = {'kernel/net/xt_DSCP.ko': b'upper', 'kernel/net/' + lower: b'lower'}
         with tarfile.open(payload / 'modules.tar.gz', 'w:gz') as archive:
             for name, data in modules.items():
-                member = tarfile.TarInfo(once.RELEASE + '/' + name)
+                member = tarfile.TarInfo(release + '/' + name)
                 member.size = len(data)
                 archive.addfile(member, io.BytesIO(data))
         (payload / 'Image').write_bytes(b'candidate image')
         (payload / 'vim4.dtb').write_bytes(b'candidate dtb')
         (payload / 'manifest.json').write_text(json.dumps(dict(
-            source='a' * 40, kernel_build_id='1' * 40, release=once.RELEASE,
+            source='a' * 40, kernel_build_id='1' * 40, release=release,
             modules={name: once.hashlib.sha256(data).hexdigest() for name, data in modules.items()},
             artifacts={name: once.sha(payload / name) for name in ('Image', 'vim4.dtb', 'modules.tar.gz')})))
         state = dict(cmdline='root=PARTUUID=bcb80000-02 rootwait rw', files={name: 'f' * 64 for name in (
             '/boot/edge/Image', '/boot/edge/vim4.dtb', '/boot/extlinux/extlinux.conf',
             '/etc/vim4-kvm/kernels.json', '/etc/vim4-kvm/runtime-build.json')})
+        if '-npu' in release:
+            runtime = {}
+            for index, target in enumerate(('/usr/libexec/vim4-board-runtime',
+                    '/usr/libexec/vim4-kvm-run', '/usr/libexec/vim4-mainline-prepare',
+                    '/usr/libexec/vim4-mainline-gadget-prepare',
+                    '/opt/vim4-onekvm-edge/one-kvm-edge')):
+                relative = f'helper-{index}'
+                (payload / relative).write_bytes(b'candidate helper')
+                digest = once.sha(payload / relative)
+                runtime[relative] = dict(target=target, sha256=digest)
+                state['files'][target] = digest
+            (payload / 'runtime-files.json').write_text(json.dumps(dict(files=runtime)))
         (root / 'baseline.json').write_text(json.dumps(state))
-        once.prepare(payload, root / 'init', root / 'baseline.json', root / 'bundle')
+        once.prepare(payload, root / 'init', root / 'baseline.json', root / 'bundle',
+                     release=release, baseline_release=baseline_release)
         return root / 'bundle/candidate.tar'
+
+    def test_independent_npu_release_preserves_baseline_identity(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            archive = self.fixture(root, release='7.3.0-vim4kvm-npu1+',
+                                   baseline_release='5.15.137-vim4kvm-hdrdual6')
+            plan = json.loads((root / 'bundle/trial.json').read_text())
+            self.assertEqual(plan['baseline_release'], '5.15.137-vim4kvm-hdrdual6')
+            self.assertEqual(plan['release'], '7.3.0-vim4kvm-npu1+')
+            with tarfile.open(archive) as trial:
+                modules = [name for name in trial.getnames() if name.startswith('modules/')]
+                self.assertTrue(modules)
+                self.assertTrue(all('/7.3.0-vim4kvm-npu1+/' in name for name in modules))
+            state = json.loads((root / 'baseline.json').read_text())
+            state['files']['/usr/libexec/vim4-kvm-run'] = '0' * 64
+            (root / 'baseline.json').write_text(json.dumps(state))
+            with self.assertRaisesRegex(ValueError, 'helper differs'):
+                once.prepare(root / 'payload', root / 'init', root / 'baseline.json',
+                             root / 'rejected', release='7.3.0-vim4kvm-npu1+')
 
     def test_boot_files_remain_default_through_stage_reset_and_interruption(self):
         for fail_after in (None, 1, 4):
