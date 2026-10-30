@@ -98,7 +98,7 @@ H.264/H.265 硬编码已取得实验结果，见
 
 `edge.config` 取自固定 Armbian 提交的 `config/kernel/linux-meson-s4t7-edge.config`，
 增加 `CONFIG_LOCALVERSION="-vim4kvm-edge"` 及 KVM 所需的 configfs gadget 功能
-（HID、NCM、ECM、RNDIS、mass storage、UAC2），并启用实验 CRG UDC 模块。
+（HID、NCM、ECM、RNDIS、mass storage、UAC2、ACM），并启用实验 CRG UDC 模块。
 通用基线中 CRG 由 udc-test DTB 接入，普通 VIM4 DTB 保持 USB host 行为；
 当前完整运行时使用 tested_build 记录的匹配专用 DTB，不能直接用通用产物覆盖。
 脚本执行 olddefconfig，最终配置写入
@@ -108,6 +108,13 @@ H.264/H.265 硬编码已取得实验结果，见
 `bash packaging/kernel-edge/build.sh SOURCE NEW_OUTPUT packaging/kernel-edge/uhd1.config`
 重建匹配 release；不传第三参数仍构建通用 edge 基线。该命令不安装、不重启，
 DTB/固件和完整模块的安装与登记按双内核记录执行，保留当前板子的 DTB/MAC 配置。
+
+两份配置均启用 `CONFIG_USB_CONFIGFS_ACM=y`；`olddefconfig` 会选择
+`CONFIG_USB_F_ACM=m` 与 `CONFIG_USB_U_SERIAL=m`。`uhd1.config` 是独立保存的完整配置，
+构建时不会从 `edge.config` 重新派生，修改公共功能须同步两者。
+此配置已增加 ACM，因而不再与旧 tested_build 的配置校验和一致；版本锁仍保持不变，
+不能视为 ACM 已部署或验收。正式 213f2715 的配置核对须用独立输出目录执行
+`make olddefconfig`；锁定构建入口仍只接受 sources.toml 中的 revision。
 
 下方是最初 Armbian rc7 导入的历史步骤；当前分支已基于 v7.3 重放并合入板级修复，
 准确复现应检出 sources.toml 的提交，不重新执行这段导入。固定 Armbian 快照为 7.3 选择 rc7，
