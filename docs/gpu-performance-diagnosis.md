@@ -15,6 +15,10 @@ PM on未改善稳态。最小CL map与独立transfer均通过，旧全程序120�
 GPU timer通过`GPU_TIMER_QUERY=1`或`gpu-compare.py --gpu-timer`单独启用，预热后清除初始disjoint，
 末尾非零disjoint的数据必须丢弃，不与无query的FPS混算。
 
+后续[离线编译/调频候选](gpu-performance-candidates.md)：Bifrost独立展开成本预算，
+原循环已得到与显式展开相同的G52统计且无spill；内核4e239aec051a4将devfreq轮询改为10ms。
+均未上板，不能把编译统计或构建通过当作FPS、功耗与产品HDR性能验收；下一窗口测量预算20分钟。
+
 ## 测量是否同条件
 
 复核原始`logs/gpu-board-20261030/`的vendor-final.json、gbm-candidate.json及compute.json：

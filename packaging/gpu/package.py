@@ -16,6 +16,7 @@ def run(*args):
 
 def package(prefix):
     library = prefix / 'lib'
+    runtime_prefix = '/opt/' + prefix.name
     pending = list(prefix.rglob('*'))
     checked = set()
     system = set()
@@ -48,13 +49,13 @@ def package(prefix):
             name = Path(data['ICD']['library_path']).name
             if not (library / name).is_file():
                 raise RuntimeError(f'ICD library missing: {name}')
-            data['ICD']['library_path'] = '/opt/vim4-mesa-26.2.6/lib/' + name
+            data['ICD']['library_path'] = runtime_prefix + '/lib/' + name
             path.write_text(json.dumps(data, indent=2) + '\n')
     for path in (prefix / 'etc/OpenCL/vendors').glob('*.icd'):
         name = Path(path.read_text().strip()).name
         if not (library / name).is_file():
             raise RuntimeError(f'OpenCL ICD library missing: {name}')
-        path.write_text('/opt/vim4-mesa-26.2.6/lib/' + name + '\n')
+        path.write_text(runtime_prefix + '/lib/' + name + '\n')
     for path in checked:
         result = run('ldd', str(path))
         if 'not found' in result:
@@ -69,6 +70,7 @@ def package(prefix):
              for p in sorted(prefix.rglob('*')) if p.is_file() and p != prefix / 'manifest.json'}
     (prefix / 'manifest.json').write_text(json.dumps({
         'mesa': '26.2.6', 'source_sha256': 'b9436b3e1a8be76fbd4823dc884f90596ab7c6ac5e1867a305e66ffccfb31a92',
+        'runtime_prefix': runtime_prefix,
         'elf_count': len(checked), 'system_glibc': sorted(system), 'files': files,
     }, indent=2) + '\n')
 

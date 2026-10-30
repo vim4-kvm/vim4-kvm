@@ -13,6 +13,10 @@
 后续[离线性能复核](gpu-performance-diagnosis.md)修正测量边界：GLES旧值含末次回读且无预热，
 Vulkan4.25倍为冷提交主机等待口径，clpeak120秒是全程序预算；尚不能直接归因GPU执行效率或map死锁。
 
+[诊断实测](bringup/2026-10-30-gpu-diagnosis-window.md)已将该GLES场景的约93% GPU区间差归于循环编译；
+[离线候选](gpu-performance-candidates.md)实现通用成本约束展开和10ms devfreq采样，尚待下一独占窗口确认。
+私有Mesa候选另用`/opt/vim4-mesa-26.2.6-unroll1`，默认部署与原版保持并存。
+
 ## 内核候选
 
 VM `~/src/linux-7.3-gpu`，分支 `vim4-gpu-panfrost`，基于`213f271505411`。

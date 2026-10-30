@@ -1,0 +1,48 @@
+diff --git a/src/compiler/nir/tests/loop_unroll_tests.cpp b/src/compiler/nir/tests/loop_unroll_tests.cpp
+--- a/src/compiler/nir/tests/loop_unroll_tests.cpp
++++ b/src/compiler/nir/tests/loop_unroll_tests.cpp
+@@ -310,3 +310,44 @@
+    EXPECT_EQ(4, count_used_instr(nir_op_flt));
+    EXPECT_EQ(1, count_unused_instr(nir_op_flt));
+ }
++
++/* Long, cheap loops may fit the cost budget even above the usual trip limit.
++ * Conversely, a larger trip limit must not bypass a driver's code-size cap.
++ */
++TEST_F(nir_loop_unroll_test, independent_cost_budget_accepts_long_loop)
++{
++   nir_shader_compiler_options options = *bld.shader->options;
++   options.max_unroll_iterations = 256;
++   options.max_unroll_cost = 512;
++   bld.shader->options = &options;
++
++   loop_unroll_test_helper(&bld, nir_imm_int(&bld, 0),
++                           nir_imm_int(&bld, 96), nir_imm_int(&bld, 1),
++                           nir_ige, nir_iadd, false);
++   nir_variable *out = nir_variable_create(bld.shader, nir_var_shader_out,
++                                            glsl_uint_type(), "out");
++   nir_store_var(&bld, out, nir_load_vertex_id(&bld), 1);
++
++   ASSERT_TRUE(nir_opt_loop_unroll(bld.shader));
++   EXPECT_EQ(0, count_loops());
++   nir_validate_shader(bld.shader, NULL);
++}
++
++TEST_F(nir_loop_unroll_test, independent_cost_budget_rejects_large_expansion)
++{
++   nir_shader_compiler_options options = *bld.shader->options;
++   options.max_unroll_iterations = 256;
++   options.max_unroll_cost = 1;
++   bld.shader->options = &options;
++
++   loop_unroll_test_helper(&bld, nir_imm_int(&bld, 0),
++                           nir_imm_int(&bld, 96), nir_imm_int(&bld, 1),
++                           nir_ige, nir_iadd, false);
++   nir_variable *out = nir_variable_create(bld.shader, nir_var_shader_out,
++                                            glsl_uint_type(), "out");
++   nir_store_var(&bld, out, nir_load_vertex_id(&bld), 1);
++
++   ASSERT_FALSE(nir_opt_loop_unroll(bld.shader));
++   EXPECT_EQ(1, count_loops());
++   nir_validate_shader(bld.shader, NULL);
++}
