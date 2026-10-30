@@ -17,7 +17,8 @@ revision = "31619c527655514b4c89516ef609b6db1dd47db6"
 name = "gst-plugin-venc"
 url = "https://github.com/vim4-kvm/gst-plugin-venc.git"
 branch = "vim4"
-revision = "c35244de3421dbbd06788c55361787185d152559"
+# Local board validation; the Wave5 update has not been pushed.
+revision = "b3b82a98cac16c4e845fad6357189b57cf8b2db4"
 
 [[repos]]
 name = "gst-plugin-vfmcap"
@@ -36,7 +37,7 @@ name = "One-KVM"
 url = "https://github.com/vim4-kvm/One-KVM.git"
 branch = "vim4"
 # Local board validation; this child-repository commit has not been pushed.
-revision = "307e0fd54ea99bd7afdadb4d23568497d7887996"
+revision = "3649a8c8f12d8bcd3f2d394de848dc486a270ecc"
 
 [[repos]]
 name = "kvmd"
