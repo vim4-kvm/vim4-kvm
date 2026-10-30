@@ -4,6 +4,36 @@
 `213f271505411`。正式部署锁不变。驱动在 `drivers/misc/adla`：其接口是
 下游闭源 SDK 字符设备兼容接口，本轮不声明 DRM accel 支持。
 
+## 实施状态与离线门禁欠账
+
+这是未取得上板资格的实现进度，不能当作P0–P4全部完成。
+内核已有原始执行核心、binding、DT及平台API适配提交；配置启用模块。
+源码和输出分别为VM `~/src/linux-7.3-npu`、`~/build/npu-adla`。
+已有完整Image/dtbs/modules构建成功记录；最终复验日志为
+`verified-full.log`，schema与目标DTB日志为`schema.log`、`dtbs-check.log`，
+W=1/sparse记录为`w1-sparse.log`、`w1-sparse-final.log`。
+新增适配代码strict checkpatch日志为`checkpatch-commit.log`。
+厂商原有告警没有通过全文件机械格式化掩盖。
+
+当前宿主覆盖外层ABI布局和task范围的负数、越界、整数边界，尚未覆盖
+完整嵌套fixup内容、IOVA分配回收、失败回滚及wait/cancel/close状态机。
+验收工具五项离线测试覆盖输出差异拒绝、5%性能边界、非法计时、
+超时终止和进程失败；C probe用板上头文件通过语法检查，没有执行推理。
+六份固定来源下载与预处理已离线执行；VGG16、DenseNet输入SHA与历史文件一致。
+
+必须继续完成以下事项后才能进入下一轮上板：
+
+- 硬复位函数已返回不可用错误，reset-and-start已传播错误；但旧inference状态机
+  仍忽略该返回值。必须完成错误传播、后续请求失败策略以及DMA生命周期处理。
+- 电源获取与时钟错误仍有仅记录日志的旧路径；PM引用和probe失败回滚须补齐验证。
+- ioctl自动映射已适配VMA写锁，映射失败路径尚需受控故障测试。
+- 外部物理地址导入、profiling和必要sysfs策略还缺独立测试。
+- 尚无KUnit/宿主生命周期测试闭环、独立候选打包或一次性启动脚本闭环。
+  当前构建release与原uhd1同名，禁止直接覆盖正式模块目录。
+
+固定工作点不需要裸SMC读取efuse；多频OPP/动态分档尚未实现。
+现有NNA温度计继续由thermal框架管理，不宣称已实现新的NPU降频策略。
+
 ## 兼容合同
 
 保持 `/dev/adla0`、magic X 的 ioctl、packed 外层结构、嵌套 task/fixup、

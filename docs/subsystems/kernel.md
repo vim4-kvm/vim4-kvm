@@ -16,6 +16,8 @@ P2P 已移除能力屏蔽，修正 discovery、扫描版本、ARP/ND 控制和�
 GPU 电压来源、CPU 分档/thermal 对照、PSCI idle 及设备系统 PM 缺口见
 [平台 PM 离线审查](../archive/platform-pm-offline.md)；
 [批量清单](../parity/platform-pm-board-checklist.md)区分正常负载和真正挂起窗口。
+G52/Panfrost 厂商功能差距、默认 cooling 离线候选及用户态打包/验收见
+[GPU 审查](../bringup/2026-10-30-gpu-parity.md)和[候选方案](../gpu-parity-plan.md)。
 
 MCU 风扇在 VM 主内核 drivers/misc/khadas-mcu.c，策略验证用 tools/test-fan-policy.sh。
 7.x 对应 drivers/thermal/khadas_mcu_fan.c，VIM4 默认安静自动调速；验证用同目录
