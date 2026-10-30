@@ -68,7 +68,7 @@ def prepare_optional_functions(gadget):
 def prepare():
     if os.geteuid() != 0 or platform.release() not in (
             '7.3.0-rc7-vim4kvm-uhd1+', '7.3.0-vim4kvm-uhd1+', '7.3.0-vim4kvm-npu1+',
-            '7.3.0-vim4kvm-npu2+', '7.3.0-vim4kvm-npu3+'):
+            '7.3.0-vim4kvm-npu2+', '7.3.0-vim4kvm-npu3+', '7.3.0-vim4kvm-npu4+'):
         raise ValueError('Requires root on the matched 7.3 One-KVM experimental kernel')
     if check_existing():
         prepare_optional_functions(ROOT / 'kvm')
