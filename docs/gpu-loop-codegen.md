@@ -7,6 +7,9 @@
 后续[保留循环候选](gpu-loop-candidates.md)已分开实现NIR GCM、JUMP前向清理、受保护的一致控制流回边优化，
 并在GPU分支实现冷恢复QoS boost。展开默认关闭；这些仍是离线候选，不覆盖本页已有硬件测量边界。
 
+[后续硬件窗口](bringup/2026-10-30-gpu-loop-window.md)已否决完整控制流系列：中心像素错误与GPU timeout；
+仅GCM带来约16.4%收益但未追平。主机MIR/语料通过不足以证明Bifrost硬件收敛/scoreboard语义。
+
 ## 27条静态指令为何不能与402条直接比较
 
 固定Mesa26.2.6源记为M；基线及候选、原始SHA、静态统计见[离线候选](gpu-performance-candidates.md)。

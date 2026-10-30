@@ -18,6 +18,7 @@ case "$variant" in
   changes=(0003-bifrost-loop-invariants.patch)
   runtime_name=vim4-mesa-26.2.6-loop2 ;;
  loop-layout)
+  echo 'loop-layout failed G52 board validation (GPU timeout); offline reproduction only.' >&2
   changes=(0003-bifrost-loop-invariants.patch 0004-bifrost-jump-cleanup.patch 0005-bifrost-uniform-backedges.patch)
   runtime_name=vim4-mesa-26.2.6-layout2 ;;
  loop-jumps)

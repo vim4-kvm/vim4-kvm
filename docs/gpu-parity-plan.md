@@ -25,6 +25,10 @@ Vulkan4.25倍为冷提交主机等待口径，clpeak120秒是全程序预算；�
 完整系列总代码体积约-0.533%、spill/fill不变；冷恢复内核候选e99220d902834。
 新builder默认关闭实验展开，默认部署锁不变，等待≤20分钟独占窗口。
 
+[保留循环候选实测](bringup/2026-10-30-gpu-loop-window.md)：完整系列错误像素并触发GPU timeout，不可推广；
+仅GCM约273.2fps，对照厂商612.7fps，未追平。QoS恢复boost冷首发约8.12→4.90ms，
+thermal/用户频率上限仍有效；后续重点为控制流故障隔离与power_on之前的频率时序。
+
 ## 内核候选
 
 VM `~/src/linux-7.3-gpu`，分支 `vim4-gpu-panfrost`，基于`213f271505411`。

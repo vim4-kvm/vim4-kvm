@@ -134,6 +134,19 @@ int main(int argc, char **argv)
  unsigned char pixel[4];
  glReadPixels(256, 256, 1, 1, GL_RGBA, GL_UNSIGNED_BYTE, pixel);
  double read_seconds = now() - read_start;
+ const char *dump_path = getenv("GPU_DUMP_PATH");
+ if (dump_path) {
+  size_t bytes = 512u * 512u * 4u;
+  unsigned char *pixels = malloc(bytes);
+  if (!pixels) return 2;
+  glReadPixels(0, 0, 512, 512, GL_RGBA, GL_UNSIGNED_BYTE, pixels);
+  FILE *dump = fopen(dump_path, "wb");
+  if (!dump) { free(pixels); return 2; }
+  int failed = fwrite(pixels, 1, bytes, dump) != bytes;
+  if (fclose(dump)) failed = 1;
+  free(pixels);
+  if (failed) return 2;
+ }
  GLenum error = glGetError();
  printf("size=512x512 frames=%u seconds=%.6f pixel=%u,%u,%u,%u gl_error=%u\n", frames, elapsed, pixel[0], pixel[1], pixel[2], pixel[3], error);
  printf("steady_seconds=%.9f draw_seconds=%.9f finish_seconds=%.9f readback_seconds=%.9f cpu_seconds=%.9f\n",

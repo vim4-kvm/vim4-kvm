@@ -35,6 +35,7 @@ VDIN、vfm_cap、Wave521、CRG USB 驱动在 common_drivers。
 
 | 触发条件 / 错误 | 原因与正确做法 | 验证入口 |
 |---|---|---|
+| Bifrost一致回边补丁通过MIR/shader-db却在G52挂起 | 主机CFG/静态统计不覆盖硬件收敛和scoreboard。新编译器候选先做短负载像素正确性，再长测FPS；错误像素或timeout立即否决，不能引用异常FPS，正常重启后再测其他栈 | [保留循环实测](../bringup/2026-10-30-gpu-loop-window.md) |
 | 向 Ubuntu 根目录直接解内核包，动态程序失效 | tar 替换 /lib 符号链接。安装必须带 --keep-directory-symlink，并保留 Stock 启动项 | [内核安装](../kernel.md)、tools/kernel-install.sh |
 | 7.x 更新 Image 后网口模块报 BPF Invalid name，SSH 不通 | 模块的分离 BTF 引用旧 vmlinux 类型 ID；同一 release 和 vermagic 不能证明匹配。更新 Image 时安装同次构建的完整模块集，检查真实加载结果；不要关闭 BTF 掩盖混装 | [HDMI DDC 实测](../bringup/2026-10-19-hdmirx-ddc.md) |
 | 回到 5.15 后网口 carrier 正常但收不到包，热解绑／重绑触发 Oops | 厂商网口热重绑路径本次实测会崩溃；保留串口，优先正常重启恢复，不把平台驱动重绑作为通用恢复步骤 | [HDMI DDC 恢复记录](../bringup/2026-10-19-hdmirx-ddc.md#恢复与限制) |
