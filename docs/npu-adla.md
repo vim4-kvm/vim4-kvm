@@ -5,11 +5,11 @@
 下游闭源 SDK 字符设备兼容接口，本轮不声明 DRM accel 支持。
 
 最新[uhd2集成实测](bringup/2026-10-30-npu-uhd2-acceptance.md)：输出、六分钟并行与KVM基本回归通过，
-DenseNet独立均值退化6.445%未过门槛，暂不建议pin；[npu4已验收结果](bringup/2026-10-30-npu4-acceptance.md)保留。
+DenseNet单组退化6.445%；[波动分析与多启动门禁](npu-performance-gate.md)认为跨启动资格证据不足，暂不pin。
 [六段审查序列与uhd2集成草案](npu-adla-integration.md)仍待批准，正式pin/默认启动不变。
 旧候选保留，保页例外保持“代理暂定，待用户确认”。
 
-## 2026-10-30 上板结论：uhd2性能未通过，不pin
+## 2026-10-30 上板结论：性能资格待多启动确认，不pin
 
 uhd2三模型101轮完整输出与新5.15参考及旧基线一致，task create=0。
 VGG16/DenseNet/YOLO对前置5.15均值退化+2.043%/+6.445%/-3.863%；DenseNet失败。
@@ -20,6 +20,7 @@ VGG16独立501轮对前/后参考分别-1.363%/-0.332%，原+4.72%未稳定复�
 manager登录/页面/主资源/认证API和One-KVM页面资源均200，视频计数持续推进，未发HID。
 npu4取消/超时/close及ATTACH/profiling资格保留；本轮不测真实复位失败，保页政策仍待确认。
 集成树与npu4相同，但独立组差距根因未定；并行组更快不能抵消独立性能失败。
+历史单组过线/超线保留；不把100轮当100次独立启动，后续按启动层配对CI判定，未生成uhd3。
 交接时已回5.15，12文件哈希/权限一致，四服务active、UDC configured，全部锁释放。
 历史[npu3失败](bringup/2026-10-30-npu3-acceptance.md)、[npu2](bringup/2026-10-30-npu2-acceptance.md)及[npu1/5.15基线](bringup/2026-10-30-npu-adla-acceptance.md)保留。
 
