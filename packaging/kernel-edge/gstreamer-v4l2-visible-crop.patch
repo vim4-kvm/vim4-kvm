@@ -1,0 +1,59 @@
+--- a/sys/v4l2/gstv4l2object.c
++++ b/sys/v4l2/gstv4l2object.c
+@@ -2989,0 +2990,11 @@
++
++/* ENUM_FRAMESIZES describes Wave5 storage, whereas GstCaps describes the
++ * visible rectangle. Prove the crop contract on a separate bufferless fd,
++ * leaving the encoder's format and control state untouched. */
++static gboolean
++gst_v4l2_object_wave5_visible_crop (GstV4l2Object * obj)
++{
++  struct v4l2_format fmt = { 0 };
++  struct v4l2_selection sel = { 0 };
++  gboolean supported = FALSE;
++  int fd;
+@@ -2990,0 +3002,32 @@
++  if (strcmp ((const char *) obj->vcap.card, "C&M Wave5 VPU encoder"))
++    return FALSE;
++  fd = open (obj->videodev, O_RDWR | O_NONBLOCK | O_CLOEXEC, 0);
++  if (fd < 0)
++    return FALSE;
++  fmt.type = V4L2_BUF_TYPE_VIDEO_CAPTURE_MPLANE;
++  fmt.fmt.pix_mp.pixelformat = V4L2_PIX_FMT_HEVC;
++  if (ioctl (fd, VIDIOC_S_FMT, &fmt) < 0)
++    goto done;
++  fmt.type = V4L2_BUF_TYPE_VIDEO_OUTPUT_MPLANE;
++  fmt.fmt.pix_mp.pixelformat = V4L2_PIX_FMT_NV12M;
++  fmt.fmt.pix_mp.width = 1376;
++  fmt.fmt.pix_mp.height = 912;
++  if (ioctl (fd, VIDIOC_S_FMT, &fmt) < 0)
++    goto done;
++  sel.type = V4L2_BUF_TYPE_VIDEO_OUTPUT;
++  sel.target = V4L2_SEL_TGT_CROP;
++  sel.r.width = 1366;
++  sel.r.height = 900;
++  if (ioctl (fd, VIDIOC_S_SELECTION, &sel) < 0)
++    goto done;
++  fmt.type = V4L2_BUF_TYPE_VIDEO_CAPTURE_MPLANE;
++  if (ioctl (fd, VIDIOC_G_FMT, &fmt) < 0)
++    goto done;
++  supported = sel.r.width == 1366 && sel.r.height == 900 &&
++      fmt.fmt.pix_mp.pixelformat == V4L2_PIX_FMT_HEVC &&
++      fmt.fmt.pix_mp.width == 1368 && fmt.fmt.pix_mp.height == 904;
++done:
++  close (fd);
++  return supported;
++}
++
+@@ -3067,0 +3111,6 @@
++    if ((pixelformat == V4L2_PIX_FMT_NV12 ||
++            pixelformat == V4L2_PIX_FMT_NV12M ||
++            pixelformat == V4L2_PIX_FMT_HEVC) &&
++        gst_v4l2_object_wave5_visible_crop (v4l2object)) {
++      step_w = step_h = 2;
++    }
+--- a/sys/v4l2/gstv4l2h265enc.c
++++ b/sys/v4l2/gstv4l2h265enc.c
+@@ -95,0 +96,2 @@
++  gst_element_class_add_static_metadata (element_class,
++      "vim4-wave5-visible-crop-api", "1");
