@@ -1,0 +1,57 @@
+--- a/src/panfrost/compiler/bifrost/bi_layout.c
++++ b/src/panfrost/compiler/bifrost/bi_layout.c
+@@ -113,6 +113,9 @@
+       /* And jump back every clause of preceding blocks up through
+        * and including the target to get to the beginning of the
+        * target */
++      if (target == start->block)
++         return ret;
++
+       bi_foreach_block_from_rev(ctx, start->block, blk) {
+          if (blk == start->block)
+             continue;
+--- a/src/panfrost/compiler/bifrost/test/test-optimizer.cpp
++++ b/src/panfrost/compiler/bifrost/test/test-optimizer.cpp
+@@ -9,6 +9,32 @@
+
+ #include <gtest/gtest.h>
+
++TEST(Layout, SelfBranchExcludesPrecedingBlocks)
++{
++   void *memctx = ralloc_context(NULL);
++   bi_builder *b = bit_builder(memctx);
++   bi_context *ctx = b->shader;
++   bi_block *pre = list_first_entry(&ctx->blocks, bi_block, link);
++   bi_block *loop = bit_block(ctx);
++   bi_block *after = bit_block(ctx);
++   bi_clause clauses[4] = {};
++   bi_block *blocks[] = {pre, loop, loop, after};
++   unsigned tuples[] = {4, 2, 4, 1};
++   list_inithead(&pre->clauses);
++   list_inithead(&loop->clauses);
++   list_inithead(&after->clauses);
++   for (unsigned i = 0; i < 4; ++i) {
++      clauses[i].block = blocks[i];
++      clauses[i].tuple_count = tuples[i];
++      list_addtail(&clauses[i].link, &blocks[i]->clauses);
++   }
++   EXPECT_EQ(bi_block_offset(ctx, &clauses[1], loop), 0);
++   EXPECT_EQ(bi_block_offset(ctx, &clauses[2], loop), -2);
++   EXPECT_EQ(bi_block_offset(ctx, &clauses[3], loop), -5);
++   EXPECT_EQ(bi_block_offset(ctx, &clauses[0], loop), 3);
++   ralloc_free(memctx);
++}
++
+ static void
+ bi_optimizer(bi_context *ctx)
+ {
+@@ -107,7 +133,8 @@
+       ASSERT_EQ(bi_num_predecessors(backedge), 1u);
+       bi_opt_control_flow(ctx);
+       EXPECT_EQ(list_length(&ctx->blocks), uniform ? 2u : 3u);
+-      if (uniform)
++      if (uniform) {
+          EXPECT_EQ(cond->branch_target, header);
++      }
+    }
+ }
