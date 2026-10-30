@@ -121,3 +121,13 @@ workspace.toml 同步两个本地安装提交，并注明它们尚未推送。
 五个受保护文件（旧 Image/DTB、extlinux、kernels.json、runtime-build.json）收尾哈希与
 进入 b1300eb 前完全相同；候选仅保留在私有目录，不登记为默认运行时。
 `final-state.txt`、`protected-final.txt` 和 `final-515-video.log` 为收尾证据。
+
+## 第三轮定向复验（2026-10-30）
+
+按用户指定范围复验，未修代码、未推送。5.15 当前视频连续解码 30 秒通过，
+GPU 仍走厂商接口。候选 900 高及三组 videotestsrc 夹具仍协商失败：
+补丁按 `C&M Wave5 VPU encoder` 匹配 card，目标内核实际是 `wave5-enc`。
+原生 GPU 的 20 次真实 sudo 均成功，但 CPU 52.512–71.389 ms，中位 62.3865 ms，
+未达到 <50 ms；GPU 读数从 0% 到约 98%，再恢复 0%。
+已回默认 5.15、服务正常，保留 One-KVM `307e0fd5`、manager `81c6cc5` 与新私有插件。
+详细数据、安装版本、日志和失败初判见[第三轮记录](2026-10-30-kernel73-gap-r3.md)。
