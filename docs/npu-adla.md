@@ -5,25 +5,21 @@
 下游闭源 SDK 字符设备兼容接口，本轮不声明 DRM accel 支持。
 
 最新[npu2离线修复与30分钟窗口](npu-adla-npu2.md)：IRQ获取和首次视频模块加载参数已修复，
-新候选不覆盖npu1；板上功能仍未验收。保页例外保持“代理暂定，待用户确认”。
+新候选不覆盖npu1；已完成下面的上板轮。保页例外保持“代理暂定，待用户确认”。
 
 ## 2026-10-30 上板结论：未通过
 
-完整记录见[首次上板验收](bringup/2026-10-30-npu-adla-acceptance.md)。
-5.15三模型各101轮完成，逐轮完整张量已保留；去首轮后均值分别为
-VGG16 0.560168 ms、DenseNet CTC 1.951742 ms、YOLOv8n 30.133937 ms。
-修正初始化握手后的ATTACH别名检查、SDK正向profiling通过。
-
-npu1通过RAM一次性启动，但ADLA probe失败，没有`/dev/adla0`：
-`adlak_platform_config.c:269`仍通过资源表取IRQ，7.3的OF平台设备不再在该表
-填入IRQ，须改为`platform_get_irq_byname()`并保留负错误码/延迟probe语义。
-因此7.3完整输出差异、配对退化、PM/恢复及视频并行数据均缺失，不能登记性能追平。
-HDMI运行时另报接收器已加载参数与实验配置不匹配；该问题也阻塞并行验收。
-
-首次RAM启动还暴露无initramfs候选不能直接沿用5.15的`root=UUID=`；
-打包器现要求根分区PARTUUID证明，stage核对其为当前根分区，仅转换候选参数。
-修正后候选启动成功。最终恢复5.15默认，所有备份文件哈希/权限一致，
-One-KVM、manager、HDMI、gadget为active，UDC为configured。未改正式部署锁。
+最新[npu2上板记录](bringup/2026-10-30-npu2-acceptance.md)：
+ADLA probe与HDMI参数问题已消除，/dev/adla0正常，ATTACH与正负profiling通过。
+VGG16/DenseNet完整输出与原5.15基线字节一致，平均退化分别+0.428%/-1.376%。
+YOLOv8n第三输出101轮均错误：56664/57600浮点值不同，最大绝对差29.1773，
+同时记录101次task create fail。即使计时均值退化仅+2.049%，也不能通过验收。
+PM观察到0→约800MHz→0，runtime active→suspended；超时/取消/kill后正常推理可恢复，
+但超时出现SDK释放失败，取消探针达到外层12秒超时，DMA/IOVA全回收尚未证明。
+Wave5在NPU关闭时即报帧缓冲分配-ENOMEM、零编码输出，未能建立有效并行对照。
+最终回到默认5.15，12文件哈希/权限与窗口前一致，四服务active、UDC configured。
+本轮不改驱动、不写PWM、不猜电压；不登记整机NPU性能追平。
+历史[npu1失败记录](bringup/2026-10-30-npu-adla-acceptance.md)及5.15完整基线继续保留。
 
 ## 第三轮离线状态
 
@@ -48,7 +44,7 @@ WAIT改用可中断等待，按invoke查询完成状态；超时返回ETIMEDOUT�
 故障必须对用户态可见：后续open/ioctl返回EIO，WAIT/GET_STAT报告失败；
 `adlak_device.c:44`用一次性故障转换，`:59`打印
 `recovery failed: <error>; reboot required`。这些为源码合同，
-本次因probe失败未验证真实软复位失败及DMA停止效果。
+npu2本轮仍未验证真实软复位失败及DMA停止效果。
 
 标准PM路径处理resume-and-get、父时钟、设频和启钟失败；引用失败回滚，
 regulator由devres行动成对释放。IRQ注册先于worker启动，避免probe失败时
@@ -97,7 +93,7 @@ nn_efuse_type = 2`，随后打印 `regulator_set_voltage 890000mv OK`。
 本次5.15另读`/sys/class/regulator/regulator.4/{name,microvolts}`得到
 `vddnpu`、890000，这是regulator框架读回，仍不是物理电压测量。
 5.15设定核心频率800 MHz；活动/空闲读回见上板记录。
-7.3因probe失败未得到ADLA运行工作点，不把DT的800 MHz当作实测。
+npu2活动时钟已读回799999987 Hz，但候选电压框架读回仍缺失，不以请求值代替实测。
 
 ## 模型和工具
 
@@ -136,7 +132,7 @@ attach从REQBUF取得连续页后再导入同一物理页，验证映射别名�
 不会导入任意猜测的物理地址。必须先SET_CONTEXT_ATTRIBUTE建立MMU上下文；
 初版探针漏掉此握手，曾在5.15的REQBUF触发空指针panic，已修正并通过ATTACH。
 profile连续两次测试无network错误路径，覆盖互斥锁释放；厂商5.15该路径会漏解锁，
-工具主动拒绝在5.15运行该负向测试，须待修正候选设备初始化后再验。
+工具主动拒绝在5.15运行该负向测试；npu2两次错误调用已通过，无死锁。
 正向profiling另用同一C probe追加第五参数 `--profile`，执行SDK的enable/get/disable，
 须与普通性能测量分开运行。本次5.15正向profiling得到371 µs、3298400 bytes。
 
