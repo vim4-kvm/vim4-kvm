@@ -4,6 +4,8 @@
 Rusticl，但设备Vulkan仅1.0、GLES仅3.1，固定GLES负载约为厂商的37.5%；
 CL完整基准在map阶段超时。GPU默认cooling绑定、五档调频、runtime恢复和
 HDMI/Wave5并行窗口通过其各自限定检查。最终已正常回5.15，六个受保护启动文件哈希不变。
+后续[离线测量复核](../gpu-performance-diagnosis.md)限定旧数值解释：GLES未预热且分母含末次回读，
+Vulkan为冷提交主机等待时间；clpeak120秒是全程序预算，不能称为map单次等待120秒。
 
 方针是**代理建议，尚待用户确认**：以5.15功能与性能为目标，通过Panfrost＋Mesa上游方式实现；
 kbase/libmali仅作必要时临时后备。本记录不将建议当作用户已确认的长期产品决策。

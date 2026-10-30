@@ -17,7 +17,7 @@ import time
 GPU_ENV = ('LD_LIBRARY_PATH', 'LD_PRELOAD', 'LIBGL_DRIVERS_PATH', 'EGL_PLATFORM',
            '__EGL_VENDOR_LIBRARY_FILENAMES', 'VK_DRIVER_FILES', 'VK_ICD_FILENAMES',
            'OCL_ICD_VENDORS', 'RUSTICL_ENABLE', 'PAN_I_WANT_A_BROKEN_VULKAN_DRIVER',
-           'GALLIUM_DRIVER', 'MESA_LOADER_DRIVER_OVERRIDE')
+           'GALLIUM_DRIVER', 'MESA_LOADER_DRIVER_OVERRIDE', 'GPU_UNROLL128')
 
 
 def environment(mode, runtime):
@@ -67,8 +67,11 @@ def main():
     parser.add_argument('--capabilities-only', action='store_true')
     parser.add_argument('--probe', type=Path, help='Override the versioned GLES probe binary')
     parser.add_argument('--gbm-device', type=Path, help='Use GBM with a fixed-size offscreen FBO')
+    parser.add_argument('--unroll128', action='store_true', help='Explicitly unroll the diagnostic shader')
     args = parser.parse_args()
     env = environment(args.mode, args.runtime)
+    if args.unroll128:
+        env['GPU_UNROLL128'] = '1'
     args.output.mkdir(parents=True, exist_ok=False)
     if args.mode == 'vendor':
         icd = args.output.resolve() / 'opencl'

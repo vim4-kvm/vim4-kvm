@@ -38,8 +38,11 @@ static void cpu_sync(int fd, uint64_t flags)
 
 int main(int argc, char **argv)
 {
-    REQUIRE(argc == 2 || argc == 3, "Usage: mali-dma-probe shader.spv [contiguous-heap-path]");
-    const char *heap_path = argc == 3 ? argv[2] : "/dev/dma_heap/heap-codecmm";
+    REQUIRE(argc >= 2 && argc <= 4, "Usage: mali-dma-probe shader.spv [contiguous-heap-path] [iterations:1..100]");
+    const char *heap_path = argc >= 3 ? argv[2] : "/dev/dma_heap/heap-codecmm";
+    char *end = NULL;
+    long iterations = argc == 4 ? strtol(argv[3], &end, 10) : 1;
+    REQUIRE(iterations >= 1 && iterations <= 100 && (!end || (*argv[3] && !*end)), "Invalid iteration count");
     FILE *shader_file = fopen(argv[1], "rb");
     REQUIRE(shader_file != NULL, "Cannot open shader");
     REQUIRE(fseek(shader_file, 0, SEEK_END) == 0, "Cannot seek shader");
@@ -205,10 +208,20 @@ int main(int argc, char **argv)
     VK_CHECK(vkCreateFence(device, &fence_info, NULL, &fence));
     VkSubmitInfo submit = { .sType = VK_STRUCTURE_TYPE_SUBMIT_INFO,
         .commandBufferCount = 1, .pCommandBuffers = &command };
-    double start = milliseconds();
-    VK_CHECK(vkQueueSubmit(queue, 1, &submit, fence));
-    VK_CHECK(vkWaitForFences(device, 1, &fence, VK_TRUE, UINT64_C(10000000000)));
-    double elapsed = milliseconds() - start;
+    double elapsed = 0;
+    /* Keep the original cold sample, then report warm samples separately. */
+    for (long i = -3; i < iterations; i++) {
+        VK_CHECK(vkResetFences(device, 1, &fence));
+        double start = milliseconds();
+        VK_CHECK(vkQueueSubmit(queue, 1, &submit, fence));
+        double submitted = milliseconds();
+        VK_CHECK(vkWaitForFences(device, 1, &fence, VK_TRUE, UINT64_C(10000000000)));
+        double complete = milliseconds();
+        printf("sample=%ld warmup=%d submit_ms=%.6f wait_ms=%.6f total_ms=%.6f\n",
+               i, i < 0, submitted-start, complete-submitted, complete-start);
+        if (i >= 0) elapsed += complete-start;
+    }
+    elapsed /= iterations;
     cpu_sync(dma_fd, DMA_BUF_SYNC_START | DMA_BUF_SYNC_READ);
     for (uint32_t i = 0; i < bytes / 4; i++) {
         if (mapped[i] != (i ^ 0x5a39c6e1u)) {

@@ -25,6 +25,7 @@ PiKVM smoke 可用 `PIKVM_CDP` 接入专用测试 Chrome；结束时关闭测试
 
 | 入口 | 运行位置 | 影响 | 用途 | 文档 |
 |---|---|---|---|---|
+| tools/gpu-diagnose.py、gpu-cl-map.c | 板；CL工具先ARM64编译 | 独占GPU；诊断器可临时锁频/PM/profiling并恢复；不写电压、不ptrace | 自有子进程fdinfo/周期/忙闲估计、trans_stat与CPU；小buffer CL map复现 | [GPU性能复核](gpu-performance-diagnosis.md) |
 | packaging/gpu/ | Docker ARM64 | 无 | 独立依赖builder、固定Mesa输入、无网络构建及ELF闭包归档 | [GPU运行时](bringup/2026-10-30-gpu-runtime.md) |
 | tools/npu-probe.c、npu-validate.py、npu-models.json | 编译：ARM64；run：板；compare：Mac/VM | run 占用 NPU，写新结果目录；无部署、HID、声音 | 固定下载SHA、逐轮完整张量校验、均值/P50/P99/最大值及5%性能门槛，进程组有界退出 | [ADLA离线候选](npu-adla.md) |
 | tools/npu-uapi-probe.c | ARM64编译→板 | 占用NPU兼容接口；无推理、HID或声音 | 初始化MMU上下文后测试ATTACH别名；负向PROFILE_CFG拒绝厂商5.15，须有界运行 | [ADLA候选与验收](npu-adla.md) |
