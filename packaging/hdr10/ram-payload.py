@@ -17,6 +17,7 @@ if release != '7.3.0-vim4kvm-hdr10r3+':
 for name, expected in candidate['sha256'].items():
     if hashlib.sha256((bundle / name).read_bytes()).hexdigest() != expected:
         raise ValueError('Candidate hash mismatch: ' + name)
+config = (template / 'extlinux.conf').read_text()
 output.mkdir()
 runtime = output / 'runtime'
 runtime.mkdir()
@@ -46,7 +47,6 @@ with tarfile.open(bundle / 'modules.tar.gz') as archive:
     archive.extractall(output / 'modules', filter='data')
 subprocess.run(['cc', '-static', '-O2', '-Wall', '-Wextra', '-Werror',
                 str(recipe / 'trial-init.c'), '-o', str(output / 'init')], check=True)
-config = (template / 'extlinux.conf').read_text()
 import re
 config = re.sub(r'/var/lib/vim4-kvm/hdr2-unified/[0-9a-f]{40}', prefix, config)
 if f'init={prefix}/init' not in config:
