@@ -1,0 +1,55 @@
+diff --git a/drivers/gpu/arm/midgard/platform/vim4/mali_kbase_config_platform.h b/drivers/gpu/arm/midgard/platform/vim4/mali_kbase_config_platform.h
+index 0601023..b5e3c1d 100644
+--- a/drivers/gpu/arm/midgard/platform/vim4/mali_kbase_config_platform.h
++++ b/drivers/gpu/arm/midgard/platform/vim4/mali_kbase_config_platform.h
+@@ -7,6 +7,7 @@ int kbase_platform_dvfs_event(struct kbase_device *kbdev, u32 utilisation,
+ #define PLATFORM_FUNCS (&vim4_platform_funcs)
+ #define KBASE_PLATFORM_MAX_CLOCKS 1
+ #define KBASE_SIMPLE_COOLING 1
++#define KBASE_DEVFREQ_GOVERNOR "vim4"
+ #define POWER_MANAGEMENT_CALLBACKS NULL
+ #define POWER_MODEL_CALLBACKS NULL
+ #define CLK_RATE_TRACE_OPS NULL
+diff --git a/drivers/gpu/arm/midgard/backend/gpu/mali_kbase_devfreq.c b/drivers/gpu/arm/midgard/backend/gpu/mali_kbase_devfreq.c
+index 28dd47c..c285bc6 100644
+--- a/drivers/gpu/arm/midgard/backend/gpu/mali_kbase_devfreq.c
++++ b/drivers/gpu/arm/midgard/backend/gpu/mali_kbase_devfreq.c
+@@ -21,6 +21,10 @@
+ 
+ #include <mali_kbase.h>
+ #include <mali_kbase_config_defaults.h>
++
++#ifndef KBASE_DEVFREQ_GOVERNOR
++#define KBASE_DEVFREQ_GOVERNOR "simple_ondemand"
++#endif
+ #include <tl/mali_kbase_tracepoints.h>
+ #include <backend/gpu/mali_kbase_pm_internal.h>
+ 
+@@ -736,10 +740,10 @@ int kbase_devfreq_init(struct kbase_device *kbdev)
+ 
+ #ifdef CONFIG_AMLOGIC_MODIFY
+ 	kbdev->devfreq = devfreq_add_device(kbdev->dev, dp,
+-				"simple_ondemand", &data);
++				KBASE_DEVFREQ_GOVERNOR, &data);
+ #else
+ 	kbdev->devfreq = devfreq_add_device(kbdev->dev, dp,
+-				"simple_ondemand", NULL);
++				KBASE_DEVFREQ_GOVERNOR, NULL);
+ #endif
+ 	if (IS_ERR(kbdev->devfreq)) {
+ 		err = PTR_ERR(kbdev->devfreq);
+diff --git a/drivers/gpu/arm/midgard/platform/vim4/platform.c b/drivers/gpu/arm/midgard/platform/vim4/platform.c
+--- a/drivers/gpu/arm/midgard/platform/vim4/platform.c
++++ b/drivers/gpu/arm/midgard/platform/vim4/platform.c
+@@ -9,6 +9,11 @@
+ int meson_gpu_fault;
+ int meson_gpu_data_invalid_count;
+ MODULE_DESCRIPTION("Mali r44p0 UK 11.39 for VIM4");
++#ifdef CONFIG_MALI_DEVFREQ
++/* Async probe must never synchronously request a devfreq governor. */
++MODULE_SOFTDEP("pre: governor_vim4");
++#endif
++
+ 
+ /* One GPU; cache the latest vendor DVFS window without sampling on read. */
+ static u32 last_utilisation;

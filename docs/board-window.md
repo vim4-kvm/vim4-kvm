@@ -85,6 +85,10 @@ snapshot只读缓存，无查看器时503不代表采集故障；receiver创建o
 SSH使用开发环境免密 `sudo -n`，脚本通过 `python3 -c`，没有密码/heredoc混用。
 
 `return-baseline`重启而不打断autoboot，再验证原5.15身份/所有证明文件、服务、UDC与视频。
+只发起一次正常重启，SSH/服务就绪有界等待；失败保留UART和proof，不自动反复重启或热重绑网卡。
+5.15就绪还要求manager/HDMI active。返回后的release、真实build ID和保护文件逐项严格比较。
+cmdline仅单独审阅`reboot_mode=normal`与`reboot_mode=watchdog_reboot`之间的变化，记录前后值；
+其余token及顺序必须完全一致。未知reason只允许原样不变，重复reason或新增/删除reason均拒绝。
 无原始proof时拒绝恢复。默认启动必须事先确认为5.15；本工具不修改默认项来修正错误配置。
 批次脚本应在EXIT trap中安排恢复，并为恢复预留时间；不能靠finally保证硬锁恢复。
 

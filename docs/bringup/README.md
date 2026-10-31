@@ -17,6 +17,12 @@
 
 ## 2026-10-31
 
+- [uhd5完整封包、正常回退与正式推广阻塞](2026-10-31-kbase-r12-package.md) — kernel gpu board deployment
+- [kbase r11厂商live DVFS策略与配对复测](2026-10-31-kbase-r11-policy.md) — kernel gpu board video
+- [kbase uhd5、payload目录修复与默认性能门禁](2026-10-31-kbase-r10-uhd5.md) — kernel gpu board video
+- [kbase r6 DMA追平、平台二分与thermal绑定](2026-10-31-kbase-r6-window.md) — kernel gpu board video
+- [kbase r9外部模块验证与队列候选目录冲突](2026-10-31-kbase-r9-queue.md) — kernel gpu board audit
+- [kbase r7默认调频离线候选与等锁超时](2026-10-31-kbase-r7-offline.md) — kernel gpu audit
 - [uhd4正式完整构建、短烟测与队列工具修正](2026-10-31-uhd4-formal-smoke.md) — kernel board video hdr npu gpu deployment
 - [uhd4正式准备与旧heavy锁阻塞，未上板](2026-10-31-uhd4-formal-preparation.md) — kernel deployment
 - [HDR2双向恢复分解、uhd4r3细采样与长尾门禁](2026-10-31-hdr2-recovery.md) — kernel board video hdr application npu gpu
@@ -25,6 +31,11 @@
 
 ## 2026-10-30
 
+- [kbase r5零fault、WC heaps与三栈配对](2026-10-30-kbase-r5-window.md) — kernel gpu board video
+- [kbase GBM缺少DMA heap与Vulkan DEVICE_LOST](2026-10-30-kbase-r4-window.md) — kernel gpu board video
+- [kbase r3零WARN加载、EGL设备失败与助手恢复](2026-10-30-kbase-r3-window.md) — kernel gpu board video
+- [kbase首窗WARN门禁失败与5.15回退](2026-10-30-kbase-window.md) — kernel gpu board video
+- [7.3 kbase外部模块离线候选与ABI检查](2026-10-30-kbase-offline.md) — kernel gpu audit packaging
 - [HDR2a5产品DMA恢复、逐代退休与4K60门禁](2026-10-30-hdr2a5-window.md) — kernel board video hdr application
 - [HDR2a3的VUI、色差、4K60与退休/产品恢复余项](2026-10-30-hdr2a3-window.md) — kernel board video hdr
 - [HDR2a2的MCP、4K60与VUI/色准余项](2026-10-30-hdr2a2-window.md) — kernel board video hdr

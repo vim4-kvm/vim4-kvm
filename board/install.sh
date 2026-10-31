@@ -19,6 +19,7 @@ if [ ! -e /etc/default/vim4-wave5-monitor ]; then
     install -D -m 0644 vim4-wave5-monitor.conf /etc/default/vim4-wave5-monitor
 fi
 install -D -m 0755 vim4-kvm-run /usr/libexec/vim4-kvm-run
+install -D -m 0755 ../packaging/kbase/run.py /usr/lib/vim4-kvm/python/vim4gpu.py
 install -D -m 0755 ../packaging/kernel-edge/one-kvm-edge-prepare /usr/libexec/vim4-mainline-prepare
 install -D -m 0755 ../packaging/kernel-edge/one-kvm-edge-usb-prepare /usr/libexec/vim4-mainline-gadget-prepare
 pd_binary=$(mktemp)

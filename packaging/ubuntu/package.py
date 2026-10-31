@@ -91,6 +91,7 @@ if [ "${1:-}" = configure ]; then /usr/libexec/vim4-logging; fi
     copy(ROOT / 'board/vim4-wave5-monitor.conf', stage, 'etc/default/vim4-wave5-monitor', 0o644)
     for name in ('vim4-board-runtime', 'vim4-kvm-run'):
         copy(ROOT / 'board' / name, stage, 'usr/libexec/' + name, 0o755)
+    copy(ROOT / 'packaging/kbase/run.py', stage, 'usr/lib/vim4-kvm/python/vim4gpu.py', 0o755)
     copy(ROOT / 'packaging/kernel-edge/one-kvm-edge-prepare', stage, 'usr/libexec/vim4-mainline-prepare', 0o755)
     copy(ROOT / 'packaging/kernel-edge/one-kvm-edge-usb-prepare', stage, 'usr/libexec/vim4-mainline-gadget-prepare', 0o755)
     copy(ROOT / 'tools/rootfs-policy.py', stage, 'usr/sbin/vim4-rootfs-policy', 0o755)

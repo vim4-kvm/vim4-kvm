@@ -1,0 +1,183 @@
+diff --git a/drivers/gpu/arm/midgard/mali_kbase_config_defaults.h b/drivers/gpu/arm/midgard/mali_kbase_config_defaults.h
+index 640a088..ba42de9 100644
+--- a/drivers/gpu/arm/midgard/mali_kbase_config_defaults.h
++++ b/drivers/gpu/arm/midgard/mali_kbase_config_defaults.h
+@@ -30,6 +30,10 @@
+ /* Include mandatory definitions per platform */
+ #include <mali_kbase_config_platform.h>
+ 
++#ifndef KBASE_PLATFORM_MAX_CLOCKS
++#define KBASE_PLATFORM_MAX_CLOCKS BASE_MAX_NR_CLOCKS_REGULATORS
++#endif
++
+ enum {
+ 	/* Use unrestricted Address ID width on the AXI bus. */
+ 	KBASE_AID_32 = 0x0,
+diff --git a/drivers/gpu/arm/midgard/mali_kbase_core_linux.c b/drivers/gpu/arm/midgard/mali_kbase_core_linux.c
+--- a/drivers/gpu/arm/midgard/mali_kbase_core_linux.c
++++ b/drivers/gpu/arm/midgard/mali_kbase_core_linux.c
+@@ -4959,7 +4964,7 @@ int power_control_init(struct kbase_device *kbdev)
+ 	 * Any other error is ignored and the driver will continue
+ 	 * operating with a partial initialization of clocks.
+ 	 */
+-	for (i = 0; i < BASE_MAX_NR_CLOCKS_REGULATORS; i++) {
++	for (i = 0; i < KBASE_PLATFORM_MAX_CLOCKS; i++) {
+ 		kbdev->clocks[i] = of_clk_get(kbdev->dev->of_node, i);
+ 		if (IS_ERR(kbdev->clocks[i])) {
+ 			err = PTR_ERR(kbdev->clocks[i]);
+@@ -6176,10 +6179,8 @@ static const struct dev_pm_ops kbase_pm_ops = {
+ };
+ 
+ #if IS_ENABLED(CONFIG_OF)
+-static const struct of_device_id kbase_dt_ids[] = { { .compatible = "arm,malit6xx" },
+-						    { .compatible = "arm,mali-midgard" },
+-						    { .compatible = "arm,mali-bifrost" },
+-						    { .compatible = "arm,mali-valhall" },
++static const struct of_device_id kbase_dt_ids[] = {
++	{ .compatible = "khadas,vim4-mali-kbase-r44p0" },
+ 						    { /* sentinel */ } };
+ MODULE_DEVICE_TABLE(of, kbase_dt_ids);
+ #endif
+@@ -6238,7 +6239,6 @@ MODULE_LICENSE("GPL");
+ MODULE_VERSION(MALI_RELEASE_NAME " (UK version " \
+ 		__stringify(BASE_UK_VERSION_MAJOR) "." \
+ 		__stringify(BASE_UK_VERSION_MINOR) ")");
+-MODULE_SOFTDEP("pre: memory_group_manager");
+ MODULE_INFO(import_ns, "DMA_BUF");
+ 
+ #define CREATE_TRACE_POINTS
+diff --git a/drivers/gpu/arm/midgard/platform/vim4/Kbuild b/drivers/gpu/arm/midgard/platform/vim4/Kbuild
+new file mode 100644
+index 0000000..9acf2c7
+--- /dev/null
++++ b/drivers/gpu/arm/midgard/platform/vim4/Kbuild
+@@ -0,0 +1 @@
++mali_kbase-y += platform/vim4/platform.o
+diff --git a/drivers/gpu/arm/midgard/platform/vim4/mali_kbase_config_platform.h b/drivers/gpu/arm/midgard/platform/vim4/mali_kbase_config_platform.h
+new file mode 100644
+index 0000000..ac3b042
+--- /dev/null
++++ b/drivers/gpu/arm/midgard/platform/vim4/mali_kbase_config_platform.h
+@@ -0,0 +1,12 @@
++/* SPDX-License-Identifier: GPL-2.0 */
++extern struct kbase_platform_funcs_conf vim4_platform_funcs;
++int kbase_platform_dvfs_event(struct kbase_device *kbdev, u32 utilisation,
++			      u32 gl_share, u32 cl_share[2]);
++#define PLATFORM_FUNCS (&vim4_platform_funcs)
++#define KBASE_PLATFORM_MAX_CLOCKS 1
++#define KBASE_SIMPLE_COOLING 1
++#define POWER_MANAGEMENT_CALLBACKS NULL
++#define POWER_MODEL_CALLBACKS NULL
++#define CLK_RATE_TRACE_OPS NULL
++#define GPU_SPEED_FUNC NULL
++#define CPU_SPEED_FUNC NULL
+diff --git a/drivers/gpu/arm/midgard/platform/vim4/platform.c b/drivers/gpu/arm/midgard/platform/vim4/platform.c
+new file mode 100644
+index 0000000..015f8f5
+--- /dev/null
++++ b/drivers/gpu/arm/midgard/platform/vim4/platform.c
+@@ -0,0 +1,104 @@
++// SPDX-License-Identifier: GPL-2.0
++#include <mali_kbase.h>
++#include <mali_kbase_config_defaults.h>
++#include <linux/clk.h>
++#include <linux/pm_runtime.h>
++#include <linux/reset.h>
++#include <linux/device.h>
++
++int meson_gpu_fault;
++int meson_gpu_data_invalid_count;
++MODULE_DESCRIPTION("Mali r44p0 UK 11.39 for VIM4");
++
++/* One GPU; cache the latest vendor DVFS window without sampling on read. */
++static u32 last_utilisation;
++
++struct vim4_platform {
++	struct class *mpgpu;
++	struct reset_control *reset;
++	struct clk *bus;
++};
++
++int kbase_platform_dvfs_event(struct kbase_device *kbdev, u32 utilisation,
++			      u32 gl_share, u32 cl_share[2])
++{
++	WRITE_ONCE(last_utilisation, utilisation);
++	return 0;
++}
++
++static ssize_t utilization_show(const struct class *class,
++				const struct class_attribute *attr, char *buf)
++{
++	return sysfs_emit(buf, "%u\n", READ_ONCE(last_utilisation));
++}
++static CLASS_ATTR_RO(utilization);
++
++static int vim4_init(struct kbase_device *kbdev)
++{
++	struct vim4_platform *platform;
++	int err;
++
++	platform = devm_kzalloc(kbdev->dev, sizeof(*platform), GFP_KERNEL);
++	if (!platform)
++		return -ENOMEM;
++	platform->reset = devm_reset_control_array_get_exclusive(kbdev->dev);
++	if (IS_ERR(platform->reset))
++		return PTR_ERR(platform->reset);
++	platform->bus = devm_clk_get(kbdev->dev, "bus");
++	if (IS_ERR(platform->bus))
++		return PTR_ERR(platform->bus);
++	/* T7 must not reset its domain between jobs. Hold it until removal. */
++	pm_runtime_enable(kbdev->dev);
++	err = pm_runtime_resume_and_get(kbdev->dev);
++	if (err < 0) {
++		pm_runtime_disable(kbdev->dev);
++		return err;
++	}
++	err = clk_prepare_enable(platform->bus);
++	if (err)
++		goto power_off;
++	err = reset_control_deassert(platform->reset);
++	if (err) {
++		clk_disable_unprepare(platform->bus);
++		goto power_off;
++	}
++	kbdev->platform_context = platform;
++	WRITE_ONCE(last_utilisation, 0);
++	platform->mpgpu = class_create("mpgpu");
++	if (IS_ERR(platform->mpgpu)) {
++		err = PTR_ERR(platform->mpgpu);
++		goto reset_bus;
++	}
++	err = class_create_file(platform->mpgpu, &class_attr_utilization);
++	if (err) {
++		class_destroy(platform->mpgpu);
++		goto reset_bus;
++	}
++	return 0;
++
++reset_bus:
++	reset_control_assert(platform->reset);
++	clk_disable_unprepare(platform->bus);
++power_off:
++	pm_runtime_put_sync(kbdev->dev);
++	pm_runtime_disable(kbdev->dev);
++	return err;
++}
++
++static void vim4_term(struct kbase_device *kbdev)
++{
++	struct vim4_platform *platform = kbdev->platform_context;
++
++	class_remove_file(platform->mpgpu, &class_attr_utilization);
++	class_destroy(platform->mpgpu);
++
++	reset_control_assert(platform->reset);
++	clk_disable_unprepare(platform->bus);
++	pm_runtime_put_sync(kbdev->dev);
++	pm_runtime_disable(kbdev->dev);
++}
++
++struct kbase_platform_funcs_conf vim4_platform_funcs = {
++	.platform_init_func = vim4_init,
++	.platform_term_func = vim4_term,
++};

@@ -1,12 +1,17 @@
 #!/bin/sh
 # Keep platform ownership in the same units on both installed kernels.
 set -eu
-case "$(uname -r)" in
+kernel=$(uname -r)
+if [ "${1:-}" = check-kernel ]; then
+    kernel=${2:?Expected kernel release}
+fi
+case "$kernel" in
     5.15.*) mainline=0 ;;
-    7.3.0-rc7-vim4kvm-uhd1+|7.3.0-vim4kvm-uhd1+|7.3.0-vim4kvm-uhd2+|7.3.0-vim4kvm-uhd2-nodebug+|7.3.0-vim4kvm-uhd3+|7.3.0-vim4kvm-uhd4+|7.3.0-vim4kvm-npu1+|7.3.0-vim4kvm-npu2+|7.3.0-vim4kvm-npu3+|7.3.0-vim4kvm-npu4+) mainline=1 ;;
+    7.3.0-rc7-vim4kvm-uhd1+|7.3.0-vim4kvm-uhd1+|7.3.0-vim4kvm-uhd2+|7.3.0-vim4kvm-uhd2-nodebug+|7.3.0-vim4kvm-uhd3+|7.3.0-vim4kvm-uhd4+|7.3.0-vim4kvm-uhd5+|7.3.0-vim4kvm-npu1+|7.3.0-vim4kvm-npu2+|7.3.0-vim4kvm-npu3+|7.3.0-vim4kvm-npu4+) mainline=1 ;;
     *) echo 'No validated VIM4 platform for this kernel' >&2; exit 1 ;;
 esac
 case "${1:-}" in
+    check-kernel) printf '%s\n' "$mainline"; exit 0 ;;
     audio-route)
         [ "$mainline" = 0 ] || exit 0
         exec /usr/bin/amixer -q -D hw:AMLAUGESOUND cset 'name=TDMIN_B source select' hdmirx
