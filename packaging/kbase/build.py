@@ -86,6 +86,7 @@ def main():
     for name in patches:
         with (packaging / name).open() as patch:
             run('git', 'apply', '-', cwd=source, stdin=patch)
+    run('python3', str(packaging / 'check-semantics.py'), str(source))
     abi(source, output / 'abi-candidate.txt')
     if (output / 'abi-vendor.txt').read_bytes() != (output / 'abi-candidate.txt').read_bytes():
         raise ValueError('UK payload layout or ioctl encoding changed')
@@ -109,6 +110,25 @@ def main():
     staged_module = output / 'stage/lib/modules' / release / 'extra/mali_kbase.ko'
     staged_module.parent.mkdir(parents=True)
     shutil.copyfile(module, staged_module)
+    runtime_files = {
+        'usr/libexec/vim4-board-runtime': packaging.parents[1] / 'board/vim4-board-runtime',
+        'usr/libexec/vim4-kvm-run': packaging.parents[1] / 'board/vim4-kvm-run',
+        'usr/lib/vim4-kvm/python/vim4gpu.py': packaging / 'run.py',
+        'usr/libexec/vim4-mainline-prepare': packaging.parent / 'kernel-edge/one-kvm-edge-prepare',
+        'usr/libexec/vim4-mainline-gadget-prepare': packaging.parent / 'kernel-edge/one-kvm-edge-usb-prepare',
+    }
+    for name, path in runtime_files.items():
+        target = output / 'runtime' / name
+        target.parent.mkdir(parents=True, exist_ok=True)
+        shutil.copyfile(path, target)
+        target.chmod(0o755)
+    run('sh', str(runtime_files['usr/libexec/vim4-board-runtime']), 'check-kernel', release)
+    (output / 'runtime-files.json').write_text(json.dumps(
+        {name: sha(path) for name, path in runtime_files.items()}, indent=2) + '\n')
+    probes = output / 'probes'
+    probes.mkdir()
+    for name in ('run.py', 'clpeak-subset.py'):
+        shutil.copyfile(packaging / name, probes / name)
     dtb = output / 'candidate.dtb'
     shutil.copyfile(args.dtb, dtb)
     gpu = '/soc/bus@fe000000/gpu@400000'
@@ -118,6 +138,7 @@ def main():
     run('fdtput', '-t', 's', str(dtb), gpu, 'compatible', 'khadas,vim4-mali-kbase-r44p0')
     run('fdtput', '-d', str(dtb), gpu, 'mali-supply')
     manifest = {'vendor': VENDOR, 'kernel': KERNEL, 'boardTested': False,
+                'runtimeManifestSha256': sha(output / 'runtime-files.json'),
                 'moduleSha256': sha(module),
                 'patches': {name: sha(packaging / name) for name in patches},
                 'dtPatchSha256': sha(packaging / '0004-dt-candidate.patch'),

@@ -25,7 +25,7 @@ PiKVM smoke 可用 `PIKVM_CDP` 接入专用测试 Chrome；结束时关闭测试
 
 | 入口 | 运行位置 | 影响 | 用途 | 文档 |
 |---|---|---|---|---|
-| packaging/kbase/build.py、run.py、check-style.py、resolve-egl.c | build/style：ARM64 VM；resolve：ARM64宿主；run：板 | build/style/resolve无硬件访问；run占GPU（取决于命令） | 按series构建与ABI/风格门禁；离线EGL符号来源对照；逐进程私有ICD或EGL前缀 | [kbase后备候选](gpu-kbase-7x.md)、[r2集成](gpu-kbase-integration.md) |
+| packaging/kbase/build.py、run.py、check-style.py、check-semantics.py、clpeak-subset.py、resolve-egl.c | build/check：宿主/ARM64 VM；run/CL：板 | build/check/resolve无硬件访问；run/CL占GPU | 按series构建与ABI/语义/风格门禁；运行时快照、私有ICD/EGL前缀；CL延迟/SP分项限时 | [kbase后备候选](gpu-kbase-7x.md)、[r2集成](gpu-kbase-integration.md) |
 | tools/memory-bench.c、memory-bench.py | C：Linux ARM64编译；runner：Linux/板 | 独占CPU/内存/tmpfs；无频率写入、部署、HID | 单核强制绑定、逐段实际CPU/每核频率、多尺寸分布与fault，≤3分钟、采温度并恢复亲和 | [内存拷贝审查](memory-copy-audit.md)、[绑核门禁与配置草案](nodebug-performance-gate.md) |
 | tools/gpu-diagnose.py、gpu-cl-map.c | 板；CL工具先ARM64编译 | 独占GPU；诊断器可临时锁频/PM/profiling并恢复；不写电压、不ptrace | 自有子进程fdinfo/周期/忙闲估计、trans_stat与CPU；小buffer CL map复现 | [GPU性能复核](gpu-performance-diagnosis.md) |
 | packaging/gpu/（含 compiler-compare.sh、corpus-check.sh、corpus-report.py、gpu-probe.c） | Docker ARM64；probe：板 | 构建无；probe占GPU | 固定输入与shader-db统计；probe的GPU_DUMP_PATH可在计时外保存512×512 RGBA做逐字节对照 | [GPU运行时](bringup/2026-10-30-gpu-runtime.md)、[回跳修复与门禁](gpu-loop-repair.md) |

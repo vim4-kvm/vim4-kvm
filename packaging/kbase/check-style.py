@@ -16,7 +16,7 @@ for name in [*(packaging / 'series').read_text().splitlines(), '0004-dt-candidat
     diagnostics = re.findall(r'^(ERROR|WARNING|CHECK):(\w+): (.*)$', result.stdout, re.M)
     for level, code, message in diagnostics:
         allowed = (
-            name == '0001-kernel-api.patch' and code == 'LINUX_VERSION_CODE'
+            name in ('0001-kernel-api.patch', '0005-runtime-api.patch') and code == 'LINUX_VERSION_CODE'
             or name == '0001-kernel-api.patch' and code == 'CAMELCASE'
             and message in ('Avoid CamelCase: <__SetPageMovable>',
                             'Avoid CamelCase: <__ClearPageMovable>')

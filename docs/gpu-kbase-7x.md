@@ -1,5 +1,8 @@
 # VIM4 7.3 kbase 后备候选
 
+[r3离线修复与新窗口门禁](gpu-kbase-repair.md)修正timer/workqueue及生命周期问题，
+新增运行时快照与CL分项预算；编译/宿主门禁通过，尚未再次上板。后续窗口以该页清单为准。
+
 [首个上板窗口](bringup/2026-10-30-kbase-window.md)已完成：/dev/mali0出现，但workqueue/hrtimer
 新增WARN，运行时助手也拒绝候选；已回5.15。候选不能用于产品或继续性能验收，需先离线修复。
 

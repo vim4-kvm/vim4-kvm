@@ -49,6 +49,8 @@ case "$(uname -r)" in
         unset GST_V4L2_PREFER_CONTIGUOUS
         unset LD_LIBRARY_PATH
         unset VK_ICD_FILENAMES
+        unset VK_DRIVER_FILES OCL_ICD_VENDORS LD_PRELOAD
+        unset __EGL_VENDOR_LIBRARY_FILENAMES LIBGL_DRIVERS_PATH
         # Match the validated mainline runtime's higher-capacity CPU group.
         taskset -pc 0-3 "$$" >/dev/null
         ;;
@@ -57,9 +59,19 @@ esac
 # GStreamer caches device-specific V4L2 factories. Rediscover after a reboot,
 # driver update or app switch; do not delete another running application's cache.
 rm -f "$GST_REGISTRY"
+run_app() {
+    # Video stays on Wave5; GPU userspace follows the bound GPU driver.
+    if [ "$VIM4_VIDEO_BACKEND" = wave5 ]; then
+        driver=$(readlink /sys/bus/platform/devices/fe400000.gpu/driver 2>/dev/null || true)
+        if [ "${driver##*/}" = mali ]; then
+            exec /usr/bin/python3 /usr/lib/vim4-kvm/python/vim4gpu.py --graphics direct -- "$@"
+        fi
+    fi
+    exec "$@"
+}
 case "$app" in
-    nanokvm) exec /opt/vim4-nanokvm/NanoKVM-Server ;;
-    jetkvm) exec /opt/vim4-jetkvm/jetkvm ;;
-    onekvm) exec /opt/vim4-onekvm/one-kvm --data-dir "$state" --address 127.0.0.1 --port 8081 --auth-mode managed ;;
-    pikvm) exec /usr/libexec/vim4-pikvm-run ;;
+    nanokvm) run_app /opt/vim4-nanokvm/NanoKVM-Server ;;
+    jetkvm) run_app /opt/vim4-jetkvm/jetkvm ;;
+    onekvm) run_app /opt/vim4-onekvm/one-kvm --data-dir "$state" --address 127.0.0.1 --port 8081 --auth-mode managed ;;
+    pikvm) run_app /usr/libexec/vim4-pikvm-run ;;
 esac
