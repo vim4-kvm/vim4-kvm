@@ -307,7 +307,7 @@ def ready(host, timeout=120, expected=None, old_boot=None):
 assert platform.release()==EXPECTED if EXPECTED else True
 assert pathlib.Path('/proc/sys/kernel/random/boot_id').read_text().strip()!=OLD if OLD else True
 services=['one-kvm','vim4-kvm-gadget']
-if platform.release().startswith('5.15.'):services.append('vim4-kvm-hdmi')
+if platform.release().startswith('5.15.'):services+=['vim4-kvm-hdmi','vim4-manager']
 for service in services:
  subprocess.run(['systemctl','is-active','--quiet',service],check=True)
 assert any(p.read_text().strip()=='configured' for p in pathlib.Path('/sys/class/udc').glob('*/state'))
@@ -321,6 +321,23 @@ print('ready')
             last = exc
             time.sleep(1)
     raise TimeoutError('SSH/services/UDC/One-KVM frames not ready: ' + str(last))
+
+
+def verify_baseline(expected, actual):
+    """Only the audited firmware reboot reason may vary across a normal reboot."""
+    if any(actual.get(k) != expected.get(k) for k in ('release', 'build_id', 'files')):
+        raise RuntimeError('baseline release/build ID/protected files differ')
+    def split(command):
+        tokens = command.split()
+        reason = [t for t in tokens if t.startswith('reboot_mode=')]
+        if len(reason) != 1 or reason[0] not in ('reboot_mode=normal', 'reboot_mode=watchdog_reboot'):
+            raise RuntimeError('unreviewed or duplicate reboot_mode')
+        return [t for t in tokens if not t.startswith('reboot_mode=')], reason[0]
+    before, reason_before = split(expected['cmdline'])
+    after, reason_after = split(actual['cmdline'])
+    if before != after:
+        raise RuntimeError('baseline command line differs outside reboot_mode')
+    return dict(before=reason_before, after=reason_after)
 
 
 def receiver(url, seconds, local_ip=None):
@@ -367,7 +384,7 @@ def validate_bundle(bundle):
         return plan
 
 
-def boot(host, device, directory, plan=None):
+def boot(host, device, directory, plan=None, baseline_release=None):
     uart = load('board_uart', ROOT / 'tools/uart-run.py')
     old_boot = ssh(host, 'cat /proc/sys/kernel/random/boot_id').strip()
     mac = None
@@ -412,7 +429,7 @@ def boot(host, device, directory, plan=None):
                 rebooter.wait(timeout=3)
         os.close(fd)
         (directory / ('uart-' + str(time.time_ns()) + '.log')).write_bytes(output)
-    ready(host, expected=plan['release'] if plan else None, old_boot=old_boot)
+    ready(host, expected=plan['release'] if plan else baseline_release, old_boot=old_boot)
 
 
 def main():
@@ -558,9 +575,12 @@ m.stage(BUNDLE,retained_baseline=PROOF)
         proof = json.loads((directory / 'baseline-proof.json').read_text())
         if identity(args.host, list(proof['files']))['files'] != proof['files']:
             raise ValueError('default files changed; refuse automatic reboot')
-        boot(args.host, args.device, directory)
-        if identity(args.host, list(proof['files'])) != proof:
-            raise RuntimeError('baseline release or boot-file verification failed')
+        # One normal reboot only. A timeout must retain the proof and fail;
+        # never hide an Ethernet/DHCP failure behind an automatic reboot loop.
+        boot(args.host, args.device, directory, baseline_release=proof['release'])
+        actual = identity(args.host, list(proof['files']))
+        reasons = verify_baseline(proof, actual)
+        save(directory / 'returned-baseline-identity.json', dict(identity=actual, reboot_mode=reasons))
         cleanup = '/tmp/board-window-cleanup.py'
         subprocess.run(['scp', str(ROOT / 'packaging/kernel-edge/display-once.py'),
                         args.host + ':' + cleanup], check=True)

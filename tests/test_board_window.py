@@ -23,6 +23,20 @@ loader.exec_module(window)
 
 
 class WindowTests(unittest.TestCase):
+    def test_baseline_reboot_reason_does_not_relax_other_identity(self):
+        before = dict(release='5.15.test', build_id='a'*40, files={'/boot/Image':'hash'},
+                      cmdline='root=PARTUUID=abcd reboot_mode=watchdog_reboot rw')
+        after = dict(before, cmdline='root=PARTUUID=abcd reboot_mode=normal rw')
+        window.verify_baseline(before, after)
+        invalid = [dict(after, build_id='b'*40), dict(after, files={}),
+                   dict(after, release='7.3.test'),
+                   dict(after, cmdline=after['cmdline']+' init=/other'),
+                   dict(after, cmdline=after['cmdline']+' reboot_mode=normal'),
+                   dict(after, cmdline=after['cmdline'].replace('normal','unknown'))]
+        for value in invalid:
+            with self.subTest(value=value), self.assertRaises(RuntimeError):
+                window.verify_baseline(before, value)
+
     def test_large_inventory_cleanup_fits_linux_exec_argument(self):
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)

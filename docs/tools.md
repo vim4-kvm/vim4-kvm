@@ -59,7 +59,7 @@ PiKVM smoke 可用 `PIKVM_CDP` 接入专用测试 Chrome；结束时关闭测试
 
 | 入口 | 运行位置 | 影响 | 用途 | 文档 |
 |---|---|---|---|---|
-| packaging/kbase/build.py、run.py、check-style.py、check-semantics.py、check-heaps.py、clpeak-subset.py、dma-profile.py、default-parity.py、resolve-egl.c、heaps/vim4_kbase_heaps.c、dvfs/governor_vim4.c | build/check：宿主/ARM64 VM；run/CL/模块：板 | build/check/resolve无硬件访问；run/CL占GPU，parity独占GPU并只读温度，profile临时创建具名trace实例/事件，heap占候选CMA，governor调GPU频率 | series与WC heap构建、ABI/语义/风格门禁；私有ICD/EGL前缀；CL限时、同空闲历史配对、DMA逐提交边界与cache事件 | [kbase后备候选](gpu-kbase-7x.md)、[MMU与heap合同](gpu-kbase-mmu-heaps.md) |
+| packaging/kbase/build.py、package.py、run.py、check-style.py、check-semantics.py、check-heaps.py、clpeak-subset.py、dma-profile.py、default-parity.py、resolve-egl.c、heaps/vim4_kbase_heaps.c、dvfs/governor_vim4.c | build/package/check：宿主/ARM64 VM；run/CL/模块：板 | build/package/check/resolve无硬件访问；run/CL占GPU，parity独占GPU并只读温度，profile临时创建具名trace实例/事件，heap占候选CMA，governor调GPU频率 | 外部模块构建与完整包封存（无blob）、ABI/语义/风格门禁；私有ICD/EGL前缀；CL限时及同协议配对 | [kbase后备候选](gpu-kbase-7x.md)、[MMU与heap合同](gpu-kbase-mmu-heaps.md) |
 | tools/mali-dma-probe.c、mali-dma-probe.comp、mali-cl-probe.c | ARM64 容器编译 → 板 | GPU计算与临时内存；不操作采集/编码 | VK原生device-local/host-visible、DMA heap导入和逐字校验；可选16KiB二分；CL单kernel支持同类分配。均须外部timeout | [kbase候选](gpu-kbase-7x.md) |
 | tools/gbm-scanout-probe.c | ARM64容器编译→板 | 独占显示；保持当前mode，恢复原FB，不抢DRM master | GBM线性XR24 BO导出/导入并短时SetCrtc；布局/恢复信息不足则拒绝，需与采集并行验收并带timeout | [kbase候选](gpu-kbase-7x.md) |
 | tools/board-queue | Mac / Linux，同一协调主机 | 仅本机锁与票据；run 的影响由命令决定 | FIFO、≤30分钟租约、旧 lockf 兼容、sampling 与 heavy 协调 | [短窗口](board-window.md) |
