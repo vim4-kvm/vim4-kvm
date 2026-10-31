@@ -18,7 +18,8 @@ if any(flag not in help_text for flag, _ in tests):
     parser.error('clpeak lacks the required selective test options')
 results = []
 for flag, budget in tests:
-    command = ['timeout', '-k', '5', str(budget), sys.executable,
+    # Python may leave sys.executable empty when launched through a clean PATH.
+    command = ['timeout', '-k', '5', str(budget), sys.executable or '/usr/bin/python3',
                str(Path(__file__).with_name('run.py')), '--graphics', 'icd', '--',
                str(args.clpeak), '--platform', '0', '--device', '0', flag]
     start = time.monotonic()

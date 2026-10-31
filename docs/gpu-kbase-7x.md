@@ -1,5 +1,8 @@
 # VIM4 7.3 kbase 后备候选
 
+[最新诊断窗口](bringup/2026-10-30-kbase-r4-window.md)：GBM被缺失的system-uncached/heap-gfx阻断；
+VK1.3.231与CL3.0设备查询通过，但VK DMA执行DEVICE_LOST/MMU fault。已回5.15，不能推广候选。
+
 [r3再次上板](bringup/2026-10-30-kbase-r3-window.md)：零WARN加载及KVM助手启动路径通过，
 首个GBM/EGL设备探针退出2，按门禁回5.15；尚无候选API或性能通过数据。
 

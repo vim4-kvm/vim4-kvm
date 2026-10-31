@@ -1,4 +1,7 @@
 /* SPDX-License-Identifier: MIT */
+#define _GNU_SOURCE
+#include <dlfcn.h>
+#include <errno.h>
 #include <EGL/egl.h>
 #include <EGL/eglext.h>
 #include <GLES2/gl2.h>
@@ -10,6 +13,23 @@
 #include <string.h>
 #include <time.h>
 #include <unistd.h>
+
+static int fail(const char *stage)
+{
+ int saved_errno = errno;
+ const char *loader = dlerror();
+ fprintf(stderr, "%s failed: errno=%d (%s), EGL=0x%x GL=0x%x dlerror=%s\n",
+         stage, saved_errno, strerror(saved_errno), eglGetError(), glGetError(),
+         loader ? loader : "none");
+ return 2;
+}
+
+static void origin(const char *name, const void *symbol)
+{
+ Dl_info info;
+ fprintf(stderr, "%s provider=%s\n", name,
+         dladdr(symbol, &info) ? info.dli_fname : "unknown");
+}
 
 static double now(void)
 {
@@ -25,12 +45,23 @@ static GLuint shader(GLenum type, const char *source)
  glShaderSource(s, 1, &source, NULL);
  glCompileShader(s);
  glGetShaderiv(s, GL_COMPILE_STATUS, &ok);
- if (!ok) { char log[2048]; glGetShaderInfoLog(s, sizeof(log), NULL, log); fprintf(stderr, "%s\n", log); exit(2); }
+ if (!ok) { char log[2048]; glGetShaderInfoLog(s, sizeof(log), NULL, log); fprintf(stderr, "glCompileShader: %s\n", log); exit(fail("glCompileShader")); }
  return s;
 }
 
 int main(int argc, char **argv)
 {
+ char *end = NULL;
+ double requested = argc > 1 ? strtod(argv[1], &end) : 10;
+ if (argc > 3 || (argc > 1 && (!end || *end || end == argv[1] ||
+     !(requested >= 0 && requested <= 60)))) {
+  fprintf(stderr, "Usage: gpu-probe SECONDS[0..60] [DRM_DEVICE]\n");
+  return 2;
+ }
+ fprintf(stderr, "uid=%u euid=%u LD_LIBRARY_PATH=%s\n", getuid(), geteuid(),
+         getenv("LD_LIBRARY_PATH") ? getenv("LD_LIBRARY_PATH") : "(unset)");
+ origin("eglInitialize", eglInitialize); origin("glGetString", glGetString);
+ origin("gbm_create_device", gbm_create_device);
  const EGLint config_attrs[] = {EGL_SURFACE_TYPE, EGL_PBUFFER_BIT, EGL_RENDERABLE_TYPE, EGL_OPENGL_ES2_BIT, EGL_RED_SIZE, 8, EGL_GREEN_SIZE, 8, EGL_BLUE_SIZE, 8, EGL_NONE};
  const EGLint gbm_attrs[] = {EGL_RENDERABLE_TYPE, EGL_OPENGL_ES2_BIT, EGL_RED_SIZE, 8, EGL_GREEN_SIZE, 8, EGL_BLUE_SIZE, 8, EGL_NONE};
  const EGLint surface_attrs[] = {EGL_WIDTH, 512, EGL_HEIGHT, 512, EGL_NONE};
@@ -41,19 +72,27 @@ int main(int argc, char **argv)
  /* Some vendor libraries support GBM but not Mesa's surfaceless platform. */
  if (argc > 2) {
   drm_fd = open(argv[2], O_RDWR | O_CLOEXEC);
-  if (drm_fd < 0 || !(gbm = gbm_create_device(drm_fd))) return 2;
+  if (drm_fd < 0) return fail("open DRM device");
+  errno = 0;
+  gbm = gbm_create_device(drm_fd);
+  if (!gbm) return fail("gbm_create_device");
   PFNEGLGETPLATFORMDISPLAYEXTPROC get_display = (PFNEGLGETPLATFORMDISPLAYEXTPROC)eglGetProcAddress("eglGetPlatformDisplayEXT");
-  if (!get_display) return 2;
+  if (!get_display) return fail("eglGetProcAddress(eglGetPlatformDisplayEXT)");
   display = get_display(EGL_PLATFORM_GBM_KHR, gbm, NULL);
+  if (display == EGL_NO_DISPLAY) return fail("eglGetPlatformDisplayEXT");
  }
  EGLConfig config;
  EGLint count, major, minor;
- if (!eglInitialize(display, &major, &minor)) { fprintf(stderr, "eglInitialize: 0x%x\n", eglGetError()); return 2; }
+ if (!eglInitialize(display, &major, &minor)) return fail("eglInitialize");
  printf("EGL %d.%d vendor=%s extensions=%s\n", major, minor, eglQueryString(display, EGL_VENDOR), eglQueryString(display, EGL_EXTENSIONS));
- if (!eglBindAPI(EGL_OPENGL_ES_API) || !eglChooseConfig(display, gbm ? gbm_attrs : config_attrs, &config, 1, &count) || count != 1) return 2;
+ if (!eglBindAPI(EGL_OPENGL_ES_API)) return fail("eglBindAPI");
+ if (!eglChooseConfig(display, gbm ? gbm_attrs : config_attrs, &config, 1, &count)) return fail("eglChooseConfig");
+ if (count != 1) return fail("eglChooseConfig(count != 1)");
  EGLSurface surface = gbm ? EGL_NO_SURFACE : eglCreatePbufferSurface(display, config, surface_attrs);
  EGLContext context = eglCreateContext(display, config, EGL_NO_CONTEXT, context_attrs);
- if (!eglMakeCurrent(display, surface, surface, context)) return 2;
+ if (!gbm && surface == EGL_NO_SURFACE) return fail("eglCreatePbufferSurface");
+ if (context == EGL_NO_CONTEXT) return fail("eglCreateContext");
+ if (!eglMakeCurrent(display, surface, surface, context)) return fail("eglMakeCurrent");
  printf("GL vendor=%s renderer=%s version=%s extensions=%s\n", glGetString(GL_VENDOR), glGetString(GL_RENDERER), glGetString(GL_VERSION), glGetString(GL_EXTENSIONS));
  GLuint framebuffer = 0, texture = 0;
  if (gbm) {
@@ -62,7 +101,7 @@ int main(int argc, char **argv)
   glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, 512, 512, 0, GL_RGBA, GL_UNSIGNED_BYTE, NULL);
   glGenFramebuffers(1, &framebuffer); glBindFramebuffer(GL_FRAMEBUFFER, framebuffer);
   glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, texture, 0);
-  if (glCheckFramebufferStatus(GL_FRAMEBUFFER) != GL_FRAMEBUFFER_COMPLETE) return 2;
+  if (glCheckFramebufferStatus(GL_FRAMEBUFFER) != GL_FRAMEBUFFER_COMPLETE) return fail("glCheckFramebufferStatus");
  }
  GLuint program = glCreateProgram();
  glAttachShader(program, shader(GL_VERTEX_SHADER, "attribute vec2 position;void main(){gl_Position=vec4(position,0.,1.);}"));
@@ -80,7 +119,10 @@ int main(int argc, char **argv)
  glLinkProgram(program);
  GLint ok;
  glGetProgramiv(program, GL_LINK_STATUS, &ok);
- if (!ok) return 2;
+ if (!ok) {
+  char log[2048]; glGetProgramInfoLog(program, sizeof(log), NULL, log);
+  fprintf(stderr, "glLinkProgram: %s\n", log); return fail("glLinkProgram");
+ }
  glUseProgram(program);
  const GLfloat vertices[] = {-1,-1,3,-1,-1,3};
  glVertexAttribPointer(0, 2, GL_FLOAT, GL_FALSE, 0, vertices);
@@ -108,7 +150,7 @@ int main(int argc, char **argv)
   end_query = (PFNGLENDQUERYEXTPROC)eglGetProcAddress("glEndQueryEXT");
   query_result = (PFNGLGETQUERYOBJECTUI64VEXTPROC)eglGetProcAddress("glGetQueryObjectui64vEXT");
   delete_query = (PFNGLDELETEQUERIESEXTPROC)eglGetProcAddress("glDeleteQueriesEXT");
-  if (!gen_query || !begin_query || !end_query || !query_result || !delete_query) return 2;
+  if (!gen_query || !begin_query || !end_query || !query_result || !delete_query) return fail("timer query entrypoints");
   gen_query(1, &query);
   /* Discard disjoint events during context creation and warmup. */
   GLint initial_disjoint = 0;
@@ -118,7 +160,7 @@ int main(int argc, char **argv)
  double draw_seconds = 0, finish_seconds = 0;
  struct timespec cpu_start, cpu_end;
  clock_gettime(CLOCK_PROCESS_CPUTIME_ID, &cpu_start);
- double start = now(), seconds = argc > 1 ? atof(argv[1]) : 10;
+ double start = now(), seconds = requested;
  do {
   if (query) begin_query(GL_TIME_ELAPSED_EXT, query);
   double a = now(); glDrawArrays(GL_TRIANGLES, 0, 3);
@@ -138,14 +180,14 @@ int main(int argc, char **argv)
  if (dump_path) {
   size_t bytes = 512u * 512u * 4u;
   unsigned char *pixels = malloc(bytes);
-  if (!pixels) return 2;
+  if (!pixels) return fail("allocate pixel dump");
   glReadPixels(0, 0, 512, 512, GL_RGBA, GL_UNSIGNED_BYTE, pixels);
   FILE *dump = fopen(dump_path, "wb");
-  if (!dump) { free(pixels); return 2; }
+  if (!dump) { free(pixels); return fail("open pixel dump"); }
   int failed = fwrite(pixels, 1, bytes, dump) != bytes;
   if (fclose(dump)) failed = 1;
   free(pixels);
-  if (failed) return 2;
+  if (failed) return fail("write pixel dump");
  }
  GLenum error = glGetError();
  printf("size=512x512 frames=%u seconds=%.6f pixel=%u,%u,%u,%u gl_error=%u\n", frames, elapsed, pixel[0], pixel[1], pixel[2], pixel[3], error);
@@ -164,5 +206,7 @@ int main(int argc, char **argv)
  eglTerminate(display);
  if (gbm) gbm_device_destroy(gbm);
  if (drm_fd >= 0) close(drm_fd);
- return error != GL_NO_ERROR || pixel[1] < 120 || pixel[1] > 136 || pixel[2] < 120 || pixel[2] > 136;
+ if (error != GL_NO_ERROR || pixel[1] < 120 || pixel[1] > 136 || pixel[2] < 120 || pixel[2] > 136)
+  return fail("render pixel/GL validation");
+ return 0;
 }
