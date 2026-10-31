@@ -46,6 +46,8 @@ def main():
                         str(tree / 'sys/v4l2/gstv4l2object.c')], check=True)
     subprocess.run([sys.executable, str(recipe / 'test_gstreamer_p010.py'),
                     str(tree / 'sys/v4l2/gstv4l2object.c')], check=True)
+    subprocess.run([sys.executable, str(recipe / 'test_gstreamer_pq.py'),
+                    str(tree / 'sys/v4l2/gstv4l2object.c')], check=True)
     subprocess.run(['meson', 'setup', 'build', '-Dauto_features=disabled', '-Dv4l2=enabled',
                     '-Dtests=disabled', '-Dexamples=disabled', '-Ddoc=disabled', '-Dnls=disabled'],
                    cwd=tree, check=True)

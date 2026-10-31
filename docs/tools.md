@@ -12,6 +12,7 @@
 
 `packaging/kernel-edge/test_gstreamer_p010.py`：Linux宿主编译实际fourcc/caps函数，
 回放原生P010源与编码器caps交集；不打开设备，私有插件构建自动运行。
+`test_gstreamer_pq.py`另以实际探测函数验证PQ元组接受、拒绝及改写后的能力边界。
 
 `packaging/kernel-edge/package-hdr10.py`：离线组装已完成的内核payload、两项私有GStreamer
 插件和One-KVM为唯一名称归档；校验内核哈希/ARM64 ELF/子仓干净提交，生成candidate.json及

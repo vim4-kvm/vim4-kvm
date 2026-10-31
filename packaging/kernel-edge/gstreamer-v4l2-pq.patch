@@ -1,0 +1,32 @@
+--- a/sys/v4l2/gstv4l2object.c
++++ b/sys/v4l2/gstv4l2object.c
+@@ -2656,6 +2656,29 @@
+       if (colorspace == req_cspace) {
+         if (gst_v4l2_object_get_colorspace (v4l2object, &fmt, &cinfo))
+           gst_v4l2_object_fill_colorimetry_list (&list, &cinfo);
++        if (colorspace == V4L2_COLORSPACE_BT2020 &&
++            pixelformat == V4L2_PIX_FMT_P010) {
++          /* Default BT.2020 transfer is not PQ. Probe the complete native HDR
++           * tuple, and advertise only what the device actually retains. */
++          struct v4l2_format pq_fmt = fmt;
++
++          if (V4L2_TYPE_IS_MULTIPLANAR (v4l2object->type)) {
++            pq_fmt.fmt.pix_mp.xfer_func = V4L2_XFER_FUNC_SMPTE2084;
++            pq_fmt.fmt.pix_mp.ycbcr_enc = V4L2_YCBCR_ENC_BT2020;
++            pq_fmt.fmt.pix_mp.quantization = V4L2_QUANTIZATION_LIM_RANGE;
++          } else {
++            pq_fmt.fmt.pix.xfer_func = V4L2_XFER_FUNC_SMPTE2084;
++            pq_fmt.fmt.pix.ycbcr_enc = V4L2_YCBCR_ENC_BT2020;
++            pq_fmt.fmt.pix.quantization = V4L2_QUANTIZATION_LIM_RANGE;
++          }
++          if (gst_v4l2_object_try_fmt (v4l2object, &pq_fmt) == 0 &&
++              gst_v4l2_object_get_colorspace (v4l2object, &pq_fmt, &cinfo) &&
++              cinfo.range == GST_VIDEO_COLOR_RANGE_16_235 &&
++              cinfo.matrix == GST_VIDEO_COLOR_MATRIX_BT2020 &&
++              cinfo.transfer == GST_VIDEO_TRANSFER_SMPTE2084 &&
++              cinfo.primaries == GST_VIDEO_COLOR_PRIMARIES_BT2020)
++            gst_v4l2_object_fill_colorimetry_list (&list, &cinfo);
++        }
+         if (colorspace == V4L2_COLORSPACE_REC709) {
+           /* A mapped SDR capture can retain 709 primaries/matrix while using
+            * sRGB transfer. Ask the device, rather than inventing support. */

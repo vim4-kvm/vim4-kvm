@@ -112,10 +112,10 @@ tested_module_sha256 = "14334de2f4c8c5cac5009467e53e2e3212c68b6a03912a22e8ed9311
 [gstreamer]
 source_url = "https://gstreamer.freedesktop.org/src/gst-plugins-good/gst-plugins-good-1.24.2.tar.xz"
 source_sha256 = "6e347c72d4b8b2886d890ffe9f6767a9edb02f201588e8c3a572dcd08d9852bd"
-patches = ["gstreamer-v4l2-offset.patch", "gstreamer-v4l2-pool-lifetime.patch", "gstreamer-v4l2-eos-buffer.patch", "gstreamer-v4l2-orphan-order.patch", "gstreamer-v4l2-contiguous-capture.patch", "gstreamer-v4l2-visible-crop.patch", "../hdr2-pq/gstreamer-srgb-probe.patch", "../hdr2-pq/gstreamer-encoded-size.patch", "gstreamer-v4l2-p010.patch"]
+patches = ["gstreamer-v4l2-offset.patch", "gstreamer-v4l2-pool-lifetime.patch", "gstreamer-v4l2-eos-buffer.patch", "gstreamer-v4l2-orphan-order.patch", "gstreamer-v4l2-contiguous-capture.patch", "gstreamer-v4l2-visible-crop.patch", "../hdr2-pq/gstreamer-srgb-probe.patch", "../hdr2-pq/gstreamer-encoded-size.patch", "gstreamer-v4l2-p010.patch", "gstreamer-v4l2-pq.patch"]
 tested_plugin_sha256 = "ffee02fbed8a0d2bb5bfd4fb695b2ea6f8cbd4f5654072f7727d52a658c41d76"
-# Offline r6 fixes P010 bare caps after r3 hardware negotiation failed.
-candidate_plugin_sha256 = "a4f2b009deb8ffed68af674a420df299e19775d7698a18c39b8d97c11f399f1f"
+# r8 also probes the retained native PQ tuple; final hardware gate pending.
+candidate_plugin_sha256 = "41f89b8ba9c0b985b03f7f12dfda8aca1b056177c2f79ff52ad94048c0d898b9"
 
 [armbian]
 url = "https://github.com/armbian/build.git"
