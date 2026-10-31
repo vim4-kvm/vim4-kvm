@@ -1,5 +1,7 @@
 # HDR2 PQ/HLG完整候选与统一验收
 
+最新[a2窗口](bringup/2026-10-30-hdr2a2-window.md)已恢复MCP并完成4K60 DMA编码；SPS无VUI、固定图色差及零告警门禁仍阻断正式合入。
+
 用户已于2026-10-30确认VDIN HDR2硬件主路径。此次仅离线，不访问板子、不push。
 后续[真实PQ窗口](bringup/2026-10-30-hdr2-unified-window.md)：PQ路径与局部像素通过，Wave5 caps协商阻断；
 7.3切换及HLG仍未测，不推广候选。用户已另授权MCP准备M6及推送通过验证的特性分支。

@@ -2,16 +2,16 @@
 """Seal a completed HDR2 kernel build; never install or access a board."""
 import hashlib
 import json
+import re
 from pathlib import Path
 import shutil
 import subprocess
 import sys
 
 source, output, stage = [Path(arg).resolve() for arg in sys.argv[1:]]
-release = '7.3.0-vim4kvm-uhd3-hdr2a1+'
-actual = (output / 'include/config/kernel.release').read_text().strip()
-if actual != release:
-    raise SystemExit(f'Unexpected release: {actual}')
+release = (output / 'include/config/kernel.release').read_text().strip()
+if not re.fullmatch(r'7\.3\.0-vim4kvm-uhd3-hdr2a[1-9][0-9]*\+', release):
+    raise SystemExit(f'Unexpected release: {release}')
 stage.mkdir()  # Never merge a new build into an existing candidate.
 subprocess.run(['make', '-C', str(source), f'O={output}', 'ARCH=arm64',
                 'modules_install', 'INSTALL_MOD_STRIP=1', f'INSTALL_MOD_PATH={stage}'], check=True)

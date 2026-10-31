@@ -1,6 +1,6 @@
 # HDR2 PQ diagnostics and integrated HLG candidate
 
-Apply the four mail patches in filename order with `git am` in a new kernel
+Apply the first four mail patches in filename order with `git am` in a new kernel
 worktree based on `f71b5c6289cb3254690e57292327e73514f0715f`.
 They reproduce `vim4-hdr2-pq@58b7ecfeb6838` in
 `~/src/linux-7.3-hdr2-pq` on the build VM. They have not been pushed or sent.
@@ -38,6 +38,27 @@ merged modules with the board-tested PQ-only payload: HLG adds an RX export and
 requires matching modules. The subsequent complete hdr2a1 build and its output
 contract are tracked in the [unified candidate](../../docs/hdr2-unified-candidate.md).
 No production kernel configuration was edited.
+
+The subsequent `0005-ethernet-alias.patch` is the isolated network change
+(`vim4-hdr2-network@3c993b4adeec3`, based on the board-tested PQ diagnostic).
+It also applies after the four integration patches. It does not by itself
+override the bootloader's placeholder MAC: record `/sys/class/net/eth0/address`
+on 5.15, then pass that value and the candidate build ID to `ram_command.py`.
+The printed command only sets U-Boot RAM environment; never add saveenv.
+The a2 board record explains why the MAC/alias pair is required.
+
+`build-gst.sh NEW_WORK_DIR` builds the pinned private plugin with the existing
+ordered six V4L2 patches, then applies `gstreamer-srgb-probe.patch`. It requires
+Meson, Ninja and GStreamer/udev development packages. `test_gst_color.py` executes
+the actual caps probe with accepting, canonicalizing and rejecting devices;
+both single-plane and multiplanar interfaces are checked. Point the test process
+at the resulting private directory via GST_PLUGIN_PATH and a private registry.
+Do not replace the system plugin. No new kernel-edge configuration is involved.
+
+`chart.html` is a static grayscale/colour-gradient target. `compare_frames.py`
+compares complete visible NV21/NV12 frames, handles vendor tail padding and
+requires equal whole-frame counts. Browser overlays and the pointer must still
+be controlled; statistics alone do not establish absolute colour accuracy.
 
 Board limitations, source status, CRCs, artifacts and rollback checks are in the
 [PQ window record](../../docs/bringup/2026-10-30-hdr2-pq-window.md).

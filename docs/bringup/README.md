@@ -17,6 +17,7 @@
 
 ## 2026-10-30
 
+- [HDR2a2的MCP、4K60与VUI/色准余项](2026-10-30-hdr2a2-window.md) — kernel board video hdr
 - [MCP开启PQ与HDR2编码协商阻断](2026-10-30-hdr2-unified-window.md) — kernel board video hdr
 - [HDR2 PQ的SDR基线与受限shadow诊断](2026-10-30-hdr2-pq-window.md) — kernel board video hdr
 - [uhd3 GPU候选与HDR离屏窗口A](2026-10-30-gpu-hdr-window-a.md) — kernel board video benchmark

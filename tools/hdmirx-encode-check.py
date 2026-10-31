@@ -105,6 +105,18 @@ def capture(args):
         raise ValueError(f'cannot create GStreamer pipeline: {error}') from error
     encoder = pipeline.get_by_name('encoder')
     if args.encoder == 'wave5':
+        def capture_allocation(pad, info):
+            query = info.get_query()
+            if query and query.type == Gst.QueryType.ALLOCATION:
+                # The bridge owns its downstream queue. Keep its allocation
+                # proposals out of the capture pool and let V4L2 select its
+                # native DMA pool from the driver's minimum buffer count.
+                return Gst.PadProbeReturn.HANDLED
+            return Gst.PadProbeReturn.OK
+
+        pipeline.get_by_name('source').get_static_pad('src').get_peer().add_probe(
+            Gst.PadProbeType.QUERY_DOWNSTREAM, capture_allocation)
+    if args.encoder == 'wave5':
         encoder_device = Path(encoder.get_property('device'))
         encoder_name = Path('/sys/class/video4linux', encoder_device.name, 'name').read_text().strip()
         if encoder_name != 'C&M Wave5 VPU encoder':
