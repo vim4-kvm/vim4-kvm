@@ -1,14 +1,17 @@
 # Independent capture broker: ownership core
 
-`leases.py` is the offline first part of the application-independent capture
-service. It does not open V4L2, KMS or ALSA devices, carry DMA-buf fds over IPC,
-or change a running application. It is not a passthrough executable yet.
+`service.py` owns the V4L2 queue and serves versioned seqpacket/SCM_RIGHTS
+clients. `devices.c` supplies actual Linux V4L2 and DRM calls; `devices.py`
+binds them. `leases.py` tracks ownership and `ipc.py` transports exported fds.
+This is an experimental implementation, not a hardware-qualified service.
 
 The intended owner is a persistent board service, rather than a KVM application's
 pipeline. Its local KMS subscriber exists whenever manager requests passthrough;
 remote subscribers can come and go without stopping capture or local scanout.
-Every call runs on the service's single event loop. File descriptor registration,
-reader/fence polling and device ioctls belong to adapters still to be implemented.
+Every call runs on the service's single event loop. Explicit display mode requires
+connector/CRTC/plane IDs and a connected 60Hz mode. Automatic hotplug/source-change,
+HDR mapping readback and production capability qualification remain incomplete;
+manager deliberately reports unsupported. The unit is opt-in and not installed.
 
 Adapter contract:
 
@@ -50,3 +53,21 @@ Run the deterministic core tests from the main repository:
 ```sh
 python3 -m unittest discover -s tests -p test_passthrough_broker.py
 ```
+
+Build the Linux library with GStreamer-independent libdrm development files:
+
+```sh
+cc -shared -fPIC -O2 -Wall -Wextra -Werror devices.c -o libpassthrough73.so $(pkg-config --cflags --libs libdrm)
+```
+
+An installer must copy the Python directory and library to
+`/usr/lib/vim4-kvm/passthrough73`, install the unit, and explicitly provision
+`/etc/vim4-kvm/broker.env` with `BROKER_CAPTURE` pointing at the qualified VDIN node.
+None of those operations is performed by this repository's offline tests.
+The default unit serves capture clients only; display requires explicit CLI IDs.
+One-KVM enables its AppSrc input only with `VIM4_BROKER_SOCKET` set to capture.sock.
+No fallback may open a second capture queue if that connection fails.
+
+AudioOwner implements bounded PCM queues and an in-place RX recovery callback;
+actual ALSA opens, TX continuous-silence configuration and clock drift correction
+are still adapter work. No audio playback is performed by the tests.

@@ -76,6 +76,7 @@ PiKVM smoke 可用 `PIKVM_CDP` 接入专用测试 Chrome；结束时关闭测试
 | packaging/kernel/promote.py | 板（root，双锁） | 改默认；可删除显式淘汰的未登记旧产物 | 将已运行验证的厂商候选登记至标准 vim4boot 和透传资格清单；可备份回退或显式不备份，不重启 | [原生 HDR 交付](bringup/2026-10-25-native-hdr-dual-path.md) |
 | tools/passthrough-monitor.py | 板（只读硬件，写指定日志） | 不控制硬件 | 默认十分钟观察 TX 重设、RX 失锁与扫描输出停顿；排除无输入/主动关闭，不代替光学黑屏检测 | [HDR 输出开关](bringup/2026-10-25-passthrough-hdr-switch.md) |
 | packaging/kernel-edge/passthrough-preflight.py | 离线 Mac / VM，需 fdtget | 只读内核源码与 DTB | 检查 native/VD1/TX 声卡、simplefb、GPU 互斥和实际 split VCBUS 资源重叠；通过不代表运行支持 | [7.3 透传计划](passthrough-73-plan.md) |
+| packaging/passthrough73/service.py | Linux，需设备库 | 独占 V4L2；显式 display 时占 KMS | 实验常驻采集与 SCM_RIGHTS 分发；输出资格未完成时 manager 保持 unsupported；不自动安装启用 | [离线移植](passthrough-73-offline.md) |
 | tools/rootfs-policy.py | 板（root，随包安装） | 改启动项 | 根分区 ordered/commit=5，重启生效 | [Ubuntu 构建](ubuntu-build.md) |
 
 ## 板级服务源码（由 board/install.sh 或组件包安装）

@@ -1,0 +1,21 @@
+[Unit]
+Description=VIM4 independent capture broker (experimental)
+After=systemd-udev-settle.service
+ConditionPathExists=/etc/vim4-kvm/broker.env
+
+[Service]
+Type=simple
+User=khadas
+Group=video
+RuntimeDirectory=vim4-passthrough
+RuntimeDirectoryMode=0750
+EnvironmentFile=/etc/vim4-kvm/broker.env
+Environment=PYTHONPATH=/usr/lib/vim4-kvm
+ExecStart=/usr/bin/python3 -m passthrough73.service --capture ${BROKER_CAPTURE}
+Restart=on-failure
+RestartSec=5
+NoNewPrivileges=true
+TimeoutStopSec=10
+
+[Install]
+WantedBy=multi-user.target

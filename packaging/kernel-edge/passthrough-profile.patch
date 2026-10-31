@@ -1,0 +1,43 @@
+From a62fa298a57e82af3f721ad9ff10950a23549d9b Mon Sep 17 00:00:00 2001
+From: localhost-copilot <318096335+localhost-copilot@users.noreply.github.com>
+Date: Sat, 31 Oct 2026 22:15:40 +0800
+Subject: [PATCH] arm64: dts: amlogic: add explicit VIM4 passthrough candidate
+ profile
+
+Signed-off-by: localhost-copilot <318096335+localhost-copilot@users.noreply.github.com>
+---
+ arch/arm64/boot/dts/amlogic/Makefile                     | 1 +
+ .../amlogic-t7-a311d2-khadas-vim4-passthrough.dts        | 9 +++++++++
+ 2 files changed, 10 insertions(+)
+ create mode 100644 arch/arm64/boot/dts/amlogic/amlogic-t7-a311d2-khadas-vim4-passthrough.dts
+
+diff --git a/arch/arm64/boot/dts/amlogic/Makefile b/arch/arm64/boot/dts/amlogic/Makefile
+index 129ddb9bd137a..4d5d69387429e 100644
+--- a/arch/arm64/boot/dts/amlogic/Makefile
++++ b/arch/arm64/boot/dts/amlogic/Makefile
+@@ -19,6 +19,7 @@ dtb-$(CONFIG_ARCH_MESON) += amlogic-t7-a311d2-khadas-vim4-display-m1.dtb
+ dtb-$(CONFIG_ARCH_MESON) += amlogic-t7-a311d2-khadas-vim4-display-m2.dtb
+ dtb-$(CONFIG_ARCH_MESON) += amlogic-t7-a311d2-khadas-vim4-display-m3.dtb
+ dtb-$(CONFIG_ARCH_MESON) += amlogic-t7-a311d2-khadas-vim4-display-m3-video.dtb
++dtb-$(CONFIG_ARCH_MESON) += amlogic-t7-a311d2-khadas-vim4-passthrough.dtb
+ dtb-$(CONFIG_ARCH_MESON) += meson-a1-ad401.dtb
+ dtb-$(CONFIG_ARCH_MESON) += meson-a1-ad402.dtb
+ dtb-$(CONFIG_ARCH_MESON) += meson-axg-jethome-jethub-j100.dtb
+diff --git a/arch/arm64/boot/dts/amlogic/amlogic-t7-a311d2-khadas-vim4-passthrough.dts b/arch/arm64/boot/dts/amlogic/amlogic-t7-a311d2-khadas-vim4-passthrough.dts
+new file mode 100644
+index 0000000000000..a409569fa6cd2
+--- /dev/null
++++ b/arch/arm64/boot/dts/amlogic/amlogic-t7-a311d2-khadas-vim4-passthrough.dts
+@@ -0,0 +1,9 @@
++// SPDX-License-Identifier: (GPL-2.0+ OR MIT)
++/*
++ * Application-independent capture/display candidate. This deliberately uses
++ * the shared M3-video resource definition: VDIN owns only its split VCBUS
++ * windows, DRM owns VD1 and ENC2, and ASoC owns the independent TX card.
++ * Building this profile does not select it for boot or qualify passthrough.
++ * Keep the deployed M0 profile unchanged until coexistence is validated.
++ */
++#include "amlogic-t7-a311d2-khadas-vim4-display-m3-video.dts"
+-- 
+2.43.0
+
