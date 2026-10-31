@@ -1,5 +1,7 @@
 # HDR2a3：VUI、色差、buffer退休与CMA离线修复
 
+后续[a3完整构建和上板](bringup/2026-10-30-hdr2a3-window.md)：VUI、固定图p99、诊断4K60与无内核WARN通过；inode关联假设错误、One-KVM非DMA恢复仍阻断合入。以下保留此前离线设计快照。
+
 2026-10-30，承接[a2上板记录](bringup/2026-10-30-hdr2a2-window.md)。本轮未连接板子/MCP，未修改kbase工作树、正式配置或正式内核分支。
 用户已确认VDIN HDR2主路径。以下为待上板特性候选，**四项硬件门禁尚未复验，不建议并main/正式7.3**。
 

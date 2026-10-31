@@ -28,7 +28,9 @@ or been proposed upstream.
 
 Apply 0001 through 0010 in numeric order (0005 is described below).
 The [a3 decision and next window](../../docs/hdr2a3-offline.md) supersede the a1
-transfer-13 policy. No complete a3 Image/DTB/modules archive has been sealed yet.
+transfer-13 policy. A complete a3 archive has now been sealed and booted; see the
+[a3 window](../../docs/bringup/2026-10-30-hdr2a3-window.md). Retirement correlation
+and the product DMA recovery gate remain unpassed; do not promote the series.
 
 `hdr_status` is a read-only debugfs diagnostic, not a colour-control ABI. Its
 `profile_programmed` and `last_programmed_*` fields refer **only to the PQ
