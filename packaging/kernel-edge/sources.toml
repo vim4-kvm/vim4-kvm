@@ -1,6 +1,6 @@
 # Experimental kernel pins; the private GStreamer recipe below is also used
 # by the 5.15 One-KVM image builder.
-# PQ HDR2 + recovery approved; validated by the uhd4 RAM smoke.
+# uhd5 GPU minimal smoke approved; uhd4/Panfrost retained below.
 [kernel]
 url = "https://github.com/vim4-kvm/linux.git"
 branch = "vim4-kvm-7.3"
@@ -8,7 +8,7 @@ revision = "8bca939d6bbd3e4d91e9f23b812e920172c99b3d"
 tree = "0ce3bf8d9a1e57a97bdbaffa67610eceaddba579"
 upstream_url = "https://github.com/gregkh/linux.git"
 # Verified RAM build; retained /boot/edge is still uhd1. No artifact publication.
-# Evidence: docs/bringup/2026-10-31-uhd4-formal-smoke.md.
+# Evidence: docs/bringup/2026-10-31-uhd5-main-integration.md.
 upstream_tag = "v7.3"
 upstream_revision = "c03c1a14507dfaf8b856c2608f9ac216021fc222"
 
@@ -20,9 +20,63 @@ revision = "db848a5288019f0d651bc429e01d6f727720154b"
 features = ["vim4"]
 tested_binary_sha256 = "926535c630948d279f24004b6019f8424b2846ee13bc4045f3a475a71c492a10"
 
-# Complete matched build includes the former Wave5 and VDIN overlays.
-# build.sh defaults to edge.config; this build explicitly uses uhd4.config.
+# Approved GPU minimal smoke; no failed native-HDR candidate is included.
 [tested_build]
+release = "7.3.0-vim4kvm-uhd5+"
+localversion = "-vim4kvm-uhd5"
+image_source_revision = "8bca939d6bbd3e4d91e9f23b812e920172c99b3d"
+build_id = "90cc3dc2ddd1ad2562bf07e8de65f96eeb092a90"
+image_sha256 = "2cbe6ed9db6337d24468e5a73b17fbe78f769b5aa2490f0dcc17e08b94a93f66"
+uncompressed_image_sha256 = "2cbe6ed9db6337d24468e5a73b17fbe78f769b5aa2490f0dcc17e08b94a93f66"
+config_sha256 = "9dd8d44d56a68600fa9a9f2b5bed4a8b0fd3b1b727077bd4c12f683975216289"
+config_path = "uhd5.config"
+package_file = "uhd5-final-r12.tar.gz"
+package_sha256 = "174cf528c8e12a4fa71c5adbf42c95bc39ba987e4ba6133db7b5912e2da85b0b"
+modules_sha256 = "9bd3148e0c5e72a26f428aecc98a229441d5713393715bad2f71d60e6d0ec82e"
+module_count = 2341
+base_module_count = 2338
+external_module_count = 3
+module_btf = true
+module_symvers_sha256 = "5b1ea3f292a80bcbd507fb5e13b55204ee7ffe527ed895edc8962e03a997af38"
+vmlinux_btf_sha256 = "8afa7bcc52351993c3efebb2b5b42575c02bec5939cf6c9ac3f329a3b82087cc"
+board_dtb_path = "vim4.dtb"
+board_dtb_generator = "../kbase/build.py"
+board_dtb_sha256 = "0247cd50be9690d3925a4ea7c95dabb18f4ed045b9d5c1dda17b85abdabeddda"
+panfrost_dtb_path = "panfrost.dtb"
+panfrost_dtb_sha256 = "3b8b423f566ce8de11f4983672cdf8e94cec70b5c4abe2f29199931d41c19e30"
+framebuffer_console = true
+manifest_path = "../kbase/uhd5-manifest.json"
+manifest_sha256 = "4918334197a87f5ecd1e9e64e0e02041cb43d2f5ea46fe4f7932ef7e04bf3c10"
+runtime_proof_scope = "complete-package-inventory"
+runtime_descriptor = "../kbase/uhd5-runtime.json"
+runtime_files_sha256 = "7fec02e75f6b41d8906a3a717d472487a8978ce2ecec7a188aebe04e948ad85c"
+external_manifest_path = "../kbase/uhd5-external-manifest.json"
+external_manifest_sha256 = "4ceb6bd0a632c9c1da665a3812f9c4a860c5b021751024438fdcd5de7dd2101a"
+external_source_revision = "1f8c2d9dc105aa94efc6fa0885a9aed2b7605ee5"
+boot_method = "uboot-ram-once-private-modules"
+acceptance_scope = "user-approved-r12-gpu-minimal-smoke"
+evidence = "docs/bringup/2026-10-31-kbase-r12-package.md"
+
+[tested_build.external_modules]
+mali_kbase = "ace22d7c966cbe4bacb3608ffa63fcc9d2cdb0bbd8e5c818f8bc22a7367aa8d3"
+vim4_kbase_heaps = "4fea6f5fc709dbc50dbfa077069daccc47a73aaeecbca5dd2da3aae003a8da58"
+governor_vim4 = "dfc0e243f39c7117ce00bce5291a6c3034a957fcefcdbcdfc1ad24ff5b97b0be"
+
+[tested_build.module_build_ids]
+mali_kbase = "5e1bcc3d972b13c0168bbf4b83a9313a88d8b7b9"
+vim4_kbase_heaps = "3dc5fb0b4a844102f3e4643f75a86e295d9813c8"
+governor_vim4 = "b8b6fededd20abddba028f4061464ca58a8b2cdc"
+wave5 = "96f82a21b12bf0f586c753bb59b9427c8d2ea9be"
+t7_hdmirx = "0b9e8e26a89fad46e85453b3464025f13b6964d7"
+t7_vdin_test = "e8dcb90ccd4745550c35391a1c7c492244866f96"
+t7_jpeg = "ee4ac14f268fda20684f3aabd7b0d587b03989ef"
+crg_udc = "e7a69026a8cf50b25b5b34a85f6bc2b360de9087"
+dwmac_meson8b = "dc1eeb3862f6e0fafae2eab1ab0eabaa77cceb5a"
+panfrost = "de3f063220bf0f6e0f32b0f0081e78a4b56d9d8f"
+
+# Retained approved uhd4/Panfrost alternative.
+# build.sh defaults to edge.config; this build explicitly uses uhd4.config.
+[previous_tested_build]
 release = "7.3.0-vim4kvm-uhd4+"
 localversion = "-vim4kvm-uhd4"
 build_id = "ef3b8573007371472c73ef61ec352a20c00faee7"
@@ -44,7 +98,7 @@ wave5_module_sha256 = "5ff08860b7418a4b67ddf7ea7f4ea1078b6f7dae4025aa93b5af93db2
 boot_method = "uboot-ram-once-private-modules"
 runtime_proof_scope = "candidate-payload-inventory"
 
-[tested_build.loaded_module_build_ids]
+[previous_tested_build.loaded_module_build_ids]
 meson_ir = "55882bd9314e0f18a4c9212d8bfa3853b2c93139"
 rc_khadas = "645c2ae9816492ddb11f9ea36df8d9078b304c73"
 ir_nec_decoder = "f97b9c6624668e40486bf490daa6b8e7aed54130"

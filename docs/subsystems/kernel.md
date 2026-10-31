@@ -1,5 +1,9 @@
 # 内核与驱动
 
+GPU uhd5已按用户批准的r11/r12最小烟测范围登记正式来源锁，见
+[uhd5合入](../bringup/2026-10-31-uhd5-main-integration.md)。Image源码仍为8bca939，
+kbase为外部模块；保留uhd4/Panfrost，5.15仍默认，未部署或发布。原生HDR失败候选未混入此锁。
+
 VDIN HDR2主题候选uhd4完整构建见[集成门禁](../bringup/2026-10-31-hdr2-uhd4-gate.md)，
 [新PQ窗口](../bringup/2026-10-31-hdr2-mcp-ice-pq.md)已恢复MCP与接收、通过PQ/DMA/VUI/4K60；
 [uhd4r3恢复修复](../bringup/2026-10-31-hdr2-recovery.md)把双向中位数拉到约1.24秒，

@@ -1,9 +1,13 @@
-# VIM4 7.3 kbase 后备候选
+# VIM4 7.3 kbase 产品路径
+
+用户已批准按r11/r12通过的GPU最小烟测范围正式合入，来源锁与实际验收边界见
+[uhd5主线集成](bringup/2026-10-31-uhd5-main-integration.md)。保留Panfrost/Mesa与uhd4选项，
+不部署、不切5.15默认、不发布Release。下方各轮候选描述和失败结论为历史范围。
 
 [r11实测](bringup/2026-10-31-kbase-r11-policy.md)已补齐live厂商跳档/软件PP保持；
 默认七轮DMA/CL SP达到5.15，API/内存/温控/服务级4K60并行通过。
 恢复dma-coherent的负向DT在原生CL触发0x51；保持默认删除。
-[待审集成清单](gpu-kbase-uhd5-integration.md)保留回退DHCP恢复限制，不自行推广或改默认。
+[正式集成清单](gpu-kbase-uhd5-integration.md)保留负向故障回退DHCP未定位限制；正常候选回退已通过。
 
 当前为[uhd4基线上的uhd5候选](gpu-kbase-uhd5.md)，正式内核基线8bca939d6bbd3。
 [r10历史实测](bringup/2026-10-31-kbase-r10-uhd5.md)当时默认DMA中位数慢12.12%、CL SP低1.89%，
@@ -32,7 +36,7 @@ performance仅保留为显式调优选项，不能据此宣称产品性能/能�
 | thermal/并行 | 模拟96°C实测限频并恢复；驱动基准59.998fps、One-KVM实际4K60解码与连续GLES并发通过 |
 | 实际scanout / GBM→Wave5 | 新互操作能力未通过；非现有5.15默认视频路径，独立验收，不以PRIME handle成功替代 |
 
-已提供待审集成清单；回退DHCP恢复限制、系统睡眠与额外互操作范围仍需审阅，不自行改变默认GPU。
+已批准最小烟测合入；负向故障DHCP、系统睡眠与额外互操作仍为未验边界，不改变默认GPU。
 
 [r5窗口](bringup/2026-10-30-kbase-r5-window.md)：零fault，三API/六类内存与BO导入通过，
 GLES648 FPS、CL51µs/101.75 GFLOPS；DMA3.571ms落后5.15，GPU thermal绑定仍缺。
@@ -51,7 +55,7 @@ VK1.3.231与CL3.0设备查询通过，但VK DMA执行DEVICE_LOST/MMU fault；后
 [首个上板窗口](bringup/2026-10-30-kbase-window.md)已完成：/dev/mali0出现，但workqueue/hrtimer
 新增WARN，运行时助手也拒绝候选；已回5.15。候选不能用于产品或继续性能验收，需先离线修复。
 
-结论：**基本GPU执行与API已验证，产品parity未完成**。保留厂商 r44p0-01eac0、JM UK 11.39，
+结论：**已通过用户选择的GPU产品最小烟测；完整CTS和额外互操作未验**。保留厂商 r44p0-01eac0、JM UK 11.39，
 将内核 API 适配与 T7 平台层作为外部模块补丁维护；不向正式内核并入整棵 DDK。
 相同 libmali 实测保持 GLES3.2、Vulkan1.3.231、OpenCL设备/C3.0及扩展集合，
 但不代表CTS、完整DMA互操作或性能全量通过。当前 blob **不支持直接注册GLVND EGL vendor**。

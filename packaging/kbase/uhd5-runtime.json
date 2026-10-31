@@ -1,0 +1,55 @@
+{
+  "schema": 1,
+  "release": "7.3.0-vim4kvm-uhd5+",
+  "image_source_revision": "8bca939d6bbd3e4d91e9f23b812e920172c99b3d",
+  "build_id": "90cc3dc2ddd1ad2562bf07e8de65f96eeb092a90",
+  "package_sha256": "174cf528c8e12a4fa71c5adbf42c95bc39ba987e4ba6133db7b5912e2da85b0b",
+  "manifest": "uhd5-manifest.json",
+  "installed": false,
+  "default_boot": "5.15",
+  "profiles": {
+    "kbase": {
+      "dtb": "vim4.dtb",
+      "sha256": "0247cd50be9690d3925a4ea7c95dabb18f4ed045b9d5c1dda17b85abdabeddda",
+      "compatible": "khadas,vim4-mali-kbase-r44p0",
+      "blacklist": [
+        "panfrost"
+      ],
+      "modules": [
+        "vim4_kbase_heaps",
+        "governor_vim4",
+        "mali_kbase"
+      ],
+      "gpu_driver": "mali",
+      "wrapper": "/usr/libexec/vim4-kvm-run",
+      "gpu_wrapper": "/usr/lib/vim4-kvm/python/vim4gpu.py",
+      "egl": "private-prefix",
+      "vulkan": "private-icd",
+      "opencl": "private-icd"
+    },
+    "panfrost": {
+      "dtb": "panfrost.dtb",
+      "sha256": "3b8b423f566ce8de11f4983672cdf8e94cec70b5c4abe2f29199931d41c19e30",
+      "gpu_driver": "panfrost",
+      "userspace": "system-mesa"
+    }
+  },
+  "retained_alternative": "7.3.0-vim4kvm-uhd4+",
+  "blob": {
+    "provision_separately": true,
+    "sha256": "536ee80c17dc5c54e7c6ff029ca43270da8efc3fdc5b3aeb263f364419368494",
+    "uk": "11.39",
+    "glvnd_vendor": false
+  },
+  "validation": {
+    "accepted": "r12-gpu-minimal-smoke",
+    "unverified": [
+      "r12-NPU",
+      "r12-HDR2-query",
+      "manager-authenticated-response"
+    ],
+    "limitations": [
+      "r11-negative-dma-coherent-fault-DHCP-residual-cause-unknown"
+    ]
+  }
+}

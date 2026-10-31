@@ -1,7 +1,8 @@
 # 单板 FIFO 与短窗口
 
 编译先完成，持板不超过30分钟；同批候选链式 RAM 启动，最后回5.15。工具已在
-kbase uhd5 RAM窗口使用；新payload目录与真实build ID校验通过，cleanup修正仍待板测。
+kbase uhd5 RAM窗口使用；新payload目录、真实build ID校验及正常候选一次回5.15恢复通过，
+范围见[uhd5正式合入](bringup/2026-10-31-uhd5-main-integration.md)，不代表所有故障回退已修复。
 所有会话必须在同一协调主机共享 `/tmp/vim4-board-queue`；
 不同主机的 `/tmp` 不互通。Python入口无第三方依赖；浏览器接收/像素比较复用项目已有
 Node、Playwright与Chrome，配置见 [工具目录](tools.md)。

@@ -1,4 +1,7 @@
-# uhd5 kbase候选
+# uhd5 kbase构建与历史门禁
+
+当前已批准正式来源锁，见[主线集成记录](bringup/2026-10-31-uhd5-main-integration.md)。
+以下保留初次构建与r10历史过程；后续r11/r12结果及用户批准范围以上述记录为准。
 
 基线为正式uhd4内核8bca939d6bbd3e4d91e9f23b812e920172c99b3d，主仓470da38。
 外部r44p0/UK11.39补丁、WC heaps及五档governor保持独立，不把DDK并入内核树。
@@ -18,9 +21,9 @@ thermal emulation用于验证GPU zone跨95°C trip后cooling状态与实际频�
 
 ## 工具与证据
 
-独立工具分支board-window-payload-id@d82d429已push供审阅，未合入main。
+独立工具分支board-window-payload-id@d82d429已由用户审阅合入main（be81255）。
 它以namespace/payload_id区分不同模块/DT，真实kernel build_id仍负责PID1运行内核校验。
-本候选从该工具worktree运行board-window；kbase分支中的工具文件保持origin/main版本。
+初次候选从该工具worktree运行board-window；后续使用main版本，必要回退修复随本次合入。
 旧build-ID目录包与HDR/hdr10包保持原恢复/cleanup路径。
 工具最终回归：Mac/Linux各352项（14/18环境跳过）；
 覆盖同Image两payload、已有目录/符号链接拒绝、真实build ID不匹配和旧格式清理。
