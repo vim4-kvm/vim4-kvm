@@ -4,6 +4,10 @@ GPU方向**用户已于 2026-10-30 确认**：以Panfrost＋Mesa上游方式为�
 编译器工作暂停：GCM默认，完整修复系列显式选项；[可审阅邮件补丁](../packaging/gpu/upstream/README.md)仅本地整理，未对外发送。
 本轮离线，不访问板子，不改NPU文件、正式内核配置、视频服务或默认部署锁，不push。
 
+后续[窗口A及接口候选](bringup/2026-10-30-gpu-hdr-window-a.md)：原型已移至持久worktree并rebase main@14cc2b2；
+GPU候选基于f71b5c6289cb，独立uhd3-gpu1 release，去掉快轮询。颜色门禁通过，但7.3 4K/1080p分别仅12.74/54.61fps，未达目标。
+新增外部buffer导入/退休助手、唯一shader的Vulkan生成器及内核lease颜色快照；原始十位写出和生产交接仍未实现。
+
 ## 已有实现：不能把保真格式转换当作tone mapping
 
 | 已核实路径 | 实现证据与边界 |

@@ -17,6 +17,7 @@
 
 ## 2026-10-30
 
+- [uhd3 GPU候选与HDR离屏窗口A](2026-10-30-gpu-hdr-window-a.md) — kernel board video benchmark
 - [NPU与nodebug正式uhd3合入、回归及manager EDID部署](2026-10-30-uhd3-formal-regression.md) — kernel board video manager deployment
 - [nodebug两启动对门禁与绑核尺寸曲线](2026-10-30-nodebug-paired-gate.md) — kernel board benchmark video
 - [nodebug消除tmpfs写入差距与60fps回归](2026-10-30-nodebug-memory-window.md) — kernel board benchmark video

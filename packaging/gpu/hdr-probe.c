@@ -1,7 +1,11 @@
 /* SPDX-License-Identifier: MIT */
 #define _POSIX_C_SOURCE 200809L
 #include <EGL/egl.h>
+#include <EGL/eglext.h>
 #include <GLES3/gl31.h>
+#include <fcntl.h>
+#include <gbm.h>
+#include <unistd.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -38,9 +42,20 @@ int main(int argc, char **argv)
     char shader[16384]; size_t n=fread(shader,1,sizeof(shader)-1,f);
     require(fgetc(f)==EOF,"shader too large"); shader[n]=0; fclose(f);
     EGLDisplay display=eglGetDisplay(EGL_DEFAULT_DISPLAY);
+    struct gbm_device *gbm=NULL;
+    int drm_fd=-1;
+    const char *render_node=getenv("GPU_HDR_RENDER_NODE");
+    if (render_node) {
+        drm_fd=open(render_node,O_RDWR|O_CLOEXEC);
+        require(drm_fd>=0 && (gbm=gbm_create_device(drm_fd)),"GBM open failed");
+        PFNEGLGETPLATFORMDISPLAYEXTPROC platform=(PFNEGLGETPLATFORMDISPLAYEXTPROC)eglGetProcAddress("eglGetPlatformDisplayEXT");
+        require(platform!=NULL,"EGL platform API unavailable");
+        display=platform(EGL_PLATFORM_GBM_KHR,gbm,NULL);
+    }
     require(eglInitialize(display,NULL,NULL),"EGL initialization failed");
     require(eglBindAPI(EGL_OPENGL_ES_API),"EGL bind API failed");
     EGLint attrs[]={EGL_RENDERABLE_TYPE,EGL_OPENGL_ES3_BIT,EGL_SURFACE_TYPE,EGL_PBUFFER_BIT,EGL_NONE};
+    if (gbm) attrs[2]=EGL_NONE;
     EGLConfig config; EGLint count;
     require(eglChooseConfig(display,attrs,&config,1,&count) && count,"no ES3 config");
     EGLint context_attrs[]={EGL_CONTEXT_CLIENT_VERSION,3,EGL_NONE};
@@ -90,5 +105,7 @@ int main(int argc, char **argv)
     glDeleteBuffers(2,buffers); glDeleteProgram(program); glDeleteShader(cs);
     eglMakeCurrent(display,EGL_NO_SURFACE,EGL_NO_SURFACE,EGL_NO_CONTEXT);
     eglDestroyContext(display,ctx); eglTerminate(display);
+    if (gbm) gbm_device_destroy(gbm);
+    if (drm_fd>=0) close(drm_fd);
     return 0;
 }
