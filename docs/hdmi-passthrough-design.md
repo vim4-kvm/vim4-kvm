@@ -1,6 +1,7 @@
 # VIM4 HDMI IN → OUT：第二阶段设计草案
 
 本页定义第二阶段合同；当前实现进度见 [前置稳定性调查](bringup/2026-10-24-hdmi-passthrough.md)。
+基于正式 uhd4 的产品对齐差距、资源审计和新阶段门禁见 [7.3 透传计划](passthrough-73-plan.md)。
 前提是 [颜色闭环](display-color-vendor.md) 已在目标格式/量化范围下通过，且真实源与自环
 持续采集稳定；模式切换、零拷贝和音频不能掩盖颜色或采集失败。
 目标是同一 RX/VDIN NV12 帧同时送 DRM VD1 与 One-KVM，避免整帧 CPU 复制。
