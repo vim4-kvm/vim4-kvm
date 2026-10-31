@@ -1,15 +1,35 @@
 diff --git a/arch/arm64/boot/dts/amlogic/amlogic-t7-a311d2-khadas-vim4-kbase.dts b/arch/arm64/boot/dts/amlogic/amlogic-t7-a311d2-khadas-vim4-kbase.dts
 new file mode 100644
-index 0000000000000..5a811ac2c2de4
+index 0000000000000..de7deb680b71c
 --- /dev/null
 +++ b/arch/arm64/boot/dts/amlogic/amlogic-t7-a311d2-khadas-vim4-kbase.dts
-@@ -0,0 +1,9 @@
+@@ -0,0 +1,29 @@
 +// SPDX-License-Identifier: GPL-2.0
 +/* Candidate only: preserve the display M0 profile and all its peripherals. */
 +#include "amlogic-t7-a311d2-khadas-vim4-display-m0.dts"
 +
++/ {
++	reserved-memory {
++		kbase_gfx_cma: kbase-gfx-cma {
++			compatible = "shared-dma-pool";
++			reusable;
++			size = <0 0x08000000>;
++			alignment = <0 0x00400000>;
++			alloc-ranges = <0 0x10000000 0 0xe0000000>;
++		};
++	};
++
++	kbase-heaps {
++		compatible = "khadas,vim4-kbase-heaps";
++		memory-region = <&kbase_gfx_cma>;
++	};
++};
++
 +&gpu {
 +	compatible = "khadas,vim4-mali-kbase-r44p0";
++	/* Match the vendor DMA API maintenance and DDK ACE-Lite selection. */
++	/delete-property/ dma-coherent;
++	system-coherency = <0>;
 +	/* VDD_GPU stays at its existing always-on setting; no voltage scaling. */
 +	/delete-property/ mali-supply;
 +};

@@ -101,6 +101,15 @@ def main():
             'CONFIG_MALI_GATOR_SUPPORT=n', 'CONFIG_ANDROID=n', 'CONFIG_MALI_KUTF=n',
             'W=1', 'KCFLAGS=-Werror', '-j4', stdout=log, stderr=subprocess.STDOUT)
     module = source / DRIVER / 'mali_kbase.ko'
+    heaps = output / 'heaps'
+    run('python3', str(packaging / 'check-heaps.py'))
+    shutil.copytree(packaging / 'heaps', heaps)
+    with (output / 'heaps-build.log').open('w') as log:
+        run('make', '-C', str(args.kernel_build.resolve()), 'M=' + str(heaps),
+            'W=1', 'KCFLAGS=-Werror', '-j4', 'modules', stdout=log, stderr=subprocess.STDOUT)
+    heap_module = heaps / 'vim4_kbase_heaps.ko'
+    (output / 'heaps-modinfo.txt').write_text(subprocess.check_output(
+        ['modinfo', str(heap_module)], text=True))
     info = subprocess.check_output(['modinfo', str(module)], text=True)
     (output / 'modinfo.txt').write_text(info)
     if 'r44p0-01eac0 (UK version 11.39)' not in info:
@@ -110,6 +119,7 @@ def main():
     staged_module = output / 'stage/lib/modules' / release / 'extra/mali_kbase.ko'
     staged_module.parent.mkdir(parents=True)
     shutil.copyfile(module, staged_module)
+    shutil.copyfile(heap_module, staged_module.with_name(heap_module.name))
     runtime_files = {
         'usr/libexec/vim4-board-runtime': packaging.parents[1] / 'board/vim4-board-runtime',
         'usr/libexec/vim4-kvm-run': packaging.parents[1] / 'board/vim4-kvm-run',
@@ -137,9 +147,28 @@ def main():
         raise ValueError('Expected the retained T7 Panfrost DT')
     run('fdtput', '-t', 's', str(dtb), gpu, 'compatible', 'khadas,vim4-mali-kbase-r44p0')
     run('fdtput', '-d', str(dtb), gpu, 'mali-supply')
+    run('fdtput', '-d', str(dtb), gpu, 'dma-coherent')
+    run('fdtput', '-t', 'x', str(dtb), gpu, 'system-coherency', '0')
+    # A separate opt-in CMA pool; preserve every existing peripheral/phandle.
+    dts = subprocess.check_output(['dtc', '-I', 'dtb', '-O', 'dts', str(dtb)],
+                                  text=True, stderr=subprocess.DEVNULL)
+    phandle = max(int(x, 16) for x in re.findall(r'phandle = <0x([0-9a-f]+)>', dts)) + 1
+    pool = '/reserved-memory/kbase-gfx-cma'
+    run('fdtput', '-c', str(dtb), pool)
+    run('fdtput', '-t', 's', str(dtb), pool, 'compatible', 'shared-dma-pool')
+    for name, values in {'size': [0, 0x8000000], 'alignment': [0, 0x400000],
+                         'alloc-ranges': [0, 0x10000000, 0, 0xe0000000],
+                         'phandle': [phandle], 'reusable': []}.items():
+        run('fdtput', '-t', 'x', str(dtb), pool, name, *[format(x, 'x') for x in values])
+    run('fdtput', '-c', str(dtb), '/kbase-heaps')
+    run('fdtput', '-t', 's', str(dtb), '/kbase-heaps', 'compatible', 'khadas,vim4-kbase-heaps')
+    run('fdtput', '-t', 'x', str(dtb), '/kbase-heaps', 'memory-region', format(phandle, 'x'))
     manifest = {'vendor': VENDOR, 'kernel': KERNEL, 'boardTested': False,
                 'runtimeManifestSha256': sha(output / 'runtime-files.json'),
                 'moduleSha256': sha(module),
+                'heapModuleSha256': sha(heap_module),
+                'heapSources': {path.name: sha(path) for path in (packaging / 'heaps').iterdir()
+                                if path.is_file()},
                 'patches': {name: sha(packaging / name) for name in patches},
                 'dtPatchSha256': sha(packaging / '0004-dt-candidate.patch'),
                 'abiSha256': sha(output / 'abi-candidate.txt'),

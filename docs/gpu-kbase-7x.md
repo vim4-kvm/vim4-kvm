@@ -1,5 +1,10 @@
 # VIM4 7.3 kbase 后备候选
 
+[r5窗口](bringup/2026-10-30-kbase-r5-window.md)：零fault，三API/六类内存与BO导入通过，
+GLES648 FPS、CL51µs/101.75 GFLOPS；DMA3.571ms落后5.15，GPU thermal绑定仍缺。
+[MMU/heap合同与后续窗口](gpu-kbase-mmu-heaps.md)解释联合修复的归因边界。
+退窗后的heap DMA mask64位修正仅离线通过，HDR再占锁后未复测；不要混用两版验收结论。
+
 [最新诊断窗口](bringup/2026-10-30-kbase-r4-window.md)：GBM被缺失的system-uncached/heap-gfx阻断；
 VK1.3.231与CL3.0设备查询通过，但VK DMA执行DEVICE_LOST/MMU fault。已回5.15，不能推广候选。
 
@@ -12,10 +17,10 @@ VK1.3.231与CL3.0设备查询通过，但VK DMA执行DEVICE_LOST/MMU fault。已
 [首个上板窗口](bringup/2026-10-30-kbase-window.md)已完成：/dev/mali0出现，但workqueue/hrtimer
 新增WARN，运行时助手也拒绝候选；已回5.15。候选不能用于产品或继续性能验收，需先离线修复。
 
-结论：**离线可编译，硬件可行性尚待验证**。保留厂商 r44p0-01eac0、JM UK 11.39，
+结论：**基本GPU执行与API已验证，产品parity未完成**。保留厂商 r44p0-01eac0、JM UK 11.39，
 将内核 API 适配与 T7 平台层作为外部模块补丁维护；不向正式内核并入整棵 DDK。
-相同 libmali 有望保持 GLES3.2、Vulkan1.3.231、OpenCL设备/C3.0，但编译和ABI检查
-不能证明设备初始化、性能、DMA互操作或CTS。当前 blob **不支持直接注册GLVND EGL vendor**。
+相同 libmali 实测保持 GLES3.2、Vulkan1.3.231、OpenCL设备/C3.0及扩展集合，
+但不代表CTS、完整DMA互操作或性能全量通过。当前 blob **不支持直接注册GLVND EGL vendor**。
 默认GPU选择保持原状，Panfrost＋Mesa上游路径和kbase能力/性能后备均保留，待实测决定默认值。
 
 r2的[EGL选择、电源范围和补丁重放](gpu-kbase-integration.md)推荐ICD产品路径＋独立GLES私有前缀，
@@ -57,7 +62,7 @@ G76 r56或CSF驱动不构成G52支持证据。不能改版本常量伪装UK11.39
 | platform/of/file | remove回调为void；unsigned offset转到file_operations.fop_flags；仅匹配候选专用compatible；misc设备原样，不引入厂商mpgpu class接口 |
 | DMA/IOMMU/SG | dma_set_max_seg_size现为void；kbase使用GPU自己的MMU，沿用T7直接DMA路径，不引入厂商IOMMU私有接口，不等于已验非连续buffer/外部IOMMU |
 | devfreq/OPP | 启用DDK通用devfreq，复用板级五档OPP；仅core时钟参与调频，bus独立保持开启；不移植厂商PREHEAT/DVFS状态机 |
-| thermal | 用of_devfreq_cooling_register注册频率限制，沿用95°C GPU map；不用未校准IPA功率模型，不凭空设置电压/功率系数 |
+| thermal | of_devfreq_cooling_register注册成功，max_state=4；实测没有GPU zone绑定，既有95°C map指向MCU而非GPU。补绑定与闭环仍待验；不使用未校准IPA模型 |
 | pm_runtime/reset | 小平台层持有runtime引用直至remove；复位数组含CAPB3和MALI；失败路径回收bus和PM引用；不在每个空闲任务间重置域 |
 
 兼容性主要集中在已有兼容头和`platform/vim4/`，其余是API调用点小改动。
@@ -68,24 +73,26 @@ G76 r56或CSF驱动不构成G52支持证据。不能改版本常量伪装UK11.39
 
 7.3 DTS已有core/bus时钟、两个reset、`T7_MALI_TOP`域与五档OPP。
 域由`drivers/pmdomain/amlogic/meson-secure-pwrc.c`的T7表管理，通过既有secure pwrc SMC供电，
-模块不直接调用厂商SMC或硬编码寄存器。电压保持现有always-on PWM供电，
+模块不直接调用厂商SMC；GPU自身的T7复位override见r5具名平台hook。
+电压保持现有always-on PWM供电，
 候选删除GPU的mali-supply引用，使kbase不向OPP注册regulator；regulator节点本身不变。
 这延续厂商Linux只调频的固定电压策略，不能据此推断闭源固件行为。
 
 平台先持域引用、开bus、释放reset，通用kbase持core时钟；终止按相反顺序回收。
 持域是遵守厂商T7“空闲reset影响GPU”的限制。内部shader power gating仍由DDK处理，
 但外部域/时钟的runtime节能、系统suspend/resume均未验，不能宣称功耗追平。
-thermal频率限幅不依赖新增电压模型；真实过温闭环另需独占测试。
+cooling注册不依赖新增电压模型；缺少GPU thermal绑定，不能据此宣称温控限幅已生效。
 
 ## 内核选择、打包与复现
 
-独立候选DTS继承display-m0，仅换`khadas,vim4-mali-kbase-r44p0`并删mali-supply。
+独立候选DTS继承display-m0，换`khadas,vim4-mali-kbase-r44p0`并删mali-supply；
+r5另按厂商设置system-coherency=0且删除dma-coherent，新增专用WC heap/CMA节点。
 模块也只匹配该compatible，没有arm,mali-bifrost fallback；Panfrost因此不能绑定候选GPU，
 kbase不能绑定默认GPU。不要热解绑切换，两者通过重启选DT切换。
 下一窗可额外在一次性启动项使用`modprobe.blacklist=panfrost`；若initramfs提前加载，
 还须在候选initramfs中处理，黑名单不能代替DT互斥。默认initramfs/启动项保持原状。
 
-构建器也能从显式给定的**完整保留DTB**复制候选，用fdtput只改这两个属性，
+构建器也能从显式给定的**完整保留DTB**复制候选，用fdtput改上述属性并添加heap节点，
 保持原phandle、HDMI/USB/MAC和其他配置，不拿通用板DT覆盖运行profile：
 
 ```sh

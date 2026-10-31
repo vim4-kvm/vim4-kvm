@@ -1,0 +1,68 @@
+diff --git a/drivers/gpu/arm/midgard/backend/gpu/mali_kbase_pm_driver.c b/drivers/gpu/arm/midgard/backend/gpu/mali_kbase_pm_driver.c
+index 64f26c2..2986197 100644
+--- a/drivers/gpu/arm/midgard/backend/gpu/mali_kbase_pm_driver.c
++++ b/drivers/gpu/arm/midgard/backend/gpu/mali_kbase_pm_driver.c
+@@ -3301,6 +3301,7 @@ int kbase_pm_init_hw(struct kbase_device *kbdev, unsigned int flags)
+ 			goto exit;
+ 	}
+ 
++	KBASE_PLATFORM_RESET_COMPLETE(kbdev);
+ 	kbase_pm_hw_issues_apply(kbdev);
+ 	kbase_cache_set_coherency_mode(kbdev, kbdev->system_coherency);
+ 
+diff --git a/drivers/gpu/arm/midgard/mali_kbase_config_defaults.h b/drivers/gpu/arm/midgard/mali_kbase_config_defaults.h
+index ba42de9..5b63241 100644
+--- a/drivers/gpu/arm/midgard/mali_kbase_config_defaults.h
++++ b/drivers/gpu/arm/midgard/mali_kbase_config_defaults.h
+@@ -30,6 +30,10 @@
+ /* Include mandatory definitions per platform */
+ #include <mali_kbase_config_platform.h>
+ 
++#ifndef KBASE_PLATFORM_RESET_COMPLETE
++#define KBASE_PLATFORM_RESET_COMPLETE(kbdev) ((void)(kbdev))
++#endif
++
+ #ifndef KBASE_PLATFORM_MAX_CLOCKS
+ #define KBASE_PLATFORM_MAX_CLOCKS BASE_MAX_NR_CLOCKS_REGULATORS
+ #endif
+diff --git a/drivers/gpu/arm/midgard/platform/vim4/mali_kbase_config_platform.h b/drivers/gpu/arm/midgard/platform/vim4/mali_kbase_config_platform.h
+index ac3b042..0601023 100644
+--- a/drivers/gpu/arm/midgard/platform/vim4/mali_kbase_config_platform.h
++++ b/drivers/gpu/arm/midgard/platform/vim4/mali_kbase_config_platform.h
+@@ -1,5 +1,7 @@
+ /* SPDX-License-Identifier: GPL-2.0 */
+ extern struct kbase_platform_funcs_conf vim4_platform_funcs;
++void vim4_gpu_reset_complete(struct kbase_device *kbdev);
++#define KBASE_PLATFORM_RESET_COMPLETE(kbdev) vim4_gpu_reset_complete(kbdev)
+ int kbase_platform_dvfs_event(struct kbase_device *kbdev, u32 utilisation,
+ 			      u32 gl_share, u32 cl_share[2]);
+ #define PLATFORM_FUNCS (&vim4_platform_funcs)
+diff --git a/drivers/gpu/arm/midgard/platform/vim4/platform.c b/drivers/gpu/arm/midgard/platform/vim4/platform.c
+index 015f8f5..a3dc4cf 100644
+--- a/drivers/gpu/arm/midgard/platform/vim4/platform.c
++++ b/drivers/gpu/arm/midgard/platform/vim4/platform.c
+@@ -1,6 +1,7 @@
+ // SPDX-License-Identifier: GPL-2.0
+ #include <mali_kbase.h>
+ #include <mali_kbase_config_defaults.h>
++#include <device/mali_kbase_device.h>
+ #include <linux/clk.h>
+ #include <linux/pm_runtime.h>
+ #include <linux/reset.h>
+@@ -14,6 +15,16 @@ struct vim4_platform {
+ 	struct clk *bus;
+ };
+ 
++void vim4_gpu_reset_complete(struct kbase_device *kbdev)
++{
++	/* T7 integration requires these bits before L2/shader power-up. */
++	kbase_reg_write(kbdev, GPU_CONTROL_REG(PWR_KEY), 0x2968a819);
++	kbase_reg_write(kbdev, GPU_CONTROL_REG(PWR_OVERRIDE1),
++			0xfff | (0x20 << 16));
++	dev_info_once(kbdev->dev, "T7 power override after reset: %#x\n",
++		      kbase_reg_read(kbdev, GPU_CONTROL_REG(PWR_OVERRIDE1)));
++}
++
+ int kbase_platform_dvfs_event(struct kbase_device *kbdev, u32 utilisation,
+ 			      u32 gl_share, u32 cl_share[2])
+ {

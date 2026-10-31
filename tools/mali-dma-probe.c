@@ -1,4 +1,4 @@
-/* Headless compute + physically contiguous DMA-buf import/readback probe.
+/* Headless compute + native memory or DMA-buf import/readback probe.
  * Build on ARM64 Linux: cc -std=c11 -Wall -Wextra -Werror tools/mali-dma-probe.c -lvulkan -o mali-dma-probe
  * glslangValidator -V tools/mali-dma-probe.comp -o mali-dma-probe.spv
  * VK_ICD_FILENAMES=/usr/lib/vim4-kvm/gpu/mali.json ./mali-dma-probe mali-dma-probe.spv
@@ -10,6 +10,7 @@
 #include <linux/dma-heap.h>
 #include <fcntl.h>
 #include <inttypes.h>
+#include <errno.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -38,11 +39,18 @@ static void cpu_sync(int fd, uint64_t flags)
 
 int main(int argc, char **argv)
 {
-    REQUIRE(argc >= 2 && argc <= 4, "Usage: mali-dma-probe shader.spv [contiguous-heap-path] [iterations:1..100]");
+    setvbuf(stdout, NULL, _IOLBF, 0);
+    REQUIRE(argc >= 2 && argc <= 5, "Usage: mali-dma-probe shader.spv [heap-path|device-local|host-visible] [iterations:1..100] [bytes:1024..24883200, multiple of 4]");
     const char *heap_path = argc >= 3 ? argv[2] : "/dev/dma_heap/heap-codecmm";
+    int host_visible = !strcmp(heap_path, "host-visible");
+    int native = !strcmp(heap_path, "device-local") || host_visible;
     char *end = NULL;
-    long iterations = argc == 4 ? strtol(argv[3], &end, 10) : 1;
+    long iterations = argc >= 4 ? strtol(argv[3], &end, 10) : 1;
     REQUIRE(iterations >= 1 && iterations <= 100 && (!end || (*argv[3] && !*end)), "Invalid iteration count");
+    end = NULL;
+    long requested = argc == 5 ? strtol(argv[4], &end, 10) : 3840 * 2160 * 3;
+    REQUIRE(requested >= 1024 && requested <= 3840 * 2160 * 3 && requested % 4 == 0 &&
+            (!end || (*argv[4] && !*end)), "Invalid byte count");
     FILE *shader_file = fopen(argv[1], "rb");
     REQUIRE(shader_file != NULL, "Cannot open shader");
     REQUIRE(fseek(shader_file, 0, SEEK_END) == 0, "Cannot seek shader");
@@ -101,47 +109,85 @@ int main(int argc, char **argv)
     vkGetDeviceQueue(device, family, 0, &queue);
 
     /* One packed 4K P010 frame (Y + UV). Encoder import needs contiguous codecmm. */
-    const VkDeviceSize bytes = 3840 * 2160 * 3;
+    const VkDeviceSize bytes = (VkDeviceSize)requested;
     VkExternalMemoryBufferCreateInfo external_buffer = {
         .sType = VK_STRUCTURE_TYPE_EXTERNAL_MEMORY_BUFFER_CREATE_INFO,
         .handleTypes = VK_EXTERNAL_MEMORY_HANDLE_TYPE_DMA_BUF_BIT_EXT };
     VkBufferCreateInfo buffer_info = { .sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO,
-        .pNext = &external_buffer, .size = bytes, .usage = VK_BUFFER_USAGE_STORAGE_BUFFER_BIT,
+        .pNext = native ? NULL : &external_buffer, .size = bytes,
+        .usage = VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_SRC_BIT,
         .sharingMode = VK_SHARING_MODE_EXCLUSIVE };
     VkBuffer buffer;
     VK_CHECK(vkCreateBuffer(device, &buffer_info, NULL, &buffer));
     VkMemoryRequirements requirements;
     vkGetBufferMemoryRequirements(device, buffer, &requirements);
-    int heap_fd = open(heap_path, O_RDONLY | O_CLOEXEC);
-    REQUIRE(heap_fd >= 0, "Cannot open requested contiguous DMA heap");
-    struct dma_heap_allocation_data allocation = { .len = requirements.size, .fd_flags = O_RDWR | O_CLOEXEC };
-    REQUIRE(ioctl(heap_fd, DMA_HEAP_IOCTL_ALLOC, &allocation) == 0, "Contiguous DMA heap allocation failed");
-    close(heap_fd);
-    int dma_fd = (int)allocation.fd;
-    uint32_t *mapped = mmap(NULL, requirements.size, PROT_READ | PROT_WRITE, MAP_SHARED, dma_fd, 0);
-    REQUIRE(mapped != MAP_FAILED, "Cannot map DMA buffer");
-    cpu_sync(dma_fd, DMA_BUF_SYNC_START | DMA_BUF_SYNC_WRITE);
-    memset(mapped, 0, bytes);
-    cpu_sync(dma_fd, DMA_BUF_SYNC_END | DMA_BUF_SYNC_WRITE);
-    PFN_vkGetMemoryFdPropertiesKHR get_fd_properties = (PFN_vkGetMemoryFdPropertiesKHR)
-        vkGetDeviceProcAddr(device, "vkGetMemoryFdPropertiesKHR");
-    REQUIRE(get_fd_properties != NULL, "No external memory fd API");
-    VkMemoryFdPropertiesKHR fd_properties = { .sType = VK_STRUCTURE_TYPE_MEMORY_FD_PROPERTIES_KHR };
-    VK_CHECK(get_fd_properties(device, VK_EXTERNAL_MEMORY_HANDLE_TYPE_DMA_BUF_BIT_EXT, dma_fd, &fd_properties));
-    uint32_t memory_bits = requirements.memoryTypeBits & fd_properties.memoryTypeBits;
-    REQUIRE(memory_bits != 0, "No compatible DMA-buf memory type");
+    int dma_fd = -1;
+    uint32_t *mapped = NULL;
     uint32_t memory_type = 0;
-    while (!(memory_bits & (1u << memory_type))) memory_type++;
-    int import_fd = dup(dma_fd);
-    REQUIRE(import_fd >= 0, "Cannot duplicate DMA fd");
-    VkMemoryDedicatedAllocateInfo dedicated = { .sType = VK_STRUCTURE_TYPE_MEMORY_DEDICATED_ALLOCATE_INFO, .buffer = buffer };
-    VkImportMemoryFdInfoKHR import = { .sType = VK_STRUCTURE_TYPE_IMPORT_MEMORY_FD_INFO_KHR,
-        .pNext = &dedicated, .handleType = VK_EXTERNAL_MEMORY_HANDLE_TYPE_DMA_BUF_BIT_EXT, .fd = import_fd };
     VkMemoryAllocateInfo memory_info = { .sType = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO,
-        .pNext = &import, .allocationSize = requirements.size, .memoryTypeIndex = memory_type };
-    VkDeviceMemory memory;
-    VK_CHECK(vkAllocateMemory(device, &memory_info, NULL, &memory)); /* Vulkan owns import_fd on success. */
-    VK_CHECK(vkBindBufferMemory(device, buffer, memory, 0));
+        .allocationSize = requirements.size };
+    VkDeviceMemory memory, staging_memory = VK_NULL_HANDLE;
+    VkBuffer staging = VK_NULL_HANDLE;
+    VkPhysicalDeviceMemoryProperties memory_properties;
+    vkGetPhysicalDeviceMemoryProperties(physical, &memory_properties);
+    if (native) {
+        VkMemoryPropertyFlags wanted = !strcmp(heap_path, "device-local") ?
+            VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT : VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT;
+        while (memory_type < memory_properties.memoryTypeCount &&
+               (!(requirements.memoryTypeBits & (1u << memory_type)) ||
+                (memory_properties.memoryTypes[memory_type].propertyFlags & wanted) != wanted)) memory_type++;
+        REQUIRE(memory_type < memory_properties.memoryTypeCount, "Requested native memory type unavailable");
+        memory_info.memoryTypeIndex = memory_type;
+        VK_CHECK(vkAllocateMemory(device, &memory_info, NULL, &memory));
+        VK_CHECK(vkBindBufferMemory(device, buffer, memory, 0));
+        VkBufferCreateInfo staging_info = { .sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO,
+            .size = bytes, .usage = VK_BUFFER_USAGE_TRANSFER_DST_BIT };
+        VK_CHECK(vkCreateBuffer(device, &staging_info, NULL, &staging));
+        VkMemoryRequirements staging_requirements;
+        vkGetBufferMemoryRequirements(device, staging, &staging_requirements);
+        uint32_t staging_type = 0;
+        while (staging_type < memory_properties.memoryTypeCount &&
+               (!(staging_requirements.memoryTypeBits & (1u << staging_type)) ||
+                !(memory_properties.memoryTypes[staging_type].propertyFlags & VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT))) staging_type++;
+        REQUIRE(staging_type < memory_properties.memoryTypeCount, "No host-visible staging memory");
+        VkMemoryAllocateInfo staging_allocate = { .sType = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO,
+            .allocationSize = staging_requirements.size, .memoryTypeIndex = staging_type };
+        VK_CHECK(vkAllocateMemory(device, &staging_allocate, NULL, &staging_memory));
+        VK_CHECK(vkBindBufferMemory(device, staging, staging_memory, 0));
+        VK_CHECK(vkMapMemory(device, staging_memory, 0, VK_WHOLE_SIZE, 0, (void **)&mapped));
+    } else {
+        int heap_fd = open(heap_path, O_RDONLY | O_CLOEXEC);
+        if (heap_fd < 0) fprintf(stderr, "open %s: %s\n", heap_path, strerror(errno));
+        REQUIRE(heap_fd >= 0, "Cannot open requested DMA heap");
+        struct dma_heap_allocation_data allocation = { .len = requirements.size, .fd_flags = O_RDWR | O_CLOEXEC };
+        REQUIRE(ioctl(heap_fd, DMA_HEAP_IOCTL_ALLOC, &allocation) == 0, "DMA heap allocation failed");
+        close(heap_fd);
+        dma_fd = (int)allocation.fd;
+        mapped = mmap(NULL, requirements.size, PROT_READ | PROT_WRITE, MAP_SHARED, dma_fd, 0);
+        REQUIRE(mapped != MAP_FAILED, "Cannot map DMA buffer");
+        cpu_sync(dma_fd, DMA_BUF_SYNC_START | DMA_BUF_SYNC_WRITE);
+        memset(mapped, 0, bytes);
+        cpu_sync(dma_fd, DMA_BUF_SYNC_END | DMA_BUF_SYNC_WRITE);
+        PFN_vkGetMemoryFdPropertiesKHR get_fd_properties = (PFN_vkGetMemoryFdPropertiesKHR)
+            vkGetDeviceProcAddr(device, "vkGetMemoryFdPropertiesKHR");
+        REQUIRE(get_fd_properties != NULL, "No external memory fd API");
+        VkMemoryFdPropertiesKHR fd_properties = { .sType = VK_STRUCTURE_TYPE_MEMORY_FD_PROPERTIES_KHR };
+        VK_CHECK(get_fd_properties(device, VK_EXTERNAL_MEMORY_HANDLE_TYPE_DMA_BUF_BIT_EXT, dma_fd, &fd_properties));
+        uint32_t memory_bits = requirements.memoryTypeBits & fd_properties.memoryTypeBits;
+        REQUIRE(memory_bits != 0, "No compatible DMA-buf memory type");
+        while (!(memory_bits & (1u << memory_type))) memory_type++;
+        int import_fd = dup(dma_fd);
+        REQUIRE(import_fd >= 0, "Cannot duplicate DMA fd");
+        VkMemoryDedicatedAllocateInfo dedicated = { .sType = VK_STRUCTURE_TYPE_MEMORY_DEDICATED_ALLOCATE_INFO, .buffer = buffer };
+        VkImportMemoryFdInfoKHR import = { .sType = VK_STRUCTURE_TYPE_IMPORT_MEMORY_FD_INFO_KHR,
+            .pNext = &dedicated, .handleType = VK_EXTERNAL_MEMORY_HANDLE_TYPE_DMA_BUF_BIT_EXT, .fd = import_fd };
+        memory_info.pNext = &import;
+        memory_info.memoryTypeIndex = memory_type;
+        VK_CHECK(vkAllocateMemory(device, &memory_info, NULL, &memory)); /* Vulkan owns import_fd on success. */
+        VK_CHECK(vkBindBufferMemory(device, buffer, memory, 0));
+    }
+    printf("mode=%s bytes=%" PRIu64 " memory_type=%u flags=%#x (UMA types may overlap)\n",
+           heap_path, (uint64_t)bytes, memory_type, memory_properties.memoryTypes[memory_type].propertyFlags);
 
     VkDescriptorSetLayoutBinding binding = { .binding = 0, .descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER,
         .descriptorCount = 1, .stageFlags = VK_SHADER_STAGE_COMPUTE_BIT };
@@ -189,7 +235,8 @@ int main(int argc, char **argv)
     VK_CHECK(vkBeginCommandBuffer(command, &begin));
     VkBufferMemoryBarrier barrier = { .sType = VK_STRUCTURE_TYPE_BUFFER_MEMORY_BARRIER,
         .srcAccessMask = 0, .dstAccessMask = VK_ACCESS_SHADER_WRITE_BIT,
-        .srcQueueFamilyIndex = VK_QUEUE_FAMILY_EXTERNAL, .dstQueueFamilyIndex = family,
+        .srcQueueFamilyIndex = native ? VK_QUEUE_FAMILY_IGNORED : VK_QUEUE_FAMILY_EXTERNAL,
+        .dstQueueFamilyIndex = native ? VK_QUEUE_FAMILY_IGNORED : family,
         .buffer = buffer, .size = VK_WHOLE_SIZE };
     vkCmdPipelineBarrier(command, VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT, VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT,
         0, 0, NULL, 1, &barrier, 0, NULL);
@@ -197,11 +244,22 @@ int main(int argc, char **argv)
     vkCmdBindDescriptorSets(command, VK_PIPELINE_BIND_POINT_COMPUTE, layout, 0, 1, &set, 0, NULL);
     vkCmdDispatch(command, (uint32_t)((bytes / 4 + 255) / 256), 1, 1);
     barrier.srcAccessMask = VK_ACCESS_SHADER_WRITE_BIT;
-    barrier.dstAccessMask = 0;
-    barrier.srcQueueFamilyIndex = family;
-    barrier.dstQueueFamilyIndex = VK_QUEUE_FAMILY_EXTERNAL;
-    vkCmdPipelineBarrier(command, VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT, VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT,
+    barrier.dstAccessMask = native ? VK_ACCESS_TRANSFER_READ_BIT : 0;
+    if (host_visible) barrier.dstAccessMask |= VK_ACCESS_HOST_READ_BIT;
+    barrier.srcQueueFamilyIndex = native ? VK_QUEUE_FAMILY_IGNORED : family;
+    barrier.dstQueueFamilyIndex = native ? VK_QUEUE_FAMILY_IGNORED : VK_QUEUE_FAMILY_EXTERNAL;
+    vkCmdPipelineBarrier(command, VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT,
+        native ? (VK_PIPELINE_STAGE_TRANSFER_BIT | (host_visible ? VK_PIPELINE_STAGE_HOST_BIT : 0)) : VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT,
         0, 0, NULL, 1, &barrier, 0, NULL);
+    if (native) {
+        VkBufferCopy copy = { .size = bytes };
+        vkCmdCopyBuffer(command, buffer, staging, 1, &copy);
+        barrier.buffer = staging;
+        barrier.srcAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT;
+        barrier.dstAccessMask = VK_ACCESS_HOST_READ_BIT;
+        vkCmdPipelineBarrier(command, VK_PIPELINE_STAGE_TRANSFER_BIT, VK_PIPELINE_STAGE_HOST_BIT,
+            0, 0, NULL, 1, &barrier, 0, NULL);
+    }
     VK_CHECK(vkEndCommandBuffer(command));
     VkFenceCreateInfo fence_info = { .sType = VK_STRUCTURE_TYPE_FENCE_CREATE_INFO };
     VkFence fence;
@@ -222,14 +280,23 @@ int main(int argc, char **argv)
         if (i >= 0) elapsed += complete-start;
     }
     elapsed /= iterations;
-    cpu_sync(dma_fd, DMA_BUF_SYNC_START | DMA_BUF_SYNC_READ);
+    if (native) {
+        if (host_visible) {
+            vkUnmapMemory(device, staging_memory);
+            VK_CHECK(vkMapMemory(device, memory, 0, VK_WHOLE_SIZE, 0, (void **)&mapped));
+        }
+        VkMappedMemoryRange range = { .sType = VK_STRUCTURE_TYPE_MAPPED_MEMORY_RANGE,
+            .memory = host_visible ? memory : staging_memory, .size = VK_WHOLE_SIZE };
+        VK_CHECK(vkInvalidateMappedMemoryRanges(device, 1, &range));
+        printf("readback=%s\n", host_visible ? "host-visible target" : "staging after device-local copy");
+    } else cpu_sync(dma_fd, DMA_BUF_SYNC_START | DMA_BUF_SYNC_READ);
     for (uint32_t i = 0; i < bytes / 4; i++) {
         if (mapped[i] != (i ^ 0x5a39c6e1u)) {
             fprintf(stderr, "Readback mismatch at %u: %08x\n", i, mapped[i]);
             return 1;
         }
     }
-    cpu_sync(dma_fd, DMA_BUF_SYNC_END | DMA_BUF_SYNC_READ);
+    if (!native) cpu_sync(dma_fd, DMA_BUF_SYNC_END | DMA_BUF_SYNC_READ);
     printf("PASS heap=%s bytes=%" PRIu64 " words=%" PRIu64 " submit_wait_ms=%.3f\n",
         heap_path, (uint64_t)bytes, (uint64_t)(bytes / 4), elapsed);
     vkDestroyFence(device, fence, NULL);
@@ -240,9 +307,15 @@ int main(int argc, char **argv)
     vkDestroyPipelineLayout(device, layout, NULL);
     vkDestroyDescriptorSetLayout(device, set_layout, NULL);
     vkDestroyBuffer(device, buffer, NULL);
+    if (native) {
+        vkUnmapMemory(device, host_visible ? memory : staging_memory);
+        vkDestroyBuffer(device, staging, NULL);
+        vkFreeMemory(device, staging_memory, NULL);
+    } else {
+        munmap(mapped, requirements.size);
+        close(dma_fd);
+    }
     vkFreeMemory(device, memory, NULL);
-    munmap(mapped, requirements.size);
-    close(dma_fd);
     vkDestroyDevice(device, NULL);
     vkDestroyInstance(instance, NULL);
     return 0;

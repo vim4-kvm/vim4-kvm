@@ -8,10 +8,12 @@
 #include <GLES2/gl2ext.h>
 #include <fcntl.h>
 #include <gbm.h>
+#include <libdrm/drm.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include <time.h>
+#include <sys/ioctl.h>
 #include <unistd.h>
 
 static int fail(const char *stage)
@@ -36,6 +38,34 @@ static double now(void)
  struct timespec t;
  clock_gettime(CLOCK_MONOTONIC, &t);
  return t.tv_sec + t.tv_nsec / 1e9;
+}
+
+static int export_bo(struct gbm_device *gbm, const char *drm_device)
+{
+ const char *mode = getenv("GPU_GBM_EXPORT");
+ uint32_t flags = GBM_BO_USE_RENDERING;
+ uint32_t format = GBM_FORMAT_ARGB8888;
+ if (!strcmp(mode, "linear")) flags |= GBM_BO_USE_LINEAR;
+ else if (!strcmp(mode, "scanout")) { flags = GBM_BO_USE_SCANOUT; format = GBM_FORMAT_XRGB8888; }
+ fprintf(stderr, "GBM export format=%#x flags=%#x\n", format, flags);
+ struct gbm_bo *bo = gbm_bo_create(gbm, 256, 256, format, flags);
+ if (!bo) return fail("gbm_bo_create(export smoke)");
+ int fd = gbm_bo_get_fd(bo);
+ if (fd < 0) { gbm_bo_destroy(bo); return fail("gbm_bo_get_fd"); }
+ /* A separate DRM file owns the imported handle independently of GBM. */
+ int importer = open(drm_device, O_RDWR | O_CLOEXEC);
+ if (importer < 0) { close(fd); gbm_bo_destroy(bo); return fail("open display importer"); }
+ struct drm_prime_handle prime = { .fd = fd };
+ int result = ioctl(importer, DRM_IOCTL_PRIME_FD_TO_HANDLE, &prime);
+ if (result) result = fail("display DRM PRIME_FD_TO_HANDLE");
+ else {
+  printf("GBM BO exported/imported to display DRM: handle=%u stride=%u; no scanout/encoder tested\n",
+         prime.handle, gbm_bo_get_stride(bo));
+  struct drm_gem_close release = { .handle = prime.handle };
+  if (ioctl(importer, DRM_IOCTL_GEM_CLOSE, &release)) result = fail("DRM GEM_CLOSE");
+ }
+ close(importer); close(fd); gbm_bo_destroy(bo);
+ return result;
 }
 
 static GLuint shader(GLenum type, const char *source)
@@ -204,9 +234,10 @@ int main(int argc, char **argv)
  eglDestroyContext(display, context);
  if (surface != EGL_NO_SURFACE) eglDestroySurface(display, surface);
  eglTerminate(display);
+ int export_result = gbm && getenv("GPU_GBM_EXPORT") ? export_bo(gbm, argv[2]) : 0;
  if (gbm) gbm_device_destroy(gbm);
  if (drm_fd >= 0) close(drm_fd);
  if (error != GL_NO_ERROR || pixel[1] < 120 || pixel[1] > 136 || pixel[2] < 120 || pixel[2] > 136)
   return fail("render pixel/GL validation");
- return 0;
+ return export_result;
 }

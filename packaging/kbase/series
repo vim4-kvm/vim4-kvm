@@ -2,3 +2,5 @@
 0002-t7-platform.patch
 0003-devfreq-thermal.patch
 0005-runtime-api.patch
+0006-t7-reset-quirk.patch
+0007-mmu-fault-region.patch

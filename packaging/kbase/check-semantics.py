@@ -64,6 +64,49 @@ int main(void) {
                             '-o', str(executable)], check=True)
             subprocess.run([str(executable)], check=True)
     print('Runtime wrappers: legacy/current host models and source API gate passed')
+    check_t7_reset(driver)
+
+
+def check_t7_reset(driver):
+    """Exercise the real quirk against a key-protected register model."""
+    platform = (driver / 'platform/vim4/platform.c').read_text()
+    function = 'void vim4_gpu_reset_complete' + platform.split(
+        'void vim4_gpu_reset_complete', 1)[1].split('\nint kbase_platform_dvfs_event', 1)[0]
+    model = r'''
+#include <assert.h>
+struct kbase_device { void *dev; };
+#define GPU_CONTROL_REG(x) (x)
+enum { PWR_KEY, PWR_OVERRIDE1 };
+static unsigned int key, override;
+static void kbase_reg_write(struct kbase_device *d, int reg, unsigned int value) {
+    (void)d;
+    if (reg == PWR_KEY) key = value;
+    else { assert(key == 0x2968a819); override = value; key = 0; }
+}
+static unsigned int kbase_reg_read(struct kbase_device *d, int reg) {
+    (void)d; assert(reg == PWR_OVERRIDE1); return override;
+}
+#define dev_info_once(d,fmt,value) ((void)(d), (void)(fmt), (void)(value))
+'''
+    exercise = r'''
+int main(void) {
+    struct kbase_device device = {0};
+    for (int reset = 0; reset < 3; reset++) {
+        key = override = 0;
+        vim4_gpu_reset_complete(&device);
+        assert(override == 0x200fff);
+    }
+    return 0;
+}
+'''
+    with tempfile.TemporaryDirectory(prefix='kbase-reset-') as directory:
+        program = Path(directory) / 'reset.c'
+        executable = Path(directory) / 'reset'
+        program.write_text(model + function + exercise)
+        subprocess.run(['cc', '-Wall', '-Wextra', '-Werror', str(program),
+                        '-o', str(executable)], check=True)
+        subprocess.run([str(executable)], check=True)
+    print('T7 reset quirk: protected writes survive repeated reset model')
 
 
 if __name__ == '__main__':

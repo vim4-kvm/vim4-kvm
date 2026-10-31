@@ -17,6 +17,8 @@
 
 ## 2026-10-30
 
+- [kbase r5零fault、WC heaps与三栈配对](2026-10-30-kbase-r5-window.md) — kernel gpu board video
+
 - [kbase GBM缺少DMA heap与Vulkan DEVICE_LOST](2026-10-30-kbase-r4-window.md) — kernel gpu board video
 
 - [kbase r3零WARN加载、EGL设备失败与助手恢复](2026-10-30-kbase-r3-window.md) — kernel gpu board video
