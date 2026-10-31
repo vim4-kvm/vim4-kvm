@@ -16,6 +16,9 @@
 static int mounts, fail_mount, executions, resets;
 static bool wrong_id, wrong_release, unsafe_source, same_directory, invalid_target;
 static jmp_buf executed;
+#ifndef TRIAL_ROOT
+#define TRIAL_ROOT "/var/lib/vim4-kvm/display-m1/"
+#endif
 static pid_t fake_pid(void) { return 1; }
 static int fake_uname(struct utsname *value)
 {
@@ -24,7 +27,7 @@ static int fake_uname(struct utsname *value)
 }
 static ssize_t fake_link(const char *path, char *buffer, size_t size)
 {
-	const char *name = "/var/lib/vim4-kvm/display-m1/1111111111111111111111111111111111111111/init";
+	const char *name = TRIAL_ROOT "1111111111111111111111111111111111111111/init";
 	(void)path;
 	assert(size > strlen(name));
 	memcpy(buffer, name, strlen(name));
