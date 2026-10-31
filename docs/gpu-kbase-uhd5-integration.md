@@ -1,5 +1,8 @@
 # uhd5 kbase产品路径：待审集成清单
 
+[r12完整包与回退](bringup/2026-10-31-kbase-r12-package.md)已验证正常候选一次回5.15的DHCP/SSH/服务/UDC/哈希，
+但故障后网口残留机制未明确，NPU/HDR2专项仍未完成，继续只保留特性分支，不改正式锁定项。
+
 [r11](bringup/2026-10-31-kbase-r11-policy.md)的默认策略性能、API、六类内存、mpgpu、温控和
 One-KVM 4K60并行达到本轮门槛。负向dma-coherent DT不可用；5.15回退曾需额外正常重启恢复DHCP。
 本清单供用户审阅，未改正式sources.toml、未合main、未改5.15默认，不宣称回退自动化已全绿。

@@ -30,6 +30,7 @@ def main():
     args = parser.parse_args()
     k, stage, candidate, output = args.kernel, args.stage, args.candidate, args.output
     assert run('git', '-C', (k/'source').resolve(), 'rev-parse', 'HEAD') == KERNEL
+    assert not run('git', '-C', (k/'source').resolve(), 'status', '--porcelain')
     assert (k/'include/config/kernel.release').read_text().strip() == RELEASE
     external = json.loads((candidate/'manifest.json').read_text())
     for name, value in external['kernelFiles'].items():
@@ -53,6 +54,10 @@ def main():
             assert run('modinfo', '-F', 'vermagic', raw).split()[0] == RELEASE, path
             assert '.BTF ' in run('readelf', '-SW', raw), path
             ids[str(path.relative_to(modules))] = re.search(r'Build ID: ([0-9a-f]+)', run('readelf', '-n', raw))[1]
+            if path.is_relative_to(modules/'kernel'):
+                original = k/str(path.relative_to(modules/'kernel')).removesuffix('.xz')
+                built_id = re.search(r'Build ID: ([0-9a-f]+)', run('readelf', '-n', original))[1]
+                assert ids[str(path.relative_to(modules))] == built_id, path
     subprocess.run(['depmod', '-b', str(stage), RELEASE], check=True)
     output.mkdir(parents=True, exist_ok=False)
     for source, name in [(k/'arch/arm64/boot/Image', 'Image'), (k/'.config', 'config'),
