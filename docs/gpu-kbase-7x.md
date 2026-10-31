@@ -1,5 +1,8 @@
 # VIM4 7.3 kbase 后备候选
 
+[首个上板窗口](bringup/2026-10-30-kbase-window.md)已完成：/dev/mali0出现，但workqueue/hrtimer
+新增WARN，运行时助手也拒绝候选；已回5.15。候选不能用于产品或继续性能验收，需先离线修复。
+
 结论：**离线可编译，硬件可行性尚待验证**。保留厂商 r44p0-01eac0、JM UK 11.39，
 将内核 API 适配与 T7 平台层作为外部模块补丁维护；不向正式内核并入整棵 DDK。
 相同 libmali 有望保持 GLES3.2、Vulkan1.3.231、OpenCL设备/C3.0，但编译和ABI检查
@@ -141,6 +144,9 @@ UAPI字节/布局检查、同次Image/完整模块包、DT差分，再跑设备/
 | 26–30 | 正常回原默认内核，核对启动文件与服务、取日志释放锁；boot/API失败时剩余时间全部用于恢复 |
 
 窗口前离线备齐同次Image/完整模块集/extra kbase、候选initramfs、manifest及DT；
+必须额外比对实际rootfs运行时助手/注册清单与候选release和build ID的合同；
+单有board/vim4-kvm-run源文件支持release不足以证明已部署的vim4-board-runtime支持。
+新WARN和probe返回失败同样阻断，不因/dev/mali0存在就继续设备或负载测试。
 保留5.15与正式7.3启动文件哈希。一次性RAM入口沿用
 `sysboot mmc 1:1 any ${pxefile_addr_r} /gpu-once.conf; reset`，不saveenv、不改变默认项；
 只有用户安排且HDR释放锁后才stage。各项单命令timeout，最迟第26分钟进入回退。

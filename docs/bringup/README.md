@@ -17,6 +17,8 @@
 
 ## 2026-10-30
 
+- [kbase首窗WARN门禁失败与5.15回退](2026-10-30-kbase-window.md) — kernel gpu board video
+
 - [7.3 kbase外部模块离线候选与ABI检查](2026-10-30-kbase-offline.md) — kernel gpu audit packaging
 
 - [NPU与nodebug正式uhd3合入、回归及manager EDID部署](2026-10-30-uhd3-formal-regression.md) — kernel board video manager deployment

@@ -63,9 +63,10 @@ def main():
         if actual != expected:
             parser.error(f'{path}: expected {expected}, found {actual}')
     run('git', '-C', str(args.kernel_source), 'merge-base', '--is-ancestor', KERNEL, 'HEAD')
-    # The worktree may commit the isolated candidate DT, never kernel code.
+    # The worktree may commit the isolated DT and trial evidence, never kernel code.
     run('git', '-C', str(args.kernel_source), 'diff', '--exit-code', KERNEL, '--', '.',
-        ':!arch/arm64/boot/dts/amlogic/amlogic-t7-a311d2-khadas-vim4-kbase.dts')
+        ':!arch/arm64/boot/dts/amlogic/amlogic-t7-a311d2-khadas-vim4-kbase.dts',
+        ':!Documentation/gpu/vim4-kbase-trial.rst')
     build_source = (args.kernel_build / 'source').resolve()
     actual = subprocess.check_output(['git', '-C', str(build_source), 'rev-parse', 'HEAD'], text=True).strip()
     if actual != KERNEL:
