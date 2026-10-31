@@ -65,3 +65,10 @@ HLG已实现，无真实源未验；此次不重复像素/VUI/逐buffer退休长
 5.15仍为默认，`retained_runtime`仍为uhd1，未将RAM验收写成持久安装；不发布外部Release或上游补丁。
 **kbase与hdr10-remote分支需要rebase到uhd4，使用各自匹配的新构建并重跑回归。** 不改它们的工作树。
 主工作树由用户自行fast-forward，本轮只在独立集成工作树合入。
+
+主仓全量unittest运行347项，13项环境相关跳过，无失败；其宿主编译阶段只持heavy票据，
+等kbase采样结束后才执行。合入最新main的通用RAM标签与空模块挂载点清理，保留两边修复。
+清理23个旧HDR构建/stage/payload/runtime目录：每项先核对应封存档存在及SHA256，
+保留正式uhd4构建、formal stage/payload、全部历史tar封存档和源码工作树。
+清理后VM文件系统空闲约84.4GiB（含文件系统保留空间，后续其它构建会变化）。
+队列票据均正常释放，未留下本会话持锁/排队进程。
