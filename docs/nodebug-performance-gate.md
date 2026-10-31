@@ -131,7 +131,7 @@ DDR缺失、频率/CPU不匹配、热样本温度boot中位差>3°C、背景消�
 定位自己的PID、短时启用相应tracer并恢复，不能ptrace视频进程。
 被编译掉的function/syscall tracer、SLUB/锁检查无法在nodebug上靠echo热启用，
 须在独立调试配置重新启用本表所需项、olddefconfig和完整构建，以独立release及匹配模块启动。
-不在运行的生产kernel混装调试模块，不改变正式默认启动；正式采用草案、pin/push仍待用户批准。
+不在运行的生产kernel混装调试模块，不改变正式默认启动；用户已于2026-10-30批准正式采用草案、验证后pin/push。
 
 离线验证：ARM64 VM严格编译、两个逻辑核各9次/315行跑通，执行测试通过；
 主仓unittest 314项、8跳过，OK；正式配置/锁未变检查、`git diff --check`、草案apply检查通过。

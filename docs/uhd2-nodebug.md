@@ -1,5 +1,8 @@
 # uhd2-nodebug：调试配置对照候选
 
+2026-10-30正式采用已获用户批准，见[uhd3合入与回归](bringup/2026-10-30-uhd3-formal-regression.md)。
+下文保留候选阶段状态；正式uhd/edge已应用同一集合，安全基线不变。
+
 最新[三方上板结果](bringup/2026-10-30-nodebug-memory-window.md)：tmpfs/YOLO端到端恢复、视频约60fps；memcpy仍慢。默认5.15与正式配置不变。
 后续[绑核证据与两对门禁](nodebug-performance-gate.md)含正式配置最小diff草案，尚未应用。
 最新[两对实测](bringup/2026-10-30-nodebug-paired-gate.md)输出/60fps通过，性能资格仍不确定，大核memcpy未复现退化。

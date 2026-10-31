@@ -17,6 +17,7 @@
 
 ## 2026-10-30
 
+- [NPU与nodebug正式uhd3合入、回归及manager EDID部署](2026-10-30-uhd3-formal-regression.md) — kernel board video manager deployment
 - [nodebug两启动对门禁与绑核尺寸曲线](2026-10-30-nodebug-paired-gate.md) — kernel board benchmark video
 - [nodebug消除tmpfs写入差距与60fps回归](2026-10-30-nodebug-memory-window.md) — kernel board benchmark video
 - [YOLO端到端差距定位到文件写入](2026-10-30-npu-e2e-window.md) — kernel board benchmark

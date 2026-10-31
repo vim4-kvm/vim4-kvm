@@ -1,5 +1,10 @@
 # 7.3 内存与拷贝性能：离线审查及微基准
 
+2026-10-30用户批准纯调试关闭并应用至正式uhd配置及edge片段；
+[uhd3正式回归](bringup/2026-10-30-uhd3-formal-regression.md)完整构建/视频通过，
+YOLO fwrite 2.669ms、端到端34.808ms，tmpfs快检正常。安全加固与内存策略不变；
+此前多启动性能CI不确定仍保留，以下配置行号指审查时历史版本。
+
 以下保留离线审查；后续[三方nodebug实测](bringup/2026-10-30-nodebug-memory-window.md)已完成：
 nodebug恢复tmpfs写入与YOLO端到端，但memcpy/pread仍未追平。未动GPU文件、正式配置或push/pin。
 用户授权的[独立nodebug候选](uhd2-nodebug.md)已关闭纯调试开销；正式配置仍待批准。

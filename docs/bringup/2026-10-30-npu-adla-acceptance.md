@@ -116,7 +116,7 @@ YOLOv8n `8cfba485bd774bafea38808c0f4fb5b2a70645c350d1a374e7399c10ed5e648e`。
 | runtime PM、超时/取消/进程退出后恢复 | 候选未运行 |
 | HDMI＋Wave5并行的帧推进/错误/丢帧及NPU延迟 | 未运行，无并行影响数据 |
 
-软复位失败时拒绝请求并保留可能仍被DMA使用的页直到重启，为代理暂定的例外，待用户确认。
+软复位失败时拒绝请求并保留可能仍被DMA使用的页直到重启，该例外用户已于 2026-10-30 接受。
 候选源码`adlak_device.c:44`只发布一次故障，`:59`打印
 `recovery failed: <error>; reboot required`，后续open/ioctl返回EIO，WAIT/GET_STAT报告失败。
 这些为源码与离线测试合同，**本轮没有验证真实硬件软复位失败或故障日志**。

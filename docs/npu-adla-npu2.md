@@ -4,7 +4,7 @@
 内核在VM `~/src/linux-7.3-npu`、分支`vim4-npu-adla`；
 新输出`~/build/npu-adla2`，载荷`~/build/npu2-candidate`，
 release为`7.3.0-vim4kvm-npu2+`。
-软复位失败保留可能仍被DMA使用的页是**代理暂定，待用户确认**；
+软复位失败保留可能仍被DMA使用的页是**用户已于 2026-10-30 接受**；
 不是已经获得的用户许可，也不计作全部资源回收通过。
 
 ## 资源对照

@@ -1,5 +1,9 @@
 # 2026-10-28：7.3 对当前 5.15 功能的差距复核
 
+10月30日进展：[NPU与nodebug正式uhd3](2026-10-30-uhd3-formal-regression.md)已合入并通过
+限定RAM回归，三模型输出一致；源码pin为f71b5c6289cb，板上保留uhd1未覆盖。
+下文其他功能及源码行号保持原审查口径，不将本次冒烟扩展为全功能资格。
+
 7.3 已有可工作的 SDR KVM 链路，但不能替换当前 5.15 后保留全部功能。
 优先缺口为原生远程 HDR、本地音画透传、HEVC 尺寸与画质控制、高刷/VRR，以及 NPU。
 本轮只读源码、历史证据和运行版本；没有切内核、停服务或执行硬件实验。
@@ -32,7 +36,7 @@
 | P1 1080p/1440p高刷、VRR | **应用限制＋待适配/验证**。One-KVM `h26x_frame_rate()`把Wave5输出限制在60fps；公共`vim4v4l2src`caps固定60/1。RX允许20–120Hz固定时序只是准入范围，未见VTEM/VRR解析及基准帧率处理，不能沿用5.15已验VRR结论 | 先分别完成固定120Hz输入、编码吞吐与实际呈现；再补VRR时序租约/基准策略，避免变周期误判失锁。硬件120能力尚未据此否定 |
 | P1 HEVC 固定QP／无损 | **缺应用接入**。当前API只对Vendor报告可用；Wave5遇到保存的画质偏好明确退回码率控制。正式内核已有HEVC MIN/MAX/I/P/B QP、CQ码率模式及`V4L2_CID_MPEG_VIDEO_HEVC_LOSSLESS_CU`（`wave5-vpu-enc.c:1256`→`wave5-hw.c:1922`，b1300eb亦有；要求关闭RC并开transform skip）。缺口在应用接入与T7固件实际无损验证，不能把QP=0称无损 | 将真实支持的标准控制接到应用；固定QP解析实际slice，无损逐样本比较，复核共享网页/UU/SRT输出 |
 | P1 输入格式与原始采集 | **缺实现＋待验证**。7.3明确拒绝HLG、隔行、像素重复及部分HDR色域；未暴露原生YUV444采集格式。RGB24不等于原生444 planes。动态RX解析8/10/12bit，但真实12bit源未验、最终输出仍8bit | PQ与HLG分别处理；真实深色源和单像素色度验证。传统隔行需场序/去隔行；不是删除拒绝条件即可支持 |
-| P1 新板 NPU | **缺实现**。7.3所有现存分支均无ADLA驱动与DT节点；5.15已在本板用`/dev/adla0`完成分类和文字识别，不再只是芯片宣传能力。该证据来自独立probe，四套KVM应用本身没有NPU功能，属BSP能力欠账而非KVM产品退步 | 匹配板型的ADLA驱动、SDK、DMA/PM与模型结果；不能拿旧板Vivante/Galcore代替新板ADLA |
+| P1 新板 NPU | **10月30日已合入/限定回归通过**。正式f71b5c6289cb含ADLA兼容驱动、binding/DT、标准PM与DMA接口；uhd3的VGG16/DenseNet/YOLO完整输出一致。保留运行时仍旧uhd1；闭源SDK合同不变 | 持久部署另执行；多启动性能CI仍不确定、真实复位失败未验，不能把本轮快检替代这些资格 |
 | P2 管理器 GPU 利用率 | **缺接入**。当前历史采样读取厂商`/sys/class/mpgpu/utilization`；Panfrost没有该接口时显示暂无数据。Panfrost已有devfreq忙闲统计和fdinfo `drm-engine-*`（需开profiling、按客户端近似），缺的是管理器接入而非数据来源 | 增加Panfrost后端并核对空闲、负载、采样窗口及缺失恢复 |
 
 源码锚点：One-KVM `src/platform/vim4.rs:33,353`、

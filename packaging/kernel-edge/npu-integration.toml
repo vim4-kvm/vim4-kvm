@@ -1,5 +1,5 @@
 # Review draft only. No build/deploy tool reads this instead of sources.toml.
-status = "pending-user-approval"
+status = "approved-2026-10-30-superseded-by-sources-toml-uhd3"
 runtime_commit = "558bab7"
 baseline = "213f271505411845eecb3c6ef10df7565b895ebc"
 npu4_reference = "34f345566a1b970a1d394304b3bee485c639bbc1"
@@ -24,4 +24,4 @@ image_sha256 = "a391ca015375ca6e063bda5497dd3b262f6df544cb1792783b49c915b790e289
 module_count = 2338
 default_boot = "unchanged-5.15"
 board_verified = false
-reset_failure_exception = "agent-provisional-awaiting-user-confirmation"
+reset_failure_exception = "user-accepted-2026-10-30"

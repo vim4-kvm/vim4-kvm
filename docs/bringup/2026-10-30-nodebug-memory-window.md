@@ -3,7 +3,7 @@
 完成[候选审计与完整构建](../uhd2-nodebug.md)及5.15/uhd2/nodebug三方各一次启动测量。
 **nodebug的tmpfs fresh write、YOLO fwrite与端到端均快于本窗5.15；用户态memcpy仍较慢。**
 建议批准正式配置采用同组纯调试关闭项；不据单启动诊断宣布全栈性能追平或执行pin。
-本轮未修改正式uhd1/uhd2配置、源码pin、GPU文件，未push；保页例外仍为代理暂定、待用户确认。
+本轮未修改正式uhd1/uhd2配置、源码pin、GPU文件，未push；保页例外仍为用户已于 2026-10-30 接受。
 
 ## 版本、构建与现场
 

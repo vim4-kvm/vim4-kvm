@@ -1,14 +1,14 @@
 # Experimental kernel pins; the private GStreamer recipe below is also used
 # by the 5.15 One-KVM image builder.
-# NPU integration draft: npu-integration.toml and uhd2.config. Not approved/pinned.
+# NPU + nodebug approved 2026-10-30; validated by the uhd3 RAM regression.
 [kernel]
 url = "https://github.com/vim4-kvm/linux.git"
 branch = "vim4-kvm-7.3"
-revision = "213f271505411845eecb3c6ef10df7565b895ebc"
-tree = "9b70de878174c786b5a5d1cf4f2d446598fe8f61"
+revision = "f71b5c6289cb3254690e57292327e73514f0715f"
+tree = "f3f8877c70e547bc53f2ca0469c25fcffb7f15a6"
 upstream_url = "https://github.com/gregkh/linux.git"
-# Retained board build; artifacts have not been published.
-# Evidence: docs/bringup/2026-10-30-kernel73-retained-pin.md.
+# Verified RAM build; retained /boot/edge is still uhd1. No artifact publication.
+# Evidence: docs/bringup/2026-10-30-uhd3-formal-regression.md.
 upstream_tag = "v7.3"
 upstream_revision = "c03c1a14507dfaf8b856c2608f9ac216021fc222"
 
@@ -21,39 +21,50 @@ features = ["vim4"]
 tested_binary_sha256 = "aacd3d977a0e169e1ee869486fc1846e9b360f83e96309cad734b9f5b2737b4d"
 
 # Complete matched build includes the former Wave5 and VDIN overlays.
-# build.sh defaults to edge.config; retained build explicitly uses uhd1.config.
+# build.sh defaults to edge.config; this build explicitly uses uhd3.config.
 [tested_build]
-release = "7.3.0-vim4kvm-uhd1+"
-localversion = "-vim4kvm-uhd1"
-build_id = "7a473adf9353013fd1ab01908d20bbf503a063fb"
-image_sha256 = "61dda2420c55623baf7c1f5f5d2a4af1a79c7f528dceb24f3462e373e93eca9d"
-config_sha256 = "4f8f254d60a37b7cdd7842a1ea7e40f0b036491185efa056179de15628e8dfa6"
-config_path = "uhd1.config"
-modules_sha256 = "3f08147903a15cd211db0276e0b8c209d20c731b0bb8e0dcc6392123edae1875"
-module_count = 2337
+release = "7.3.0-vim4kvm-uhd3+"
+localversion = "-vim4kvm-uhd3"
+build_id = "a3572361d542e5505bd159ad8a327cf364fe25f3"
+image_sha256 = "9daea7a17e228cb5ef93b6b9cc926ccce43ec3b8eafb1b22aee447fdcfcb7000"
+config_sha256 = "90eed7736b33a57ed65e6db99aff657e7f6fad1116ee79e9ad6c952b6904a53d"
+config_path = "uhd3.config"
+modules_sha256 = "b65a3c36884c0831c29f610a5d6f3f20a300bcd15879181efc68723d5e3f5c0a"
+module_count = 2338
 module_btf = true
 board_dtb_path = "arch/arm64/boot/dts/amlogic/amlogic-t7-a311d2-khadas-vim4-display-m0.dtb"
 framebuffer_console = true
-board_dtb_sha256 = "893ea6c8990860f1ee0d8c1910fc210e39728e941128d52f465618a5f0c3958d"
-manifest_sha256 = "09cbe93b9a5659fcab40994a5650ea4fb16c6ad4ffe4a6e933989f21a48feb14"
-runtime_proof_sha256 = "b5342302d05513a14bc3d05550060bae61ef649771b06ef8fc56943166a70f42"
-uncompressed_image_sha256 = "3171ff8eda8e45b149fef1fb92dbfeddfd20dccdf2db78fdaa626fdf03af003b"
-source_manifest_sha256 = "bf7a7652508f84c9ee58e9d61a2905a8b18b7758b20c0cc9a7c521e5069fcbb7"
-live_proof_sha256 = "de7678426e1a5c510a722a83a70d6548259a9af6e8530e8a58cad63927c97d21"
-wave5_module_sha256 = "01255bc49a040269475f378e3452b929a21f040de40ef6619c4387e38218030b"
+board_dtb_sha256 = "49a858fae2f9a66e8db96ea6eee7011e620b3d116c572995bfca57fc56cb0462"
+manifest_sha256 = "5a695ab1e67ec262a2cb5e44e09b6e8ef2c3497116043aed47e85b7c229950d4"
+runtime_proof_sha256 = "46009135101f2eafc8de97d12f3c1b7a7b3cb04b77ab0493dc1dc3d4a42c8c5b"
+uncompressed_image_sha256 = "9daea7a17e228cb5ef93b6b9cc926ccce43ec3b8eafb1b22aee447fdcfcb7000"
+source_manifest_sha256 = "5a695ab1e67ec262a2cb5e44e09b6e8ef2c3497116043aed47e85b7c229950d4"
+live_proof_sha256 = "d6e7dfbbcf7fd7e52f492df00cfabe40a58fbc358a727a8a7fa2ad1261d1d8c2"
+wave5_module_sha256 = "5c946bfa91271afbfbfb5a58fcd3591b8838497b4f8a2333a3a50cb2832b73a5"
+boot_method = "uboot-ram-once-private-modules"
+runtime_proof_scope = "candidate-payload-inventory"
 
 [tested_build.loaded_module_build_ids]
-meson_ir = "92853fa94642effabd2deea3ae729c8f8b58702b"
-rc_khadas = "e8da445783350cb333b1cff9a57abadd4dd851d0"
-ir_nec_decoder = "c7c44cac69e296663d609e19301028812af0ec65"
-dwmac_meson8b = "0af818b2bfdd24e81b4447a363c5da4e87f72cba"
-panfrost = "12ff0c819f944b5dc3e6803e0312483c3d3a70b8"
-brcmfmac = "cae2dcb02b9b98f172876a122cde9a8ae67c8f44"
-wave5 = "094483467b5d6ca423ac151b8f2ba71a404c748c"
-t7_hdmirx = "ab1613e6d327ef5ae19870eb5ebfc8b227442178"
-t7_vdin_test = "6fd55b8ffc62c3ca14fe32d31989d353146d3809"
-t7_jpeg = "1bb45a85cd15bb529ca7a42111f4aba752bbfb06"
-crg_udc = "e5a8f26166bc0f5797139d764953bc3376a3cbca"
+meson_ir = "1fcd978cad32928709976ca1e589a05c4e838f5f"
+rc_khadas = "dda38b356ea0aa43e3adc4999b78c6f46a2d1cc7"
+ir_nec_decoder = "191ba9478e2bcb27375b0b06af4909bfb755af06"
+dwmac_meson8b = "6aa326d55d440adb18c45100c65e5bb7ea5f11a2"
+panfrost = "ad556564ab56163b1beaf1e2b94bb5bdeeff81fd"
+brcmfmac = "01000c8f04d198a71986ce5f501637a765ffcb65"
+wave5 = "cc41a3098703a3de60fefac92e62d107dd07a466"
+t7_hdmirx = "d46677e6e2f37a38517e2a8685e1b538b695ea50"
+t7_vdin_test = "13eaf73fbb849c232b314fc2686282ddc1152626"
+t7_jpeg = "056b28f3d3cb87f1a1b811beb33a9c0e9785f0bf"
+crg_udc = "f162e4e5f33aaae5b8cebcffcba1512a93b298c4"
+
+# Intentionally unchanged on eMMC by this RAM-only regression.
+[retained_runtime]
+release = "7.3.0-vim4kvm-uhd1+"
+revision = "213f271505411845eecb3c6ef10df7565b895ebc"
+build_id = "7a473adf9353013fd1ab01908d20bbf503a063fb"
+image_sha256 = "61dda2420c55623baf7c1f5f5d2a4af1a79c7f528dceb24f3462e373e93eca9d"
+board_dtb_sha256 = "893ea6c8990860f1ee0d8c1910fc210e39728e941128d52f465618a5f0c3958d"
+live_proof_sha256 = "de7678426e1a5c510a722a83a70d6548259a9af6e8530e8a58cad63927c97d21"
 
 # Shared application sources are pinned in workspace.toml; hashes are read from the board.
 [integrated_runtime]
@@ -62,7 +73,7 @@ board_packages = "2.5.1+vim4.20261027.3.dev.12.gcd09e1e.dirty"
 pikvm_package = "2.5.1+vim4.20261025.13"
 manifest_path = "/etc/vim4-kvm/runtime-build.json"
 onekvm_package = "2.5.1+vim4.20261027.3.dev.15.g3649a8c"
-manager_package = "2.5.1+vim4.20261029.102.dev.2.g81c6cc5"
+manager_package = "2.5.1+vim4.20261029.102.dev.3.g0c89b29.dirty"
 wave5_plugin_sha256 = "0240de1c003974d97316ff3f73f771a5cc8db2ced1b7330bcbe64c4ba9cbe229"
 v4l2_plugin_sha256 = "a80d41a3d758a5af1794a324eed44c9f47a88e0d3b30dfafe3207d32d7be26fe"
 one_kvm_binary_sha256 = "aacd3d977a0e169e1ee869486fc1846e9b360f83e96309cad734b9f5b2737b4d"
@@ -95,7 +106,7 @@ firmware_path = "/lib/firmware/video/video_ucode.bin"
 firmware_sha256 = "59e242bd63d6372d6462d2a2d6815e7bdea1a2cd12cd29fac093f38e73294e4b"
 hcodec_clock_hz = 666666656
 hcodec_clock_parent = "hcodec_0"
-tested_module_sha256 = "4643305619fdb929ef5c488e4fea9007c16244503fc6e3eed4ff1b4e29554faf"
+tested_module_sha256 = "14334de2f4c8c5cac5009467e53e2e3212c68b6a03912a22e8ed931107ad99b0"
 
 # Private V4L2 plugin tested on 5.15 and the retained 7.3 build, including visible crop.
 [gstreamer]

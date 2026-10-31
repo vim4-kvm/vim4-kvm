@@ -2,7 +2,9 @@
 
 2026-10-30 默认启动保持5.15；当前7.3源码与保留运行时的
 [功能差距复核](bringup/2026-10-28-kernel73-parity-audit.md)另列近期产品功能、默认开关和验收欠账。
-最新保留构建见[部署锁更新](bringup/2026-10-30-kernel73-retained-pin.md)；历史测试不代表本次重新全量验收。
+最新源码/构建pin为[NPU与nodebug正式uhd3](bringup/2026-10-30-uhd3-formal-regression.md)，
+RAM回归通过；板上保留构建仍见[uhd1部署锁](bringup/2026-10-30-kernel73-retained-pin.md)。
+sources.toml分别记录tested_build与retained_runtime，不把RAM验收冒充持久安装。
 
 当前开发分支已接通 HDMI 输入、VDIN 直接 DMA、Wave5 H.264/H.265、硬件 JPEG 与音频，
 并部署完整 manager 和四种 KVM 的双内核运行时；5.15 可保留启动，共用同一应用的数据。
@@ -11,8 +13,9 @@
 本页保留 Armbian 编译基线与专项历史记录；通用 edge.config 不等于已验收的整板配置。
 最近登记的7.3保留运行时为正式 `vim4-kvm-7.3@213f271505411`，release
 `7.3.0-vim4kvm-uhd1+`、build ID `7a473adf9353013fd1ab01908d20bbf503a063fb`；
-使用含ACM的uhd1.config、M0 simpledrm/tty0和同次完整2337模块。M1编译启用，M0 DTB不启用其接管。
-One-KVM为 `3649a8c8`，manager为 `81c6cc5`，共享Wave5插件为 `b3b82a9`。
+使用当时含ACM的uhd1配置、M0 simpledrm/tty0和同次完整2337模块；仓库当前uhd1.config已应用nodebug，不能用于逐字节复现旧产物。
+新源码f71b5c6289cb的uhd3为2338模块、ADLA兼容模块与nodebug，M0布局不变。
+One-KVM为 `3649a8c8`，manager已部署 `0c89b29`，共享Wave5插件为 `b3b82a9`。
 尺寸、QP/无损、ACM板侧及GPU的实际通过/未验证边界见[批量验证](bringup/2026-10-30-kernel73-gap-validation.md)
 和[第三/四轮复验](bringup/2026-10-30-kernel73-gap-r3.md)。GPU真实sudo CPU预算仍未达标，
 不将旧九类回归、音频或HID历史结果算作本轮重测。构建产物尚未发布到Release。
@@ -104,8 +107,8 @@ H.264/H.265 硬编码已取得实验结果，见
 脚本执行 olddefconfig，最终配置写入
 外部构建目录并记录校验和；并非复现 Armbian 镜像构建的所有配置钩子。
 
-完整运行时的准确配置为 `packaging/kernel-edge/uhd1.config`，Linux ARM64 上可用
-`bash packaging/kernel-edge/build.sh SOURCE NEW_OUTPUT packaging/kernel-edge/uhd1.config`
+当前已验uhd3的准确配置为 `packaging/kernel-edge/uhd3.config`，Linux ARM64 上可用
+`bash packaging/kernel-edge/build.sh SOURCE NEW_OUTPUT packaging/kernel-edge/uhd3.config`
 重建匹配 release；不传第三参数仍构建通用 edge 基线。该命令不安装、不重启，
 DTB/固件和完整模块的安装与登记按双内核记录执行，保留当前板子的 DTB/MAC 配置。
 
@@ -117,8 +120,9 @@ tested_build 已与正式213f2715及该ACM配置配套更新。ACM板侧已验�
 第四参数 `--validate-only` 执行相同版本/目录检查和olddefconfig后退出，不编译、不部署；
 本轮已在VM实际验证并比对最终配置哈希。完整构建省略该参数。
 `tested_build.image_sha256` 是适应当前启动分区容量的确定性gzip Image，
-`uncompressed_image_sha256` 是build.sh原始Image；manifest和安装proof对应gzip版本，
-`source_manifest_sha256` 保留原始候选清单来源，`live_proof_sha256` 对应板上运行快照。
+`uncompressed_image_sha256` 是build.sh原始Image。当前uhd3使用原始Image，
+image/uncompressed哈希相同；manifest/source_manifest也相同，runtime_proof只证明候选载荷。
+`live_proof_sha256` 对应板上运行快照；retained_runtime单独记录旧uhd1的gzip安装身份。
 
 下方是最初 Armbian rc7 导入的历史步骤；当前分支已基于 v7.3 重放并合入板级修复，
 准确复现应检出 sources.toml 的提交，不重新执行这段导入。固定 Armbian 快照为 7.3 选择 rc7，
