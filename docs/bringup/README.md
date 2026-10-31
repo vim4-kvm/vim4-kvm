@@ -17,6 +17,7 @@
 
 ## 2026-10-31
 
+- [kbase r7默认调频离线候选与等锁超时](2026-10-31-kbase-r7-offline.md) — kernel gpu audit
 - [kbase r6 DMA追平、平台二分与thermal绑定](2026-10-31-kbase-r6-window.md) — kernel gpu board video
 
 ## 2026-10-30

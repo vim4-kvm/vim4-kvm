@@ -5,3 +5,4 @@
 0006-t7-reset-quirk.patch
 0007-mmu-fault-region.patch
 0008-t7-devfreq-policy.patch
+0009-system-workqueue.patch
