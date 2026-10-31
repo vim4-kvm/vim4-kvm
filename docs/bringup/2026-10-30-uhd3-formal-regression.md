@@ -33,7 +33,7 @@ build ID **a3572361d542e5505bd159ad8a327cf364fe25f3**。
 ADLA dt_binding_check和目标DTB schema校验通过。第2–6段checkpatch严格检查为
 0 errors/0 warnings/0 checks；仅过滤已由MAINTAINERS覆盖的FILE_PATH_CHANGES提醒。
 原样厂商导入段单列5207 errors/11236 warnings/678 checks，不作机械格式化。
-主仓unittest **315通过、8跳过**；驱动IOVA/取消/生命周期/PM宿主C回归与bounds测试通过。
+主仓unittest **315项（8跳过），其余通过**；驱动IOVA/取消/生命周期/PM宿主C回归与bounds测试通过。
 
 ## RAM上板：17:23–17:31 PDT
 
@@ -94,7 +94,7 @@ live-proof为板上uhd3配置、notes、taint及运行版本实采，11模块ID�
 manager提交0c89b292eac4fd07c85fdf142dfa18591c04a329：仅修复7.3缺失/空EDID状态处理，
 非空损坏EDID仍报错。通过既有Ubuntu manager单组件package/verify与board.py deploy；
 包2.5.1+vim4.20261029.102.dev.3.g0c89b29.dirty，`.dirty`来自主仓部署准备改动，
-manager源本身干净。隔离Go测试/vet通过；helper220项通过、12跳过。
+manager源本身干净。隔离Go测试/vet通过；helper220项（12跳过），其余通过。
 部署只重启manager，One-KVM启动时间不变；板级check通过。启动等待中的未认证401不作API故障。
 5.15认证GET /api/edid返回200，activeKnown=true，RTK-CONTROL正常；无EDID写入。
 部署后再次核对12保护文件一致、四服务active、UDC configured、dpkg audit无输出。
