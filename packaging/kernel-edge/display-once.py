@@ -22,6 +22,11 @@ ROOT = Path('/var/lib/vim4-kvm/display-m1')
 MODULE_ROOT = Path('/lib/modules')
 
 
+def validate_release(release):
+    if not re.fullmatch(r'7\.3\.0-vim4kvm-[A-Za-z0-9][A-Za-z0-9._-]*\+', release):
+        raise ValueError('invalid candidate release')
+
+
 def sha(path):
     with Path(path).open('rb') as source:
         return hashlib.file_digest(source, 'sha256').hexdigest()
@@ -75,8 +80,7 @@ def trial_cmdline(state):
 
 def prepare(payload, init, baseline, output, release=RELEASE,
             baseline_release=RELEASE, baseline_id=BASE_ID):
-    if not re.fullmatch(r'7\.3\.0-vim4kvm-(?:uhd(?:[13]|2(?:-nodebug)?)|npu[0-9]+)\+', release):
-        raise ValueError('unsupported candidate release')
+    validate_release(release)
     if not re.fullmatch(r'[0-9a-f]{40}', baseline_id):
         raise ValueError('baseline build ID must be explicit and complete')
     report = json.loads((payload / 'manifest.json').read_text())
@@ -204,7 +208,7 @@ def preflight(plan):
             or running_build_id() != plan['baseline_id']):
         raise RuntimeError('stage only as root on the approved running baseline')
     if (not re.fullmatch(r'[0-9a-f]{40}', plan['baseline_id']) or
-            not re.fullmatch(r'7\.3\.0-vim4kvm-(?:uhd(?:[13]|2(?:-nodebug)?)|npu[0-9]+)\+', plan['release'])):
+            not re.fullmatch(r'7\.3\.0-vim4kvm-[A-Za-z0-9][A-Za-z0-9._-]*\+', plan['release'])):
         raise ValueError('bundle baseline mismatch')
     if Path('/proc/cmdline').read_text().strip() != plan['baseline_cmdline']:
         raise RuntimeError('baseline command line changed')
@@ -260,8 +264,7 @@ def read_trial(archive, baseline=None):
     if metadata == 'trial.json':
         plan = report
     else:
-        if not re.fullmatch(r'7\.3\.0-vim4kvm-uhd(?:3-hdr2a[1-9][0-9]*|4(?:r[1-9][0-9]*)?)\+', report['release']):
-            raise ValueError('unsupported HDR2 payload release')
+        validate_release(report['release'])
         plan = dict(release=report['release'], build_id=report['build_id'],
                     files=report['sha256'], source=report['source_commit'])
         if baseline is not None:
@@ -273,6 +276,7 @@ def read_trial(archive, baseline=None):
         for directive in (f'LINUX {prefix}/Image', f'FDT {prefix}/vim4.dtb', f'init={prefix}/init'):
             if directive not in config:
                 raise ValueError('HDR2 config does not use the private RAM payload: ' + directive)
+    validate_release(plan['release'])
     if not re.fullmatch('[0-9a-f]{40}', plan['build_id']):
         raise ValueError('invalid destination build ID')
     if set(entries) != {*plan['files'], metadata}:
@@ -327,21 +331,46 @@ def stage(bundle, retained_baseline=None):
                 if path.is_dir():
                     path.chmod(0o555)
                     fsync_directory(path)
-            work.chmod(0o555)
-            fsync_directory(work)
             # Recheck baseline just before publication; never select a trial here.
             check(plan)
             if metadata == 'manifest.json':
                 # HDR2 uses a distinct release but its static PID 1 still needs
                 # an existing empty bind destination; never install modules here.
                 mountpoint = MODULE_ROOT / plan['release']
+                created = not mountpoint.exists()
                 mountpoint.mkdir(mode=0o755, exist_ok=True)
                 if mountpoint.is_symlink() or not mountpoint.is_dir():
                     raise RuntimeError('untrusted module bind destination')
+                if created:
+                    info = mountpoint.stat()
+                    (work / '.created-module-mountpoint.json').write_text(json.dumps(
+                        dict(device=info.st_dev, inode=info.st_ino)))
+            work.chmod(0o555)
+            fsync_directory(work)
             work.rename(target)
             fsync_directory(stage_root)
     print('STAGED_ONLY', target)
     print(plan['command'])
+
+
+def cleanup_module_mountpoint(plan):
+    """Remove only our still-empty original bind destination after returning to 5.15."""
+    validate_release(plan['release'])
+    if os.geteuid() or not os.uname().release.startswith('5.15.'):
+        raise RuntimeError('module mountpoint cleanup requires root on the retained 5.15')
+    if not re.fullmatch('[0-9a-f]{40}', plan['build_id']):
+        raise ValueError('invalid destination build ID')
+    marker = ROOT.parent / 'hdr2-unified' / plan['build_id'] / '.created-module-mountpoint.json'
+    if not marker.exists():
+        return
+    expected = json.loads(marker.read_text())
+    path = MODULE_ROOT / plan['release']
+    if path.exists():
+        info = path.lstat()
+        if path.is_symlink() or dict(device=info.st_dev, inode=info.st_ino) != expected or os.path.ismount(path):
+            raise RuntimeError('module mountpoint ownership changed; preserving it')
+        path.rmdir()  # Nonempty directories are preserved and reported as an error.
+    marker.unlink()
 
 
 def main():

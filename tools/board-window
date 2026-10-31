@@ -518,6 +518,14 @@ m.stage(BUNDLE,retained_baseline=PROOF)
         boot(args.host, args.device, directory)
         if identity(args.host, list(proof['files'])) != proof:
             raise RuntimeError('baseline release or boot-file verification failed')
+        cleanup = '/tmp/board-window-cleanup.py'
+        subprocess.run(['scp', str(ROOT / 'packaging/kernel-edge/display-once.py'),
+                        args.host + ':' + cleanup], check=True)
+        plans = [json.loads(path.read_text()) for path in directory.glob('candidate-*.json')]
+        script = ("import importlib.util; s=importlib.util.spec_from_file_location('once',"
+                  + repr(cleanup) + "); m=importlib.util.module_from_spec(s); s.loader.exec_module(m); "
+                  + '[m.cleanup_module_mountpoint(p) for p in ' + repr(plans) + ']')
+        ssh(args.host, 'sudo -n python3 -c ' + shlex.quote(script))
         result = collect(args.host, directory)
     save(directory / (args.action + '-' + str(time.time_ns()) + '.json'), result)
     print(json.dumps(result, indent=2))

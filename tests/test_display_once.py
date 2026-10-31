@@ -30,6 +30,15 @@ def static_elf(kind=1):
 
 
 class TrialTest(unittest.TestCase):
+    def test_release_tags_are_generic_but_remain_single_safe_path_components(self):
+        for tag in ('hdr10r3', 'future_codec.42', 'uhd4-debug'):
+            with tempfile.TemporaryDirectory() as directory:
+                self.fixture(Path(directory), release='7.3.0-vim4kvm-' + tag + '+')
+        for release in ('7.3.0-vim4kvm-../bad+', '7.3.0-vim4kvm-+',
+                        '7.3.0-vim4kvm-tag+/extra', '7.4.0-vim4kvm-tag+'):
+            with self.assertRaises(ValueError):
+                once.validate_release(release)
+
     def test_filesystem_uuid_needs_verified_partition_for_no_initramfs_boot(self):
         state = dict(cmdline='root=UUID=filesystem rw rootflags=data=ordered')
         with self.assertRaisesRegex(ValueError, 'root_partuuid proof'):
