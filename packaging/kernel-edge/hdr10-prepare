@@ -14,6 +14,11 @@ modprobe t7_vdin_test nv12=1 direct_dma=1
 modprobe wave5
 modprobe t7_jpeg
 udevadm settle --timeout=15
+# The GPU conversion output pool imports buffers from this CMA heap.
+# Device nodes live in devtmpfs; this candidate's permissions end on reboot.
+test -c /dev/dma_heap/reserved
+chgrp video /dev/dma_heap/reserved
+chmod 0660 /dev/dma_heap/reserved
 for parameter in dynamic_modes hdr_probe hdr_capture; do
     test "$(cat "/sys/module/t7_hdmirx/parameters/$parameter")" = Y
 done
