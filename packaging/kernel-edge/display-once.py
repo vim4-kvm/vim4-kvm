@@ -19,6 +19,12 @@ import tempfile
 RELEASE = '7.3.0-vim4kvm-uhd1+'
 BASE_ID = '7b8372b894c98ffae12e636a325c86f2b6c85e00'
 ROOT = Path('/var/lib/vim4-kvm/display-m1')
+MODULE_ROOT = Path('/lib/modules')
+
+
+def validate_release(release):
+    if not re.fullmatch(r'7\.3\.0-vim4kvm-[A-Za-z0-9][A-Za-z0-9._-]*\+', release):
+        raise ValueError('invalid candidate release')
 
 
 def sha(path):
@@ -74,8 +80,7 @@ def trial_cmdline(state):
 
 def prepare(payload, init, baseline, output, release=RELEASE,
             baseline_release=RELEASE, baseline_id=BASE_ID):
-    if not re.fullmatch(r'7\.3\.0-vim4kvm-(?:uhd(?:[13]|2(?:-nodebug)?)|npu[0-9]+)\+', release):
-        raise ValueError('unsupported candidate release')
+    validate_release(release)
     if not re.fullmatch(r'[0-9a-f]{40}', baseline_id):
         raise ValueError('baseline build ID must be explicit and complete')
     report = json.loads((payload / 'manifest.json').read_text())
@@ -89,7 +94,7 @@ def prepare(payload, init, baseline, output, release=RELEASE,
         if sha(payload / name) != report['artifacts'][name]:
             raise ValueError('candidate artifact hash mismatch: ' + name)
     state = json.loads(baseline.read_text())
-    if '-npu' in release or release in ('7.3.0-vim4kvm-uhd2+', '7.3.0-vim4kvm-uhd2-nodebug+', '7.3.0-vim4kvm-uhd3+'):
+    if '-npu' in release or release in ('7.3.0-vim4kvm-uhd2+', '7.3.0-vim4kvm-uhd2-nodebug+', '7.3.0-vim4kvm-uhd3+', '7.3.0-vim4kvm-uhd4+'):
         runtime = json.loads((payload / 'runtime-files.json').read_text())
         required = {'/usr/libexec/vim4-board-runtime', '/usr/libexec/vim4-kvm-run',
                     '/usr/libexec/vim4-mainline-prepare',
@@ -114,7 +119,7 @@ def prepare(payload, init, baseline, output, release=RELEASE,
         raise ValueError('unexpected baseline command line')
     prefix = str(ROOT / build_id)
     candidate_cmdline = trial_cmdline(state)
-    if '-npu' in release or release in ('7.3.0-vim4kvm-uhd2+', '7.3.0-vim4kvm-uhd2-nodebug+', '7.3.0-vim4kvm-uhd3+'):
+    if '-npu' in release or release in ('7.3.0-vim4kvm-uhd2+', '7.3.0-vim4kvm-uhd2-nodebug+', '7.3.0-vim4kvm-uhd3+', '7.3.0-vim4kvm-uhd4+'):
         # Qualified uhd1 memory placement, absent from the vendor 5.15 cmdline.
         candidate_cmdline = ' '.join(token for token in candidate_cmdline.split()
                                      if not token.startswith(('cma=', 'modprobe.blacklist=')))
@@ -203,7 +208,7 @@ def preflight(plan):
             or running_build_id() != plan['baseline_id']):
         raise RuntimeError('stage only as root on the approved running baseline')
     if (not re.fullmatch(r'[0-9a-f]{40}', plan['baseline_id']) or
-            not re.fullmatch(r'7\.3\.0-vim4kvm-(?:uhd(?:[13]|2(?:-nodebug)?)|npu[0-9]+)\+', plan['release'])):
+            not re.fullmatch(r'7\.3\.0-vim4kvm-[A-Za-z0-9][A-Za-z0-9._-]*\+', plan['release'])):
         raise ValueError('bundle baseline mismatch')
     if Path('/proc/cmdline').read_text().strip() != plan['baseline_cmdline']:
         raise RuntimeError('baseline command line changed')
@@ -225,29 +230,88 @@ def fsync_directory(path):
         os.close(fd)
 
 
-def stage(bundle):
+def retained_preflight(plan, state):
+    """A chained trial retains the original 5.15 recovery target on disk.
+
+    The first window records this proof while running 5.15. Later candidates
+    cannot match its running release/cmdline, but must preserve its exact files.
+    """
+    if (os.geteuid() or not state['release'].startswith('5.15.') or
+            state['release'] != plan['baseline_release'] or
+            state['build_id'] != plan['baseline_id'] or
+            state['cmdline'] != plan['baseline_cmdline'] or
+            state['files'] != plan['baseline_files']):
+        raise RuntimeError('retained baseline differs from the approved trial proof')
+    for name, expected in state['files'].items():
+        if sha(name) != expected:
+            raise RuntimeError('retained baseline file changed: ' + name)
+
+
+def read_trial(archive, baseline=None):
+    """Normalize existing trial.json and HDR2 manifest.json RAM payloads."""
+    entries = {}
+    for member in archive.getmembers():
+        if member.isdir() and member.name in ('.', './'):
+            continue
+        name = str(safe_member(member))
+        if member.isdir():
+            continue
+        if name in entries:
+            raise ValueError('duplicate trial file: ' + name)
+        entries[name] = member
+    metadata = 'trial.json' if 'trial.json' in entries else 'manifest.json'
+    report = json.load(archive.extractfile(entries[metadata]))
+    if metadata == 'trial.json':
+        plan = report
+    else:
+        validate_release(report['release'])
+        plan = dict(release=report['release'], build_id=report['build_id'],
+                    files=report['sha256'], source=report['source_commit'])
+        if baseline is not None:
+            plan.update(baseline_release=baseline['release'], baseline_id=baseline['build_id'],
+                        baseline_cmdline=baseline['cmdline'], baseline_files=baseline['files'])
+        prefix = str(ROOT.parent / 'hdr2-unified' / plan['build_id'])
+        plan['command'] = f'sysboot mmc 1:2 any ${{pxefile_addr_r}} {prefix}/extlinux.conf; reset'
+        config = archive.extractfile(entries['extlinux.conf']).read().decode()
+        for directive in (f'LINUX {prefix}/Image', f'FDT {prefix}/vim4.dtb', f'init={prefix}/init'):
+            if directive not in config:
+                raise ValueError('HDR2 config does not use the private RAM payload: ' + directive)
+    validate_release(plan['release'])
+    if not re.fullmatch('[0-9a-f]{40}', plan['build_id']):
+        raise ValueError('invalid destination build ID')
+    if set(entries) != {*plan['files'], metadata}:
+        raise ValueError('trial archive inventory mismatch')
+    if not {'Image', 'vim4.dtb', 'init', 'extlinux.conf'} <= set(plan['files']):
+        raise ValueError('missing boot artifacts')
+    return plan, metadata, entries
+
+
+def stage(bundle, retained_baseline=None):
+    def check(plan):
+        if retained_baseline is None:
+            preflight(plan)
+        else:
+            retained_preflight(plan, retained_baseline)
     with tarfile.open(bundle) as archive:
-        plan = json.load(archive.extractfile('trial.json'))
-        if not re.fullmatch('[0-9a-f]{40}', plan['build_id']):
-            raise ValueError('invalid destination build ID')
-        preflight(plan)
-        ROOT.mkdir(parents=True, exist_ok=True, mode=0o755)
+        plan, metadata, entries = read_trial(archive, retained_baseline)
+        if metadata == 'manifest.json' and retained_baseline is None:
+            raise ValueError('HDR2 payload requires original retained 5.15 proof')
+        check(plan)
+        stage_root = ROOT if metadata == 'trial.json' else ROOT.parent / 'hdr2-unified'
+        stage_root.mkdir(parents=True, exist_ok=True, mode=0o755)
         # An interrupted extraction is inert: no boot path points at this directory.
-        for ancestor in (ROOT, *ROOT.parents):
+        for ancestor in (stage_root, *stage_root.parents):
             info = ancestor.lstat()
             if not ancestor.is_dir() or ancestor.is_symlink() or info.st_uid or info.st_mode & 0o022:
                 raise RuntimeError('untrusted staging ancestor: ' + str(ancestor))
-        target = ROOT / plan['build_id']
+        target = stage_root / plan['build_id']
         if target.exists():
             raise FileExistsError(target)
-        with tempfile.TemporaryDirectory(prefix='.incomplete-', dir=ROOT) as directory:
+        with tempfile.TemporaryDirectory(prefix='.incomplete-', dir=stage_root) as directory:
             work = Path(directory)
             seen = set()
-            for member in archive:
-                name = str(safe_member(member))
-                if member.isdir():
-                    continue
-                if name in seen or name not in {*plan['files'], 'trial.json'}:
+            for name, member in entries.items():
+                if name in seen or name not in {*plan['files'], metadata}:
                     raise ValueError('duplicate/unlisted trial file: ' + name)
                 seen.add(name)
                 destination = work / name
@@ -256,24 +320,57 @@ def stage(bundle):
                     shutil.copyfileobj(source, output)
                     output.flush()
                     os.fsync(output.fileno())
-                destination.chmod(0o555 if name == 'init' else 0o444)
-                if name != 'trial.json' and sha(destination) != plan['files'][name]:
+                executable = name == 'init' or (metadata == 'manifest.json' and member.mode & 0o111)
+                destination.chmod(0o555 if executable else 0o444)
+                if name != metadata and sha(destination) != plan['files'][name]:
                     raise ValueError('trial file hash mismatch: ' + name)
-            if seen != {*plan['files'], 'trial.json'}:
+            if seen != {*plan['files'], metadata}:
                 raise ValueError('trial archive is incomplete')
             static_arm64(work / 'init')
             for path in sorted(work.rglob('*'), reverse=True):
                 if path.is_dir():
                     path.chmod(0o555)
                     fsync_directory(path)
+            # Recheck baseline just before publication; never select a trial here.
+            check(plan)
+            if metadata == 'manifest.json':
+                # HDR2 uses a distinct release but its static PID 1 still needs
+                # an existing empty bind destination; never install modules here.
+                mountpoint = MODULE_ROOT / plan['release']
+                created = not mountpoint.exists()
+                mountpoint.mkdir(mode=0o755, exist_ok=True)
+                if mountpoint.is_symlink() or not mountpoint.is_dir():
+                    raise RuntimeError('untrusted module bind destination')
+                if created:
+                    info = mountpoint.stat()
+                    (work / '.created-module-mountpoint.json').write_text(json.dumps(
+                        dict(device=info.st_dev, inode=info.st_ino)))
             work.chmod(0o555)
             fsync_directory(work)
-            # Recheck baseline just before publication; never select a trial here.
-            preflight(plan)
             work.rename(target)
-            fsync_directory(ROOT)
+            fsync_directory(stage_root)
     print('STAGED_ONLY', target)
     print(plan['command'])
+
+
+def cleanup_module_mountpoint(plan):
+    """Remove only our still-empty original bind destination after returning to 5.15."""
+    validate_release(plan['release'])
+    if os.geteuid() or not os.uname().release.startswith('5.15.'):
+        raise RuntimeError('module mountpoint cleanup requires root on the retained 5.15')
+    if not re.fullmatch('[0-9a-f]{40}', plan['build_id']):
+        raise ValueError('invalid destination build ID')
+    marker = ROOT.parent / 'hdr2-unified' / plan['build_id'] / '.created-module-mountpoint.json'
+    if not marker.exists():
+        return
+    expected = json.loads(marker.read_text())
+    path = MODULE_ROOT / plan['release']
+    if path.exists():
+        info = path.lstat()
+        if path.is_symlink() or dict(device=info.st_dev, inode=info.st_ino) != expected or os.path.ismount(path):
+            raise RuntimeError('module mountpoint ownership changed; preserving it')
+        path.rmdir()  # Nonempty directories are preserved and reported as an error.
+    marker.unlink()
 
 
 def main():
@@ -285,7 +382,10 @@ def main():
     prepare_parser.add_argument('--release', default=RELEASE)
     prepare_parser.add_argument('--baseline-release', default=RELEASE)
     prepare_parser.add_argument('--baseline-id', default=BASE_ID)
-    commands.add_parser('stage').add_argument('bundle', type=Path)
+    stage_parser = commands.add_parser('stage')
+    stage_parser.add_argument('bundle', type=Path)
+    stage_parser.add_argument('--retained-baseline', type=lambda p: json.loads(Path(p).read_text()),
+                              help='original 5.15 proof for chained RAM trials')
     args = vars(parser.parse_args())
     action = args.pop('action')
     (prepare if action == 'prepare' else stage)(**args)

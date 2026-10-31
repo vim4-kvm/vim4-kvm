@@ -1,16 +1,29 @@
 # VIM4 7.3 kbase 后备候选
 
+当前转入[uhd4基线上的uhd5候选](gpu-kbase-uhd5.md)，正式内核基线8bca939d6bbd3。
+下列r6/r9记录保留其原始内核与测量范围，不代表uhd5已通过。
+
+[r9队列首用](bringup/2026-10-31-kbase-r9-queue.md)：模块/ABI及339项宿主测试通过；
+平台层新增mpgpu只读缓存，修正DEVFREQ metrics定时器回收。5.15七轮默认策略已缓存，
+7.3候选受工具目录冲突阻塞，尚未启动；新默认策略性能与温度仍未完成配对。
+
+[r7离线候选与等锁超时](bringup/2026-10-31-kbase-r7-offline.md)：取消performance默认，
+改为独立`governor_vim4.ko`复现厂商五档阈值/保持计数；
+本轮已构建，尚未上板，不把r6的performance成绩算作新默认策略的验收。
+厂商实际配置为MALI_MIDGARD_DVFS，不是另一编译分支中的simple_ondemand 30/5。
+performance仅保留为显式调优选项，不能据此宣称产品性能/能效对齐。
+
 [r6实测与二分](bringup/2026-10-31-kbase-r6-window.md)：同heap-gfx、800MHz时DMA 1.493ms，
 追平5.15的1.574ms；根因为突发任务未及时升频，新增仅T7的performance governor默认值。
 
 | 当前门禁 | 状态 |
 |---|---|
-| API查询/像素/基本执行 | EGL1.5、GLES3.2、VK1.3.231、CL设备/C3.0，通过；非CTS |
+| API查询/像素/基本执行 | r6为EGL1.5、GLES3.2、VK1.3.231、CL设备/C3.0；r9新候选待测，非CTS |
 | 64位heap | 六类VK路径通过；CL五类本轮通过，default CMA CL未重测 |
-| 正常候选WARN/fault | 零kernel WARN/BUG/oops、零GPU/MMU fault；负向去override会复现fault |
-| 性能 | 同频/同WC合同DMA追平，GLES/CL不低于本轮5.15；能效未测 |
-| thermal/并行 | 95°C passive GPU map已绑定、五档通过、并行59.998fps；未真实加热 |
-| 实际scanout / GBM→Wave5 | 布局元数据不足，未通过；不是PRIME handle导入成功即可替代 |
+| 正常候选WARN/fault | r6正常候选零WARN/BUG/oops/fault；r9未加载，负向去override的历史对照会fault |
+| 默认策略性能 | 5.15七轮已缓存；新7.3默认策略待配对；r6高频成绩不作为该门禁通过 |
+| thermal/并行 | r6有95°C map绑定、五档/59.998fps；r9待测，真实温控未触发 |
+| 实际scanout / GBM→Wave5 | 新互操作能力未通过；非现有5.15默认视频路径，独立验收，不以PRIME handle成功替代 |
 
 尚不满足完整互操作门禁，保留候选，不提交可批准的产品路径方案或改变默认GPU。
 
@@ -48,7 +61,8 @@ r2的[EGL选择、电源范围和补丁重放](gpu-kbase-integration.md)推荐IC
 
 补丁按责任重放：0001为内核API/Kbuild兼容，0002为T7域/bus/reset平台，0003为devfreq/thermal注册，
 0004仅候选DT（GPU coherency、独立CMA、GPU cooling map），0005为timer/workqueue/fence生命周期，
-0006为T7 reset override，0007为fault region诊断，0008为仅vim4的devfreq默认策略。
+0006为T7 reset override，0007为fault region诊断，0008为仅vim4的devfreq默认策略，
+0009用schedule_work代替JM路径的旧system_wq；7.3映射system_percpu_wq，旧内核保持原语义。
 WC exporter独立在heaps/，不混入DDK。0006依据厂商/Panfrost初始化，r6去掉它独立复现原生compute fault。
 删除dma-coherent的必要性未证明；仍以5.15缓存合同保守保留，不能称它是必需的fault修复。
 heaps实现的是厂商WC合同，并非已被上游接受的system-uncached；将来优先替换为等价的公开接口。
@@ -97,7 +111,7 @@ G76 r56或CSF驱动不构成G52支持证据。不能改版本常量伪装UK11.39
 | timer/debugfs | timer_delete与hrtimer_setup兼容包装；no_llseek改为NULL（不提供seek）；MIN/MAX及固件in_range与新内核命名冲突修正；debugfs其余入口编译通过 |
 | platform/of/file | remove回调为void；unsigned offset转到file_operations.fop_flags；仅匹配候选专用compatible；misc设备原样，不引入厂商mpgpu class接口 |
 | DMA/IOMMU/SG | dma_set_max_seg_size现为void；kbase使用GPU自己的MMU，沿用T7直接DMA路径，不引入厂商IOMMU私有接口，不等于已验非连续buffer/外部IOMMU |
-| devfreq/OPP | 通用devfreq＋五档OPP；T7默认上游performance governor以满足突发DMA延迟，其他平台仍simple_ondemand；thermal继续约束上限，不移植PREHEAT状态机 |
+| devfreq/OPP | 通用devfreq＋五档OPP；T7离线候选改为vim4五档策略，其他平台仍simple_ondemand；thermal由devfreq核心约束，私有PREHEAT接口不启用 |
 | thermal | of_devfreq_cooling_register、max_state=4；新增95°C GPU map已绑定，保留MCU map；真实过温闭环未触发，不使用未校准IPA模型 |
 | pm_runtime/reset | 小平台层持有runtime引用直至remove；复位数组含CAPB3和MALI；失败路径回收bus和PM引用；不在每个空闲任务间重置域 |
 

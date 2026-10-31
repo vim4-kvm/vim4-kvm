@@ -12,7 +12,9 @@
 同一GBM/FBO shader三轮平均：厂商622.659fps、系统Mesa231.714fps、私有Mesa233.730fps。
 私有GLES仍3.1、Vulkan设备仅1.0.354；CL设备3.0但OpenCL C1.2，完整clpeak三轮map阶段超时。
 严格功能/性能目标未达成。优先定位G52编译器性能、API能力及CL map边界；固定电压与厂商一致，非缺口。
-方针“上游实现、kbase/libmali必要时临时后备”仍是代理建议，尚待用户确认。
+方针“上游实现、kbase/libmali必要时临时后备”**用户已于 2026-10-30 确认**。
+当前优先[VDIN HDR2硬件映射](hdr2-hardware-plan.md)，GPU tone-map shader与DMA适配暂停，GPU仅缩放/后备。
+编译器暂停：GCM默认、完整系列显式选项；可上游补丁仅本地整理，不对外发送。[GPU原型](gpu-hdr-pipeline.md)保留为历史规格。
 后续[离线性能复核](gpu-performance-diagnosis.md)修正测量边界：GLES旧值含末次回读且无预热，
 Vulkan4.25倍为冷提交主机等待口径，clpeak120秒是全程序预算；尚不能直接归因GPU执行效率或map死锁。
 

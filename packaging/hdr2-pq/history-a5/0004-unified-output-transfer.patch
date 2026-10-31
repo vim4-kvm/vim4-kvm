@@ -1,0 +1,237 @@
+From 58b7ecfeb68387ec4c870959b61ea2d10e93f739 Mon Sep 17 00:00:00 2001
+From: localhost-copilot <318096335+localhost-copilot@users.noreply.github.com>
+Date: Sat, 31 Oct 2026 10:27:34 +0800
+Subject: [PATCH] media: t7-vdin: align mapped HDR output with the sRGB
+ transfer
+
+---
+ .../platform/amlogic/t7-hdmirx/t7-hdmirx.c    | 17 ++++
+ .../platform/amlogic/t7-hdmirx/t7-hdmirx.h    |  2 +
+ .../platform/amlogic/t7-hdmirx/t7-vdin-hlg.h  | 23 +-----
+ .../platform/amlogic/t7-hdmirx/t7-vdin-test.c |  3 +-
+ .../platform/amlogic/t7-hdmirx/test_color.py  | 82 +++++++++++++++++++
+ .../platform/amlogic/t7-hdmirx/test_hlg.py    | 11 ++-
+ 6 files changed, 112 insertions(+), 26 deletions(-)
+ create mode 100644 drivers/media/platform/amlogic/t7-hdmirx/test_color.py
+
+diff --git a/drivers/media/platform/amlogic/t7-hdmirx/t7-hdmirx.c b/drivers/media/platform/amlogic/t7-hdmirx/t7-hdmirx.c
+index ea5debf5c14ee..609fb8e637e61 100644
+--- a/drivers/media/platform/amlogic/t7-hdmirx/t7-hdmirx.c
++++ b/drivers/media/platform/amlogic/t7-hdmirx/t7-hdmirx.c
+@@ -2018,6 +2018,23 @@ bool t7_hdmirx_stream_is_hdr(struct device *dev)
+ }
+ EXPORT_SYMBOL_GPL(t7_hdmirx_stream_is_hdr);
+ 
++bool t7_hdmirx_capture_is_hdr(struct device *dev)
++{
++	struct t7_hdmirx *rx = dev_get_drvdata(dev);
++	bool hdr = false;
++
++	if (!rx->link)
++		return false;
++	mutex_lock(&rx->link->lock);
++	if (rx->link->users)
++		hdr = rx->lease_hdr;
++	else if (rx->link->ready)
++		hdr = t7_hdmirx_hdr_input(rx);
++	mutex_unlock(&rx->link->lock);
++	return hdr;
++}
++EXPORT_SYMBOL_GPL(t7_hdmirx_capture_is_hdr);
++
+ bool t7_hdmirx_stream_is_hlg(struct device *dev)
+ {
+ 	struct t7_hdmirx *rx = dev_get_drvdata(dev);
+diff --git a/drivers/media/platform/amlogic/t7-hdmirx/t7-hdmirx.h b/drivers/media/platform/amlogic/t7-hdmirx/t7-hdmirx.h
+index fb324a96600c6..6deb3d2687db1 100644
+--- a/drivers/media/platform/amlogic/t7-hdmirx/t7-hdmirx.h
++++ b/drivers/media/platform/amlogic/t7-hdmirx/t7-hdmirx.h
+@@ -33,6 +33,8 @@ void t7_hdmirx_stream_put(struct device *dev);
+ 
+ /* Stable input classification for the held stream lease, until stream_put. */
+ bool t7_hdmirx_stream_is_hdr(struct device *dev);
++/* Qualified current input, or the immutable classification of an active lease. */
++bool t7_hdmirx_capture_is_hdr(struct device *dev);
+ bool t7_hdmirx_stream_is_hlg(struct device *dev);
+ bool t7_hdmirx_stream_is_yuv(struct device *dev);
+ bool t7_hdmirx_stream_needs_yuv444_swap(struct device *dev);
+diff --git a/drivers/media/platform/amlogic/t7-hdmirx/t7-vdin-hlg.h b/drivers/media/platform/amlogic/t7-hdmirx/t7-vdin-hlg.h
+index 86733b571f678..676b562394ad6 100644
+--- a/drivers/media/platform/amlogic/t7-hdmirx/t7-vdin-hlg.h
++++ b/drivers/media/platform/amlogic/t7-hdmirx/t7-vdin-hlg.h
+@@ -45,27 +45,8 @@ static const u32 t7_hlg_gain[149] = {
+ 	513, 512, 512, 512, 512,
+ };
+ 
+-static const u32 t7_hlg_oetf[149] = {
+-	0, 0, 0, 1, 1, 2, 2, 4,
+-	5, 6, 6, 7, 7, 8, 9, 9,
+-	10, 11, 12, 13, 14, 15, 16, 18,
+-	19, 21, 23, 24, 26, 29, 31, 34,
+-	36, 40, 43, 46, 49, 55, 59, 64,
+-	68, 75, 81, 87, 93, 98, 103, 107,
+-	112, 116, 120, 124, 128, 135, 141, 147,
+-	153, 159, 165, 170, 175, 185, 194, 202,
+-	210, 218, 226, 233, 240, 253, 266, 277,
+-	289, 299, 309, 319, 329, 347, 364, 380,
+-	396, 410, 424, 438, 451, 476, 499, 521,
+-	542, 562, 582, 600, 618, 652, 684, 714,
+-	743, 771, 797, 823, 847, 894, 938, 979,
+-	1019, 1056, 1093, 1127, 1161, 1225, 1285, 1342,
+-	1396, 1448, 1497, 1545, 1591, 1679, 1761, 1839,
+-	1913, 1984, 2052, 2118, 2181, 2301, 2414, 2520,
+-	2622, 2719, 2812, 2902, 2989, 3072, 3153, 3231,
+-	3308, 3382, 3454, 3525, 3593, 3661, 3727, 3791,
+-	3854, 3916, 3977, 4037, 4095,
+-};
++/* Product SDR output uses the same sRGB OETF for both HDR input encodings. */
++#define t7_hlg_oetf t7_hdr_srgb
+ 
+ static const u32 t7_hlg_cgain[65] = {
+ 	1023, 1023, 1023, 1023, 1023, 1023, 1023, 1023,
+diff --git a/drivers/media/platform/amlogic/t7-hdmirx/t7-vdin-test.c b/drivers/media/platform/amlogic/t7-hdmirx/t7-vdin-test.c
+index 05d91fb968518..4ec258c6332da 100644
+--- a/drivers/media/platform/amlogic/t7-hdmirx/t7-vdin-test.c
++++ b/drivers/media/platform/amlogic/t7-hdmirx/t7-vdin-test.c
+@@ -1096,7 +1096,8 @@ static void t7_vdin_fill_fmt(struct t7_vdin *vdin, struct v4l2_format *fmt,
+ 		.bytesperline = stride,
+ 		.sizeimage = vdin->nv12 ? stride * ALIGN(height, 16) * 3 / 2 : stride * height,
+ 		.colorspace = vdin->nv12 ? V4L2_COLORSPACE_REC709 : V4L2_COLORSPACE_SRGB,
+-		.xfer_func = vdin->nv12 ? V4L2_XFER_FUNC_709 : V4L2_XFER_FUNC_SRGB,
++		.xfer_func = !vdin->nv12 || t7_hdmirx_capture_is_hdr(vdin->receiver) ?
++			V4L2_XFER_FUNC_SRGB : V4L2_XFER_FUNC_709,
+ 		.ycbcr_enc = vdin->nv12 ? V4L2_YCBCR_ENC_709 : V4L2_YCBCR_ENC_DEFAULT,
+ 		.quantization = vdin->nv12 ? V4L2_QUANTIZATION_LIM_RANGE :
+ 					   V4L2_QUANTIZATION_FULL_RANGE,
+diff --git a/drivers/media/platform/amlogic/t7-hdmirx/test_color.py b/drivers/media/platform/amlogic/t7-hdmirx/test_color.py
+new file mode 100644
+index 0000000000000..06245767ccca3
+--- /dev/null
++++ b/drivers/media/platform/amlogic/t7-hdmirx/test_color.py
+@@ -0,0 +1,82 @@
++#!/usr/bin/env python3
++# SPDX-License-Identifier: GPL-2.0-only
++"""Exercise actual format reporting and protected input classification."""
++from pathlib import Path
++import math
++import re
++import subprocess
++import tempfile
++
++root = Path(__file__).resolve().parent
++
++
++def function(file, signature):
++    text = (root / file).read_text()
++    start = text.index(signature)
++    return text[start:text.index('\n}', start) + 2]
++
++
++pq = (root / 't7-vdin-hdr.h').read_text()
++values = list(map(int, re.search(r't7_hdr_srgb\[149\] = \{([^}]+)', pq)[1].replace(',', ' ').split()))
++nodes = [0] + [2 ** (i + 3) for i in range(1, 8)]
++nodes += [2 ** j + i * 2 ** (j - 2) for j in range(11, 20) for i in range(4)]
++nodes += [2 ** j + i * 2 ** (j - 3) for j in range(20, 31) for i in range(8)]
++nodes += [2 ** 31 + i * 2 ** 27 for i in range(16)] + [2 ** 32 - 1]
++expected = []
++for node in nodes:
++    linear = node / 2 ** 32
++    encoded = 12.92 * linear if linear <= .0031308 else 1.055 * linear ** (1 / 2.4) - .055
++    expected.append(math.floor(4095 * encoded + .5))
++assert values == expected, 'OETF must describe the sRGB transfer that V4L2 reports'
++
++fixture = r'''
++#include <assert.h>
++#include <stdbool.h>
++#include <stddef.h>
++#include <time.h>
++#include <linux/videodev2.h>
++#define ALIGN(x,a) (((x)+(a)-1)&~((a)-1))
++struct link {int lock, users; bool ready;};
++struct t7_hdmirx {struct link *link; bool lease_hdr, live_hdr;};
++struct device {struct t7_hdmirx *rx;};
++struct t7_vdin {bool nv12; unsigned pixel_format; struct device *receiver;};
++static unsigned reads;
++static void mutex_lock(int *lock) {assert(!*lock); *lock=1;}
++static void mutex_unlock(int *lock) {assert(*lock); *lock=0;}
++static struct t7_hdmirx *dev_get_drvdata(struct device *dev) {return dev->rx;}
++static bool t7_hdmirx_hdr_input(struct t7_hdmirx *rx)
++{assert(rx->link->lock && rx->link->ready); reads++; return rx->live_hdr;}
++'''
++fixture += function('t7-hdmirx.c', 'bool t7_hdmirx_capture_is_hdr(')
++fixture += '\n' + function('t7-vdin-test.c', 'static void t7_vdin_fill_fmt(')
++fixture += r'''
++int main(void) {
++ struct link link={0}; struct t7_hdmirx rx={.link=&link};
++ struct device dev={&rx}; struct t7_vdin v={true,V4L2_PIX_FMT_NV12,&dev};
++ struct v4l2_format fmt={0};
++ assert(!t7_hdmirx_capture_is_hdr(&dev) && reads==0);
++ link.ready=true; rx.live_hdr=true;
++ t7_vdin_fill_fmt(&v,&fmt,3840,2160);
++ assert(fmt.fmt.pix.xfer_func==V4L2_XFER_FUNC_SRGB);
++ assert(fmt.fmt.pix.colorspace==V4L2_COLORSPACE_REC709);
++ assert(fmt.fmt.pix.ycbcr_enc==V4L2_YCBCR_ENC_709);
++ assert(fmt.fmt.pix.quantization==V4L2_QUANTIZATION_LIM_RANGE);
++ assert(fmt.fmt.pix.bytesperline==3840 && fmt.fmt.pix.sizeimage==12441600);
++ link.users=1; link.ready=false; rx.lease_hdr=true; rx.live_hdr=false;
++ reads=0; t7_vdin_fill_fmt(&v,&fmt,3840,2160);
++ assert(fmt.fmt.pix.xfer_func==V4L2_XFER_FUNC_SRGB && reads==0);
++ rx.lease_hdr=false; t7_vdin_fill_fmt(&v,&fmt,3840,2160);
++ assert(fmt.fmt.pix.xfer_func==V4L2_XFER_FUNC_709 && reads==0);
++ v.nv12=false; t7_vdin_fill_fmt(&v,&fmt,1920,1080);
++ assert(fmt.fmt.pix.xfer_func==V4L2_XFER_FUNC_SRGB);
++ assert(fmt.fmt.pix.quantization==V4L2_QUANTIZATION_FULL_RANGE);
++ rx.link=NULL; assert(!t7_hdmirx_capture_is_hdr(&dev));
++}
++'''
++with tempfile.TemporaryDirectory() as tmp:
++    source, exe = Path(tmp) / 'test.c', Path(tmp) / 'test'
++    source.write_text(fixture)
++    subprocess.run(['cc', '-Wall', '-Wextra', '-Werror', '-fsanitize=undefined',
++                    '-fno-sanitize-recover=all', str(source), '-o', str(exe)], check=True)
++    subprocess.run([str(exe)], check=True)
++print('sRGB OETF, V4L2 output tuple and lease-protected classification: PASS')
+diff --git a/drivers/media/platform/amlogic/t7-hdmirx/test_hlg.py b/drivers/media/platform/amlogic/t7-hdmirx/test_hlg.py
+index dd2d1ee807b39..381d86cba7020 100644
+--- a/drivers/media/platform/amlogic/t7-hdmirx/test_hlg.py
++++ b/drivers/media/platform/amlogic/t7-hdmirx/test_hlg.py
+@@ -19,7 +19,7 @@ text = (root / 't7-vdin-hlg.h').read_text()
+ hashes = {
+     'eotf': '887e6841dfeb378230a0be770dc646801e6758310c4e72333872e41bebaf2150',
+     'gain': '84f874e72b917f4fc32032bc8f6a1bdc44b9a91553d7eea841e0533accc38ca1',
+-    'oetf': 'f6259903a90039c4f82535382c60654941861dc21e5aba8db00af87aed992db7',
++    'oetf': 'bcb715148098dffe8c2d1fbf867ae1e80e5dc7f7fb03b401100ee40ca0739099',
+     'cgain': '7b23b31657f2ac921ce26347da579deefe4b9543050772b090dddb357454431c',
+     'gamut': '4650784da5a8632231c0a332aed110705c4c884928c366259c9e782f68005267',
+ }
+@@ -31,13 +31,15 @@ def array(source, name):
+     return [int(v, 0) for v in re.findall(r'-?(?:0x[0-9a-fA-F]+|\d+)', body)]
+ 
+ 
+-tables = {name: array(text, 't7_hlg_' + name) for name in hashes}
++pq = (root / 't7-vdin-hdr.h').read_text()
++tables = {name: array(text, 't7_hlg_' + name) for name in hashes if name != 'oetf'}
++tables['oetf'] = array(pq, 't7_hdr_srgb')
+ for name, values in tables.items():
+     assert hashlib.sha256(struct.pack('<' + 'i' * len(values), *values)).hexdigest() == hashes[name]
+ if len(sys.argv) == 2:
+     vendor = Path(sys.argv[1]).read_text()
+     for name, original in [('eotf', 'eo_y_lut_hlg'), ('gain', 'oo_y_lut_hlg_sdr'),
+-                           ('oetf', 'oe_y_lut_sdr'), ('cgain', 'cgain_lut1'),
++                           ('cgain', 'cgain_lut1'),
+                            ('gamut', 'ncl_2020_709')]:
+         values = array(vendor, original)
+         if name == 'cgain':
+@@ -78,7 +80,8 @@ int main(void) {
+ '''
+ with tempfile.TemporaryDirectory() as tmp:
+     c, exe = Path(tmp) / 'test.c', Path(tmp) / 'test'
+-    c.write_text(fixture)
++    declaration = re.search(r'static const u32 t7_hdr_srgb\[149\] = \{[^}]+\};', pq)[0]
++    c.write_text(fixture.replace('#include "t7-vdin-hlg.h"', declaration + '\n#include "t7-vdin-hlg.h"'))
+     subprocess.run(['cc', '-Wall', '-Wextra', '-Werror', '-fsanitize=undefined',
+                     '-fno-sanitize-recover=all', '-I', str(root), str(c), '-o', str(exe)], check=True)
+     writes = [tuple(int(v, 16) for v in line.split()) for line in subprocess.check_output([str(exe)], text=True).splitlines()]
+-- 
+2.43.0
+

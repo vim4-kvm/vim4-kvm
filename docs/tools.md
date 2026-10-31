@@ -25,10 +25,9 @@ PiKVM smoke 可用 `PIKVM_CDP` 接入专用测试 Chrome；结束时关闭测试
 
 | 入口 | 运行位置 | 影响 | 用途 | 文档 |
 |---|---|---|---|---|
-| packaging/kbase/build.py、run.py、check-style.py、check-semantics.py、check-heaps.py、clpeak-subset.py、dma-profile.py、resolve-egl.c、heaps/vim4_kbase_heaps.c | build/check：宿主/ARM64 VM；run/CL/模块：板 | build/check/resolve无硬件访问；run/CL占GPU，profile独占GPU并临时创建具名trace实例/事件，heap占候选CMA | series与WC heap构建、ABI/语义/风格门禁；私有ICD/EGL前缀；CL限时、DMA逐提交边界与cache事件 | [kbase后备候选](gpu-kbase-7x.md)、[MMU与heap合同](gpu-kbase-mmu-heaps.md) |
 | tools/memory-bench.c、memory-bench.py | C：Linux ARM64编译；runner：Linux/板 | 独占CPU/内存/tmpfs；无频率写入、部署、HID | 单核强制绑定、逐段实际CPU/每核频率、多尺寸分布与fault，≤3分钟、采温度并恢复亲和 | [内存拷贝审查](memory-copy-audit.md)、[绑核门禁与配置草案](nodebug-performance-gate.md) |
 | tools/gpu-diagnose.py、gpu-cl-map.c | 板；CL工具先ARM64编译 | 独占GPU；诊断器可临时锁频/PM/profiling并恢复；不写电压、不ptrace | 自有子进程fdinfo/周期/忙闲估计、trans_stat与CPU；小buffer CL map复现 | [GPU性能复核](gpu-performance-diagnosis.md) |
-| packaging/gpu/（含 compiler-compare.sh、corpus-check.sh、corpus-report.py、gpu-probe.c） | Docker ARM64；probe：板 | 构建无；probe占GPU；GPU_WAVE5_DEVICE显式指定编码节点时还独占编码器 | shader/FBO像素；GPU_GBM_EXPORT=render/scanout/nv12，linear另加线性要求；Wave5只在NV12完整布局及同buffer证明后尝试QBUF，不STREAMON | [GPU运行时](bringup/2026-10-30-gpu-runtime.md)、[MMU/heap合同](gpu-kbase-mmu-heaps.md) |
+| packaging/gpu/（含 compiler-compare.sh、corpus-check.sh、corpus-report.py、gpu-probe.c、hdr-check.sh、hdr-check.py、hdr-probe.c、hdr.comp、hdr-vulkan.py、hdr-dmabuf.c/h、hdr-dmabuf-test.c） | Docker ARM64；probe：板 | 构建无；probe占GPU | 固定shader-db、全帧RGBA；HDR参考/GBM负载、候选外部buffer导入与退休，不接生产DMA | [GPU运行时](bringup/2026-10-30-gpu-runtime.md)、[HDR规格](gpu-hdr-pipeline.md) |
 | tools/npu-probe.c、npu-validate.py、npu-models.json | 编译：ARM64；run：板；compare：Mac/VM | run 占用 NPU，写新结果目录；无部署、HID、声音 | 固定下载SHA、逐轮完整张量校验、均值/P50/P99/最大值；probe的--timing分段SDK外开销 | [ADLA离线候选](npu-adla.md)、[端到端分段](npu-e2e-timing.md) |
 | tools/npu-uapi-probe.c | ARM64编译→板 | 占用NPU兼容接口；无推理、HID或声音 | 初始化MMU上下文后测试ATTACH别名；负向PROFILE_CFG拒绝厂商5.15，须有界运行 | [ADLA候选与验收](npu-adla.md) |
 | packaging/kernel-edge/build-gstreamer.py | 容器/VM | 无 | 校验固定源码、应用 V4L2 生命周期补丁并构建私有插件，不改系统库 | [音视频](subsystems/video.md) |
@@ -45,8 +44,7 @@ PiKVM smoke 可用 `PIKVM_CDP` 接入专用测试 Chrome；结束时关闭测试
 | packaging/kernel-edge/check-wifi-p2p.py | 板 | 独占、临时接管 Wi-Fi 后恢复 | 已保存 SAE 客户端与 P2P 扫描、监听、双频 GO 启停；不代替真实对端传输 | [Wi-Fi Direct](bringup/2026-10-21-edge-wifi-p2p.md) |
 | tools/workspace.py | Mac / CI | 无 | bootstrap/status 子仓库（`--override` 供发布 CI 替换单个仓库提交），build 各目标（kernel 走 OrbStack） | [工作区](workspace.md) |
 | tools/mali-runtime.py | fetch：Mac / Linux；install：板（root） | 下载或写私有 GPU 目录，不重启服务 | 固定来源和 SHA 获取 r44p0 用户态驱动，安装前检查 5.15/Mali ABI 与依赖；不注册全局 ICD | [HDR GPU](bringup/2026-10-26-hdr-gpu.md) |
-| tools/mali-dma-probe.c、mali-dma-probe.comp、mali-cl-probe.c | ARM64 容器编译 → 板 | GPU计算与临时内存；不操作采集/编码 | VK原生device-local/host-visible、DMA heap导入和逐字校验；可选16KiB二分；CL单kernel支持同类分配。均须外部timeout | [kbase候选](gpu-kbase-7x.md) |
-| tools/gbm-scanout-probe.c | ARM64容器编译→板 | 独占显示；保持当前mode，恢复原FB，不抢DRM master | GBM线性XR24 BO导出/导入并短时SetCrtc；布局/恢复信息不足则拒绝，需与采集并行验收并带timeout | [kbase候选](gpu-kbase-7x.md) |
+| tools/mali-dma-probe.c、mali-dma-probe.comp | ARM64 容器编译 → 板 | GPU 计算、临时约25MB连续CMA，不操作采集/编码 | Vulkan计算、DMA-buf导入与逐字读回；可选第二参数指定已知连续heap路径，默认codecmm；不是视频吞吐基准 | [HDR GPU](bringup/2026-10-26-hdr-gpu.md) |
 | tools/vrr-edid.py | Mac / Linux | 只写指定的新文件，不访问板子 | 显式实验范围生成远程VRR EDID；Forum最小值≤48、显式最大值≥100，拒绝保留值与模式相关上限；本地模式必须提供同协议sink并取交集，不安装预设或触发HPD | [VRR准备](vrr-preparation.md) |
 | tools/ubuntu-build.py | Mac / CI → Docker | 无 | package/verify 七组件；支持 platform、capture、encoder、nanokvm、jetkvm、onekvm、manager、pikvm、pikvm-app | [Ubuntu 构建](ubuntu-build.md) |
 | tools/ubuntu-image.py | Mac → OrbStack | 无 | 内核包、候选镜像 assemble/verify/export | [候选镜像](ubuntu-image.md) |
@@ -61,6 +59,12 @@ PiKVM smoke 可用 `PIKVM_CDP` 接入专用测试 Chrome；结束时关闭测试
 
 | 入口 | 运行位置 | 影响 | 用途 | 文档 |
 |---|---|---|---|---|
+| packaging/kbase/build.py、run.py、check-style.py、check-semantics.py、check-heaps.py、clpeak-subset.py、dma-profile.py、default-parity.py、resolve-egl.c、heaps/vim4_kbase_heaps.c、dvfs/governor_vim4.c | build/check：宿主/ARM64 VM；run/CL/模块：板 | build/check/resolve无硬件访问；run/CL占GPU，parity独占GPU并只读温度，profile临时创建具名trace实例/事件，heap占候选CMA，governor调GPU频率 | series与WC heap构建、ABI/语义/风格门禁；私有ICD/EGL前缀；CL限时、同空闲历史配对、DMA逐提交边界与cache事件 | [kbase后备候选](gpu-kbase-7x.md)、[MMU与heap合同](gpu-kbase-mmu-heaps.md) |
+| tools/mali-dma-probe.c、mali-dma-probe.comp、mali-cl-probe.c | ARM64 容器编译 → 板 | GPU计算与临时内存；不操作采集/编码 | VK原生device-local/host-visible、DMA heap导入和逐字校验；可选16KiB二分；CL单kernel支持同类分配。均须外部timeout | [kbase候选](gpu-kbase-7x.md) |
+| tools/gbm-scanout-probe.c | ARM64容器编译→板 | 独占显示；保持当前mode，恢复原FB，不抢DRM master | GBM线性XR24 BO导出/导入并短时SetCrtc；布局/恢复信息不足则拒绝，需与采集并行验收并带timeout | [kbase候选](gpu-kbase-7x.md) |
+| tools/board-queue | Mac / Linux，同一协调主机 | 仅本机锁与票据；run 的影响由命令决定 | FIFO、≤30分钟租约、旧 lockf 兼容、sampling 与 heavy 协调 | [短窗口](board-window.md) |
+| tools/board-window | Mac → 板 | collect --readonly 读；baseline/receiver/MCP 截图占采集；MCP HDR 发 HID；boot-candidate/return-baseline 重启 | 哈希校验、候选链式 RAM 启动、每日基线缓存、MCP、接收与证据包 | [短窗口](board-window.md) |
+| tools/board-window-receiver.mjs、board-window-timing.mjs | Mac / Node | 接收占用编码器；compare 仅本机图片 | board-window 私有浏览器接收/裁图比较入口与50ms计时；沿用 Playwright、manager-login.mjs | [短窗口](board-window.md) |
 | tools/gpu-compare.py | 板 | 独占 | vendor/system/private能力与固定离屏GLES、clpeak；超时、逐进程ICD隔离，不操作服务/HID | [GPU运行时](bringup/2026-10-30-gpu-runtime.md) |
 | tools/board.py check | Mac | 读 | 内核、服务、设备节点、8081 后端与 8080 网关状态 | [板级工具](board-tools.md) |
 | tools/board.py deploy --exclusive | Mac | 独占 | 校验并安装组件包（委托 install-components.sh） | [板级工具](board-tools.md#增量开发闭环) |
@@ -160,7 +164,8 @@ PiKVM smoke 可用 `PIKVM_CDP` 接入专用测试 Chrome；结束时关闭测试
 | tools/hdmirx-frame-check.py | Mac / Linux | 无 | 离线校验 1080p/4K RGB24、NV12 的三处帧号及推进；--check-colors 增加颜色块，输入来自 coherence source | [4K 与编码](bringup/2026-10-19-wave521-uhd.md) |
 | tools/hdmirx-stream-check.c | 板（root） | 独占，仅 7.3 HDMI 实验内核 | 四缓冲运动检查、耗尽恢复及反复开关流；`--dmabuf` 验证导出、队列重建和重映射，`--hold-exports` 等待控制端释放；需先编译 | [HDMI DMA-buf](bringup/2026-10-19-hdmirx-dmabuf.md) |
 | tools/hdmirx-soak.c | 板（root） | 独占采集，调用者持双锁并停启应用 | 原生 NV12 逐帧 ERROR/sequence/单调时间；`--count-errors` 继续计数有效帧率但仍报失败，`--markers` 检查三处运动帧号；不改 EDID/HPD | 脚本头注释 |
-| tools/hdmirx-encode-check.py | 板（root）/ Linux | capture 独占实验采集；verify 离线 | DMA-buf 采集后软件 H.264 或 Wave5 H.264/H.265；记录整机 CPU/pad 时间，可指定逐行刷新与非周期关键帧请求；verify 离线检查运动标记和颜色 | [4K 与编码](bringup/2026-10-19-wave521-uhd.md) |
+| tools/hdmirx-encode-check.py | 板（root）/ Linux | capture 独占实验采集；verify 离线 | DMA-buf采集/编码、CPU/pad时间；HDR2退休配check_retirement.py，噪声底配compare_frames.py；packaging/hdr2-pq/video-recovery.mjs仅接收视频，需独占、不发HID/音频；--literal-host-candidates仅改本次Chrome；HDR2_SAMPLE_MS=50细采样，先验4K解码推进 | [4K 与编码](bringup/2026-10-19-wave521-uhd.md)、[恢复门禁](bringup/2026-10-31-hdr2-recovery.md) |
+| packaging/hdr2-pq/mcp-screenshot.py | Mac → 板 | 持板锁，只读截图 | 每次RPC使用新的curl连接；读取既有凭据经stdin传递，不暴露键鼠工具、不输出密钥；--output指定不存在的新图片 | [MCP与接收诊断](bringup/2026-10-31-hdr2-mcp-ice-pq.md) |
 | tools/wave5-lifecycle-check.py | 板 | 独占编码；停视频应用 | 实验 7.3 的 H.264/H.265 图案编码反复 EOS；检查视频句柄与 CMA 回收，首轮泄漏即停止 | [One-KVM 接入](bringup/2026-10-20-onekvm-wave5.md) |
 | tools/onekvm-local-bench.py | Mac → 容器；可选当前内核板子 | 默认无；--board 占 CPU/内存带宽，不停服务 | DMA 平面、压缩缓存与复制基准；可先跑离线所有权、输入状态等待、profile 和逐行刷新回归 | [本地基准](local-video-benchmark.md) |
 | tools/vim4-driver-bench.c | 板；需先编译 | 独占采集/编码；调用者停启应用 | 原生纯采集、H.264/H.265/JPEG 驱动基准；CPU、pad 耗时、CMA；支持 7.x/5.15，`--secondary --fps=120`测1080p独立采集；独立录像验证 | [驱动基准](driver-benchmark.md) |

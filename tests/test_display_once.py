@@ -30,6 +30,15 @@ def static_elf(kind=1):
 
 
 class TrialTest(unittest.TestCase):
+    def test_release_tags_are_generic_but_remain_single_safe_path_components(self):
+        for tag in ('hdr10r3', 'future_codec.42', 'uhd4-debug'):
+            with tempfile.TemporaryDirectory() as directory:
+                self.fixture(Path(directory), release='7.3.0-vim4kvm-' + tag + '+')
+        for release in ('7.3.0-vim4kvm-../bad+', '7.3.0-vim4kvm-+',
+                        '7.3.0-vim4kvm-tag+/extra', '7.4.0-vim4kvm-tag+'):
+            with self.assertRaises(ValueError):
+                once.validate_release(release)
+
     def test_filesystem_uuid_needs_verified_partition_for_no_initramfs_boot(self):
         state = dict(cmdline='root=UUID=filesystem rw rootflags=data=ordered')
         with self.assertRaisesRegex(ValueError, 'root_partuuid proof'):
@@ -63,7 +72,7 @@ class TrialTest(unittest.TestCase):
         state = dict(cmdline='root=PARTUUID=bcb80000-02 rootwait rw', files={name: 'f' * 64 for name in (
             '/boot/edge/Image', '/boot/edge/vim4.dtb', '/boot/extlinux/extlinux.conf',
             '/etc/vim4-kvm/kernels.json', '/etc/vim4-kvm/runtime-build.json')})
-        if '-npu' in release or release in ('7.3.0-vim4kvm-uhd2+', '7.3.0-vim4kvm-uhd2-nodebug+', '7.3.0-vim4kvm-uhd3+'):
+        if '-npu' in release or release in ('7.3.0-vim4kvm-uhd2+', '7.3.0-vim4kvm-uhd2-nodebug+', '7.3.0-vim4kvm-uhd3+', '7.3.0-vim4kvm-uhd4+'):
             runtime = {}
             for index, target in enumerate(('/usr/libexec/vim4-board-runtime',
                     '/usr/libexec/vim4-kvm-run', '/usr/libexec/vim4-mainline-prepare',
@@ -137,17 +146,17 @@ class TrialTest(unittest.TestCase):
             self.assertIn('t7_hdmirx.hdr_capture=1', config)
             self.assertTrue(all('/7.3.0-vim4kvm-uhd2-nodebug+/' in p for p in modules))
 
-    def test_uhd3_matches_private_modules_and_video_contract(self):
+    def test_uhd4_matches_private_modules_and_video_contract(self):
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)
-            archive = self.fixture(root, release='7.3.0-vim4kvm-uhd3+',
+            archive = self.fixture(root, release='7.3.0-vim4kvm-uhd4+',
                                    baseline_release='5.15.137-vim4kvm-hdrdual6')
             with tarfile.open(archive) as trial:
                 config = trial.extractfile('extlinux.conf').read().decode()
                 modules = [p for p in trial.getnames() if p.startswith('modules/')]
             self.assertIn('cma=512M@0x10000000-0xf0000000', config)
             self.assertIn('t7_hdmirx.hdr_capture=1', config)
-            self.assertTrue(all('/7.3.0-vim4kvm-uhd3+/' in p for p in modules))
+            self.assertTrue(all('/7.3.0-vim4kvm-uhd4+/' in p for p in modules))
 
     def test_boot_files_remain_default_through_stage_reset_and_interruption(self):
         for fail_after in (None, 1, 4):

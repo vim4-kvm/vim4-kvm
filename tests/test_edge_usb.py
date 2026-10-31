@@ -50,7 +50,7 @@ class EdgeUsbTest(unittest.TestCase):
     def test_npu_candidate_preserves_live_gadget_without_input_or_rebind(self):
         gadget = self.existing()
         before = {p: p.read_bytes() for p in gadget.rglob('*') if p.is_file()}
-        for release in ('7.3.0-vim4kvm-npu1+', '7.3.0-vim4kvm-uhd2+', '7.3.0-vim4kvm-uhd2-nodebug+', '7.3.0-vim4kvm-uhd3+'):
+        for release in ('7.3.0-vim4kvm-npu1+', '7.3.0-vim4kvm-uhd2+', '7.3.0-vim4kvm-uhd2-nodebug+', '7.3.0-vim4kvm-uhd3+', '7.3.0-vim4kvm-uhd4+'):
             with self.subTest(release=release), patch.object(usb.platform, 'release', return_value=release):
                 usb.prepare()
                 self.assertEqual(before, {p: p.read_bytes() for p in gadget.rglob('*') if p.is_file()})

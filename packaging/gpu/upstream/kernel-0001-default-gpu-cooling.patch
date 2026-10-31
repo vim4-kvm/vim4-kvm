@@ -1,0 +1,28 @@
+From d2cd4c6c981e9f1722adca53c36e77e2b3c91266 Mon Sep 17 00:00:00 2001
+From: localhost-copilot <318096335+localhost-copilot@users.noreply.github.com>
+Date: Fri, 30 Oct 2026 20:36:28 +0800
+Subject: [PATCH] arm64: dts: amlogic: enable GPU thermal throttling on VIM4
+
+---
+ .../arm64/boot/dts/amlogic/amlogic-t7-a311d2-khadas-vim4.dts | 5 +++++
+ 1 file changed, 5 insertions(+)
+
+diff --git a/arch/arm64/boot/dts/amlogic/amlogic-t7-a311d2-khadas-vim4.dts b/arch/arm64/boot/dts/amlogic/amlogic-t7-a311d2-khadas-vim4.dts
+index d54b9af3881ae..d1b9b3ebe1a4f 100644
+--- a/arch/arm64/boot/dts/amlogic/amlogic-t7-a311d2-khadas-vim4.dts
++++ b/arch/arm64/boot/dts/amlogic/amlogic-t7-a311d2-khadas-vim4.dts
+@@ -576,6 +576,11 @@ gpu_active: gpu-active {
+ 	};
+ 
+ 	cooling-maps {
++		map-gpu {
++			trip = <&gpu_passive>;
++			cooling-device = <&gpu THERMAL_NO_LIMIT THERMAL_NO_LIMIT>;
++		};
++
+ 		map {
+ 			trip = <&gpu_active>;
+ 			cooling-device = <&khadas_mcu 30 100>;
+-- 
+2.43.0
+

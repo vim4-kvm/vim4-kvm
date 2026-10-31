@@ -1,0 +1,342 @@
+From f1005476aa891093d5269abedf619298cc438f31 Mon Sep 17 00:00:00 2001
+From: localhost-copilot <318096335+localhost-copilot@users.noreply.github.com>
+Date: Sat, 31 Oct 2026 12:25:49 +0800
+Subject: [PATCH] media: wave5: supply sequence VUI from output colorimetry
+
+---
+ .../chips-media/wave5/avc-sps-fixture.hex     |   1 +
+ .../chips-media/wave5/hevc-sps-fixture.hex    |   1 +
+ .../chips-media/wave5/test_encoder_cleanup.py |  11 +-
+ .../platform/chips-media/wave5/test_vui.py    | 105 ++++++++++++++++++
+ .../platform/chips-media/wave5/wave5-hw.c     |   5 +-
+ .../platform/chips-media/wave5/wave5-vpuapi.c |  20 ++++
+ .../platform/chips-media/wave5/wave5-vpuapi.h |   2 +
+ .../platform/chips-media/wave5/wave5-vui.h    |  70 ++++++++++++
+ 8 files changed, 210 insertions(+), 5 deletions(-)
+ create mode 100644 drivers/media/platform/chips-media/wave5/avc-sps-fixture.hex
+ create mode 100644 drivers/media/platform/chips-media/wave5/hevc-sps-fixture.hex
+ create mode 100644 drivers/media/platform/chips-media/wave5/test_vui.py
+ create mode 100644 drivers/media/platform/chips-media/wave5/wave5-vui.h
+
+diff --git a/drivers/media/platform/chips-media/wave5/avc-sps-fixture.hex b/drivers/media/platform/chips-media/wave5/avc-sps-fixture.hex
+new file mode 100644
+index 0000000000000..b98b166213c4b
+--- /dev/null
++++ b/drivers/media/platform/chips-media/wave5/avc-sps-fixture.hex
+@@ -0,0 +1 @@
++000000016764000aacd94426c05a808080a0000003002000000f01e244b2c00000000168ebe3cb22c000000001658884007ffec27fe658edca55b2eb7e430ce43b0a4c7f8e9b18955b69809f470262dd
+diff --git a/drivers/media/platform/chips-media/wave5/hevc-sps-fixture.hex b/drivers/media/platform/chips-media/wave5/hevc-sps-fixture.hex
+new file mode 100644
+index 0000000000000..f4ce1d8b1d8a3
+--- /dev/null
++++ b/drivers/media/platform/chips-media/wave5/hevc-sps-fixture.hex
+@@ -0,0 +1 @@
++0000000140010c01ffff01600000030090000003000003001e9598090000000142010101600000030090000003000003001ea020810596566924caf016a020202080000003008000001e04000000014401c172b42240000000012801af0a60fa36823ff5709f4760344f7cee29f380
+diff --git a/drivers/media/platform/chips-media/wave5/test_encoder_cleanup.py b/drivers/media/platform/chips-media/wave5/test_encoder_cleanup.py
+index 8ee3e376e2e1f..cf90eddae5e90 100644
+--- a/drivers/media/platform/chips-media/wave5/test_encoder_cleanup.py
++++ b/drivers/media/platform/chips-media/wave5/test_encoder_cleanup.py
+@@ -52,7 +52,7 @@ struct enc_info {
+ 	bool destroyed;
+     struct enc_open_param open_param;
+     u32 stride, rotation_angle, mirror_direction, vlc_buf_size, param_buf_size;
+-    struct vpu_buf vb_work, vb_mv, vb_fbc_y_tbl, vb_fbc_c_tbl, vb_sub_sam_buf, vb_task;
++    struct vpu_buf vb_work, vb_mv, vb_fbc_y_tbl, vb_fbc_c_tbl, vb_sub_sam_buf, vb_task, vb_vui;
+ };
+ struct codec_info { struct enc_info enc_info; };
+ struct device { void *data; };
+@@ -128,6 +128,9 @@ int main(void)
+         u32 reason;
+         attempts = 0; fail_at = 0; commands = 0;
+         firmware_owns = false; fail_command = false; fail_queue = false;
++        /* Sequence init owns coherent VUI even if registration later fails. */
++        info.enc_info.vb_vui.size = 4096;
++        assert(!wave5_vdi_allocate_dma_memory(&vpu, &info.enc_info.vb_vui));
+         if (existing_task) {
+             info.enc_info.vb_task.size = 256;
+             assert(!wave5_vdi_allocate_dma_memory(&vpu, &info.enc_info.vb_task));
+@@ -141,14 +144,14 @@ int main(void)
+         if (failure && !(failure == 5 && existing_task)) assert(ret < 0);
+         else assert(!ret);
+         if (commands) {
+-            assert(live == 5);
++            assert(live == 6);
+             // A failed destroy must retain every DMA allocation for hardware.
+             fail_close = true;
+             assert(wave5_vpu_enc_close(&inst, &reason) == -ETIMEDOUT);
+             assert(!pm_refs);
+-            assert(live == 5);
++            assert(live == 6);
+         } else {
+-            assert(live == (unsigned)existing_task);
++            assert(live == (unsigned)existing_task + 1);
+         }
+         fail_close = false;
+         assert(!wave5_vpu_enc_close(&inst, &reason));
+diff --git a/drivers/media/platform/chips-media/wave5/test_vui.py b/drivers/media/platform/chips-media/wave5/test_vui.py
+new file mode 100644
+index 0000000000000..89740743f537e
+--- /dev/null
++++ b/drivers/media/platform/chips-media/wave5/test_vui.py
+@@ -0,0 +1,105 @@
++#!/usr/bin/env python3
++# SPDX-License-Identifier: GPL-2.0-only
++"""Parse real AVC/HEVC SPS fixtures containing the actual driver's VUI bytes.
++
++Fixtures are CPU-encoded 64x64 red frames, with encoder SEI removed.
++This proves serialization, not that T7 firmware accepts the RBSP command.
++"""
++from pathlib import Path
++import re
++import subprocess
++import tempfile
++
++root = Path(__file__).resolve().parent
++
++
++def trace(path, codec):
++    result = subprocess.run(['ffmpeg', '-v', 'verbose', '-f', codec, '-i', str(path),
++                             '-c', 'copy', '-bsf:v', 'trace_headers', '-f', 'null', '-'],
++                            capture_output=True, text=True, timeout=10)
++    assert result.returncode == 0, result.stderr[-2000:]
++    return result.stderr.split('Sequence Parameter Set', 1)[1].split('Picture Parameter Set', 1)[0]
++
++
++def position(text, field):
++    return int(re.search(r'\]\s+(\d+)\s+' + field + r'\s', text)[1])
++
++
++def unescape(data):
++    return re.sub(b'\x00\x00\x03', b'\x00\x00', data)
++
++
++def escape(data):
++    out = bytearray()
++    zeroes = 0
++    for byte in data:
++        if zeroes >= 2 and byte <= 3:
++            out.append(3)
++            zeroes = 0
++        out.append(byte)
++        zeroes = zeroes + 1 if byte == 0 else 0
++    return bytes(out)
++
++
++with tempfile.TemporaryDirectory() as temp:
++    temp = Path(temp)
++    c, exe = temp / 'vui.c', temp / 'vui'
++    c.write_text(r'''
++#include <time.h>
++#include <linux/videodev2.h>
++#include <stdint.h>
++#include <stdbool.h>
++#include <errno.h>
++#include <stdio.h>
++#include <stdlib.h>
++#include <assert.h>
++typedef uint8_t u8;
++typedef uint32_t u32;
++#include "wave5-vui.h"
++int main(int argc, char **argv) {
++ u8 data[5]; (void)argc;
++ assert(wave5_make_vui(data,true,0,0,0,0)==39);
++ assert(data[1]==1 && data[2]==1 && data[3]==1 && !(data[0]&2));
++ assert(wave5_make_vui(data,true,V4L2_COLORSPACE_REC709,999,0,0)==-EINVAL);
++ assert(wave5_make_vui(data,true,V4L2_COLORSPACE_REC709,0,999,0)==-EINVAL);
++ assert(wave5_make_vui(data,true,V4L2_COLORSPACE_REC709,0,0,999)==-EINVAL);
++ int mode=atoi(argv[2]);
++ int bits=wave5_make_vui(data,atoi(argv[1]),mode==2?V4L2_COLORSPACE_BT2020:V4L2_COLORSPACE_REC709,
++  mode==2?V4L2_XFER_FUNC_SMPTE2084:mode==1?V4L2_XFER_FUNC_SRGB:V4L2_XFER_FUNC_709,
++  mode==2?V4L2_YCBCR_ENC_BT2020:V4L2_YCBCR_ENC_709,
++  mode==2?V4L2_QUANTIZATION_FULL_RANGE:V4L2_QUANTIZATION_LIM_RANGE);
++ if(bits<0) return 2;
++ printf("%d ",bits); for(int i=0;i<5;i++) printf("%02x",data[i]);
++}
++''')
++    subprocess.run(['cc', '-Wall', '-Wextra', '-Werror', '-I', str(root), str(c),
++                    '-o', str(exe)], check=True)
++    for codec, fixture, hevc in [('hevc', 'hevc', 1), ('h264', 'avc', 0)]:
++        raw = bytes.fromhex((root / (fixture + '-sps-fixture.hex')).read_text())
++        baseline = temp / ('baseline.' + codec)
++        baseline.write_bytes(raw)
++        original = trace(baseline, codec)
++        begin = position(original, 'vui_parameters_present_flag') + 1
++        end = position(original, 'sps_extension_present_flag' if hevc else 'rbsp_stop_one_bit')
++        for mode, expected in [(0, (1, 1, 1, 0)), (1, (1, 13, 1, 0)), (2, (9, 16, 9, 1))]:
++            count, hexdata = subprocess.check_output([str(exe), str(hevc), str(mode)], text=True).split()
++            payload = ''.join(f'{v:08b}' for v in bytes.fromhex(hexdata))[:int(count)]
++            nals = [n for n in re.split(b'\x00\x00\x00?\x01', raw) if n]
++            output = []
++            for nal in nals:
++                is_sps = ((nal[0] >> 1) & 63) == 33 if hevc else (nal[0] & 31) == 7
++                if is_sps:
++                    bits = ''.join(f'{v:08b}' for v in unescape(nal))
++                    # Preserve SPS extensions, replacing its old trailing alignment.
++                    tail = bits[end:bits.rfind('1') + 1]
++                    bits = bits[:begin] + payload + tail
++                    bits += '0' * (-len(bits) % 8)
++                    nal = escape(bytes(int(bits[i:i + 8], 2) for i in range(0, len(bits), 8)))
++                output.append(b'\0\0\0\1' + nal)
++            path = temp / ('case.' + codec)
++            path.write_bytes(b''.join(output))
++            parsed = trace(path, codec)
++            for name, value in zip(['colour_primaries', 'transfer_characteristics',
++                                    'matrix_coefficients', 'video_full_range_flag'], expected):
++                assert re.search(name + r'\s+[01]+\s+=\s+' + str(value) + r'\b', parsed), parsed
++print('Actual driver VUI in AVC/HEVC SPS: 709, sRGB, PQ/full parsed by FFmpeg: PASS')
+diff --git a/drivers/media/platform/chips-media/wave5/wave5-hw.c b/drivers/media/platform/chips-media/wave5/wave5-hw.c
+index 4b520cb23436e..bbb6ce9df8a0e 100644
+--- a/drivers/media/platform/chips-media/wave5/wave5-hw.c
++++ b/drivers/media/platform/chips-media/wave5/wave5-hw.c
+@@ -2040,7 +2040,10 @@ int wave5_vpu_enc_init_seq(struct vpu_instance *inst)
+ 			      (p_param->nr_inter_weight_cb << 20) |
+ 			      (p_param->nr_inter_weight_cr << 25));
+ 	}
+-	vpu_write_reg(inst->dev, W5_CMD_ENC_SEQ_VUI_HRD_PARAM, 0);
++	vpu_write_reg(inst->dev, W5_CMD_ENC_SEQ_VUI_RBSP_ADDR,
++		      p_enc_info->vb_vui.daddr);
++	vpu_write_reg(inst->dev, W5_CMD_ENC_SEQ_VUI_HRD_PARAM,
++		      (p_enc_info->vui_bits << 4) | 1);
+ 
+ 	return send_firmware_command(inst, W5_ENC_SET_PARAM, true, NULL, NULL);
+ }
+diff --git a/drivers/media/platform/chips-media/wave5/wave5-vpuapi.c b/drivers/media/platform/chips-media/wave5/wave5-vpuapi.c
+index 6895639af1883..a6ac9f6d8f1c6 100644
+--- a/drivers/media/platform/chips-media/wave5/wave5-vpuapi.c
++++ b/drivers/media/platform/chips-media/wave5/wave5-vpuapi.c
+@@ -12,6 +12,7 @@
+ #include "wave5-vpu.h"
+ #include "wave5-regdefine.h"
+ #include "wave5.h"
++#include "wave5-vui.h"
+ 
+ #define DECODE_ALL_TEMPORAL_LAYERS 0
+ #define DECODE_ALL_SPATIAL_LAYERS 0
+@@ -747,6 +748,7 @@ void wave5_vpu_enc_free_buffers(struct vpu_instance *inst)
+ 	if (!inst->codec_info)
+ 		return;
+ 	info = &inst->codec_info->enc_info;
++	wave5_vdi_free_dma_memory(inst->dev, &info->vb_vui);
+ 	wave5_vdi_free_dma_memory(inst->dev, &info->vb_work);
+ 	if (inst->std == W_HEVC_ENC || inst->std == W_AVC_ENC) {
+ 		wave5_vdi_free_dma_memory(inst->dev, &info->vb_sub_sam_buf);
+@@ -1036,9 +1038,27 @@ int wave5_vpu_enc_give_command(struct vpu_instance *inst, enum codec_command cmd
+ 
+ int wave5_vpu_enc_issue_seq_init(struct vpu_instance *inst)
+ {
++	struct enc_info *info = &inst->codec_info->enc_info;
++	u8 vui[5];
+ 	int ret;
+ 	struct vpu_device *vpu_dev = inst->dev;
+ 
++	ret = wave5_make_vui(vui, inst->std == W_HEVC_ENC, inst->colorspace,
++			     inst->xfer_func, inst->ycbcr_enc, inst->quantization);
++	if (ret < 0)
++		return ret;
++	info->vui_bits = ret;
++	if (!info->vb_vui.vaddr) {
++		info->vb_vui.size = SZ_4K;
++		ret = wave5_vdi_allocate_dma_memory(inst->dev, &info->vb_vui);
++		if (ret)
++			return ret;
++	}
++	ret = wave5_vdi_write_memory(inst->dev, &info->vb_vui, 0, vui, sizeof(vui));
++	if (ret < 0)
++		return ret;
++	/* Keep coherent RBSP storage until DESTROY succeeds, including errors. */
++	dma_wmb();
+ 	ret = mutex_lock_interruptible(&vpu_dev->hw_lock);
+ 	if (ret)
+ 		return ret;
+diff --git a/drivers/media/platform/chips-media/wave5/wave5-vpuapi.h b/drivers/media/platform/chips-media/wave5/wave5-vpuapi.h
+index bd00e29ea3e0a..23acae9cfa9b8 100644
+--- a/drivers/media/platform/chips-media/wave5/wave5-vpuapi.h
++++ b/drivers/media/platform/chips-media/wave5/wave5-vpuapi.h
+@@ -738,6 +738,8 @@ struct dec_info {
+ };
+ 
+ struct enc_info {
++	struct vpu_buf vb_vui;
++	u32 vui_bits;
+ 	bool destroyed;
+ 	struct enc_open_param open_param;
+ 	struct enc_initial_info initial_info;
+diff --git a/drivers/media/platform/chips-media/wave5/wave5-vui.h b/drivers/media/platform/chips-media/wave5/wave5-vui.h
+new file mode 100644
+index 0000000000000..afbad9849f303
+--- /dev/null
++++ b/drivers/media/platform/chips-media/wave5/wave5-vui.h
+@@ -0,0 +1,70 @@
++/* SPDX-License-Identifier: (GPL-2.0 OR BSD-3-Clause) */
++#ifndef WAVE5_VUI_H
++#define WAVE5_VUI_H
++
++/* Firmware takes a bit count without trailing bits or start codes. */
++static int wave5_make_vui(u8 data[5], bool hevc, u32 colorspace, u32 transfer,
++			  u32 matrix, u32 quantization)
++{
++	u8 primaries, xfer, coefficients;
++
++	if (colorspace == V4L2_COLORSPACE_DEFAULT)
++		colorspace = V4L2_COLORSPACE_REC709;
++	switch (colorspace) {
++	case V4L2_COLORSPACE_DEFAULT:
++	case V4L2_COLORSPACE_REC709:
++	case V4L2_COLORSPACE_SRGB:
++		primaries = 1;
++		break;
++	case V4L2_COLORSPACE_SMPTE170M:
++		primaries = 6;
++		break;
++	case V4L2_COLORSPACE_BT2020:
++		primaries = 9;
++		break;
++	default:
++		return -EINVAL;
++	}
++	if (transfer == V4L2_XFER_FUNC_DEFAULT)
++		transfer = V4L2_MAP_XFER_FUNC_DEFAULT(colorspace);
++	switch (transfer) {
++	case V4L2_XFER_FUNC_709:
++		xfer = 1;
++		break;
++	case V4L2_XFER_FUNC_SRGB:
++		xfer = 13;
++		break;
++	case V4L2_XFER_FUNC_SMPTE2084:
++		xfer = 16;
++		break;
++	default:
++		return -EINVAL;
++	}
++	if (matrix == V4L2_YCBCR_ENC_DEFAULT)
++		matrix = V4L2_MAP_YCBCR_ENC_DEFAULT(colorspace);
++	switch (matrix) {
++	case V4L2_YCBCR_ENC_709:
++		coefficients = 1;
++		break;
++	case V4L2_YCBCR_ENC_601:
++		coefficients = 6;
++		break;
++	case V4L2_YCBCR_ENC_BT2020:
++		coefficients = 9;
++		break;
++	default:
++		return -EINVAL;
++	}
++	if (quantization == V4L2_QUANTIZATION_DEFAULT)
++		quantization = V4L2_MAP_QUANTIZATION_DEFAULT(false, colorspace, matrix);
++	if (quantization != V4L2_QUANTIZATION_FULL_RANGE &&
++	    quantization != V4L2_QUANTIZATION_LIM_RANGE)
++		return -EINVAL;
++	data[0] = 0x35 | (quantization == V4L2_QUANTIZATION_FULL_RANGE ? 2 : 0);
++	data[1] = primaries;
++	data[2] = xfer;
++	data[3] = coefficients;
++	data[4] = 0;
++	return hevc ? 39 : 38;
++}
++#endif
+-- 
+2.43.0
+

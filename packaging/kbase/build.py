@@ -10,7 +10,7 @@ import subprocess
 import tarfile
 
 VENDOR = '80a07ad5406d57855c996285ae75a50a1b9147ae'
-KERNEL = 'f71b5c6289cb3254690e57292327e73514f0715f'
+KERNEL = '8bca939d6bbd3e4d91e9f23b812e920172c99b3d'
 DRIVER = Path('drivers/gpu/arm/midgard')
 UAPI = Path('include/uapi/gpu/arm/midgard')
 INPUTS = [str(DRIVER), str(UAPI)] + ['include/linux/' + name for name in (
@@ -128,6 +128,12 @@ def main():
         run('make', '-C', str(args.kernel_build.resolve()), 'M=' + str(heaps),
             'W=1', 'KCFLAGS=-Werror', '-j4', 'modules', stdout=log, stderr=subprocess.STDOUT)
     heap_module = heaps / 'vim4_kbase_heaps.ko'
+    governor_build = output / 'dvfs'
+    shutil.copytree(packaging / 'dvfs', governor_build)
+    with (output / 'governor-build.log').open('w') as log:
+        run('make', '-C', str(args.kernel_build.resolve()), 'M=' + str(governor_build),
+            'W=1', 'KCFLAGS=-Werror', '-j4', 'modules', stdout=log, stderr=subprocess.STDOUT)
+    governor_module = governor_build / 'governor_vim4.ko'
     (output / 'heaps-modinfo.txt').write_text(subprocess.check_output(
         ['modinfo', str(heap_module)], text=True))
     info = subprocess.check_output(['modinfo', str(module)], text=True)
@@ -140,6 +146,7 @@ def main():
     staged_module.parent.mkdir(parents=True)
     shutil.copyfile(module, staged_module)
     shutil.copyfile(heap_module, staged_module.with_name(heap_module.name))
+    shutil.copyfile(governor_module, staged_module.with_name(governor_module.name))
     runtime_files = {
         'usr/libexec/vim4-board-runtime': packaging.parents[1] / 'board/vim4-board-runtime',
         'usr/libexec/vim4-kvm-run': packaging.parents[1] / 'board/vim4-kvm-run',
@@ -157,7 +164,7 @@ def main():
         {name: sha(path) for name, path in runtime_files.items()}, indent=2) + '\n')
     probes = output / 'probes'
     probes.mkdir()
-    for name in ('run.py', 'clpeak-subset.py', 'dma-profile.py'):
+    for name in ('run.py', 'clpeak-subset.py', 'dma-profile.py', 'default-parity.py'):
         shutil.copyfile(packaging / name, probes / name)
     dtb = output / 'candidate.dtb'
     shutil.copyfile(args.dtb, dtb)
@@ -189,6 +196,9 @@ def main():
                 'runtimeManifestSha256': sha(output / 'runtime-files.json'),
                 'moduleSha256': sha(module),
                 'heapModuleSha256': sha(heap_module),
+                'governorModuleSha256': sha(governor_module),
+                'governorSources': {path.name: sha(path) for path in (packaging / 'dvfs').iterdir()
+                                    if path.is_file()},
                 'heapSources': {path.name: sha(path) for path in (packaging / 'heaps').iterdir()
                                 if path.is_file()},
                 'patches': {name: sha(packaging / name) for name in patches},

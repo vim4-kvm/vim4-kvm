@@ -1,61 +1,61 @@
 # Experimental kernel pins; the private GStreamer recipe below is also used
 # by the 5.15 One-KVM image builder.
-# NPU + nodebug approved 2026-10-30; validated by the uhd3 RAM regression.
+# PQ HDR2 + recovery approved; validated by the uhd4 RAM smoke.
 [kernel]
 url = "https://github.com/vim4-kvm/linux.git"
 branch = "vim4-kvm-7.3"
-revision = "f71b5c6289cb3254690e57292327e73514f0715f"
-tree = "f3f8877c70e547bc53f2ca0469c25fcffb7f15a6"
+revision = "8bca939d6bbd3e4d91e9f23b812e920172c99b3d"
+tree = "0ce3bf8d9a1e57a97bdbaffa67610eceaddba579"
 upstream_url = "https://github.com/gregkh/linux.git"
 # Verified RAM build; retained /boot/edge is still uhd1. No artifact publication.
-# Evidence: docs/bringup/2026-10-30-uhd3-formal-regression.md.
+# Evidence: docs/bringup/2026-10-31-uhd4-formal-smoke.md.
 upstream_tag = "v7.3"
 upstream_revision = "c03c1a14507dfaf8b856c2608f9ac216021fc222"
 
-# Shared production One-KVM; matches workspace.toml and the installed binary.
+# Product DMA contract validated on uhd4.
 [onekvm]
 url = "https://github.com/vim4-kvm/One-KVM.git"
 branch = "vim4"
-revision = "3649a8c8f12d8bcd3f2d394de848dc486a270ecc"
+revision = "db848a5288019f0d651bc429e01d6f727720154b"
 features = ["vim4"]
-tested_binary_sha256 = "aacd3d977a0e169e1ee869486fc1846e9b360f83e96309cad734b9f5b2737b4d"
+tested_binary_sha256 = "926535c630948d279f24004b6019f8424b2846ee13bc4045f3a475a71c492a10"
 
 # Complete matched build includes the former Wave5 and VDIN overlays.
-# build.sh defaults to edge.config; this build explicitly uses uhd3.config.
+# build.sh defaults to edge.config; this build explicitly uses uhd4.config.
 [tested_build]
-release = "7.3.0-vim4kvm-uhd3+"
-localversion = "-vim4kvm-uhd3"
-build_id = "a3572361d542e5505bd159ad8a327cf364fe25f3"
-image_sha256 = "9daea7a17e228cb5ef93b6b9cc926ccce43ec3b8eafb1b22aee447fdcfcb7000"
-config_sha256 = "90eed7736b33a57ed65e6db99aff657e7f6fad1116ee79e9ad6c952b6904a53d"
-config_path = "uhd3.config"
-modules_sha256 = "b65a3c36884c0831c29f610a5d6f3f20a300bcd15879181efc68723d5e3f5c0a"
+release = "7.3.0-vim4kvm-uhd4+"
+localversion = "-vim4kvm-uhd4"
+build_id = "ef3b8573007371472c73ef61ec352a20c00faee7"
+image_sha256 = "560d9d14039e209a28b986edd17f90cd6219877b5063899c3e622b8266ed5e82"
+config_sha256 = "f5b88aff69895c74d27bad04a5a86ec0cf919f5e13d8b37d22ffe17d0f08176e"
+config_path = "uhd4.config"
+modules_sha256 = "032e0a3864a135b584de8c78785e11ba43d4ed9ef888301c628a098ac5d39432"
 module_count = 2338
 module_btf = true
 board_dtb_path = "arch/arm64/boot/dts/amlogic/amlogic-t7-a311d2-khadas-vim4-display-m0.dtb"
 framebuffer_console = true
-board_dtb_sha256 = "49a858fae2f9a66e8db96ea6eee7011e620b3d116c572995bfca57fc56cb0462"
-manifest_sha256 = "5a695ab1e67ec262a2cb5e44e09b6e8ef2c3497116043aed47e85b7c229950d4"
-runtime_proof_sha256 = "46009135101f2eafc8de97d12f3c1b7a7b3cb04b77ab0493dc1dc3d4a42c8c5b"
-uncompressed_image_sha256 = "9daea7a17e228cb5ef93b6b9cc926ccce43ec3b8eafb1b22aee447fdcfcb7000"
-source_manifest_sha256 = "5a695ab1e67ec262a2cb5e44e09b6e8ef2c3497116043aed47e85b7c229950d4"
-live_proof_sha256 = "d6e7dfbbcf7fd7e52f492df00cfabe40a58fbc358a727a8a7fa2ad1261d1d8c2"
-wave5_module_sha256 = "5c946bfa91271afbfbfb5a58fcd3591b8838497b4f8a2333a3a50cb2832b73a5"
+board_dtb_sha256 = "3b8b423f566ce8de11f4983672cdf8e94cec70b5c4abe2f29199931d41c19e30"
+manifest_sha256 = "cdb80bc97ca3fe424f1831829839e55e3c659f6b5c3b1bb87aea7fcd804f7f98"
+runtime_proof_sha256 = "c804ec3c59e1899e59d078fc36cdf4d1672a6a365662f32811fd37c9bffa6d71"
+uncompressed_image_sha256 = "560d9d14039e209a28b986edd17f90cd6219877b5063899c3e622b8266ed5e82"
+source_manifest_sha256 = "cdb80bc97ca3fe424f1831829839e55e3c659f6b5c3b1bb87aea7fcd804f7f98"
+live_proof_sha256 = "9b257189d2e7449cd08d782dc7d3d91d1dced78f94d1ada3a2bad3096cf5083f"
+wave5_module_sha256 = "5ff08860b7418a4b67ddf7ea7f4ea1078b6f7dae4025aa93b5af93db28ee75db"
 boot_method = "uboot-ram-once-private-modules"
 runtime_proof_scope = "candidate-payload-inventory"
 
 [tested_build.loaded_module_build_ids]
-meson_ir = "1fcd978cad32928709976ca1e589a05c4e838f5f"
-rc_khadas = "dda38b356ea0aa43e3adc4999b78c6f46a2d1cc7"
-ir_nec_decoder = "191ba9478e2bcb27375b0b06af4909bfb755af06"
-dwmac_meson8b = "6aa326d55d440adb18c45100c65e5bb7ea5f11a2"
-panfrost = "ad556564ab56163b1beaf1e2b94bb5bdeeff81fd"
-brcmfmac = "01000c8f04d198a71986ce5f501637a765ffcb65"
-wave5 = "cc41a3098703a3de60fefac92e62d107dd07a466"
-t7_hdmirx = "d46677e6e2f37a38517e2a8685e1b538b695ea50"
-t7_vdin_test = "13eaf73fbb849c232b314fc2686282ddc1152626"
-t7_jpeg = "056b28f3d3cb87f1a1b811beb33a9c0e9785f0bf"
-crg_udc = "f162e4e5f33aaae5b8cebcffcba1512a93b298c4"
+meson_ir = "55882bd9314e0f18a4c9212d8bfa3853b2c93139"
+rc_khadas = "645c2ae9816492ddb11f9ea36df8d9078b304c73"
+ir_nec_decoder = "f97b9c6624668e40486bf490daa6b8e7aed54130"
+dwmac_meson8b = "4b5a5a7d24b8645a3267aee8e62ad37c90b43eb1"
+panfrost = "34f3b167a71fec907d91b317e3f7b8869608cf41"
+brcmfmac = "ba7d20b5d117aad54dac7d5da38351d64fc5f063"
+wave5 = "1faa47bc795bf01fee8f680ab63ed99a6c9a0846"
+t7_hdmirx = "0ab03804756339a17e658fbeb423ef8bfcfa309f"
+t7_vdin_test = "e4c860e3a0716940b6d9f83a34091053bc7fc2af"
+t7_jpeg = "8fe7843f2e4d03b3e651a44f385391c5a6e0c482"
+crg_udc = "cb0339fb7ad842d5616c60d838a9db0df0f7eeb8"
 
 # Intentionally unchanged on eMMC by this RAM-only regression.
 [retained_runtime]
@@ -112,8 +112,8 @@ tested_module_sha256 = "14334de2f4c8c5cac5009467e53e2e3212c68b6a03912a22e8ed9311
 [gstreamer]
 source_url = "https://gstreamer.freedesktop.org/src/gst-plugins-good/gst-plugins-good-1.24.2.tar.xz"
 source_sha256 = "6e347c72d4b8b2886d890ffe9f6767a9edb02f201588e8c3a572dcd08d9852bd"
-patches = ["gstreamer-v4l2-offset.patch", "gstreamer-v4l2-pool-lifetime.patch", "gstreamer-v4l2-eos-buffer.patch", "gstreamer-v4l2-orphan-order.patch", "gstreamer-v4l2-contiguous-capture.patch", "gstreamer-v4l2-visible-crop.patch"]
-tested_plugin_sha256 = "a80d41a3d758a5af1794a324eed44c9f47a88e0d3b30dfafe3207d32d7be26fe"
+patches = ["gstreamer-v4l2-offset.patch", "gstreamer-v4l2-pool-lifetime.patch", "gstreamer-v4l2-eos-buffer.patch", "gstreamer-v4l2-orphan-order.patch", "gstreamer-v4l2-contiguous-capture.patch", "gstreamer-v4l2-visible-crop.patch", "../hdr2-pq/gstreamer-srgb-probe.patch", "../hdr2-pq/gstreamer-encoded-size.patch"]
+tested_plugin_sha256 = "ffee02fbed8a0d2bb5bfd4fb695b2ea6f8cbd4f5654072f7727d52a658c41d76"
 
 [armbian]
 url = "https://github.com/armbian/build.git"

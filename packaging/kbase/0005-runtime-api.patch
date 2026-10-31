@@ -286,6 +286,15 @@ index e171257..988a7bb 100644
  	kbdev->pm.backend.metrics.initialized = true;
  	atomic_set(&kbdev->pm.backend.metrics.timer_state, TIMER_OFF);
  	kbase_pm_metrics_start(kbdev);
+@@ -181,7 +181,7 @@ void kbasep_pm_metrics_term(struct kbase_device *kbdev)
+ {
+-#ifdef CONFIG_MALI_MIDGARD_DVFS
++#if defined(CONFIG_MALI_DEVFREQ) || defined(CONFIG_MALI_MIDGARD_DVFS)
+ 	KBASE_DEBUG_ASSERT(kbdev != NULL);
+ 
+ 	/* Cancel the timer, and block if the callback is currently executing (transition f) */
+ 	kbdev->pm.backend.metrics.initialized = false;
+ 	atomic_set(&kbdev->pm.backend.metrics.timer_state, TIMER_OFF);
 diff --git a/drivers/gpu/arm/midgard/csf/mali_kbase_csf.c b/drivers/gpu/arm/midgard/csf/mali_kbase_csf.c
 index 22018d2..df3821d 100644
 --- a/drivers/gpu/arm/midgard/csf/mali_kbase_csf.c

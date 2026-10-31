@@ -1,0 +1,24 @@
+From 11f3239b7c84908c55c14ced1451b91d5c39d33b Mon Sep 17 00:00:00 2001
+From: localhost-copilot <318096335+localhost-copilot@users.noreply.github.com>
+Date: Sat, 31 Oct 2026 10:17:23 +0800
+Subject: [PATCH] media: t7-vdin: select CRC32 for HDR LUT diagnostics
+
+---
+ drivers/media/platform/amlogic/t7-hdmirx/Kconfig | 1 +
+ 1 file changed, 1 insertion(+)
+
+diff --git a/drivers/media/platform/amlogic/t7-hdmirx/Kconfig b/drivers/media/platform/amlogic/t7-hdmirx/Kconfig
+index ab6e4e4eb00fd..56f7be4699915 100644
+--- a/drivers/media/platform/amlogic/t7-hdmirx/Kconfig
++++ b/drivers/media/platform/amlogic/t7-hdmirx/Kconfig
+@@ -17,6 +17,7 @@ config VIDEO_MESON_T7_VDIN_TEST
+ 	tristate "Amlogic T7 VDIN capture experiment"
+ 	depends on VIDEO_MESON_T7_HDMIRX
+ 	depends on VIDEO_DEV && OF && HAS_DMA
++	select CRC32
+ 	select VIDEOBUF2_DMA_CONTIG
+ 	help
+ 	  Progressive RGB or NV12 capture, including measured UHD timings,
+-- 
+2.43.0
+
