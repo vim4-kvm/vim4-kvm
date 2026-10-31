@@ -63,7 +63,7 @@ class TrialTest(unittest.TestCase):
         state = dict(cmdline='root=PARTUUID=bcb80000-02 rootwait rw', files={name: 'f' * 64 for name in (
             '/boot/edge/Image', '/boot/edge/vim4.dtb', '/boot/extlinux/extlinux.conf',
             '/etc/vim4-kvm/kernels.json', '/etc/vim4-kvm/runtime-build.json')})
-        if '-npu' in release or release in ('7.3.0-vim4kvm-uhd2+', '7.3.0-vim4kvm-uhd2-nodebug+'):
+        if '-npu' in release or release in ('7.3.0-vim4kvm-uhd2+', '7.3.0-vim4kvm-uhd2-nodebug+', '7.3.0-vim4kvm-uhd3+'):
             runtime = {}
             for index, target in enumerate(('/usr/libexec/vim4-board-runtime',
                     '/usr/libexec/vim4-kvm-run', '/usr/libexec/vim4-mainline-prepare',
@@ -136,6 +136,18 @@ class TrialTest(unittest.TestCase):
             self.assertIn('cma=512M@0x10000000-0xf0000000', config)
             self.assertIn('t7_hdmirx.hdr_capture=1', config)
             self.assertTrue(all('/7.3.0-vim4kvm-uhd2-nodebug+/' in p for p in modules))
+
+    def test_uhd3_matches_private_modules_and_video_contract(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            archive = self.fixture(root, release='7.3.0-vim4kvm-uhd3+',
+                                   baseline_release='5.15.137-vim4kvm-hdrdual6')
+            with tarfile.open(archive) as trial:
+                config = trial.extractfile('extlinux.conf').read().decode()
+                modules = [p for p in trial.getnames() if p.startswith('modules/')]
+            self.assertIn('cma=512M@0x10000000-0xf0000000', config)
+            self.assertIn('t7_hdmirx.hdr_capture=1', config)
+            self.assertTrue(all('/7.3.0-vim4kvm-uhd3+/' in p for p in modules))
 
     def test_boot_files_remain_default_through_stage_reset_and_interruption(self):
         for fail_after in (None, 1, 4):

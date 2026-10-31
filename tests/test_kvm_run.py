@@ -46,6 +46,7 @@ class KVMRunTests(unittest.TestCase):
                 ('7.3.0-vim4kvm-uhd1+', 'Y', False),
                 ('7.3.0-vim4kvm-uhd2+', 'Y', False),
                 ('7.3.0-vim4kvm-uhd2-nodebug+', 'Y', False),
+                ('7.3.0-vim4kvm-uhd3+', 'Y', False),
                 ('7.3.0-vim4kvm-npu1+', 'Y', False),
                 ('7.3.0-vim4kvm-npu2+', 'Y', False),
                 ('7.3.0-rc7-vim4kvm-uhd1+', 'Y', False),

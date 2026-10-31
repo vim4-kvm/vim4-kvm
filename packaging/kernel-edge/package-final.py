@@ -66,7 +66,7 @@ def main():
     parser.add_argument('--release', default=RELEASE)
     args = parser.parse_args()
     release = args.release
-    if not re.fullmatch(r'7\.3\.0-vim4kvm-(?:uhd(?:1|2(?:-nodebug)?)|npu[0-9]+)\+', release):
+    if not re.fullmatch(r'7\.3\.0-vim4kvm-(?:uhd(?:[13]|2(?:-nodebug)?)|npu[0-9]+)\+', release):
         parser.error('Unsupported candidate release')
     source, output, destination = (p.resolve() for p in (args.source, args.output, args.destination))
     assert re.fullmatch(r'[0-9a-f]{40}', args.commit), 'Use the full approved kernel commit'
