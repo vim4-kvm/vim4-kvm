@@ -15,6 +15,10 @@
 
 以下保留完整日期索引。这些里程碑记录的是历史证据；查找当前架构和约束时，仍应先读对应子系统入口。
 
+## 2026-10-31
+
+- [7.3原生远程HDR离线调查与分阶段门禁](2026-10-31-hdr10-remote-offline.md) — kernel video application uu offline
+
 ## 2026-10-30
 
 - [NPU与nodebug正式uhd3合入、回归及manager EDID部署](2026-10-30-uhd3-formal-regression.md) — kernel board video manager deployment
