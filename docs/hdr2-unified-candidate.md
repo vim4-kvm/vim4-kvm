@@ -1,6 +1,8 @@
 # HDR2 PQ/HLG完整候选与统一验收
 
 用户已于2026-10-30确认VDIN HDR2硬件主路径。此次仅离线，不访问板子、不push。
+后续[真实PQ窗口](bringup/2026-10-30-hdr2-unified-window.md)：PQ路径与局部像素通过，Wave5 caps协商阻断；
+7.3切换及HLG仍未测，不推广候选。用户已另授权MCP准备M6及推送通过验证的特性分支。
 独立VM工作树`~/src/linux-7.3-hdr2-pq`、分支`vim4-hdr2-pq`，基于正式`f71b5c6289cb`；
 HLG原提交`c68407cb052be`已整合为`bbf9ff89b284d`，主仓`15d0eab`已整合为`f7b2f84`。
 保留PQ诊断`eb156b545c8a2`与CRC依赖`11f3239b7c849`，输出合同修正`58b7ecfeb6838`。
