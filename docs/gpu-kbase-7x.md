@@ -6,6 +6,9 @@
 不能证明设备初始化、性能、DMA互操作或CTS。当前 blob **不支持直接注册GLVND EGL vendor**。
 默认GPU选择保持原状，Panfrost＋Mesa上游路径和kbase能力/性能后备均保留，待实测决定默认值。
 
+r2的[EGL选择、电源范围和补丁重放](gpu-kbase-integration.md)推荐ICD产品路径＋独立GLES私有前缀，
+不实现GLVND shim；任务空闲策略与厂商方向一致，系统suspend尚未达成parity。
+
 固定产物、检查和限制见[离线记录](bringup/2026-10-30-kbase-offline.md)。
 既有性能基线和探针见[三栈验收](bringup/2026-10-30-gpu-acceptance.md)，
 旧冷提交/CL超时数字须同时遵守该页链接的测量口径修正。
@@ -28,7 +31,7 @@ G76 r56或CSF驱动不构成G52支持证据。不能改版本常量伪装UK11.39
 ## 已确认的移植面
 
 下表文件相对V:K，兼容头为V:`include/linux/version_compat_defs.h`。
-补丁见[linux-7.3.patch](../packaging/kbase/linux-7.3.patch)，不改UAPI定义。
+模块补丁顺序见[series](../packaging/kbase/series)，不改UAPI定义；DT单独作为第四块重放。
 
 | 边界 | 7.3适配与核查 |
 |---|---|
@@ -100,12 +103,12 @@ kbase只提供/dev/mali0，不会产生Panfrost renderD节点。GBM探针应选�
 
 Vulkan有vk_icdGetInstanceProcAddr，OpenCL有clIcdGetPlatformIDsKHR，可使用私有JSON/ICD。
 **没有__egl_Main**，给它写GLVND EGL vendor JSON会失败。首窗复用已有vendor模式的
-LD_PRELOAD直接EGL/GLES/GBM导出；通用GLVND应用集成需另取已授权、UK匹配且实现该ABI的库，
+LD_PRELOAD直接EGL/GLES/GBM导出（历史探针）；r2改用专用前缀，通用GLVND应用集成需另取已授权、UK匹配且实现该ABI的库，
 或开发并验证适配层。本轮未实现GLVND桥，不创建误导性的EGL vendor JSON。
 
 [run.py](../packaging/kbase/run.py)提供显式逐进程选择：核对已加载的UK11.39、/dev/mali0和blob哈希，
-临时生成Vulkan与CL ICD并预加载同一blob；命令结束清理。其参数用法为
-`python3 packaging/kbase/run.py -- COMMAND ...`。尚未上板验收，不接入正式服务。
+临时生成Vulkan与CL ICD；命令结束清理。默认只选ICD，显式GLES模式用
+`python3 packaging/kbase/run.py --graphics direct -- COMMAND ...`。尚未上板验收，不接入正式服务。
 后续沿用board/vim4-kvm-run模式，将视频后端选择与GPU驱动选择分开：7.3仍使用Wave5，
 GPU依据实际绑定驱动和UK再选用户态，不能仅凭7.3 release就选Mesa或blob。
 GLVND可用时仅逐进程指定EGL vendor文件；Vulkan/CL同理，不全局注册使共用rootfs的另一内核误选。
@@ -130,12 +133,20 @@ UAPI字节/布局检查、同次Image/完整模块包、DT差分，再跑设备/
 | 分钟 | 门禁 |
 |---|---|
 | 0–4 | 按board→heavy双锁协调HDR会话，核对完整候选与回退；一次性RAM启动候选，无saveenv；确认只有kbase绑定、/dev/mali0、UK11.39、GPU四核、无probe/MMU/reset错误 |
-| 4–8 | 同blob真实EGL/GLES、Vulkan physical device、CL device/C版本与扩展；拒绝软件设备。GBM使用实际DRM显示节点；失败即记录能力阻塞 |
+| 4–8 | 同blob真实EGL/GLES、Vulkan physical device、CL device/C版本与扩展；GLES显式direct模式，VK/CL先验证纯ICD模式；拒绝软件设备。GBM使用实际DRM显示节点；失败即记录能力阻塞 |
 | 8–14 | 复用gpu-compare.py、gpu-probe、mali-dma-probe，匹配512² FBO/shader/循环、CPU/温度/频点；三轮GLES及冷暖Vulkan逐字像素；与提前保存的5.15同条件样本配对 |
 | 14–18 | CL小buffer map/unmap和有界clpeak；CMA dma-buf导入/compute/CPU回读；同步fd交接。不能把该冒烟当GPU→Wave5整链已通 |
 | 18–23 | 固定HDMI4K60→Wave5，先无GPU再并发GPU，记录帧数/序号/p99/CPU/错误/CMA；不发HID、不播放声音、不改变Mac mini M6 |
 | 23–26 | 五档OPP短往返、cooling绑定/频率上限、空闲→渲染恢复；本候选域应保持active，无真实热触发则thermal闭环未验；不写PWM或强制过热 |
 | 26–30 | 正常回原默认内核，核对启动文件与服务、取日志释放锁；boot/API失败时剩余时间全部用于恢复 |
+
+窗口前离线备齐同次Image/完整模块集/extra kbase、候选initramfs、manifest及DT；
+保留5.15与正式7.3启动文件哈希。一次性RAM入口沿用
+`sysboot mmc 1:1 any ${pxefile_addr_r} /gpu-once.conf; reset`，不saveenv、不改变默认项；
+只有用户安排且HDR释放锁后才stage。各项单命令timeout，最迟第26分钟进入回退。
+配对必须固定同一probe哈希、GBM/FBO尺寸、shader/迭代、CPU亲和/频点与温度，
+GPU→Wave5未连通则单列失败，不以CPU拷贝冒充零拷贝；保留冷暖提交不同口径。
+本窗不测系统suspend、不注入过热、不对Mac mini M6发送HID。
 
 30分钟不足以包含两次完整启动加全量三栈基准和长稳态功耗；若缺同条件5.15样本，
 本窗只判功能，下窗另做配对，绝不拿622fps或1.89ms旧值直接判追平。

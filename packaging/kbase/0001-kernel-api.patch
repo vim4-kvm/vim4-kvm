@@ -30,62 +30,6 @@ index c9f311b..399c14b 100644
  subdir-ccflags-y += $(ccflags-y)
  
  #
-diff --git a/drivers/gpu/arm/midgard/backend/gpu/mali_kbase_devfreq.c b/drivers/gpu/arm/midgard/backend/gpu/mali_kbase_devfreq.c
-index 7d094bf..e26936a 100644
---- a/drivers/gpu/arm/midgard/backend/gpu/mali_kbase_devfreq.c
-+++ b/drivers/gpu/arm/midgard/backend/gpu/mali_kbase_devfreq.c
-@@ -20,6 +20,7 @@
-  */
- 
- #include <mali_kbase.h>
-+#include <mali_kbase_config_defaults.h>
- #include <tl/mali_kbase_tracepoints.h>
- #include <backend/gpu/mali_kbase_pm_internal.h>
- 
-@@ -704,7 +705,7 @@ int kbase_devfreq_init(struct kbase_device *kbdev)
- 			dp->freq_table[0] / 1000;
- 	}
- 
--#if IS_ENABLED(CONFIG_DEVFREQ_THERMAL)
-+#if IS_ENABLED(CONFIG_DEVFREQ_THERMAL) && !defined(KBASE_SIMPLE_COOLING)
- 	err = kbase_ipa_init(kbdev);
- 	if (err) {
- 		dev_err(kbdev->dev, "IPA initialization failed");
-@@ -753,10 +754,16 @@ int kbase_devfreq_init(struct kbase_device *kbdev)
- 	}
- 
- #if IS_ENABLED(CONFIG_DEVFREQ_THERMAL)
-+#ifdef KBASE_SIMPLE_COOLING
-+	/* Frequency limits need no uncalibrated power or voltage model. */
-+	kbdev->devfreq_cooling = of_devfreq_cooling_register(kbdev->dev->of_node,
-+							  kbdev->devfreq);
-+#else
- 	kbdev->devfreq_cooling = of_devfreq_cooling_register_power(
- 			kbdev->dev->of_node,
- 			kbdev->devfreq,
- 			&kbase_ipa_power_model_ops);
-+#endif
- 	if (IS_ERR_OR_NULL(kbdev->devfreq_cooling)) {
- 		err = PTR_ERR_OR_ZERO(kbdev->devfreq_cooling);
- 		dev_err(kbdev->dev,
-@@ -786,7 +793,7 @@ devfreq_add_dev_failed:
- 	kbase_devfreq_term_core_mask_table(kbdev);
- 
- init_core_mask_table_failed:
--#if IS_ENABLED(CONFIG_DEVFREQ_THERMAL)
-+#if IS_ENABLED(CONFIG_DEVFREQ_THERMAL) && !defined(KBASE_SIMPLE_COOLING)
- 	kbase_ipa_term(kbdev);
- ipa_init_failed:
- #endif
-@@ -819,7 +826,7 @@ void kbase_devfreq_term(struct kbase_device *kbdev)
- 
- 	kbase_devfreq_term_core_mask_table(kbdev);
- 
--#if IS_ENABLED(CONFIG_DEVFREQ_THERMAL)
-+#if IS_ENABLED(CONFIG_DEVFREQ_THERMAL) && !defined(KBASE_SIMPLE_COOLING)
- 	kbase_ipa_term(kbdev);
- #endif
- }
 diff --git a/drivers/gpu/arm/midgard/device/mali_kbase_device.c b/drivers/gpu/arm/midgard/device/mali_kbase_device.c
 index dfb829a..9f8712f 100644
 --- a/drivers/gpu/arm/midgard/device/mali_kbase_device.c
@@ -99,52 +43,14 @@ index dfb829a..9f8712f 100644
  	if (err)
  		goto dma_set_mask_failed;
  
-diff --git a/drivers/gpu/arm/midgard/ipa/mali_kbase_ipa.c b/drivers/gpu/arm/midgard/ipa/mali_kbase_ipa.c
-index 0e8abb1..cca1741 100644
---- a/drivers/gpu/arm/midgard/ipa/mali_kbase_ipa.c
-+++ b/drivers/gpu/arm/midgard/ipa/mali_kbase_ipa.c
-@@ -182,7 +182,7 @@ int kbase_ipa_model_add_param_string(struct kbase_ipa_model *model,
- 	of_node_put(model_dt_node);
- 
- 	if (err && dt_required) {
--		strncpy(addr, "", size - 1);
-+		strscpy(addr, "", size);
- 		dev_warn(model->kbdev->dev,
- 			 "Error %d, no DT entry: %s.%s = \'%s\'\n",
- 			 err, model->ops->name, name, addr);
-@@ -191,7 +191,7 @@ int kbase_ipa_model_add_param_string(struct kbase_ipa_model *model,
- 	} else if (err && !dt_required) {
- 		origin = "default";
- 	} else /* !err */ {
--		strncpy(addr, string_prop_value, size - 1);
-+		strscpy(addr, string_prop_value, size);
- 		origin = "DT";
- 	}
- 
-diff --git a/drivers/gpu/arm/midgard/mali_kbase_config_defaults.h b/drivers/gpu/arm/midgard/mali_kbase_config_defaults.h
-index 640a088..ba42de9 100644
---- a/drivers/gpu/arm/midgard/mali_kbase_config_defaults.h
-+++ b/drivers/gpu/arm/midgard/mali_kbase_config_defaults.h
-@@ -30,6 +30,10 @@
- /* Include mandatory definitions per platform */
- #include <mali_kbase_config_platform.h>
- 
-+#ifndef KBASE_PLATFORM_MAX_CLOCKS
-+#define KBASE_PLATFORM_MAX_CLOCKS BASE_MAX_NR_CLOCKS_REGULATORS
-+#endif
-+
- enum {
- 	/* Use unrestricted Address ID width on the AXI bus. */
- 	KBASE_AID_32 = 0x0,
 diff --git a/drivers/gpu/arm/midgard/mali_kbase_core_linux.c b/drivers/gpu/arm/midgard/mali_kbase_core_linux.c
-index c9d5693..a800fdb 100644
 --- a/drivers/gpu/arm/midgard/mali_kbase_core_linux.c
 +++ b/drivers/gpu/arm/midgard/mali_kbase_core_linux.c
 @@ -789,7 +789,9 @@ static int kbase_open(struct inode *inode, struct file *filp)
  	}
  
  	filp->private_data = kfile;
-+#if LINUX_VERSION_CODE < KERNEL_VERSION(6, 12, 0)
++#if (KERNEL_VERSION(6, 12, 0) > LINUX_VERSION_CODE)
  	filp->f_mode |= FMODE_UNSIGNED_OFFSET;
 +#endif
  
@@ -154,30 +60,12 @@ index c9d5693..a800fdb 100644
  }
  
  static const struct file_operations kbase_fops = {
-+#if LINUX_VERSION_CODE >= KERNEL_VERSION(6, 12, 0)
++#if (KERNEL_VERSION(6, 12, 0) <= LINUX_VERSION_CODE)
 +	.fop_flags = FOP_UNSIGNED_OFFSET,
 +#endif
  	.owner = THIS_MODULE,
  	.open = kbase_open,
  	.flush = kbase_flush,
-@@ -4959,7 +4964,7 @@ int power_control_init(struct kbase_device *kbdev)
- 	 * Any other error is ignored and the driver will continue
- 	 * operating with a partial initialization of clocks.
- 	 */
--	for (i = 0; i < BASE_MAX_NR_CLOCKS_REGULATORS; i++) {
-+	for (i = 0; i < KBASE_PLATFORM_MAX_CLOCKS; i++) {
- 		kbdev->clocks[i] = of_clk_get(kbdev->dev->of_node, i);
- 		if (IS_ERR(kbdev->clocks[i])) {
- 			err = PTR_ERR(kbdev->clocks[i]);
-@@ -5370,7 +5375,7 @@ static struct dentry *init_debugfs(struct kbase_device *kbdev)
- 	kbase_ktrace_debugfs_init(kbdev);
- 
- #ifdef CONFIG_MALI_DEVFREQ
--#if IS_ENABLED(CONFIG_DEVFREQ_THERMAL)
-+#if IS_ENABLED(CONFIG_DEVFREQ_THERMAL) && !defined(KBASE_SIMPLE_COOLING)
- 	if (kbdev->devfreq)
- 		kbase_ipa_debugfs_init(kbdev);
- #endif /* CONFIG_DEVFREQ_THERMAL */
 @@ -5885,18 +5890,16 @@ void kbase_sysfs_term(struct kbase_device *kbdev)
  	put_device(kbdev->dev);
  }
@@ -199,27 +87,6 @@ index c9d5693..a800fdb 100644
  }
  
  void kbase_backend_devfreq_term(struct kbase_device *kbdev)
-@@ -6176,10 +6179,8 @@ static const struct dev_pm_ops kbase_pm_ops = {
- };
- 
- #if IS_ENABLED(CONFIG_OF)
--static const struct of_device_id kbase_dt_ids[] = { { .compatible = "arm,malit6xx" },
--						    { .compatible = "arm,mali-midgard" },
--						    { .compatible = "arm,mali-bifrost" },
--						    { .compatible = "arm,mali-valhall" },
-+static const struct of_device_id kbase_dt_ids[] = {
-+	{ .compatible = "khadas,vim4-mali-kbase-r44p0" },
- 						    { /* sentinel */ } };
- MODULE_DEVICE_TABLE(of, kbase_dt_ids);
- #endif
-@@ -6238,7 +6239,6 @@ MODULE_LICENSE("GPL");
- MODULE_VERSION(MALI_RELEASE_NAME " (UK version " \
- 		__stringify(BASE_UK_VERSION_MAJOR) "." \
- 		__stringify(BASE_UK_VERSION_MINOR) ")");
--MODULE_SOFTDEP("pre: memory_group_manager");
- MODULE_INFO(import_ns, "DMA_BUF");
- 
- #define CREATE_TRACE_POINTS
 diff --git a/drivers/gpu/arm/midgard/mali_kbase_defs.h b/drivers/gpu/arm/midgard/mali_kbase_defs.h
 index 02aa259..8e8b09d 100644
 --- a/drivers/gpu/arm/midgard/mali_kbase_defs.h
@@ -291,14 +158,14 @@ index e901f33..1313d2a 100644
  			goto bad_fw;
  		}
 diff --git a/drivers/gpu/arm/midgard/mali_kbase_fence.h b/drivers/gpu/arm/midgard/mali_kbase_fence.h
-index 7ee609b..0e1b58e 100644
+index 7ee609b..117ce49 100644
 --- a/drivers/gpu/arm/midgard/mali_kbase_fence.h
 +++ b/drivers/gpu/arm/midgard/mali_kbase_fence.h
 @@ -170,7 +170,12 @@ static inline int kbase_fence_out_signal(struct kbase_jd_atom *katom,
  		katom->dma_fence.fence->status = status;
  #endif
  	}
-+#if LINUX_VERSION_CODE >= KERNEL_VERSION(7, 3, 0)
++#if (KERNEL_VERSION(7, 3, 0) <= LINUX_VERSION_CODE)
 +	dma_fence_signal(katom->dma_fence.fence);
 +	return 0;
 +#else
@@ -308,7 +175,7 @@ index 7ee609b..0e1b58e 100644
  
  #if IS_ENABLED(CONFIG_SYNC_FILE)
 diff --git a/drivers/gpu/arm/midgard/mali_kbase_fence_ops.c b/drivers/gpu/arm/midgard/mali_kbase_fence_ops.c
-index f14a55e..d0b08c5 100644
+index f14a55e..6bdb48b 100644
 --- a/drivers/gpu/arm/midgard/mali_kbase_fence_ops.c
 +++ b/drivers/gpu/arm/midgard/mali_kbase_fence_ops.c
 @@ -60,7 +60,7 @@ kbase_fence_enable_signaling(struct dma_fence *fence)
@@ -324,31 +191,36 @@ index f14a55e..d0b08c5 100644
  					   .get_timeline_name = kbase_fence_get_timeline_name,
  					   .enable_signaling = kbase_fence_enable_signaling,
  #if MALI_USE_CSF
-+#if LINUX_VERSION_CODE < KERNEL_VERSION(7, 3, 0)
++#if (KERNEL_VERSION(7, 3, 0) > LINUX_VERSION_CODE)
  					   .fence_value_str = kbase_fence_fence_value_str,
 +#endif
  					   .release = kbase_fence_release
  #else
-+#if LINUX_VERSION_CODE < KERNEL_VERSION(7, 3, 0)
++#if (KERNEL_VERSION(7, 3, 0) > LINUX_VERSION_CODE)
  					    .fence_value_str = kbase_fence_fence_value_str
  #endif
 +#endif
  };
  KBASE_EXPORT_TEST_API(kbase_fence_ops);
 diff --git a/drivers/gpu/arm/midgard/mali_kbase_mem.c b/drivers/gpu/arm/midgard/mali_kbase_mem.c
-index 4277587..c05883d 100644
+index 4277587..995c22c 100644
 --- a/drivers/gpu/arm/midgard/mali_kbase_mem.c
 +++ b/drivers/gpu/arm/midgard/mali_kbase_mem.c
-@@ -3145,7 +3145,7 @@ void kbase_mem_kref_free(struct kref *kref)
+@@ -3145,10 +3145,9 @@ void kbase_mem_kref_free(struct kref *kref)
  			WARN_ONCE(alloc->imported.umm.current_mapping_usage_count != 1,
  					"WARNING: expected exactly 1 mapping, got %d",
  					alloc->imported.umm.current_mapping_usage_count);
 -			dma_buf_unmap_attachment(
-+			kbase_dma_buf_unmap_attachment(
- 					alloc->imported.umm.dma_attachment,
- 					alloc->imported.umm.sgt,
- 					DMA_BIDIRECTIONAL);
-@@ -4940,6 +4940,9 @@ int kbase_jd_user_buf_pin_pages(struct kbase_context *kctx,
+-					alloc->imported.umm.dma_attachment,
+-					alloc->imported.umm.sgt,
+-					DMA_BIDIRECTIONAL);
++			kbase_dma_buf_unmap_attachment(alloc->imported.umm.dma_attachment,
++						       alloc->imported.umm.sgt,
++						      DMA_BIDIRECTIONAL);
+ 			kbase_remove_dma_buf_usage(alloc->imported.umm.kctx,
+ 						   alloc);
+ 		}
+@@ -4940,6 +4939,9 @@ int kbase_jd_user_buf_pin_pages(struct kbase_context *kctx,
  #elif KERNEL_VERSION(5, 9, 0) > LINUX_VERSION_CODE
  	pinned_pages = get_user_pages_remote(NULL, mm, address, alloc->imported.user_buf.nr_pages,
  					     write ? FOLL_WRITE : 0, pages, NULL, NULL);
@@ -359,7 +231,7 @@ index 4277587..c05883d 100644
  	pinned_pages = pin_user_pages_remote(mm, address, alloc->imported.user_buf.nr_pages,
  					     write ? FOLL_WRITE : 0, pages, NULL, NULL);
 diff --git a/drivers/gpu/arm/midgard/mali_kbase_mem_linux.c b/drivers/gpu/arm/midgard/mali_kbase_mem_linux.c
-index 29bce21..06fa94a 100644
+index 29bce21..565b54d 100644
 --- a/drivers/gpu/arm/midgard/mali_kbase_mem_linux.c
 +++ b/drivers/gpu/arm/midgard/mali_kbase_mem_linux.c
 @@ -671,11 +671,11 @@ static
@@ -394,24 +266,28 @@ index 29bce21..06fa94a 100644
  #endif
  	return 0;
  }
-@@ -1190,7 +1190,7 @@ static void kbase_mem_umm_unmap_attachment(struct kbase_context *kctx,
+@@ -1190,8 +1190,8 @@ static void kbase_mem_umm_unmap_attachment(struct kbase_context *kctx,
  {
  	struct tagged_addr *pa = alloc->pages;
  
 -	dma_buf_unmap_attachment(alloc->imported.umm.dma_attachment,
+-				 alloc->imported.umm.sgt, DMA_BIDIRECTIONAL);
 +	kbase_dma_buf_unmap_attachment(alloc->imported.umm.dma_attachment,
- 				 alloc->imported.umm.sgt, DMA_BIDIRECTIONAL);
++				       alloc->imported.umm.sgt, DMA_BIDIRECTIONAL);
  	alloc->imported.umm.sgt = NULL;
  
-@@ -1224,7 +1224,7 @@ static int kbase_mem_umm_map_attachment(struct kbase_context *kctx,
+ 	kbase_remove_dma_buf_usage(kctx, alloc);
+@@ -1224,8 +1224,8 @@ static int kbase_mem_umm_map_attachment(struct kbase_context *kctx,
  	WARN_ON_ONCE(alloc->type != KBASE_MEM_TYPE_IMPORTED_UMM);
  	WARN_ON_ONCE(alloc->imported.umm.sgt);
  
 -	sgt = dma_buf_map_attachment(alloc->imported.umm.dma_attachment,
+-			DMA_BIDIRECTIONAL);
 +	sgt = kbase_dma_buf_map_attachment(alloc->imported.umm.dma_attachment,
- 			DMA_BIDIRECTIONAL);
++					   DMA_BIDIRECTIONAL);
  	if (IS_ERR_OR_NULL(sgt))
  		return -EINVAL;
+ 
 @@ -1697,10 +1697,10 @@ static struct kbase_va_region *kbase_mem_from_user_buffer(
  	 */
  	if (pages != NULL) {
@@ -472,25 +348,140 @@ index 29bce21..06fa94a 100644
  	vma->vm_private_data = kctx;
  
 diff --git a/drivers/gpu/arm/midgard/mali_kbase_mem_migrate.c b/drivers/gpu/arm/midgard/mali_kbase_mem_migrate.c
-index f246823..ab3a5b9 100644
+index f246823..89c57c2 100644
 --- a/drivers/gpu/arm/midgard/mali_kbase_mem_migrate.c
 +++ b/drivers/gpu/arm/midgard/mali_kbase_mem_migrate.c
-@@ -28,6 +28,15 @@
+@@ -28,6 +28,18 @@
  #include <mali_kbase_mem_migrate.h>
  #include <mmu/mali_kbase_mmu.h>
  
-+#if LINUX_VERSION_CODE >= KERNEL_VERSION(7, 3, 0)
++#if (KERNEL_VERSION(7, 3, 0) <= LINUX_VERSION_CODE)
 +#if IS_ENABLED(CONFIG_PAGE_MIGRATION_SUPPORT)
 +#error "The VIM4 port does not support movable GPU pages on this kernel"
 +#endif
 +/* These calls are unreachable with page migration compiled out. */
-+#define __SetPageMovable(page, ops) do { (void)(ops); } while (0)
-+#define __ClearPageMovable(page) do { } while (0)
++#define kbase_set_page_movable(page, ops) do { (void)(page); (void)(ops); } while (0)
++#define kbase_clear_page_movable(page) ((void)(page))
++#else
++#define kbase_set_page_movable __SetPageMovable
++#define kbase_clear_page_movable __ClearPageMovable
 +#endif
 +
  /* Global integer used to determine if module parameter value has been
   * provided and if page migration feature is enabled.
   * Feature is disabled on all platforms by default.
+@@ -88,7 +100,7 @@ bool kbase_alloc_page_metadata(struct kbase_device *kbdev, struct page *p, dma_a
+ 
+ 	lock_page(p);
+ #if (KERNEL_VERSION(6, 0, 0) <= LINUX_VERSION_CODE)
+-	__SetPageMovable(p, &movable_ops);
++	kbase_set_page_movable(p, &movable_ops);
+ 	page_md->status = PAGE_MOVABLE_SET(page_md->status);
+ #else
+ 	/* In some corner cases, the driver may attempt to allocate memory pages
+@@ -109,7 +121,7 @@ bool kbase_alloc_page_metadata(struct kbase_device *kbdev, struct page *p, dma_a
+ 	 * gain the movable property later on in their life cycle.
+ 	 */
+ 	if (kbdev->mem_migrate.inode && kbdev->mem_migrate.inode->i_mapping) {
+-		__SetPageMovable(p, kbdev->mem_migrate.inode->i_mapping);
++		kbase_set_page_movable(p, kbdev->mem_migrate.inode->i_mapping);
+ 		page_md->status = PAGE_MOVABLE_SET(page_md->status);
+ 	}
+ #endif
+@@ -162,7 +174,7 @@ static void kbase_free_pages_worker(struct work_struct *work)
+ 		lock_page(p);
+ 		page_md = kbase_page_private(p);
+ 		if (page_md && IS_PAGE_MOVABLE(page_md->status)) {
+-			__ClearPageMovable(p);
++			kbase_clear_page_movable(p);
+ 			page_md->status = PAGE_MOVABLE_CLEAR(page_md->status);
+ 		}
+ 		unlock_page(p);
+@@ -232,16 +244,16 @@ static int kbasep_migrate_page_pt_mapped(struct page *old_page, struct page *new
+ 
+ 	if (ret == 0) {
+ 		dma_unmap_page(kbdev->dev, old_dma_addr, PAGE_SIZE, DMA_BIDIRECTIONAL);
+-		__ClearPageMovable(old_page);
++		kbase_clear_page_movable(old_page);
+ 		ClearPagePrivate(old_page);
+ 		put_page(old_page);
+ 
+ #if (KERNEL_VERSION(6, 0, 0) <= LINUX_VERSION_CODE)
+-		__SetPageMovable(new_page, &movable_ops);
++		kbase_set_page_movable(new_page, &movable_ops);
+ 		page_md->status = PAGE_MOVABLE_SET(page_md->status);
+ #else
+ 		if (kbdev->mem_migrate.inode->i_mapping) {
+-			__SetPageMovable(new_page, kbdev->mem_migrate.inode->i_mapping);
++			kbase_set_page_movable(new_page, kbdev->mem_migrate.inode->i_mapping);
+ 			page_md->status = PAGE_MOVABLE_SET(page_md->status);
+ 		}
+ #endif
+@@ -309,16 +321,16 @@ static int kbasep_migrate_page_allocated_mapped(struct page *old_page, struct pa
+ 
+ 		/* Clear PG_movable from the old page and release reference. */
+ 		ClearPagePrivate(old_page);
+-		__ClearPageMovable(old_page);
++		kbase_clear_page_movable(old_page);
+ 		put_page(old_page);
+ 
+ 		/* Set PG_movable to the new page. */
+ #if (KERNEL_VERSION(6, 0, 0) <= LINUX_VERSION_CODE)
+-		__SetPageMovable(new_page, &movable_ops);
++		kbase_set_page_movable(new_page, &movable_ops);
+ 		page_md->status = PAGE_MOVABLE_SET(page_md->status);
+ #else
+ 		if (kctx->kbdev->mem_migrate.inode->i_mapping) {
+-			__SetPageMovable(new_page, kctx->kbdev->mem_migrate.inode->i_mapping);
++			kbase_set_page_movable(new_page, kctx->kbdev->mem_migrate.inode->i_mapping);
+ 			page_md->status = PAGE_MOVABLE_SET(page_md->status);
+ 		}
+ #endif
+@@ -390,7 +402,7 @@ static bool kbase_page_isolate(struct page *p, isolate_mode_t mode)
+ 		break;
+ 	case NOT_MOVABLE:
+ 		/* Opportunistically clear the movable property for these pages */
+-		__ClearPageMovable(p);
++		kbase_clear_page_movable(p);
+ 		page_md->status = PAGE_MOVABLE_CLEAR(page_md->status);
+ 		break;
+ 	default:
+@@ -513,7 +525,7 @@ static int kbase_page_migrate(struct page *new_page, struct page *old_page, enum
+ 		struct kbase_mem_migrate *mem_migrate = &kbdev->mem_migrate;
+ 
+ 		kbase_free_page_metadata(kbdev, old_page, NULL);
+-		__ClearPageMovable(old_page);
++		kbase_clear_page_movable(old_page);
+ 		put_page(old_page);
+ 
+ 		/* Just free new page to avoid lock contention. */
+@@ -523,7 +535,7 @@ static int kbase_page_migrate(struct page *new_page, struct page *old_page, enum
+ 		kbase_free_page_later(kbdev, new_page);
+ 		queue_work(mem_migrate->free_pages_workq, &mem_migrate->free_pages_work);
+ 	} else if (status_not_movable) {
+-		__ClearPageMovable(old_page);
++		kbase_clear_page_movable(old_page);
+ 		err = -EINVAL;
+ 	} else if (status_mapped) {
+ 		err = kbasep_migrate_page_allocated_mapped(old_page, new_page);
+@@ -537,7 +549,7 @@ static int kbase_page_migrate(struct page *new_page, struct page *old_page, enum
+ 	 * expect.
+ 	 */
+ 	if (err < 0 && err != -EAGAIN) {
+-		__ClearPageMovable(old_page);
++		kbase_clear_page_movable(old_page);
+ 		page_md->status = PAGE_MOVABLE_CLEAR(page_md->status);
+ 	}
+ 
+@@ -610,7 +622,7 @@ static void kbase_page_putback(struct page *p)
+ 	 */
+ 	if (status_mem_pool || status_free_isolated_in_progress ||
+ 	    status_free_pt_isolated_in_progress) {
+-		__ClearPageMovable(p);
++		kbase_clear_page_movable(p);
+ 		page_md->status = PAGE_MOVABLE_CLEAR(page_md->status);
+ 		if (!WARN_ON_ONCE(!kbdev)) {
+ 			struct kbase_mem_migrate *mem_migrate = &kbdev->mem_migrate;
 diff --git a/drivers/gpu/arm/midgard/mali_kbase_mem_pool.c b/drivers/gpu/arm/midgard/mali_kbase_mem_pool.c
 index 4dbc82c..85bf122 100644
 --- a/drivers/gpu/arm/midgard/mali_kbase_mem_pool.c
@@ -554,124 +545,18 @@ index 3ef805a..0b3b5dc 100644
  
  /**
   * CSTD_UNUSED - Function-like macro for suppressing unused variable warnings.
-diff --git a/drivers/gpu/arm/midgard/platform/vim4/Kbuild b/drivers/gpu/arm/midgard/platform/vim4/Kbuild
-new file mode 100644
-index 0000000..9acf2c7
---- /dev/null
-+++ b/drivers/gpu/arm/midgard/platform/vim4/Kbuild
-@@ -0,0 +1 @@
-+mali_kbase-y += platform/vim4/platform.o
-diff --git a/drivers/gpu/arm/midgard/platform/vim4/mali_kbase_config_platform.h b/drivers/gpu/arm/midgard/platform/vim4/mali_kbase_config_platform.h
-new file mode 100644
-index 0000000..fb51c9c
---- /dev/null
-+++ b/drivers/gpu/arm/midgard/platform/vim4/mali_kbase_config_platform.h
-@@ -0,0 +1,12 @@
-+/* SPDX-License-Identifier: GPL-2.0 */
-+extern struct kbase_platform_funcs_conf vim4_platform_funcs;
-+int kbase_platform_dvfs_event(struct kbase_device *kbdev, u32 utilisation,
-+			    u32 gl_share, u32 cl_share[2]);
-+#define PLATFORM_FUNCS (&vim4_platform_funcs)
-+#define KBASE_PLATFORM_MAX_CLOCKS 1
-+#define KBASE_SIMPLE_COOLING 1
-+#define POWER_MANAGEMENT_CALLBACKS NULL
-+#define POWER_MODEL_CALLBACKS NULL
-+#define CLK_RATE_TRACE_OPS NULL
-+#define GPU_SPEED_FUNC NULL
-+#define CPU_SPEED_FUNC NULL
-diff --git a/drivers/gpu/arm/midgard/platform/vim4/platform.c b/drivers/gpu/arm/midgard/platform/vim4/platform.c
-new file mode 100644
-index 0000000..1414a8e
---- /dev/null
-+++ b/drivers/gpu/arm/midgard/platform/vim4/platform.c
-@@ -0,0 +1,75 @@
-+// SPDX-License-Identifier: GPL-2.0
-+#include <mali_kbase.h>
-+#include <mali_kbase_config_defaults.h>
-+#include <linux/clk.h>
-+#include <linux/pm_runtime.h>
-+#include <linux/reset.h>
-+
-+int meson_gpu_fault;
-+int meson_gpu_data_invalid_count;
-+MODULE_DESCRIPTION("Mali r44p0 UK 11.39 for VIM4");
-+
-+struct vim4_platform {
-+	struct reset_control *reset;
-+	struct clk *bus;
-+};
-+
-+int kbase_platform_dvfs_event(struct kbase_device *kbdev, u32 utilisation,
-+			    u32 gl_share, u32 cl_share[2])
-+{
-+	/* The devfreq governor consumes kbase's metrics directly. */
-+	return 0;
-+}
-+
-+static int vim4_init(struct kbase_device *kbdev)
-+{
-+	struct vim4_platform *platform;
-+	int err;
-+
-+	platform = devm_kzalloc(kbdev->dev, sizeof(*platform), GFP_KERNEL);
-+	if (!platform)
-+		return -ENOMEM;
-+	platform->reset = devm_reset_control_array_get_exclusive(kbdev->dev);
-+	if (IS_ERR(platform->reset))
-+		return PTR_ERR(platform->reset);
-+	platform->bus = devm_clk_get(kbdev->dev, "bus");
-+	if (IS_ERR(platform->bus))
-+		return PTR_ERR(platform->bus);
-+	/* T7 must not reset its domain between jobs. Hold it until removal. */
-+	pm_runtime_enable(kbdev->dev);
-+	err = pm_runtime_resume_and_get(kbdev->dev);
-+	if (err < 0) {
-+		pm_runtime_disable(kbdev->dev);
-+		return err;
-+	}
-+	err = clk_prepare_enable(platform->bus);
-+	if (err)
-+		goto power_off;
-+	err = reset_control_deassert(platform->reset);
-+	if (err) {
-+		clk_disable_unprepare(platform->bus);
-+		goto power_off;
-+	}
-+	kbdev->platform_context = platform;
-+	return 0;
-+
-+power_off:
-+	pm_runtime_put_sync(kbdev->dev);
-+	pm_runtime_disable(kbdev->dev);
-+	return err;
-+}
-+
-+static void vim4_term(struct kbase_device *kbdev)
-+{
-+	struct vim4_platform *platform = kbdev->platform_context;
-+
-+	reset_control_assert(platform->reset);
-+	clk_disable_unprepare(platform->bus);
-+	pm_runtime_put_sync(kbdev->dev);
-+	pm_runtime_disable(kbdev->dev);
-+}
-+
-+struct kbase_platform_funcs_conf vim4_platform_funcs = {
-+	.platform_init_func = vim4_init,
-+	.platform_term_func = vim4_term,
-+};
 diff --git a/include/linux/version_compat_defs.h b/include/linux/version_compat_defs.h
-index 5cbb074..73d8ded 100644
+index 5cbb074..d6b6a5e 100644
 --- a/include/linux/version_compat_defs.h
 +++ b/include/linux/version_compat_defs.h
-@@ -25,6 +25,57 @@
+@@ -25,6 +25,61 @@
  #include <linux/version.h>
  #include <linux/highmem.h>
  #include <linux/timer.h>
 +#include <linux/hrtimer.h>
 +#include <linux/shrinker.h>
 +
-+#if LINUX_VERSION_CODE >= KERNEL_VERSION(7, 3, 0)
++#if (KERNEL_VERSION(7, 3, 0) <= LINUX_VERSION_CODE)
 +/* kbase holds its VM lock here, not the exporter's reservation lock. */
 +#define kbase_dma_buf_map_attachment dma_buf_map_attachment_unlocked
 +#define kbase_dma_buf_unmap_attachment dma_buf_unmap_attachment_unlocked
@@ -680,11 +565,13 @@ index 5cbb074..73d8ded 100644
 +#define kbase_dma_buf_unmap_attachment dma_buf_unmap_attachment
 +#endif
 +
-+#if LINUX_VERSION_CODE >= KERNEL_VERSION(6, 7, 0)
++#if (KERNEL_VERSION(6, 7, 0) <= LINUX_VERSION_CODE)
 +struct kbase_shrinker {
 +	struct shrinker *registered;
-+	unsigned long (*count_objects)(struct shrinker *, struct shrink_control *);
-+	unsigned long (*scan_objects)(struct shrinker *, struct shrink_control *);
++	unsigned long (*count_objects)(struct shrinker *shrinker,
++				       struct shrink_control *control);
++	unsigned long (*scan_objects)(struct shrinker *shrinker,
++				      struct shrink_control *control);
 +	int seeks;
 +	long batch;
 +};
@@ -704,15 +591,17 @@ index 5cbb074..73d8ded 100644
 +	shrinker_register(registered);
 +	return 0;
 +}
++
 +#define register_shrinker kbase_register_shrinker
 +#define unregister_shrinker(s) shrinker_free((s)->registered)
-+#define kbase_shrinker_owner(s, type, member) container_of((struct kbase_shrinker *)(s)->private_data, type, member)
++#define kbase_shrinker_owner(s, type, member) \
++	container_of((struct kbase_shrinker *)(s)->private_data, type, member)
 +#else
 +#define kbase_shrinker shrinker
 +#define kbase_shrinker_owner(s, type, member) container_of(s, type, member)
 +#endif
 +
-+#if LINUX_VERSION_CODE >= KERNEL_VERSION(6, 15, 0)
++#if (KERNEL_VERSION(6, 15, 0) <= LINUX_VERSION_CODE)
 +#define no_llseek NULL
 +#define del_timer timer_delete
 +#define del_timer_sync timer_delete_sync

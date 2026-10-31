@@ -2,7 +2,8 @@
 """Explicit per-process libmali candidate selection after board acceptance.
 
 No installation, global ICD registration or system library replacement.
-The pinned blob lacks GLVND's __egl_Main; EGL/GBM use its direct exports.
+The pinned blob lacks GLVND's __egl_Main. Direct mode isolates EGL/GLES/GBM
+in a private loader prefix; the default ICD mode preserves system graphics.
 """
 import argparse
 import hashlib
@@ -19,6 +20,7 @@ VERSION = 'r44p0-01eac0 (UK version 11.39)'
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--library', type=Path, default=Path('/usr/lib/vim4-kvm/gpu/libMali.so'))
+    parser.add_argument('--graphics', choices=('icd', 'direct'), default='icd')
     parser.add_argument('command', nargs=argparse.REMAINDER)
     args = parser.parse_args()
     command = args.command
@@ -44,7 +46,13 @@ def main():
             icd = root / 'mali.json'
             icd.write_text(json.dumps({'file_format_version': '1.0.0', 'ICD': {
                 'library_path': str(library), 'api_version': '1.3.231'}}))
-            env.update(LD_PRELOAD=str(library), VK_DRIVER_FILES=str(icd),
+            if args.graphics == 'direct':
+                prefix = root / 'lib'
+                prefix.mkdir()
+                for name in ('libMali.so', 'libEGL.so.1', 'libGLESv2.so.2', 'libgbm.so.1'):
+                    (prefix / name).symlink_to(library)
+                env['LD_LIBRARY_PATH'] = str(prefix)
+            env.update(VK_DRIVER_FILES=str(icd),
                        VK_ICD_FILENAMES=str(icd), OCL_ICD_VENDORS=str(root))
             return subprocess.run(command, env=env).returncode
     except (OSError, ValueError) as error:

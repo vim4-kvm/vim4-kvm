@@ -57,3 +57,26 @@ module SHA256为a6a3b71c1b7e7cf459175b6cffffd35c1bad992f39ec0581f92753cec2587aa3
 thermal和HDMI/Wave5并行均未运行。编译无法消除旧DDK内存生命周期风险；
 本候选保持外部域active，不能拿此前Panfrost runtime suspended结果为它背书。
 版本API变化和完整测试结果以本记录与主仓提交为准，不代表正式部署完成。
+
+## r2复核（独立主仓worktree）
+
+详细选择与证据见[r2集成](../gpu-kbase-integration.md)。主仓独立worktree为
+`vim4-kvm-kbase-r2`，原主仓始终留在main；不操作HDR工作树，不访问板子。
+私有blob仍只读本地缓存，不进入提交。
+
+- 四个主题补丁替代聚合补丁；前三块按series在全新vendor archive顺序重放，第四块与
+  内核候选提交6cdf7ffd90387逐字一致，独立应用于7.3树。
+- VM `~/build/kbase-r2/final`：W=1、KCFLAGS=-Werror、modpost/BTF通过，无warning/error。
+  模块SHA256为f41e1573dba86b5d5054190629d69ef5c451818a8097b2f1ceec0d0bfefdc4b8，
+  UK仍11.39；ABI SHA和保留/候选DT SHA与r1相同。
+- strict原始风格诊断从28 warning/9 check降为12 warning/2 check，0 error。
+  仅保留10条版本兼容、两个内核旧名称与两条新增文件提示，逐块白名单门禁通过。
+  不再保留普通对齐、长宏、参数命名或未使用参数提示。
+- ARM64 `vim4-gpu-builder:26.2.6`，network none、只读挂载blob：离线解析探针Werror编译；
+  私有前缀五入口来自blob退出0，无前缀来自系统库退出1。没有初始化EGL或触碰GPU。
+  日志为主仓忽略目录`build/egl-resolve.log`；VM本体因缺Wayland server首次解析失败，最终用已有完整镜像。
+- 主仓离线315项、13项跳过、无失败；独立worktree不含子仓checkout，跳过项较r1增加，
+  不据此声称运行过这些子仓检查。Python入口语法检查通过。
+
+产品推荐仅VK/CL ICD；GLES选择私有前缀，不实现GLVND shim。PM仅确认任务间不释放域的
+策略与5.15方向一致；系统睡眠/恢复和功耗未达到已验证parity。本轮没有门控代码修改。

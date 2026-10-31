@@ -81,8 +81,10 @@ def main():
         stream.extractall(source, filter='data')
     abi(source, output / 'abi-vendor.txt')
     packaging = Path(__file__).resolve().parent
-    with (packaging / 'linux-7.3.patch').open() as patch:
-        run('git', 'apply', '-', cwd=source, stdin=patch)
+    patches = (packaging / 'series').read_text().splitlines()
+    for name in patches:
+        with (packaging / name).open() as patch:
+            run('git', 'apply', '-', cwd=source, stdin=patch)
     abi(source, output / 'abi-candidate.txt')
     if (output / 'abi-vendor.txt').read_bytes() != (output / 'abi-candidate.txt').read_bytes():
         raise ValueError('UK payload layout or ioctl encoding changed')
@@ -115,7 +117,9 @@ def main():
     run('fdtput', '-t', 's', str(dtb), gpu, 'compatible', 'khadas,vim4-mali-kbase-r44p0')
     run('fdtput', '-d', str(dtb), gpu, 'mali-supply')
     manifest = {'vendor': VENDOR, 'kernel': KERNEL, 'boardTested': False,
-                'moduleSha256': sha(module), 'patchSha256': sha(packaging / 'linux-7.3.patch'),
+                'moduleSha256': sha(module),
+                'patches': {name: sha(packaging / name) for name in patches},
+                'dtPatchSha256': sha(packaging / '0004-dt-candidate.patch'),
                 'abiSha256': sha(output / 'abi-candidate.txt'),
                 'retainedDtbSha256': sha(args.dtb), 'candidateDtbSha256': sha(dtb),
                 'kernelFiles': {str(p): sha(kernel_build / p) for p in (
