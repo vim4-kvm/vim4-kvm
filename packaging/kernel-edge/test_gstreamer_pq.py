@@ -9,8 +9,8 @@ import tempfile
 text = Path(sys.argv[1]).read_text()
 
 
-def function(name):
-    start = text.index('static void\n' + name + ' ')
+def function(name, result='void'):
+    start = text.index('static ' + result + '\n' + name + ' ')
     return text[start:text.index('\n}', start) + 2]
 
 
@@ -19,7 +19,7 @@ fixture = r'''
 #include <gst/video/video.h>
 #include <linux/videodev2.h>
 #include <string.h>
-typedef struct { enum v4l2_buf_type type; int mode; struct v4l2_capability vcap; } GstV4l2Object;
+typedef struct { enum v4l2_buf_type type; int mode; struct v4l2_capability vcap; GstVideoTransferFunction transfer; } GstV4l2Object;
 static int gst_v4l2_object_try_fmt(GstV4l2Object *o, struct v4l2_format *f) {
  int multi=V4L2_TYPE_IS_MULTIPLANAR(o->type);
  unsigned cs=multi?f->fmt.pix_mp.colorspace:f->fmt.pix.colorspace;
@@ -30,24 +30,29 @@ static int gst_v4l2_object_try_fmt(GstV4l2Object *o, struct v4l2_format *f) {
  if (o->mode==0) xf=V4L2_XFER_FUNC_709;
  if(multi) {f->fmt.pix_mp.colorspace=cs; f->fmt.pix_mp.xfer_func=xf;}
  else {f->fmt.pix.colorspace=cs; f->fmt.pix.xfer_func=xf;}
+ if (multi) {
+  if(o->mode==3)f->fmt.pix_mp.quantization=V4L2_QUANTIZATION_FULL_RANGE;
+  if(o->mode==4)f->fmt.pix_mp.ycbcr_enc=V4L2_YCBCR_ENC_709;
+  if(o->mode==5)f->fmt.pix_mp.colorspace=V4L2_COLORSPACE_REC709;
+ } else {
+  if(o->mode==3)f->fmt.pix.quantization=V4L2_QUANTIZATION_FULL_RANGE;
+  if(o->mode==4)f->fmt.pix.ycbcr_enc=V4L2_YCBCR_ENC_709;
+  if(o->mode==5)f->fmt.pix.colorspace=V4L2_COLORSPACE_REC709;
+ }
  return 0;
 }
-static gboolean gst_v4l2_object_get_colorspace(GstV4l2Object *o, struct v4l2_format *f, GstVideoColorimetry *c) {
- unsigned xf=V4L2_TYPE_IS_MULTIPLANAR(o->type)?f->fmt.pix_mp.xfer_func:f->fmt.pix.xfer_func;
- unsigned q=V4L2_TYPE_IS_MULTIPLANAR(o->type)?f->fmt.pix_mp.quantization:f->fmt.pix.quantization;
- c->range=q==V4L2_QUANTIZATION_FULL_RANGE?GST_VIDEO_COLOR_RANGE_0_255:GST_VIDEO_COLOR_RANGE_16_235;
- c->matrix=o->mode==4?GST_VIDEO_COLOR_MATRIX_BT709:GST_VIDEO_COLOR_MATRIX_BT2020;
- c->primaries=o->mode==5?GST_VIDEO_COLOR_PRIMARIES_BT709:GST_VIDEO_COLOR_PRIMARIES_BT2020;
- c->transfer=xf==V4L2_XFER_FUNC_SMPTE2084?GST_VIDEO_TRANSFER_SMPTE2084:GST_VIDEO_TRANSFER_BT709;
- if(o->mode==3)c->range=GST_VIDEO_COLOR_RANGE_0_255;
- return TRUE;
-}
 '''
+fixture += function('gst_v4l2_object_v4l2fourcc_is_rgb', 'gboolean')
+fixture += '\n' + function('gst_v4l2_object_get_colorspace', 'gboolean')
+fixture += '\n' + function('gst_v4l2_object_local_transfer', 'GstVideoTransferFunction')
 fixture += function('gst_v4l2_object_fill_colorimetry_list')
 fixture += '\n' + function('gst_v4l2_object_add_colorspace')
 fixture += r'''
 int main(void) {
  gst_init(NULL,NULL);
+ GstVideoColorimetry pq;
+ g_assert_true(gst_video_colorimetry_from_string(&pq,"bt2100-pq"));
+ g_assert_cmpint(gst_v4l2_object_local_transfer(pq.transfer),==,GST_VIDEO_TRANSFER_SMPTE2084);
  for(int encoded=0;encoded<2;encoded++)
  for(int multi=0;multi<2;multi++) for(int mode=0;mode<6;mode++) {
   GstV4l2Object o={.type=multi?V4L2_BUF_TYPE_VIDEO_OUTPUT_MPLANE:V4L2_BUF_TYPE_VIDEO_OUTPUT,.mode=mode};

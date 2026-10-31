@@ -1,8 +1,9 @@
 # 7.3 原生远程 HDR10 候选与门禁
 
 本分支实现 `VDIN AMLY → Vulkan → P010 → Wave5 Main10 → 用户态 HDR10 SEI`。
-尚未通过实板门禁，不能视为P0完成。最新[实板记录](bringup/2026-10-31-hdr10-remote-r6.md)
-证明AMLY/GPU P010真十位，编码被GStreamer caps遗漏阻塞，已离线修复待复验。
+尚未通过实板门禁，不能视为P0完成。[r6](bringup/2026-10-31-hdr10-remote-r6.md)
+证明AMLY/GPU P010真十位；最新[实板记录](bringup/2026-10-31-hdr10-remote-r7.md)
+记录颜色协商及厂商GStreamer transfer枚举ABI差异，最小修复已离线验证待短测。
 
 ## DMA与模式
 
