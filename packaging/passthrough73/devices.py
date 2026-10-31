@@ -27,16 +27,22 @@ def _library(path):
         'pt_capture_export': [pointer, C.c_uint], 'pt_capture_length': [pointer, C.c_uint],
         'pt_capture_queue': [pointer, C.c_uint],
         'pt_capture_read': [pointer, C.POINTER(_Completed)],
+        'pt_capture_source_changed': [pointer],
         'pt_scanout_create': [C.c_int, C.c_int, C.c_uint, C.c_uint, C.c_uint, C.c_uint,
                               C.POINTER(pointer)],
         'pt_scanout_commit': [pointer, C.c_uint, C.c_uint, C.c_uint, C.c_uint, C.c_int],
         'pt_scanout_retired': [pointer], 'pt_scanout_destroy': [pointer],
         'pt_reader_fence': [C.c_int], 'pt_plane_disable': [C.c_int, C.c_uint],
         'pt_modeset': [C.c_int, C.c_uint, C.c_uint, C.c_uint, C.c_uint],
+        'pt_modeset_rate': [C.c_int, C.c_uint, C.c_uint, C.c_uint, C.c_uint, C.c_uint],
+        'pt_mode_supported': [C.c_int, C.c_uint, C.c_uint, C.c_uint, C.c_uint],
+        'pt_capture_rate': [pointer],
+        'pt_connector_signature': [C.c_int, C.c_uint],
     }
     for name, args in signatures.items():
         getattr(lib, name).argtypes = args
         getattr(lib, name).restype = C.c_int
+    lib.pt_connector_signature.restype = C.c_uint64
     return lib
 
 
@@ -57,6 +63,7 @@ class CaptureDevice:
         self.count, self.width, self.height, self.pitch, self.size, colorspace, quantization = [
             self.lib.pt_capture_info(self.pointer, i) for i in range(7)]
         self.colorspace = {3: 'rec709', 8: 'srgb', 10: 'bt2020'}.get(colorspace, f'v4l2:{colorspace}')
+        self.rate = self.lib.pt_capture_info(self.pointer, 7)
         self.quantization = {0: 'default', 1: 'full', 2: 'limited'}.get(quantization, f'v4l2:{quantization}')
         self.buffers = [Buffer(i, self.lib.pt_capture_export(self.pointer, i),
                                self.lib.pt_capture_length(self.pointer, i)) for i in range(self.count)]
@@ -66,6 +73,9 @@ class CaptureDevice:
 
     def start(self):
         _check(self.lib.pt_capture_start(self.pointer), 'STREAMON')
+
+    def source_changed(self):
+        return bool(_check(self.lib.pt_capture_source_changed(self.pointer), 'DQEVENT'))
 
     def read_frame(self):
         value = _Completed()

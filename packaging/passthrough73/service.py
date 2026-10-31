@@ -2,7 +2,7 @@
 
 Requires the compiled devices.c library. Device IDs are explicit; this entry
 does not change EDID or choose an unverified connector. Manager support remains
-false until HDR/readback and automatic source/sink qualification are connected.
+false until hardware qualification is reviewed, even when readback is available.
 """
 import argparse
 import fcntl
@@ -12,16 +12,20 @@ from pathlib import Path
 import selectors
 import select
 import socket
+import time
 
 from .devices import CaptureDevice, Scanout, _check
 from .ipc import BrokerPeer, receive_request, send_packet
 from .leases import FrameBroker
+from .events import ConnectorEvents
+from .follow import Follow
+from .readback import mapped_sdr
 
 
-def status(preferences, frames):
+def status(preferences, frames, rate=0):
     return dict(supported=False, **preferences, state='unsupported', output=None,
-                reason='Experimental broker: automatic output qualification pending',
-                capturedFrames=frames)
+                reason='Experimental broker: hardware qualification pending',
+                capturedFrames=frames, inputRate=rate)
 
 
 def run(args):
@@ -37,11 +41,17 @@ def run(args):
     peers, fences, displays = [], {}, []
     preferences = dict(enabled=args.display, audio=False, hdr=True)
     frames = 0
+    changing = False
+    output_ready = False
+    retry_output_at = 0
+    follow = Follow()
+    sink_generation = 0
+    next_observation = 0
     drm = os.open(args.drm, os.O_RDWR | os.O_CLOEXEC) if args.display else None
     display = None
+    connector_events = ConnectorEvents() if drm is not None else None
+    sink_signature = capture.lib.pt_connector_signature(drm,args.connector) if drm is not None else None
     if drm is not None:
-        _check(capture.lib.pt_modeset(drm, args.connector, args.crtc,
-                                     capture.width, capture.height), 'atomic modeset')
         display = broker.subscribe('local-display', 3)
     for name in ('capture', 'control'):
         path = directory / (name + '.sock')
@@ -55,6 +65,51 @@ def run(args):
     capture.start()
     try:
         while True:
+            if not changing and capture.source_changed():
+                broker.stop_generation()
+                capture.stop()
+                selector.unregister(capture.fileno())
+                changing = True
+                output_ready = False
+                follow.disconnected()
+                if drm is not None:
+                    _check(capture.lib.pt_plane_disable(drm, args.plane), 'disable old generation')
+            if connector_events is not None and connector_events.changed():
+                observed = capture.lib.pt_connector_signature(drm,args.connector)
+                if observed != sink_signature:
+                    sink_signature = observed
+                    output_ready = False
+                    follow.disconnected()
+                    sink_generation += 1
+                    retry_output_at = time.monotonic() + 2
+                    _check(capture.lib.pt_plane_disable(drm, args.plane), 'connector change blank')
+            now = time.monotonic()
+            if display is not None and not changing and now >= max(next_observation, retry_output_at):
+                next_observation = now + .5
+                measured = capture.lib.pt_capture_rate(capture.pointer)
+                if measured > 0:
+                    capture.rate = measured
+                    modes = set()
+                    for n in (24,25,30,50,60):
+                        for fractional in ((False,True) if n in (24,30,60) else (False,)):
+                            rate = int(n * 1000 / (1.001 if fractional else 1))
+                            if capture.lib.pt_mode_supported(drm,args.connector,capture.width,capture.height,rate) == 1:
+                                modes.add((capture.width,capture.height,n,fractional))
+                    try:
+                        intent = follow.observe(capture.width,capture.height,measured/100,
+                                                sink_generation,modes,now)
+                    except ValueError:
+                        intent = None
+                    if intent is not None:
+                        rate = int(intent[2] * 1000 / (1.001 if intent[3] else 1))
+                        result = capture.lib.pt_modeset_rate(drm,args.connector,args.crtc,
+                                                            capture.width,capture.height,rate)
+                        output_ready = result == 0
+                        if output_ready:
+                            follow.committed(intent)
+                        else:
+                            # Retry only after a new source/connector event.
+                            retry_output_at = float('inf')
             for key, _ in selector.select(0.005):
                 kind, client = key.data, key.fileobj
                 if kind == 'capture':
@@ -74,7 +129,15 @@ def run(args):
                             raise ValueError('Output qualification pending; preferences unchanged')
                         if request['op'] != 'status':
                             raise ValueError('Unknown control request')
-                        send_packet(client, dict(state=status(preferences, frames)))
+                        state = status(preferences, frames, capture.rate)
+                        if output_ready and displays and args.rx_status and args.hdr_status:
+                            try:
+                                mapped = mapped_sdr(args.rx_status,args.hdr_status,
+                                                    capture.colorspace,capture.quantization)
+                                state['output'] = dict(hdrToSdr=mapped, pixelEotf='SDR')
+                            except (OSError, ValueError, KeyError):
+                                state['output'] = None
+                        send_packet(client, dict(state=state))
                     except (ValueError, OSError, EOFError):
                         pass
                     finally:
@@ -94,7 +157,7 @@ def run(args):
                             kind.disconnect()
                         else:
                             client.close()
-            if display is not None:
+            if display is not None and output_ready and not changing:
                 lease = broker.take(display)
                 if lease is not None:
                     scanout = Scanout(drm, broker.buffers[lease.frame.index].dmabuf_fd,
@@ -124,7 +187,18 @@ def run(args):
                         os.close(fences.pop(identity))
                         peer.confirm_retired(token)
             for generation, index in broker.take_recyclable():
-                capture.requeue(generation, index)
+                if not changing:
+                    capture.requeue(generation, index)
+            if changing and not broker.occupancy()['retained_buffers']:
+                generation = capture.generation + 1
+                capture.close()
+                capture = CaptureDevice(args.capture, generation=generation,
+                                        count=args.buffers, library=args.library)
+                broker.begin_generation(generation, capture.buffers)
+                selector.register(capture.fileno(), selectors.EVENT_READ, 'capture')
+                capture.start()
+                changing = False
+                retry_output_at = time.monotonic() + 2
     finally:
         # Never report reader completion merely because the process is stopping.
         # Closing the capture owner cannot reclaim exported peer DMA references.
@@ -135,6 +209,7 @@ def run(args):
         capture.close()
         selector.close()
         if drm is not None:
+            connector_events.close()
             os.close(drm)
         lock.close()
 
@@ -146,6 +221,8 @@ def main():
     parser.add_argument('--runtime', default='/run/vim4-passthrough')
     parser.add_argument('--buffers', type=int, default=14)
     parser.add_argument('--display', action='store_true')
+    parser.add_argument('--rx-status', help='Reviewed RX status path, optional')
+    parser.add_argument('--hdr-status', help='Reviewed VDIN hdr_status path, optional')
     parser.add_argument('--drm', default='/dev/dri/card0')
     for name in ('connector', 'crtc', 'plane'):
         parser.add_argument('--' + name, type=int)

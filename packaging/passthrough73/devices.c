@@ -22,7 +22,7 @@
 #define POOL_BUDGET (192U * 1024U * 1024U)
 struct capture {
     int fd, running;
-    unsigned count, width, height, pitch, size, colorspace, quantization;
+    unsigned count, width, height, pitch, size, colorspace, quantization, rate;
     int exports[MAX_BUFFERS];
     unsigned lengths[MAX_BUFFERS];
     unsigned char queued[MAX_BUFFERS];
@@ -88,6 +88,23 @@ int pt_capture_open(const char *path, unsigned count, struct capture **output)
         (V4L2_CAP_VIDEO_CAPTURE | V4L2_CAP_STREAMING)) { result = -ENOTSUP; goto fail; }
     result = call(c->fd, VIDIOC_G_FMT, &format);
     if (result) goto fail;
+    struct v4l2_dv_timings timings = {0};
+    result = call(c->fd, VIDIOC_QUERY_DV_TIMINGS, &timings);
+    if (!result) {
+        uint64_t htotal = (uint64_t)timings.bt.width + timings.bt.hfrontporch +
+                         timings.bt.hsync + timings.bt.hbackporch;
+        uint64_t vtotal = (uint64_t)timings.bt.height + timings.bt.vfrontporch +
+                         timings.bt.vsync + timings.bt.vbackporch;
+        if (htotal && vtotal) c->rate = timings.bt.pixelclock * 100 / (htotal * vtotal);
+        format.fmt.pix.width = timings.bt.width;
+        format.fmt.pix.height = timings.bt.height;
+        format.fmt.pix.pixelformat = V4L2_PIX_FMT_NV12;
+        result = call(c->fd, VIDIOC_S_FMT, &format);
+        if (result) goto fail;
+    } else if (result != -EINVAL && result != -ENOTTY) goto fail;
+    struct v4l2_event_subscription subscription = {.type = V4L2_EVENT_SOURCE_CHANGE};
+    result = call(c->fd, VIDIOC_SUBSCRIBE_EVENT, &subscription);
+    if (result && result != -EINVAL && result != -ENOTTY) goto fail;
     struct v4l2_pix_format *f = &format.fmt.pix;
     if (f->pixelformat != V4L2_PIX_FMT_NV12 || !f->width || !f->height ||
         (f->width & 1) || (f->height & 1) || f->bytesperline < f->width ||
@@ -160,10 +177,18 @@ int pt_capture_read(struct capture *c, struct completed_frame *frame)
 }
 
 int pt_capture_fd(struct capture *c) { return c->fd; }
+int pt_capture_source_changed(struct capture *c)
+{
+    struct v4l2_event event;
+    int result = call(c->fd, VIDIOC_DQEVENT, &event);
+    if (result == -EAGAIN || result == -EINVAL || result == -ENOTTY) return 0;
+    if (result) return result;
+    return event.type == V4L2_EVENT_SOURCE_CHANGE ? 1 : 0;
+}
 unsigned pt_capture_info(struct capture *c, unsigned field)
 {
     const unsigned info[] = {c->count, c->width, c->height, c->pitch, c->size,
-                             c->colorspace, c->quantization};
+                             c->colorspace, c->quantization, c->rate};
     return field < sizeof(info) / sizeof(info[0]) ? info[field] : 0;
 }
 int pt_capture_export(struct capture *c, unsigned index) { return index < c->count ? c->exports[index] : -1; }
@@ -296,7 +321,60 @@ int pt_plane_disable(int fd, unsigned plane)
     return result;
 }
 
-int pt_modeset(int fd, unsigned connector, unsigned crtc, unsigned width, unsigned height)
+static int mode_matches(const drmModeModeInfo *mode, unsigned width, unsigned height, unsigned rate)
+{
+    uint64_t total = (uint64_t)mode->htotal * mode->vtotal;
+    if (!total || (mode->flags & DRM_MODE_FLAG_INTERLACE)) return 0;
+    uint64_t actual = (uint64_t)mode->clock * 1000000 / total;
+    return mode->hdisplay == width && mode->vdisplay == height &&
+        (actual > rate ? actual - rate : rate - actual) <= 20;
+}
+
+int pt_mode_supported(int fd, unsigned connector, unsigned width, unsigned height, unsigned rate)
+{
+    drmModeConnector *sink = drmModeGetConnectorCurrent(fd, connector);
+    if (!sink) return -errno;
+    int found = 0;
+    if (sink->connection == DRM_MODE_CONNECTED)
+        for (int i = 0; i < sink->count_modes; i++)
+            found |= mode_matches(&sink->modes[i], width, height, rate);
+    drmModeFreeConnector(sink);
+    return found;
+}
+
+uint64_t pt_connector_signature(int fd, unsigned connector)
+{
+    drmModeConnector *sink = drmModeGetConnectorCurrent(fd, connector);
+    if (!sink) return 0;
+    uint64_t hash = sink->connection;
+    for (int i = 0; i < sink->count_props; i++) {
+        drmModePropertyRes *p = drmModeGetProperty(fd,sink->props[i]);
+        if (p && !strcmp(p->name,"EDID") && sink->prop_values[i]) {
+            drmModePropertyBlobRes *b = drmModeGetPropertyBlob(fd,sink->prop_values[i]);
+            if (b) {
+                const unsigned char *data = b->data;
+                for (unsigned j = 0; j < b->length; j++) hash = (hash ^ data[j]) * 1099511628211ULL;
+                drmModeFreePropertyBlob(b);
+            }
+        }
+        if (p) drmModeFreeProperty(p);
+    }
+    drmModeFreeConnector(sink);
+    return hash;
+}
+
+int pt_capture_rate(struct capture *c)
+{
+    struct v4l2_dv_timings t = {0};
+    int result = call(c->fd, VIDIOC_QUERY_DV_TIMINGS, &t);
+    if (result) return result;
+    uint64_t h = (uint64_t)t.bt.width + t.bt.hfrontporch + t.bt.hsync + t.bt.hbackporch;
+    uint64_t v = (uint64_t)t.bt.height + t.bt.vfrontporch + t.bt.vsync + t.bt.vbackporch;
+    if (!h || !v) return -ENOLINK;
+    return t.bt.pixelclock * 100 / (h * v);
+}
+
+int pt_modeset_rate(int fd, unsigned connector, unsigned crtc, unsigned width, unsigned height, unsigned rate)
 {
     if (drmSetClientCap(fd, DRM_CLIENT_CAP_ATOMIC, 1)) return -errno;
     drmModeConnector *sink = drmModeGetConnector(fd, connector);
@@ -305,8 +383,7 @@ int pt_modeset(int fd, unsigned connector, unsigned crtc, unsigned width, unsign
     if (sink->connection != DRM_MODE_CONNECTED) goto done;
     for (int i = 0; i < sink->count_modes; i++) {
         drmModeModeInfo *mode = &sink->modes[i];
-        if (mode->hdisplay != width || mode->vdisplay != height ||
-            mode->vrefresh != 60 || (mode->flags & DRM_MODE_FLAG_INTERLACE)) continue;
+        if (!mode_matches(mode, width, height, rate)) continue;
         uint32_t blob;
         if (drmModeCreatePropertyBlob(fd, mode, sizeof(*mode), &blob)) { result = -errno; break; }
         drmModeAtomicReq *request = drmModeAtomicAlloc();
@@ -325,3 +402,6 @@ done:
     drmModeFreeConnector(sink);
     return result;
 }
+
+int pt_modeset(int fd, unsigned connector, unsigned crtc, unsigned width, unsigned height)
+{ return pt_modeset_rate(fd, connector, crtc, width, height, 60000); }

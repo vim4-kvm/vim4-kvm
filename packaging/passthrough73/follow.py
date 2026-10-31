@@ -13,8 +13,12 @@ class Follow:
         self.current = None
         self.pending = None
         self.since = None
+        self.geometry = None
 
     def observe(self, width, height, hz, sink, modes, now):
+        if (width, height) != self.geometry:
+            self.samples.clear()
+            self.geometry = width, height
         self.samples.append(hz)
         rate = median(self.samples)
         nominal, fractional = min(((n, f) for n in (24, 25, 30, 50, 60)
@@ -24,9 +28,11 @@ class Follow:
         if self.current and self.current[2] == nominal and abs(rate - midpoint) <= .005:
             fractional = self.current[3]
         if abs(rate - nominal / (1.001 if fractional else 1)) > .2:
+            self.pending = self.since = None
             raise ValueError('Unqualified input refresh rate')
         intent = (width, height, nominal, fractional, sink)
         if (width, height, nominal, fractional) not in modes:
+            self.pending = self.since = None
             raise ValueError('No 1:1 sink mode for input timing')
         if intent == self.current:
             self.pending = self.since = None
@@ -44,6 +50,7 @@ class Follow:
     def disconnected(self):
         self.current = self.pending = self.since = None
         self.samples.clear()
+        self.geometry = None
 
 
 def hdr_output(prefer_hdr, pixel_eotf, source_eotf, mapped, sink_eotfs):

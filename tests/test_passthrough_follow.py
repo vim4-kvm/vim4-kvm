@@ -2,14 +2,36 @@ import sys
 from pathlib import Path
 import unittest
 from unittest.mock import Mock
+import tempfile
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / 'packaging'))
 from passthrough73.follow import Follow, hdr_output
 from passthrough73.audio import AudioOwner
 from passthrough73.alsa import AlsaPump
+from passthrough73.readback import mapped_sdr
 
 
 class FollowTests(unittest.TestCase):
+    def test_mapping_fact_requires_active_matching_hardware_readback(self):
+        with tempfile.TemporaryDirectory() as directory:
+            rx, hdr = Path(directory)/'rx', Path(directory)/'hdr'
+            rx.write_text('hdr_input: 1\nlink_ready: 1\ncapture_users: 1\ndrm_received_ns: 42\n')
+            hdr.write_text('stream_active: 1\ncurve_pending: 0\nprofile_programmed: 1\nhdr_ctrl: 0000e05e\n')
+            self.assertTrue(mapped_sdr(rx,hdr,'rec709','limited'))
+            hdr.write_text('stream_active: 0\ncurve_pending: 0\nprofile_programmed: 1\n')
+            with self.assertRaises(ValueError):
+                mapped_sdr(rx,hdr,'rec709','limited')
+
+    def test_new_geometry_does_not_inherit_old_rate_median(self):
+        follow = Follow()
+        modes = {(3840,2160,60,False), (1920,1080,30,False)}
+        for n in range(7):
+            choice = follow.observe(3840,2160,60,'sink',modes,n)
+            if choice:
+                follow.committed(choice)
+        self.assertIsNone(follow.observe(1920,1080,30,'sink',modes,10))
+        self.assertIsNotNone(follow.observe(1920,1080,30,'sink',modes,12))
+
     def test_vendor_blackout_trace_does_not_recommit_under_jitter(self):
         follow = Follow()
         modes = {(3840, 2160, 60, False), (3840, 2160, 60, True)}

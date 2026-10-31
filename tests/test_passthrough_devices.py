@@ -4,11 +4,29 @@ import shutil
 import subprocess
 import tempfile
 import unittest
+import errno
+import sys
 
 ROOT = Path(__file__).resolve().parents[1]
 
 
 class DeviceTests(unittest.TestCase):
+    def test_python_binding_loads_current_abi_and_rejects_non_video_device(self):
+        if not shutil.which('pkg-config') or subprocess.run(
+                ['pkg-config', '--exists', 'libdrm'], capture_output=True).returncode:
+            self.skipTest('Linux libdrm development files required')
+        sys.path.insert(0,str(ROOT / 'packaging'))
+        from passthrough73.devices import CaptureDevice
+        flags = subprocess.check_output(['pkg-config','--cflags','--libs','libdrm'],text=True).split()
+        with tempfile.TemporaryDirectory() as directory:
+            library = Path(directory) / 'devices.so'
+            subprocess.run(['cc','-shared','-fPIC','-Wall','-Wextra','-Werror',
+                            str(ROOT / 'packaging/passthrough73/devices.c'),
+                            '-o',str(library),*flags],check=True)
+            with self.assertRaises(OSError) as caught:
+                CaptureDevice('/dev/null',library=library)
+            self.assertEqual(caught.exception.errno,errno.ENOTTY)
+
     def test_error_completion_and_failed_stop_do_not_recycle_dma(self):
         if not shutil.which('pkg-config') or subprocess.run(
                 ['pkg-config', '--exists', 'libdrm'], capture_output=True).returncode:

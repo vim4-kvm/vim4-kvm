@@ -9,9 +9,10 @@ The intended owner is a persistent board service, rather than a KVM application'
 pipeline. Its local KMS subscriber exists whenever manager requests passthrough;
 remote subscribers can come and go without stopping capture or local scanout.
 Every call runs on the service's single event loop. Explicit display mode requires
-connector/CRTC/plane IDs and a connected 60Hz mode. Automatic hotplug/source-change,
-HDR mapping readback and production capability qualification remain incomplete;
-manager deliberately reports unsupported. The unit is opt-in and not installed.
+connector/CRTC/plane IDs and a connected matching progressive mode. Automatic
+hotplug/source-change and optional HDR mapping readback are implemented but not
+device-qualified; manager deliberately reports unsupported. The unit is opt-in
+and not installed.
 
 Adapter contract:
 
@@ -68,6 +69,20 @@ The default unit serves capture clients only; display requires explicit CLI IDs.
 One-KVM enables its AppSrc input only with `VIM4_BROKER_SOCKET` set to capture.sock.
 No fallback may open a second capture queue if that connection fails.
 
-AudioOwner implements bounded PCM queues and an in-place RX recovery callback;
-actual ALSA opens, TX continuous-silence configuration and clock drift correction
-are still adapter work. No audio playback is performed by the tests.
+AudioOwner implements bounded PCM queues and an in-place RX recovery callback.
+AlsaPump supplies actual ALSA opens/read/write via the reviewed generic manager
+PCM wrapper, including continuous TX silence and RX-only xrun recovery. It must
+run in a separate audio worker, not the video event loop. The controller still
+needs source-rate/ELD qualification and remote Opus transport; application audio
+must not independently open RX when that worker is enabled. No audio playback is
+performed by these tests. The shared PCM packaging dependency is temporary.
+
+`follow.py` preserves the vendor seven-sample median, 0.005Hz hysteresis and
+two-second intent qualification. `events.py` receives DRM hotplug notifications;
+the service subscribes to V4L2 source changes, drains old-generation readers
+before recreating the pool, and retries output only on real events. Its mode
+selection uses real sink modes and TEST_ONLY before atomic modesetting. Optional
+--rx-status and --hdr-status paths provide reviewed driver mapping facts; absent
+or contradictory facts remain unknown, never inferred from the HDR preference.
+Native HDR pixels/metadata and controller-driven ALSA source/ELD requalification
+are still pending. Manager remains unsupported until hardware qualification.
