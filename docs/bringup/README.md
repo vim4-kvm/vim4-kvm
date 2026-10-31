@@ -17,6 +17,7 @@
 
 ## 2026-10-30
 
+- [HDR2 PQ的SDR基线与受限shadow诊断](2026-10-30-hdr2-pq-window.md) — kernel board video hdr
 - [uhd3 GPU候选与HDR离屏窗口A](2026-10-30-gpu-hdr-window-a.md) — kernel board video benchmark
 - [NPU与nodebug正式uhd3合入、回归及manager EDID部署](2026-10-30-uhd3-formal-regression.md) — kernel board video manager deployment
 - [nodebug两启动对门禁与绑核尺寸曲线](2026-10-30-nodebug-paired-gate.md) — kernel board benchmark video

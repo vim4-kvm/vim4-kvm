@@ -1,5 +1,10 @@
 # T7 HDR2普通HLG离线候选
 
+集成状态：PQ会话已将本候选合并为`vim4-hdr2-pq@bbf9ff89b284d`，保留PQ-only shadow语义，
+合并后宿主夹具及W=1/sparse模块构建通过；未上板、未替换正式模块。
+[PQ窗口记录](bringup/2026-10-30-hdr2-pq-window.md)及[集成邮件补丁](../packaging/hdr2-pq/README.md)说明当前边界。
+以下原始HLG完整构建产物属于独立候选，不能当作合并后的完整构建。
+
 用户已于2026-10-30批准VDIN HDR2硬件路径。本轮仅HLG，不访问板子、不push、不修改PQ会话的worktree。
 主仓分支`hdr2-hlg`从main@14cc2b2建立，持久目录`../vim4-kvm-hdr2-hlg`；
 内核独立`~/src/linux-7.3-hdr2-hlg`、分支`vim4-hdr2-hlg`从f71b5c6289cb建立。
