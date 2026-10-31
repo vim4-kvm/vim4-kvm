@@ -7,6 +7,7 @@
 
 经Mac共用队列 `run --who passthrough --purpose r2-native-probe --max-min 30`
 执行 `board-window collect` 及已审阅的TX具名状态读取；票据已释放。
+队列order=64，持有约1.71秒，读回后立即退出，未等待工具构建或在板票据内编译。
 实际运行 `5.15.137-vim4kvm-hdrdual6`，默认extlinux仍指该版本。
 One-KVM/板级服务状态及UDC configured记录在collect产物中。
 
@@ -49,3 +50,6 @@ payload保留在VM，未暂存到板子；不能用该旧路径payload覆盖原b
 旧generation迟到归还拒绝、fault pin、池预算/采集工作槽准入、零消费者及时归还。
 本核心只收已完成帧元数据，不进行像素复制；无ioctl/IPC adapter，尚非可运行服务。
 后续先接唯一DQBUF/EXPBUF所有者和真实DRM退休，再替换四款应用输入。
+
+离线主仓全套361项、13项按环境跳过，其余通过；新增文档链接检查8项通过。
+日志 `logs/passthrough-73/unittest-r2.log`、`docs-r2.log`。本轮未运行KUnit或新内核构建。

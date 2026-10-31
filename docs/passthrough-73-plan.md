@@ -110,7 +110,7 @@ VDIN、HDR资源/池预算、color、buffer-layout、export-identity、source-ev
 一次编排误写两个fixture文件名，未执行，保留失败日志；更正为实际入口后通过。
 原始离线日志在本worktree `logs/passthrough-73/`，不含上板证据。
 
-本轮没有构建新Image、运行KUnit、访问板子或部署。内核仅修测试夹具，不需要重编模块；
+r1没有构建新Image、运行KUnit、访问板子或部署。内核仅修测试夹具，不需要重编模块；
 内核分支 `passthrough-73@e49cc60ac6203`，可复现补丁随主仓保存于
 [producer fixture补丁](../packaging/kernel-edge/passthrough-producer-fixture.patch)。
 阶段2之前仍需实现产品显示消费者，预检不能替代它。下一批具体上板门禁：
