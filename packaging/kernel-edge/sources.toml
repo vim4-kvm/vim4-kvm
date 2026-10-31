@@ -114,8 +114,8 @@ source_url = "https://gstreamer.freedesktop.org/src/gst-plugins-good/gst-plugins
 source_sha256 = "6e347c72d4b8b2886d890ffe9f6767a9edb02f201588e8c3a572dcd08d9852bd"
 patches = ["gstreamer-v4l2-offset.patch", "gstreamer-v4l2-pool-lifetime.patch", "gstreamer-v4l2-eos-buffer.patch", "gstreamer-v4l2-orphan-order.patch", "gstreamer-v4l2-contiguous-capture.patch", "gstreamer-v4l2-visible-crop.patch", "../hdr2-pq/gstreamer-srgb-probe.patch", "../hdr2-pq/gstreamer-encoded-size.patch", "gstreamer-v4l2-p010.patch"]
 tested_plugin_sha256 = "ffee02fbed8a0d2bb5bfd4fb695b2ea6f8cbd4f5654072f7727d52a658c41d76"
-# Offline candidate includes formal uhd4 fixes and P010; hardware gate pending.
-candidate_plugin_sha256 = "3a7ab39049af1a3ee41b3d2168cdcbe0050daa2f1beb992c3536fef70f2e6589"
+# Offline r6 fixes P010 bare caps after r3 hardware negotiation failed.
+candidate_plugin_sha256 = "a4f2b009deb8ffed68af674a420df299e19775d7698a18c39b8d97c11f399f1f"
 
 [armbian]
 url = "https://github.com/armbian/build.git"

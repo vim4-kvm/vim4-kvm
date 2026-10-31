@@ -1,9 +1,13 @@
 #!/usr/bin/env python3
 """Build a RAM payload tar.gz; the output directory is packing scratch, not a loose payload.
 
-Arguments: BUNDLE TEMPLATE OUTPUT [VALIDATED_STATIC_INIT]. No board access.
+Arguments: BUNDLE TEMPLATE OUTPUT [VALIDATED_STATIC_INIT] [--payload-id ID].
+No board access. New revisions use a distinct payload ID with the shared
+board-window namespace contract, preserving the real kernel build identity.
 """
+import argparse
 import hashlib
+import importlib.util
 import io
 import json
 from pathlib import Path, PurePosixPath
@@ -12,13 +16,31 @@ import subprocess
 import sys
 import tarfile
 
-bundle, template, output = map(Path, sys.argv[1:4])
-existing_init = Path(sys.argv[4]) if len(sys.argv) == 5 else None
+parser = argparse.ArgumentParser(description=__doc__)
+for name in ('bundle', 'template', 'output'):
+    parser.add_argument(name, type=Path)
+parser.add_argument('existing_init', type=Path, nargs='?')
+parser.add_argument('--payload-id')
+args = parser.parse_args()
+bundle, template, output = args.bundle, args.template, args.output
+existing_init = args.existing_init
+recipe = Path(__file__).resolve().parent
+spec = importlib.util.spec_from_file_location('once', recipe.parent / 'kernel-edge/display-once.py')
+once = importlib.util.module_from_spec(spec)
+spec.loader.exec_module(once)
 report = json.loads((bundle / 'manifest.json').read_text())
 candidate = json.loads((bundle / 'candidate.json').read_text())
 release, build_id = report['release'], report['kernel_build_id']
+layout = {} if args.payload_id is None else dict(namespace='hdr10', payload_id=args.payload_id)
+plan = dict(layout, build_id=build_id)
+prefix = str(once.candidate_prefix(plan))
+trial_root = str(once.candidate_parent(plan)) + '/'
 if release != '7.3.0-vim4kvm-hdr10r3+':
     raise ValueError('This runtime requires the r3 kernel')
+if existing_init is not None:
+    once.static_arm64(existing_init)
+    if trial_root.encode() + b'\0' not in existing_init.read_bytes():
+        raise ValueError('Static init TRIAL_ROOT does not match payload namespace')
 for name, expected in candidate['sha256'].items():
     if hashlib.sha256((bundle / name).read_bytes()).hexdigest() != expected:
         raise ValueError('Candidate hash mismatch: ' + name)
@@ -26,7 +48,6 @@ config = (template / 'extlinux.conf').read_text()
 output.mkdir()
 runtime = output / 'runtime'
 runtime.mkdir()
-recipe = Path(__file__).resolve().parent
 for source, name in [('board-runtime', 'vim4-board-runtime'),
                      ('gadget-prepare', 'vim4-mainline-gadget-prepare'),
                      ('one-kvm-edge', 'one-kvm-edge')]:
@@ -35,7 +56,6 @@ for source, name in [('hdr10-prepare', 'vim4-mainline-prepare'),
                      ('hdr10-run', 'hdr10-run'), ('one-kvm', 'one-kvm')]:
     shutil.copy2(bundle / source, runtime / name)
 shutil.copytree(bundle / 'gstreamer-1.0', runtime / 'gstreamer-1.0')
-prefix = '/var/lib/vim4-kvm/hdr2-unified/' + build_id
 launcher = runtime / 'vim4-kvm-run'
 launcher.write_text('#!/bin/sh\nset -eu\n'
     'test "${1:-}" = onekvm || exit 2\nshift\n'
@@ -66,20 +86,15 @@ if module_files != report['modules']:
     raise ValueError('Incomplete module archive')
 if existing_init is None:
     subprocess.run(['cc', '-static', '-O2', '-Wall', '-Wextra', '-Werror',
+                    '-DTRIAL_ROOT="' + trial_root + '"',
                     str(recipe / 'trial-init.c'), '-o', str(output / 'init')], check=True)
 else:
-    import importlib.util
-    spec = importlib.util.spec_from_file_location('once', recipe.parent / 'kernel-edge/display-once.py')
-    once = importlib.util.module_from_spec(spec)
-    spec.loader.exec_module(once)
-    once.static_arm64(existing_init)
     shutil.copy2(existing_init, output / 'init')
-import re
-config = re.sub(r'/var/lib/vim4-kvm/hdr2-unified/[0-9a-f]{40}', prefix, config)
+config = config.replace('/var/lib/vim4-kvm/hdr2-unified/' + build_id, prefix)
 if f'init={prefix}/init' not in config:
     raise ValueError('Template lacks the reviewed private PID1 path')
 (output / 'extlinux.conf').write_text(config)
-manifest = dict(release=release, build_id=build_id, source_commit=report['source'],
+manifest = dict(layout, release=release, build_id=build_id, source_commit=report['source'],
                 hardware_validated=False,
                 sha256={str(p.relative_to(output)): hashlib.sha256(p.read_bytes()).hexdigest()
                         for p in sorted(output.rglob('*')) if p.is_file()})

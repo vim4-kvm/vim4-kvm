@@ -26,7 +26,15 @@
      case V4L2_PIX_FMT_NV12:
      case V4L2_PIX_FMT_NV12M:
        format = GST_VIDEO_FORMAT_NV12;
-@@ -1982,6 +1987,9 @@
+@@ -1604,6 +1609,7 @@
+     case V4L2_PIX_FMT_ABGR32:
+     case V4L2_PIX_FMT_NV12:    /* 12  Y/CbCr 4:2:0  */
+     case V4L2_PIX_FMT_NV12M:
++    case V4L2_PIX_FMT_P010:
+     case V4L2_PIX_FMT_NV12MT:
+     case V4L2_PIX_FMT_MM21:
+     case V4L2_PIX_FMT_NV12M_8L128:
+@@ -1982,6 +1988,9 @@
        case GST_VIDEO_FORMAT_NV12:
          fourcc = V4L2_PIX_FMT_NV12;
          fourcc_nc = V4L2_PIX_FMT_NV12M;

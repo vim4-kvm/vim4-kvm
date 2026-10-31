@@ -1,7 +1,8 @@
 # 7.3 原生远程 HDR10 候选与门禁
 
 本分支实现 `VDIN AMLY → Vulkan → P010 → Wave5 Main10 → 用户态 HDR10 SEI`。
-尚未通过实板门禁，不能视为P0完成。证据见[离线调查](bringup/2026-10-31-hdr10-remote-offline.md)。
+尚未通过实板门禁，不能视为P0完成。最新[实板记录](bringup/2026-10-31-hdr10-remote-r6.md)
+证明AMLY/GPU P010真十位，编码被GStreamer caps遗漏阻塞，已离线修复待复验。
 
 ## DMA与模式
 
@@ -88,7 +89,10 @@ One-KVM能力探测不读uname：VDIN AMLY枚举、两类metadata controls大小
 5.15基线优先复用哈希不变的缓存。上板前若正式uhd4已合入，先rebase再出候选。
 用户已明确授权M6 MCP截图/空闲判断、HDR开关已验证序列与必要最少点击/滚动，
 结束包括失败必须关回HDR并恢复窗口、截图；除此之外不发HID，不按裸Shift、不在中文输入法打字。
-MCP准备失败则停止后续测试。预备5.15回退与已验证启动工具，禁止刷机。
+MCP准备失败则停止后续测试。先逐屏确认System Settings/Displays前台、RTK UHD HDR及
+目标开关可见，滚动只落在设置右面板；不从Chrome盲跑固定序列。开HDR后Brightness行
+会移动开关位置，必须重新截图定位。过渡无信号只等/截图，不重复点击。
+预备5.15回退与已验证启动工具，禁止刷机。
 
 1. 0–5分钟：截图确认M6空闲，经MCP开HDR；在5.15保存新鲜产品HEVC与Vulkan转换
    分辨率/fps/GPU占用；记录服务、UDC、源状态、固件及产物哈希基线。
@@ -103,4 +107,5 @@ MCP准备失败则停止后续测试。预备5.15回退与已验证启动工具�
 5. 24–30分钟：MCP关闭M6 HDR并截图；回5.15核验服务、UDC、配置和哈希；保存原始样本、
    码流与接收统计，释放锁。窗口超限立即收尾。
 
-全程不发HID、不测声音、不ptrace视频进程，sudo不与heredoc共用stdin。
+除上述授权的M6准备/恢复外不发HID，绝不向M4发HID；不测声音、不ptrace视频进程，
+sudo不与heredoc共用stdin。

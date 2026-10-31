@@ -19,6 +19,7 @@
 
 ## 2026-10-31
 
+- [原生HDR r6十位DMA、Panfrost与编码caps阻塞](2026-10-31-hdr10-remote-r6.md) — kernel board video application gpu
 - [7.3原生远程HDR离线调查与分阶段门禁](2026-10-31-hdr10-remote-offline.md) — kernel video application uu offline
 - [uhd4正式完整构建、短烟测与队列工具修正](2026-10-31-uhd4-formal-smoke.md) — kernel board video hdr npu gpu deployment
 - [uhd4正式准备与旧heavy锁阻塞，未上板](2026-10-31-uhd4-formal-preparation.md) — kernel deployment

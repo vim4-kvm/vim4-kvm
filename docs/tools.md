@@ -5,6 +5,14 @@
 生成逐文件和归档SHA256。输出目录仅为打包暂存，上板传入tar.gz；
 不连接板子、不部署。`packaging/hdr10/`其余文件仅供此候选打包，不安装到正式系统。
 
+`packaging/hdr10/measure-gpu.py`：仅独占上板窗口显式`--execute`，要求其他采集消费者已停；
+有界采集AMLY→GPU→P010至fakesink，记录source pad间隔和自身DRM计数，不映射像素、不发HID、
+不自动改服务；不是编码/网页性能。`ram-payload.py --payload-id`沿用共享namespace合同，
+静态PID1的TRIAL_ROOT必须匹配，不能用旧PID1冒充新payload。
+
+`packaging/kernel-edge/test_gstreamer_p010.py`：Linux宿主编译实际fourcc/caps函数，
+回放原生P010源与编码器caps交集；不打开设备，私有插件构建自动运行。
+
 `packaging/kernel-edge/package-hdr10.py`：离线组装已完成的内核payload、两项私有GStreamer
 插件和One-KVM为唯一名称归档；校验内核哈希/ARM64 ELF/子仓干净提交，生成candidate.json及
 归档SHA256。不编译、不连接板子、不包含vendor固件；已有目标拒绝覆盖。
