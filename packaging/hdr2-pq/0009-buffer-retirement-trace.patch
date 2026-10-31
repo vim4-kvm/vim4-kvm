@@ -1,0 +1,384 @@
+From 450100ce27911d47085653e46696996be586a671 Mon Sep 17 00:00:00 2001
+From: localhost-copilot <318096335+localhost-copilot@users.noreply.github.com>
+Date: Sat, 31 Oct 2026 12:27:09 +0800
+Subject: [PATCH] media: trace direct capture epochs and encoder DMA ownership
+
+---
+ .../platform/amlogic/t7-hdmirx/t7-vdin-test.c | 45 ++++++++++++++++---
+ .../amlogic/t7-hdmirx/test_source_events.py   |  1 +
+ .../platform/amlogic/t7-hdmirx/test_stream.py | 10 +++++
+ .../platform/amlogic/t7-hdmirx/test_vdin.py   | 10 ++++-
+ .../chips-media/wave5/test_buffers.py         |  1 +
+ .../chips-media/wave5/wave5-vpu-enc.c         | 17 ++++++-
+ include/trace/events/t7_vdin.h                | 29 ++++++++++++
+ include/trace/events/wave5_buffers.h          | 16 +++++++
+ 8 files changed, 122 insertions(+), 7 deletions(-)
+ create mode 100644 include/trace/events/t7_vdin.h
+ create mode 100644 include/trace/events/wave5_buffers.h
+
+diff --git a/drivers/media/platform/amlogic/t7-hdmirx/t7-vdin-test.c b/drivers/media/platform/amlogic/t7-hdmirx/t7-vdin-test.c
+index b4efaba7a2527..a9e029f0192cb 100644
+--- a/drivers/media/platform/amlogic/t7-hdmirx/t7-vdin-test.c
++++ b/drivers/media/platform/amlogic/t7-hdmirx/t7-vdin-test.c
+@@ -5,6 +5,8 @@
+ #include <linux/clk.h>
+ #include <linux/completion.h>
+ #include <linux/crc32.h>
++#define CREATE_TRACE_POINTS
++#include <trace/events/t7_vdin.h>
+ #include <linux/debugfs.h>
+ #include <linux/dma-mapping.h>
+ #include <linux/dma-buf.h>
+@@ -100,6 +102,7 @@ struct t7_vdin_slot {
+ };
+ 
+ struct t7_vdin_buffer {
++	u64 generation, ticket;
+ 	struct vb2_v4l2_buffer vb;
+ 	struct list_head list;
+ 	struct dma_buf *lease;
+@@ -113,6 +116,7 @@ struct t7_vdin_snapshot {
+ };
+ 
+ struct t7_vdin {
++	u64 generation, ticket;
+ 	unsigned int width, height, stride, frame_size, allocation_size, frame_capacity;
+ 	/* Source lease geometry is independent of the downscaled DMA image. */
+ 	unsigned int input_width, input_height;
+@@ -217,6 +221,25 @@ static void t7_vdin_update(struct t7_vdin *vdin, u32 reg, u32 mask, u32 value)
+ #include "t7-vdin-hdr.h"
+ #include "t7-vdin-hlg.h"
+ 
++/* Phases: arm, done, error, requeue, cleanup, retain, begin, end, source change. */
++static void t7_vdin_trace_buffer(struct t7_vdin *vdin,
++				 struct t7_vdin_buffer *buffer, int phase)
++{
++	trace_t7_vdin_buffer(buffer ? buffer->generation : vdin->generation,
++			     buffer ? buffer->ticket : 0,
++			     buffer ? buffer->vb.vb2_buf.index : 0,
++			     buffer && buffer->lease ? file_inode(buffer->lease->file)->i_ino : 0,
++			     phase);
++}
++
++static void t7_vdin_complete_buffer(struct t7_vdin *vdin,
++				    struct t7_vdin_buffer *buffer,
++				    enum vb2_buffer_state state)
++{
++	t7_vdin_trace_buffer(vdin, buffer, state == VB2_BUF_STATE_DONE ? 1 : 2);
++	vb2_buffer_done(&buffer->vb.vb2_buf, state);
++}
++
+ /* Canonical LE samples match the values sent to the LUT data ports. */
+ static u32 t7_vdin_lut_crc(const u32 *lut, unsigned int count,
+ 			   unsigned int shift)
+@@ -248,8 +271,14 @@ static void t7_vdin_ring_arm(struct t7_vdin *vdin, unsigned int index)
+ 	dma_addr_t address = slot->dma;
+ 
+ 	if (vdin->direct_dma) {
+-		if (!slot->buffer)
++		if (!slot->buffer) {
+ 			slot->buffer = t7_vdin_next_buffer(vdin);
++			if (slot->buffer) {
++				slot->buffer->generation = vdin->generation;
++				slot->buffer->ticket = ++vdin->ticket;
++				t7_vdin_trace_buffer(vdin, slot->buffer, 0);
++			}
++		}
+ 		if (!slot->buffer)
+ 			return;
+ 		slot->buffer->hardware_used = true;
+@@ -650,7 +679,7 @@ static void t7_vdin_return_buffers(struct t7_vdin *vdin, enum vb2_buffer_state s
+ 	struct t7_vdin_buffer *buffer;
+ 
+ 	while ((buffer = t7_vdin_next_buffer(vdin)))
+-		vb2_buffer_done(&buffer->vb.vb2_buf, state);
++		t7_vdin_complete_buffer(vdin, buffer, state);
+ }
+ 
+ static void t7_vdin_ring_begin(struct t7_vdin *vdin)
+@@ -843,8 +872,8 @@ static int t7_vdin_thread(void *data)
+ 		}
+ 		t7_vdin_ring_release(vdin, slot);
+ 		mutex_unlock(&vdin->lock);
+-		vb2_buffer_done(&buffer->vb.vb2_buf,
+-				ret ? VB2_BUF_STATE_ERROR : VB2_BUF_STATE_DONE);
++		t7_vdin_complete_buffer(vdin, buffer,
++					ret ? VB2_BUF_STATE_ERROR : VB2_BUF_STATE_DONE);
+ 		if (ret && ret != -EAGAIN)
+ 			break;
+ 	}
+@@ -867,7 +896,7 @@ static int t7_vdin_thread(void *data)
+ 
+ 			if (buffer) {
+ 				vdin->slots[i].buffer = NULL;
+-				vb2_buffer_done(&buffer->vb.vb2_buf, VB2_BUF_STATE_ERROR);
++				t7_vdin_complete_buffer(vdin, buffer, VB2_BUF_STATE_ERROR);
+ 			}
+ 		}
+ 	}
+@@ -936,6 +965,7 @@ static void t7_vdin_buffer_cleanup(struct vb2_buffer *vb)
+ 	 * retain used direct buffers too, until hardware reboot. ERROR contents are
+ 	 * invalid and the faulted queue cannot restart. Unused buffers may be freed.
+ 	 */
++	t7_vdin_trace_buffer(vdin, buffer, vdin->faulted && buffer->hardware_used ? 5 : 4);
+ 	if (buffer->lease && !(vdin->faulted && buffer->hardware_used))
+ 		dma_buf_put(buffer->lease);
+ 	buffer->lease = NULL;
+@@ -959,6 +989,7 @@ static void t7_vdin_buffer_queue(struct vb2_buffer *vb)
+ 	unsigned long flags;
+ 
+ 	spin_lock_irqsave(&vdin->queue_lock, flags);
++	t7_vdin_trace_buffer(vdin, buffer, 3);
+ 	list_add_tail(&buffer->list, &vdin->queued);
+ 	spin_unlock_irqrestore(&vdin->queue_lock, flags);
+ 	wake_up(&vdin->buffer_wait);
+@@ -978,6 +1009,8 @@ static int t7_vdin_start_streaming(struct vb2_queue *queue, unsigned int count)
+ 	}
+ 	if (!ret) {
+ 		vdin->receiver_lease = true;
++		vdin->generation++;
++		t7_vdin_trace_buffer(vdin, NULL, 6);
+ 		vdin->streaming = true;
+ 		vdin->thread = kthread_run(t7_vdin_thread, vdin, "t7-vdin-capture");
+ 		if (IS_ERR(vdin->thread)) {
+@@ -1004,6 +1037,7 @@ static void t7_vdin_stop_streaming(struct vb2_queue *queue)
+ 	t7_vdin_return_buffers(vdin, VB2_BUF_STATE_ERROR);
+ 	mutex_lock(&vdin->lock);
+ 	vdin->streaming = false;
++	t7_vdin_trace_buffer(vdin, NULL, 7);
+ 	mutex_unlock(&vdin->lock);
+ }
+ 
+@@ -1042,6 +1076,7 @@ static void t7_vdin_source_work(struct work_struct *work)
+ 				delta > vdin->source_period / 2000)))) {
+ 			event.u.src_change.changes = V4L2_EVENT_SRC_CH_RESOLUTION;
+ 			vdin->source_changes++;
++			t7_vdin_trace_buffer(vdin, NULL, 8);
+ 			v4l2_event_queue(&vdin->video, &event);
+ 		}
+ 		vdin->source_seen = true;
+diff --git a/drivers/media/platform/amlogic/t7-hdmirx/test_source_events.py b/drivers/media/platform/amlogic/t7-hdmirx/test_source_events.py
+index 3034c69ced870..b954de6d73f00 100644
+--- a/drivers/media/platform/amlogic/t7-hdmirx/test_source_events.py
++++ b/drivers/media/platform/amlogic/t7-hdmirx/test_source_events.py
+@@ -8,6 +8,7 @@ source = Path(__file__).with_name('t7-vdin-test.c').read_text()
+ functions = source[source.index('static void t7_vdin_source_work'):
+                    source.index('static int t7_vdin_querycap')]
+ fixture = r'''
++#define t7_vdin_trace_buffer(...) ((void)0)
+ #include <assert.h>
+ #include <stdbool.h>
+ #include <stddef.h>
+diff --git a/drivers/media/platform/amlogic/t7-hdmirx/test_stream.py b/drivers/media/platform/amlogic/t7-hdmirx/test_stream.py
+index acdc116d4626c..7d6ba0c9f6899 100644
+--- a/drivers/media/platform/amlogic/t7-hdmirx/test_stream.py
++++ b/drivers/media/platform/amlogic/t7-hdmirx/test_stream.py
+@@ -7,12 +7,20 @@ import tempfile
+ 
+ source = Path(__file__).with_name('t7-vdin-test.c').read_text()
+ source = source.replace('#include "t7-vdin-hdr.h"', Path(__file__).with_name('t7-vdin-hdr.h').read_text())
++source = source.replace('#include "t7-vdin-hlg.h"', Path(__file__).with_name('t7-vdin-hlg.h').read_text())
++# Ownership is exercised below; trace serialization and CRC have separate tests.
++source = (source[:source.index('static void t7_vdin_trace_buffer(')] +
++          source[source.index('static struct t7_vdin_buffer *t7_vdin_next_buffer'):])
+ defines = '\n'.join(line for line in source.splitlines() if line.startswith('#define '))
+ types = source[source.index('enum t7_vdin_slot_state {'):source.index('static void __iomem *t7_vdin_reg')]
+ hardware = source[source.index('static void __iomem *t7_vdin_reg'):source.index('static int t7_vdin_capture')]
+ stream = source[source.index('static struct t7_vdin_buffer *t7_vdin_next_buffer(struct t7_vdin *vdin)\n{'):
+                 source.index('static const struct vb2_ops t7_vdin_queue_ops')]
+ prefix = r'''
++#define t7_vdin_trace_buffer(...) ((void)0)
++#define t7_vdin_record_hdr_luts(...) ((void)0)
++#define t7_vdin_complete_buffer(v,b,s) vb2_buffer_done(&(b)->vb.vb2_buf,s)
++#define vb2_get_num_buffers(q) 0U
+ #include <assert.h>
+ #include <errno.h>
+ #include <pthread.h>
+@@ -195,6 +203,7 @@ static void vb2_queue_error(struct vb2_queue *q) {
+ static int t7_hdmirx_check_video(void *dev) { return fail_timing?-ENOLINK:0; }
+ static unsigned int receiver_users;
+ static bool t7_hdmirx_stream_is_hdr(void *dev) { (void)dev; return false; }
++static bool t7_hdmirx_stream_is_hlg(void *dev) { (void)dev; return false; }
+ static bool t7_hdmirx_stream_is_yuv(void *dev) { (void)dev; return false; }
+ static bool t7_hdmirx_stream_needs_yuv444_swap(void *dev) { (void)dev; return false; }
+ static bool t7_hdmirx_stream_is_full_range(void *dev) { (void)dev; return true; }
+@@ -474,6 +483,7 @@ with tempfile.TemporaryDirectory() as directory:
+     binary = Path(directory) / 'stream'
+     code.write_text(prefix + defines + '\n' + types + stubs + hardware + stream + checks)
+     subprocess.run(['cc', '-std=gnu11', '-pthread', '-Wall', '-Wextra', '-Werror',
++                    '-I', str(Path(__file__).parent),
+                     '-O1', '-g', '-fsanitize=address,undefined',
+                     '-Wno-unused-parameter', '-Wno-unused-function', str(code),
+                     '-o', str(binary)], check=True)
+diff --git a/drivers/media/platform/amlogic/t7-hdmirx/test_vdin.py b/drivers/media/platform/amlogic/t7-hdmirx/test_vdin.py
+index 80dab3c9d36ee..0cf116ef036fb 100644
+--- a/drivers/media/platform/amlogic/t7-hdmirx/test_vdin.py
++++ b/drivers/media/platform/amlogic/t7-hdmirx/test_vdin.py
+@@ -6,11 +6,17 @@ import tempfile
+ 
+ source = Path(__file__).with_name('t7-vdin-test.c').read_text()
+ source = source.replace('#include "t7-vdin-hdr.h"', Path(__file__).with_name('t7-vdin-hdr.h').read_text())
++source = source.replace('#include "t7-vdin-hlg.h"', Path(__file__).with_name('t7-vdin-hlg.h').read_text())
++# Trace and shadow bookkeeping have separate tests; this fixture models MMIO.
++source = (source[:source.index('static void t7_vdin_trace_buffer(')] +
++          source[source.index('static struct t7_vdin_buffer *t7_vdin_next_buffer'):])
+ defines = '\n'.join(line for line in source.splitlines() if line.startswith('#define '))
+ types = source[source.index('enum t7_vdin_slot_state {'):source.index('static void __iomem *t7_vdin_reg')]
+ functions = source[source.index('static void __iomem *t7_vdin_reg'):
+                    source.index('static int t7_vdin_frame_open')]
+ prefix = r'''
++#define t7_vdin_trace_buffer(...) ((void)0)
++#define t7_vdin_record_hdr_luts(...) ((void)0)
+ #include <assert.h>
+ #include <stdbool.h>
+ #include <stdint.h>
+@@ -62,6 +68,7 @@ static unsigned int pins, requests, timing_checks, receiver_users;
+ static unsigned int pq_writes, gain_writes, oetf_writes;
+ static bool hdr_input, yuv_input, yuv444_input;
+ static bool t7_hdmirx_stream_is_hdr(struct device *dev) { (void)dev; return hdr_input; }
++static bool t7_hdmirx_stream_is_hlg(struct device *dev) { (void)dev; return false; }
+ static bool t7_hdmirx_stream_is_yuv(struct device *dev) { (void)dev; return hdr_input || yuv_input; }
+ static bool t7_hdmirx_stream_needs_yuv444_swap(struct device *dev) { (void)dev; return yuv444_input; }
+ static bool t7_hdmirx_stream_is_full_range(struct device *dev) { (void)dev; return !hdr_input && !yuv_input; }
+@@ -217,7 +224,7 @@ static void scenarios(void)
+     reset(); receiver.nv12=true;hdr_input=true;
+     t7_vdin_configure(&receiver);
+     assert(pq_writes==143 && gain_writes==75 && oetf_writes==75);
+-    assert(readl(registers+0x12b0*4)==0x18);
++    assert(readl(registers+0x12b0*4)==0x1b);
+     assert(!(readl(registers+VDIN_HDR_CTRL*4)&BIT(16)));
+     assert(readl(registers+VDIN_HDR_MATRIX_OUT*4)==1);
+     hdr_input=false;yuv_input=true;t7_vdin_configure(&receiver);
+@@ -265,5 +272,6 @@ with tempfile.TemporaryDirectory() as directory:
+     executable = Path(directory) / 'vdin'
+     code.write_text(prefix + defines + '\n' + types + mmio + functions + checks)
+     subprocess.run(['cc', '-std=gnu11', '-Wall', '-Wextra', '-Werror',
++                    '-I', str(Path(__file__).parent),
+                     '-Wno-unused-parameter', str(code), '-o', str(executable)], check=True)
+     subprocess.run([str(executable)], check=True)
+diff --git a/drivers/media/platform/chips-media/wave5/test_buffers.py b/drivers/media/platform/chips-media/wave5/test_buffers.py
+index 97843643a2402..42830065e9912 100644
+--- a/drivers/media/platform/chips-media/wave5/test_buffers.py
++++ b/drivers/media/platform/chips-media/wave5/test_buffers.py
+@@ -90,6 +90,7 @@ def function(name):
+ 
+ 
+ scheduler = r'''
++#define wave5_trace_source(...) ((void)0)
+ #define BIT(n) (1U<<(n))
+ #include <assert.h>
+ #include <stdbool.h>
+diff --git a/drivers/media/platform/chips-media/wave5/wave5-vpu-enc.c b/drivers/media/platform/chips-media/wave5/wave5-vpu-enc.c
+index ba91d2ba22770..acde2193a34f9 100644
+--- a/drivers/media/platform/chips-media/wave5/wave5-vpu-enc.c
++++ b/drivers/media/platform/chips-media/wave5/wave5-vpu-enc.c
+@@ -6,8 +6,18 @@
+  */
+ 
+ #include <linux/pm_runtime.h>
++#include <linux/dma-buf.h>
++#define CREATE_TRACE_POINTS
++#include <trace/events/wave5_buffers.h>
+ #include "wave5-helper.h"
+ 
++static void wave5_trace_source(struct vb2_v4l2_buffer *buffer, int phase)
++{
++	if (buffer && buffer->vb2_buf.planes[0].dbuf)
++		trace_wave5_buffers_buffer(file_inode(buffer->vb2_buf.planes[0].dbuf->file)->i_ino,
++					   phase);
++}
++
+ #define VPU_ENC_DEV_NAME "C&M Wave5 VPU encoder"
+ #define VPU_ENC_DRV_NAME "wave5-enc"
+ 
+@@ -292,10 +302,13 @@ static int start_encode(struct vpu_instance *inst, u32 *fail_res)
+ 			vb2_set_plane_payload(&dst_buf->vb2_buf, 0, 0);
+ 			v4l2_m2m_buf_done(dst_buf, VB2_BUF_STATE_ERROR);
+ 		}
+-		if (src_buf)
++		if (src_buf) {
++			wave5_trace_source(src_buf, 2);
+ 			v4l2_m2m_buf_done(src_buf, VB2_BUF_STATE_ERROR);
++		}
+ 		return ret;
+ 	} else {
++		wave5_trace_source(src_buf, 0);
+ 		if (src_buf)
+ 			WRITE_ONCE(wave5_to_vpu_src_buf(src_buf)->consumed, true);
+ 		dev_dbg(inst->dev->dev, "%s: wave5_vpu_enc_start_one_frame success\n",
+@@ -347,6 +360,7 @@ static void wave5_vpu_enc_finish_encode(struct vpu_instance *inst)
+ 			dev_warn(inst->dev->dev, "%s: no source buffer found\n", __func__);
+ 		} else {
+ 			inst->timestamp = src_buf->vb2_buf.timestamp;
++			wave5_trace_source(src_buf, 1);
+ 			v4l2_m2m_buf_done(src_buf, VB2_BUF_STATE_DONE);
+ 		}
+ 	}
+@@ -2001,6 +2015,7 @@ static void streamoff_output(struct vpu_instance *inst, struct vb2_queue *q)
+ 	struct vb2_v4l2_buffer *buf;
+ 
+ 	while ((buf = v4l2_m2m_src_buf_remove(m2m_ctx))) {
++		wave5_trace_source(buf, 2);
+ 		dev_dbg(inst->dev->dev, "%s: buf type %4u | index %4u\n",
+ 			__func__, buf->vb2_buf.type, buf->vb2_buf.index);
+ 		v4l2_m2m_buf_done(buf, VB2_BUF_STATE_ERROR);
+diff --git a/include/trace/events/t7_vdin.h b/include/trace/events/t7_vdin.h
+new file mode 100644
+index 0000000000000..1d45ce1832756
+--- /dev/null
++++ b/include/trace/events/t7_vdin.h
+@@ -0,0 +1,29 @@
++/* SPDX-License-Identifier: GPL-2.0-only */
++#undef TRACE_SYSTEM
++#define TRACE_SYSTEM t7_vdin
++#if !defined(_TRACE_T7_VDIN_H) || defined(TRACE_HEADER_MULTI_READ)
++#define _TRACE_T7_VDIN_H
++#include <linux/tracepoint.h>
++TRACE_EVENT(t7_vdin_buffer,
++
++	TP_PROTO(u64 gen, u64 ticket, unsigned int index, unsigned long ino, int phase),
++	TP_ARGS(gen, ticket, index, ino, phase),
++	TP_STRUCT__entry(
++		__field(u64, gen)
++		__field(u64, ticket)
++		__field(unsigned int, index)
++		__field(unsigned long, ino)
++		__field(int, phase)
++	),
++	TP_fast_assign(
++		__entry->gen = gen;
++		__entry->ticket = ticket;
++		__entry->index = index;
++		__entry->ino = ino;
++		__entry->phase = phase;
++	),
++	TP_printk("gen=%llu ticket=%llu index=%u ino=%lu phase=%d",
++		  __entry->gen, __entry->ticket, __entry->index, __entry->ino, __entry->phase)
++);
++#endif
++#include <trace/define_trace.h>
+diff --git a/include/trace/events/wave5_buffers.h b/include/trace/events/wave5_buffers.h
+new file mode 100644
+index 0000000000000..120648d2df686
+--- /dev/null
++++ b/include/trace/events/wave5_buffers.h
+@@ -0,0 +1,16 @@
++/* SPDX-License-Identifier: GPL-2.0-only */
++#undef TRACE_SYSTEM
++#define TRACE_SYSTEM wave5_buffers
++#if !defined(_TRACE_WAVE5_BUFFERS_H) || defined(TRACE_HEADER_MULTI_READ)
++#define _TRACE_WAVE5_BUFFERS_H
++#include <linux/tracepoint.h>
++TRACE_EVENT(wave5_buffers_buffer,
++
++	TP_PROTO(unsigned long ino, int phase),
++	TP_ARGS(ino, phase),
++	TP_STRUCT__entry(__field(unsigned long, ino) __field(int, phase)),
++	TP_fast_assign(__entry->ino = ino; __entry->phase = phase;),
++	TP_printk("ino=%lu phase=%d", __entry->ino, __entry->phase)
++);
++#endif
++#include <trace/define_trace.h>
+-- 
+2.43.0
+

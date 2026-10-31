@@ -85,7 +85,7 @@ def capture(args):
             'appsink name=bridge emit-signals=true sync=false async=false max-buffers=1 '
             'appsrc name=encoder_source is-live=true format=time block=true max-buffers=2 '
             f'caps="video/x-raw,format=NV12,width={width},height={height},framerate=60/1,'
-            'colorimetry=bt709,interlace-mode=progressive,pixel-aspect-ratio=1/1" ! ')
+            f'colorimetry={args.colorimetry},interlace-mode=progressive,pixel-aspect-ratio=1/1" ! ')
     else:
         if args.codec != 'h264':
             raise ValueError('software mode only supports H.264')
@@ -104,6 +104,18 @@ def capture(args):
     except GLib.Error as error:
         raise ValueError(f'cannot create GStreamer pipeline: {error}') from error
     encoder = pipeline.get_by_name('encoder')
+    if args.encoder == 'wave5':
+        def capture_allocation(pad, info):
+            query = info.get_query()
+            if query and query.type == Gst.QueryType.ALLOCATION:
+                # The bridge owns its downstream queue. Keep its allocation
+                # proposals out of the capture pool and let V4L2 select its
+                # native DMA pool from the driver's minimum buffer count.
+                return Gst.PadProbeReturn.HANDLED
+            return Gst.PadProbeReturn.OK
+
+        pipeline.get_by_name('source').get_static_pad('src').get_peer().add_probe(
+            Gst.PadProbeType.QUERY_DOWNSTREAM, capture_allocation)
     if args.encoder == 'wave5':
         encoder_device = Path(encoder.get_property('device'))
         encoder_name = Path('/sys/class/video4linux', encoder_device.name, 'name').read_text().strip()
@@ -136,6 +148,11 @@ def capture(args):
         def forward_sample(sink):
             try:
                 sample = sink.emit('pull-sample')
+                # Preserve the capture tuple through the two-plane bridge;
+                # colour interpretation belongs to the source and codec.
+                if 'input_color_caps' not in state:
+                    state['input_color_caps'] = sample.get_caps().to_string()
+                    encoder_source.set_property('caps', sample.get_caps())
                 original = sample.get_buffer()
                 view = Gst.Buffer.new()
                 memory = original.peek_memory(0)
@@ -356,6 +373,8 @@ def main():
     board.add_argument('--encoder', choices=('software', 'wave5'), default='software')
     board.add_argument('--codec', choices=('h264', 'h265'), default='h264')
     board.add_argument('--format', choices=('rgb24', 'nv12'), default='rgb24')
+    board.add_argument('--colorimetry', choices=('bt709', '2:3:7:1'), default='bt709',
+                       help='initial Wave5 bridge caps; actual capture caps remain authoritative')
     board.add_argument('--size', choices=('1920x1080', '3840x2160'), default='1920x1080')
     board.add_argument('--bitrate', type=int, default=20000000)
     board.add_argument('--gop', type=int, default=60)

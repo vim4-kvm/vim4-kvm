@@ -1,0 +1,211 @@
+From 7551908e3116b8f64c081d6aca8fefd7dc1ce6bd Mon Sep 17 00:00:00 2001
+From: localhost-copilot <318096335+localhost-copilot@users.noreply.github.com>
+Date: Sat, 31 Oct 2026 13:32:56 +0800
+Subject: [PATCH] media: correlate capture exports by allocator and direct DMA
+ identity
+
+---
+ .../platform/amlogic/t7-hdmirx/t7-vdin-test.c |  6 ++-
+ .../amlogic/t7-hdmirx/test_export_identity.py | 49 +++++++++++++++++++
+ .../amlogic/t7-hdmirx/test_hdr_resources.py   |  2 +
+ .../chips-media/wave5/wave5-vpu-enc.c         | 18 +++++--
+ include/trace/events/t7_vdin.h                | 16 +++---
+ include/trace/events/wave5_buffers.h          | 15 ++++--
+ 6 files changed, 91 insertions(+), 15 deletions(-)
+ create mode 100644 drivers/media/platform/amlogic/t7-hdmirx/test_export_identity.py
+
+diff --git a/drivers/media/platform/amlogic/t7-hdmirx/t7-vdin-test.c b/drivers/media/platform/amlogic/t7-hdmirx/t7-vdin-test.c
+index 09969893d67ee..16edb7dcc90a2 100644
+--- a/drivers/media/platform/amlogic/t7-hdmirx/t7-vdin-test.c
++++ b/drivers/media/platform/amlogic/t7-hdmirx/t7-vdin-test.c
+@@ -10,6 +10,8 @@
+ #include <linux/debugfs.h>
+ #include <linux/dma-mapping.h>
+ #include <linux/dma-buf.h>
++#include <linux/dma-direct.h>
++#include <linux/iommu.h>
+ #include <linux/interrupt.h>
+ #include <linux/iopoll.h>
+ #include <linux/kref.h>
+@@ -228,7 +230,9 @@ static void t7_vdin_trace_buffer(struct t7_vdin *vdin,
+ 	trace_t7_vdin_buffer(buffer ? buffer->generation : vdin->generation,
+ 			     buffer ? buffer->ticket : 0,
+ 			     buffer ? buffer->vb.vb2_buf.index : 0,
+-			     buffer && buffer->lease ? file_inode(buffer->lease->file)->i_ino : 0,
++			     buffer && buffer->lease ? buffer->lease->priv : NULL,
++			     buffer && !device_iommu_mapped(vdin->dev) ?
++			     dma_to_phys(vdin->dev, buffer->dma) : 0,
+ 			     phase);
+ }
+ 
+diff --git a/drivers/media/platform/amlogic/t7-hdmirx/test_export_identity.py b/drivers/media/platform/amlogic/t7-hdmirx/test_export_identity.py
+new file mode 100644
+index 0000000000000..73df97efcdfbc
+--- /dev/null
++++ b/drivers/media/platform/amlogic/t7-hdmirx/test_export_identity.py
+@@ -0,0 +1,49 @@
++#!/usr/bin/env python3
++# SPDX-License-Identifier: GPL-2.0-only
++"""Run vb2's actual export callback twice against one allocator."""
++from pathlib import Path
++import subprocess
++import tempfile
++
++root = Path(__file__).resolve().parents[3]
++text = (root / 'common/videobuf2/videobuf2-dma-contig.c').read_text()
++start = text.index('static struct dma_buf *vb2_dc_get_dmabuf(')
++function = text[start:text.index('\n}', start) + 2]
++fixture = r'''
++#include <assert.h>
++#include <stdbool.h>
++#include <stdlib.h>
++struct vb2_buffer {int unused;};
++struct vb2_dc_buf {void *sgt_base; unsigned size, refcount;};
++struct dma_buf {void *priv; unsigned inode;};
++struct export_info {void *ops, *priv; unsigned size; unsigned long flags;};
++static int vb2_dc_dmabuf_ops;
++#define DEFINE_DMA_BUF_EXPORT_INFO(name) struct export_info name={0}
++#define WARN_ON(x) (x)
++#define IS_ERR(x) false
++#define refcount_inc(p) (++*(p))
++static void *vb2_dc_get_base_sgt(struct vb2_dc_buf *b) {return b;}
++static struct dma_buf *dma_buf_export(struct export_info *i) {
++ static unsigned serial;
++ struct dma_buf *d=malloc(sizeof(*d)); assert(d);
++ *d=(struct dma_buf){i->priv, ++serial}; return d;
++}
++'''
++checks = r'''
++int main(void) {
++ struct vb2_dc_buf owner={.size=12443648,.refcount=1};
++ struct dma_buf *lease=vb2_dc_get_dmabuf(0,&owner,0);
++ struct dma_buf *exported=vb2_dc_get_dmabuf(0,&owner,0);
++ assert(lease!=exported && lease->inode!=exported->inode);
++ assert(lease->priv==exported->priv && lease->priv==&owner);
++ assert(owner.refcount==3);
++ free(lease); free(exported);
++}
++'''
++with tempfile.TemporaryDirectory() as directory:
++    source, binary = Path(directory)/'exports.c', Path(directory)/'exports'
++    source.write_text(fixture + function + checks)
++    subprocess.run(['cc', '-Wall', '-Wextra', '-Werror', '-Wno-unused-parameter',
++                    '-fsanitize=address,undefined', str(source), '-o', str(binary)], check=True)
++    subprocess.run([str(binary)], check=True)
++print('Actual vb2 dual export: distinct files, shared allocator identity: PASS')
+diff --git a/drivers/media/platform/amlogic/t7-hdmirx/test_hdr_resources.py b/drivers/media/platform/amlogic/t7-hdmirx/test_hdr_resources.py
+index 4f550fdadc86e..20731ab96d539 100644
+--- a/drivers/media/platform/amlogic/t7-hdmirx/test_hdr_resources.py
++++ b/drivers/media/platform/amlogic/t7-hdmirx/test_hdr_resources.py
+@@ -36,6 +36,8 @@ int main(void) {
+  struct t7_vdin v={.allocation_size=12443648}; struct vb2_queue q={&v,0};
+  unsigned n=64,p=0,s[1]={0};
+  assert(!t7_vdin_queue_setup(&q,&n,&p,s,0) && n==16 && p==1 && s[0]==v.allocation_size);
++ n=14;
++ assert(!t7_vdin_queue_setup(&q,&n,&p,s,0) && n==14);
+  q.allocated=15; n=64; p=1;
+  assert(!t7_vdin_queue_setup(&q,&n,&p,s,0) && n==1);
+  q.allocated=16; n=1;
+diff --git a/drivers/media/platform/chips-media/wave5/wave5-vpu-enc.c b/drivers/media/platform/chips-media/wave5/wave5-vpu-enc.c
+index acde2193a34f9..bb9b1d3592d5c 100644
+--- a/drivers/media/platform/chips-media/wave5/wave5-vpu-enc.c
++++ b/drivers/media/platform/chips-media/wave5/wave5-vpu-enc.c
+@@ -7,15 +7,27 @@
+ 
+ #include <linux/pm_runtime.h>
+ #include <linux/dma-buf.h>
++#include <linux/dma-direct.h>
++#include <linux/iommu.h>
+ #define CREATE_TRACE_POINTS
+ #include <trace/events/wave5_buffers.h>
+ #include "wave5-helper.h"
+ 
+ static void wave5_trace_source(struct vb2_v4l2_buffer *buffer, int phase)
+ {
+-	if (buffer && buffer->vb2_buf.planes[0].dbuf)
+-		trace_wave5_buffers_buffer(file_inode(buffer->vb2_buf.planes[0].dbuf->file)->i_ino,
+-					   phase);
++	struct vb2_buffer *vb;
++	struct dma_buf *dbuf;
++	u64 phys = 0;
++
++	if (!buffer)
++		return;
++	vb = &buffer->vb2_buf;
++	dbuf = vb->planes[0].dbuf;
++	if (!device_iommu_mapped(vb->vb2_queue->dev))
++		phys = dma_to_phys(vb->vb2_queue->dev, vb2_dma_contig_plane_dma_addr(vb, 0));
++	/* Only this exporter defines priv as the shared allocator instance. */
++	if (dbuf && !strcmp(dbuf->exp_name, "videobuf2_dma_contig"))
++		trace_wave5_buffers_buffer(dbuf->priv, phys, phase);
+ }
+ 
+ #define VPU_ENC_DEV_NAME "C&M Wave5 VPU encoder"
+diff --git a/include/trace/events/t7_vdin.h b/include/trace/events/t7_vdin.h
+index 1d45ce1832756..072cda212ff27 100644
+--- a/include/trace/events/t7_vdin.h
++++ b/include/trace/events/t7_vdin.h
+@@ -6,24 +6,28 @@
+ #include <linux/tracepoint.h>
+ TRACE_EVENT(t7_vdin_buffer,
+ 
+-	TP_PROTO(u64 gen, u64 ticket, unsigned int index, unsigned long ino, int phase),
+-	TP_ARGS(gen, ticket, index, ino, phase),
++	TP_PROTO(u64 gen, u64 ticket, unsigned int index,
++		 const void *allocator, u64 phys, int phase),
++	TP_ARGS(gen, ticket, index, allocator, phys, phase),
+ 	TP_STRUCT__entry(
+ 		__field(u64, gen)
+ 		__field(u64, ticket)
+ 		__field(unsigned int, index)
+-		__field(unsigned long, ino)
++		__field(const void *, allocator)
++		__field(u64, phys)
+ 		__field(int, phase)
+ 	),
+ 	TP_fast_assign(
+ 		__entry->gen = gen;
+ 		__entry->ticket = ticket;
+ 		__entry->index = index;
+-		__entry->ino = ino;
++		__entry->allocator = allocator;
++		__entry->phys = phys;
+ 		__entry->phase = phase;
+ 	),
+-	TP_printk("gen=%llu ticket=%llu index=%u ino=%lu phase=%d",
+-		  __entry->gen, __entry->ticket, __entry->index, __entry->ino, __entry->phase)
++	TP_printk("gen=%llu ticket=%llu index=%u allocator=%p phys=%llu phase=%d",
++		  __entry->gen, __entry->ticket, __entry->index,
++		  __entry->allocator, __entry->phys, __entry->phase)
+ );
+ #endif
+ #include <trace/define_trace.h>
+diff --git a/include/trace/events/wave5_buffers.h b/include/trace/events/wave5_buffers.h
+index 120648d2df686..9cde21089e662 100644
+--- a/include/trace/events/wave5_buffers.h
++++ b/include/trace/events/wave5_buffers.h
+@@ -6,11 +6,16 @@
+ #include <linux/tracepoint.h>
+ TRACE_EVENT(wave5_buffers_buffer,
+ 
+-	TP_PROTO(unsigned long ino, int phase),
+-	TP_ARGS(ino, phase),
+-	TP_STRUCT__entry(__field(unsigned long, ino) __field(int, phase)),
+-	TP_fast_assign(__entry->ino = ino; __entry->phase = phase;),
+-	TP_printk("ino=%lu phase=%d", __entry->ino, __entry->phase)
++	TP_PROTO(const void *allocator, u64 phys, int phase),
++	TP_ARGS(allocator, phys, phase),
++	TP_STRUCT__entry(__field(const void *, allocator) __field(u64, phys) __field(int, phase)),
++	TP_fast_assign(
++		__entry->allocator = allocator;
++		__entry->phys = phys;
++		__entry->phase = phase;
++	),
++	TP_printk("allocator=%p phys=%llu phase=%d",
++		  __entry->allocator, __entry->phys, __entry->phase)
+ );
+ #endif
+ #include <trace/define_trace.h>
+-- 
+2.43.0
+

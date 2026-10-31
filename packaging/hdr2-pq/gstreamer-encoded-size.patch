@@ -1,0 +1,51 @@
+--- a/sys/v4l2/gstv4l2object.c
++++ b/sys/v4l2/gstv4l2object.c
+@@ -42,6 +42,7 @@
+ #include <glib/gi18n-lib.h>
+ 
+ #include <gst/video/video.h>
++#include <gst/video/gstvideoencoder.h>
+ #include <gst/allocators/gstdmabuf.h>
+ 
+ GST_DEBUG_CATEGORY_EXTERN (v4l2_debug);
+@@ -3844,13 +3845,21 @@
+ }
+ 
+ static guint
+-calculate_max_sizeimage (GstV4l2Object * v4l2object, guint pixel_bitdepth)
++calculate_max_sizeimage (GstV4l2Object * v4l2object, guint pixel_bitdepth,
++    guint width, guint height)
+ {
+   guint max_width, max_height;
+   guint sizeimage;
+ 
+   max_width = v4l2object->max_width;
+   max_height = v4l2object->max_height;
++  /* Encoders have fixed input dimensions for this negotiation. Using the
++   * device maximum can allocate tens of MiB per coded buffer at 4K. Decoders
++   * still need headroom for resolution changes in the compressed input. */
++  if (GST_IS_VIDEO_ENCODER (v4l2object->element) && width && height) {
++    max_width = MIN (max_width, width);
++    max_height = MIN (max_height, height);
++  }
+   sizeimage = max_width * max_height * pixel_bitdepth / 8 / 2;
+ 
+   return MAX (ENCODED_BUFFER_MIN_SIZE, sizeimage);
+@@ -4101,7 +4110,7 @@
+ 
+     if (GST_VIDEO_INFO_FORMAT (&info) == GST_VIDEO_FORMAT_ENCODED)
+       format.fmt.pix_mp.plane_fmt[0].sizeimage =
+-          calculate_max_sizeimage (v4l2object, pixel_bitdepth);
++          calculate_max_sizeimage (v4l2object, pixel_bitdepth, width, height);
+   } else {
+     gint stride = GST_VIDEO_INFO_PLANE_STRIDE (&info, 0);
+ 
+@@ -4121,7 +4130,7 @@
+ 
+     if (GST_VIDEO_INFO_FORMAT (&info) == GST_VIDEO_FORMAT_ENCODED)
+       format.fmt.pix.sizeimage =
+-          calculate_max_sizeimage (v4l2object, pixel_bitdepth);
++          calculate_max_sizeimage (v4l2object, pixel_bitdepth, width, height);
+   }
+ 
+   GST_DEBUG_OBJECT (v4l2object->dbg_obj, "Desired format is %dx%d, format "
