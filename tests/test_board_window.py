@@ -28,6 +28,8 @@ class WindowTests(unittest.TestCase):
                       cmdline='root=PARTUUID=abcd reboot_mode=watchdog_reboot rw')
         after = dict(before, cmdline='root=PARTUUID=abcd reboot_mode=normal rw')
         window.verify_baseline(before, after)
+        unchanged = dict(before, cmdline='root=PARTUUID=abcd reboot_mode=cold_boot rw')
+        window.verify_baseline(unchanged, unchanged)
         invalid = [dict(after, build_id='b'*40), dict(after, files={}),
                    dict(after, release='7.3.test'),
                    dict(after, cmdline=after['cmdline']+' init=/other'),

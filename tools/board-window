@@ -330,13 +330,16 @@ def verify_baseline(expected, actual):
     def split(command):
         tokens = command.split()
         reason = [t for t in tokens if t.startswith('reboot_mode=')]
-        if len(reason) != 1 or reason[0] not in ('reboot_mode=normal', 'reboot_mode=watchdog_reboot'):
-            raise RuntimeError('unreviewed or duplicate reboot_mode')
-        return [t for t in tokens if not t.startswith('reboot_mode=')], reason[0]
+        if len(reason) > 1:
+            raise RuntimeError('duplicate reboot_mode')
+        return [t for t in tokens if not t.startswith('reboot_mode=')], reason[0] if reason else None
     before, reason_before = split(expected['cmdline'])
     after, reason_after = split(actual['cmdline'])
     if before != after:
         raise RuntimeError('baseline command line differs outside reboot_mode')
+    reviewed = ('reboot_mode=normal', 'reboot_mode=watchdog_reboot')
+    if reason_before != reason_after and (reason_before not in reviewed or reason_after not in reviewed):
+        raise RuntimeError('unreviewed reboot_mode transition')
     return dict(before=reason_before, after=reason_after)
 
 
