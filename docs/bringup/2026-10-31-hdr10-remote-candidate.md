@@ -2,6 +2,11 @@
 
 AMLY→Vulkan→P010→Wave5 Main10与用户态prefix SEI已实现并离线构建。
 尚未上板，P0未完成；原生并行SDR截图和其他三应用仍未接入。
+最新窗口只运行了5.15准备与收尾，MCP开HDR失败，未启动7.3候选；详见末节。
+当前首选归档为特性worktree的 `build/hdr10r3-uhd4-final-ram.tar.gz`，SHA256：
+`8b50ff26219f13b6945cbf154b37bc003d6f53c3cffccd863eeb7f2435c83652`。
+最终完整离线制品包 `build/vim4-hdr10r3-uhd4-final.tar.gz`，SHA256：
+`4e1d8a438d21c830aebb481960a2c968cad84f94e88f9f80e725d57a762a31d8`。
 合同、缺口和30分钟清单见[设计](../hdr10-remote-73.md)，历史调查见
 [r1/r2证据](2026-10-31-hdr10-remote-offline.md)。
 
@@ -9,14 +14,14 @@ AMLY→Vulkan→P010→Wave5 Main10与用户态prefix SEI已实现并离线构�
 
 | 仓库 | 特性分支 / 提交 |
 |---|---|
-| linux | vim4-hdr10-remote / e883b52333a781684cc1a05b4d320c3b316dd1c3 |
+| linux | vim4-hdr10-remote / dc220366a1222a03423d5b5987fab3f027ec1d7a |
 | gst-plugin-vfmcap | hdr10-remote / b43e564595407b0b637a23f49a3cb390d4a6cbfa |
 | One-KVM | hdr10-remote / 77b2cd10a6c6a41d0e30019bff5d6cc33b60f8a2 |
 
-内核基于最新origin/vim4-hdr2-uhd4的ce6bc0cc5218a；本次核对时正式分支仍为f71b5c6289cb3。
-不修改HDR2/kbase/manager工作树，不合正式。上板前再次核对正式uhd4，已合入则rebase。
+初版起点为origin/vim4-hdr2-uhd4的ce6bc0cc5218a；本轮已rebase到正式uhd4，详见末节。
+不修改HDR2/kbase/manager工作树，原生HDR特性不合正式。
 
-归档位于本特性worktree `build/vim4-hdr10r3-20261031-offline.tar.gz`，SHA256：
+以下保留初版归档证据：本特性worktree `build/vim4-hdr10r3-20261031-offline.tar.gz`，SHA256：
 `f8f9c80c56a86bfb5e7bb3a81cc11cc2f258d35b935c62dd2787fd630794a4b9`。
 包含唯一release `7.3.0-vim4kvm-hdr10r3+` 的Image、DTB、完整模块、runtime-proof，
 私有采集/V4L2 GStreamer、One-KVM、启动入口和逐文件candidate.json；不含vendor固件。
@@ -90,3 +95,13 @@ stage记录自己新建模块空目录的device/inode，回原5.15后仅删除�
 
 首次脚本读root启动清单漏sudo时已在HDR操作前停止，随后修正为sudo -n；
 源码/归档没有混用该失败结果。原生SDR截图与另外三应用的缺口按本轮授权继续留待后续。
+
+最终再次核对5.15身份及18项启动/登记/程序/插件哈希，全部未变，HDR=SDR；
+服务active、UDC configured。最终原窗口截图为main的
+`logs/hdr10r3-restore/screenshot-1793450888993512000.jpg`。
+最终RAM归档由main通用入口离线验证2364项文件哈希，保留2338个模块，静态ARM64 PID1通过。
+模块流式写入tar以保留Mac上大小写不同的模块名；复用已校验的同release PID1，未重复编译。
+合并最新main后完整运行347项，334通过、13跳过。首次文档合并超14KB已压缩入口并重新通过。
+VM上的r3完整源码临时worktree、O=输出、重复展开payload/template已清理，保留候选归档；
+主机另从Image恢复了内嵌config，SHA与manifest相符。默认Mac工作目录映射阻塞时，
+改用显式Linux工作目录恢复VM命令，没有重启VM或干预其他会话构建。

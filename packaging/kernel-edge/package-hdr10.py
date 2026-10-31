@@ -6,6 +6,7 @@ import json
 from pathlib import Path
 import re
 import shutil
+import struct
 import subprocess
 import tarfile
 
@@ -41,8 +42,9 @@ def main():
     sources = dict(kernel=kernel['source'], capture=commit(args.capture_source),
                    onekvm=commit(args.onekvm_source))
     for binary in (args.capture_plugin, args.v4l2_plugin, args.onekvm_binary):
-        header = subprocess.check_output(['readelf', '-h', str(binary)], text=True)
-        if 'AArch64' not in header or 'ELF64' not in header:
+        with binary.open('rb') as source:
+            header = source.read(64)
+        if len(header) != 64 or header[:6] != b'\x7fELF\x02\x01' or struct.unpack_from('<H', header, 18)[0] != 183:
             raise ValueError(f'Expected an ARM64 ELF: {binary}')
     archive = args.destination.with_suffix('.tar.gz')
     if args.destination.exists() or archive.exists():

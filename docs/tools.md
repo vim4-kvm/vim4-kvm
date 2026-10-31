@@ -1,7 +1,8 @@
 # 工具目录
 
 `packaging/hdr10/ram-payload.py`：离线把已封存r3制品与已审阅HDR2 RAM启动模板封装为
-私有PID1/runtime/完整模块payload，编译静态ARM64 PID1并生成逐文件和归档SHA256；
+私有PID1/runtime/完整模块归档，可编译或复用已校验的静态ARM64 PID1；模块流式入tar保留大小写，
+生成逐文件和归档SHA256。输出目录仅为打包暂存，上板传入tar.gz；
 不连接板子、不部署。`packaging/hdr10/`其余文件仅供此候选打包，不安装到正式系统。
 
 `packaging/kernel-edge/package-hdr10.py`：离线组装已完成的内核payload、两项私有GStreamer
