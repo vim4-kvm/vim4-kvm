@@ -1,5 +1,8 @@
 # T7 HDR2普通HLG离线候选
 
+后续[统一候选](hdr2-unified-candidate.md)把HLG输出OETF改为5.15产品运行时的sRGB表，
+并为映射NV12显式报告sRGB transfer；下文独立候选表hash及709标签描述为原始交付快照。
+
 集成状态：PQ会话已将本候选合并为`vim4-hdr2-pq@bbf9ff89b284d`，保留PQ-only shadow语义，
 合并后宿主夹具及W=1/sparse模块构建通过；未上板、未替换正式模块。
 [PQ窗口记录](bringup/2026-10-30-hdr2-pq-window.md)及[集成邮件补丁](../packaging/hdr2-pq/README.md)说明当前边界。
