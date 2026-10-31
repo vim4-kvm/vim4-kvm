@@ -1,5 +1,8 @@
 # VIM4 7.3 kbase 后备候选
 
+[r3再次上板](bringup/2026-10-30-kbase-r3-window.md)：零WARN加载及KVM助手启动路径通过，
+首个GBM/EGL设备探针退出2，按门禁回5.15；尚无候选API或性能通过数据。
+
 [r3离线修复与新窗口门禁](gpu-kbase-repair.md)修正timer/workqueue及生命周期问题，
 新增运行时快照与CL分项预算；编译/宿主门禁通过，尚未再次上板。后续窗口以该页清单为准。
 

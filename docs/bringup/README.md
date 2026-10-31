@@ -17,6 +17,8 @@
 
 ## 2026-10-30
 
+- [kbase r3零WARN加载、EGL设备失败与助手恢复](2026-10-30-kbase-r3-window.md) — kernel gpu board video
+
 - [kbase首窗WARN门禁失败与5.15回退](2026-10-30-kbase-window.md) — kernel gpu board video
 
 - [7.3 kbase外部模块离线候选与ABI检查](2026-10-30-kbase-offline.md) — kernel gpu audit packaging

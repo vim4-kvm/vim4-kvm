@@ -1,5 +1,8 @@
 # kbase r3 离线语义修复
 
+后续[上板记录](bringup/2026-10-30-kbase-r3-window.md)已验证本页加载WARN修复与助手同步，
+但GBM/EGL设备门禁失败；已回退。下列“尚未上板”描述保留本页离线封存时的范围。
+
 结论：修正首窗两个初始化WARN的已知原因，并补齐栈timer、OPP引用及fence返回语义。
 宿主合同检查、7.3 Werror模块构建、modpost和UK11.39 ABI对照通过；**尚未再次上板**。
 本轮只在vim4-kvm-kbase-r2与独立VM候选工作树中工作，不访问板子，不动HDR工作树。
