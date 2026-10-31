@@ -40,6 +40,17 @@ U-Boot 候选必须先从 microSD 验证，见 [现场恢复](../bringup/2026-10
 
 ## 内核开发流程与部署门禁
 
+单板统一使用 [board-queue / board-window](../board-window.md)：先在 `--heavy` 共享锁下
+完成构建和归档，编译时必须释放板锁；每次持板窗口上限30分钟，采样前 `sampling on`，
+结束 `sampling off`。超时只告警并让后继取得租约，不强杀板上操作，原持有者立即收尾；
+不要把长编译塞进持板的 run 中。释放后重新排队，已有等待者先行。
+
+同批候选可以直接链式 RAM 启动，不重复返回5.15；批次结束 `return-baseline`，核对
+5.15 release/build ID、服务、UDC与启动文件哈希，默认启动项全程保持5.15。
+5.15基线按当天、内核/程序/启动文件哈希及测量参数复用并注明原始时间；哈希变化或跨日
+重新测量。只改模块时可只重编匹配模块、沿用同一内核进行针对性迭代，保留模块哈希、
+vermagic与证据；不覆盖基线模块目录。正式候选才全量回归并使用新 release 名。
+
 按内核社区流程推进：功能分支上小步提交（checkpatch、离线/KUnit 测试），候选只用
 一次性启动（packaging/kernel-edge/display-once.py）上板做针对性验证，复位即回基线；
 通过后合入 vim4-kvm-7.3 并部署，回归问题由夜间全量回归发现、按提交 bisect，
@@ -87,6 +98,7 @@ T7 的 Meson GXBB Watchdog 已在正式 7.3 基线上以停止喂狗验证：15 
 
 | 触发条件 / 错误 | 原因与正确做法 | 验证入口 |
 |---|---|---|
+| 内核编译占板锁近两小时，后继超时；过早offer导致整组作废 | 编译先完成再排≤30分钟窗口；采样阻塞heavy；先确认服务/UDC/管线出帧，再offer，解码首帧后计时；同日同哈希基线复用 | tools/board-queue、tools/board-window，tests/test_board_queue.py、tests/test_board_window.py |
 | 部署后不久内核 panic，刚装的 sudoers 变成 0 字节 | 原根分区 data=writeback、commit=600。新部署配置 ordered/commit=5；所有组件安装成功前 sync，网页更新复核文件后再重启。它不保证升级原子性，也不证明其他文件没有损坏 | tools/rootfs-policy.py、[上板记录](../bringup/2026-10-13-hid-lifecycle-deploy-reliability.md) |
 | 从 HDR 分支构建管理器后，已部署的趋势图表消失 | 图表在另一工作树的未提交改动中。部署前同时核对固定分支与已部署功能，合并到同一可构建提交；保留原工作树不等于保留线上功能 | vim4-manager onekvm 分支、logs/one-kvm/manager-final.png |
 | 提高应用包对平台包的版本下限后，网页更新一律失败 | 五个更新入口都只允许替换自身一个包，APT 预演需要升级平台组件或新装系统依赖时直接拒绝。只有在新依赖已部署或已进镜像后才提高要求，平台组件先单独发布 platform。NanoKVM 网关配置在运行时强制生效，不依赖系统 ruamel.yaml 迁移；CI 通过不代表现有板子能网页升级 | packaging/ubuntu/package.py PLATFORM、vim4-manager-helper update |
