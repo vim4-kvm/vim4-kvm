@@ -22,6 +22,20 @@ loader.exec_module(window)
 
 
 class WindowTests(unittest.TestCase):
+    def test_recovery_retains_each_payload_with_same_kernel(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            kernel = '1' * 40
+            first = dict(build_id=kernel, namespace='kbase', payload_id='default')
+            second = dict(first, payload_id='coherent')
+            legacy = dict(build_id=kernel)
+            for plan in (first, second, legacy):
+                window.record_candidate(root, plan, 'a' * 64)
+            recovered = [json.loads(p.read_text()) for p in root.glob('candidate-*.json')]
+            self.assertEqual(len(recovered), 3)
+            self.assertEqual({p.get('payload_id') for p in recovered}, {'default', 'coherent', None})
+            self.assertTrue((root / ('candidate-' + kernel + '.json')).exists())
+
     def test_m6_tolerates_unknown_metadata_during_both_transitions(self):
         client = window.MCP('unused', 'test')
         client.call = Mock()

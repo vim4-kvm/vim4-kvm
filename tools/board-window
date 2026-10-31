@@ -330,6 +330,16 @@ def receiver(url, seconds, local_ip=None):
     return json.loads(subprocess.check_output(command, text=True, timeout=seconds + 120))
 
 
+def record_candidate(directory, plan, digest):
+    # Recovery must remember every payload, including the one that created
+    # the module mountpoint when later payloads reuse the same kernel Image.
+    identity = plan['build_id']
+    if 'namespace' in plan:
+        identity = plan['namespace'] + '-' + plan['payload_id'] + '-' + identity
+    save(directory / ('candidate-' + identity + '.json'),
+         dict(plan, archive_sha256=digest))
+
+
 def validate_bundle(bundle):
     once = load('display_once', ROOT / 'packaging/kernel-edge/display-once.py')
     with tarfile.open(bundle) as archive:
@@ -515,8 +525,7 @@ def main():
             save(proof_path, proof)
         if identity(args.host, list(proof['files']))['files'] != proof['files'] or plan.get('baseline_files', proof['files']) != proof['files']:
             raise ValueError('default boot/runtime files differ from retained baseline')
-        save(directory / ('candidate-' + plan['build_id'] + '.json'),
-             dict(plan, archive_sha256=digest))
+        record_candidate(directory, plan, digest)
         remote = '/tmp/board-window-' + plan['build_id']
         subprocess.run(['scp', str(bundle), args.host + ':' + remote + '.tar'], check=True)
         subprocess.run(['scp', str(ROOT / 'packaging/kernel-edge/display-once.py'),
