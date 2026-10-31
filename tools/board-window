@@ -335,7 +335,7 @@ def record_candidate(directory, plan, digest):
     # the module mountpoint when later payloads reuse the same kernel Image.
     identity = plan['build_id']
     if 'namespace' in plan:
-        identity = plan['namespace'] + '-' + plan['payload_id'] + '-' + identity
+        identity = hashlib.sha256('/'.join((plan['namespace'], plan['payload_id'], identity)).encode()).hexdigest()
     save(directory / ('candidate-' + identity + '.json'),
          dict(plan, archive_sha256=digest))
 
