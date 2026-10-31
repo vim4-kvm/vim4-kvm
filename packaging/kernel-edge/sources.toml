@@ -115,7 +115,7 @@ source_sha256 = "6e347c72d4b8b2886d890ffe9f6767a9edb02f201588e8c3a572dcd08d9852b
 patches = ["gstreamer-v4l2-offset.patch", "gstreamer-v4l2-pool-lifetime.patch", "gstreamer-v4l2-eos-buffer.patch", "gstreamer-v4l2-orphan-order.patch", "gstreamer-v4l2-contiguous-capture.patch", "gstreamer-v4l2-visible-crop.patch", "../hdr2-pq/gstreamer-srgb-probe.patch", "../hdr2-pq/gstreamer-encoded-size.patch", "gstreamer-v4l2-p010.patch", "gstreamer-v4l2-pq.patch"]
 tested_plugin_sha256 = "ffee02fbed8a0d2bb5bfd4fb695b2ea6f8cbd4f5654072f7727d52a658c41d76"
 # r8 also probes the retained native PQ tuple; final hardware gate pending.
-candidate_plugin_sha256 = "74d08f4e149a553f2f6f8c39c1558543f5ae91cd8d43fa0777fdfd9b29605fa0"
+candidate_plugin_sha256 = "1c43f50399f2bcaaf449764101f0b9a71f5d4c494f7da71963ee76106aa053b1"
 
 [armbian]
 url = "https://github.com/armbian/build.git"

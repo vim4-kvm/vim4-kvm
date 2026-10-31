@@ -1,12 +1,27 @@
 --- a/sys/v4l2/gstv4l2object.c
 +++ b/sys/v4l2/gstv4l2object.c
-@@ -2656,6 +2656,30 @@
+@@ -2616,6 +2616,15 @@
+   GstVideoColorimetry cinfo;
+   enum v4l2_colorspace req_cspace;
+ 
++  /* Wave5 CAPTURE inherits OUTPUT colorimetry. Before raw negotiation its
++   * default 709 tuple is not an encoded-output capability restriction.
++   * Keep the raw-input TRY_FMT gate, and verify the resulting stream VUI. */
++  if (pixelformat == V4L2_PIX_FMT_HEVC &&
++      V4L2_TYPE_IS_CAPTURE (v4l2object->type) &&
++      g_strcmp0 ((const gchar *) v4l2object->vcap.driver, "wave5-enc") == 0)
++    return;
++
++
+   memset (&fmt, 0, sizeof (fmt));
+   fmt.type = v4l2object->type;
+   fmt.fmt.pix.width = width;
+@@ -2656,6 +2665,29 @@
        if (colorspace == req_cspace) {
          if (gst_v4l2_object_get_colorspace (v4l2object, &fmt, &cinfo))
            gst_v4l2_object_fill_colorimetry_list (&list, &cinfo);
 +        if (colorspace == V4L2_COLORSPACE_BT2020 &&
-+            (pixelformat == V4L2_PIX_FMT_P010 ||
-+                pixelformat == V4L2_PIX_FMT_HEVC)) {
++            pixelformat == V4L2_PIX_FMT_P010) {
 +          /* Default BT.2020 transfer is not PQ. Probe the complete native HDR
 +           * tuple, and advertise only what the device actually retains. */
 +          struct v4l2_format pq_fmt = fmt;

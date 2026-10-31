@@ -19,7 +19,7 @@ fixture = r'''
 #include <gst/video/video.h>
 #include <linux/videodev2.h>
 #include <string.h>
-typedef struct { enum v4l2_buf_type type; int mode; } GstV4l2Object;
+typedef struct { enum v4l2_buf_type type; int mode; struct v4l2_capability vcap; } GstV4l2Object;
 static int gst_v4l2_object_try_fmt(GstV4l2Object *o, struct v4l2_format *f) {
  int multi=V4L2_TYPE_IS_MULTIPLANAR(o->type);
  unsigned cs=multi?f->fmt.pix_mp.colorspace:f->fmt.pix.colorspace;
@@ -50,11 +50,16 @@ int main(void) {
  gst_init(NULL,NULL);
  for(int encoded=0;encoded<2;encoded++)
  for(int multi=0;multi<2;multi++) for(int mode=0;mode<6;mode++) {
-  GstV4l2Object o={multi?V4L2_BUF_TYPE_VIDEO_OUTPUT_MPLANE:V4L2_BUF_TYPE_VIDEO_OUTPUT,mode};
+  GstV4l2Object o={.type=multi?V4L2_BUF_TYPE_VIDEO_OUTPUT_MPLANE:V4L2_BUF_TYPE_VIDEO_OUTPUT,.mode=mode};
+  if(encoded) {
+   o.type=multi?V4L2_BUF_TYPE_VIDEO_CAPTURE_MPLANE:V4L2_BUF_TYPE_VIDEO_CAPTURE;
+   strcpy((char *)o.vcap.driver,"wave5-enc");
+  }
   GstStructure *s=gst_structure_new_empty("video/x-raw");
   gst_v4l2_object_add_colorspace(&o,s,3840,2160,
       encoded?V4L2_PIX_FMT_HEVC:V4L2_PIX_FMT_P010);
   const GValue *list=gst_structure_get_value(s,"colorimetry");
+  if(encoded) {g_assert_null(list); gst_structure_free(s); continue;}
   gboolean found=FALSE;
   for(unsigned i=0;i<gst_value_list_get_size(list);i++)
    if (!strcmp(g_value_get_string(gst_value_list_get_value(list,i)),"bt2100-pq")) found=TRUE;
