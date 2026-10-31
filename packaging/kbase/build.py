@@ -140,6 +140,9 @@ def main():
     (output / 'modinfo.txt').write_text(info)
     if 'r44p0-01eac0 (UK version 11.39)' not in info:
         raise ValueError('Unexpected module UK version')
+    softdep = subprocess.check_output(['modinfo', '-F', 'softdep', str(module)], text=True)
+    if softdep.split() != ['pre:', 'governor_vim4']:
+        raise ValueError('Async GPU probe requires the vim4 governor before kbase insertion')
     kernel_build = args.kernel_build.resolve()
     release = (kernel_build / 'include/config/kernel.release').read_text().strip()
     staged_module = output / 'stage/lib/modules' / release / 'extra/mali_kbase.ko'

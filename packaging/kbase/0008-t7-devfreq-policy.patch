@@ -38,3 +38,18 @@ index 28dd47c..c285bc6 100644
  #endif
  	if (IS_ERR(kbdev->devfreq)) {
  		err = PTR_ERR(kbdev->devfreq);
+diff --git a/drivers/gpu/arm/midgard/platform/vim4/platform.c b/drivers/gpu/arm/midgard/platform/vim4/platform.c
+--- a/drivers/gpu/arm/midgard/platform/vim4/platform.c
++++ b/drivers/gpu/arm/midgard/platform/vim4/platform.c
+@@ -9,6 +9,11 @@
+ int meson_gpu_fault;
+ int meson_gpu_data_invalid_count;
+ MODULE_DESCRIPTION("Mali r44p0 UK 11.39 for VIM4");
++#ifdef CONFIG_MALI_DEVFREQ
++/* Async probe must never synchronously request a devfreq governor. */
++MODULE_SOFTDEP("pre: governor_vim4");
++#endif
++
+ 
+ /* One GPU; cache the latest vendor DVFS window without sampling on read. */
+ static u32 last_utilisation;

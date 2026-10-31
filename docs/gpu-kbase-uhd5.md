@@ -18,12 +18,21 @@ thermal emulation用于验证GPU zone跨95°C trip后cooling状态与实际频�
 
 ## 工具与证据
 
-独立工具分支board-window-payload-id@65f172d已push供审阅，未合入main。
+独立工具分支board-window-payload-id@3bae17b已push供审阅，未合入main。
 它以namespace/payload_id区分不同模块/DT，真实kernel build_id仍负责PID1运行内核校验。
 本候选从该工具worktree运行board-window；kbase分支中的工具文件保持origin/main版本。
 旧build-ID目录包与HDR/hdr10包保持原恢复/cleanup路径。
 工具回归：Mac全量350项（14跳过），ARM64 Linux全量350项（10跳过）；
 覆盖同Image两payload、已有目录/符号链接拒绝、真实build ID不匹配和旧格式清理。
+后续全量351项通过，额外证明同Image各payload的恢复记录分别保留，避免漏清首次创建的模块挂载点。
+
+首次uhd5冷启动暴露异步probe请求未加载governor的WARN：
+`__request_module → try_then_request_governor → devfreq_add_device → kbase_devfreq_init`。
+这会与模块初始化的async同步互相等待，HDMI/gadget的modprobe也被拖住。
+未跑GPU负载即回5.15，四服务/UDC/保护文件与临时助手均恢复核验。
+0008主题补丁补`MODULE_SOFTDEP("pre: governor_vim4")`；构建器校验实际模块softdep，
+完整stage的`modprobe --show-depends`证明governor先于mali插入。
+这属于新默认策略的加载依赖，不改变Image或DVFS参数；修后只重编外部模块。
 
 5.15复用[r9共享缓存](bringup/2026-10-31-kbase-r9-queue.md)，不得重测。
 上板前核对缓存的5.15身份、启动/程序/plugin文件哈希；不匹配则停止配对并记录，不伪称缓存命中。
