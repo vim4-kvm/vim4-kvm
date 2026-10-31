@@ -36,7 +36,7 @@ revision = "f2b8122505cacda2762948a91c99c1acdb107ef0"
 name = "One-KVM"
 url = "https://github.com/vim4-kvm/One-KVM.git"
 branch = "vim4"
-# HDR2 integration candidate; promotion of remote vim4 awaits all uhd4 gates.
+# HDR2 product DMA contract validated by the uhd4 RAM smoke.
 revision = "db848a5288019f0d651bc429e01d6f727720154b"
 
 [[repos]]

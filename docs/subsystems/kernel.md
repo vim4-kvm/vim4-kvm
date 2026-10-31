@@ -3,7 +3,7 @@
 VDIN HDR2主题候选uhd4完整构建见[集成门禁](../bringup/2026-10-31-hdr2-uhd4-gate.md)，
 [新PQ窗口](../bringup/2026-10-31-hdr2-mcp-ice-pq.md)已恢复MCP与接收、通过PQ/DMA/VUI/4K60；
 [uhd4r3恢复修复](../bringup/2026-10-31-hdr2-recovery.md)把双向中位数拉到约1.24秒，
-用户已认可两栈长尾不构成三次样本内退步；待正式命名uhd4短烟测后推广。HLG已实现，无真实源未验。
+用户已认可两栈长尾不构成三次样本内退步；[正式uhd4短烟测](../bringup/2026-10-31-uhd4-formal-smoke.md)通过并推广源码/构建锁，5.15仍默认。HLG已实现，无真实源未验。
 
 7.3通用内存/拷贝与锁调试配置差异、离线微基准及下一窗口见[内存拷贝审查](../memory-copy-audit.md)。
 

@@ -1,8 +1,7 @@
 # 音视频
 
-视频链路：HDMI RX port 1 → vdin0 → VFM tvpath → vfm_cap DMA-buf →
-vfmcapsrc → amlvenc → NanoKVM WebRTC。板级 HDMI 服务打开输入并配置采集，
-应用负责推流。video71 是输出回写。
+5.15：RX port1→VDIN0→vfm_cap DMA→amlvenc→WebRTC；video71普通模式为回写。
+7.3 [uhd4](../bringup/2026-10-31-uhd4-formal-smoke.md)：HDR2 PQ→709 NV12→DMA→Wave5；HLG已实现无真源未验。
 
 ## HDMI 显示器行为
 

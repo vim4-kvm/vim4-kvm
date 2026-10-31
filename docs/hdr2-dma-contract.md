@@ -64,7 +64,7 @@ a5出现一次合法尾帧：208.240568提交、208.243423切点、208.250112采
 [uhd4后续PQ窗口](bringup/2026-10-31-hdr2-mcp-ice-pq.md)已补齐MCP、接收、色准与逐代退休，
 后续[恢复修复](bringup/2026-10-31-hdr2-recovery.md)已使双向中位数接近5.15，
 用户后续审阅认为两栈都有长尾、三次样本内不构成退步，批准正式集成；
-当前等待同源码树正式命名uhd4的完整构建及短烟测，通过后再推正式分支。
+[正式uhd4完整构建及短烟测](bringup/2026-10-31-uhd4-formal-smoke.md)已通过，正式锁指向同一源码树。
 
 1. 内核以正式f71b5c6289cb为基线，整理为`vim4-hdr2-topics@ce6bc0cc5218a`的六个主题；旧13份仅保留历史证据。
    [补丁目录](../packaging/hdr2-pq/README.md)重放tree与候选均为`6fdb600add9ca1f0ed8bf12266bee9fee8d6debf`。

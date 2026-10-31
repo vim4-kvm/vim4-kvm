@@ -1,13 +1,13 @@
 # HDR2 product topic series
 
-Apply only `0001` through `0006` here, in order with `git am`, on kernel
+Apply `0001` through `0009` here, in order with `git am`, on kernel
 `f71b5c6289cb3254690e57292327e73514f0715f`. VM worktree:
-`~/src/linux-7.3-hdr2-topics`, branch `vim4-hdr2-topics`.
-The final tree is identical to a5-tested `851153f2f529f`:
+`~/src/linux-7.3-hdr2-topics`, branch `vim4-hdr2-recovery`.
+The first six topics reproduce the a5-tested `851153f2f529f` tree:
 **6fdb600add9ca1f0ed8bf12266bee9fee8d6debf**.
 
-The recovery candidate additionally applies `0007` through `0009` after these six
-topics. `0007` seeds the source monitor after an admitted STREAMON, preventing
+Recovery topics `0007` through `0009` follow these six.
+`0007` seeds the source monitor after an admitted STREAMON, preventing
 cached loss from producing an immediate second recovery event. `0008` samples
 present-cable recovery at 50ms while preserving three matching samples,
 PLL/PCS checks, DMA exclusion and the 250ms idle/torn-snapshot cadence.
@@ -17,8 +17,9 @@ fixtures exercise these lifecycle boundaries. This extended tree differs
 intentionally from the exact a5 tree; its acceptance is tracked separately from
 the six-topic equivalence proof. The final tree is
 `0ce3bf8d9a1e57a97bdbaffa67610eceaddba579` at `8bca939d6bbd3`.
-It remains a feature candidate: median recovery improved, but the PQ-to-SDR tail
-failed the paired acceptance gate in the [recovery window](../../docs/bringup/2026-10-31-hdr2-recovery.md).
+The user accepted the paired recovery medians and tails. The nine-topic tree
+passed the [formal uhd4 smoke](../../docs/bringup/2026-10-31-uhd4-formal-smoke.md);
+the six-topic tree above remains the historical a5 equivalence proof.
 
 `video-recovery.mjs` defaults to 250ms statistics; `HDR2_SAMPLE_MS=50` selects
 fine sampling without changing host networking. It also reports keyframe count,

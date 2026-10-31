@@ -2,7 +2,7 @@
 
 2026-10-30 默认启动保持5.15；当前7.3源码与保留运行时的
 [功能差距复核](bringup/2026-10-28-kernel73-parity-audit.md)另列近期产品功能、默认开关和验收欠账。
-最新源码/构建pin为[NPU与nodebug正式uhd3](bringup/2026-10-30-uhd3-formal-regression.md)，
+最新源码/构建pin为[PQ HDR2正式uhd4](bringup/2026-10-31-uhd4-formal-smoke.md)，
 RAM回归通过；板上保留构建仍见[uhd1部署锁](bringup/2026-10-30-kernel73-retained-pin.md)。
 sources.toml分别记录tested_build与retained_runtime，不把RAM验收冒充持久安装。
 
@@ -14,8 +14,8 @@ sources.toml分别记录tested_build与retained_runtime，不把RAM验收冒充�
 最近登记的7.3保留运行时为正式 `vim4-kvm-7.3@213f271505411`，release
 `7.3.0-vim4kvm-uhd1+`、build ID `7a473adf9353013fd1ab01908d20bbf503a063fb`；
 使用当时含ACM的uhd1配置、M0 simpledrm/tty0和同次完整2337模块；仓库当前uhd1.config已应用nodebug，不能用于逐字节复现旧产物。
-新源码f71b5c6289cb的uhd3为2338模块、ADLA兼容模块与nodebug，M0布局不变。
-One-KVM为 `3649a8c8`，manager已部署 `0c89b29`，共享Wave5插件为 `b3b82a9`。
+新源码8bca939d6bbd3的uhd4为2338模块，保留ADLA/nodebug/M0并加入HDR2与恢复主题系列。
+One-KVM为`db848a52`，私有Wave5插件包含已锁定的色彩/VUI依赖；5.15默认未改。
 尺寸、QP/无损、ACM板侧及GPU的实际通过/未验证边界见[批量验证](bringup/2026-10-30-kernel73-gap-validation.md)
 和[第三/四轮复验](bringup/2026-10-30-kernel73-gap-r3.md)。GPU真实sudo CPU预算仍未达标，
 不将旧九类回归、音频或HID历史结果算作本轮重测。构建产物尚未发布到Release。
@@ -107,8 +107,8 @@ H.264/H.265 硬编码已取得实验结果，见
 脚本执行 olddefconfig，最终配置写入
 外部构建目录并记录校验和；并非复现 Armbian 镜像构建的所有配置钩子。
 
-当前已验uhd3的准确配置为 `packaging/kernel-edge/uhd3.config`，Linux ARM64 上可用
-`bash packaging/kernel-edge/build.sh SOURCE NEW_OUTPUT packaging/kernel-edge/uhd3.config`
+当前已验uhd4的准确配置为 `packaging/kernel-edge/uhd4.config`，Linux ARM64 上可用
+`bash packaging/kernel-edge/build.sh SOURCE NEW_OUTPUT packaging/kernel-edge/uhd4.config`
 重建匹配 release；不传第三参数仍构建通用 edge 基线。该命令不安装、不重启，
 DTB/固件和完整模块的安装与登记按双内核记录执行，保留当前板子的 DTB/MAC 配置。
 
@@ -120,7 +120,7 @@ tested_build 已与正式213f2715及该ACM配置配套更新。ACM板侧已验�
 第四参数 `--validate-only` 执行相同版本/目录检查和olddefconfig后退出，不编译、不部署；
 本轮已在VM实际验证并比对最终配置哈希。完整构建省略该参数。
 `tested_build.image_sha256` 是适应当前启动分区容量的确定性gzip Image，
-`uncompressed_image_sha256` 是build.sh原始Image。当前uhd3使用原始Image，
+`uncompressed_image_sha256` 是build.sh原始Image。当前uhd4使用原始Image，
 image/uncompressed哈希相同；manifest/source_manifest也相同，runtime_proof只证明候选载荷。
 `live_proof_sha256` 对应板上运行快照；retained_runtime单独记录旧uhd1的gzip安装身份。
 

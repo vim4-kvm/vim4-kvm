@@ -64,7 +64,9 @@ release名称不代表能力或验证结果，仍校验manifest全部文件、�
 stage只记录自己新建空模块目录的设备/inode；return-baseline验证回到原5.15后清理。
 已有目录、被替换的目录、非空或仍挂载的目录保留，清理异常报告失败，不递归删除。
 串口在autoboot提示后打断，仅发送原有sysboot RAM命令，不写saveenv或默认配置。
-等待新的boot ID、预期release/build ID、SSH、逐服务active、UDC configured、JPEG与管线fps>0。
+立即读UART而不阻塞等SSH退出；从基线读取MAC并仅在RAM setenv ethaddr，保持DHCP身份。
+等待新的boot ID、预期release/build ID、SSH、逐服务active、UDC configured与API响应。
+snapshot只读缓存，无查看器时503不代表采集故障；receiver创建offer后另验真实解码推进。
 任一步失败停止，不自动重试或选择另一个候选；查看UART证据再决定恢复。
 SSH使用开发环境免密 `sudo -n`，脚本通过 `python3 -c`，没有密码/heredoc混用。
 
@@ -115,7 +117,8 @@ HDR命令涉及HID，只有得到对应窗口的HID授权才调用。本轮仅mo
 Apple菜单(27,13)→Settings(108,83)→Displays(1092,647)→向下滚动7格→HDR(1704,540)。
 强制截图1920×1080、English Settings与RTK UHD HDR布局，先检查视觉空闲；从
 One-KVM `/api/vim4/video` 的源端EOTF记录原状态，每次切换等待实际PQ/SDR，再关闭设置窗口。
-finally按源端原状态恢复并截图；不依赖toggle次数推断。未知EOTF、尺寸不符、画面活动均停止。
+finally按源端原状态恢复并截图；不依赖toggle次数推断。初始未知EOTF、尺寸不符、画面活动均停止；
+切换中暂时UNKNOWN有界等待15秒，恢复前同样等待可判定状态，不把UNKNOWN当SDR。
 来源为gpu-hdr工作树只读的 `build/hdr2-r17-control.py`、`hdr2-r18-*-control.py` 与
 `logs/hdr2-r17/window-1793433768.jpg`、`window-1793435376.jpg`；需保持现场窗口布局，
 本轮未重新进行硬件验收。截图不能证明显示器实际光度。
