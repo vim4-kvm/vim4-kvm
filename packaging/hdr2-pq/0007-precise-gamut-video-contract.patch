@@ -1,0 +1,111 @@
+From 4dba1218cdf05869cfccedd70751701f07226e97 Mon Sep 17 00:00:00 2001
+From: localhost-copilot <318096335+localhost-copilot@users.noreply.github.com>
+Date: Sat, 31 Oct 2026 12:26:13 +0800
+Subject: [PATCH] media: t7-vdin: align precise gamut and SDR video signaling
+
+---
+ drivers/media/platform/amlogic/t7-hdmirx/t7-vdin-hdr.h  | 8 ++++----
+ drivers/media/platform/amlogic/t7-hdmirx/t7-vdin-hlg.h  | 2 +-
+ drivers/media/platform/amlogic/t7-hdmirx/t7-vdin-test.c | 4 ++--
+ drivers/media/platform/amlogic/t7-hdmirx/test_color.py  | 8 ++++----
+ 4 files changed, 11 insertions(+), 11 deletions(-)
+
+diff --git a/drivers/media/platform/amlogic/t7-hdmirx/t7-vdin-hdr.h b/drivers/media/platform/amlogic/t7-hdmirx/t7-vdin-hdr.h
+index c5e5cbc4147a1..0effa4fe7db42 100644
+--- a/drivers/media/platform/amlogic/t7-hdmirx/t7-vdin-hdr.h
++++ b/drivers/media/platform/amlogic/t7-hdmirx/t7-vdin-hdr.h
+@@ -101,23 +101,23 @@ static void t7_vdin_hdr_configure(struct t7_vdin *vdin)
+ {
+ 	static const int input[9] = {1196, 0, 1724, 1196, -193, -668, 1196, 2200, 0};
+ 	static const int output[9] = {186, 627, 63, -103, -345, 448, 448, -407, -41};
+-	static const int gamut[9] = {425, -150, -18, -31, 290, -2, -4, -25, 286};
++	static const int gamut[9] = {3401, -1204, -149, -255, 2320, -17, -37, -206, 2291};
+ 	unsigned int i;
+ 
+ 	t7_vdin_hdr_matrix(vdin, 0x1282, input);
+ 	t7_vdin_write(vdin, 0x128a, 0);
+ 	t7_vdin_write(vdin, 0x128b, 0);
+ 	t7_vdin_write(vdin, 0x128c, ((u32)-64 << 16) | ((-512) & 0xfff));
+-	t7_vdin_write(vdin, 0x128d, (-512) & 0xfff);
++	t7_vdin_write(vdin, 0x128d, (u32)-512);
+ 	t7_vdin_hdr_matrix(vdin, 0x128e, output);
+ 	t7_vdin_write(vdin, 0x1296, 0x00400200);
+ 	t7_vdin_write(vdin, 0x1297, 512);
+ 	t7_vdin_write(vdin, 0x1298, 0);
+ 	t7_vdin_write(vdin, 0x1299, 0);
+-	t7_vdin_write(vdin, 0x12b0, 0x18);
++	t7_vdin_write(vdin, 0x12b0, BIT(4) | 11);
+ 	for (i = 0; i < 4; i++)
+ 		t7_vdin_write(vdin, 0x12b1 + i,
+-			      ((gamut[2 * i + 1] & 0xffff) << 16) |
++			      ((u32)(gamut[2 * i + 1] & 0xffff) << 16) |
+ 			      (gamut[2 * i] & 0xffff));
+ 	t7_vdin_write(vdin, 0x12b5, gamut[8]);
+ 	t7_vdin_write(vdin, 0x12a8, 1);
+diff --git a/drivers/media/platform/amlogic/t7-hdmirx/t7-vdin-hlg.h b/drivers/media/platform/amlogic/t7-hdmirx/t7-vdin-hlg.h
+index 676b562394ad6..9141b183345d2 100644
+--- a/drivers/media/platform/amlogic/t7-hdmirx/t7-vdin-hlg.h
++++ b/drivers/media/platform/amlogic/t7-hdmirx/t7-vdin-hlg.h
+@@ -91,7 +91,7 @@ static void t7_vdin_hlg_configure(struct t7_vdin *vdin)
+ 	t7_vdin_write(vdin, 0x128a, 0);
+ 	t7_vdin_write(vdin, 0x128b, 0);
+ 	t7_vdin_write(vdin, 0x128c, ((u32)-64 << 16) | ((-512) & 0xfff));
+-	t7_vdin_write(vdin, 0x128d, (-512) & 0xfff);
++	t7_vdin_write(vdin, 0x128d, (u32)-512);
+ 	t7_vdin_hdr_matrix(vdin, 0x128e, output);
+ 	t7_vdin_write(vdin, 0x1296, 0x00400200);
+ 	t7_vdin_write(vdin, 0x1297, 512);
+diff --git a/drivers/media/platform/amlogic/t7-hdmirx/t7-vdin-test.c b/drivers/media/platform/amlogic/t7-hdmirx/t7-vdin-test.c
+index 4ec258c6332da..8c37ec042b2c3 100644
+--- a/drivers/media/platform/amlogic/t7-hdmirx/t7-vdin-test.c
++++ b/drivers/media/platform/amlogic/t7-hdmirx/t7-vdin-test.c
+@@ -1096,8 +1096,8 @@ static void t7_vdin_fill_fmt(struct t7_vdin *vdin, struct v4l2_format *fmt,
+ 		.bytesperline = stride,
+ 		.sizeimage = vdin->nv12 ? stride * ALIGN(height, 16) * 3 / 2 : stride * height,
+ 		.colorspace = vdin->nv12 ? V4L2_COLORSPACE_REC709 : V4L2_COLORSPACE_SRGB,
+-		.xfer_func = !vdin->nv12 || t7_hdmirx_capture_is_hdr(vdin->receiver) ?
+-			V4L2_XFER_FUNC_SRGB : V4L2_XFER_FUNC_709,
++		/* Keep the vendor product's SDR video interpretation. */
++		.xfer_func = vdin->nv12 ? V4L2_XFER_FUNC_709 : V4L2_XFER_FUNC_SRGB,
+ 		.ycbcr_enc = vdin->nv12 ? V4L2_YCBCR_ENC_709 : V4L2_YCBCR_ENC_DEFAULT,
+ 		.quantization = vdin->nv12 ? V4L2_QUANTIZATION_LIM_RANGE :
+ 					   V4L2_QUANTIZATION_FULL_RANGE,
+diff --git a/drivers/media/platform/amlogic/t7-hdmirx/test_color.py b/drivers/media/platform/amlogic/t7-hdmirx/test_color.py
+index 06245767ccca3..7792f16385370 100644
+--- a/drivers/media/platform/amlogic/t7-hdmirx/test_color.py
++++ b/drivers/media/platform/amlogic/t7-hdmirx/test_color.py
+@@ -27,7 +27,7 @@ for node in nodes:
+     linear = node / 2 ** 32
+     encoded = 12.92 * linear if linear <= .0031308 else 1.055 * linear ** (1 / 2.4) - .055
+     expected.append(math.floor(4095 * encoded + .5))
+-assert values == expected, 'OETF must describe the sRGB transfer that V4L2 reports'
++assert values == expected, 'Keep the existing product sRGB-shaped OETF samples'
+ 
+ fixture = r'''
+ #include <assert.h>
+@@ -57,14 +57,14 @@ int main(void) {
+  assert(!t7_hdmirx_capture_is_hdr(&dev) && reads==0);
+  link.ready=true; rx.live_hdr=true;
+  t7_vdin_fill_fmt(&v,&fmt,3840,2160);
+- assert(fmt.fmt.pix.xfer_func==V4L2_XFER_FUNC_SRGB);
++ assert(fmt.fmt.pix.xfer_func==V4L2_XFER_FUNC_709);
+  assert(fmt.fmt.pix.colorspace==V4L2_COLORSPACE_REC709);
+  assert(fmt.fmt.pix.ycbcr_enc==V4L2_YCBCR_ENC_709);
+  assert(fmt.fmt.pix.quantization==V4L2_QUANTIZATION_LIM_RANGE);
+  assert(fmt.fmt.pix.bytesperline==3840 && fmt.fmt.pix.sizeimage==12441600);
+  link.users=1; link.ready=false; rx.lease_hdr=true; rx.live_hdr=false;
+  reads=0; t7_vdin_fill_fmt(&v,&fmt,3840,2160);
+- assert(fmt.fmt.pix.xfer_func==V4L2_XFER_FUNC_SRGB && reads==0);
++ assert(fmt.fmt.pix.xfer_func==V4L2_XFER_FUNC_709 && reads==0);
+  rx.lease_hdr=false; t7_vdin_fill_fmt(&v,&fmt,3840,2160);
+  assert(fmt.fmt.pix.xfer_func==V4L2_XFER_FUNC_709 && reads==0);
+  v.nv12=false; t7_vdin_fill_fmt(&v,&fmt,1920,1080);
+@@ -79,4 +79,4 @@ with tempfile.TemporaryDirectory() as tmp:
+     subprocess.run(['cc', '-Wall', '-Wextra', '-Werror', '-fsanitize=undefined',
+                     '-fno-sanitize-recover=all', str(source), '-o', str(exe)], check=True)
+     subprocess.run([str(exe)], check=True)
+-print('sRGB OETF, V4L2 output tuple and lease-protected classification: PASS')
++print('Product OETF, legacy 709 video contract and RGB sRGB/full: PASS')
+-- 
+2.43.0
+

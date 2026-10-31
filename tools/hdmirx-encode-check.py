@@ -148,8 +148,8 @@ def capture(args):
         def forward_sample(sink):
             try:
                 sample = sink.emit('pull-sample')
-                # Preserve the capture transfer rather than relabelling mapped
-                # HDR's sRGB samples as BT.709 at the two-plane bridge.
+                # Preserve the capture tuple through the two-plane bridge;
+                # colour interpretation belongs to the source and codec.
                 if 'input_color_caps' not in state:
                     state['input_color_caps'] = sample.get_caps().to_string()
                     encoder_source.set_property('caps', sample.get_caps())

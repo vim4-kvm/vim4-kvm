@@ -158,7 +158,7 @@ PiKVM smoke 可用 `PIKVM_CDP` 接入专用测试 Chrome；结束时关闭测试
 | tools/hdmirx-frame-check.py | Mac / Linux | 无 | 离线校验 1080p/4K RGB24、NV12 的三处帧号及推进；--check-colors 增加颜色块，输入来自 coherence source | [4K 与编码](bringup/2026-10-19-wave521-uhd.md) |
 | tools/hdmirx-stream-check.c | 板（root） | 独占，仅 7.3 HDMI 实验内核 | 四缓冲运动检查、耗尽恢复及反复开关流；`--dmabuf` 验证导出、队列重建和重映射，`--hold-exports` 等待控制端释放；需先编译 | [HDMI DMA-buf](bringup/2026-10-19-hdmirx-dmabuf.md) |
 | tools/hdmirx-soak.c | 板（root） | 独占采集，调用者持双锁并停启应用 | 原生 NV12 逐帧 ERROR/sequence/单调时间；`--count-errors` 继续计数有效帧率但仍报失败，`--markers` 检查三处运动帧号；不改 EDID/HPD | 脚本头注释 |
-| tools/hdmirx-encode-check.py | 板（root）/ Linux | capture 独占实验采集；verify 离线 | DMA-buf 采集后软件 H.264 或 Wave5 H.264/H.265；桥接保留实际色彩caps，--colorimetry指定初始协商；记录CPU/pad时间、逐行刷新/关键帧；verify检查运动和颜色 | [4K 与编码](bringup/2026-10-19-wave521-uhd.md) |
+| tools/hdmirx-encode-check.py | 板（root）/ Linux | capture 独占实验采集；verify 离线 | DMA-buf 采集后软件 H.264 或 Wave5 H.264/H.265；保留实际色彩caps、记录CPU/pad时间；HDR2逐buffer退休另配packaging/hdr2-pq/check_retirement.py | [4K 与编码](bringup/2026-10-19-wave521-uhd.md)、[HDR2门禁](hdr2a3-offline.md) |
 | tools/wave5-lifecycle-check.py | 板 | 独占编码；停视频应用 | 实验 7.3 的 H.264/H.265 图案编码反复 EOS；检查视频句柄与 CMA 回收，首轮泄漏即停止 | [One-KVM 接入](bringup/2026-10-20-onekvm-wave5.md) |
 | tools/onekvm-local-bench.py | Mac → 容器；可选当前内核板子 | 默认无；--board 占 CPU/内存带宽，不停服务 | DMA 平面、压缩缓存与复制基准；可先跑离线所有权、输入状态等待、profile 和逐行刷新回归 | [本地基准](local-video-benchmark.md) |
 | tools/vim4-driver-bench.c | 板；需先编译 | 独占采集/编码；调用者停启应用 | 原生纯采集、H.264/H.265/JPEG 驱动基准；CPU、pad 耗时、CMA；支持 7.x/5.15，`--secondary --fps=120`测1080p独立采集；独立录像验证 | [驱动基准](driver-benchmark.md) |

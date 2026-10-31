@@ -5,8 +5,8 @@
 GPU tone-map shader、DMA适配和编译器优化全部暂停，保留既有提交；GPU仅作必要缩放/后备。
 路线选择依据是已有硬件路径、厂商分工及窗口A原型的实际成本。
 
-后续[统一PQ/HLG候选](hdr2-unified-candidate.md)明确采用产品sRGB OETF与准确V4L2 transfer，
-含独立release、完整构建证据及≤30分钟清单；[M6操作说明](m6-enable-hdr.md)供用户物理开启HDR。
+最新[HDR2a3离线修复](hdr2a3-offline.md)保留产品OETF，输出按既有产品709视频合同，补齐Wave5 VUI、色差与退休/CMA门禁。
+此前[统一候选](hdr2-unified-candidate.md)保留a1构建证据；[M6操作说明](m6-enable-hdr.md)也适用于已授权的MCP操作。
 
 最新[PQ独占窗口](bringup/2026-10-30-hdr2-pq-window.md)：M6仍为SDR/444/8bit，EDID已经宣告PQ；
 完成5.15/uhd3同源SDR旁路、编码前帧和受限寄存器基线，并补齐配置/已写PQ shadow CRC诊断。

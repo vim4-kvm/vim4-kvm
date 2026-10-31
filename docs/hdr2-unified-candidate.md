@@ -1,5 +1,8 @@
 # HDR2 PQ/HLG完整候选与统一验收
 
+**当前离线修复与下一窗口以[HDR2a3清单](hdr2a3-offline.md)为准**：默认恢复产品709视频合同、增加Wave5 VUI、精确gamut/预偏移及逐buffer退休证明。
+以下设计、完整构建及窗口表保留a1历史；transfer13门禁和等待用户物理切换的前置已被后续决定替代。
+
 最新[a2窗口](bringup/2026-10-30-hdr2a2-window.md)已恢复MCP并完成4K60 DMA编码；SPS无VUI、固定图色差及零告警门禁仍阻断正式合入。
 
 用户已于2026-10-30确认VDIN HDR2硬件主路径。此次仅离线，不访问板子、不push。
@@ -11,7 +14,7 @@ HLG原提交`c68407cb052be`已整合为`bbf9ff89b284d`，主仓`15d0eab`已整�
 独立release **7.3.0-vim4kvm-uhd3-hdr2a1+**，完整输出`~/build/hdr2-combined`，不覆盖uhd3或hlg1。
 [邮件补丁](../packaging/hdr2-pq/README.md)四份顺序应用；HLG原worktree、NPU文件、正式配置均未修改。
 
-## OETF与标签的明确取舍
+## OETF与标签的明确取舍（a1历史）
 
 **以5.15产品运行时配置的sRGB OETF为数值目标，PQ与HLG共用该表；映射后NV12报告709原色、sRGB transfer、709 YCbCr、limited。**
 没有把sRGB表改名为数学BT.709 OETF，也不将已映射SDR标成PQ/HLG。SDR旁路NV12维持既有709/709/709/limited。
@@ -92,7 +95,7 @@ CRC、颜色合同、HLG writer/解析/lease/过渡帧夹具全部通过；四�
 | 临时.config | `a0181de232c82181c0f34fca9dd6202277c490c092ccb70aeee564ec91472718` |
 | vmlinux build ID | `2c88ab69181672d3ca60f93ccded2fb74612aa8c` |
 
-## 统一上板窗口：总计≤30分钟
+## 统一上板窗口：总计≤30分钟（a1历史）
 
 前置：用户按[M6操作说明](m6-enable-hdr.md)物理开启HDR并确认；源固定3840×2160/60Hz。
 先准备同一稳定灰阶/饱和色/高光测试画面，记录原始文件SHA、播放器及呈现设置。
