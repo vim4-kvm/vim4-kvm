@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Join capture tickets and encoder jobs by exported DMA-buf inode."""
+"""Join allocator identities and normalized physical addresses, failing closed."""
 import json
 import re
 import sys
@@ -21,8 +21,11 @@ def check(lines):
         if not re.search(r'(t7_vdin_buffer|wave5_buffers_buffer):', line):
             continue
         seen += 1
-        event = {key: int(value) for key, value in re.findall(r'(\w+)=(\d+)', line)}
-        ino, phase = event['ino'], event['phase']
+        fields = dict(re.findall(r'(\w+)=(\S+)', line))
+        if 'allocator' not in fields or 'phys' not in fields:
+            raise ValueError('Unsupported identity trace; matching rebuilt modules required')
+        event = {key: int(value) for key, value in fields.items() if key != 'allocator'}
+        identity, phase = (fields['allocator'], event['phys']), event['phase']
         if 't7_vdin_buffer:' in line:
             gen, ticket = event['gen'], event['ticket']
             if phase == 6:
@@ -35,12 +38,13 @@ def check(lines):
                 ended.add(gen)
             elif ticket:
                 if phase == 0:
-                    if gen not in generations or not ino or ino in jobs:
+                    if gen not in generations or not event['phys'] or identity in jobs:
                         raise ValueError('Unknown epoch/export or DMA rearmed during encoding')
-                    if ticket in tickets or (ino in latest and not tickets[latest[ino]]['retired']):
+                    if ticket in tickets or (identity in latest and not tickets[latest[identity]]['retired']):
                         raise ValueError('Capture ticket reused before retirement')
-                    tickets[ticket] = dict(gen=gen, ino=ino, done=False, retired=False, encoded=0)
-                    latest[ino] = ticket
+                    tickets[ticket] = dict(gen=gen, identity=identity, done=False, retired=False,
+                                           released=False, encoded=0)
+                    latest[identity] = ticket
                 elif phase == 5:
                     raise ValueError('Fault retained DMA; retirement not proven')
                 elif ticket in tickets:
@@ -48,25 +52,38 @@ def check(lines):
                         if tickets[ticket]['retired']:
                             raise ValueError('Capture completed after retirement')
                         tickets[ticket]['done'] = True
-                    elif phase in (3, 4):
-                        if ino in jobs:
-                            raise ValueError('Capture buffer retired while encoder still owns it')
+                    elif phase == 3:
+                        if identity in jobs:
+                            raise ValueError(f'Capture buffer retired while encoder still owns it: '
+                                             f'identity={identity} ticket={tickets[ticket]} '
+                                             f'event={line.strip()}')
                         tickets[ticket]['retired'] = True
+                    elif phase == 4:
+                        # buf_cleanup drops VDIN's reference, not the imported
+                        # DMA-buf held by Wave5. Keep ownership outstanding
+                        # until the real completion/cancellation event arrives.
+                        tickets[ticket]['released'] = True
+                        tickets[ticket]['retired'] = identity not in jobs
         elif phase == 0:
-            if ino not in latest:
+            if identity not in latest:
                 raise ValueError('Encoder input lacks capture provenance')
-            ticket = tickets[latest[ino]]
-            if not ticket['done'] or ticket['retired'] or ticket['gen'] in blocked or ino in jobs:
-                raise ValueError('Invalid, stale or duplicate encoder submission')
-            jobs.add(ino)
+            ticket = tickets[latest[identity]]
+            if not ticket['done'] or ticket['retired'] or ticket['gen'] in blocked or identity in jobs:
+                raise ValueError(f'Invalid encoder submission: identity={identity} ticket={ticket} '
+                                 f'blocked={sorted(blocked)} event={line.strip()}')
+            jobs.add(identity)
             submissions += 1
             ticket['encoded'] += 1
         elif phase == 1:
-            if ino not in jobs:
+            if identity not in jobs:
                 raise ValueError('Encoder completion lacks submission')
-            jobs.remove(ino)
+            jobs.remove(identity)
+            if tickets[latest[identity]]['released']:
+                tickets[latest[identity]]['retired'] = True
         elif phase == 2:
-            jobs.discard(ino)
+            jobs.discard(identity)
+            if identity in latest and tickets[latest[identity]]['released']:
+                tickets[latest[identity]]['retired'] = True
     if not seen or not tickets or not submissions or not generations or generations != ended:
         raise ValueError('Missing or incomplete generation trace')
     if jobs or any(not t['retired'] for t in tickets.values()):

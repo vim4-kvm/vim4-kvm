@@ -5,13 +5,14 @@
 GPU tone-map shader、DMA适配和编译器优化全部暂停，保留既有提交；GPU仅作必要缩放/后备。
 路线选择依据是已有硬件路径、厂商分工及窗口A原型的实际成本。
 
-最新[HDR2a3离线修复](hdr2a3-offline.md)保留产品OETF，输出按既有产品709视频合同，补齐Wave5 VUI、色差与退休/CMA门禁。
+最新[a5上板](bringup/2026-10-30-hdr2a5-window.md)通过PQ产品DMA恢复、双向退休、VUI、固定图p99、4K60及零内核WARN门禁；
+[DMA合同与集成方案](hdr2-dma-contract.md)说明六缓冲回归、稳定allocator关联及vb2布局修复。正式合并仍待用户审阅。
 此前[统一候选](hdr2-unified-candidate.md)保留a1构建证据；[M6操作说明](m6-enable-hdr.md)也适用于已授权的MCP操作。
 
-最新[PQ独占窗口](bringup/2026-10-30-hdr2-pq-window.md)：M6仍为SDR/444/8bit，EDID已经宣告PQ；
+此前[PQ独占窗口](bringup/2026-10-30-hdr2-pq-window.md)：M6仍为SDR/444/8bit，EDID已经宣告PQ；
 完成5.15/uhd3同源SDR旁路、编码前帧和受限寄存器基线，并补齐配置/已写PQ shadow CRC诊断。
-PQ/HLG颜色及切换未实测，需要用户在M6物理开启HDR。独立[HLG候选](hdr2-hlg.md)已合并到本会话内核分支，
-合并后的夹具、W=1/sparse通过，尚需完整候选构建和硬件门禁；未改正式配置、未push。
+后续经授权MCP开启M6 HDR，PQ已实际复验；HLG仍无真实源，颜色/切换未测。
+独立[HLG候选](hdr2-hlg.md)已合入特性内核分支，正式配置未改。
 以下源码分析与工期为此前离线可行性研究，不代表上述窗口已经通过全部验收。
 
 ## 固定源码与证据记法

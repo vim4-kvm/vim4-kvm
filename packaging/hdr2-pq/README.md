@@ -2,9 +2,8 @@
 
 Apply the mail patches in numeric order with `git am` in a new kernel
 worktree based on `f71b5c6289cb3254690e57292327e73514f0715f`.
-The current offline candidate is `vim4-hdr2-pq@7614e04a56408` in
-`~/src/linux-7.3-hdr2-pq` on the build VM. It has not passed the a3 hardware gates
-or been proposed upstream.
+The current candidate is `vim4-hdr2-pq@851153f2f529f` in
+`~/src/linux-7.3-hdr2-pq` on the build VM. It has not been proposed upstream.
 
 - `0001-pq-shadow-diagnostics.patch`: `eb156b545c8a2`, the PQ-only diagnostic
   module used in the SDR board window. It does not change colour processing.
@@ -25,12 +24,20 @@ or been proposed upstream.
   DMA-buf provenance and Wave5 submit/complete events.
 - `0010-host-lifecycle-fixtures.patch`: `7614e04a56408`, HLG policy and debugfs
   extraction fixes in existing host fixtures.
+- `0011-capture-byte-budget.patch`: `5f420235fff62`, replace the six-buffer
+  limit with a 192 MiB total allocation budget, including CREATE_BUFS.
+- `0012-allocator-dma-identity.patch`: `7551908e3116b`, correlate independent
+  exports by their shared vb2 allocator and normalized direct DMA address.
+- `0013-vb2-base-layout.patch`: `851153f2f529f`, keep vb2 at offset zero;
+  compile-time assertion and a host replay of the invalid a3 layout.
 
-Apply 0001 through 0010 in numeric order (0005 is described below).
+Apply 0001 through 0013 in numeric order (0005 is described below).
 The [a3 decision and next window](../../docs/hdr2a3-offline.md) supersede the a1
 transfer-13 policy. A complete a3 archive has now been sealed and booted; see the
-[a3 window](../../docs/bringup/2026-10-30-hdr2a3-window.md). Retirement correlation
-and the product DMA recovery gate remain unpassed; do not promote the series.
+[a3 window](../../docs/bringup/2026-10-30-hdr2a3-window.md). Subsequent
+[a5 acceptance](../../docs/bringup/2026-10-30-hdr2a5-window.md) passes PQ retirement
+and product DMA recovery. The [integration proposal](../../docs/hdr2-dma-contract.md)
+still requires user review before merging into main or the formal kernel.
 
 `hdr_status` is a read-only debugfs diagnostic, not a colour-control ABI. Its
 `profile_programmed` and `last_programmed_*` fields refer **only to the PQ
@@ -81,9 +88,18 @@ dimensions it requests coded buffers for that size, preserving decoder
 resolution-change headroom and driver-returned sizes. This addresses the a2
 32 MiB-per-coded-buffer CMA pressure; a clean boot still has to prove zero WARNs.
 
-`check_retirement.py TRACE` joins both kernel trace events by DMA-buf inode and
-reports per-generation tickets/retirement and encoder submissions. It rejects
+`check_retirement.py TRACE` joins both kernel trace events by shared allocator
+identity **and** normalized physical address. Repeated EXPBUF calls create new
+inodes, so inode equality is not a valid join. It rejects unknown/IOMMU mappings
+(physical address zero) rather than assuming bus addresses share a domain.
+It reports per-generation tickets/retirement and encoder submissions and rejects
 stale submissions, early reuse, retained faults, missing epochs and trace loss.
+QBUF is immediate reuse and is forbidden during encoding. `buf_cleanup` instead
+releases the capture queue's reference; an imported DMA-buf can legitimately keep
+that allocation alive. In that case retirement remains outstanding until the
+actual Wave5 completion/cancellation. A new generation still requires every old
+ticket retired and every encoder job finished. No submitted job is discarded to
+make a trace pass.
 Record from before STREAMON through complete encoder drain/capture cleanup;
 the a3 checklist details the isolated trace instance. It does not prove user FD
 closure or cover buffers copied into unrelated allocations.
@@ -107,3 +123,11 @@ This runs modules_install/depmod in the new stage, removes build/source symlinks
 copies Image/config/System.map/DTBs, and records a SHA256 manifest. Existing
 stages and archives are refused. It neither installs to the VM rootfs nor
 contacts a board. Retain vmlinux in the output directory for matching BTF.
+
+`trial-init.c` is the static PID 1 for the HDR trial payload. Compile it with
+`-DRELEASE=\"PRIVATE_RELEASE\"`. It validates the running release, build ID and
+root-owned payload before binding matching modules and private runtime files.
+The application/plugin targets are the paths used by the actual `one-kvm`
+service, not the alternate edge executable. Verify `/proc/MainPID/exe` and the
+mapped plugin hash before measuring. All binds disappear on reboot; the default
+boot files remain unchanged.

@@ -17,6 +17,7 @@
 
 ## 2026-10-30
 
+- [HDR2a5产品DMA恢复、逐代退休与4K60门禁](2026-10-30-hdr2a5-window.md) — kernel board video hdr application
 - [HDR2a3的VUI、色差、4K60与退休/产品恢复余项](2026-10-30-hdr2a3-window.md) — kernel board video hdr
 - [HDR2a2的MCP、4K60与VUI/色准余项](2026-10-30-hdr2a2-window.md) — kernel board video hdr
 - [MCP开启PQ与HDR2编码协商阻断](2026-10-30-hdr2-unified-window.md) — kernel board video hdr
