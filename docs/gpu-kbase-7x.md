@@ -1,8 +1,13 @@
 # VIM4 7.3 kbase 后备候选
 
+[r11实测](bringup/2026-10-31-kbase-r11-policy.md)已补齐live厂商跳档/软件PP保持；
+默认七轮DMA/CL SP达到5.15，API/内存/温控/服务级4K60并行通过。
+恢复dma-coherent的负向DT在原生CL触发0x51；保持默认删除。
+[待审集成清单](gpu-kbase-uhd5-integration.md)保留回退DHCP恢复限制，不自行推广或改默认。
+
 当前为[uhd4基线上的uhd5候选](gpu-kbase-uhd5.md)，正式内核基线8bca939d6bbd3。
-[r10实测](bringup/2026-10-31-kbase-r10-uhd5.md)已通过API/六类内存、mpgpu、温控和驱动基准并行；
-默认DMA中位数慢12.12%、CL SP低1.89%，服务级并行及dma-coherent二分未完成，产品门禁未过。
+[r10历史实测](bringup/2026-10-31-kbase-r10-uhd5.md)当时默认DMA中位数慢12.12%、CL SP低1.89%，
+服务级并行及dma-coherent二分未完成；其遗留项已由r11验证，不覆写旧证据。
 下列r6/r9记录保留其原始内核与测量范围。
 
 [r9队列首用](bringup/2026-10-31-kbase-r9-queue.md)：模块/ABI及339项宿主测试通过；
@@ -20,14 +25,14 @@ performance仅保留为显式调优选项，不能据此宣称产品性能/能�
 
 | 当前门禁 | 状态 |
 |---|---|
-| API查询/像素/基本执行 | r10为EGL1.5、GLES3.2、VK1.3.231、CL设备/C3.0，非CTS |
-| 64位heap | r10六类VK及CL路径通过，含default CMA |
-| 正常候选WARN/fault | 首次异步请求governor WARN已补前置依赖；修后r10所有已运行项零WARN/BUG/oops/fault |
-| 默认策略性能 | 七轮配对：DMA中位数与CL SP未达5.15；GLES/CL延迟通过，不以performance补成绩 |
-| thermal/并行 | GPU模拟96°C实测state0→1、800→666.7MHz并恢复；驱动基准59.9978fps；One-KVM服务级未完成 |
+| API查询/像素/基本执行 | r11为EGL1.5、GLES3.2、VK1.3.231、CL设备/C3.0，非CTS |
+| 64位heap | r11六类VK及CL路径通过，含default CMA |
+| 正常候选WARN/fault | r11默认DT零WARN/BUG/oops/fault；恢复dma-coherent的负向DT原生CL触发0x51，已否决 |
+| 默认策略性能 | r11同协议七轮四项中位数/P95均达5.15缓存，不以performance补成绩 |
+| thermal/并行 | 模拟96°C实测限频并恢复；驱动基准59.998fps、One-KVM实际4K60解码与连续GLES并发通过 |
 | 实际scanout / GBM→Wave5 | 新互操作能力未通过；非现有5.15默认视频路径，独立验收，不以PRIME handle成功替代 |
 
-默认性能及剩余门禁未过，保留候选，不提交可批准的产品路径方案或改变默认GPU。
+已提供待审集成清单；回退DHCP恢复限制、系统睡眠与额外互操作范围仍需审阅，不自行改变默认GPU。
 
 [r5窗口](bringup/2026-10-30-kbase-r5-window.md)：零fault，三API/六类内存与BO导入通过，
 GLES648 FPS、CL51µs/101.75 GFLOPS；DMA3.571ms落后5.15，GPU thermal绑定仍缺。

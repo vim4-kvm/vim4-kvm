@@ -17,6 +17,7 @@
 
 ## 2026-10-31
 
+- [kbase r11厂商live DVFS策略与配对复测](2026-10-31-kbase-r11-policy.md) — kernel gpu board video
 - [kbase uhd5、payload目录修复与默认性能门禁](2026-10-31-kbase-r10-uhd5.md) — kernel gpu board video
 - [kbase r6 DMA追平、平台二分与thermal绑定](2026-10-31-kbase-r6-window.md) — kernel gpu board video
 - [kbase r9外部模块验证与队列候选目录冲突](2026-10-31-kbase-r9-queue.md) — kernel gpu board audit
