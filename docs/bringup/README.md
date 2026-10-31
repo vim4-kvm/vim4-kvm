@@ -17,6 +17,8 @@
 
 ## 2026-10-31
 
+- [7.3透传r2首窗OUT无HPD/EDID阻塞、独立broker核心](2026-10-31-passthrough73-r2.md) — kernel board video audio deployment
+
 - [uhd4正式完整构建、短烟测与队列工具修正](2026-10-31-uhd4-formal-smoke.md) — kernel board video hdr npu gpu deployment
 - [uhd4正式准备与旧heavy锁阻塞，未上板](2026-10-31-uhd4-formal-preparation.md) — kernel deployment
 - [HDR2双向恢复分解、uhd4r3细采样与长尾门禁](2026-10-31-hdr2-recovery.md) — kernel board video hdr application npu gpu

@@ -1,6 +1,7 @@
 # 7.3 本地 HDMI 透传与声音：uhd4 起点
 
-本轮先完成离线候选资源门禁，不占板。P0 尚未通过，不改默认启动、正式版本锁或前端。
+r1先完成离线候选资源门禁；r2已申请首窗，因OUT无HPD/EDID停止候选启动。
+P0 尚未通过，不改默认启动、正式版本锁或前端。
 主仓基于 `470da38`，分支 `passthrough-73`；VM 独立源码
 `~/src/linux-7.3-passthrough-73` 同名分支基于 `8bca939d6bbd3`。
 One-KVM 基线 `db848a52`。内核已有实现与验收边界见
@@ -10,7 +11,7 @@ One-KVM 基线 `db848a52`。内核已有实现与验收边界见
 
 | 项目 | 5.15 产品证据 | uhd4 差距 / 所需实现 |
 |---|---|---|
-| 本地与远程共存 | [TEE、4K H.265 十分钟](bringup/2026-10-24-vendor-passthrough.md) | 正式 DT 为 M0 simpledrm，native VPU disabled；M3-video 的 VD1 reader/退休已在源码中，未验硬件。需标准 PRIME/KMS 显示消费者，共用 One-KVM 唯一 V4L2 所有者 |
+| 本地与远程共存 | [TEE、4K H.265 十分钟](bringup/2026-10-24-vendor-passthrough.md) | 正式 DT 为 M0 simpledrm，native VPU disabled；M3-video 的 VD1 reader/退休已在源码中，未验硬件。需独立常驻服务拥有唯一 V4L2 队列，用 PRIME/KMS 显示并向所选应用分发 |
 | 色彩 / 60fps | [颜色闭环](bringup/2026-10-24-display-color-loop.md)有短样本；[失败交付](bringup/2026-10-24-display-color-user-handoff.md)不能算通过 | M3-video 开关未启用；颜色不能只靠压缩采集卡。历史 RX ERROR 后有独立修复，仍须验当前 uhd4 + native 显示 |
 | 音频 | [EXTN→SPDIF](bringup/2026-10-25-vendor-passthrough-audio.md)、[xrun 原地恢复](bringup/2026-10-25-passthrough-audio-recovery.md) | M2/M3 有 TX 997Hz 与 RX/TX RUNNING 历史；M0 无 TX。7.3 RX PCM 不能被桥与 One-KVM重复独占，需在唯一采集者分发；TX 走 ASoC/hdmi-codec/ELD |
 | 跟随 / HPD | [1080p 真时序](bringup/2026-10-25-vendor-passthrough-1080p.md)、[HPD](bringup/2026-10-24-vendor-passthrough-hpd.md) | KMS TEST_ONLY + source-change / connector 恢复；不重写 RX EDID，不周期 modeset；[抖动黑屏修复](bringup/2026-10-24-vendor-passthrough-blackout.md)的中值/滞回语义需保留 |
@@ -18,6 +19,37 @@ One-KVM 基线 `db848a52`。内核已有实现与验收边界见
 | 性能 | 有原始/扫描计数与远程约60fps，尚无同条件光学延迟全量对照 | 分报帧就绪→提交→锁存→退休、接收 fps/间隔尾部、CPU/CMA、理论带宽；压缩采集卡与软件时间不冒充 glass-to-glass |
 
 ## 资源审计与路线
+
+### r2 架构决定：独立常驻采集与分发服务
+
+硬约束：四款应用任选、零远程客户端、编码停止及切换应用都不能停本地透传。
+撤销r1“把显示消费者放进One-KVM”的产品接入方案。推荐(b)：独立常驻服务拥有唯一
+V4L2队列和KMS提交，KVM应用只是可断开的dma-buf消费者；manager只控制本地显示/声音，
+不随应用服务生命周期停止采集。没有本地/远程消费者时才允许停采集。
+
+| 标准 | (a) 内核VDIN→VD1所有权 | (b) 独立用户态V4L2/PRIME服务（推荐） |
+|---|---|---|
+| 功能独立性 | 可做到，但必须让VDIN脱离vb2应用STREAMON/STREAMOFF；现有VD1 reader/退休只保护KMS导入，并不是内核自动路由 | 本地显示订阅长期存在；四款应用订阅/退订不动采集队列，应用切换不切本地显示 |
+| 就绪→锁存 | 可省DQBUF/用户态调度，理论较低；仍需等下一vblank，不能省安全退休 | 增加DQBUF/事件循环/atomic提交调度；不整帧复制，不刻意多等一帧，需量化分布后才与5.15比较 |
+| CMA | 内核常驻池与vb2导出生命周期重构，若另建池会超过预算 | 沿用一个≤192MiB池，所有订阅共用导出；pending最多一帧，已提交帧不能靠超时回收；14块能否容纳扫描/退休/编码仍须压力实测 |
+| 上游与维护 | media到DRM内部耦合、跨子系统锁/热拔插/模块卸载，缺标准自动路由ABI；可能变成新的VFM私有框架 | V4L2/dma-buf/DRM标准内核ABI；服务IPC是用户态可版本化协议，维护额外进程与各应用适配，但避免内核私有跨栈路由 |
+| HDR2/hdr10 | 两条采集/映射路径与显示调度强耦合；需同时改采集所有权 | 服务保留原始色彩/位深及generation；HDR2 SDR和未来hdr10高位深是不同stream描述，不给SDR贴HDR标签；高位深VD1仍待实现 |
+
+原[设计](hdmi-passthrough-design.md)事实上已画出单一采集broker→DRM/Wave5，
+不是已实现的内核VDIN→VD1自动路线。沿用其reader/退休合同，选择用户态broker作为所有者。
+服务初期先实现有界租约核心与确定性离线测试，后续接真实DQBUF/EXPBUF、SCM_RIGHTS、
+KMS/fence等待及systemd；不把纯核心测试称为硬件实现。
+
+应用改动面（在各自新分支实施，当前不改其它工作树）：
+
+- NanoKVM：7.3原生采集/GStreamer输入改接broker source；编码及远程会话保持应用所有。
+- JetKVM：同样替换7.3视频输入适配；重配仅更新订阅，不能STREAMOFF主队列。
+- One-KVM：将V4L2输入换为导入broker dma-buf的GStreamer source，归还由GstBuffer最终引用与编码读取完成共同控制，保留UU/录屏共享编码。
+- PiKVM/uStreamer：替换7.3V4L2抓帧入口，JPEG/H.26x消费者从broker拿帧；停止推流只退订。
+
+优先共用一个GStreamer source给前三款；PiKVM使用同一小型IPC客户端库。
+四款音频同理改接独立音频所有者，PCM源不能被独占重复打开。5.15路径不变。
+后续API需同时报告capture服务、本地实际扫描、远程订阅，不能把进程active等同于透传running。
 
 - uhd4 `sources.toml` 选 `display-m0.dtb`。M1→M2→M3-video 的显式 profile
   才关闭 simplefb、启用 native ENC2、split-vcbus、VD1 和独立 TX 声卡；不能只改 Kconfig。
@@ -92,3 +124,12 @@ VDIN、HDR资源/池预算、color、buffer-layout、export-identity、source-ev
 4. 产品消费者实现后才做双路径连续帧、逐行一致性、scanout退休/fault pin与零拷贝计数；
    音频只查RX/TX RUNNING、ELD/Audio InfoFrame与计数器，不启动可听测试音。
 5. 每个窗口末 `return-baseline` 核5.15、启动文件哈希、服务和UDC；HDR若有布置必须关并截图确认。
+
+## r2进度
+
+[首窗记录](bringup/2026-10-31-passthrough73-r2.md)保存OUT断开读回及未启动边界。
+[阶段2核心与适配合同](../packaging/passthrough73/README.md)已实现有界分发、
+disconnect后保留硬件读者、跨代拒绝及fault pin，8项确定性测试通过。
+每消费者按in-flight上限+1 pending保守计槽，另留2块采集工作槽；
+One-KVM现有12下游lease不能再直接叠加显示，14/16池需降低远程持帧预算后再接适配层。
+真实V4L2/KMS、SCM_RIGHTS IPC、四应用与音频适配仍未实现；不宣称已能常驻透传。

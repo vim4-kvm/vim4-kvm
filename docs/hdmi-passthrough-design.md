@@ -4,7 +4,7 @@
 基于正式 uhd4 的产品对齐差距、资源审计和新阶段门禁见 [7.3 透传计划](passthrough-73-plan.md)。
 前提是 [颜色闭环](display-color-vendor.md) 已在目标格式/量化范围下通过，且真实源与自环
 持续采集稳定；模式切换、零拷贝和音频不能掩盖颜色或采集失败。
-目标是同一 RX/VDIN NV12 帧同时送 DRM VD1 与 One-KVM，避免整帧 CPU 复制。
+目标是同一 RX/VDIN NV12 帧同时送 DRM VD1 与所选KVM应用，避免整帧 CPU 复制。
 
 ## 数据流与缓冲所有权
 
@@ -18,8 +18,8 @@ flowchart LR
 ```
 
 现有 VDIN 队列只有一个流所有者，不能由透传守护进程和 One-KVM 各自打开并竞争
-REQBUFS/STREAMON。优先在现有 One-KVM 原生采集后端增加显示消费者，共用已经导出的
-DMA-buf 和帧生命周期；独立服务需求确定后才拆出采集 broker。管理器负责启停及状态，
+REQBUFS/STREAMON。采集broker常驻于独立服务，共用已经导出的
+DMA-buf 和帧生命周期；四款应用、无客户端及切换应用时本地显示都须持续。管理器负责启停及状态，
 不直接操作视频 fd、寄存器或创建第二个采集队列。
 
 一帧只有在 VDIN DQBUF 后才交给消费者。保存 fd、generation、sequence、timestamp、
