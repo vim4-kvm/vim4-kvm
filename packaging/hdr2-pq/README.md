@@ -6,6 +6,27 @@ Apply only `0001` through `0006` here, in order with `git am`, on kernel
 The final tree is identical to a5-tested `851153f2f529f`:
 **6fdb600add9ca1f0ed8bf12266bee9fee8d6debf**.
 
+The recovery candidate additionally applies `0007` through `0009` after these six
+topics. `0007` seeds the source monitor after an admitted STREAMON, preventing
+cached loss from producing an immediate second recovery event. `0008` samples
+present-cable recovery at 50ms while preserving three matching samples,
+PLL/PCS checks, DMA exclusion and the 250ms idle/torn-snapshot cadence.
+`0009` wakes that qualification immediately after the last DMA lease retires,
+and excludes rearming after link shutdown. Their source/stream and link-recovery
+fixtures exercise these lifecycle boundaries. This extended tree differs
+intentionally from the exact a5 tree; its acceptance is tracked separately from
+the six-topic equivalence proof. The final tree is
+`0ce3bf8d9a1e57a97bdbaffa67610eceaddba579` at `8bca939d6bbd3`.
+It remains a feature candidate: median recovery improved, but the PQ-to-SDR tail
+failed the paired acceptance gate in the [recovery window](../../docs/bringup/2026-10-31-hdr2-recovery.md).
+
+`video-recovery.mjs` defaults to 250ms statistics; `HDR2_SAMPLE_MS=50` selects
+fine sampling without changing host networking. It also reports keyframe count,
+packet arrival and decoder CPU totals. After restarting One-KVM, wait for a real
+4K `framesDecoded` increase before starting any separately authorized HDR toggle.
+An offer error, closed session, codec change or external viewer invalidates the
+affected timing interval. HTTP/MCP availability alone does not prove decoding.
+
 | Topic | Commit | Tests |
 |---|---|---|
 | HDR profiles and output contract | 05585292e7c03 | HLG LUT/admission, precise PQ gamut, signed offsets, 709/limited NV12 and receiver fixtures |

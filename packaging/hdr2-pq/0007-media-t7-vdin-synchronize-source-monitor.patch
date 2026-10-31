@@ -1,0 +1,145 @@
+From 21e3174a3323ff0c3f2fd6c0a6c373e10052ffd8 Mon Sep 17 00:00:00 2001
+From: localhost-copilot <318096335+localhost-copilot@users.noreply.github.com>
+Date: Sat, 31 Oct 2026 16:49:56 +0800
+Subject: [PATCH] media: t7-vdin: synchronize source monitor after qualified
+ stream start
+
+STREAMON has already acquired and validated the new receiver lease.
+Seed the source monitor from that admitted timing while serializing
+with status polling, so cached loss does not immediately trigger
+another negotiation. Preserve events for subsequent source changes
+and leave capture qualification and buffer retirement intact.
+
+Signed-off-by: localhost-copilot <318096335+localhost-copilot@users.noreply.github.com>
+---
+ .../platform/amlogic/t7-hdmirx/t7-vdin-test.c | 22 +++++++++++++++++++
+ .../amlogic/t7-hdmirx/test_source_events.py   | 19 +++++++++++++++-
+ .../platform/amlogic/t7-hdmirx/test_stream.py |  9 ++++++++
+ 3 files changed, 49 insertions(+), 1 deletion(-)
+
+diff --git a/drivers/media/platform/amlogic/t7-hdmirx/t7-vdin-test.c b/drivers/media/platform/amlogic/t7-hdmirx/t7-vdin-test.c
+index 5da7b72edb878..e9c7c4cc1cf7b 100644
+--- a/drivers/media/platform/amlogic/t7-hdmirx/t7-vdin-test.c
++++ b/drivers/media/platform/amlogic/t7-hdmirx/t7-vdin-test.c
+@@ -1003,11 +1003,31 @@ static void t7_vdin_buffer_queue(struct vb2_buffer *vb)
+ 	wake_up(&vdin->buffer_wait);
+ }
+ 
++/* video_lock serializes the monitor with the already qualified new lease.
++ * Otherwise its cached loss becomes a second source-change after STREAMON,
++ * making userspace retire and negotiate the very same recovered source again.
++ */
++static void t7_vdin_source_resumed(struct t7_vdin *vdin)
++{
++	struct v4l2_dv_timings timings;
++	struct v4l2_fract interval;
++
++	if (t7_hdmirx_query_timings(vdin->receiver, &timings, &interval))
++		return;
++	vdin->source_seen = true;
++	vdin->source_locked = true;
++	vdin->source_width = timings.bt.width;
++	vdin->source_height = timings.bt.height;
++	vdin->source_period = interval.denominator ?
++		div_u64((u64)interval.numerator * 1000000, interval.denominator) : 0;
++}
++
+ static int t7_vdin_start_streaming(struct vb2_queue *queue, unsigned int count)
+ {
+ 	struct t7_vdin *vdin = vb2_get_drv_priv(queue);
+ 	int ret;
+ 
++	mutex_lock(&vdin->video_lock);
+ 	mutex_lock(&vdin->lock);
+ 	ret = vdin->faulted ? -EIO :
+ 		t7_hdmirx_stream_get(vdin->receiver, vdin->input_width, vdin->input_height);
+@@ -1017,6 +1037,7 @@ static int t7_vdin_start_streaming(struct vb2_queue *queue, unsigned int count)
+ 	}
+ 	if (!ret) {
+ 		vdin->receiver_lease = true;
++		t7_vdin_source_resumed(vdin);
+ 		vdin->generation++;
+ 		t7_vdin_trace_buffer(vdin, NULL, 6);
+ 		vdin->streaming = true;
+@@ -1030,6 +1051,7 @@ static int t7_vdin_start_streaming(struct vb2_queue *queue, unsigned int count)
+ 		}
+ 	}
+ 	mutex_unlock(&vdin->lock);
++	mutex_unlock(&vdin->video_lock);
+ 	if (ret)
+ 		t7_vdin_return_buffers(vdin, VB2_BUF_STATE_QUEUED);
+ 	return ret;
+diff --git a/drivers/media/platform/amlogic/t7-hdmirx/test_source_events.py b/drivers/media/platform/amlogic/t7-hdmirx/test_source_events.py
+index b954de6d73f00..15c9f819c939b 100644
+--- a/drivers/media/platform/amlogic/t7-hdmirx/test_source_events.py
++++ b/drivers/media/platform/amlogic/t7-hdmirx/test_source_events.py
+@@ -5,7 +5,8 @@ import subprocess
+ import tempfile
+ 
+ source = Path(__file__).with_name('t7-vdin-test.c').read_text()
+-functions = source[source.index('static void t7_vdin_source_work'):
++functions = source[source.index('static void t7_vdin_source_resumed'):
++                   source.index('static int t7_vdin_start_streaming')] + source[source.index('static void t7_vdin_source_work'):
+                    source.index('static int t7_vdin_querycap')]
+ fixture = r'''
+ #define t7_vdin_trace_buffer(...) ((void)0)
+@@ -77,6 +78,22 @@ int main(void) {
+     frame_period=41667; t7_vdin_source_work(&receiver.source_work.work); assert(events==6);
+     frame_period=16667; t7_vdin_source_work(&receiver.source_work.work); assert(events==7);
+     assert(!receiver.video_lock.held && receiver.source_changes==events);
++    /* Loss and reacquisition belong to one reconfiguration. STREAMON has
++     * already qualified the new source; do not immediately tear it down.
++     */
++    input_error=-ENOLINK; t7_vdin_source_work(&receiver.source_work.work);
++    unsigned int changes=events;
++    input_error=0; mutex_lock(&receiver.video_lock);
++    t7_vdin_source_resumed(&receiver); mutex_unlock(&receiver.video_lock);
++    t7_vdin_source_work(&receiver.source_work.work); assert(events==changes);
++    /* A subsequent real change still has to notify the consumer. */
++    width=1920; t7_vdin_source_work(&receiver.source_work.work);
++    assert(events==changes+1);
++    input_error=-ENOLINK; t7_vdin_source_work(&receiver.source_work.work);
++    changes=events; t7_vdin_source_resumed(&receiver);
++    assert(!receiver.source_locked);
++    input_error=0; t7_vdin_source_work(&receiver.source_work.work);
++    assert(events==changes+1);
+     t7_vdin_source_stop(&receiver); assert(canceled==1);
+     puts("Source monitor: real mode/loss/recovery events, stable input and torn-counter retry passed");
+ }
+diff --git a/drivers/media/platform/amlogic/t7-hdmirx/test_stream.py b/drivers/media/platform/amlogic/t7-hdmirx/test_stream.py
+index 7d6ba0c9f6899..e0bb1640c32e7 100644
+--- a/drivers/media/platform/amlogic/t7-hdmirx/test_stream.py
++++ b/drivers/media/platform/amlogic/t7-hdmirx/test_stream.py
+@@ -17,6 +17,8 @@ hardware = source[source.index('static void __iomem *t7_vdin_reg'):source.index(
+ stream = source[source.index('static struct t7_vdin_buffer *t7_vdin_next_buffer(struct t7_vdin *vdin)\n{'):
+                 source.index('static const struct vb2_ops t7_vdin_queue_ops')]
+ prefix = r'''
++#include <linux/videodev2.h>
++#define div_u64(a,b) ((a)/(b))
+ #define t7_vdin_trace_buffer(...) ((void)0)
+ #define t7_vdin_record_hdr_luts(...) ((void)0)
+ #define t7_vdin_complete_buffer(v,b,s) vb2_buffer_done(&(b)->vb.vb2_buf,s)
+@@ -208,6 +210,12 @@ static bool t7_hdmirx_stream_is_yuv(void *dev) { (void)dev; return false; }
+ static bool t7_hdmirx_stream_needs_yuv444_swap(void *dev) { (void)dev; return false; }
+ static bool t7_hdmirx_stream_is_full_range(void *dev) { (void)dev; return true; }
+ static bool t7_hdmirx_stream_is_bt601(void *dev) { (void)dev; return false; }
++static int t7_hdmirx_query_timings(void *dev, struct v4l2_dv_timings *mode,
++                                 struct v4l2_fract *interval) {
++    (void)dev;
++    mode->bt.width=3840; mode->bt.height=2160;
++    *interval=(struct v4l2_fract){1,60}; return 0;
++}
+ static int t7_hdmirx_stream_get(void *dev, unsigned int width, unsigned int height) {
+     int ret=t7_hdmirx_check_video(dev);
+     if (!ret) receiver_users++;
+@@ -279,6 +287,7 @@ static void setup(struct t7_vdin_buffer b[4]) {
+     memset(registers,0,sizeof(registers)); memset(cpu_owned,0,sizeof(cpu_owned));
+     pthread_mutex_init(&receiver.lock.native,NULL); pthread_mutex_init(&receiver.queue_lock,NULL);
+     pthread_mutex_init(&receiver.irq_lock,NULL);
++    pthread_mutex_init(&receiver.video_lock.native,NULL);
+     init_wait(&receiver.buffer_wait); init_wait(&receiver.done.wait);
+     receiver.queued.next=receiver.queued.prev=&receiver.queued;
+     receiver.queue.priv=&receiver; receiver.queue.mem_ops=&mem_ops; receiver.regs=registers;
+-- 
+2.43.0
+

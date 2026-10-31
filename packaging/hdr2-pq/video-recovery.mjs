@@ -3,8 +3,10 @@
 const { chromium } = await import(process.env.PLAYWRIGHT_MODULE || 'playwright');
 const origin = new URL(process.argv[2] || 'http://127.0.0.1:18084');
 const seconds = Number(process.argv[3] || 180);
+const sampleMs = Number(process.env.HDR2_SAMPLE_MS || 250);
 const literalHostCandidates = process.argv.includes('--literal-host-candidates');
 if (!Number.isFinite(seconds) || seconds < 1 || seconds > 600) throw Error('duration must be 1..600 seconds');
+if (!Number.isFinite(sampleMs) || sampleMs < 50 || sampleMs > 1000) throw Error('HDR2_SAMPLE_MS must be 50..1000');
 // Opt-in for isolated LAN diagnostics when the peer cannot resolve .local
 // candidates. This changes only this owned browser process, not host networking.
 const b=await chromium.launch({channel:'chrome',headless:true,
@@ -37,11 +39,11 @@ try {
   stats:[...(await window.pc.getStats()).values()].filter(x=>
    ['candidate-pair','local-candidate','remote-candidate','transport','inbound-rtp'].includes(x.type))
  }))));}
- for(let i=0;i<seconds*4;i++){
+ for(let i=0;i<seconds*1000/sampleMs;i++){
   const stats=await p.evaluate(async()=>{
-   const rows=[];for(const r of(await window.pc.getStats()).values())if(r.type==='inbound-rtp'&&r.kind==='video')rows.push({frameWidth:r.frameWidth,frameHeight:r.frameHeight,framesDecoded:r.framesDecoded,framesDropped:r.framesDropped,packetsLost:r.packetsLost,freezeCount:r.freezeCount,bytesReceived:r.bytesReceived});
+   const rows=[];for(const r of(await window.pc.getStats()).values())if(r.type==='inbound-rtp'&&r.kind==='video')rows.push({frameWidth:r.frameWidth,frameHeight:r.frameHeight,framesDecoded:r.framesDecoded,keyFramesDecoded:r.keyFramesDecoded,totalDecodeTime:r.totalDecodeTime,lastPacketReceivedTimestamp:r.lastPacketReceivedTimestamp,framesDropped:r.framesDropped,packetsLost:r.packetsLost,freezeCount:r.freezeCount,bytesReceived:r.bytesReceived});
    return {at:Date.now(),video:rows};
-  });console.log(JSON.stringify(stats));await p.waitForTimeout(250);
+  });console.log(JSON.stringify(stats));await p.waitForTimeout(sampleMs);
  }
 } finally {
  await p.evaluate(async()=>{if(window.pc)window.pc.close();if(window.sid)await fetch('/api/webrtc/close',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({session_id:window.sid})});}).catch(()=>{});

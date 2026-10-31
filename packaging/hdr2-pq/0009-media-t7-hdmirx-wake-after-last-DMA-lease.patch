@@ -1,0 +1,128 @@
+From 8bca939d6bbd3e4d91e9f23b812e920172c99b3d Mon Sep 17 00:00:00 2001
+From: localhost-copilot <318096335+localhost-copilot@users.noreply.github.com>
+Date: Sat, 31 Oct 2026 17:46:09 +0800
+Subject: [PATCH] media: t7-hdmirx: wake recovery after the last DMA lease
+ retires
+
+A lost source cannot requalify its PHY while capture owns the link.
+When that final owner releases it, start a fresh three-sample window
+immediately instead of waiting up to another idle-monitor period.
+Do not change any DMA stop, clock stability or PLL admission check.
+
+Serialize rearming with link shutdown so a late lease close cannot
+queue work after cancellation. Exercise final-owner wakeup, complete
+qualification and close-after-stop in the receiver lifecycle fixture.
+
+Signed-off-by: localhost-copilot <318096335+localhost-copilot@users.noreply.github.com>
+---
+ .../platform/amlogic/t7-hdmirx/t7-hdmirx.c    | 18 +++++++++++++++++-
+ .../platform/amlogic/t7-hdmirx/test_link.py   | 19 +++++++++++++++++--
+ 2 files changed, 34 insertions(+), 3 deletions(-)
+
+diff --git a/drivers/media/platform/amlogic/t7-hdmirx/t7-hdmirx.c b/drivers/media/platform/amlogic/t7-hdmirx/t7-hdmirx.c
+index d53e3ef25963b..694c69436534e 100644
+--- a/drivers/media/platform/amlogic/t7-hdmirx/t7-hdmirx.c
++++ b/drivers/media/platform/amlogic/t7-hdmirx/t7-hdmirx.c
+@@ -247,6 +247,7 @@ struct t7_hdmirx_link {
+ 	bool previous_uhd;
+ 	bool ready;
+ 	bool configured;
++	bool stopping;
+ };
+ 
+ struct t7_hdmirx {
+@@ -2078,6 +2079,7 @@ EXPORT_SYMBOL_GPL(t7_hdmirx_stream_is_bt601);
+ void t7_hdmirx_stream_put(struct device *dev)
+ {
+ 	struct t7_hdmirx *rx = dev_get_drvdata(dev);
++	bool recover;
+ 
+ 	mutex_lock(&rx->link->lock);
+ 	if (WARN_ON(!rx->link->users)) {
+@@ -2085,6 +2087,16 @@ void t7_hdmirx_stream_put(struct device *dev)
+ 		return;
+ 	}
+ 	rx->link->users--;
++	recover = !rx->link->users && !rx->link->ready && !rx->link->stopping;
++	if (recover) {
++		/* The last DMA owner is gone. Start a fresh qualification window
++		 * now rather than waiting for the idle monitor's next tick.
++		 */
++		rx->link->stable_samples = 0;
++		rx->link->previous_cable = 0;
++	}
++	if (recover)
++		mod_delayed_work(system_wq, &rx->link->work, 0);
+ 	mutex_unlock(&rx->link->lock);
+ }
+ EXPORT_SYMBOL_GPL(t7_hdmirx_stream_put);
+@@ -2267,14 +2279,18 @@ static void t7_hdmirx_link_work(struct work_struct *work)
+ 	 */
+ 	delay_ms = !link->ready && !link->users && link->previous_cable &&
+ 		ret != -EAGAIN ? 50 : 250;
++	if (!link->stopping)
++		schedule_delayed_work(&link->work, msecs_to_jiffies(delay_ms));
+ 	mutex_unlock(&link->lock);
+-	schedule_delayed_work(&link->work, msecs_to_jiffies(delay_ms));
+ }
+ 
+ static void t7_hdmirx_link_stop(void *data)
+ {
+ 	struct t7_hdmirx_link *link = data;
+ 
++	mutex_lock(&link->lock);
++	link->stopping = true;
++	mutex_unlock(&link->lock);
+ 	cancel_delayed_work_sync(&link->work);
+ 	WRITE_ONCE(link->ready, false);
+ }
+diff --git a/drivers/media/platform/amlogic/t7-hdmirx/test_link.py b/drivers/media/platform/amlogic/t7-hdmirx/test_link.py
+index b908cfb0df157..f527d6210a876 100644
+--- a/drivers/media/platform/amlogic/t7-hdmirx/test_link.py
++++ b/drivers/media/platform/amlogic/t7-hdmirx/test_link.py
+@@ -54,10 +54,16 @@ static void t7_hdmirx_update_drm(struct t7_hdmirx *rx) { (void)rx; }
+ static bool signal_valid, source_present, hdmi2 = true, pll_fail, late_alignment, lose_during_wait;
+ static bool unsupported_signal, unsupported_color, unstable_timings;
+ static unsigned int pll_calls, pcs_calls, queued, canceled, last_delay, meter_resets;
+-static unsigned int profile_changes;
++static unsigned int profile_changes, recovery_wakes;
++static void *system_wq;
+ static u32 meter_reset;
+ static u32 cable_hz;
+ static struct t7_hdmirx receiver;
++static void mod_delayed_work(void *queue, struct delayed_work *work, unsigned int delay) {
++    (void)queue; (void)work;
++    assert(receiver.link->lock.held && !receiver.link->users && delay==0);
++    recovery_wakes++;
++}
+ static int t7_hdmirx_read_color(struct t7_hdmirx *rx, struct t7_hdmirx_color *c) {
+     (void)rx; *c=(struct t7_hdmirx_color){.depth=8,.full=1}; return unsupported_color?-ERANGE:0;
+ }
+@@ -177,7 +183,11 @@ int main(void)
+     signal_valid = false; tick(&link, 10);
+     assert(!link.ready && pll_calls == 1 && meter_resets == resets_before);
+     t7_hdmirx_stream_put(&dev); tick(&link, 10); assert(pll_calls == 1);
+-    t7_hdmirx_stream_put(&dev); tick(&link, 4); assert(link.ready && pll_calls == 2);
++    assert(!recovery_wakes);
++    t7_hdmirx_stream_put(&dev);
++    assert(recovery_wakes==1 && !link.previous_cable && !link.stable_samples);
++    tick(&link, 3); assert(!link.ready && pll_calls==1);
++    tick(&link, 1); assert(link.ready && pll_calls == 2);
+     signal_valid = false; source_present = false; tick(&link, 10);
+     assert(!link.ready && !link.configured && !link.stable_samples && pll_calls == 2);
+     source_present = true; hdmi2 = false; tick(&link, 10); assert(pll_calls == 2);
+@@ -241,6 +251,11 @@ int main(void)
+     unstable_timings=false; tick(&link,1); assert(link.ready);
+     t7_hdmirx_link_stop(&link);
+     assert(canceled == 1 && !link.ready);
++    unsigned int wakes_before_stop=recovery_wakes, queued_before_stop=queued;
++    link.users=1;
++    t7_hdmirx_stream_put(&dev);
++    t7_hdmirx_link_work(&link.work.work);
++    assert(recovery_wakes==wakes_before_stop && queued==queued_before_stop);
+     puts("Receiver recovery: absent/delayed source, DMA leases, PLL failure and late alignment passed");
+ }
+ '''
+-- 
+2.43.0
+

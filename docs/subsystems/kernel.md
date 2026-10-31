@@ -2,7 +2,8 @@
 
 VDIN HDR2主题候选uhd4完整构建见[集成门禁](../bringup/2026-10-31-hdr2-uhd4-gate.md)，
 [新PQ窗口](../bringup/2026-10-31-hdr2-mcp-ice-pq.md)已恢复MCP与接收、通过PQ/DMA/VUI/4K60；
-PQ→SDR恢复比5.15慢约0.5–0.77秒，尚未推广正式分支。HLG已实现，无真实源未验。
+[uhd4r3恢复修复](../bringup/2026-10-31-hdr2-recovery.md)把双向中位数拉到约1.24秒，
+但PQ→SDR仍有1.81秒长尾，尚未推广正式分支。HLG已实现，无真实源未验。
 
 7.3通用内存/拷贝与锁调试配置差异、离线微基准及下一窗口见[内存拷贝审查](../memory-copy-audit.md)。
 

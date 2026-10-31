@@ -89,6 +89,7 @@ PiKVM 源码在 `kvmd/`，VIM4 视频后端在 `ustreamer/`，部署约定见 `k
 
 | 触发条件 / 错误 | 原因与正确做法 | 验证入口 |
 |---|---|---|
+| 重启后切HDR，外部UU切codec后仍输出接收统计 | 先验4K framesDecoded推进；codec切换可关闭会话，之后的冻结不能算恢复时间；MCP窗口逐屏确认 | [恢复细采样](../bringup/2026-10-31-hdr2-recovery.md) |
 | 沿用上游设备固件代码，在 Ubuntu 上以 khadas 运行时功能静默失败 | 设备固件默认 root 与自带工具（写 /proc/sys、tailscale set --login-server、reboot）。逐条走一遍特权路径，改经 sudo 助手；只有单元测试不足以发现 | kvm/VIM4.md、tools/jetkvm-smoke.mjs |
 | 两个 KVM 共用后端 8081，切换后绑定失败或仍显示旧界面 | systemd Conflicts 不保证旧进程退出后才启动新进程。助手先等待 stop 完成再启动，失败时不启动替代程序；管理器链接区分应用，NanoKVM 首页禁用缓存 | vim4-manager/deploy/test_helper.py、tools/kvm-switch-check.mjs |
 | PiKVM 原有视频能播放，但重新连接找不到共享内存 | 普通用户服务不能依赖登录会话的 IPC 生命周期。整组服务使用私有 /dev/shm，验证音频启停与 MJPEG/WebRTC 重连 | kvmd/deploy/vim4/vim4-pikvm.service、logs/pikvm/full-smoke-rate.log |
