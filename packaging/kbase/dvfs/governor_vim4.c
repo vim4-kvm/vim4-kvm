@@ -10,6 +10,12 @@ static unsigned int period_ms = 100;
 module_param(period_ms, uint, 0444);
 MODULE_PARM_DESC(period_ms, "T7 GPU load sampling period in milliseconds");
 static unsigned int keep_count = 5;
+static unsigned int boost_level = 4;
+static unsigned int boost_threshold = 210;
+module_param(boost_level, uint, 0444);
+module_param(boost_threshold, uint, 0444);
+MODULE_PARM_DESC(boost_level, "Vendor live DT def_clk fallback, ascending OPP index");
+MODULE_PARM_DESC(boost_threshold, "Vendor burst jump threshold on 0..255 scale");
 module_param(keep_count, uint, 0444);
 MODULE_PARM_DESC(keep_count, "Low-load samples to hold after a frequency change");
 static unsigned int up_threshold[5] = { 76, 120, 120, 120, 255 };
@@ -21,6 +27,8 @@ MODULE_PARM_DESC(down_threshold, "Ascending OPP down thresholds on vendor 0..255
 
 struct vim4_state {
 	unsigned int hold;
+	/* Vendor PP setters are hardware no-ops, but this count affects DVFS. */
+	unsigned int logical_pp;
 };
 
 static unsigned long vim4_frequency(struct devfreq *df, unsigned int level)
@@ -36,6 +44,7 @@ static int vim4_target(struct devfreq *df, unsigned long *frequency)
 	struct vim4_state *state = df->governor_data;
 	struct devfreq_dev_status *status;
 	unsigned int level = 0, next, load;
+	bool changed = false;
 	int err = devfreq_update_stats(df);
 
 	if (err)
@@ -48,17 +57,31 @@ static int vim4_target(struct devfreq *df, unsigned long *frequency)
 		level++;
 	next = level;
 	if (load >= up_threshold[level]) {
-		if (level < 4)
-			next++;
+		if (level < 4) {
+			next = level < boost_level && load > boost_threshold ?
+				boost_level : level + 1;
+			changed = true;
+		}
+		if (state->logical_pp < 4 && !changed) {
+			state->logical_pp++;
+			changed = true;
+		}
 	} else if (load <= down_threshold[level]) {
 		if (state->hold)
 			state->hold--;
-		else if (level)
+		else if (state->logical_pp > 1 &&
+			 load * state->logical_pp <
+			 up_threshold[level] * (state->logical_pp - 1)) {
+			state->logical_pp--;
+			changed = true;
+		} else if (level) {
 			next--;
+			changed = true;
+		}
 	} else {
 		state->hold = keep_count;
 	}
-	if (next != level)
+	if (changed)
 		state->hold = keep_count;
 	*frequency = vim4_frequency(df, next);
 	return 0;
@@ -73,7 +96,13 @@ static int vim4_event(struct devfreq *df, unsigned int event, void *data)
 		df->governor_data = kzalloc_obj(struct vim4_state);
 		if (!df->governor_data)
 			return -ENOMEM;
+		((struct vim4_state *)df->governor_data)->logical_pp = 1;
 		df->profile->polling_ms = period_ms;
+		/*
+		 * Vendor metrics use a periodic hrtimer even when CPUs are idle.
+		 * Deferrable polling can leave a short burst with stale idle stats.
+		 */
+		df->profile->timer = DEVFREQ_TIMER_DELAYED;
 		devfreq_monitor_start(df);
 		break;
 	case DEVFREQ_GOV_STOP:
@@ -105,7 +134,7 @@ static int __init vim4_governor_init(void)
 {
 	unsigned int i;
 
-	if (!period_ms)
+	if (!period_ms || boost_level > 4 || boost_threshold > 255)
 		return -EINVAL;
 	for (i = 0; i < 5; i++)
 		if (up_threshold[i] > 255 || down_threshold[i] > up_threshold[i])
