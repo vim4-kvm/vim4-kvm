@@ -1,0 +1,16 @@
+#!/bin/sh
+# Candidate-only launcher; the bundle is staged beside this file.
+set -eu
+bundle=$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)
+if [ -z "${VK_DRIVER_FILES:-}${VK_ICD_FILENAMES:-}" ]; then
+    echo 'Set VK_DRIVER_FILES to the qualified kbase or PanVK ICD before starting the HDR candidate.' >&2
+    exit 2
+fi
+test -x "$bundle/one-kvm"
+test -r "$bundle/gstreamer-1.0/libgstvfmcap.so"
+test -r "$bundle/gstreamer-1.0/libgstvideo4linux2.so"
+export VIM4_VIDEO_BACKEND=wave5 VIM4_SHARED_DATA=1
+export GST_PLUGIN_PATH="$bundle/gstreamer-1.0:/usr/lib/vim4-kvm/mainline-gstreamer-1.0"
+export GST_REGISTRY="${XDG_CACHE_HOME:-/var/lib/one-kvm}/gstreamer-hdr10r3-registry.bin"
+unset VIM4_SECONDARY_HDMI_CAPTURE GST_V4L2_PREFER_CONTIGUOUS LD_LIBRARY_PATH
+exec "$bundle/one-kvm" --data-dir /var/lib/one-kvm --address 127.0.0.1 --port 8081 --auth-mode managed "$@"

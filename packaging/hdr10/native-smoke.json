@@ -1,0 +1,39 @@
+{
+  "seconds": 30.002032749999998,
+  "fps": 59.929362180070775,
+  "size": [
+    3840,
+    2160
+  ],
+  "frames_decoded": 1798,
+  "frames_dropped": 0,
+  "freeze_count": 0,
+  "sdp_profile": 2,
+  "sps_vui": {
+    "general_profile_idc": 2,
+    "bit_depth_luma_minus8": 2,
+    "bit_depth_chroma_minus8": 2,
+    "video_full_range_flag": 0,
+    "colour_primaries": 9,
+    "transfer_characteristics": 16,
+    "matrix_coefficients": 9
+  },
+  "sei_types": [
+    137,
+    144
+  ],
+  "sei_matches_hdmi": true,
+  "callback_p99_ms": 33.400000000001455,
+  "cma": {
+    "before": {
+      "CmaTotal": 524288,
+      "CmaFree": 497108
+    },
+    "after": {
+      "CmaTotal": 524288,
+      "CmaFree": 497108
+    },
+    "taint": 0,
+    "faults": []
+  }
+}

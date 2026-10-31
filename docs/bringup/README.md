@@ -1,5 +1,7 @@
 # 上板记录索引
 
+- [原生HDR10 r3离线候选](2026-10-31-hdr10-remote-candidate.md) — kernel video application offline candidate
+
 每条记录一个文件，位于 `bringup/日期-主题.md`。先按日期或标签在本页找到条目，只打开需要的文件；
 不要通读整个目录。标签：board、kernel、video、audio、usb、application、pikvm、uu、manager、deployment。
 
@@ -17,6 +19,7 @@
 
 ## 2026-10-31
 
+- [原生HDR最小主路径验收与合入](2026-10-31-hdr10-native-final.md) — kernel board video application hdr
 - [uhd5 GPU正式来源锁与最小烟测合入](2026-10-31-uhd5-main-integration.md) — kernel gpu deployment
 - [uhd5完整封包、正常回退与正式推广阻塞](2026-10-31-kbase-r12-package.md) — kernel gpu board deployment
 - [kbase r11厂商live DVFS策略与配对复测](2026-10-31-kbase-r11-policy.md) — kernel gpu board video
@@ -24,6 +27,9 @@
 - [kbase r6 DMA追平、平台二分与thermal绑定](2026-10-31-kbase-r6-window.md) — kernel gpu board video
 - [kbase r9外部模块验证与队列候选目录冲突](2026-10-31-kbase-r9-queue.md) — kernel gpu board audit
 - [kbase r7默认调频离线候选与等锁超时](2026-10-31-kbase-r7-offline.md) — kernel gpu audit
+- [原生HDR修复包复验与同源5.15码流](2026-10-31-hdr10-remote-r7.md) — kernel board video application
+- [原生HDR r6十位DMA、Panfrost与编码caps阻塞](2026-10-31-hdr10-remote-r6.md) — kernel board video application gpu
+- [7.3原生远程HDR离线调查与分阶段门禁](2026-10-31-hdr10-remote-offline.md) — kernel video application uu offline
 - [uhd4正式完整构建、短烟测与队列工具修正](2026-10-31-uhd4-formal-smoke.md) — kernel board video hdr npu gpu deployment
 - [uhd4正式准备与旧heavy锁阻塞，未上板](2026-10-31-uhd4-formal-preparation.md) — kernel deployment
 - [HDR2双向恢复分解、uhd4r3细采样与长尾门禁](2026-10-31-hdr2-recovery.md) — kernel board video hdr application npu gpu

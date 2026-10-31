@@ -1,0 +1,94 @@
+--- a/sys/v4l2/gstv4l2object.c
++++ b/sys/v4l2/gstv4l2object.c
+@@ -2264,6 +2264,28 @@ gst_v4l2_object_get_interlace_mode (enum v4l2_field field,
+   }
+ }
+ 
++/* The installed Amlogic libgstvideo adds a transfer enum entry in the middle.
++ * ISO identifiers cross that ABI boundary without interpreting runtime enum
++ * values using the build headers. Use this result only in local switch cases. */
++static GstVideoTransferFunction
++gst_v4l2_object_local_transfer (GstVideoTransferFunction transfer)
++{
++  switch (gst_video_transfer_function_to_iso (transfer)) {
++    case 6:
++      return GST_VIDEO_TRANSFER_BT601;
++    case 14:
++      return GST_VIDEO_TRANSFER_BT2020_10;
++    case 16:
++      return GST_VIDEO_TRANSFER_SMPTE2084;
++    case 17:
++      return GST_VIDEO_TRANSFER_ADOBERGB;
++    case 18:
++      return GST_VIDEO_TRANSFER_ARIB_STD_B67;
++    default:
++      return transfer;
++  }
++}
++
+ static gboolean
+ gst_v4l2_object_get_colorspace (GstV4l2Object * v4l2object,
+     struct v4l2_format *fmt, GstVideoColorimetry * cinfo)
+@@ -2293,7 +2315,7 @@ gst_v4l2_object_get_colorspace (GstV4l2Object * v4l2object,
+     case V4L2_COLORSPACE_SMPTE170M:
+       cinfo->range = GST_VIDEO_COLOR_RANGE_16_235;
+       cinfo->matrix = GST_VIDEO_COLOR_MATRIX_BT601;
+-      cinfo->transfer = GST_VIDEO_TRANSFER_BT601;
++      cinfo->transfer = gst_video_transfer_function_from_iso (6);
+       cinfo->primaries = GST_VIDEO_COLOR_PRIMARIES_SMPTE170M;
+       break;
+     case V4L2_COLORSPACE_REC709:
+@@ -2312,7 +2334,7 @@ gst_v4l2_object_get_colorspace (GstV4l2Object * v4l2object,
+     case V4L2_COLORSPACE_OPRGB:
+       cinfo->range = GST_VIDEO_COLOR_RANGE_16_235;
+       cinfo->matrix = GST_VIDEO_COLOR_MATRIX_BT601;
+-      cinfo->transfer = GST_VIDEO_TRANSFER_ADOBERGB;
++      cinfo->transfer = gst_video_transfer_function_from_iso (17);
+       cinfo->primaries = GST_VIDEO_COLOR_PRIMARIES_ADOBERGB;
+       break;
+     case V4L2_COLORSPACE_BT2020:
+@@ -2423,7 +2445,7 @@ gst_v4l2_object_get_colorspace (GstV4l2Object * v4l2object,
+       if (colorspace == V4L2_COLORSPACE_BT2020 && fmt->fmt.pix.height >= 2160)
+         cinfo->transfer = GST_VIDEO_TRANSFER_BT2020_12;
+       else if (colorspace == V4L2_COLORSPACE_SMPTE170M)
+-        cinfo->transfer = GST_VIDEO_TRANSFER_BT601;
++        cinfo->transfer = gst_video_transfer_function_from_iso (6);
+       else
+         cinfo->transfer = GST_VIDEO_TRANSFER_BT709;
+ 
+@@ -2434,7 +2456,7 @@ gst_v4l2_object_get_colorspace (GstV4l2Object * v4l2object,
+       cinfo->transfer = GST_VIDEO_TRANSFER_SRGB;
+       break;
+     case V4L2_XFER_FUNC_OPRGB:
+-      cinfo->transfer = GST_VIDEO_TRANSFER_ADOBERGB;
++      cinfo->transfer = gst_video_transfer_function_from_iso (17);
+       break;
+     case V4L2_XFER_FUNC_SMPTE240M:
+       cinfo->transfer = GST_VIDEO_TRANSFER_SMPTE240M;
+@@ -2443,7 +2465,7 @@ gst_v4l2_object_get_colorspace (GstV4l2Object * v4l2object,
+       cinfo->transfer = GST_VIDEO_TRANSFER_GAMMA10;
+       break;
+     case V4L2_XFER_FUNC_SMPTE2084:
+-      cinfo->transfer = GST_VIDEO_TRANSFER_SMPTE2084;
++      cinfo->transfer = gst_video_transfer_function_from_iso (16);
+       break;
+     case V4L2_XFER_FUNC_DEFAULT:
+       /* nothing, just use defaults for colorspace */
+@@ -2685,7 +2707,7 @@ gst_v4l2_object_add_colorspace (GstV4l2Object * v4l2object, GstStructure * s,
+               gst_v4l2_object_get_colorspace (v4l2object, &pq_fmt, &cinfo) &&
+               cinfo.range == GST_VIDEO_COLOR_RANGE_16_235 &&
+               cinfo.matrix == GST_VIDEO_COLOR_MATRIX_BT2020 &&
+-              cinfo.transfer == GST_VIDEO_TRANSFER_SMPTE2084 &&
++              cinfo.transfer == gst_video_transfer_function_from_iso (16) &&
+               cinfo.primaries == GST_VIDEO_COLOR_PRIMARIES_BT2020)
+             gst_v4l2_object_fill_colorimetry_list (&list, &cinfo);
+         }
+@@ -4051,7 +4073,7 @@ gst_v4l2_object_set_format_full (GstV4l2Object * v4l2object, GstCaps * caps,
+       break;
+   }
+ 
+-  switch (info.colorimetry.transfer) {
++  switch (gst_v4l2_object_local_transfer (info.colorimetry.transfer)) {
+     case GST_VIDEO_TRANSFER_GAMMA18:
+     case GST_VIDEO_TRANSFER_GAMMA20:
+     case GST_VIDEO_TRANSFER_GAMMA22:

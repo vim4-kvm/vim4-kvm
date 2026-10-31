@@ -19,7 +19,7 @@ fixture = r'''
 #include <gst/video/video.h>
 #include <linux/videodev2.h>
 #include <string.h>
-typedef struct { enum v4l2_buf_type type; int mode; } GstV4l2Object;
+typedef struct { enum v4l2_buf_type type; int mode; struct v4l2_capability vcap; } GstV4l2Object;
 static int gst_v4l2_object_try_fmt(GstV4l2Object *o, struct v4l2_format *f) {
  int multi=V4L2_TYPE_IS_MULTIPLANAR(o->type);
  unsigned cs=multi?f->fmt.pix_mp.colorspace:f->fmt.pix.colorspace;
@@ -47,7 +47,7 @@ fixture += r'''
 int main(void) {
  gst_init(NULL,NULL);
  for(int multi=0;multi<2;multi++) for(int mode=0;mode<3;mode++) {
-  GstV4l2Object o={multi?V4L2_BUF_TYPE_VIDEO_OUTPUT_MPLANE:V4L2_BUF_TYPE_VIDEO_OUTPUT,mode};
+  GstV4l2Object o={.type=multi?V4L2_BUF_TYPE_VIDEO_OUTPUT_MPLANE:V4L2_BUF_TYPE_VIDEO_OUTPUT,.mode=mode};
   GstStructure *s=gst_structure_new_empty("video/x-raw");
   gst_v4l2_object_add_colorspace(&o,s,3840,2160,V4L2_PIX_FMT_NV12);
   const GValue *list=gst_structure_get_value(s,"colorimetry");

@@ -24,7 +24,7 @@ revision = "b3b82a98cac16c4e845fad6357189b57cf8b2db4"
 name = "gst-plugin-vfmcap"
 url = "https://github.com/vim4-kvm/gst-plugin-vfmcap.git"
 branch = "main"
-revision = "a4937400370bdac40b50dca59df1ee22fff07df7"
+revision = "b43e564595407b0b637a23f49a3cb390d4a6cbfa"
 
 [[repos]]
 name = "kvm"
@@ -36,8 +36,8 @@ revision = "f2b8122505cacda2762948a91c99c1acdb107ef0"
 name = "One-KVM"
 url = "https://github.com/vim4-kvm/One-KVM.git"
 branch = "vim4"
-# HDR2 product DMA contract validated by the uhd4 RAM smoke.
-revision = "db848a5288019f0d651bc429e01d6f727720154b"
+# Preserves HDR2 DMA leases; native HDR accepted by the Panfrost r13 smoke.
+revision = "2cf9ef4da71f5572173cabe3c60c58730a1d539f"
 
 [[repos]]
 name = "kvmd"
