@@ -61,7 +61,8 @@ a5出现一次合法尾帧：208.240568提交、208.243423切点、208.250112采
 ## 已批准的正式集成方案（门禁执行中）
 
 用户已批准PQ合同集成；必须全部新release门禁通过才能推广。
-[uhd4本轮记录](bringup/2026-10-31-hdr2-uhd4-gate.md)的MCP/接收端门禁未齐，当前不合并、不推正式分支。
+[uhd4后续PQ窗口](bringup/2026-10-31-hdr2-mcp-ice-pq.md)已补齐MCP、接收、色准与逐代退休，
+但PQ→SDR恢复仍较5.15慢约0.5–0.77秒，当前不合并、不推正式分支。
 
 1. 内核以正式f71b5c6289cb为基线，整理为`vim4-hdr2-topics@ce6bc0cc5218a`的六个主题；旧13份仅保留历史证据。
    [补丁目录](../packaging/hdr2-pq/README.md)重放tree与候选均为`6fdb600add9ca1f0ed8bf12266bee9fee8d6debf`。

@@ -17,6 +17,7 @@
 
 ## 2026-10-31
 
+- [MCP与ICE定位、uhd4 PQ门禁及恢复速度余项](2026-10-31-hdr2-mcp-ice-pq.md) — kernel board video hdr application
 - [uhd4主题整理与SDR回归，MCP/接收端门禁阻断](2026-10-31-hdr2-uhd4-gate.md) — kernel board video hdr npu gpu
 
 ## 2026-10-30

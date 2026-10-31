@@ -3,8 +3,12 @@
 const { chromium } = await import(process.env.PLAYWRIGHT_MODULE || 'playwright');
 const origin = new URL(process.argv[2] || 'http://127.0.0.1:18084');
 const seconds = Number(process.argv[3] || 180);
+const literalHostCandidates = process.argv.includes('--literal-host-candidates');
 if (!Number.isFinite(seconds) || seconds < 1 || seconds > 600) throw Error('duration must be 1..600 seconds');
-const b=await chromium.launch({channel:'chrome',headless:true});
+// Opt-in for isolated LAN diagnostics when the peer cannot resolve .local
+// candidates. This changes only this owned browser process, not host networking.
+const b=await chromium.launch({channel:'chrome',headless:true,
+ args:literalHostCandidates ? ['--disable-features=WebRtcHideLocalIpsWithMdns'] : []});
 const c=await b.newContext();
 await c.route('**/__hdr_test',route=>route.fulfill({contentType:'text/html',body:'<video autoplay muted></video>'}));
 const p=await c.newPage();
@@ -21,11 +25,18 @@ try {
   await pc.setLocalDescription(await pc.createOffer());
   await Promise.race([new Promise(resolve=>{pc.onicegatheringstatechange=()=>{if(pc.iceGatheringState==='complete')resolve();};}),new Promise(r=>setTimeout(r,2000))]);
   const a=await api('webrtc/offer',{sdp:pc.localDescription.sdp});window.sid=a.session_id;
+  window.iceCandidates={local:pc.localDescription.sdp.split('\n').filter(x=>x.startsWith('a=candidate:')),
+   remote:a.sdp.split('\n').filter(x=>x.startsWith('a=candidate:')),extra:a.ice_candidates};
   await pc.setRemoteDescription({type:'answer',sdp:a.sdp});
   for(const ice of a.ice_candidates||[])await pc.addIceCandidate(ice);
   return {session:a.session_id};
  }));
- await p.waitForFunction(()=>document.querySelector('video').videoWidth>0,{},{timeout:20000});
+ try {await p.waitForFunction(()=>document.querySelector('video').videoWidth>0,{},{timeout:20000});}
+ finally {console.log(JSON.stringify(await p.evaluate(async()=>({
+  candidates:window.iceCandidates,ice:window.pc.iceConnectionState,
+  stats:[...(await window.pc.getStats()).values()].filter(x=>
+   ['candidate-pair','local-candidate','remote-candidate','transport','inbound-rtp'].includes(x.type))
+ }))));}
  for(let i=0;i<seconds*4;i++){
   const stats=await p.evaluate(async()=>{
    const rows=[];for(const r of(await window.pc.getStats()).values())if(r.type==='inbound-rtp'&&r.kind==='video')rows.push({frameWidth:r.frameWidth,frameHeight:r.frameHeight,framesDecoded:r.framesDecoded,framesDropped:r.framesDropped,packetsLost:r.packetsLost,freezeCount:r.freezeCount,bytesReceived:r.bytesReceived});

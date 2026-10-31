@@ -73,6 +73,10 @@ One-KVM 的外部 MCP（设置「扩展 → MCP」）让 Claude Code、Codex 等
 工具沿用 computer use 命名与截图像素坐标，手动键鼠随时接管并冷却 2 秒。鉴权、截图管线、输入法与自然滚动限制见
 One-KVM/VIM4.md 的 MCP 一节。被控机就是开发用 Mac mini 时，键鼠实测前须让用户停手并限定在测试窗口内。
 
+客户端transport失败不等于板端MCP服务失败；先以新的只读initialize/tools/list/screenshot请求区分HTTP错误、
+工具返回无信号与进程网络差异。局域网接收仅默认mDNS candidate失败时，用接收器自身显式选项做A/B验证，
+不能直接修改个人VPN/TUN。实证与边界见[MCP/ICE诊断](../bringup/2026-10-31-hdr2-mcp-ice-pq.md)。
+
 ## PiKVM VIM4 集成
 
 PiKVM 源码在 `kvmd/`，VIM4 视频后端在 `ustreamer/`，部署约定见 `kvmd/VIM4.md`。
