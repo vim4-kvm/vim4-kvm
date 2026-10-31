@@ -1,5 +1,10 @@
 # 内核与驱动
 
+VDIN HDR2主题候选uhd4完整构建见[集成门禁](../bringup/2026-10-31-hdr2-uhd4-gate.md)，
+[新PQ窗口](../bringup/2026-10-31-hdr2-mcp-ice-pq.md)已恢复MCP与接收、通过PQ/DMA/VUI/4K60；
+[uhd4r3恢复修复](../bringup/2026-10-31-hdr2-recovery.md)把双向中位数拉到约1.24秒，
+用户已认可两栈长尾不构成三次样本内退步；[正式uhd4短烟测](../bringup/2026-10-31-uhd4-formal-smoke.md)通过并推广源码/构建锁，5.15仍默认。HLG已实现，无真实源未验。
+
 7.3通用内存/拷贝与锁调试配置差异、离线微基准及下一窗口见[内存拷贝审查](../memory-copy-audit.md)。
 
 实验性 Armbian edge 基线及构建见 [新内核基线](../kernel-edge.md)，不替代现有 5.15 发布流程。
@@ -37,6 +42,7 @@ VDIN、vfm_cap、Wave521、CRG USB 驱动在 common_drivers。
 
 | 触发条件 / 错误 | 原因与正确做法 | 验证入口 |
 |---|---|---|
+| make C=2退出成功却未执行sparse | 过旧版本会被Makefile警告后跳过；固定工具路径，检查实际CHECK行并拒绝“sparse is not available”日志，不能仅凭退出码 | [uhd4验证](../bringup/2026-10-31-hdr2-uhd4-gate.md) |
 | Bifrost一致回边补丁通过MIR/shader-db却在G52挂起 | 同块分支偏移错误把前置块也算入，回跳重置计数器。新增layout回归；主机CFG/静态统计不能代替最终编码和硬件验证。候选先短负载全帧正确、timeout零增量，再测FPS；错误立即否决并正常重启恢复 | [故障隔离与修复](../gpu-loop-repair.md) |
 | 向 Ubuntu 根目录直接解内核包，动态程序失效 | tar 替换 /lib 符号链接。安装必须带 --keep-directory-symlink，并保留 Stock 启动项 | [内核安装](../kernel.md)、tools/kernel-install.sh |
 | 7.x 更新 Image 后网口模块报 BPF Invalid name，SSH 不通 | 模块的分离 BTF 引用旧 vmlinux 类型 ID；同一 release 和 vermagic 不能证明匹配。更新 Image 时安装同次构建的完整模块集，检查真实加载结果；不要关闭 BTF 掩盖混装 | [HDMI DDC 实测](../bringup/2026-10-19-hdmirx-ddc.md) |

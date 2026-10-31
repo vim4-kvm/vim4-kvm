@@ -36,8 +36,8 @@ revision = "f2b8122505cacda2762948a91c99c1acdb107ef0"
 name = "One-KVM"
 url = "https://github.com/vim4-kvm/One-KVM.git"
 branch = "vim4"
-# Board-validated application; remote vim4 matches this revision.
-revision = "3649a8c8f12d8bcd3f2d394de848dc486a270ecc"
+# HDR2 product DMA contract validated by the uhd4 RAM smoke.
+revision = "db848a5288019f0d651bc429e01d6f727720154b"
 
 [[repos]]
 name = "kvmd"

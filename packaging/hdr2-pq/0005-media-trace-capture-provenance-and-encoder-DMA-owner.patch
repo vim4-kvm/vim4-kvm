@@ -1,0 +1,526 @@
+From 8d9caf01d7750b819db08c3d3e38bbe9a84f05dd Mon Sep 17 00:00:00 2001
+From: localhost-copilot <318096335+localhost-copilot@users.noreply.github.com>
+Date: Sat, 31 Oct 2026 14:59:03 +0800
+Subject: [PATCH 5/6] media: trace capture provenance and encoder DMA ownership
+
+Correlate independent exports by shared allocator and normalized physical
+address; unknown IOMMU domains fail closed. Keep vb2 at object offset zero.
+Record real submit, complete, cancel and capture reference transitions.
+Trace events are disabled by default; enabled runs incur per-buffer events
+and are kept separate from performance measurements. Host regressions
+cover dual export identity, object layout and IRQ/stream ownership.
+
+Signed-off-by: localhost-copilot <318096335+localhost-copilot@users.noreply.github.com>
+---
+ .../platform/amlogic/t7-hdmirx/t7-vdin-test.c | 52 ++++++++++++++++--
+ .../amlogic/t7-hdmirx/test_buffer_layout.py   | 55 +++++++++++++++++++
+ .../amlogic/t7-hdmirx/test_export_identity.py | 49 +++++++++++++++++
+ .../amlogic/t7-hdmirx/test_source_events.py   |  1 +
+ .../platform/amlogic/t7-hdmirx/test_stream.py | 11 +++-
+ .../platform/amlogic/t7-hdmirx/test_vdin.py   |  8 ++-
+ .../chips-media/wave5/test_buffers.py         |  1 +
+ .../chips-media/wave5/wave5-vpu-enc.c         | 29 +++++++++-
+ include/trace/events/t7_vdin.h                | 33 +++++++++++
+ include/trace/events/wave5_buffers.h          | 21 +++++++
+ 10 files changed, 249 insertions(+), 11 deletions(-)
+ create mode 100644 drivers/media/platform/amlogic/t7-hdmirx/test_buffer_layout.py
+ create mode 100644 drivers/media/platform/amlogic/t7-hdmirx/test_export_identity.py
+ create mode 100644 include/trace/events/t7_vdin.h
+ create mode 100644 include/trace/events/wave5_buffers.h
+
+diff --git a/drivers/media/platform/amlogic/t7-hdmirx/t7-vdin-test.c b/drivers/media/platform/amlogic/t7-hdmirx/t7-vdin-test.c
+index 73abb9a26aacf..5da7b72edb878 100644
+--- a/drivers/media/platform/amlogic/t7-hdmirx/t7-vdin-test.c
++++ b/drivers/media/platform/amlogic/t7-hdmirx/t7-vdin-test.c
+@@ -5,9 +5,13 @@
+ #include <linux/clk.h>
+ #include <linux/completion.h>
+ #include <linux/crc32.h>
++#define CREATE_TRACE_POINTS
++#include <trace/events/t7_vdin.h>
+ #include <linux/debugfs.h>
+ #include <linux/dma-mapping.h>
+ #include <linux/dma-buf.h>
++#include <linux/dma-direct.h>
++#include <linux/iommu.h>
+ #include <linux/interrupt.h>
+ #include <linux/iopoll.h>
+ #include <linux/kref.h>
+@@ -101,18 +105,23 @@ struct t7_vdin_slot {
+ 
+ struct t7_vdin_buffer {
+ 	struct vb2_v4l2_buffer vb;
++	u64 generation, ticket;
+ 	struct list_head list;
+ 	struct dma_buf *lease;
+ 	dma_addr_t dma;
+ 	bool hardware_used;
+ };
+ 
++/* vb2 allocates this object through its first vb2_v4l2_buffer member. */
++static_assert(__builtin_offsetof(struct t7_vdin_buffer, vb) == 0);
++
+ struct t7_vdin_snapshot {
+ 	size_t size;
+ 	unsigned char data[];
+ };
+ 
+ struct t7_vdin {
++	u64 generation, ticket;
+ 	unsigned int width, height, stride, frame_size, allocation_size, frame_capacity;
+ 	/* Source lease geometry is independent of the downscaled DMA image. */
+ 	unsigned int input_width, input_height;
+@@ -217,6 +226,27 @@ static void t7_vdin_update(struct t7_vdin *vdin, u32 reg, u32 mask, u32 value)
+ #include "t7-vdin-hdr.h"
+ #include "t7-vdin-hlg.h"
+ 
++/* Phases: arm, done, error, requeue, cleanup, retain, begin, end, source change. */
++static void t7_vdin_trace_buffer(struct t7_vdin *vdin,
++				 struct t7_vdin_buffer *buffer, int phase)
++{
++	trace_t7_vdin_buffer(buffer ? buffer->generation : vdin->generation,
++			     buffer ? buffer->ticket : 0,
++			     buffer ? buffer->vb.vb2_buf.index : 0,
++			     buffer && buffer->lease ? buffer->lease->priv : NULL,
++			     buffer && !device_iommu_mapped(vdin->dev) ?
++			     dma_to_phys(vdin->dev, buffer->dma) : 0,
++			     phase);
++}
++
++static void t7_vdin_complete_buffer(struct t7_vdin *vdin,
++				    struct t7_vdin_buffer *buffer,
++				    enum vb2_buffer_state state)
++{
++	t7_vdin_trace_buffer(vdin, buffer, state == VB2_BUF_STATE_DONE ? 1 : 2);
++	vb2_buffer_done(&buffer->vb.vb2_buf, state);
++}
++
+ /* Canonical LE samples match the values sent to the LUT data ports. */
+ static u32 t7_vdin_lut_crc(const u32 *lut, unsigned int count,
+ 			   unsigned int shift)
+@@ -248,8 +278,14 @@ static void t7_vdin_ring_arm(struct t7_vdin *vdin, unsigned int index)
+ 	dma_addr_t address = slot->dma;
+ 
+ 	if (vdin->direct_dma) {
+-		if (!slot->buffer)
++		if (!slot->buffer) {
+ 			slot->buffer = t7_vdin_next_buffer(vdin);
++			if (slot->buffer) {
++				slot->buffer->generation = vdin->generation;
++				slot->buffer->ticket = ++vdin->ticket;
++				t7_vdin_trace_buffer(vdin, slot->buffer, 0);
++			}
++		}
+ 		if (!slot->buffer)
+ 			return;
+ 		slot->buffer->hardware_used = true;
+@@ -650,7 +686,7 @@ static void t7_vdin_return_buffers(struct t7_vdin *vdin, enum vb2_buffer_state s
+ 	struct t7_vdin_buffer *buffer;
+ 
+ 	while ((buffer = t7_vdin_next_buffer(vdin)))
+-		vb2_buffer_done(&buffer->vb.vb2_buf, state);
++		t7_vdin_complete_buffer(vdin, buffer, state);
+ }
+ 
+ static void t7_vdin_ring_begin(struct t7_vdin *vdin)
+@@ -843,8 +879,8 @@ static int t7_vdin_thread(void *data)
+ 		}
+ 		t7_vdin_ring_release(vdin, slot);
+ 		mutex_unlock(&vdin->lock);
+-		vb2_buffer_done(&buffer->vb.vb2_buf,
+-				ret ? VB2_BUF_STATE_ERROR : VB2_BUF_STATE_DONE);
++		t7_vdin_complete_buffer(vdin, buffer,
++					ret ? VB2_BUF_STATE_ERROR : VB2_BUF_STATE_DONE);
+ 		if (ret && ret != -EAGAIN)
+ 			break;
+ 	}
+@@ -867,7 +903,7 @@ static int t7_vdin_thread(void *data)
+ 
+ 			if (buffer) {
+ 				vdin->slots[i].buffer = NULL;
+-				vb2_buffer_done(&buffer->vb.vb2_buf, VB2_BUF_STATE_ERROR);
++				t7_vdin_complete_buffer(vdin, buffer, VB2_BUF_STATE_ERROR);
+ 			}
+ 		}
+ 	}
+@@ -937,6 +973,7 @@ static void t7_vdin_buffer_cleanup(struct vb2_buffer *vb)
+ 	 * retain used direct buffers too, until hardware reboot. ERROR contents are
+ 	 * invalid and the faulted queue cannot restart. Unused buffers may be freed.
+ 	 */
++	t7_vdin_trace_buffer(vdin, buffer, vdin->faulted && buffer->hardware_used ? 5 : 4);
+ 	if (buffer->lease && !(vdin->faulted && buffer->hardware_used))
+ 		dma_buf_put(buffer->lease);
+ 	buffer->lease = NULL;
+@@ -960,6 +997,7 @@ static void t7_vdin_buffer_queue(struct vb2_buffer *vb)
+ 	unsigned long flags;
+ 
+ 	spin_lock_irqsave(&vdin->queue_lock, flags);
++	t7_vdin_trace_buffer(vdin, buffer, 3);
+ 	list_add_tail(&buffer->list, &vdin->queued);
+ 	spin_unlock_irqrestore(&vdin->queue_lock, flags);
+ 	wake_up(&vdin->buffer_wait);
+@@ -979,6 +1017,8 @@ static int t7_vdin_start_streaming(struct vb2_queue *queue, unsigned int count)
+ 	}
+ 	if (!ret) {
+ 		vdin->receiver_lease = true;
++		vdin->generation++;
++		t7_vdin_trace_buffer(vdin, NULL, 6);
+ 		vdin->streaming = true;
+ 		vdin->thread = kthread_run(t7_vdin_thread, vdin, "t7-vdin-capture");
+ 		if (IS_ERR(vdin->thread)) {
+@@ -1005,6 +1045,7 @@ static void t7_vdin_stop_streaming(struct vb2_queue *queue)
+ 	t7_vdin_return_buffers(vdin, VB2_BUF_STATE_ERROR);
+ 	mutex_lock(&vdin->lock);
+ 	vdin->streaming = false;
++	t7_vdin_trace_buffer(vdin, NULL, 7);
+ 	mutex_unlock(&vdin->lock);
+ }
+ 
+@@ -1043,6 +1084,7 @@ static void t7_vdin_source_work(struct work_struct *work)
+ 				delta > vdin->source_period / 2000)))) {
+ 			event.u.src_change.changes = V4L2_EVENT_SRC_CH_RESOLUTION;
+ 			vdin->source_changes++;
++			t7_vdin_trace_buffer(vdin, NULL, 8);
+ 			v4l2_event_queue(&vdin->video, &event);
+ 		}
+ 		vdin->source_seen = true;
+diff --git a/drivers/media/platform/amlogic/t7-hdmirx/test_buffer_layout.py b/drivers/media/platform/amlogic/t7-hdmirx/test_buffer_layout.py
+new file mode 100644
+index 0000000000000..40baadbb94fdd
+--- /dev/null
++++ b/drivers/media/platform/amlogic/t7-hdmirx/test_buffer_layout.py
+@@ -0,0 +1,55 @@
++#!/usr/bin/env python3
++# SPDX-License-Identifier: GPL-2.0-only
++"""Exercise vb2's base allocation contract through the driver's actual type."""
++from pathlib import Path
++import subprocess
++import tempfile
++
++text = Path(__file__).with_name('t7-vdin-test.c').read_text()
++start = text.index('struct t7_vdin_buffer {')
++end = text.index('struct t7_vdin_snapshot {', start)
++declaration = text[start:end]
++fixture = r'''
++#include <assert.h>
++#include <stddef.h>
++#include <stdint.h>
++#include <stdbool.h>
++#include <stdlib.h>
++typedef uint64_t u64, dma_addr_t;
++struct vb2_buffer { unsigned index, state; };
++struct vb2_v4l2_buffer { struct vb2_buffer vb2_buf; unsigned sequence; };
++struct list_head { void *next, *prev; };
++struct dma_buf;
++'''
++checks = r'''
++int main(void) {
++ /* __vb2_queue_alloc assigns the start of kzalloc(buf_struct_size) to vb. */
++ struct vb2_buffer *vb = calloc(1, sizeof(struct t7_vdin_buffer));
++ assert(vb);
++ vb->index = 13;
++ struct vb2_v4l2_buffer *v4l2 = (void *)vb;
++ struct t7_vdin_buffer *b = (void *)((char *)v4l2 -
++                                  offsetof(struct t7_vdin_buffer, vb));
++ assert((void *)b == (void *)vb);
++ b->generation = 3; b->ticket = 613;
++ vb->state = 2;
++ assert(b->vb.vb2_buf.index == 13);
++ assert(b->generation == 3 && b->ticket == 613);
++ free(vb);
++}
++'''
++with tempfile.TemporaryDirectory() as directory:
++    code, binary = Path(directory)/'layout.c', Path(directory)/'layout'
++    command = ['cc', '-std=gnu11', '-Wall', '-Wextra', '-Werror',
++               '-fsanitize=address,undefined', str(code), '-o', str(binary)]
++    code.write_text(fixture + declaration + checks)
++    subprocess.run(command, check=True)
++    subprocess.run([str(binary)], check=True)
++    # Replay the actual a3 regression; the production assertion must reject it.
++    broken = declaration.replace('\tstruct vb2_v4l2_buffer vb;\n\tu64 generation, ticket;',
++                                 '\tu64 generation, ticket;\n\tstruct vb2_v4l2_buffer vb;')
++    assert broken != declaration
++    code.write_text(fixture + broken + checks)
++    failure = subprocess.run(command, capture_output=True, text=True)
++    assert failure.returncode and 'static assertion failed' in failure.stderr
++print('vb2 base allocation: metadata preserved; misplaced prefix rejected: PASS')
+diff --git a/drivers/media/platform/amlogic/t7-hdmirx/test_export_identity.py b/drivers/media/platform/amlogic/t7-hdmirx/test_export_identity.py
+new file mode 100644
+index 0000000000000..73df97efcdfbc
+--- /dev/null
++++ b/drivers/media/platform/amlogic/t7-hdmirx/test_export_identity.py
+@@ -0,0 +1,49 @@
++#!/usr/bin/env python3
++# SPDX-License-Identifier: GPL-2.0-only
++"""Run vb2's actual export callback twice against one allocator."""
++from pathlib import Path
++import subprocess
++import tempfile
++
++root = Path(__file__).resolve().parents[3]
++text = (root / 'common/videobuf2/videobuf2-dma-contig.c').read_text()
++start = text.index('static struct dma_buf *vb2_dc_get_dmabuf(')
++function = text[start:text.index('\n}', start) + 2]
++fixture = r'''
++#include <assert.h>
++#include <stdbool.h>
++#include <stdlib.h>
++struct vb2_buffer {int unused;};
++struct vb2_dc_buf {void *sgt_base; unsigned size, refcount;};
++struct dma_buf {void *priv; unsigned inode;};
++struct export_info {void *ops, *priv; unsigned size; unsigned long flags;};
++static int vb2_dc_dmabuf_ops;
++#define DEFINE_DMA_BUF_EXPORT_INFO(name) struct export_info name={0}
++#define WARN_ON(x) (x)
++#define IS_ERR(x) false
++#define refcount_inc(p) (++*(p))
++static void *vb2_dc_get_base_sgt(struct vb2_dc_buf *b) {return b;}
++static struct dma_buf *dma_buf_export(struct export_info *i) {
++ static unsigned serial;
++ struct dma_buf *d=malloc(sizeof(*d)); assert(d);
++ *d=(struct dma_buf){i->priv, ++serial}; return d;
++}
++'''
++checks = r'''
++int main(void) {
++ struct vb2_dc_buf owner={.size=12443648,.refcount=1};
++ struct dma_buf *lease=vb2_dc_get_dmabuf(0,&owner,0);
++ struct dma_buf *exported=vb2_dc_get_dmabuf(0,&owner,0);
++ assert(lease!=exported && lease->inode!=exported->inode);
++ assert(lease->priv==exported->priv && lease->priv==&owner);
++ assert(owner.refcount==3);
++ free(lease); free(exported);
++}
++'''
++with tempfile.TemporaryDirectory() as directory:
++    source, binary = Path(directory)/'exports.c', Path(directory)/'exports'
++    source.write_text(fixture + function + checks)
++    subprocess.run(['cc', '-Wall', '-Wextra', '-Werror', '-Wno-unused-parameter',
++                    '-fsanitize=address,undefined', str(source), '-o', str(binary)], check=True)
++    subprocess.run([str(binary)], check=True)
++print('Actual vb2 dual export: distinct files, shared allocator identity: PASS')
+diff --git a/drivers/media/platform/amlogic/t7-hdmirx/test_source_events.py b/drivers/media/platform/amlogic/t7-hdmirx/test_source_events.py
+index 3034c69ced870..b954de6d73f00 100644
+--- a/drivers/media/platform/amlogic/t7-hdmirx/test_source_events.py
++++ b/drivers/media/platform/amlogic/t7-hdmirx/test_source_events.py
+@@ -8,6 +8,7 @@ source = Path(__file__).with_name('t7-vdin-test.c').read_text()
+ functions = source[source.index('static void t7_vdin_source_work'):
+                    source.index('static int t7_vdin_querycap')]
+ fixture = r'''
++#define t7_vdin_trace_buffer(...) ((void)0)
+ #include <assert.h>
+ #include <stdbool.h>
+ #include <stddef.h>
+diff --git a/drivers/media/platform/amlogic/t7-hdmirx/test_stream.py b/drivers/media/platform/amlogic/t7-hdmirx/test_stream.py
+index d264f00cfe55e..7d6ba0c9f6899 100644
+--- a/drivers/media/platform/amlogic/t7-hdmirx/test_stream.py
++++ b/drivers/media/platform/amlogic/t7-hdmirx/test_stream.py
+@@ -8,15 +8,19 @@ import tempfile
+ source = Path(__file__).with_name('t7-vdin-test.c').read_text()
+ source = source.replace('#include "t7-vdin-hdr.h"', Path(__file__).with_name('t7-vdin-hdr.h').read_text())
+ source = source.replace('#include "t7-vdin-hlg.h"', Path(__file__).with_name('t7-vdin-hlg.h').read_text())
+-source = source[:source.index('/* Canonical LE')] + source[source.index('static struct t7_vdin_buffer *t7_vdin_next_buffer'):]
++# Ownership is exercised below; trace serialization and CRC have separate tests.
++source = (source[:source.index('static void t7_vdin_trace_buffer(')] +
++          source[source.index('static struct t7_vdin_buffer *t7_vdin_next_buffer'):])
+ defines = '\n'.join(line for line in source.splitlines() if line.startswith('#define '))
+ types = source[source.index('enum t7_vdin_slot_state {'):source.index('static void __iomem *t7_vdin_reg')]
+ hardware = source[source.index('static void __iomem *t7_vdin_reg'):source.index('static int t7_vdin_capture')]
+ stream = source[source.index('static struct t7_vdin_buffer *t7_vdin_next_buffer(struct t7_vdin *vdin)\n{'):
+                 source.index('static const struct vb2_ops t7_vdin_queue_ops')]
+ prefix = r'''
+-#define vb2_get_num_buffers(q) 0U
++#define t7_vdin_trace_buffer(...) ((void)0)
+ #define t7_vdin_record_hdr_luts(...) ((void)0)
++#define t7_vdin_complete_buffer(v,b,s) vb2_buffer_done(&(b)->vb.vb2_buf,s)
++#define vb2_get_num_buffers(q) 0U
+ #include <assert.h>
+ #include <errno.h>
+ #include <pthread.h>
+@@ -479,7 +483,8 @@ with tempfile.TemporaryDirectory() as directory:
+     binary = Path(directory) / 'stream'
+     code.write_text(prefix + defines + '\n' + types + stubs + hardware + stream + checks)
+     subprocess.run(['cc', '-std=gnu11', '-pthread', '-Wall', '-Wextra', '-Werror',
++                    '-I', str(Path(__file__).parent),
+                     '-O1', '-g', '-fsanitize=address,undefined',
+-                    '-I', str(Path(__file__).parent), '-Wno-unused-parameter', '-Wno-unused-function', str(code),
++                    '-Wno-unused-parameter', '-Wno-unused-function', str(code),
+                     '-o', str(binary)], check=True)
+     subprocess.run([str(binary)], check=True, timeout=10)
+diff --git a/drivers/media/platform/amlogic/t7-hdmirx/test_vdin.py b/drivers/media/platform/amlogic/t7-hdmirx/test_vdin.py
+index fea4bd1985015..0cf116ef036fb 100644
+--- a/drivers/media/platform/amlogic/t7-hdmirx/test_vdin.py
++++ b/drivers/media/platform/amlogic/t7-hdmirx/test_vdin.py
+@@ -7,12 +7,15 @@ import tempfile
+ source = Path(__file__).with_name('t7-vdin-test.c').read_text()
+ source = source.replace('#include "t7-vdin-hdr.h"', Path(__file__).with_name('t7-vdin-hdr.h').read_text())
+ source = source.replace('#include "t7-vdin-hlg.h"', Path(__file__).with_name('t7-vdin-hlg.h').read_text())
+-source = source[:source.index('/* Canonical LE')] + source[source.index('static struct t7_vdin_buffer *t7_vdin_next_buffer'):]
++# Trace and shadow bookkeeping have separate tests; this fixture models MMIO.
++source = (source[:source.index('static void t7_vdin_trace_buffer(')] +
++          source[source.index('static struct t7_vdin_buffer *t7_vdin_next_buffer'):])
+ defines = '\n'.join(line for line in source.splitlines() if line.startswith('#define '))
+ types = source[source.index('enum t7_vdin_slot_state {'):source.index('static void __iomem *t7_vdin_reg')]
+ functions = source[source.index('static void __iomem *t7_vdin_reg'):
+                    source.index('static int t7_vdin_frame_open')]
+ prefix = r'''
++#define t7_vdin_trace_buffer(...) ((void)0)
+ #define t7_vdin_record_hdr_luts(...) ((void)0)
+ #include <assert.h>
+ #include <stdbool.h>
+@@ -269,5 +272,6 @@ with tempfile.TemporaryDirectory() as directory:
+     executable = Path(directory) / 'vdin'
+     code.write_text(prefix + defines + '\n' + types + mmio + functions + checks)
+     subprocess.run(['cc', '-std=gnu11', '-Wall', '-Wextra', '-Werror',
+-                    '-I', str(Path(__file__).parent), '-Wno-unused-parameter', str(code), '-o', str(executable)], check=True)
++                    '-I', str(Path(__file__).parent),
++                    '-Wno-unused-parameter', str(code), '-o', str(executable)], check=True)
+     subprocess.run([str(executable)], check=True)
+diff --git a/drivers/media/platform/chips-media/wave5/test_buffers.py b/drivers/media/platform/chips-media/wave5/test_buffers.py
+index 97843643a2402..42830065e9912 100644
+--- a/drivers/media/platform/chips-media/wave5/test_buffers.py
++++ b/drivers/media/platform/chips-media/wave5/test_buffers.py
+@@ -90,6 +90,7 @@ def function(name):
+ 
+ 
+ scheduler = r'''
++#define wave5_trace_source(...) ((void)0)
+ #define BIT(n) (1U<<(n))
+ #include <assert.h>
+ #include <stdbool.h>
+diff --git a/drivers/media/platform/chips-media/wave5/wave5-vpu-enc.c b/drivers/media/platform/chips-media/wave5/wave5-vpu-enc.c
+index ba91d2ba22770..bb9b1d3592d5c 100644
+--- a/drivers/media/platform/chips-media/wave5/wave5-vpu-enc.c
++++ b/drivers/media/platform/chips-media/wave5/wave5-vpu-enc.c
+@@ -6,8 +6,30 @@
+  */
+ 
+ #include <linux/pm_runtime.h>
++#include <linux/dma-buf.h>
++#include <linux/dma-direct.h>
++#include <linux/iommu.h>
++#define CREATE_TRACE_POINTS
++#include <trace/events/wave5_buffers.h>
+ #include "wave5-helper.h"
+ 
++static void wave5_trace_source(struct vb2_v4l2_buffer *buffer, int phase)
++{
++	struct vb2_buffer *vb;
++	struct dma_buf *dbuf;
++	u64 phys = 0;
++
++	if (!buffer)
++		return;
++	vb = &buffer->vb2_buf;
++	dbuf = vb->planes[0].dbuf;
++	if (!device_iommu_mapped(vb->vb2_queue->dev))
++		phys = dma_to_phys(vb->vb2_queue->dev, vb2_dma_contig_plane_dma_addr(vb, 0));
++	/* Only this exporter defines priv as the shared allocator instance. */
++	if (dbuf && !strcmp(dbuf->exp_name, "videobuf2_dma_contig"))
++		trace_wave5_buffers_buffer(dbuf->priv, phys, phase);
++}
++
+ #define VPU_ENC_DEV_NAME "C&M Wave5 VPU encoder"
+ #define VPU_ENC_DRV_NAME "wave5-enc"
+ 
+@@ -292,10 +314,13 @@ static int start_encode(struct vpu_instance *inst, u32 *fail_res)
+ 			vb2_set_plane_payload(&dst_buf->vb2_buf, 0, 0);
+ 			v4l2_m2m_buf_done(dst_buf, VB2_BUF_STATE_ERROR);
+ 		}
+-		if (src_buf)
++		if (src_buf) {
++			wave5_trace_source(src_buf, 2);
+ 			v4l2_m2m_buf_done(src_buf, VB2_BUF_STATE_ERROR);
++		}
+ 		return ret;
+ 	} else {
++		wave5_trace_source(src_buf, 0);
+ 		if (src_buf)
+ 			WRITE_ONCE(wave5_to_vpu_src_buf(src_buf)->consumed, true);
+ 		dev_dbg(inst->dev->dev, "%s: wave5_vpu_enc_start_one_frame success\n",
+@@ -347,6 +372,7 @@ static void wave5_vpu_enc_finish_encode(struct vpu_instance *inst)
+ 			dev_warn(inst->dev->dev, "%s: no source buffer found\n", __func__);
+ 		} else {
+ 			inst->timestamp = src_buf->vb2_buf.timestamp;
++			wave5_trace_source(src_buf, 1);
+ 			v4l2_m2m_buf_done(src_buf, VB2_BUF_STATE_DONE);
+ 		}
+ 	}
+@@ -2001,6 +2027,7 @@ static void streamoff_output(struct vpu_instance *inst, struct vb2_queue *q)
+ 	struct vb2_v4l2_buffer *buf;
+ 
+ 	while ((buf = v4l2_m2m_src_buf_remove(m2m_ctx))) {
++		wave5_trace_source(buf, 2);
+ 		dev_dbg(inst->dev->dev, "%s: buf type %4u | index %4u\n",
+ 			__func__, buf->vb2_buf.type, buf->vb2_buf.index);
+ 		v4l2_m2m_buf_done(buf, VB2_BUF_STATE_ERROR);
+diff --git a/include/trace/events/t7_vdin.h b/include/trace/events/t7_vdin.h
+new file mode 100644
+index 0000000000000..072cda212ff27
+--- /dev/null
++++ b/include/trace/events/t7_vdin.h
+@@ -0,0 +1,33 @@
++/* SPDX-License-Identifier: GPL-2.0-only */
++#undef TRACE_SYSTEM
++#define TRACE_SYSTEM t7_vdin
++#if !defined(_TRACE_T7_VDIN_H) || defined(TRACE_HEADER_MULTI_READ)
++#define _TRACE_T7_VDIN_H
++#include <linux/tracepoint.h>
++TRACE_EVENT(t7_vdin_buffer,
++
++	TP_PROTO(u64 gen, u64 ticket, unsigned int index,
++		 const void *allocator, u64 phys, int phase),
++	TP_ARGS(gen, ticket, index, allocator, phys, phase),
++	TP_STRUCT__entry(
++		__field(u64, gen)
++		__field(u64, ticket)
++		__field(unsigned int, index)
++		__field(const void *, allocator)
++		__field(u64, phys)
++		__field(int, phase)
++	),
++	TP_fast_assign(
++		__entry->gen = gen;
++		__entry->ticket = ticket;
++		__entry->index = index;
++		__entry->allocator = allocator;
++		__entry->phys = phys;
++		__entry->phase = phase;
++	),
++	TP_printk("gen=%llu ticket=%llu index=%u allocator=%p phys=%llu phase=%d",
++		  __entry->gen, __entry->ticket, __entry->index,
++		  __entry->allocator, __entry->phys, __entry->phase)
++);
++#endif
++#include <trace/define_trace.h>
+diff --git a/include/trace/events/wave5_buffers.h b/include/trace/events/wave5_buffers.h
+new file mode 100644
+index 0000000000000..9cde21089e662
+--- /dev/null
++++ b/include/trace/events/wave5_buffers.h
+@@ -0,0 +1,21 @@
++/* SPDX-License-Identifier: GPL-2.0-only */
++#undef TRACE_SYSTEM
++#define TRACE_SYSTEM wave5_buffers
++#if !defined(_TRACE_WAVE5_BUFFERS_H) || defined(TRACE_HEADER_MULTI_READ)
++#define _TRACE_WAVE5_BUFFERS_H
++#include <linux/tracepoint.h>
++TRACE_EVENT(wave5_buffers_buffer,
++
++	TP_PROTO(const void *allocator, u64 phys, int phase),
++	TP_ARGS(allocator, phys, phase),
++	TP_STRUCT__entry(__field(const void *, allocator) __field(u64, phys) __field(int, phase)),
++	TP_fast_assign(
++		__entry->allocator = allocator;
++		__entry->phys = phys;
++		__entry->phase = phase;
++	),
++	TP_printk("allocator=%p phys=%llu phase=%d",
++		  __entry->allocator, __entry->phys, __entry->phase)
++);
++#endif
++#include <trace/define_trace.h>
+-- 
+2.43.0
+

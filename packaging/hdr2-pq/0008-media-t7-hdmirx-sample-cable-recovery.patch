@@ -1,0 +1,78 @@
+From c171faa2aa2bb2ab905e964605805494491accce Mon Sep 17 00:00:00 2001
+From: localhost-copilot <318096335+localhost-copilot@users.noreply.github.com>
+Date: Sat, 31 Oct 2026 17:18:29 +0800
+Subject: [PATCH] media: t7-hdmirx: sample qualified cable recovery before idle
+ polling
+
+Use a 50ms recovery cadence for a present cable with no DMA lease.
+Retain all three matching clock samples and PLL/PCS/video checks;
+the resulting 150ms clock window exceeds T7's 100ms video-stable
+window. Idle monitoring, missing inputs and torn-snapshot retries
+keep their 250ms cadence. Live DMA still excludes PHY programming.
+
+Signed-off-by: localhost-copilot <318096335+localhost-copilot@users.noreply.github.com>
+---
+ drivers/media/platform/amlogic/t7-hdmirx/t7-hdmirx.c  | 10 +++++++++-
+ drivers/media/platform/amlogic/t7-hdmirx/test_link.py |  9 +++++++--
+ 2 files changed, 16 insertions(+), 3 deletions(-)
+
+diff --git a/drivers/media/platform/amlogic/t7-hdmirx/t7-hdmirx.c b/drivers/media/platform/amlogic/t7-hdmirx/t7-hdmirx.c
+index 609fb8e637e61..d53e3ef25963b 100644
+--- a/drivers/media/platform/amlogic/t7-hdmirx/t7-hdmirx.c
++++ b/drivers/media/platform/amlogic/t7-hdmirx/t7-hdmirx.c
+@@ -2128,6 +2128,7 @@ static void t7_hdmirx_link_work(struct work_struct *work)
+ 	bool next_uhd, yuv;
+ 	bool sampled = false;
+ 	u32 previous_pll;
++	unsigned int delay_ms;
+ 	struct t7_hdmirx_color color;
+ 	const char *reason = "video-status";
+ 	int ret;
+@@ -2259,8 +2260,15 @@ static void t7_hdmirx_link_work(struct work_struct *work)
+ 	}
+ 	WRITE_ONCE(link->ready, !ret);
+ out:
++	/* A recovered cable still needs three matching clock samples plus the
++	 * PLL/PCS and video checks above. Sample recovery at 50ms (150ms total),
++	 * rather than stretching it across three idle-monitor periods. Keep the
++	 * 250ms retry cadence for torn timing snapshots and absent sources.
++	 */
++	delay_ms = !link->ready && !link->users && link->previous_cable &&
++		ret != -EAGAIN ? 50 : 250;
+ 	mutex_unlock(&link->lock);
+-	schedule_delayed_work(&link->work, msecs_to_jiffies(250));
++	schedule_delayed_work(&link->work, msecs_to_jiffies(delay_ms));
+ }
+ 
+ static void t7_hdmirx_link_stop(void *data)
+diff --git a/drivers/media/platform/amlogic/t7-hdmirx/test_link.py b/drivers/media/platform/amlogic/t7-hdmirx/test_link.py
+index 7e42f7158cbf6..b908cfb0df157 100644
+--- a/drivers/media/platform/amlogic/t7-hdmirx/test_link.py
++++ b/drivers/media/platform/amlogic/t7-hdmirx/test_link.py
+@@ -151,7 +151,9 @@ static void tick(struct t7_hdmirx_link *link, int count)
+ {
+     while (count--) {
+         t7_hdmirx_link_work(&link->work.work);
+-        assert(!link->lock.held && last_delay == 250);
++        assert(!link->lock.held && (last_delay == 250 || last_delay == 50));
++        if (link->ready || link->users || !source_present || unstable_timings)
++            assert(last_delay == 250);
+     }
+ }
+ int main(void)
+@@ -164,8 +166,11 @@ int main(void)
+     assert(!link.ready && !pll_calls && queued == 100);
+     assert(t7_hdmirx_stream_get(&dev,3840,2160) == -ENOLINK && !link.users);
+     source_present = true; cable_hz = 148500000;
+-    tick(&link, 3); assert(!pll_calls);
++    for (unsigned int sample=0; sample<3; sample++) {
++        tick(&link, 1); assert(!pll_calls && last_delay==50);
++    }
+     tick(&link, 1); assert(pll_calls == 1 && pcs_calls == 1 && link.ready);
++    assert(last_delay==250);
+     tick(&link, 100); assert(pll_calls == 1);
+     assert(!t7_hdmirx_stream_get(&dev,3840,2160) && !t7_hdmirx_stream_get(&dev,3840,2160) && link.users == 2);
+     unsigned int resets_before = meter_resets;
+-- 
+2.43.0
+

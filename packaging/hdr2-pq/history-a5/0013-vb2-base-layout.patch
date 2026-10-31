@@ -1,0 +1,104 @@
+From 851153f2f529f05c4a6c576f093637f23a788e61 Mon Sep 17 00:00:00 2001
+From: localhost-copilot <318096335+localhost-copilot@users.noreply.github.com>
+Date: Sat, 31 Oct 2026 13:58:11 +0800
+Subject: [PATCH] media: t7-vdin: keep vb2 at the capture allocation base
+
+vb2 initializes its buffer at the beginning of the allocated driver object.
+Keep that layout when adding generation metadata so callbacks and queued
+buffer lookup refer to the same object. Assert the invariant and replay
+the misplaced prefix regression in a host test.
+
+Signed-off-by: localhost-copilot <318096335+localhost-copilot@users.noreply.github.com>
+---
+ .../platform/amlogic/t7-hdmirx/t7-vdin-test.c |  5 +-
+ .../amlogic/t7-hdmirx/test_buffer_layout.py   | 55 +++++++++++++++++++
+ 2 files changed, 59 insertions(+), 1 deletion(-)
+ create mode 100644 drivers/media/platform/amlogic/t7-hdmirx/test_buffer_layout.py
+
+diff --git a/drivers/media/platform/amlogic/t7-hdmirx/t7-vdin-test.c b/drivers/media/platform/amlogic/t7-hdmirx/t7-vdin-test.c
+index 16edb7dcc90a2..5da7b72edb878 100644
+--- a/drivers/media/platform/amlogic/t7-hdmirx/t7-vdin-test.c
++++ b/drivers/media/platform/amlogic/t7-hdmirx/t7-vdin-test.c
+@@ -104,14 +104,17 @@ struct t7_vdin_slot {
+ };
+ 
+ struct t7_vdin_buffer {
+-	u64 generation, ticket;
+ 	struct vb2_v4l2_buffer vb;
++	u64 generation, ticket;
+ 	struct list_head list;
+ 	struct dma_buf *lease;
+ 	dma_addr_t dma;
+ 	bool hardware_used;
+ };
+ 
++/* vb2 allocates this object through its first vb2_v4l2_buffer member. */
++static_assert(__builtin_offsetof(struct t7_vdin_buffer, vb) == 0);
++
+ struct t7_vdin_snapshot {
+ 	size_t size;
+ 	unsigned char data[];
+diff --git a/drivers/media/platform/amlogic/t7-hdmirx/test_buffer_layout.py b/drivers/media/platform/amlogic/t7-hdmirx/test_buffer_layout.py
+new file mode 100644
+index 0000000000000..40baadbb94fdd
+--- /dev/null
++++ b/drivers/media/platform/amlogic/t7-hdmirx/test_buffer_layout.py
+@@ -0,0 +1,55 @@
++#!/usr/bin/env python3
++# SPDX-License-Identifier: GPL-2.0-only
++"""Exercise vb2's base allocation contract through the driver's actual type."""
++from pathlib import Path
++import subprocess
++import tempfile
++
++text = Path(__file__).with_name('t7-vdin-test.c').read_text()
++start = text.index('struct t7_vdin_buffer {')
++end = text.index('struct t7_vdin_snapshot {', start)
++declaration = text[start:end]
++fixture = r'''
++#include <assert.h>
++#include <stddef.h>
++#include <stdint.h>
++#include <stdbool.h>
++#include <stdlib.h>
++typedef uint64_t u64, dma_addr_t;
++struct vb2_buffer { unsigned index, state; };
++struct vb2_v4l2_buffer { struct vb2_buffer vb2_buf; unsigned sequence; };
++struct list_head { void *next, *prev; };
++struct dma_buf;
++'''
++checks = r'''
++int main(void) {
++ /* __vb2_queue_alloc assigns the start of kzalloc(buf_struct_size) to vb. */
++ struct vb2_buffer *vb = calloc(1, sizeof(struct t7_vdin_buffer));
++ assert(vb);
++ vb->index = 13;
++ struct vb2_v4l2_buffer *v4l2 = (void *)vb;
++ struct t7_vdin_buffer *b = (void *)((char *)v4l2 -
++                                  offsetof(struct t7_vdin_buffer, vb));
++ assert((void *)b == (void *)vb);
++ b->generation = 3; b->ticket = 613;
++ vb->state = 2;
++ assert(b->vb.vb2_buf.index == 13);
++ assert(b->generation == 3 && b->ticket == 613);
++ free(vb);
++}
++'''
++with tempfile.TemporaryDirectory() as directory:
++    code, binary = Path(directory)/'layout.c', Path(directory)/'layout'
++    command = ['cc', '-std=gnu11', '-Wall', '-Wextra', '-Werror',
++               '-fsanitize=address,undefined', str(code), '-o', str(binary)]
++    code.write_text(fixture + declaration + checks)
++    subprocess.run(command, check=True)
++    subprocess.run([str(binary)], check=True)
++    # Replay the actual a3 regression; the production assertion must reject it.
++    broken = declaration.replace('\tstruct vb2_v4l2_buffer vb;\n\tu64 generation, ticket;',
++                                 '\tu64 generation, ticket;\n\tstruct vb2_v4l2_buffer vb;')
++    assert broken != declaration
++    code.write_text(fixture + broken + checks)
++    failure = subprocess.run(command, capture_output=True, text=True)
++    assert failure.returncode and 'static assertion failed' in failure.stderr
++print('vb2 base allocation: metadata preserved; misplaced prefix rejected: PASS')
+-- 
+2.43.0
+

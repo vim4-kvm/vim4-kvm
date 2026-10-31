@@ -86,8 +86,9 @@ One-KVM能力探测不读uname：VDIN AMLY枚举、两类metadata controls大小
 窗口内使用board-window的boot-candidate/mcp/receiver/collect/return-baseline，
 编译不持板票据，不再直接使用lockf。按kbase、HDR(uhd4)、本会话的队列次序，最多等150分钟；
 5.15基线优先复用哈希不变的缓存。上板前若正式uhd4已合入，先rebase再出候选。
-必须有M6 MCP；新工具的HDR操作实际发送HID，与此前禁止HID约束存在冲突，
-得到限定授权前仅截图/检查，不执行HDR点击序列。预备5.15回退与已验证启动工具，禁止刷机。
+用户已明确授权M6 MCP截图/空闲判断、HDR开关已验证序列与必要最少点击/滚动，
+结束包括失败必须关回HDR并恢复窗口、截图；除此之外不发HID，不按裸Shift、不在中文输入法打字。
+MCP准备失败则停止后续测试。预备5.15回退与已验证启动工具，禁止刷机。
 
 1. 0–5分钟：截图确认M6空闲，经MCP开HDR；在5.15保存新鲜产品HEVC与Vulkan转换
    分辨率/fps/GPU占用；记录服务、UDC、源状态、固件及产物哈希基线。

@@ -1,8 +1,7 @@
 # 音视频
 
-视频链路：HDMI RX port 1 → vdin0 → VFM tvpath → vfm_cap DMA-buf →
-vfmcapsrc → amlvenc → NanoKVM WebRTC。板级 HDMI 服务打开输入并配置采集，
-应用负责推流。video71 是输出回写。
+5.15：RX port1→VDIN0→vfm_cap DMA→amlvenc→WebRTC；video71普通模式为回写。
+7.3 [uhd4](../bringup/2026-10-31-uhd4-formal-smoke.md)：HDR2 PQ→709 NV12→DMA→Wave5；HLG已实现无真源未验。
 
 ## HDMI 显示器行为
 
@@ -79,6 +78,7 @@ HDMI_LOW_LATENCY=0 恢复厂商自动策略。模式含义、对照结果及帧�
 
 | 触发条件 / 错误 | 原因与正确做法 | 验证入口 |
 |---|---|---|
+| vb2前置元数据使跨回调代号错位 | 保持vb2首成员并加编译断言；独立export不能用inode关联，cleanup不等于编码完成 | [HDR2回归](../hdr2-dma-contract.md) |
 | 见到 `last_wr_vfe` 就认为已完成图像多等一帧 | 当前 VDIN1 RDMA 提前一拍提交地址、下一拍执行、再下一拍交付。匹配实际缓冲与 pending/已执行表；寄存器 DMA 完成不能当图像写完 | [逐缓冲核实](../bringup/2026-10-25-vdin1-frame-handoff.md) |
 | 7.x JPEG DMA 导入触发 reservation-lock WARN | 新内核 map/unmap_attachment 要求调用者持锁；使用对应 unlocked helpers 管理锁，不忽略 taint 后继续验收 | t7-jpeg/test_import.py、[MJPEG 记录](../bringup/2026-10-21-edge-scaling-jpeg.md) |
 | 切分辨率后没有视频 fd，仍残留一组 CMA 分配 | GStreamer 先停用池，STREAMOFF 后另一个线程归还缓冲仍可 QBUF，随后 orphan 已无流可冲刷。先停止获取，在 QBUF 锁内停流并完成 orphan，再停用池；仅关闭 last-sample 缓存不足以修复 | packaging/kernel-edge/test_gstreamer_orphan.py、[动态模式记录](../bringup/2026-10-20-edge-dynamic-modes.md) |

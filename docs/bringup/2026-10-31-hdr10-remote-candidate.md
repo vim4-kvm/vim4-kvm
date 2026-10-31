@@ -54,7 +54,39 @@ e883b52333a78。新队列heavy票据中核对所有内容、对齐干净提交�
 
 ## 尚未运行的门禁
 
-没有板锁窗口、M6 HDR操作、5.15新鲜GPU占用基线或7.3真实DMA/码流/网页/UU证据。
-主仓新工具的MCP HDR通过HID点击设置，与此前禁止HID约束冲突；限定授权待回复。
+初版归档时没有板锁窗口、M6 HDR操作、5.15新鲜GPU占用基线或7.3真实DMA/码流/网页/UU证据。
+随后用户明确限定授权M6 MCP，最新窗口结果如下。
 不因静态能力探测/CPU fixture通过宣称4K60或SEI与当前产品逐值一致。
 预计硬件精度/性能1–2工程日；并行截图、四应用与UU恢复补齐约3–5工程日。
+
+## 正式uhd4 rebase与窗口结果
+
+纯工具修正 `07ed1e5` 在独立worktree通过335项全量测试（13跳过）后合入main并push：
+接受安全的任意7.3.0-vim4kvm-tag+，保留全部哈希/manifest/静态PID1清单门禁；
+stage记录自己新建模块空目录的device/inode，回原5.15后仅删除仍属于它的空目录，
+保留已有、替换、非空或挂载中的目录。新工具后续正式修正也同步进本特性分支。
+
+排队遵守kbase→HDR(uhd4)→本会话，所有编译/打包使用新heavy入口，无旧lockf。
+首次启动前发现正式分支已更新，未接触M6即释放票据；rebase到
+`8bca939d6bbd3e4d91e9f23b812e920172c99b3d`，候选新头
+`dc220366a1222a03423d5b5987fab3f027ec1d7a`，已带旧头lease校验推送。
+差异只有HDMI RX/VDIN恢复同步及测试；31项视频宿主回归通过，只增量编译两模块/BTF，
+重建并核对2338模块清单。Image/DTB和其余模块保持原产物，Image SHA仍为fb5496a2…。
+因此保留原r3内核release/ABI，以独立归档名和新模块build ID标识此模块修订。
+私有V4L2插件另纳入正式uhd4的sRGB探测/编码尺寸修正后重建，SHA256为
+`3a7ab39049af1a3ee41b3d2168cdcbe0050daa2f1beb992c3536fef70f2e6589`。
+
+窗口记录在main的 `logs/hdr10r3/`、`logs/hdr10r3-restore/`：
+
+- M6截图1920×1080、源3840×2160，空闲变化率0.003%，初始EOTF=SDR。
+- 新鲜5.15网页接收3840×2160，59.98 fps，零丢帧；实际codec=H.264。
+  这不是AMLY→GPU→P010原生HDR性能基线，不据此宣称HDR 4K60或GPU对齐。
+- MCP内置序列未进入显示设置，down-seven滚动落在Chrome网页，15秒内源未到PQ，
+  报 `M6 HDR toggle did not reach the requested source EOTF`。随后停止，不重放开关序列。
+- 本轮没有启动7.3候选，真十位DMA、Main10/VUI/SEI、HDR接收和模式往返门禁均未运行。
+- 收尾独立票据只执行逆向up-seven恢复原Chrome页面，并截图确认；前后EOTF均SDR，
+  最后为5.15.137-vim4kvm-hdrdual6，三项受查服务active、UDC configured，票据释放。
+  没有发送裸Shift、输入文本、其他HID，也没有声音/ptrace/刷机。
+
+首次脚本读root启动清单漏sudo时已在HDR操作前停止，随后修正为sudo -n；
+源码/归档没有混用该失败结果。原生SDR截图与另外三应用的缺口按本轮授权继续留待后续。

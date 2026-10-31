@@ -1,0 +1,52 @@
+From 7614e04a56408cee3c090e1a97f4b26adfaf30db Mon Sep 17 00:00:00 2001
+From: localhost-copilot <318096335+localhost-copilot@users.noreply.github.com>
+Date: Sat, 31 Oct 2026 12:27:09 +0800
+Subject: [PATCH] media: t7-hdmirx: keep lifecycle fixtures scoped to tested
+ handlers
+
+---
+ drivers/media/platform/amlogic/t7-hdmirx/test_core.py        | 1 +
+ drivers/media/platform/amlogic/t7-hdmirx/test_ioctl_locks.py | 2 +-
+ drivers/media/platform/amlogic/t7-hdmirx/test_timings.py     | 1 +
+ 3 files changed, 3 insertions(+), 1 deletion(-)
+
+diff --git a/drivers/media/platform/amlogic/t7-hdmirx/test_core.py b/drivers/media/platform/amlogic/t7-hdmirx/test_core.py
+index 427120c105640..f545d57cb3578 100644
+--- a/drivers/media/platform/amlogic/t7-hdmirx/test_core.py
++++ b/drivers/media/platform/amlogic/t7-hdmirx/test_core.py
+@@ -8,6 +8,7 @@ source = Path(__file__).with_name('t7-hdmirx.c').read_text()
+ defines = '\n'.join(line for line in source.splitlines() if line.startswith('#define T7_RX_'))
+ types = source[source.index('static const u32 t7_hdmirx_phy_top_regs'):
+                source.index('static int t7_hdmirx_validate_edid')]
++types = Path(__file__).with_name('t7-hlg-state.h').read_text() + types
+ functions = source[source.index('static void t7_hdmirx_core_stop'):
+                    source.index('int t7_hdmirx_query_timings')]
+ functions = source[source.index('static u32 t7_hdmirx_meter_hz'):
+diff --git a/drivers/media/platform/amlogic/t7-hdmirx/test_ioctl_locks.py b/drivers/media/platform/amlogic/t7-hdmirx/test_ioctl_locks.py
+index 8ce70c6dee8fe..e967981f59805 100644
+--- a/drivers/media/platform/amlogic/t7-hdmirx/test_ioctl_locks.py
++++ b/drivers/media/platform/amlogic/t7-hdmirx/test_ioctl_locks.py
+@@ -20,7 +20,7 @@ formats = driver[driver.index(format_start):
+ queries = driver[driver.index('static int t7_vdin_query_dv_timings'):
+                  driver.index('static int t7_vdin_set_input')]
+ registration = driver[driver.index('static void t7_vdin_video_unregister'):
+-                       driver.index('static int t7_vdin_status')]
++                       driver.index('static int t7_vdin_hdr_status')]
+ selector = core[core.index('static struct mutex *v4l2_ioctl_get_lock'):
+                 core.index('/* Common ioctl debug function')]
+ commands = ['VIDIOC_QUERY_DV_TIMINGS', 'VIDIOC_G_PARM', 'VIDIOC_G_FMT',
+diff --git a/drivers/media/platform/amlogic/t7-hdmirx/test_timings.py b/drivers/media/platform/amlogic/t7-hdmirx/test_timings.py
+index 27274c1de740a..de75e900cab26 100644
+--- a/drivers/media/platform/amlogic/t7-hdmirx/test_timings.py
++++ b/drivers/media/platform/amlogic/t7-hdmirx/test_timings.py
+@@ -12,6 +12,7 @@ vdin = Path(__file__).with_name('t7-vdin-test.c').read_text()
+ defines = '\n'.join(line for line in source.splitlines() if line.startswith('#define T7_RX_'))
+ types = source[source.index('static const u32 t7_hdmirx_phy_top_regs'):
+                source.index('static int t7_hdmirx_validate_edid')]
++types = Path(__file__).with_name('t7-hlg-state.h').read_text() + types
+ functions = source[source.index('static u32 t7_hdmirx_core_read16'):
+                    source.index('static u32 t7_hdmirx_audio_word')]
+ functions = source[source.index('static u32 t7_hdmirx_meter_hz'):
+-- 
+2.43.0
+
