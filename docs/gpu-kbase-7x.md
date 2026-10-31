@@ -1,7 +1,9 @@
 # VIM4 7.3 kbase 后备候选
 
-当前转入[uhd4基线上的uhd5候选](gpu-kbase-uhd5.md)，正式内核基线8bca939d6bbd3。
-下列r6/r9记录保留其原始内核与测量范围，不代表uhd5已通过。
+当前为[uhd4基线上的uhd5候选](gpu-kbase-uhd5.md)，正式内核基线8bca939d6bbd3。
+[r10实测](bringup/2026-10-31-kbase-r10-uhd5.md)已通过API/六类内存、mpgpu、温控和驱动基准并行；
+默认DMA中位数慢12.12%、CL SP低1.89%，服务级并行及dma-coherent二分未完成，产品门禁未过。
+下列r6/r9记录保留其原始内核与测量范围。
 
 [r9队列首用](bringup/2026-10-31-kbase-r9-queue.md)：模块/ABI及339项宿主测试通过；
 平台层新增mpgpu只读缓存，修正DEVFREQ metrics定时器回收。5.15七轮默认策略已缓存，
@@ -18,14 +20,14 @@ performance仅保留为显式调优选项，不能据此宣称产品性能/能�
 
 | 当前门禁 | 状态 |
 |---|---|
-| API查询/像素/基本执行 | r6为EGL1.5、GLES3.2、VK1.3.231、CL设备/C3.0；r9新候选待测，非CTS |
-| 64位heap | 六类VK路径通过；CL五类本轮通过，default CMA CL未重测 |
-| 正常候选WARN/fault | r6正常候选零WARN/BUG/oops/fault；r9未加载，负向去override的历史对照会fault |
-| 默认策略性能 | 5.15七轮已缓存；新7.3默认策略待配对；r6高频成绩不作为该门禁通过 |
-| thermal/并行 | r6有95°C map绑定、五档/59.998fps；r9待测，真实温控未触发 |
+| API查询/像素/基本执行 | r10为EGL1.5、GLES3.2、VK1.3.231、CL设备/C3.0，非CTS |
+| 64位heap | r10六类VK及CL路径通过，含default CMA |
+| 正常候选WARN/fault | 首次异步请求governor WARN已补前置依赖；修后r10所有已运行项零WARN/BUG/oops/fault |
+| 默认策略性能 | 七轮配对：DMA中位数与CL SP未达5.15；GLES/CL延迟通过，不以performance补成绩 |
+| thermal/并行 | GPU模拟96°C实测state0→1、800→666.7MHz并恢复；驱动基准59.9978fps；One-KVM服务级未完成 |
 | 实际scanout / GBM→Wave5 | 新互操作能力未通过；非现有5.15默认视频路径，独立验收，不以PRIME handle成功替代 |
 
-尚不满足完整互操作门禁，保留候选，不提交可批准的产品路径方案或改变默认GPU。
+默认性能及剩余门禁未过，保留候选，不提交可批准的产品路径方案或改变默认GPU。
 
 [r5窗口](bringup/2026-10-30-kbase-r5-window.md)：零fault，三API/六类内存与BO导入通过，
 GLES648 FPS、CL51µs/101.75 GFLOPS；DMA3.571ms落后5.15，GPU thermal绑定仍缺。
@@ -84,7 +86,7 @@ dma-profile.py创建独立trace实例，记录DMA API与具名arch cache事件�
 
 V=`~/src/linux@80a07ad5406d57855c996285ae75a50a1b9147ae`，
 K=`drivers/gpu/arm/midgard`；以git archive导出固定提交，不复制厂商构建目录的旧.o/.ko。
-正式7.3基线=`f71b5c6289cb3254690e57292327e73514f0715f`。
+当前正式7.3基线=`8bca939d6bbd3e4d91e9f23b812e920172c99b3d`，旧r1–r9记录仍按其原基线解释。
 独立VM worktree=`~/src/linux-7.3-kbase`，分支`gpu-kbase-7x`；正式/HDR/Panfrost工作树均不修改。
 
 截至2026-10-30，[Arm Bifrost发布页](https://developer.arm.com/Downloads/-/Bifrost%20Mali%203rd%20Gen%20GPU%20Architecture)

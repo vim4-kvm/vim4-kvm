@@ -18,13 +18,14 @@ thermal emulation用于验证GPU zone跨95°C trip后cooling状态与实际频�
 
 ## 工具与证据
 
-独立工具分支board-window-payload-id@3bae17b已push供审阅，未合入main。
+独立工具分支board-window-payload-id@d82d429已push供审阅，未合入main。
 它以namespace/payload_id区分不同模块/DT，真实kernel build_id仍负责PID1运行内核校验。
 本候选从该工具worktree运行board-window；kbase分支中的工具文件保持origin/main版本。
 旧build-ID目录包与HDR/hdr10包保持原恢复/cleanup路径。
-工具回归：Mac全量350项（14跳过），ARM64 Linux全量350项（10跳过）；
+工具最终回归：Mac/Linux各352项（14/18环境跳过）；
 覆盖同Image两payload、已有目录/符号链接拒绝、真实build ID不匹配和旧格式清理。
-后续全量351项通过，额外证明同Image各payload的恢复记录分别保留，避免漏清首次创建的模块挂载点。
+额外证明同Image各payload的恢复记录分别保留，避免漏清首次创建的模块挂载点；
+完整inventory留在本机，cleanup仅传精简身份，避免超过Linux单参exec上限。
 
 首次uhd5冷启动暴露异步probe请求未加载governor的WARN：
 `__request_module → try_then_request_governor → devfreq_add_device → kbase_devfreq_init`。
@@ -49,4 +50,6 @@ CL latency78.32/79.14µs、SP101.69/101.71GFLOPS。
 
 每窗结束核对四服务、UDC、原始保护哈希、临时助手及emul_temp恢复，释放票据。
 默认策略性能、温控、mpgpu和并行均通过后，才形成供审阅的产品合入清单；不自行合入正式。
-当前尚无uhd5上板结果，构建/宿主结果不能代替这些门禁。
+[r10已执行结果](bringup/2026-10-31-kbase-r10-uhd5.md)：API/内存、mpgpu和温控通过；
+DMA中位数与CL SP未达5.15，服务级并行与dma-coherent二分未完成，不能推广产品。
+第二窗工具cleanup因大参数失败，修正已入独立工具分支，尚待板测；基线状态已独立核验。
