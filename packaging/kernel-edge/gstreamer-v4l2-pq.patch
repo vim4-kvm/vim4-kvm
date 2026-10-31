@@ -1,11 +1,12 @@
 --- a/sys/v4l2/gstv4l2object.c
 +++ b/sys/v4l2/gstv4l2object.c
-@@ -2656,6 +2656,29 @@
+@@ -2656,6 +2656,30 @@
        if (colorspace == req_cspace) {
          if (gst_v4l2_object_get_colorspace (v4l2object, &fmt, &cinfo))
            gst_v4l2_object_fill_colorimetry_list (&list, &cinfo);
 +        if (colorspace == V4L2_COLORSPACE_BT2020 &&
-+            pixelformat == V4L2_PIX_FMT_P010) {
++            (pixelformat == V4L2_PIX_FMT_P010 ||
++                pixelformat == V4L2_PIX_FMT_HEVC)) {
 +          /* Default BT.2020 transfer is not PQ. Probe the complete native HDR
 +           * tuple, and advertise only what the device actually retains. */
 +          struct v4l2_format pq_fmt = fmt;

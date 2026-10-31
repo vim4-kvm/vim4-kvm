@@ -48,10 +48,12 @@ fixture += '\n' + function('gst_v4l2_object_add_colorspace')
 fixture += r'''
 int main(void) {
  gst_init(NULL,NULL);
+ for(int encoded=0;encoded<2;encoded++)
  for(int multi=0;multi<2;multi++) for(int mode=0;mode<6;mode++) {
   GstV4l2Object o={multi?V4L2_BUF_TYPE_VIDEO_OUTPUT_MPLANE:V4L2_BUF_TYPE_VIDEO_OUTPUT,mode};
   GstStructure *s=gst_structure_new_empty("video/x-raw");
-  gst_v4l2_object_add_colorspace(&o,s,3840,2160,V4L2_PIX_FMT_P010);
+  gst_v4l2_object_add_colorspace(&o,s,3840,2160,
+      encoded?V4L2_PIX_FMT_HEVC:V4L2_PIX_FMT_P010);
   const GValue *list=gst_structure_get_value(s,"colorimetry");
   gboolean found=FALSE;
   for(unsigned i=0;i<gst_value_list_get_size(list);i++)
