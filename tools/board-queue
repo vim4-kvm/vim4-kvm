@@ -1,0 +1,296 @@
+#!/usr/bin/env python3
+"""Host-local FIFO leases. Use the same --root on every worktree/session.
+
+acquire prints a ticket; export BOARD_TICKET to use release/sampling/board-window.
+Lease expiry releases advisory locks, never terminates the measured operation.
+"""
+import argparse
+from contextlib import contextmanager
+import fcntl
+import json
+import os
+from pathlib import Path
+import signal
+import subprocess
+import sys
+import time
+import uuid
+
+
+class Queue:
+    def __init__(self, root='/tmp/vim4-board-queue', legacy='/tmp'):
+        self.root = Path(root)
+        self.legacy = Path(legacy)
+        self.root.mkdir(parents=True, exist_ok=True)
+        self.legacy.mkdir(parents=True, exist_ok=True)
+
+    @contextmanager
+    def guard(self):
+        with (self.root / 'queue.lock').open('a') as lock:
+            fcntl.flock(lock, fcntl.LOCK_EX)
+            yield
+
+    def read(self, token):
+        if not token or not all(c in '0123456789abcdef' for c in token):
+            raise ValueError('provide --ticket or BOARD_TICKET from acquire')
+        return json.loads((self.root / (token + '.json')).read_text())
+
+    def write(self, item):
+        path = self.root / (item['ticket'] + '.json')
+        temp = path.with_suffix('.tmp')
+        temp.write_text(json.dumps(item))
+        temp.replace(path)
+
+    def items(self):
+        items = [json.loads(p.read_text()) for p in self.root.glob('*.json')
+                 if len(p.stem) == 32 and all(c in '0123456789abcdef' for c in p.stem)]
+        for item in items:
+            if item['state'] in ('queued', 'held') and item.get('pid'):
+                try:
+                    os.kill(item['pid'], 0)
+                except ProcessLookupError:
+                    item.update(state='abandoned', sampling=False)
+                    self.write(item)
+                    self.event(item, 'keeper-died')
+        return sorted(items, key=lambda i: i['order'])
+
+    @staticmethod
+    def legacy_lock(fd, mode):
+        # macOS lockf(1) uses BSD flock; Linux callers may use POSIX lockf.
+        # Hold both namespaces, since they are independent on Linux.
+        fcntl.flock(fd, mode | fcntl.LOCK_NB)
+        if sys.platform != 'darwin':
+            fcntl.lockf(fd, mode | fcntl.LOCK_NB)
+
+    def event(self, item, event):
+        with (self.root / 'history.jsonl').open('a') as out:
+            out.write(json.dumps(dict(time=time.time(), event=event, **item)) + '\n')
+
+    def enqueue(self, who, purpose, minutes, heavy=False, parent=None):
+        if not 0 < minutes <= 30:
+            raise ValueError('--max-min must be >0 and <=30')
+        with self.guard():
+            order_path = self.root / 'sequence'
+            order = int(order_path.read_text()) + 1 if order_path.exists() else 1
+            order_path.write_text(str(order))
+            token = uuid.uuid4().hex
+            item = dict(ticket=token, order=order, who=who, purpose=purpose,
+                        seconds=minutes * 60, heavy=heavy, state='queued',
+                        queued=time.time(), parent=parent, sampling=False)
+            if os.isatty(2):
+                item['notify_tty'] = os.ttyname(2)
+            self.write(item)
+            self.event(item, 'enqueued')
+        return token
+
+    def release(self, token):
+        with self.guard():
+            item = self.read(token)
+            if item['state'] in ('queued', 'held'):
+                item['state'] = 'released'
+                item['sampling'] = False
+                self.write(item)
+                self.event(item, 'released')
+
+    def sampling(self, token, enabled):
+        with self.guard():
+            item = self.read(token)
+            if item['state'] != 'held' or item['heavy']:
+                raise RuntimeError('sampling requires an active board ticket')
+            item['sampling_requested'] = enabled
+            self.write(item)
+        while True:
+            item = self.read(token)
+            if item['state'] != 'held':
+                raise RuntimeError('board lease ended')
+            if item['sampling'] == enabled:
+                return
+            time.sleep(.05)
+
+    def serve(self, token):
+        locks = []
+        try:
+            with self.guard():
+                item = self.read(token)
+                item['pid'] = os.getpid()
+                self.write(item)
+            while True:
+                with self.guard():
+                    item = self.read(token)
+                    if item['state'] not in ('queued', 'held'):
+                        return
+                    if item.get('parent'):
+                        try:
+                            os.kill(item['parent'], 0)
+                        except ProcessLookupError:
+                            item['state'] = 'abandoned'
+                    if item['state'] == 'held' and time.time() >= item['started'] + item['seconds']:
+                        item['state'] = 'expired'
+                        item['sampling'] = False
+                        message = ('LEASE EXPIRED: ' + item['who'] + ' / ' + item['purpose'] +
+                                   '; release board operations now; next ticket may preempt.\n')
+                        (self.root / (token + '.notice')).write_text(message)
+                        print(message, file=sys.stderr, flush=True)
+                        if item.get('notify_tty'):
+                            try:
+                                with open(item['notify_tty'], 'w') as terminal:
+                                    terminal.write(message)
+                            except OSError:
+                                pass
+                        self.event(item, 'timeout-preemption')
+                    if item['state'] not in ('queued', 'held'):
+                        self.write(item)
+                        return
+                    if item['state'] == 'queued':
+                        active = self.items()
+                        same = [i for i in active if i['heavy'] == item['heavy'] and i['state'] == 'queued']
+                        boards = [i for i in active if not i['heavy'] and i['state'] == 'held']
+                        eligible = same[0]['ticket'] == token
+                        if item['heavy']:
+                            eligible &= not any(i.get('sampling_requested') for i in boards)
+                        else:
+                            eligible &= not boards
+                        if eligible:
+                            names = ['vim4-heavy.lock'] if item['heavy'] else ['vim4-board.lock', 'vim4-heavy.lock']
+                            try:
+                                for name in names:
+                                    fd = (self.legacy / name).open('a+')
+                                    locks.append(fd)
+                                    mode = fcntl.LOCK_EX if name == 'vim4-board.lock' else fcntl.LOCK_SH
+                                    self.legacy_lock(fd, mode)
+                                    if os.fstat(fd.fileno()).st_ino != (self.legacy / name).stat().st_ino:
+                                        raise BlockingIOError('legacy lock path was replaced')
+                            except BlockingIOError:
+                                for fd in locks:
+                                    fd.close()
+                                locks.clear()
+                            else:
+                                item.update(state='held', started=time.time(), pid=os.getpid())
+                                self.write(item)
+                                self.event(item, 'acquired')
+                    elif not item['heavy']:
+                        requested = item.get('sampling_requested', False)
+                        if requested != item['sampling']:
+                            try:
+                                self.legacy_lock(locks[-1], fcntl.LOCK_EX if requested else fcntl.LOCK_SH)
+                            except BlockingIOError:
+                                pass
+                            else:
+                                item['sampling'] = requested
+                                self.write(item)
+                time.sleep(.05)
+        finally:
+            for fd in locks:
+                fd.close()
+
+    def acquire(self, who, purpose, minutes, heavy=False, parent=None):
+        token = self.enqueue(who, purpose, minutes, heavy, parent)
+        with (self.root / (token + '.log')).open('a') as log:
+            daemon = subprocess.Popen([sys.executable, str(Path(__file__).resolve()),
+                                       '--root', str(self.root), '--legacy-dir', str(self.legacy),
+                                       '_serve', token], stdin=subprocess.DEVNULL,
+                                      stdout=log, stderr=log, start_new_session=True)
+        try:
+            while True:
+                item = self.read(token)
+                if item['state'] == 'held':
+                    return token
+                if daemon.poll() is not None:
+                    raise RuntimeError('lease keeper exited: ' + str(self.root / (token + '.log')))
+                time.sleep(.05)
+        except BaseException:
+            self.release(token)
+            raise
+
+    def status(self):
+        with self.guard():
+            result = []
+            for item in self.items():
+                if item['state'] in ('queued', 'held'):
+                    item = dict(item, held_seconds=max(0, time.time() - item.get('started', time.time())))
+                    result.append(item)
+            return result
+
+    def legacy_status(self):
+        result = {}
+        for name in ('vim4-board.lock', 'vim4-heavy.lock'):
+            path = self.legacy / name
+            try:
+                with path.open('r+') as fd:
+                    try:
+                        self.legacy_lock(fd, fcntl.LOCK_EX)
+                        result[str(path)] = 'free'
+                    except BlockingIOError:
+                        result[str(path)] = 'busy (owner may be a legacy lockf session)'
+            except FileNotFoundError:
+                result[str(path)] = 'absent'
+        return result
+
+
+def main():
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument('--root', default=os.environ.get('BOARD_QUEUE_ROOT', '/tmp/vim4-board-queue'))
+    parser.add_argument('--legacy-dir', default='/tmp')
+    commands = parser.add_subparsers(dest='action', required=True)
+    for action in ('acquire', 'run'):
+        p = commands.add_parser(action)
+        p.add_argument('--who', required=True)
+        p.add_argument('--purpose', required=True)
+        p.add_argument('--max-min', type=float, default=30)
+        p.add_argument('--heavy', action='store_true')
+        if action == 'run':
+            p.add_argument('command', nargs=argparse.REMAINDER)
+    commands.add_parser('status')
+    for action in ('release', 'sampling'):
+        p = commands.add_parser(action)
+        p.add_argument('--ticket', default=os.environ.get('BOARD_TICKET'))
+        if action == 'sampling':
+            p.add_argument('value', choices=['on', 'off'])
+    commands.add_parser('_serve').add_argument('ticket')
+    args = parser.parse_args()
+    queue = Queue(args.root, args.legacy_dir)
+    def interrupted(signum, frame):
+        raise KeyboardInterrupt
+    signal.signal(signal.SIGTERM, interrupted)
+    if args.action == '_serve':
+        queue.serve(args.ticket)
+    elif args.action == 'status':
+        print(json.dumps(dict(active=queue.status(), legacy_locks=queue.legacy_status(),
+                              notices={p.stem: p.read_text() for p in queue.root.glob('*.notice')}),
+                         indent=2, ensure_ascii=False))
+    elif args.action == 'release':
+        queue.release(args.ticket)
+    elif args.action == 'sampling':
+        queue.sampling(args.ticket, args.value == 'on')
+    else:
+        token = queue.acquire(args.who, args.purpose, args.max_min, args.heavy,
+                              os.getpid() if args.action == 'run' else None)
+        if args.action == 'acquire':
+            print(token)
+            return 0
+        child = None
+        try:
+            command = args.command[1:] if args.command[:1] == ['--'] else args.command
+            if not command:
+                raise ValueError('run requires -- <cmd>')
+            child = subprocess.Popen(command, env=dict(os.environ, BOARD_TICKET=token,
+                                     BOARD_QUEUE_ROOT=str(queue.root)), start_new_session=True)
+            while child.poll() is None:
+                if queue.read(token)['state'] == 'expired':
+                    print((queue.root / (token + '.notice')).read_text(), file=sys.stderr)
+                    return child.wait()
+                time.sleep(.05)
+            return child.returncode
+        finally:
+            if child is not None and child.poll() is None:
+                os.killpg(child.pid, signal.SIGTERM)
+                child.wait()
+            queue.release(token)
+
+
+if __name__ == '__main__':
+    try:
+        sys.exit(main())
+    except (ValueError, RuntimeError, OSError) as exc:
+        print(str(exc), file=sys.stderr)
+        sys.exit(1)
