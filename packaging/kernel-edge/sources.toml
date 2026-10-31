@@ -112,8 +112,10 @@ tested_module_sha256 = "14334de2f4c8c5cac5009467e53e2e3212c68b6a03912a22e8ed9311
 [gstreamer]
 source_url = "https://gstreamer.freedesktop.org/src/gst-plugins-good/gst-plugins-good-1.24.2.tar.xz"
 source_sha256 = "6e347c72d4b8b2886d890ffe9f6767a9edb02f201588e8c3a572dcd08d9852bd"
-patches = ["gstreamer-v4l2-offset.patch", "gstreamer-v4l2-pool-lifetime.patch", "gstreamer-v4l2-eos-buffer.patch", "gstreamer-v4l2-orphan-order.patch", "gstreamer-v4l2-contiguous-capture.patch", "gstreamer-v4l2-visible-crop.patch"]
+patches = ["gstreamer-v4l2-offset.patch", "gstreamer-v4l2-pool-lifetime.patch", "gstreamer-v4l2-eos-buffer.patch", "gstreamer-v4l2-orphan-order.patch", "gstreamer-v4l2-contiguous-capture.patch", "gstreamer-v4l2-visible-crop.patch", "gstreamer-v4l2-p010.patch"]
+# Historical hardware-tested binary, before the P010 candidate patch.
 tested_plugin_sha256 = "a80d41a3d758a5af1794a324eed44c9f47a88e0d3b30dfafe3207d32d7be26fe"
+candidate_plugin_sha256 = "7bb6551536645f5bc44db94e51f02a2abe7cdf8bf83b7f310dcb69636ee4a45a"
 
 [armbian]
 url = "https://github.com/armbian/build.git"

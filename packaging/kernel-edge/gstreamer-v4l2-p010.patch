@@ -1,0 +1,45 @@
+--- a/sys/v4l2/gstv4l2object.c
++++ b/sys/v4l2/gstv4l2object.c
+@@ -151,6 +151,7 @@
+ 
+   /* two planes -- one Y, one Cr + Cb interleaved  */
+   {V4L2_PIX_FMT_NV12, TRUE, GST_V4L2_RAW},
++  {V4L2_PIX_FMT_P010, TRUE, GST_V4L2_RAW},
+   {V4L2_PIX_FMT_NV12M, TRUE, GST_V4L2_RAW},
+   {V4L2_PIX_FMT_NV12MT, TRUE, GST_V4L2_RAW},
+   {V4L2_PIX_FMT_NV12MT_16X16, TRUE, GST_V4L2_RAW},
+@@ -1132,6 +1133,7 @@
+       break;
+     case V4L2_PIX_FMT_NV12:    /* Y/CbCr 4:2:0, 12 bits per pixel */
+     case V4L2_PIX_FMT_NV12M:   /* Same as NV12      */
++    case V4L2_PIX_FMT_P010:
+       rank = YUV_BASE_RANK + 8;
+       break;
+     case V4L2_PIX_FMT_YUYV:    /* YUY2, 16 bits per pixel */
+@@ -1403,6 +1405,9 @@
+     case V4L2_PIX_FMT_ARGB32:
+       format = GST_VIDEO_FORMAT_ARGB;
+       break;
++    case V4L2_PIX_FMT_P010:
++      format = GST_VIDEO_FORMAT_P010_10LE;
++      break;
+     case V4L2_PIX_FMT_NV12:
+     case V4L2_PIX_FMT_NV12M:
+       format = GST_VIDEO_FORMAT_NV12;
+@@ -1982,6 +1987,9 @@
+       case GST_VIDEO_FORMAT_NV12:
+         fourcc = V4L2_PIX_FMT_NV12;
+         fourcc_nc = V4L2_PIX_FMT_NV12M;
+         break;
++      case GST_VIDEO_FORMAT_P010_10LE:
++        fourcc = V4L2_PIX_FMT_P010;
++        break;
+       case GST_VIDEO_FORMAT_NV12_64Z32:
+         fourcc_nc = V4L2_PIX_FMT_NV12MT;
+@@ -3144,6 +3152,7 @@
+     if ((pixelformat == V4L2_PIX_FMT_NV12 ||
+             pixelformat == V4L2_PIX_FMT_NV12M ||
++            pixelformat == V4L2_PIX_FMT_P010 ||
+             pixelformat == V4L2_PIX_FMT_HEVC) &&
+         gst_v4l2_object_wave5_visible_crop (v4l2object)) {
+       step_w = step_h = 2;

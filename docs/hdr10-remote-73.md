@@ -1,117 +1,105 @@
-# 7.3 原生远程 HDR10 设计与门禁
+# 7.3 原生远程 HDR10 候选与门禁
 
-当前为离线候选，**尚不能在 7.3 网页或 UU 启用原生 HDR**。P010 输入接线、
-格式容量修复和 HDR10 SEI 序列化已有候选；VDIN 十位输出、HDR10 controls 的固件
-接线和应用能力协商尚未完成。不能把 HDR2 映射、Main10 枚举或 CPU 测试算作端到端通过。
-源码证据、测试结果见[离线调查](bringup/2026-10-31-hdr10-remote-offline.md)。
+本分支实现 `VDIN AMLY → Vulkan → P010 → Wave5 Main10 → 用户态 HDR10 SEI`。
+尚未通过实板门禁，不能视为P0完成。证据见[离线调查](bringup/2026-10-31-hdr10-remote-offline.md)。
 
-## 格式与采集
+## DMA与模式
 
-对外目标使用标准 `V4L2_PIX_FMT_P010`：一个连续内存平面，内部 Y 与交错 CbCr
-两分量平面，LE 16-bit 字的高十位有效；同一 byte stride，至少 `2*width`、按32字节
-补齐，UV 从 `stride*storage_height` 开始，总容量 `stride*storage_height*3/2`。
-可见高度、storage height、UV offset 必须分别传递，禁止由可见宽度反推 pitch。
-若沿用当前紧密采集，storage height 就是实际采集高度；额外尾部容量不能改变 UV offset。
-Wave5 若协商补高，应像现有 NV12 adapter 一样以真实 plane views 显式导入。
+AMLY是私有fourcc，不是标准P010/Y210/NV15。唯一C定义在内核
+`include/uapi/linux/amlogic-vdin.h`：每两像素五字节，little-endian连续十位槽
+Cb/Y0/Cr/Y1，一个内存平面，stride=`ALIGN(width*5/2,32)`。
+4K为9600×2160=20,736,000字节。REQBUFS/CREATE_BUFS共用HDR2的192 MiB字节预算，
+先扣direct DMA discard frame，再按实际allocation_size计算；4K最多八个用户缓冲。
+GPU source使用四个采集缓冲、三个独立P010缓冲。
 
-5.15 的 AMLY 是 packed 4:2:2（每两像素5字节），并非 P010；早期有16字节反序，
-当前 no_swap 模式为连续 little-endian 十位 Cb/Y0/Cr/Y1。不能把它标为 P010、NV15
-或 Y210；Y210 的分量顺序、字填充和步长也不同。7.3 首先在**私有 DMA 环**验证原始
-十位 MIF 布局，再选择能直接得到标准 P010 的 MIF 模式；若硬件不支持，利用现有
-私有环→V4L2 缓冲复制边界完成显式解包/垂直色度过滤，输出才报告 P010。
-不把私有 AMLY fourcc 新增为产品接口。CPU 转换只是正确性基线，不能承诺4K60。
-GPU 路径需单独核对7.3的DMA导入、缓存一致性和连续内存预算，不能套用5.15通过结果。
+VDIN状态由空队列S_FMT决定：NV12使用HDR2→BT.709映射，AMLY旁路HDR2保留十位。
+切换先停编码、等待租约归还、STREAMOFF、worker退出、REQBUFS(0)，再S_FMT和重启。
+忙队列拒绝切换。原生STREAMON只接受有效PQ/YUV/limited，拒绝HLG/RGB/full；
+原生期间保留待更新HDR2 LUT，恢复映射后装载。SDR继续八位路径。
 
-原生模式让 HDR2 bypass、保留 PQ/BT.2020 与 limited/full；映射模式继续使用现有
-HDR2→NV12/BT.709。不得先映射到八位再扩展为 P010。SDR 源保持八位效率路径。
-不能因为 RX 报 ten-bit 就认为输出 DMA 或编码保留十位。
+私有GStreamer `vim4amlysrc`复用5.15产品的Vulkan compute API与着色器：
+`amly-gpu.c`、`amly-to-p010.comp`，缩放用`amly-to-texture.comp`、`texture-to-p010.comp`。
+仅dma-buf导入/导出，无像素CPU mapping或转换后备。连续堆依次尝试
+heap-codecmm、reserved、linux,cma，不用非连续system heap。
+允许Vulkan 1.1 core与1.0 KHR等价查询，以兼容kbase/Panfrost API；仍要求真实Mali-G52、
+compute和外部dma-buf能力，不能据此声称两个驱动已实测。
+[KHR查询合同](https://docs.vulkan.org/refpages/latest/refpages/source/VK_KHR_external_memory_capabilities.html)
+与[dma-buf扩展](https://docs.vulkan.org/refpages/latest/refpages/source/VK_EXT_external_memory_dma_buf.html)
+共同约束导入。标准十位VDIN直写只继续查资料，有证据再提议，不盲试寄存器。
+
+GPU输出为标准P010_10LE：16-bit字高十位有效，交错CbCr，两分量共享连续fd。
+Wave5 storage为32像素×16行：stride=`ALIGN(width*2,64)`，
+UV offset=`stride*ALIGN(height,16)`，容量为offset×3/2。
+VideoMeta传递可见尺寸、stride、UV offset与右/下补齐；着色器使用同一storage height。
+不得用可见高度或额外尾容量猜UV offset。
 
 ## 编码、元数据与能力
 
-P010 先限定 HEVC/Main10；八位 Main 和 AVC 输入不能误用此布局。
-候选将 P010 接到现有 `FORMAT_420_P10_16BIT_LSB`：此处 LSB 指低六个填充位，
-寄存器使用 LEFT_JUSTIFIED/16BIT，沿用既有 source endian 设置。其最终字节解释
-必须用相邻样本仅差1的十位梯度经真实编码/十位解码确认。
-保留驱动的 `support_hevc10bit_enc` 固件能力检查，不以 Wave521C 名称替代它。
- packed 32-bit 的既有寄存器分支不等于标准 NV15，暂不新增其输入格式。
+P010仅接HEVC十位内部编码，保留固件`support_hevc10bit_enc`检查。
+匹配5.15 SDK的`FORMAT_420_P10_16BIT_LSB`使用LEFT_JUSTIFIED/16BIT，legacy source
+endian为0xe；r1的0xf已修正。必须以相邻值差一的十位梯度经真实编解码验证。
+VUI从V4L2 colorimetry传递：BT.2020/PQ/BT.2020nc/limited，即9/16/9、full_range=0。
+SPS同时检查profile=2和Y/UV bit_depth_minus8=2。
 
-VUI 从 S_FMT 的 colorspace/xfer_func/ycbcr_enc/quantization 生成，PQ 为9/16/9，
-禁止管线后段重新强制709。Main10 SPS 必须同时检查 profile 和两项 bit_depth_minus8=2。
+VDIN暴露只读volatile标准compound controls：
+`V4L2_CID_COLORIMETRY_HDR10_CLL_INFO`和`MASTERING_DISPLAY`。
+来源是校验合格的HDMI RX DRM静态infoframe；无包、非PQ或超过一秒返回ENODATA。
+保留显式零值；HDMI MaxLum整cd/m²乘10000，MinLum不重复换算。
+多次读取尚不承诺与特定DMA帧原子绑定。
 
-后续用 `V4L2_CID_COLORIMETRY_HDR10_CLL_INFO` 和
-`V4L2_CID_COLORIMETRY_HDR10_MASTERING_DISPLAY` compound controls，独立存在标志，
-显式全零CLL不能变为“无元数据”。SEI payload 137/144 使用大端，亮度单位0.0001 cd/m²；
-HDMI DRM 的 MaxLum 整 cd/m²必须转换，MinLum不能重复乘10000。
-必须区分 RX 没包、包内零值与上一次信号的缓存。
-标准 mastering control 的校验范围可能不接受源端全零 mastering；需以真实
-V4L2 core 验证，不能绕过标准验证或编造默认色度/峰值。
+没有证据证明Wave521C固件采用Wave4 SEI ABI，不写猜测寄存器，也不注册暗示固件会
+插入SEI的空实现控件。One-KVM在编码后AU插入完整Annex B prefix SEI：137为mastering、
+144为CLL，大端和emulation prevention；每个IRAP前重复，元数据变化时更新；去除已有HDR
+消息但保留同NAL其他SEI。无新鲜源metadata时丢弃原生AU，不编造EDID默认值。
+历史保存的5.15样本没有type39/40，不能据此断言当前所有产品流均无SEI；仍需新鲜基线。
 
-当前 serializer 输出完整 Annex B prefix SEI，尚未接入寄存器。下一步先从匹配固件
-API确认 prefix info 的长度单位、使能位、NAL/RBSP输入和插入顺序。固定流元数据在
-SEQ_INIT前建立私有 coherent DMA，保留到固件停止；复用现有隔离/销毁合同。
-streaming期间控制修改先返回EBUSY并重建，避免修改仍被队列引用的SEI。
-每个随机访问入口前重复静态元数据，保证后加入的网页/UU订阅者可恢复；AU必须保留SEI。
-在接线完成并经码流读回前不注册这些 controls，以免能力探测误报。
+One-KVM能力探测不读uname：VDIN AMLY枚举、两类metadata controls大小/可用性；
+独立无缓冲编码上下文协商HEVC/Main10/P010、尺寸、stride、容量及PQ/2020nc/limited；
+检查私有source和编码器P010 caps。源PQ还要求新鲜metadata。静态检查不能替代固件/像素门禁。
 
-GStreamer 要实测标准 video4linux2 对 P010_10LE 的 caps、单内存平面和两分量映射，
-以及8/10位切换时 buffer pool 释放；标准 HDR caps/metadata 显式转 compound controls。
-不能认为插件会自动设置 metadata controls。保持独立标准插件路径，避开厂商
-libamlv4l2src；标准 P010 的插件映射与协商尚待私有插件集成测试。
+## 应用与阶段门禁
 
-应用能力探测不读 uname：分别探测采集 ENUM_FMT/TRY_FMT 返回的真实P010布局与色彩、
-编码 P010→HEVC/Main10、QUERY_EXT_CTRL 的 compound 类型/大小和插件caps。
-缺任一项返回具体不可用原因；不因“已安装.so”或“profile菜单含Main10”开放7.3 HDR。
-已有 `wave5_caps.rs` 可承载无缓冲探测，但格式静态探测仍不能代替固件与像素门禁。
+沿用HDR_SDR_ENABLED和UU enable_hdr选项语义：原生请求与HDR源都满足时选AMLY/GPU/P010，
+否则选HDR2映射NV12。共享采集所有者串行重建，不为截图临时切换主采集。
+源变化、UU断开与接管的恢复仍须实板往返验证。
 
-## 切换与产品范围
-
-由共享采集所有者串行执行：停止取帧→停编码→等待编码/截图/显示租约归还→STREAMOFF→
-释放池→选择原生P010或HDR2映射NV12→协商→重新启流。失败返回明确不可用状态，
-不输出标为PQ的709图像。源端HDR/SDR变化走同一状态机，不改EDID、HPD或HDMI服务。
-保留全局HDR_SDR_ENABLED和UU会话临时偏好的现有恢复合同。
-
-同一采集的一种模式切换不能假装同时有两种输出。5.15有独立VDIN1 SDR路径；7.3在
-原生HDR时的JPEG/H.264/截图须显式分支tone map，或后续增加同源第二VDIN。没有此分支
-时不得为截图短暂切换共享主采集；产品门禁包含HDR推流期间独立SDR截图。
-
-| 接入方 | 范围与边界 |
+| 接入方 | 本候选范围 / 未完成项 |
 |---|---|
-| One-KVM | 独立worktree修改wave5 caps/pipeline、VideoMeta、重建与截图支路；先接通再开放hdr_remote_available |
-| UU | 复用共享编码；独立十位解码声明、profile2、enable_hdr请求、源端PQ和显示能力共同决定；保持断开/接管恢复偏好与单NAL VPS/SPS/PPS |
-| NanoKVM / JetKVM / PiKVM | 扩展公共vim4h265src的V4L2后端，保留各网页业务；WebRTC/Direct/Janus分别验证SEI、色彩和Main10 |
-| H.264 / JPEG / Safari | H.264/JPEG继续SDR；Safari没有现成真HDR验收，不能随Chrome成功扩大支持声明 |
+| One-KVM网页 | Wave5原生source、Main10/PQ、SEI和能力探测；接收端HDR 4K60未验 |
+| UU | 复用共享编码，沿用独立十位声明、profile2、enable_hdr；未连真实客户端 |
+| NanoKVM / JetKVM / PiKVM | 仍需扩展公共vim4h265src的Wave5后端，各网页/Janus独立验收；本轮未改 |
+| JPEG / H.264 / 截图 | 映射模式保留；原生Wave5暂无并行SDR分支，截图不可用。需GPU tone map或同源第二VDIN才可宣称双路径/P0 |
 
-本轮没有修改One-KVM，仍保留Vendor能力门禁。应用改动必须另建其worktree，按VIM4.md
-执行Rust、上游目标检查和前端构建。不能只去掉Vendor判断。
-
-## 阶段与工作量
-
-| 阶段 | 预计工程日 | 门禁 |
+| 阶段 | 门禁 | 剩余预计 |
 |---|---|---|
-| A：编码器输入 | 1–2 | 实际C宿主回归、模块/完整Image构建；合成P010十位梯度编码、SPS/VUI与逐样本解码；能力位拒绝测试 |
-| B：采集与模式 | 2–3 | 原始DMA布局证据、标准P010容量与边界；PQ↔SDR↔PQ三轮、HDR2无退化、sequence/动态标记/租约与CMA稳定 |
-| C：controls/SEI/GStreamer | 1–2 | 标准controls校验、缺包/零值、源元数据逐值对照；真实输出137/144读回、晚加入恢复、停止/隔离不早释放DMA |
-| D：四应用/UU | 2–3 | Chrome PQ/2020/Main10、UU独立十位声明、尺寸变化、开关/接管恢复、并行SDR截图；原有SDR行为保持 |
+| 离线候选 | 同源完整Image/DTB/模块，私有插件/One-KVM构建，宿主生命周期/码流测试，归档及哈希 | 以本轮实际记录为准 |
+| 硬件精度与性能 | 真十位DMA、P010低两位、真实SPS/VUI/SEI；先量5.15 Vulkan分辨率/fps/GPU占用，7.3至少对齐；零WARN | 1–2工程日 |
+| 产品补齐 | 原生期间并行SDR截图、四应用公共源、UU恢复、浏览器实际HDR解码4K60 | 3–5工程日 |
 
-合计约6–10工程日（阶段A与C部分重叠），另需独占板子窗口；固件不接受P010或SEI ABI
-不兼容时重新估算。当前仅完成A的离线输入候选和C的序列化，不是P0完成。
+主要风险是固件P010解释、PanVK/kbase外部内存能力、CMA峰值与UHD60带宽。
 
-## 下一次上板清单：最多30分钟
+## 独占上板清单：最多30分钟
 
-前提：完整Image/模块/BTF匹配已在另一授权窗口验证且候选已经运行；本清单不安装内核、
-不重启或刷机。B/C尚未实现时只执行合成编码诊断，不能跳过门禁做网页HDR演示。
-取得板锁和heavy锁，确认其他会话释放，预先准备所有工具和私有插件，计时超限立即收尾。
+先完成离线构建、提交、push和归档。全部使用主仓main新工具：重负载用
+`tools/board-queue run --heavy --who hdr10 --purpose ... -- <cmd>`；上板用
+`tools/board-queue run --who hdr10 --purpose ... --max-min 30 -- <window脚本>`。
+窗口内使用board-window的boot-candidate/mcp/receiver/collect/return-baseline，
+编译不持板票据，不再直接使用lockf。按kbase、HDR(uhd4)、本会话的队列次序，最多等150分钟；
+5.15基线优先复用哈希不变的缓存。上板前若正式uhd4已合入，先rebase再出候选。
+必须有M6 MCP；新工具的HDR操作实际发送HID，与此前禁止HID约束存在冲突，
+得到限定授权前仅截图/检查，不执行HDR点击序列。预备5.15回退与已验证启动工具，禁止刷机。
 
-1. 0–3分钟：记录release/commit/固件SHA、服务/配置/源模式/CMA/fd与dmesg基线。
-   不发HID、不测声音、不ptrace，不把sudo和heredoc共用stdin。
-2. 3–8分钟：停用共享编码消费者后，用自有编码进程输入64/656宽及1080p合成十位梯度，
-   同时保留带padding案例；离线解析SPS/VUI/SEI并十位解码。有效低两位、UV顺序或SEI
-   任一不符就结束测试，不尝试改源掩盖。
-3. 8–14分钟：由MCP在M6开启真实HDR（仅设置显示HDR，不发送HID），读取RX PQ/2020，
-   抓原始DMA与P010各少量帧；核对stride/UV offset、灰阶最低位、动态标记与元数据。
-4. 14–20分钟：One-KVM网页与UU顺序各短测；检查实际profile2、十位SPS、PQ/2020、
-   SEI和内容推进；UU开关往返、断开恢复；不以发送fps代替接收显示证据。
-5. 20–25分钟：Nano/Jet/Pi依次短测公共源，HDR期间SDR JPEG；真实HDR→SDR→HDR一次。
-   这是冒烟，四应用的缩放、Direct、长稳与光度验收另开窗口，不宣称已全覆盖。
-6. 25–30分钟：恢复原源HDR设置、全局偏好、应用选择与服务；比较配置、fd/CMA和dmesg，
-   保存原始码流、十位解码、接收端统计与逐阶段失败。复位失败则保留隔离，不强制释放。
+1. 0–5分钟：截图确认M6空闲，经MCP开HDR；在5.15保存新鲜产品HEVC与Vulkan转换
+   分辨率/fps/GPU占用；记录服务、UDC、源状态、固件及产物哈希基线。
+2. 5–12分钟：候选工具加载唯一release的Image/DTB/模块；核对release、build ID/BTF、
+   源PQ/2020与WARN增量。抓少量AMLY/P010核对真实低两位、UV顺序、stride/storage。
+   不把八位左移当十位；任一失败立即收尾，不改未知寄存器。
+3. 12–20分钟：解析真实Main10/十位SPS、9/16/9/limited VUI、137/144逐项数值和去重，
+   与新鲜5.15对照；网页接收端证明HDR解码4K60，UU短测独立声明；记录GPU性能。
+   不以发送fps代替接收显示证据。
+4. 20–24分钟：原生→HDR2映射→SDR→原生，核对画面恢复、队列释放、CMA/fd、零WARN。
+   原生SDR截图缺口明确记录，不计通过；四应用长测另开窗口。
+5. 24–30分钟：MCP关闭M6 HDR并截图；回5.15核验服务、UDC、配置和哈希；保存原始样本、
+   码流与接收统计，释放锁。窗口超限立即收尾。
+
+全程不发HID、不测声音、不ptrace视频进程，sudo不与heredoc共用stdin。

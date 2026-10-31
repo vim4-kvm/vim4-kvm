@@ -1,0 +1,56 @@
+# 2026-10-31：原生HDR10 r3离线候选
+
+AMLY→Vulkan→P010→Wave5 Main10与用户态prefix SEI已实现并离线构建。
+尚未上板，P0未完成；原生并行SDR截图和其他三应用仍未接入。
+合同、缺口和30分钟清单见[设计](../hdr10-remote-73.md)，历史调查见
+[r1/r2证据](2026-10-31-hdr10-remote-offline.md)。
+
+## 提交与产物
+
+| 仓库 | 特性分支 / 提交 |
+|---|---|
+| linux | vim4-hdr10-remote / e883b52333a781684cc1a05b4d320c3b316dd1c3 |
+| gst-plugin-vfmcap | hdr10-remote / b43e564595407b0b637a23f49a3cb390d4a6cbfa |
+| One-KVM | hdr10-remote / 77b2cd10a6c6a41d0e30019bff5d6cc33b60f8a2 |
+
+内核基于最新origin/vim4-hdr2-uhd4的ce6bc0cc5218a；本次核对时正式分支仍为f71b5c6289cb3。
+不修改HDR2/kbase/manager工作树，不合正式。上板前再次核对正式uhd4，已合入则rebase。
+
+归档位于本特性worktree `build/vim4-hdr10r3-20261031-offline.tar.gz`，SHA256：
+`f8f9c80c56a86bfb5e7bb3a81cc11cc2f258d35b935c62dd2787fd630794a4b9`。
+包含唯一release `7.3.0-vim4kvm-hdr10r3+` 的Image、DTB、完整模块、runtime-proof，
+私有采集/V4L2 GStreamer、One-KVM、启动入口和逐文件candidate.json；不含vendor固件。
+这是完整内核/应用离线制品包，**尚不是board-window可直接启动的RAM payload**：
+仍需静态PID1/私有runtime/extlinux封装，以及主仓新工具的hdr10rN release兼容入口。
+不会把它伪装成HDR2 release绕过工具门禁。
+
+Image SHA256 `fb5496a2a197bf1f63d0538cff0ee4bbeb034ef725bec29f1df7acde0d7c2f53`；
+模块包 `5746d5bc2b9cdee6dfb6e4cd7596fe12de559c59cf436e97c7d5bf9449c89c1c`；
+DTB `0c795e920aff8319c85346048c5c2423e9bf18bab65a3c3e9d04ec8cc7d5fc5a`。
+私有V4L2插件 `7bb6551536645f5bc44db94e51f02a2abe7cdf8bf83b7f310dcb69636ee4a45a`；
+采集插件 `8cf5655b9b1e3ccbb1f29feb8f848b4127b80c0843c2fe40e7336da13c681395`。
+
+## 验证与中断恢复
+
+- VDIN19项视频宿主脚本、Wave5目录12项脚本通过；AMLY尺寸/预算、原生准入与LUT保留、
+  HDMI缺包/过期/零值及单位、P010 profile/容量、legacy endian均有实际C函数回归。
+- 编码器Main10/PQ CPU fixture及实际C/Rust SEI输出由独立解析器检查；不是硬件精度证明。
+- Vulkan三着色器与采集插件编译，Meson六项通过，含真实source PAUSED→NULL与12个失败回收点。
+- 私有V4L2插件重建及三项既有协商回归通过，P010添加格式映射与可见尺寸支持。
+- One-KVM：库测试820通过、4忽略；部署助手37通过；网页39通过、typecheck/build通过；
+  release完成。通用cargo check被既有RKMPP C++/FFmpeg构建错误阻断，未改上游其他平台代码。
+- 主仓315项运行、302通过、13跳过；strict checkpatch零错误/警告/check。
+- 内核完整Image/dtbs/modules与BTF完成；NPU基线有既有编译warning，未见新增视频文件warning。
+
+迁移前会话在完成构建后被用户停止，完整源码树HEAD仍为6c7af142e52a7，但工作内容已是
+e883b52333a78。新队列heavy票据中核对所有内容、对齐干净提交；增量make确认无须重建，
+未重做完整构建。One-KVM最终链接也在新队列中补齐并记录Finished release。
+打包通过实际模块清单、build ID及runtime-proof检查。首次手工commit参数抄错被断言拒绝，
+随后由git rev-parse读取实际完整提交重跑，未生成混合清单。
+
+## 尚未运行的门禁
+
+没有板锁窗口、M6 HDR操作、5.15新鲜GPU占用基线或7.3真实DMA/码流/网页/UU证据。
+主仓新工具的MCP HDR通过HID点击设置，与此前禁止HID约束冲突；限定授权待回复。
+不因静态能力探测/CPU fixture通过宣称4K60或SEI与当前产品逐值一致。
+预计硬件精度/性能1–2工程日；并行截图、四应用与UU恢复补齐约3–5工程日。

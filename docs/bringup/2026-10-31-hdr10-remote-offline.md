@@ -1,8 +1,9 @@
 # 2026-10-31：7.3 原生远程 HDR 离线调查
 
 本轮无上板、无HID/声音/ptrace/重启/刷机；未改其他HDR2、GPU、kbase工作树。
-结论：P0仍未完成。先交付可复核的Wave5 P010候选与HDR10控制结构序列化，
-不开放应用能力。设计、分阶段门禁和30分钟清单见[原生HDR10设计](../hdr10-remote-73.md)。
+结论：P0仍未完成。r1/r2为以下历史调查快照；r3已按用户确认实现AMLY→Vulkan→P010、
+RX标准HDR10读取控件、用户态SEI与One-KVM能力探测，验证进度见文末。
+设计、缺口、分阶段门禁和30分钟清单见[原生HDR10设计](../hdr10-remote-73.md)。
 
 ## 固定源码与缺口
 
@@ -76,3 +77,36 @@ strict checkpatch：0 errors、0 checks；1条新增文件是否更新MAINTAINER
 本次未新增独立维护者，沿用wave5目录现有归属。无One-KVM生产改动，未运行其全量构建。
 原始离线输出在VM `build/hdr10-remote-module.log`、`build/hdr10-remote.diff`，不含板端记录。
 主仓完整离线套件运行315项，302通过、13跳过；跳过不算通过。
+
+## r2历史快照：当时未验证草稿
+
+进一步解开同一固定SDK后，找到 `multiEnc/amvenc_lib/AML_MultiEncoder.c:1024`
+确实选择 `FORMAT_420_P10_16BIT_LSB`；`:1040`起注明P010使用
+`VDI_128BIT_LE_BYTE_SWAP`。`multiEnc/vpuapi/include/vdi.h:244`定义该枚举为17，
+`multiEnc/vpuapi/vdi.c:1703`转换为低四位1，`enc_driver.c:1943`取反低四位，
+最终源寄存器值为0xe。**r1硬编码0xf不满足这条legacy P010路径。**
+内核独立树已写入限定legacy固件的修正与宿主回归，尚未编译、测试、提交或推送。
+
+该SDK的 `multiEnc/vpuapi/enc_driver.c` 是VP5实现；其中没有找到prefix/suffix SEI
+写入。此前搜索到的 `amvenc_265/.../wave4.c:850` 的size<<16接口属于Wave4，
+不能当作Wave521C的ABI证据。未证明固件不支持，也未将未知位域写入固件。
+可考虑在用户态已压缩HEVC AU中插入完整prefix SEI，避免像素复制和固件DMA生命周期
+变化；需与静态元数据来源、重复SEI去重、随机访问和5.15产品码流合同一起验证。
+
+VDIN厂商 `vdin_ctl.c:5050` 对V4L/NV21转换强制八位；`:2370`的full-pack路径
+输出packed422，`vdin_canvas.h:29`的非full-pack十位路径为每像素3字节，仍非P010。
+当前只证明私有AMLY→GPU→P010产品路径；没有找到直接写标准P010/Y210的证据。
+不能只改fourcc或MIF十位位来宣称标准P010 DMA。GPU转换路径是否可作为本轮交付，
+已向用户提出选择；暂未变更格式对外合同。
+
+One-KVM已创建独立 `../One-KVM-hdr10-remote`、分支`hdr10-remote`（起点3649a8c8）。
+草稿通过ENUM_FMT检查VDIN P010，通过私有无缓冲编码上下文协商HEVC/Main10/P010，
+核对实际返回的格式、stride、容量与PQ/2020nc/limited；不以内核版本或profile枚举代替。
+新增替代格式、短缓冲、profile拒绝等测试；仅执行rustfmt语法/格式检查，未编译测试。
+`hdr_remote_available()`和管线保持原门禁，没有以探测草稿开放尚未实现的HDR链路。
+
+本次检查时Mac双锁由HDR r18的lockf进程持有，子命令为sleep 10800。未删除、终止或
+抢占锁，未访问板子/M6，也未启动编译。已询问采样是否结束；没有以持锁sleep推断可编译。
+磁盘余量VM约1.2GiB、宿主约1.7GiB；VM约9.8GiB可用RAM，可进一步核算tmpfs构建，
+尚未创建挂载、清理其他任务制品或声称完整归档可构建。尚无完整候选，未进入候选就绪后
+最多120分钟等锁及30分钟上板窗口；本节不能作为r2验证通过记录。

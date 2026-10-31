@@ -1,0 +1,24 @@
+#!/bin/sh
+# Run after the matched RAM boot, with exclusive board ownership.
+set -eu
+test "$(uname -r)" = '7.3.0-vim4kvm-hdr10r3+' || {
+    echo 'The HDR10 candidate requires its matching Image and complete modules.' >&2
+    exit 1
+}
+printf '%s\n' \
+    '873103d7520d5cad737cfe4458a2891c065d566ff556a47ab735e60f27acf031  /lib/firmware/amlogic/t7-wave521c-enc.bin' \
+    'd54359d8ebfd750684a6a97fc482791ff755b2acab29646773e6104d9c57a47b  /lib/firmware/vim4-hdmirx-ddc-test/uhd60-hdr10-audio-edid.bin' \
+    | sha256sum --check --status
+modprobe t7_hdmirx edid_firmware=vim4-hdmirx-ddc-test/uhd60-hdr10-audio-edid.bin phy_test=1 core_test=1 uhd60=1 dynamic_modes=1 audio_test=1 hdr_probe=1 hdr_capture=1
+modprobe t7_vdin_test nv12=1 direct_dma=1
+modprobe wave5
+modprobe t7_jpeg
+udevadm settle --timeout=15
+for parameter in dynamic_modes hdr_probe hdr_capture; do
+    test "$(cat "/sys/module/t7_hdmirx/parameters/$parameter")" = Y
+done
+for parameter in nv12 direct_dma; do
+    test "$(cat "/sys/module/t7_vdin_test/parameters/$parameter")" = Y
+done
+# Audio configuration and firmware provisioning remain with the existing image.
+# This candidate never operates HID, audio or the bootloader.

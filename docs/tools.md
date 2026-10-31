@@ -1,5 +1,15 @@
 # 工具目录
 
+`packaging/kernel-edge/package-hdr10.py`：离线组装已完成的内核payload、两项私有GStreamer
+插件和One-KVM为唯一名称归档；校验内核哈希/ARM64 ELF/子仓干净提交，生成candidate.json及
+归档SHA256。不编译、不连接板子、不包含vendor固件；已有目标拒绝覆盖。
+
+`packaging/kernel-edge/hdr10-prepare`：独占窗口、匹配RAM启动后校验固件哈希并加载采集/编码
+模块，保留既有音频配置，不部署固件或改启动项。会占用HDMI采集资源，不能在他人采样时运行。
+`packaging/kernel-edge/hdr10-run`：仅在独占上板窗口启动已展开的HDR10候选归档，
+使用同目录One-KVM和私有GStreamer；需显式选择已验证GPU ICD，不加载模块、不自动部署、
+不改正式服务。会占用采集/编码设备与8081端口，运行前停止相应共享消费者。
+
 tools/ 与 packaging/ 下每个入口一行。tests/test_docs.py 检查本表与目录一致，
 新增或删除脚本时同步修改。命令从主仓库根目录运行；用法以脚本头注释或 --help 为准，
 “影响”列决定是否需要先协调板子独占（见 [代码规范](code-standards.md)）。
@@ -34,7 +44,7 @@ PiKVM smoke 可用 `PIKVM_CDP` 接入专用测试 Chrome；结束时关闭测试
 | packaging/kernel-edge/test_gstreamer_visible_crop.py | 容器/VM | 无 | 提取实际 V4L2 caps／padding／crop 函数，以模拟 ioctl 离线回放 Wave5 非对齐尺寸协商 | [音视频](subsystems/video.md) |
 | packaging/kernel-edge/maintain.py | Linux ARM64 VM | 无 | inventory 导出按主题存放的保序补丁并证明 tree 一致；forward 在新分支 rebase；verify 汇总 host C/KUnit 入口、strict checkpatch、schema/DTB 与可选完整构建，不自动 fetch、部署 | [补丁清单](archive/kernel-patch-inventory.md) |
 | packaging/kernel-edge/register-runtime.py | VM / 板 | inventory 无；register 改启动配置 | 核对完整 Image/模块清单后登记双内核，保留当前默认项；不安装、不重启 | [双内核集成](bringup/2026-10-21-dual-kernel-integration.md) |
-| packaging/kernel-edge/package-final.py | VM | 无 | 打包 UHD 完整构建，生成哈希/build ID 清单；--dtb 显式选择 audio-test/display-m0/display-m1；M1 检查驱动与 DT 互斥；不编译 Image、不上板 | [M1 合入](bringup/2026-10-23-display-m2.md) |
+| packaging/kernel-edge/package-final.py | VM | 无 | 打包 UHD / hdr10rN 完整构建，生成哈希/build ID 清单；--dtb 显式选择 audio-test/display-m0/display-m1；M1 检查驱动与 DT 互斥；不编译 Image、不上板 | [M1 合入](bringup/2026-10-23-display-m2.md) |
 | packaging/kernel-edge/display-once.py、display-once-init.c | VM / 板 | prepare 无；stage 独占；串口选择后重启 | 私有归档与静态 PID 1 模块 bind；保留默认启动项；一次性启动、预检失败回退及重启回默认已实测，物理 RESET 未测 | [M1 安全网](bringup/2026-10-23-display-m1-safety.md) |
 | packaging/kernel-edge/final-window.py、final-board.py | Mac → 板 | stage/dry-run 无；execute 独占、重启 | 双锁备份、安装与回归；kernel-only 保留用户态；--require-all-checks 任一失败回退，--framebuffer-console 登记 tty0；--ir-keytable 将 ARM64 IR 检查工具保存在 bundle；支持正常重启 pstore 读回，HDMI 恢复最多等 35 秒 | [pstore 部署与回退](bringup/2026-10-22-edge-pstore-deploy.md) |
 | packaging/kernel-edge/final-regression.py、final-manager-check.mjs | Mac → 板 | prepare 无；run 独占、改 HDMI/USB 设置后恢复 | 默认19模式，可用 --sample-modes 抽样；--hevc-visible-sizes 仅用于 E02 内核，增加非8对齐HEVC浏览器验收；--gpu-load 快照 ARM64 GPU 负载；音频等待CoreAudio枚举、直接AudioData检查、恢复48k后停音；仅显式 --wifi-scan 扫描并恢复 radio/autoconnect，不操作P2P；run仅由双锁窗口调用 | [正式版部署准备](bringup/2026-10-22-deploy-7-3-final-prep.md) |
