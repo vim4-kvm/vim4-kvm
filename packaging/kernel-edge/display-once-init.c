@@ -16,7 +16,9 @@
 #define RELEASE "7.3.0-vim4kvm-uhd1+"
 #endif
 #define MODULES "/lib/modules/" RELEASE
+#ifndef TRIAL_ROOT
 #define TRIAL_ROOT "/var/lib/vim4-kvm/display-m1/"
+#endif
 
 static uint32_t little32(const unsigned char *p)
 {
