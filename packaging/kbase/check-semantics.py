@@ -65,6 +65,50 @@ int main(void) {
             subprocess.run([str(executable)], check=True)
     print('Runtime wrappers: legacy/current host models and source API gate passed')
     check_t7_reset(driver)
+    check_metrics_term(driver)
+
+
+def check_metrics_term(driver):
+    """Both enabled metrics configurations must stop the timer before release."""
+    source = (driver / 'backend/gpu/mali_kbase_pm_metrics.c').read_text()
+    function = 'void kbasep_pm_metrics_term' + source.split(
+        'void kbasep_pm_metrics_term', 1)[1].split('\nKBASE_EXPORT_TEST_API', 1)[0]
+    model = r'''
+#include <assert.h>
+#include <stdbool.h>
+#include <stddef.h>
+#define MALI_USE_CSF 0
+#define KBASE_DEBUG_ASSERT assert
+#define TIMER_OFF 0
+struct metrics { bool initialized; int timer_state, timer; };
+struct kbase_device { struct { struct { struct metrics metrics; } backend; } pm; };
+static struct metrics *owner;
+static unsigned cancelled;
+static void atomic_set(int *state, int value) { *state=value; }
+static void hrtimer_cancel(int *timer) {
+    assert(timer==&owner->timer);
+    assert(!owner->initialized && owner->timer_state==TIMER_OFF);
+    cancelled++;
+}
+'''
+    exercise = r'''
+int main(void) {
+    struct kbase_device device = {0};
+    owner=&device.pm.backend.metrics;
+    owner->initialized=true; owner->timer_state=1;
+    kbasep_pm_metrics_term(&device);
+    assert(cancelled==1);
+    return 0;
+}
+'''
+    with tempfile.TemporaryDirectory(prefix='kbase-metrics-') as directory:
+        program = Path(directory) / 'term.c'
+        program.write_text(model + function + exercise)
+        for configuration in ('CONFIG_MALI_DEVFREQ', 'CONFIG_MALI_MIDGARD_DVFS'):
+            executable = Path(directory) / configuration
+            subprocess.run(['cc', '-Wall', '-Wextra', '-Werror', '-D' + configuration,
+                            str(program), '-o', str(executable)], check=True)
+            subprocess.run([str(executable)], check=True)
 
 
 def check_t7_reset(driver):

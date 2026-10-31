@@ -25,7 +25,7 @@ PiKVM smoke 可用 `PIKVM_CDP` 接入专用测试 Chrome；结束时关闭测试
 
 | 入口 | 运行位置 | 影响 | 用途 | 文档 |
 |---|---|---|---|---|
-| packaging/kbase/build.py、run.py、check-style.py、check-semantics.py、check-heaps.py、clpeak-subset.py、dma-profile.py、resolve-egl.c、heaps/vim4_kbase_heaps.c | build/check：宿主/ARM64 VM；run/CL/模块：板 | build/check/resolve无硬件访问；run/CL占GPU，profile独占GPU并临时创建具名trace实例/事件，heap占候选CMA | series与WC heap构建、ABI/语义/风格门禁；私有ICD/EGL前缀；CL限时、DMA逐提交边界与cache事件 | [kbase后备候选](gpu-kbase-7x.md)、[MMU与heap合同](gpu-kbase-mmu-heaps.md) |
+| packaging/kbase/build.py、run.py、check-style.py、check-semantics.py、check-heaps.py、clpeak-subset.py、dma-profile.py、default-parity.py、resolve-egl.c、heaps/vim4_kbase_heaps.c、dvfs/governor_vim4.c | build/check：宿主/ARM64 VM；run/CL/模块：板 | build/check/resolve无硬件访问；run/CL占GPU，parity独占GPU并只读温度，profile临时创建具名trace实例/事件，heap占候选CMA，governor调GPU频率 | series与WC heap构建、ABI/语义/风格门禁；私有ICD/EGL前缀；CL限时、同空闲历史配对、DMA逐提交边界与cache事件 | [kbase后备候选](gpu-kbase-7x.md)、[MMU与heap合同](gpu-kbase-mmu-heaps.md) |
 | tools/memory-bench.c、memory-bench.py | C：Linux ARM64编译；runner：Linux/板 | 独占CPU/内存/tmpfs；无频率写入、部署、HID | 单核强制绑定、逐段实际CPU/每核频率、多尺寸分布与fault，≤3分钟、采温度并恢复亲和 | [内存拷贝审查](memory-copy-audit.md)、[绑核门禁与配置草案](nodebug-performance-gate.md) |
 | tools/gpu-diagnose.py、gpu-cl-map.c | 板；CL工具先ARM64编译 | 独占GPU；诊断器可临时锁频/PM/profiling并恢复；不写电压、不ptrace | 自有子进程fdinfo/周期/忙闲估计、trans_stat与CPU；小buffer CL map复现 | [GPU性能复核](gpu-performance-diagnosis.md) |
 | packaging/gpu/（含 compiler-compare.sh、corpus-check.sh、corpus-report.py、gpu-probe.c） | Docker ARM64；probe：板 | 构建无；probe占GPU；GPU_WAVE5_DEVICE显式指定编码节点时还独占编码器 | shader/FBO像素；GPU_GBM_EXPORT=render/scanout/nv12，linear另加线性要求；Wave5只在NV12完整布局及同buffer证明后尝试QBUF，不STREAMON | [GPU运行时](bringup/2026-10-30-gpu-runtime.md)、[MMU/heap合同](gpu-kbase-mmu-heaps.md) |
@@ -61,6 +61,9 @@ PiKVM smoke 可用 `PIKVM_CDP` 接入专用测试 Chrome；结束时关闭测试
 
 | 入口 | 运行位置 | 影响 | 用途 | 文档 |
 |---|---|---|---|---|
+| tools/board-queue | Mac / Linux，同一协调主机 | 仅本机锁与票据；run 的影响由命令决定 | FIFO、≤30分钟租约、旧 lockf 兼容、sampling 与 heavy 协调 | [短窗口](board-window.md) |
+| tools/board-window | Mac → 板 | collect --readonly 读；baseline/receiver/MCP 截图占采集；MCP HDR 发 HID；boot-candidate/return-baseline 重启 | 哈希校验、候选链式 RAM 启动、每日基线缓存、MCP、接收与证据包 | [短窗口](board-window.md) |
+| tools/board-window-receiver.mjs、board-window-timing.mjs | Mac / Node | 接收占用编码器；compare 仅本机图片 | board-window 私有浏览器接收/裁图比较入口与50ms计时；沿用 Playwright、manager-login.mjs | [短窗口](board-window.md) |
 | tools/gpu-compare.py | 板 | 独占 | vendor/system/private能力与固定离屏GLES、clpeak；超时、逐进程ICD隔离，不操作服务/HID | [GPU运行时](bringup/2026-10-30-gpu-runtime.md) |
 | tools/board.py check | Mac | 读 | 内核、服务、设备节点、8081 后端与 8080 网关状态 | [板级工具](board-tools.md) |
 | tools/board.py deploy --exclusive | Mac | 独占 | 校验并安装组件包（委托 install-components.sh） | [板级工具](board-tools.md#增量开发闭环) |
