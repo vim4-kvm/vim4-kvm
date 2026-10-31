@@ -22,6 +22,44 @@ loader.exec_module(window)
 
 
 class WindowTests(unittest.TestCase):
+    def test_m6_tolerates_unknown_metadata_during_both_transitions(self):
+        client = window.MCP('unused', 'test')
+        client.call = Mock()
+        client.screenshot = Mock(return_value={'content': [{'type': 'text', 'text': 'Screen 1920x1080'}]})
+        client.idle = Mock(return_value={'idle': True})
+        states = iter([False, False, window.UnknownHDRState('transition'), True,
+                       True, window.UnknownHDRState('transition'), False])
+        def read_state():
+            state = next(states)
+            if isinstance(state, Exception):
+                raise state
+            return state
+        with tempfile.TemporaryDirectory() as directory, patch.object(window.time, 'sleep'):
+            client.m6_hdr(True, Path(directory), read_state, [])
+        toggles = [c for c in client.call.call_args_list
+                   if c.args == ('left_click', {'coordinate': [1704, 540]})]
+        self.assertEqual(len(toggles), 2)
+
+    def test_autoboot_is_read_before_reboot_ssh_exits(self):
+        uart = Mock()
+        uart.open_port.return_value = 42
+        chunks = [b'Hit SPACE in 2 seconds', b'kvim4#', b'login:']
+        process = Mock()
+        process.poll.return_value = None
+        with tempfile.TemporaryDirectory() as directory, \
+                patch.object(window, 'load', return_value=uart), \
+                patch.object(window, 'ssh', side_effect=['old-boot', 'c8:63:14:74:70:0d']), \
+                patch.object(window.subprocess, 'Popen', return_value=process), \
+                patch.object(window.select, 'select', return_value=([42], [], [])), \
+                patch.object(window.os, 'read', side_effect=chunks), \
+                patch.object(window.os, 'write') as write, \
+                patch.object(window.os, 'close'), patch.object(window, 'ready') as ready:
+            window.boot('mock', 'serial', Path(directory), dict(command='sysboot candidate', release='candidate'))
+        self.assertEqual([c.args[1] for c in write.call_args_list],
+                         [b' ', b'setenv ethaddr c8:63:14:74:70:0d; sysboot candidate\n'])
+        ready.assert_called_once_with('mock', expected='candidate', old_boot='old-boot')
+        process.terminate.assert_called_once()
+
     def test_m6_recipe_restores_actual_source_state_on_failure(self):
         client = window.MCP('unused', 'test')
         state = [False]

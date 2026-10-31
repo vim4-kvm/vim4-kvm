@@ -211,7 +211,15 @@ class MCP:
             self.call('left_click', dict(coordinate=[x, y]))
             time.sleep(.5)
         def set_state(target):
-            if read_state() == target:
+            def known_state(deadline):
+                while True:
+                    try:
+                        return read_state()
+                    except UnknownHDRState:
+                        if time.monotonic() >= deadline:
+                            raise
+                        time.sleep(.5)
+            if known_state(time.monotonic() + 15) == target:
                 return
             click(27, 13)
             click(108, 83)
@@ -223,7 +231,7 @@ class MCP:
             click(1704, 540)
             end = time.monotonic() + 15
             while time.monotonic() < end:
-                if read_state() == target:
+                if known_state(end) == target:
                     click(1039, 200)
                     return
                 time.sleep(.5)
@@ -244,6 +252,10 @@ class MCP:
                 screen('m6-restored')
 
 
+class UnknownHDRState(RuntimeError):
+    """Source metadata is not currently sufficient to decide the HDR switch."""
+
+
 def source_hdr(host):
     state = json.loads(ssh(host, "curl -fsS --max-time 10 http://127.0.0.1:8081/api/vim4/video"))
     eotf = state['hdr_eotf'].strip().upper()
@@ -251,7 +263,7 @@ def source_hdr(host):
         return True
     if eotf in ('SDR', 'SDR-GAMMA', 'TRADITIONAL GAMMA - SDR LUMINANCE RANGE'):
         return False
-    raise RuntimeError('source HDR state is unknown: ' + eotf)
+    raise UnknownHDRState('source HDR state is unknown: ' + eotf)
 
 
 COLLECT = r'''import json,pathlib,subprocess,platform
@@ -288,8 +300,9 @@ def ready(host, timeout=120, expected=None, old_boot=None):
     last = None
     while time.monotonic() < deadline:
         try:
-            # A fresh JPEG is produced even when WebRTC does not populate cache.
-            # Two requests ensure the capture pipeline can continue producing.
+            # The snapshot endpoint only reads cached frames. With no viewer it
+            # may return 503, so wait for the API here and decoded frames after
+            # the receiver creates its offer. Do not deadlock before that offer.
             script = r'''import pathlib,platform,subprocess,urllib.request
 assert platform.release()==EXPECTED if EXPECTED else True
 assert pathlib.Path('/proc/sys/kernel/random/boot_id').read_text().strip()!=OLD if OLD else True
@@ -298,11 +311,8 @@ if platform.release().startswith('5.15.'):services.append('vim4-kvm-hdmi')
 for service in services:
  subprocess.run(['systemctl','is-active','--quiet',service],check=True)
 assert any(p.read_text().strip()=='configured' for p in pathlib.Path('/sys/class/udc').glob('*/state'))
-for _ in range(2):
- data=urllib.request.urlopen('http://127.0.0.1:8081/api/snapshot',timeout=10).read()
- assert data.startswith(b'\xff\xd8') and len(data)>1000
 stats=__import__('json').load(urllib.request.urlopen('http://127.0.0.1:8081/api/stream/status',timeout=10))
-assert stats['fps']>0, 'capture pipeline is not producing frames'
+assert 'state' in stats and 'fps' in stats
 print('ready')
 '''.replace('EXPECTED', repr(expected)).replace('OLD', repr(old_boot))
             ssh(host, 'sudo -n python3 -c ' + shlex.quote(script), timeout=30)
@@ -339,18 +349,22 @@ def validate_bundle(bundle):
 def boot(host, device, directory, plan=None):
     uart = load('board_uart', ROOT / 'tools/uart-run.py')
     old_boot = ssh(host, 'cat /proc/sys/kernel/random/boot_id').strip()
+    mac = None
+    if plan:
+        mac = ssh(host, 'cat /sys/class/net/eth0/address').strip()
+        if not re.fullmatch(r'(?:[0-9a-fA-F]{2}:){5}[0-9a-fA-F]{2}', mac):
+            raise ValueError('invalid baseline ethernet MAC')
     fd = uart.open_port(device, 921600)
     output = b''
     selected = False
     interrupted = False
     try:
-        # Connection loss is normal after reboot; the UART and boot-ID gate prove
-        # progress rather than treating SSH's exit status as a successful boot.
-        try:
-            subprocess.run(['ssh', '-oBatchMode=yes', '-oConnectTimeout=5', host,
-                            'sudo -n reboot'], timeout=10, check=False)
-        except subprocess.TimeoutExpired:
-            pass  # Continue observing UART; never repeat an uncertain reboot.
+        # Drain UART immediately: waiting for SSH disconnect can overflow the
+        # serial buffer and lose the short autoboot prompt. Never repeat reboot.
+        rebooter = subprocess.Popen(['ssh', '-oBatchMode=yes', '-oConnectTimeout=5', host,
+                                    'sudo -n reboot'], stdin=subprocess.DEVNULL,
+                                   stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL,
+                                   start_new_session=True)
         end = time.monotonic() + 60
         while time.monotonic() < end:
             if select.select([fd], [], [], .1)[0]:
@@ -359,13 +373,22 @@ def boot(host, device, directory, plan=None):
                     os.write(fd, b' ')
                     interrupted = True
                 if interrupted and not selected and (b'kvim4#' in output[-400:] or b'kvim4n#' in output[-400:]):
-                    os.write(fd, (plan['command'] + '\n').encode())
+                    # Match the baseline DHCP identity, as in the reviewed HDR
+                    # RAM boots. This never saves the U-Boot environment.
+                    os.write(fd, ('setenv ethaddr ' + mac + '; ' + plan['command'] + '\n').encode())
                     selected = True
                 if b'login:' in output:
                     break
         if plan and not selected:
             raise RuntimeError('RAM candidate was not selected; inspect UART before further action')
     finally:
+        if 'rebooter' in locals() and rebooter.poll() is None:
+            rebooter.terminate()
+            try:
+                rebooter.wait(timeout=3)
+            except subprocess.TimeoutExpired:
+                rebooter.kill()
+                rebooter.wait(timeout=3)
         os.close(fd)
         (directory / ('uart-' + str(time.time_ns()) + '.log')).write_bytes(output)
     ready(host, expected=plan['release'] if plan else None, old_boot=old_boot)
