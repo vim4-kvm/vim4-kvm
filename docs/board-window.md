@@ -59,7 +59,10 @@ HDR2的 `--baseline-files` 是持久恢复证明，只列原5.15启动文件和�
 新增显式 `stage --retained-baseline proof.json` 在链式窗口核对原5.15证明与归档一致，
 两次验证磁盘文件不变；不要求当前候选的release/cmdline等于原基线。原stage默认门禁不变。
 HDR2新release只创建空的 `/lib/modules/<release>` bind挂载点，完整模块仍留在私有payload，
-不向基线模块目录安装文件。
+不向基线模块目录安装文件。接受任意安全的 `7.3.0-vim4kvm-<tag>+` 候选名；
+release名称不代表能力或验证结果，仍校验manifest全部文件、归档SHA、静态PID1和模块清单。
+stage只记录自己新建空模块目录的设备/inode；return-baseline验证回到原5.15后清理。
+已有目录、被替换的目录、非空或仍挂载的目录保留，清理异常报告失败，不递归删除。
 串口在autoboot提示后打断，仅发送原有sysboot RAM命令，不写saveenv或默认配置。
 等待新的boot ID、预期release/build ID、SSH、逐服务active、UDC configured、JPEG与管线fps>0。
 任一步失败停止，不自动重试或选择另一个候选；查看UART证据再决定恢复。
