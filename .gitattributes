@@ -1,0 +1,2 @@
+# Unified diffs preserve source context whitespace for git apply.
+packaging/kbase/*.patch -whitespace
