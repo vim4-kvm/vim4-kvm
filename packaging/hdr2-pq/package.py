@@ -10,7 +10,7 @@ import sys
 
 source, output, stage = [Path(arg).resolve() for arg in sys.argv[1:]]
 release = (output / 'include/config/kernel.release').read_text().strip()
-if not re.fullmatch(r'7\.3\.0-vim4kvm-uhd3-hdr2a[1-9][0-9]*\+', release):
+if not re.fullmatch(r'7\.3\.0-vim4kvm-uhd(?:3-hdr2a[1-9][0-9]*|4)\+', release):
     raise SystemExit(f'Unexpected release: {release}')
 stage.mkdir()  # Never merge a new build into an existing candidate.
 subprocess.run(['make', '-C', str(source), f'O={output}', 'ARCH=arm64',

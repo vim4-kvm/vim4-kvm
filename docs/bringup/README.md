@@ -15,6 +15,10 @@
 
 以下保留完整日期索引。这些里程碑记录的是历史证据；查找当前架构和约束时，仍应先读对应子系统入口。
 
+## 2026-10-31
+
+- [uhd4主题整理与SDR回归，MCP/接收端门禁阻断](2026-10-31-hdr2-uhd4-gate.md) — kernel board video hdr npu gpu
+
 ## 2026-10-30
 
 - [HDR2a5产品DMA恢复、逐代退休与4K60门禁](2026-10-30-hdr2a5-window.md) — kernel board video hdr application

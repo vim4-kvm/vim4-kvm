@@ -12,13 +12,13 @@ upstream_url = "https://github.com/gregkh/linux.git"
 upstream_tag = "v7.3"
 upstream_revision = "c03c1a14507dfaf8b856c2608f9ac216021fc222"
 
-# Shared production One-KVM; matches workspace.toml and the installed binary.
+# Integration candidate; formal uhd4 HDR/MCP acceptance is still pending.
 [onekvm]
 url = "https://github.com/vim4-kvm/One-KVM.git"
 branch = "vim4"
-revision = "3649a8c8f12d8bcd3f2d394de848dc486a270ecc"
+revision = "db848a5288019f0d651bc429e01d6f727720154b"
 features = ["vim4"]
-tested_binary_sha256 = "aacd3d977a0e169e1ee869486fc1846e9b360f83e96309cad734b9f5b2737b4d"
+tested_binary_sha256 = "926535c630948d279f24004b6019f8424b2846ee13bc4045f3a475a71c492a10"
 
 # Complete matched build includes the former Wave5 and VDIN overlays.
 # build.sh defaults to edge.config; this build explicitly uses uhd3.config.
@@ -112,8 +112,8 @@ tested_module_sha256 = "14334de2f4c8c5cac5009467e53e2e3212c68b6a03912a22e8ed9311
 [gstreamer]
 source_url = "https://gstreamer.freedesktop.org/src/gst-plugins-good/gst-plugins-good-1.24.2.tar.xz"
 source_sha256 = "6e347c72d4b8b2886d890ffe9f6767a9edb02f201588e8c3a572dcd08d9852bd"
-patches = ["gstreamer-v4l2-offset.patch", "gstreamer-v4l2-pool-lifetime.patch", "gstreamer-v4l2-eos-buffer.patch", "gstreamer-v4l2-orphan-order.patch", "gstreamer-v4l2-contiguous-capture.patch", "gstreamer-v4l2-visible-crop.patch"]
-tested_plugin_sha256 = "a80d41a3d758a5af1794a324eed44c9f47a88e0d3b30dfafe3207d32d7be26fe"
+patches = ["gstreamer-v4l2-offset.patch", "gstreamer-v4l2-pool-lifetime.patch", "gstreamer-v4l2-eos-buffer.patch", "gstreamer-v4l2-orphan-order.patch", "gstreamer-v4l2-contiguous-capture.patch", "gstreamer-v4l2-visible-crop.patch", "../hdr2-pq/gstreamer-srgb-probe.patch", "../hdr2-pq/gstreamer-encoded-size.patch"]
+tested_plugin_sha256 = "ffee02fbed8a0d2bb5bfd4fb695b2ea6f8cbd4f5654072f7727d52a658c41d76"
 
 [armbian]
 url = "https://github.com/armbian/build.git"

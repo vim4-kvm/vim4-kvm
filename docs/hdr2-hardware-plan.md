@@ -5,7 +5,8 @@
 GPU tone-map shader、DMA适配和编译器优化全部暂停，保留既有提交；GPU仅作必要缩放/后备。
 路线选择依据是已有硬件路径、厂商分工及窗口A原型的实际成本。
 
-最新[a5上板](bringup/2026-10-30-hdr2a5-window.md)通过PQ产品DMA恢复、双向退休、VUI、固定图p99、4K60及零内核WARN门禁；
+最新[uhd4集成门禁](bringup/2026-10-31-hdr2-uhd4-gate.md)：六主题与a5同tree，SDR/NPU/GPU通过；MCP及接收端阻断，未推广。HLG已实现，无真实源未验。
+此前[a5上板](bringup/2026-10-30-hdr2a5-window.md)通过PQ产品DMA恢复、双向退休、VUI、固定图p99、4K60及零内核WARN门禁；
 [DMA合同与集成方案](hdr2-dma-contract.md)说明六缓冲回归、稳定allocator关联及vb2布局修复。正式合并仍待用户审阅。
 此前[统一候选](hdr2-unified-candidate.md)保留a1构建证据；[M6操作说明](m6-enable-hdr.md)也适用于已授权的MCP操作。
 

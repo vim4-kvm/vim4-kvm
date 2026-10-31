@@ -9,6 +9,26 @@ spec.loader.exec_module(module)
 
 
 class Hdr2CompareTest(unittest.TestCase):
+    def test_self_noise_and_top_region_keep_visible_chroma_rows(self):
+        original = bytes(range(12))
+        changed = bytearray(original)
+        changed[0] += 20
+        changed[8] += 20
+        full = module.compare(original, changed, 2, 4, 12, 12,
+                              vendor_format='nv12')[0]
+        cropped = module.compare(original, changed, 2, 4, 12, 12,
+                                 exclude_top=2, vendor_format='nv12')[0]
+        self.assertEqual(full['Y']['max'], 20)
+        self.assertEqual(full['U']['max'], 20)
+        self.assertTrue(all(c['max'] == 0 for c in cropped.values()))
+        changed[10] += 3
+        cropped = module.compare(original, changed, 2, 4, 12, 12,
+                                 exclude_top=2, vendor_format='nv12')[0]
+        self.assertEqual(cropped['U']['max'], 3)
+        for top in (-2, 1, 4):
+            with self.assertRaises(ValueError):
+                module.compare(original, changed, 2, 4, 12, 12, exclude_top=top)
+
     def test_chroma_order_and_tail_padding_across_frames(self):
         vendor = bytes([16, 32, 64, 235, 201, 90, 255, 255,
                         20, 40, 80, 200, 202, 91, 0, 0])

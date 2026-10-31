@@ -41,6 +41,9 @@ def main():
                     str(tree / 'sys/v4l2/gstv4l2object.c')], check=True)
     subprocess.run([sys.executable, str(recipe / 'test_gstreamer_visible_crop.py'),
                     str(tree / 'sys/v4l2/gstv4l2object.c')], check=True)
+    for name in ('test_gst_color.py', 'test_gst_size.py'):
+        subprocess.run([sys.executable, str(recipe.parent / 'hdr2-pq' / name),
+                        str(tree / 'sys/v4l2/gstv4l2object.c')], check=True)
     subprocess.run(['meson', 'setup', 'build', '-Dauto_features=disabled', '-Dv4l2=enabled',
                     '-Dtests=disabled', '-Dexamples=disabled', '-Ddoc=disabled', '-Dnls=disabled'],
                    cwd=tree, check=True)

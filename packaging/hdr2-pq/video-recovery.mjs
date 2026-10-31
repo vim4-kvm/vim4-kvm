@@ -1,0 +1,38 @@
+// Video-only receiver: no product input scripts, audio or data channels.
+// Use an owned SSH forward to the One-KVM API and an exclusive board window.
+const { chromium } = await import(process.env.PLAYWRIGHT_MODULE || 'playwright');
+const origin = new URL(process.argv[2] || 'http://127.0.0.1:18084');
+const seconds = Number(process.argv[3] || 180);
+if (!Number.isFinite(seconds) || seconds < 1 || seconds > 600) throw Error('duration must be 1..600 seconds');
+const b=await chromium.launch({channel:'chrome',headless:true});
+const c=await b.newContext();
+await c.route('**/__hdr_test',route=>route.fulfill({contentType:'text/html',body:'<video autoplay muted></video>'}));
+const p=await c.newPage();
+try {
+ await p.goto(new URL('/__hdr_test', origin).href);
+ console.log(await p.evaluate(async()=>{
+  const api=async(path,data)=>{
+   const r=await fetch('/api/'+path,{method:data?'POST':'GET',headers:{'Content-Type':'application/json'},body:data?JSON.stringify(data):undefined});
+   if(!r.ok)throw Error(path+': '+r.status+' '+await r.text());return r.json();
+  };
+  const pc=window.pc=new RTCPeerConnection({iceServers:[]});
+  pc.addTransceiver('video',{direction:'recvonly'});
+  pc.ontrack=e=>{document.querySelector('video').srcObject=new MediaStream([e.track]);};
+  await pc.setLocalDescription(await pc.createOffer());
+  await Promise.race([new Promise(resolve=>{pc.onicegatheringstatechange=()=>{if(pc.iceGatheringState==='complete')resolve();};}),new Promise(r=>setTimeout(r,2000))]);
+  const a=await api('webrtc/offer',{sdp:pc.localDescription.sdp});window.sid=a.session_id;
+  await pc.setRemoteDescription({type:'answer',sdp:a.sdp});
+  for(const ice of a.ice_candidates||[])await pc.addIceCandidate(ice);
+  return {session:a.session_id};
+ }));
+ await p.waitForFunction(()=>document.querySelector('video').videoWidth>0,{},{timeout:20000});
+ for(let i=0;i<seconds*4;i++){
+  const stats=await p.evaluate(async()=>{
+   const rows=[];for(const r of(await window.pc.getStats()).values())if(r.type==='inbound-rtp'&&r.kind==='video')rows.push({frameWidth:r.frameWidth,frameHeight:r.frameHeight,framesDecoded:r.framesDecoded,framesDropped:r.framesDropped,packetsLost:r.packetsLost,freezeCount:r.freezeCount,bytesReceived:r.bytesReceived});
+   return {at:Date.now(),video:rows};
+  });console.log(JSON.stringify(stats));await p.waitForTimeout(250);
+ }
+} finally {
+ await p.evaluate(async()=>{if(window.pc)window.pc.close();if(window.sid)await fetch('/api/webrtc/close',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({session_id:window.sid})});}).catch(()=>{});
+ await b.close();
+}

@@ -1,0 +1,28 @@
+From ce6bc0cc5218a49ab49390d5008652ecf2cbb3dc Mon Sep 17 00:00:00 2001
+From: localhost-copilot <318096335+localhost-copilot@users.noreply.github.com>
+Date: Sat, 31 Oct 2026 14:59:03 +0800
+Subject: [PATCH 6/6] arm64: dts: amlogic: expose VIM4 ethernet firmware alias
+
+Expose the ethernet node to standard firmware MAC address fixup.
+RAM trials still pass the recorded board MAC without saving environment.
+
+Signed-off-by: localhost-copilot <318096335+localhost-copilot@users.noreply.github.com>
+---
+ arch/arm64/boot/dts/amlogic/amlogic-t7-a311d2-khadas-vim4.dts | 1 +
+ 1 file changed, 1 insertion(+)
+
+diff --git a/arch/arm64/boot/dts/amlogic/amlogic-t7-a311d2-khadas-vim4.dts b/arch/arm64/boot/dts/amlogic/amlogic-t7-a311d2-khadas-vim4.dts
+index 36b350f051878..98a29f55a8ab3 100644
+--- a/arch/arm64/boot/dts/amlogic/amlogic-t7-a311d2-khadas-vim4.dts
++++ b/arch/arm64/boot/dts/amlogic/amlogic-t7-a311d2-khadas-vim4.dts
+@@ -15,6 +15,7 @@ / {
+ 	compatible = "khadas,vim4", "amlogic,a311d2", "amlogic,t7";
+ 
+ 	aliases {
++		ethernet0 = &ethmac;
+ 		serial0 = &uart_a;
+ 		mmc0 = &sd_emmc_c;
+ 		mmc1 = &sd_emmc_b;
+-- 
+2.43.0
+
