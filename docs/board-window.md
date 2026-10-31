@@ -1,7 +1,8 @@
 # 单板 FIFO 与短窗口
 
-编译先完成，持板不超过30分钟；同批候选链式 RAM 启动，最后回5.15。工具本轮只做
-离线验证，尚未用新入口上板。所有会话必须在同一协调主机共享 `/tmp/vim4-board-queue`；
+编译先完成，持板不超过30分钟；同批候选链式 RAM 启动，最后回5.15。工具已在
+kbase uhd5 RAM窗口使用；新payload目录与真实build ID校验通过，cleanup修正仍待板测。
+所有会话必须在同一协调主机共享 `/tmp/vim4-board-queue`；
 不同主机的 `/tmp` 不互通。Python入口无第三方依赖；浏览器接收/像素比较复用项目已有
 Node、Playwright与Chrome，配置见 [工具目录](tools.md)。
 
@@ -36,6 +37,16 @@ keeper自身死亡由后继/status剔除。主机睡眠期间不提供准时唤�
 
 ## 候选链与恢复
 
+新候选可在manifest同时指定`namespace`和`payload_id`，各为1–64位小写字母、数字、
+下划线或连字符，首位为字母或数字。目录为
+`/var/lib/vim4-kvm/ram-candidates/<namespace>/<payload_id>/<真实kernel build_id>/`。
+payload_id是独立构建身份，修改DT或模块必须换ID；相同ID已存在也拒绝覆盖。
+Image/build_id不必变化。`display-once.py prepare`可传`--namespace kbase --payload-id trial1`。
+编译静态init时用`-DTRIAL_ROOT='"/var/lib/vim4-kvm/ram-candidates/kbase/trial1/"'`，
+prepare/stage验证ELF中的根目录合同，sysboot/extlinux采用同一路径。
+最后一级仍为真实GNU build ID，PID1继续核对运行内核notes；不能把payload_id当作内核ID。
+省略两字段时，原display-m1/HDR2 build-ID目录、原静态init与cleanup合同保持不变。
+
 使用 `display-once.py prepare` 生成的目录（包含candidate.tar）或candidate.tar归档。
 也接受r18的HDR2 `manifest.json` RAM payload目录或归档（Image/DTB/init/modules/runtime/extlinux），
 首轮需 `--baseline-files` 显式列出5.15恢复文件；普通boot/lib内核安装包不能直接传入。
@@ -62,6 +73,9 @@ HDR2新release只创建空的 `/lib/modules/<release>` bind挂载点，完整模
 不向基线模块目录安装文件。接受任意安全的 `7.3.0-vim4kvm-<tag>+` 候选名；
 release名称不代表能力或验证结果，仍校验manifest全部文件、归档SHA、静态PID1和模块清单。
 stage只记录自己新建空模块目录的设备/inode；return-baseline验证回到原5.15后清理。
+同Image的各payload分别保存恢复记录，避免后一个覆盖首次创建挂载点的归属证明。
+清理SSH命令只携带release和目录身份；完整模块inventory仍在本机证据中，
+不能把数千文件清单放进单个`python3 -c`参数（Linux单参长度上限）。
 已有目录、被替换的目录、非空或仍挂载的目录保留，清理异常报告失败，不递归删除。
 串口在autoboot提示后打断，仅发送原有sysboot RAM命令，不写saveenv或默认配置。
 立即读UART而不阻塞等SSH退出；从基线读取MAC并仅在RAM setenv ethaddr，保持DHCP身份。
