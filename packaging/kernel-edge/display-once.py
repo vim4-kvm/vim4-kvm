@@ -260,7 +260,7 @@ def read_trial(archive, baseline=None):
     if metadata == 'trial.json':
         plan = report
     else:
-        if not re.fullmatch(r'7\.3\.0-vim4kvm-uhd(?:3-hdr2a[1-9][0-9]*|4(?:r[1-9][0-9]*)?)\+', report['release']):
+        if not re.fullmatch(r'7\.3\.0-vim4kvm-(?:uhd(?:3-hdr2a[1-9][0-9]*|4(?:r[1-9][0-9]*)?)|hdr10r[1-9][0-9]*)\+', report['release']):
             raise ValueError('unsupported HDR2 payload release')
         plan = dict(release=report['release'], build_id=report['build_id'],
                     files=report['sha256'], source=report['source_commit'])

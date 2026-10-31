@@ -20,9 +20,12 @@ AMLY→Vulkan→P010→Wave5 Main10与用户态prefix SEI已实现并离线构�
 `f8f9c80c56a86bfb5e7bb3a81cc11cc2f258d35b935c62dd2787fd630794a4b9`。
 包含唯一release `7.3.0-vim4kvm-hdr10r3+` 的Image、DTB、完整模块、runtime-proof，
 私有采集/V4L2 GStreamer、One-KVM、启动入口和逐文件candidate.json；不含vendor固件。
-这是完整内核/应用离线制品包，**尚不是board-window可直接启动的RAM payload**：
-仍需静态PID1/私有runtime/extlinux封装，以及主仓新工具的hdr10rN release兼容入口。
-不会把它伪装成HDR2 release绕过工具门禁。
+另已生成 `build/hdr10r3-ram.tar.gz`，SHA256：
+`f8f74c397b7884602004c3b3dd1477670320fcbab2d1c98ffba625ee367dc057`。
+该RAM payload包含静态ARM64 PID1、私有runtime/extlinux和完整模块；启动模板取自
+只读HDR2 r18 payload，仍是唯一hdr10r3 release，不伪装为HDR2。
+特性分支已补充新工具的hdr10rN识别与私有模块/基线回归；main工具尚需同步兼容修正。
+PID1仅在RAM候选期间只读绑定runtime和模块，不改默认启动项；启动器需私有PanVK ICD。
 
 Image SHA256 `fb5496a2a197bf1f63d0538cff0ee4bbeb034ef725bec29f1df7acde0d7c2f53`；
 模块包 `5746d5bc2b9cdee6dfb6e4cd7596fe12de559c59cf436e97c7d5bf9449c89c1c`；
@@ -39,7 +42,8 @@ DTB `0c795e920aff8319c85346048c5c2423e9bf18bab65a3c3e9d04ec8cc7d5fc5a`。
 - 私有V4L2插件重建及三项既有协商回归通过，P010添加格式映射与可见尺寸支持。
 - One-KVM：库测试820通过、4忽略；部署助手37通过；网页39通过、typecheck/build通过；
   release完成。通用cargo check被既有RKMPP C++/FFmpeg构建错误阻断，未改上游其他平台代码。
-- 主仓315项运行、302通过、13跳过；strict checkpatch零错误/警告/check。
+- 主仓首次315项运行、302通过、13跳过；同步main的新队列工具并补hdr10rN后，
+  完整334项通过、10项跳过；strict checkpatch零错误/警告/check。
 - 内核完整Image/dtbs/modules与BTF完成；NPU基线有既有编译warning，未见新增视频文件warning。
 
 迁移前会话在完成构建后被用户停止，完整源码树HEAD仍为6c7af142e52a7，但工作内容已是

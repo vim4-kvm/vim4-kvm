@@ -38,16 +38,22 @@ class WindowTests(unittest.TestCase):
         self.assertEqual(client.screenshot.call_args.args[0].name, 'm6-restored.jpg')
 
     def test_hdr2_payload_stages_privately_with_executable_helpers(self):
+        self.stage_private_payload('7.3.0-vim4kvm-uhd4r2+')
+
+    def test_hdr10_payload_stages_with_matching_module_mount_and_baseline(self):
+        self.stage_private_payload('7.3.0-vim4kvm-hdr10r3+')
+
+    def stage_private_payload(self, release):
         from test_display_once import static_elf
         once = window.load('payload_stage', ROOT / 'packaging/kernel-edge/display-once.py')
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory).resolve()
             candidate = root / 'hdr2-unified' / ('a'*40)
             files = {'Image': b'kernel', 'vim4.dtb': b'dtb', 'init': static_elf(),
-                     'modules/7.3.0-vim4kvm-uhd4r2+/test.ko': b'module',
+                     f'modules/{release}/test.ko': b'module',
                      'runtime/helper': b'#!/bin/sh\nexit 0\n',
                      'extlinux.conf': (f'LINUX {candidate}/Image\nFDT {candidate}/vim4.dtb\nAPPEND init={candidate}/init\n').encode()}
-            manifest = dict(release='7.3.0-vim4kvm-uhd4r2+', build_id='a'*40, source_commit='b'*40,
+            manifest = dict(release=release, build_id='a'*40, source_commit='b'*40,
                             sha256={name: once.hashlib.sha256(data).hexdigest() for name, data in files.items()})
             bundle = root / 'payload.tar.gz'
             with tarfile.open(bundle, 'w:gz') as archive:

@@ -1,0 +1,134 @@
+#!/usr/bin/python3
+"""Provision the board-owned composite gadget for the matched 7.x experiment.
+
+Repeated preparation preserves an existing gadget and its active HID handles.
+Only a fresh, empty configfs gadget namespace may be initialized here.
+"""
+import json
+import os
+from pathlib import Path
+import platform
+import subprocess
+import sys
+
+ROOT = Path('/sys/kernel/config/usb_gadget')
+UDCS = Path('/sys/class/udc')
+MARKER = Path('/run/one-kvm-edge-usb/prepared')
+SERIAL = 'VIM4-EDGE-HID'
+ETHERNET_ADDRESS = Path('/sys/class/net/eth0/address')
+HIDS = (
+    ('keyboard', 1, 1, 8, '05010906a101050719e029e715002501750195088102950175088101'
+     '95057501050819012905910295017503910195067508150026ff00050719002aff008100c0'),
+    ('mouse_abs', 0, 0, 6, '05010902a1010901a10005091901290515002501950575018102950175038101'
+     '0501093016000026ff7f751095018102093116000026ff7f751095018102'
+     '09381581257f750895018106c0c0'),
+    ('mouse_rel', 2, 1, 4, '05010902a1010901a10005091901290515002501950575018102950175038101'
+     '0501093009311581257f75089502810609381581257f750895018106c0c0'),
+)
+
+
+def check_existing():
+    """Never adopt, unbind, or remove a gadget created by another service."""
+    gadgets = list(ROOT.iterdir()) if ROOT.exists() else []
+    if not gadgets:
+        return False
+    gadget = ROOT / 'kvm'
+    if gadgets != [gadget] or not MARKER.is_file():
+        raise ValueError('An unrecognized USB gadget already exists; refusing to replace it')
+    functions = gadget / 'functions'
+    if any(not (functions / ('hid.' + name)).is_dir() for name, *_ in HIDS):
+        raise ValueError('The experimental HID gadget is incomplete')
+    lun = functions / 'mass_storage.disk0/lun.0'
+    if not lun.is_dir():
+        raise ValueError('The experimental media function is missing')
+    return True
+
+
+def prepare_optional_functions(gadget):
+    """Add unlinked functions without changing active HID or mounted media."""
+    network = gadget / 'functions/ncm.usb0'
+    if not network.exists():
+        address = bytes.fromhex(ETHERNET_ADDRESS.read_text().strip().replace(':', ''))
+        if len(address) != 6:
+            raise ValueError('Cannot derive unique USB MAC addresses from Ethernet')
+        network.mkdir()
+        for name, prefix in (('host_addr', 2), ('dev_addr', 6)):
+            (network / name).write_text(':'.join(f'{byte:02x}' for byte in bytes([prefix]) + address[1:]))
+    audio = gadget / 'functions/uac2.usb0'
+    if not audio.exists():
+        audio.mkdir()
+        # Only gadget playback -> host microphone. Controls would reserve an
+        # extra interrupt IN endpoint, exceeding the supported combinations.
+        for name, value in {'c_chmask': 0, 'p_chmask': 3, 'p_srate': 48000,
+                            'p_ssize': 2, 'p_volume_present': 0, 'p_mute_present': 0,
+                            'c_volume_present': 0, 'c_mute_present': 0}.items():
+            (audio / name).write_text(str(value))
+
+
+def prepare():
+    if os.geteuid() != 0 or platform.release() not in (
+            '7.3.0-rc7-vim4kvm-uhd1+', '7.3.0-vim4kvm-uhd1+', '7.3.0-vim4kvm-npu1+',
+            '7.3.0-vim4kvm-npu2+', '7.3.0-vim4kvm-npu3+', '7.3.0-vim4kvm-npu4+',
+            '7.3.0-vim4kvm-uhd2+', '7.3.0-vim4kvm-uhd2-nodebug+', '7.3.0-vim4kvm-uhd3+',
+            '7.3.0-vim4kvm-hdr10r3+'):
+        raise ValueError('Requires root on the matched 7.3 One-KVM experimental kernel')
+    if check_existing():
+        prepare_optional_functions(ROOT / 'kvm')
+        return
+    subprocess.run(['modprobe', 'crg_udc'], check=True)
+    subprocess.run(['modprobe', 'libcomposite'], check=True)
+    if not os.path.ismount('/sys/kernel/config'):
+        subprocess.run(['mount', '-t', 'configfs', 'none', '/sys/kernel/config'], check=True)
+    if check_existing():
+        prepare_optional_functions(ROOT / 'kvm')
+        return
+    controllers = list(UDCS.iterdir())
+    if len(controllers) != 1 or controllers[0].name != 'fdd00000.usb':
+        raise ValueError('Requires the single T7 CRG USB controller')
+    gadget = ROOT / 'kvm'
+    gadget.mkdir()
+
+    def write(relative, value):
+        (gadget / relative).write_text(str(value) + '\n')
+
+    for key, value in {'idVendor': '0x1d6b', 'idProduct': '0x0104',
+                       'bcdDevice': '0x0100', 'bcdUSB': '0x0200',
+                       'bDeviceClass': '0xEF', 'bDeviceSubClass': '0x02',
+                       'bDeviceProtocol': '0x01'}.items():
+        write(key, value)
+    (gadget / 'strings/0x409').mkdir()
+    write('strings/0x409/serialnumber', SERIAL)
+    write('strings/0x409/manufacturer', 'One-KVM')
+    write('strings/0x409/product', 'One-KVM USB Device')
+    (gadget / 'configs/c.1').mkdir()
+    write('configs/c.1/MaxPower', 250)
+    write('configs/c.1/bmAttributes', '0x80')
+    # Creation order fixes the shared application's hidg0/1/2 mapping.
+    for name, protocol, subclass, length, descriptor in HIDS:
+        function = gadget / 'functions' / ('hid.' + name)
+        function.mkdir()
+        for attribute, value in {'protocol': protocol, 'subclass': subclass,
+                                 'report_length': length, 'no_out_endpoint': 1}.items():
+            (function / attribute).write_text(str(value) + '\n')
+        (function / 'report_desc').write_bytes(bytes.fromhex(descriptor))
+        (gadget / 'configs/c.1' / function.name).symlink_to(function)
+    # Optional functions stay unlinked until requested by the application.
+    lun_function = gadget / 'functions/mass_storage.disk0'
+    lun_function.mkdir()
+    write('functions/mass_storage.disk0/lun.0/removable', 1)
+    write('functions/mass_storage.disk0/lun.0/ro', 1)
+    write('functions/mass_storage.disk0/lun.0/inquiry_string', 'One-KVM Virtual Flash')
+    prepare_optional_functions(gadget)
+    write('UDC', controllers[0].name)
+    subprocess.run(['udevadm', 'settle', '--timeout=15'], check=True)
+    MARKER.parent.mkdir(mode=0o700, parents=True, exist_ok=True)
+    MARKER.write_text(SERIAL + '\n')
+
+
+if __name__ == '__main__':
+    try:
+        prepare()
+        print(json.dumps({'gadget': str(ROOT / 'kvm'), 'hid': ['keyboard', 'absolute', 'relative']}))
+    except (OSError, ValueError, subprocess.SubprocessError) as error:
+        print(error, file=sys.stderr)
+        sys.exit(1)

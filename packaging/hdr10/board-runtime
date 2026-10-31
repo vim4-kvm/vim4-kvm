@@ -1,0 +1,44 @@
+#!/bin/sh
+# Keep platform ownership in the same units on both installed kernels.
+set -eu
+case "$(uname -r)" in
+    5.15.*) mainline=0 ;;
+    7.3.0-vim4kvm-hdr10r3+) mainline=1 ;;
+    *) echo 'No validated VIM4 platform for this kernel' >&2; exit 1 ;;
+esac
+case "${1:-}" in
+    audio-route)
+        [ "$mainline" = 0 ] || exit 0
+        exec /usr/bin/amixer -q -D hw:AMLAUGESOUND cset 'name=TDMIN_B source select' hdmirx
+        ;;
+    hdmi)
+        if [ "$mainline" = 1 ]; then
+            /usr/libexec/vim4-mainline-prepare
+            /usr/libexec/vim4-edid restore
+            systemd-notify --ready
+            exec sleep infinity
+        fi
+        systemctl is-active --quiet tvserver.service
+        export VIM4_HDMI_NOTIFY=1
+        exec /usr/sbin/hdmi-setup.sh
+        ;;
+    gadget-start)
+        if [ "$mainline" = 1 ]; then
+            exec /usr/libexec/vim4-mainline-gadget-prepare
+        fi
+        exec /usr/sbin/kvm-gadget.sh start
+        ;;
+    gadget-stop)
+        # Mainline keeps board-owned HID instances and open media through unit
+        # restarts; reboot removes configfs after applications have stopped.
+        [ "$mainline" = 0 ] || exit 0
+        exec /usr/sbin/kvm-gadget.sh stop
+        ;;
+    pd)
+        if [ "$mainline" = 1 ]; then
+            exec /usr/bin/python3 /usr/lib/vim4-kvm/python/vim4pd.py
+        fi
+        exec /usr/bin/python3 /usr/lib/vim4-kvm/python/vim4pd.py --vendor
+        ;;
+    *) echo 'Expected hdmi, gadget-start, gadget-stop or pd' >&2; exit 2 ;;
+esac
