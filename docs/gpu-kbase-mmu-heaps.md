@@ -1,5 +1,8 @@
 # kbase r5：MMU 故障隔离与 WC heap 合同
 
+后续[r6窗口](bringup/2026-10-31-kbase-r6-window.md)已复测64位heap、独立证明override必要、
+定位并修复DMA升频差距、补GPU thermal绑定；本页保留r5联合修复的原始归因边界。
+
 结论：离线找到两处平台 parity 差异：缺失 T7 PWR_OVERRIDE1 初始化；候选继承的
 dma-coherent 与厂商非 coherent DMA API 路径不同。r5 同时修正，不能凭一次联合试验
 判定哪项单独足以消除 r4 故障。新增独立内存负载和真实 WC heaps，不修改正式内核行为。

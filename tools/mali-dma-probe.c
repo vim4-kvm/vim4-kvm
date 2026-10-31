@@ -31,6 +31,28 @@ static double milliseconds(void)
     return now.tv_sec * 1000.0 + now.tv_nsec / 1000000.0;
 }
 
+static void sample_marker(long sample, const char *stage)
+{
+    const char *path = getenv("GPU_TRACE_MARKER");
+    if (!path) return;
+    FILE *stream = fopen(path, "w");
+    if (!stream) { perror("GPU_TRACE_MARKER"); exit(1); }
+    fprintf(stream, "mali-dma sample=%ld stage=%s\n", sample, stage);
+    if (fclose(stream)) { perror("trace marker close"); exit(1); }
+}
+
+static void sample_frequency(long sample, const char *stage)
+{
+    const char *path = getenv("GPU_FREQ_PATH");
+    if (!path) return;
+    FILE *stream = fopen(path, "r");
+    unsigned long long hz;
+    if (!stream) { perror("GPU_FREQ_PATH"); exit(1); }
+    REQUIRE(fscanf(stream, "%llu", &hz) == 1, "Cannot read GPU frequency");
+    fclose(stream);
+    printf("sample=%ld stage=%s frequency_readback=%llu path=%s\n", sample, stage, hz, path);
+}
+
 static void cpu_sync(int fd, uint64_t flags)
 {
     struct dma_buf_sync sync = { .flags = flags };
@@ -94,6 +116,7 @@ int main(int argc, char **argv)
     vkGetPhysicalDeviceQueueFamilyProperties(physical, &family_count, families);
     uint32_t family = 0;
     while (family < family_count && !(families[family].queueFlags & VK_QUEUE_COMPUTE_BIT)) family++;
+    uint32_t timestamp_bits = family < family_count ? families[family].timestampValidBits : 0;
     free(families);
     REQUIRE(family < family_count, "No compute queue");
     float priority = 1;
@@ -107,6 +130,13 @@ int main(int argc, char **argv)
     VK_CHECK(vkCreateDevice(physical, &device_info, NULL, &device));
     VkQueue queue;
     vkGetDeviceQueue(device, family, 0, &queue);
+    VkQueryPool timestamps = VK_NULL_HANDLE;
+    if (getenv("GPU_TIMESTAMP") && timestamp_bits) {
+        VkQueryPoolCreateInfo query = { .sType = VK_STRUCTURE_TYPE_QUERY_POOL_CREATE_INFO,
+            .queryType = VK_QUERY_TYPE_TIMESTAMP, .queryCount = 2 };
+        VK_CHECK(vkCreateQueryPool(device, &query, NULL, &timestamps));
+        printf("timestamp_bits=%u timestamp_period_ns=%g\n", timestamp_bits, properties.limits.timestampPeriod);
+    }
 
     /* One packed 4K P010 frame (Y + UV). Encoder import needs contiguous codecmm. */
     const VkDeviceSize bytes = (VkDeviceSize)requested;
@@ -233,6 +263,10 @@ int main(int argc, char **argv)
     VK_CHECK(vkAllocateCommandBuffers(device, &command_info, &command));
     VkCommandBufferBeginInfo begin = { .sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO };
     VK_CHECK(vkBeginCommandBuffer(command, &begin));
+    if (timestamps) {
+        vkCmdResetQueryPool(command, timestamps, 0, 2);
+        vkCmdWriteTimestamp(command, VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT, timestamps, 0);
+    }
     VkBufferMemoryBarrier barrier = { .sType = VK_STRUCTURE_TYPE_BUFFER_MEMORY_BARRIER,
         .srcAccessMask = 0, .dstAccessMask = VK_ACCESS_SHADER_WRITE_BIT,
         .srcQueueFamilyIndex = native ? VK_QUEUE_FAMILY_IGNORED : VK_QUEUE_FAMILY_EXTERNAL,
@@ -260,6 +294,7 @@ int main(int argc, char **argv)
         vkCmdPipelineBarrier(command, VK_PIPELINE_STAGE_TRANSFER_BIT, VK_PIPELINE_STAGE_HOST_BIT,
             0, 0, NULL, 1, &barrier, 0, NULL);
     }
+    if (timestamps) vkCmdWriteTimestamp(command, VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT, timestamps, 1);
     VK_CHECK(vkEndCommandBuffer(command));
     VkFenceCreateInfo fence_info = { .sType = VK_STRUCTURE_TYPE_FENCE_CREATE_INFO };
     VkFence fence;
@@ -270,11 +305,23 @@ int main(int argc, char **argv)
     /* Keep the original cold sample, then report warm samples separately. */
     for (long i = -3; i < iterations; i++) {
         VK_CHECK(vkResetFences(device, 1, &fence));
+        sample_frequency(i, "before");
+        sample_marker(i, "begin");
         double start = milliseconds();
         VK_CHECK(vkQueueSubmit(queue, 1, &submit, fence));
         double submitted = milliseconds();
         VK_CHECK(vkWaitForFences(device, 1, &fence, VK_TRUE, UINT64_C(10000000000)));
         double complete = milliseconds();
+        sample_marker(i, "end");
+        sample_frequency(i, "after");
+        if (timestamps) {
+            uint64_t values[2];
+            VK_CHECK(vkGetQueryPoolResults(device, timestamps, 0, 2, sizeof(values), values,
+                                          sizeof(values[0]), VK_QUERY_RESULT_64_BIT | VK_QUERY_RESULT_WAIT_BIT));
+            uint64_t mask = timestamp_bits >= 64 ? UINT64_MAX : (UINT64_C(1) << timestamp_bits) - 1;
+            printf("sample=%ld diagnostic_gpu_ms=%.6f\n", i,
+                   (double)((values[1] - values[0]) & mask) * properties.limits.timestampPeriod / 1e6);
+        }
         printf("sample=%ld warmup=%d submit_ms=%.6f wait_ms=%.6f total_ms=%.6f\n",
                i, i < 0, submitted-start, complete-submitted, complete-start);
         if (i >= 0) elapsed += complete-start;
@@ -316,6 +363,7 @@ int main(int argc, char **argv)
         close(dma_fd);
     }
     vkFreeMemory(device, memory, NULL);
+    if (timestamps) vkDestroyQueryPool(device, timestamps, NULL);
     vkDestroyDevice(device, NULL);
     vkDestroyInstance(instance, NULL);
     return 0;

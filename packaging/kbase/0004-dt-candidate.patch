@@ -1,9 +1,9 @@
 diff --git a/arch/arm64/boot/dts/amlogic/amlogic-t7-a311d2-khadas-vim4-kbase.dts b/arch/arm64/boot/dts/amlogic/amlogic-t7-a311d2-khadas-vim4-kbase.dts
 new file mode 100644
-index 0000000000000..de7deb680b71c
+index 0000000000000..96d703284d19a
 --- /dev/null
 +++ b/arch/arm64/boot/dts/amlogic/amlogic-t7-a311d2-khadas-vim4-kbase.dts
-@@ -0,0 +1,29 @@
+@@ -0,0 +1,45 @@
 +// SPDX-License-Identifier: GPL-2.0
 +/* Candidate only: preserve the display M0 profile and all its peripherals. */
 +#include "amlogic-t7-a311d2-khadas-vim4-display-m0.dts"
@@ -32,4 +32,20 @@ index 0000000000000..de7deb680b71c
 +	system-coherency = <0>;
 +	/* VDD_GPU stays at its existing always-on setting; no voltage scaling. */
 +	/delete-property/ mali-supply;
++};
++
++&gpu_thermal {
++	trips {
++		kbase_gpu_trip: kbase-throttle {
++			temperature = <95000>;
++			hysteresis = <5000>;
++			type = "passive";
++		};
++	};
++	cooling-maps {
++		kbase-gpu {
++			trip = <&kbase_gpu_trip>;
++			cooling-device = <&gpu 0 4>;
++		};
++	};
 +};

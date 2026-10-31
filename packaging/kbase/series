@@ -4,3 +4,4 @@
 0005-runtime-api.patch
 0006-t7-reset-quirk.patch
 0007-mmu-fault-region.patch
+0008-t7-devfreq-policy.patch

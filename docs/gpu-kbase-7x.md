@@ -1,18 +1,32 @@
 # VIM4 7.3 kbase 后备候选
 
+[r6实测与二分](bringup/2026-10-31-kbase-r6-window.md)：同heap-gfx、800MHz时DMA 1.493ms，
+追平5.15的1.574ms；根因为突发任务未及时升频，新增仅T7的performance governor默认值。
+
+| 当前门禁 | 状态 |
+|---|---|
+| API查询/像素/基本执行 | EGL1.5、GLES3.2、VK1.3.231、CL设备/C3.0，通过；非CTS |
+| 64位heap | 六类VK路径通过；CL五类本轮通过，default CMA CL未重测 |
+| 正常候选WARN/fault | 零kernel WARN/BUG/oops、零GPU/MMU fault；负向去override会复现fault |
+| 性能 | 同频/同WC合同DMA追平，GLES/CL不低于本轮5.15；能效未测 |
+| thermal/并行 | 95°C passive GPU map已绑定、五档通过、并行59.998fps；未真实加热 |
+| 实际scanout / GBM→Wave5 | 布局元数据不足，未通过；不是PRIME handle导入成功即可替代 |
+
+尚不满足完整互操作门禁，保留候选，不提交可批准的产品路径方案或改变默认GPU。
+
 [r5窗口](bringup/2026-10-30-kbase-r5-window.md)：零fault，三API/六类内存与BO导入通过，
 GLES648 FPS、CL51µs/101.75 GFLOPS；DMA3.571ms落后5.15，GPU thermal绑定仍缺。
 [MMU/heap合同与后续窗口](gpu-kbase-mmu-heaps.md)解释联合修复的归因边界。
-退窗后的heap DMA mask64位修正仅离线通过，HDR再占锁后未复测；不要混用两版验收结论。
+该页退窗后的heap DMA mask64位修正已在r6复测，不混用各封存版本的哈希。
 
-[最新诊断窗口](bringup/2026-10-30-kbase-r4-window.md)：GBM被缺失的system-uncached/heap-gfx阻断；
-VK1.3.231与CL3.0设备查询通过，但VK DMA执行DEVICE_LOST/MMU fault。已回5.15，不能推广候选。
+[r4历史诊断](bringup/2026-10-30-kbase-r4-window.md)：当时GBM被缺失的system-uncached/heap-gfx阻断；
+VK1.3.231与CL3.0设备查询通过，但VK DMA执行DEVICE_LOST/MMU fault；后续修复结果见上方r6状态。
 
 [r3再次上板](bringup/2026-10-30-kbase-r3-window.md)：零WARN加载及KVM助手启动路径通过，
-首个GBM/EGL设备探针退出2，按门禁回5.15；尚无候选API或性能通过数据。
+首个GBM/EGL设备探针退出2，按门禁回5.15；该轮尚无候选API或性能通过数据。
 
 [r3离线修复与新窗口门禁](gpu-kbase-repair.md)修正timer/workqueue及生命周期问题，
-新增运行时快照与CL分项预算；编译/宿主门禁通过，尚未再次上板。后续窗口以该页清单为准。
+新增运行时快照与CL分项预算；该离线记录保留当时的门禁与窗口清单。
 
 [首个上板窗口](bringup/2026-10-30-kbase-window.md)已完成：/dev/mali0出现，但workqueue/hrtimer
 新增WARN，运行时助手也拒绝候选；已回5.15。候选不能用于产品或继续性能验收，需先离线修复。
@@ -31,6 +45,28 @@ r2的[EGL选择、电源范围和补丁重放](gpu-kbase-integration.md)推荐IC
 旧冷提交/CL超时数字须同时遵守该页链接的测量口径修正。
 
 ## 来源与更新路线
+
+补丁按责任重放：0001为内核API/Kbuild兼容，0002为T7域/bus/reset平台，0003为devfreq/thermal注册，
+0004仅候选DT（GPU coherency、独立CMA、GPU cooling map），0005为timer/workqueue/fence生命周期，
+0006为T7 reset override，0007为fault region诊断，0008为仅vim4的devfreq默认策略。
+WC exporter独立在heaps/，不混入DDK。0006依据厂商/Panfrost初始化，r6去掉它独立复现原生compute fault。
+删除dma-coherent的必要性未证明；仍以5.15缓存合同保守保留，不能称它是必需的fault修复。
+heaps实现的是厂商WC合同，并非已被上游接受的system-uncached；将来优先替换为等价的公开接口。
+
+每次升级先固定新内核commit/config/Image/完整模块集，再按上述主题重放；更新build.py内核锁定值及
+白名单时审查实际差异，不能绕过检查。UK与blob SHA保持绑定，逐项比较UAPI字节/34种payload/40个ioctl；
+再做W=1/Werror、modpost、strict风格、runtime/heap宿主模型与主仓unittest。
+新增/删除的内核API集中兼容头；不把语义变化伪装成同名宏。DT生成器与候选DTS一起更新，保留既有phandle
+和MCU fan map。下一窗至少覆盖六类内存、同合同heap性能/cache计数、GPU频率、thermal绑定与60fps并行。
+构建通过不代表cache、PM、跨设备同步或睡眠通过；故障恢复/内存压力/实际scanout需单列验收。
+正常小版本预计以兼容层及这些门禁为主；涉及DMA/MMU/PM语义变化时按新移植窗口预算，不能承诺零维护。
+
+本轮r6新增独立95°C passive GPU map（0..4级），保留MCU map，已实测绑定及trip路径；尚未热触发。
+dma-profile.py创建独立trace实例，记录DMA API与具名arch cache事件；探针逐提交marker与频率读回位于计时外。
+原生两核物理地址不能跨重启视为同一buffer；优先比较两边heap-gfx的连续/WC合同，并辅以cached system对照。
+既有同源比较显示5.15也会降至250MHz；只有记录频率/trace状态的配对才用于归因。
+性能主样本关闭trace与timestamp探针，独立trace样本检查cache次数/字节与GPU耗时。
+实际显示/编码互操作、故障清理旧system_wq提示仍需收尾；不以查询表覆盖这些缺口。
 
 V=`~/src/linux@80a07ad5406d57855c996285ae75a50a1b9147ae`，
 K=`drivers/gpu/arm/midgard`；以git archive导出固定提交，不复制厂商构建目录的旧.o/.ko。
@@ -61,8 +97,8 @@ G76 r56或CSF驱动不构成G52支持证据。不能改版本常量伪装UK11.39
 | timer/debugfs | timer_delete与hrtimer_setup兼容包装；no_llseek改为NULL（不提供seek）；MIN/MAX及固件in_range与新内核命名冲突修正；debugfs其余入口编译通过 |
 | platform/of/file | remove回调为void；unsigned offset转到file_operations.fop_flags；仅匹配候选专用compatible；misc设备原样，不引入厂商mpgpu class接口 |
 | DMA/IOMMU/SG | dma_set_max_seg_size现为void；kbase使用GPU自己的MMU，沿用T7直接DMA路径，不引入厂商IOMMU私有接口，不等于已验非连续buffer/外部IOMMU |
-| devfreq/OPP | 启用DDK通用devfreq，复用板级五档OPP；仅core时钟参与调频，bus独立保持开启；不移植厂商PREHEAT/DVFS状态机 |
-| thermal | of_devfreq_cooling_register注册成功，max_state=4；实测没有GPU zone绑定，既有95°C map指向MCU而非GPU。补绑定与闭环仍待验；不使用未校准IPA模型 |
+| devfreq/OPP | 通用devfreq＋五档OPP；T7默认上游performance governor以满足突发DMA延迟，其他平台仍simple_ondemand；thermal继续约束上限，不移植PREHEAT状态机 |
+| thermal | of_devfreq_cooling_register、max_state=4；新增95°C GPU map已绑定，保留MCU map；真实过温闭环未触发，不使用未校准IPA模型 |
 | pm_runtime/reset | 小平台层持有runtime引用直至remove；复位数组含CAPB3和MALI；失败路径回收bus和PM引用；不在每个空闲任务间重置域 |
 
 兼容性主要集中在已有兼容头和`platform/vim4/`，其余是API调用点小改动。
@@ -81,7 +117,7 @@ G76 r56或CSF驱动不构成G52支持证据。不能改版本常量伪装UK11.39
 平台先持域引用、开bus、释放reset，通用kbase持core时钟；终止按相反顺序回收。
 持域是遵守厂商T7“空闲reset影响GPU”的限制。内部shader power gating仍由DDK处理，
 但外部域/时钟的runtime节能、系统suspend/resume均未验，不能宣称功耗追平。
-cooling注册不依赖新增电压模型；缺少GPU thermal绑定，不能据此宣称温控限幅已生效。
+cooling注册不依赖新增电压模型；GPU绑定与trip作用路径已验证，真实热限幅和功耗仍待验。
 
 ## 内核选择、打包与复现
 

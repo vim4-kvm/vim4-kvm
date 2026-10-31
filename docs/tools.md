@@ -25,10 +25,10 @@ PiKVM smoke 可用 `PIKVM_CDP` 接入专用测试 Chrome；结束时关闭测试
 
 | 入口 | 运行位置 | 影响 | 用途 | 文档 |
 |---|---|---|---|---|
-| packaging/kbase/build.py、run.py、check-style.py、check-semantics.py、check-heaps.py、clpeak-subset.py、resolve-egl.c、heaps/vim4_kbase_heaps.c | build/check：宿主/ARM64 VM；run/CL/模块：板 | build/check/resolve无硬件访问；run/CL占GPU，heap模块占候选CMA | series与WC heap构建、ABI/语义/风格门禁；私有ICD/EGL前缀；CL分项限时 | [kbase后备候选](gpu-kbase-7x.md)、[MMU与heap合同](gpu-kbase-mmu-heaps.md) |
+| packaging/kbase/build.py、run.py、check-style.py、check-semantics.py、check-heaps.py、clpeak-subset.py、dma-profile.py、resolve-egl.c、heaps/vim4_kbase_heaps.c | build/check：宿主/ARM64 VM；run/CL/模块：板 | build/check/resolve无硬件访问；run/CL占GPU，profile独占GPU并临时创建具名trace实例/事件，heap占候选CMA | series与WC heap构建、ABI/语义/风格门禁；私有ICD/EGL前缀；CL限时、DMA逐提交边界与cache事件 | [kbase后备候选](gpu-kbase-7x.md)、[MMU与heap合同](gpu-kbase-mmu-heaps.md) |
 | tools/memory-bench.c、memory-bench.py | C：Linux ARM64编译；runner：Linux/板 | 独占CPU/内存/tmpfs；无频率写入、部署、HID | 单核强制绑定、逐段实际CPU/每核频率、多尺寸分布与fault，≤3分钟、采温度并恢复亲和 | [内存拷贝审查](memory-copy-audit.md)、[绑核门禁与配置草案](nodebug-performance-gate.md) |
 | tools/gpu-diagnose.py、gpu-cl-map.c | 板；CL工具先ARM64编译 | 独占GPU；诊断器可临时锁频/PM/profiling并恢复；不写电压、不ptrace | 自有子进程fdinfo/周期/忙闲估计、trans_stat与CPU；小buffer CL map复现 | [GPU性能复核](gpu-performance-diagnosis.md) |
-| packaging/gpu/（含 compiler-compare.sh、corpus-check.sh、corpus-report.py、gpu-probe.c） | Docker ARM64；probe：板 | 构建无；probe占GPU | 固定输入与shader-db；GPU_DUMP_PATH保存RGBA；GPU_GBM_EXPORT=render/scanout做BO导出与独立DRM文件导入，linear另加线性要求 | [GPU运行时](bringup/2026-10-30-gpu-runtime.md)、[MMU/heap合同](gpu-kbase-mmu-heaps.md) |
+| packaging/gpu/（含 compiler-compare.sh、corpus-check.sh、corpus-report.py、gpu-probe.c） | Docker ARM64；probe：板 | 构建无；probe占GPU；GPU_WAVE5_DEVICE显式指定编码节点时还独占编码器 | shader/FBO像素；GPU_GBM_EXPORT=render/scanout/nv12，linear另加线性要求；Wave5只在NV12完整布局及同buffer证明后尝试QBUF，不STREAMON | [GPU运行时](bringup/2026-10-30-gpu-runtime.md)、[MMU/heap合同](gpu-kbase-mmu-heaps.md) |
 | tools/npu-probe.c、npu-validate.py、npu-models.json | 编译：ARM64；run：板；compare：Mac/VM | run 占用 NPU，写新结果目录；无部署、HID、声音 | 固定下载SHA、逐轮完整张量校验、均值/P50/P99/最大值；probe的--timing分段SDK外开销 | [ADLA离线候选](npu-adla.md)、[端到端分段](npu-e2e-timing.md) |
 | tools/npu-uapi-probe.c | ARM64编译→板 | 占用NPU兼容接口；无推理、HID或声音 | 初始化MMU上下文后测试ATTACH别名；负向PROFILE_CFG拒绝厂商5.15，须有界运行 | [ADLA候选与验收](npu-adla.md) |
 | packaging/kernel-edge/build-gstreamer.py | 容器/VM | 无 | 校验固定源码、应用 V4L2 生命周期补丁并构建私有插件，不改系统库 | [音视频](subsystems/video.md) |
@@ -46,6 +46,7 @@ PiKVM smoke 可用 `PIKVM_CDP` 接入专用测试 Chrome；结束时关闭测试
 | tools/workspace.py | Mac / CI | 无 | bootstrap/status 子仓库（`--override` 供发布 CI 替换单个仓库提交），build 各目标（kernel 走 OrbStack） | [工作区](workspace.md) |
 | tools/mali-runtime.py | fetch：Mac / Linux；install：板（root） | 下载或写私有 GPU 目录，不重启服务 | 固定来源和 SHA 获取 r44p0 用户态驱动，安装前检查 5.15/Mali ABI 与依赖；不注册全局 ICD | [HDR GPU](bringup/2026-10-26-hdr-gpu.md) |
 | tools/mali-dma-probe.c、mali-dma-probe.comp、mali-cl-probe.c | ARM64 容器编译 → 板 | GPU计算与临时内存；不操作采集/编码 | VK原生device-local/host-visible、DMA heap导入和逐字校验；可选16KiB二分；CL单kernel支持同类分配。均须外部timeout | [kbase候选](gpu-kbase-7x.md) |
+| tools/gbm-scanout-probe.c | ARM64容器编译→板 | 独占显示；保持当前mode，恢复原FB，不抢DRM master | GBM线性XR24 BO导出/导入并短时SetCrtc；布局/恢复信息不足则拒绝，需与采集并行验收并带timeout | [kbase候选](gpu-kbase-7x.md) |
 | tools/vrr-edid.py | Mac / Linux | 只写指定的新文件，不访问板子 | 显式实验范围生成远程VRR EDID；Forum最小值≤48、显式最大值≥100，拒绝保留值与模式相关上限；本地模式必须提供同协议sink并取交集，不安装预设或触发HPD | [VRR准备](vrr-preparation.md) |
 | tools/ubuntu-build.py | Mac / CI → Docker | 无 | package/verify 七组件；支持 platform、capture、encoder、nanokvm、jetkvm、onekvm、manager、pikvm、pikvm-app | [Ubuntu 构建](ubuntu-build.md) |
 | tools/ubuntu-image.py | Mac → OrbStack | 无 | 内核包、候选镜像 assemble/verify/export | [候选镜像](ubuntu-image.md) |

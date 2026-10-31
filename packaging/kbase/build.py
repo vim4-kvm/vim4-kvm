@@ -26,6 +26,26 @@ def sha(path):
     return hashlib.sha256(path.read_bytes()).hexdigest()
 
 
+def add_gpu_cooling(dtb, gpu, next_phandle):
+    """Add a frequency map without invalidating existing GPU/fan consumers."""
+    existing = subprocess.run(['fdtget', '-t', 'x', str(dtb), gpu, 'phandle'],
+                              text=True, capture_output=True)
+    gpu_phandle = int(existing.stdout.strip(), 16) if existing.returncode == 0 else next_phandle
+    if existing.returncode:
+        run('fdtput', '-t', 'x', str(dtb), gpu, 'phandle', format(gpu_phandle, 'x'))
+    trip = '/thermal-zones/gpu-thermal/trips/kbase-throttle'
+    run('fdtput', '-c', str(dtb), trip)
+    run('fdtput', '-t', 's', str(dtb), trip, 'type', 'passive')
+    for name, value in {'temperature': 95000, 'hysteresis': 5000,
+                        'phandle': next_phandle + 1}.items():
+        run('fdtput', '-t', 'x', str(dtb), trip, name, format(value, 'x'))
+    cooling = '/thermal-zones/gpu-thermal/cooling-maps/kbase-gpu'
+    run('fdtput', '-c', str(dtb), cooling)
+    run('fdtput', '-t', 'x', str(dtb), cooling, 'trip', format(next_phandle + 1, 'x'))
+    run('fdtput', '-t', 'x', str(dtb), cooling, 'cooling-device',
+        format(gpu_phandle, 'x'), '0', '4')
+
+
 def abi(source, destination):
     """Compare every named ioctl payload's size/alignment and ioctl encoding."""
     contents = subprocess.check_output([
@@ -137,7 +157,7 @@ def main():
         {name: sha(path) for name, path in runtime_files.items()}, indent=2) + '\n')
     probes = output / 'probes'
     probes.mkdir()
-    for name in ('run.py', 'clpeak-subset.py'):
+    for name in ('run.py', 'clpeak-subset.py', 'dma-profile.py'):
         shutil.copyfile(packaging / name, probes / name)
     dtb = output / 'candidate.dtb'
     shutil.copyfile(args.dtb, dtb)
@@ -163,6 +183,8 @@ def main():
     run('fdtput', '-c', str(dtb), '/kbase-heaps')
     run('fdtput', '-t', 's', str(dtb), '/kbase-heaps', 'compatible', 'khadas,vim4-kbase-heaps')
     run('fdtput', '-t', 'x', str(dtb), '/kbase-heaps', 'memory-region', format(phandle, 'x'))
+    # Keep the existing MCU fan map; add an independent GPU frequency map.
+    add_gpu_cooling(dtb, gpu, phandle + 1)
     manifest = {'vendor': VENDOR, 'kernel': KERNEL, 'boardTested': False,
                 'runtimeManifestSha256': sha(output / 'runtime-files.json'),
                 'moduleSha256': sha(module),

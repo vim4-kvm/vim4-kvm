@@ -9,11 +9,13 @@
 #include <fcntl.h>
 #include <gbm.h>
 #include <libdrm/drm.h>
+#include <linux/videodev2.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include <time.h>
 #include <sys/ioctl.h>
+#include <sys/stat.h>
 #include <unistd.h>
 
 static int fail(const char *stage)
@@ -40,6 +42,49 @@ static double now(void)
  return t.tv_sec + t.tv_nsec / 1e9;
 }
 
+static int wave5_import(int dma, uint32_t stride, uint32_t uv_offset, off_t bytes)
+{
+ const char *device = getenv("GPU_WAVE5_DEVICE");
+ if (!device) return 0;
+ int fd = open(device, O_RDWR | O_NONBLOCK | O_CLOEXEC);
+ if (fd < 0) return fail("open Wave5");
+ int result = 2;
+ struct v4l2_capability cap = {0};
+ if (ioctl(fd, VIDIOC_QUERYCAP, &cap) || strncmp((char *)cap.driver, "wave5", 5)) {
+  fail("expected Wave5 QUERYCAP"); goto done;
+ }
+ struct v4l2_format capture = {.type = V4L2_BUF_TYPE_VIDEO_CAPTURE_MPLANE};
+ capture.fmt.pix_mp.width = 256; capture.fmt.pix_mp.height = 256;
+ capture.fmt.pix_mp.pixelformat = V4L2_PIX_FMT_H264;
+ if (ioctl(fd, VIDIOC_S_FMT, &capture)) { fail("Wave5 capture S_FMT"); goto done; }
+ struct v4l2_format raw = {.type = V4L2_BUF_TYPE_VIDEO_OUTPUT_MPLANE};
+ raw.fmt.pix_mp.width = 256; raw.fmt.pix_mp.height = 256;
+ raw.fmt.pix_mp.pixelformat = V4L2_PIX_FMT_NV12;
+ raw.fmt.pix_mp.num_planes = 1;
+ raw.fmt.pix_mp.plane_fmt[0].bytesperline = stride;
+ if (ioctl(fd, VIDIOC_S_FMT, &raw)) { fail("Wave5 raw S_FMT"); goto done; }
+ if (raw.fmt.pix_mp.pixelformat != V4L2_PIX_FMT_NV12 || raw.fmt.pix_mp.num_planes != 1 ||
+     raw.fmt.pix_mp.width != 256 || raw.fmt.pix_mp.height != 256 ||
+     raw.fmt.pix_mp.plane_fmt[0].bytesperline != stride || uv_offset != stride * 256 ||
+     bytes < raw.fmt.pix_mp.plane_fmt[0].sizeimage) {
+  fprintf(stderr, "Wave5 negotiated layout differs from GBM metadata; refusing import\n"); goto done;
+ }
+ struct v4l2_requestbuffers request = {.count = 1, .type = V4L2_BUF_TYPE_VIDEO_OUTPUT_MPLANE,
+                                     .memory = V4L2_MEMORY_DMABUF};
+ if (ioctl(fd, VIDIOC_REQBUFS, &request)) { fail("Wave5 REQBUFS"); goto done; }
+ struct v4l2_plane plane = {.bytesused = raw.fmt.pix_mp.plane_fmt[0].sizeimage,
+                           .length = (uint32_t)bytes, .m.fd = dma};
+ struct v4l2_buffer buffer = {.type = V4L2_BUF_TYPE_VIDEO_OUTPUT_MPLANE,
+                             .memory = V4L2_MEMORY_DMABUF, .index = 0,
+                             .length = 1, .m.planes = &plane};
+ if (ioctl(fd, VIDIOC_QBUF, &buffer)) { fail("Wave5 DMABUF QBUF"); goto done; }
+ puts("GBM NV12 BO accepted by Wave5 DMABUF QBUF; no STREAMON/encoded output tested");
+ result = 0;
+done:
+ close(fd);
+ return result;
+}
+
 static int export_bo(struct gbm_device *gbm, const char *drm_device)
 {
  const char *mode = getenv("GPU_GBM_EXPORT");
@@ -47,11 +92,51 @@ static int export_bo(struct gbm_device *gbm, const char *drm_device)
  uint32_t format = GBM_FORMAT_ARGB8888;
  if (!strcmp(mode, "linear")) flags |= GBM_BO_USE_LINEAR;
  else if (!strcmp(mode, "scanout")) { flags = GBM_BO_USE_SCANOUT; format = GBM_FORMAT_XRGB8888; }
+ else if (!strcmp(mode, "nv12")) format = GBM_FORMAT_NV12;
  fprintf(stderr, "GBM export format=%#x flags=%#x\n", format, flags);
  struct gbm_bo *bo = gbm_bo_create(gbm, 256, 256, format, flags);
  if (!bo) return fail("gbm_bo_create(export smoke)");
  int fd = gbm_bo_get_fd(bo);
+ if (fd < 0 && !strcmp(mode, "nv12")) {
+  int (*plane_fd)(struct gbm_bo *, int) = dlsym(RTLD_DEFAULT, "gbm_bo_get_fd_for_plane");
+  if (plane_fd) fd = plane_fd(bo, 0);
+ }
  if (fd < 0) { gbm_bo_destroy(bo); return fail("gbm_bo_get_fd"); }
+ if (!strcmp(mode, "nv12")) {
+  int (*planes)(struct gbm_bo *) = dlsym(RTLD_DEFAULT, "gbm_bo_get_plane_count");
+  uint64_t (*modifier)(struct gbm_bo *) = dlsym(RTLD_DEFAULT, "gbm_bo_get_modifier");
+  uint32_t (*offset)(struct gbm_bo *, int) = dlsym(RTLD_DEFAULT, "gbm_bo_get_offset");
+  uint32_t (*stride)(struct gbm_bo *, int) = dlsym(RTLD_DEFAULT, "gbm_bo_get_stride_for_plane");
+  printf("NV12 BO bytes=%lld metadata_api=%s\n", (long long)lseek(fd, 0, SEEK_END),
+         planes && modifier && offset && stride ? "available" : "incomplete");
+  if (planes && modifier && offset && stride) {
+   int count = planes(bo);
+   printf("NV12 BO planes=%d modifier=%llu\n", count, (unsigned long long)modifier(bo));
+   if (count < 1 || count > 4) { close(fd); gbm_bo_destroy(bo); return fail("GBM plane count"); }
+   for (int plane = 0; plane < count; plane++)
+    printf("plane=%d offset=%u stride=%u\n", plane, offset(bo, plane), stride(bo, plane));
+   if (getenv("GPU_WAVE5_DEVICE")) {
+    int (*plane_fd)(struct gbm_bo *, int) = dlsym(RTLD_DEFAULT, "gbm_bo_get_fd_for_plane");
+    off_t bytes = lseek(fd, 0, SEEK_END);
+    if (!plane_fd || count != 2 || modifier(bo) != 0 || offset(bo, 0) != 0 ||
+        stride(bo, 0) != stride(bo, 1) || bytes <= 0 || bytes > UINT32_MAX) {
+     fprintf(stderr, "NV12 linear single-buffer layout not established\n"); close(fd); gbm_bo_destroy(bo); return 2;
+    }
+    int y = plane_fd(bo, 0), uv = plane_fd(bo, 1);
+    struct stat base_stat, y_stat, uv_stat;
+    int same = y >= 0 && uv >= 0 && !fstat(fd, &base_stat) && !fstat(y, &y_stat) && !fstat(uv, &uv_stat) &&
+               base_stat.st_dev == y_stat.st_dev && base_stat.st_ino == y_stat.st_ino &&
+               base_stat.st_dev == uv_stat.st_dev && base_stat.st_ino == uv_stat.st_ino;
+    if (y >= 0) close(y);
+    if (uv >= 0) close(uv);
+    if (!same) { fprintf(stderr, "NV12 planes do not identify the same DMA buffer\n"); close(fd); gbm_bo_destroy(bo); return 2; }
+    int imported = wave5_import(fd, stride(bo, 0), offset(bo, 1), bytes);
+    if (imported) { close(fd); gbm_bo_destroy(bo); return imported; }
+   }
+  } else if (getenv("GPU_WAVE5_DEVICE")) {
+   fprintf(stderr, "NV12 metadata incomplete; refusing Wave5 layout guess\n"); close(fd); gbm_bo_destroy(bo); return 2;
+  }
+ }
  /* A separate DRM file owns the imported handle independently of GBM. */
  int importer = open(drm_device, O_RDWR | O_CLOEXEC);
  if (importer < 0) { close(fd); gbm_bo_destroy(bo); return fail("open display importer"); }

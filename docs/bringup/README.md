@@ -15,6 +15,10 @@
 
 以下保留完整日期索引。这些里程碑记录的是历史证据；查找当前架构和约束时，仍应先读对应子系统入口。
 
+## 2026-10-31
+
+- [kbase r6 DMA追平、平台二分与thermal绑定](2026-10-31-kbase-r6-window.md) — kernel gpu board video
+
 ## 2026-10-30
 
 - [kbase r5零fault、WC heaps与三栈配对](2026-10-30-kbase-r5-window.md) — kernel gpu board video
