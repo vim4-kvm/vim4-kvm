@@ -1,7 +1,8 @@
 # 单板 FIFO 与短窗口
 
-编译先完成，持板不超过30分钟；同批候选链式 RAM 启动，最后回5.15。工具本轮只做
-离线验证，尚未用新入口上板。所有会话必须在同一协调主机共享 `/tmp/vim4-board-queue`；
+编译先完成，持板不超过30分钟；同批候选链式 RAM 启动，最后回5.15。工具已在
+kbase uhd5 RAM窗口使用；新payload目录与真实build ID校验通过，cleanup修正仍待板测。
+所有会话必须在同一协调主机共享 `/tmp/vim4-board-queue`；
 不同主机的 `/tmp` 不互通。Python入口无第三方依赖；浏览器接收/像素比较复用项目已有
 Node、Playwright与Chrome，配置见 [工具目录](tools.md)。
 
@@ -72,6 +73,9 @@ HDR2新release只创建空的 `/lib/modules/<release>` bind挂载点，完整模
 不向基线模块目录安装文件。接受任意安全的 `7.3.0-vim4kvm-<tag>+` 候选名；
 release名称不代表能力或验证结果，仍校验manifest全部文件、归档SHA、静态PID1和模块清单。
 stage只记录自己新建空模块目录的设备/inode；return-baseline验证回到原5.15后清理。
+同Image的各payload分别保存恢复记录，避免后一个覆盖首次创建挂载点的归属证明。
+清理SSH命令只携带release和目录身份；完整模块inventory仍在本机证据中，
+不能把数千文件清单放进单个`python3 -c`参数（Linux单参长度上限）。
 已有目录、被替换的目录、非空或仍挂载的目录保留，清理异常报告失败，不递归删除。
 串口在autoboot提示后打断，仅发送原有sysboot RAM命令，不写saveenv或默认配置。
 立即读UART而不阻塞等SSH退出；从基线读取MAC并仅在RAM setenv ethaddr，保持DHCP身份。

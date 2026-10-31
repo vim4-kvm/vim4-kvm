@@ -8,6 +8,7 @@ import os
 from pathlib import Path
 import shutil
 import subprocess
+import sys
 import tempfile
 import tarfile
 import threading
@@ -22,6 +23,20 @@ loader.exec_module(window)
 
 
 class WindowTests(unittest.TestCase):
+    def test_large_inventory_cleanup_fits_linux_exec_argument(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            module = root / 'cleanup.py'
+            module.write_text('def cleanup_module_mountpoint(plan):\n    print(plan["release"], plan.get("payload_id", "legacy"))\n')
+            legacy = dict(build_id='1' * 40, release='7.3.0-vim4kvm-uhd4+',
+                          files={str(i): 'a' * 64 for i in range(4000)})
+            current = dict(legacy, namespace='kbase', payload_id='default')
+            script = window.module_cleanup_script([legacy, current], str(module))
+            self.assertLess(len(script.encode()), 128 * 1024)
+            output = subprocess.check_output([sys.executable, '-c', script], text=True)
+            self.assertEqual(output.splitlines(), ['7.3.0-vim4kvm-uhd4+ legacy',
+                                                  '7.3.0-vim4kvm-uhd4+ default'])
+
     def test_recovery_retains_each_payload_with_same_kernel(self):
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)
