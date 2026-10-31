@@ -1,5 +1,8 @@
 # 7.3 GPU HDR→SDR／缩放规格与第一阶段原型
 
+**2026-10-30路线调整：GPU tone-map shader与DMA适配实现暂停，保留现有提交。**
+主路径改为[VDIN HDR2硬件处理](hdr2-hardware-plan.md)，GPU仅缩放/后备；下文保留原型规格与已测边界，不再作为当前实施主线。
+
 GPU方向**用户已于 2026-10-30 确认**：以Panfrost＋Mesa上游方式为准，kbase/libmali仅临时后备。
 编译器工作暂停：GCM默认，完整修复系列显式选项；[可审阅邮件补丁](../packaging/gpu/upstream/README.md)仅本地整理，未对外发送。
 本轮离线，不访问板子，不改NPU文件、正式内核配置、视频服务或默认部署锁，不push。

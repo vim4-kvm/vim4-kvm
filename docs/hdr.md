@@ -1,5 +1,8 @@
 # HDR 输入映射
 
+7.3优先补齐既有VDIN HDR2的PQ/HLG和标准色彩合同，GPU仅缩放/后备；
+源码证据、native-hdr关系、离线计划与数值验收见[HDR2可行性研究](hdr2-hardware-plan.md)。
+
 5.15 原生双路径的四套 KVM 均可选择保留远程 HDR10，见
 [全应用 HDR 接入](bringup/2026-10-26-all-kvm-hdr.md)。以下默认 SDR 映射仍用于
 H.264、JPEG、截图以及开启「HDR 转 SDR」的 H.265；HDMI OUT 偏好独立。
