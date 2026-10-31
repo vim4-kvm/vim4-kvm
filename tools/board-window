@@ -339,7 +339,7 @@ def validate_bundle(bundle):
                 raise ValueError('bundle hash mismatch: ' + name)
         if not re.fullmatch('[0-9a-f]{40}', plan['build_id']):
             raise ValueError('invalid build ID')
-        prefix = '/var/lib/vim4-kvm/' + ('display-m1' if metadata == 'trial.json' else 'hdr2-unified') + '/' + plan['build_id']
+        prefix = str(once.candidate_prefix(plan, metadata))
         command = 'sysboot mmc 1:2 any ${pxefile_addr_r} ' + prefix + '/extlinux.conf; reset'
         if plan['command'] != command:
             raise ValueError('only the existing RAM sysboot command is accepted')

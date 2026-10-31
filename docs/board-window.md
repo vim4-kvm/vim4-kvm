@@ -36,6 +36,16 @@ keeper自身死亡由后继/status剔除。主机睡眠期间不提供准时唤�
 
 ## 候选链与恢复
 
+新候选可在manifest同时指定`namespace`和`payload_id`，各为1–64位小写字母、数字、
+下划线或连字符，首位为字母或数字。目录为
+`/var/lib/vim4-kvm/ram-candidates/<namespace>/<payload_id>/<真实kernel build_id>/`。
+payload_id是独立构建身份，修改DT或模块必须换ID；相同ID已存在也拒绝覆盖。
+Image/build_id不必变化。`display-once.py prepare`可传`--namespace kbase --payload-id trial1`。
+编译静态init时用`-DTRIAL_ROOT='"/var/lib/vim4-kvm/ram-candidates/kbase/trial1/"'`，
+prepare/stage验证ELF中的根目录合同，sysboot/extlinux采用同一路径。
+最后一级仍为真实GNU build ID，PID1继续核对运行内核notes；不能把payload_id当作内核ID。
+省略两字段时，原display-m1/HDR2 build-ID目录、原静态init与cleanup合同保持不变。
+
 使用 `display-once.py prepare` 生成的目录（包含candidate.tar）或candidate.tar归档。
 也接受r18的HDR2 `manifest.json` RAM payload目录或归档（Image/DTB/init/modules/runtime/extlinux），
 首轮需 `--baseline-files` 显式列出5.15恢复文件；普通boot/lib内核安装包不能直接传入。
