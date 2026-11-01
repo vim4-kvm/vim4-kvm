@@ -19,6 +19,7 @@
 
 ## 2026-10-31
 
+- [原生HDR第二阶段四项审查修复](2026-10-31-hdr10-phase2-review-fixes.md) — video application offline safety
 - [原生HDR第二阶段离线接入候选](2026-10-31-hdr10-phase2-offline.md) — video application uu gpu offline
 - [P0-2分窗性能准备与接收预检](2026-10-31-p0-2-performance.md) — board video performance offline
 - [P0-3公开停机协议与合法等待研究](2026-10-31-wave5-stop-research.md) — kernel video offline safety

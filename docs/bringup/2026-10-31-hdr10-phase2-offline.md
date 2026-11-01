@@ -3,6 +3,8 @@
 P0-5 延续 [r13 已验主路径](2026-10-31-hdr10-native-final.md)，本记录只登记新增的
 离线实现，**不是完整替换 5.15 的验收结论**。主仓独立 worktree 为 `vim4-kvm-p0-5`，
 六个子仓也各有独立 worktree，分支均为 `p0-5-native-hdr`。未修改内核或其他会话工作树。
+四项审查缺陷已修复并离线验证，见[修复记录](2026-10-31-hdr10-phase2-review-fixes.md)。
+下文r14a与uhd5 RAM干跑归档仅保留历史证据；后续候选须改用r14b-review，不能继续使用r14a。
 
 ## 来源与共享接口
 
@@ -11,12 +13,12 @@ P0-5 延续 [r13 已验主路径](2026-10-31-hdr10-native-final.md)，本记录�
 
 | 仓库 | 提交前缀 | 改动 |
 |---|---|---|
-| gst-plugin-venc | 1f29849 | 公共 vim4h265src 的 Wave5 后端、真实 Main10 控制、HDMI controls → prefix SEI |
+| gst-plugin-venc | 3a74cc9 | 公共 Wave5/Main10/SEI，追加metadata丢AU后的IRAP恢复 |
 | gst-plugin-vfmcap | b2df852 | Vulkan P010→SDR NV12 分支、height-only 按比例缩放 |
 | One-KVM | 50f0b4d4 | 原生 P010 同源截图阀门，按请求 GPU tone map 后沿用 SDR JPEG 转换 |
 | NanoKVM | 0525dea | 探测公共源能力，截图请求借用同一 raw pad，取消/重开不另开 VDIN |
 | JetKVM | 166719c | 删除应用层对 Wave5 的提前排除，依据公共源探测 |
-| uStreamer / PiKVM | 7d927ac | Janus 与采集共用能力探测；HEVC/JPEG 共用一个 VDIN 所有者 |
+| uStreamer / PiKVM | 97eb951 | 共用能力探测/VDIN所有者，追加共享SDR策略快照与退避修复 |
 
 供采集 broker 对接的合同：公共 `vim4h265src` 的 `raw` request pad 在 READY 前申请，
 原生时输出 P010/PQ/BT.2020 limited，映射时为 NV12/BT.709。VideoMeta 的真实 stride、

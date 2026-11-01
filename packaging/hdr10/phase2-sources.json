@@ -1,25 +1,26 @@
 {
   "kind": "offline-userspace-overlay-not-boot-candidate",
-  "name": "hdr10-p0-5-userspace-r14a",
+  "name": "hdr10-p0-5-userspace-r14b-review",
+  "supersedes": "hdr10-p0-5-userspace-r14a",
   "branch": "p0-5-native-hdr",
   "sources": {
-    "gst-venc": "1f29849c58bbceb95b5b0cd20e6ae27018f745af",
+    "gst-venc": "3a74cc9c0f074ff8bf980440e426438bba65d1db",
     "gst-vfmcap": "b2df852e6b294088b53dc0caf4a38a4b1411f1fc",
     "One-KVM": "50f0b4d433c0ebb8c83f806f49084622547afe99",
     "NanoKVM": "0525dea7d5d2417b3b5c5eee754f026d9ca4c671",
     "kvm": "166719c5b8acdfb1ab995c440aabc8a0e39ae08d",
-    "ustreamer": "7d927ac9388a71cd84c84432ff6a2a7de0826550"
+    "ustreamer": "97eb951d10a0ccebd312d6951acc91624f5f0876"
   },
   "sha256": {
     "gstreamer-1.0/libgstvfmcap.so": "f30eb256d38cd960b74b6596a9e3afb681352fd28a862e21c2b4d07c1712f40d",
     "gstreamer-1.0/libgstvideo4linux2.so": "b9269d0509d43b8107a8c686415f7f0c7e5a86e17c04a19d685eb3dca736c4f0",
-    "gstreamer-1.0/libgstvim4hevc10.so": "ddea5110dbebad6678a0bc26d90d5add47650e9de1a2fd8fb6b14c9fc064b40a",
+    "gstreamer-1.0/libgstvim4hevc10.so": "f0de5d107d4d2c55a4ac2dfd2bf47054363ad90a45fab19c38b4ab41e0931e21",
     "gstreamer-1.0/libgstvim4wave5.so": "521eac5a15625e6dbd3df68c4c873dbef9648730b3554b39744cc4403169a0a8",
     "jetkvm": "870a92db597725a4bd3b676e5a8e1c9930d9b05ba69e8701f256414922136f49",
     "libjanus_ustreamer.so": "3982323056d2bb8548593c292912770130e88a4013e3d04bdee6ef9acba31af9",
     "nanokvm": "5105b81aa1bb2a067be0a2b3a72eb74498258628ecb1e349f238127568689e2b",
     "one-kvm": "79678cbff6ab7885de3fb0aff6f3c9ec229ea63aa1f217e7ebafb12853d6162a",
-    "ustreamer": "6c1db4973c19b983d1ccd883d7b8615f93451f4ac3b41b9787e072d49f5d9f7f"
+    "ustreamer": "9d9a568dfe65d0378791a7272b188a9953ba3fe9dba347049032a64a53f25e34"
   },
   "hardware_validated": false,
   "kernel_included": false,
@@ -29,12 +30,12 @@
     "rust_ignored": 4,
     "go": "NanoKVM and JetKVM VIM4 full suites and builds passed",
     "capture": "7 Meson tests passed",
-    "encoder": "DMA lifecycle, 8 source contracts, profile selection and 3 HDR10 tests passed",
+    "encoder": "DMA lifecycle, 9 source contracts including metadata recovery, profile selection and 4 HDR10 tests passed",
+    "pikvm": "2 host tests including Wave5 SDR lifetime/policy roundtrip/backoff; uStreamer/Janus build passed",
     "shader_max_8bit_error": 1
   },
   "pending": [
     "uhd6 integration and RAM payload",
-    "unattended M6 HDR window automation",
     "official UU HDR receive",
     "three application viewers, scaling and mode roundtrips",
     "GPU screenshots and both GPU stacks on board",
