@@ -19,6 +19,7 @@
 
 ## 2026-11-01
 
+- [One-KVM 音频源变化恢复与稳定设备名](2026-11-01-onekvm-audio-source-recovery.md) — audio application deployment；API/现有采集通过，待用户听测
 - [跨内核原厂MAC传递修复与部署](2026-11-01-ethernet-mac-handoff.md) — network kernel deployment
 - [r14e持久安装与用户手测](2026-11-01-hdr10-r14e-installed.md) — deployment kernel application hdr10 kbase
 - [HDR r14e准备与恢复记录](2026-11-01-hdr10-phase2-preparation.md) — board video application source-recovery
