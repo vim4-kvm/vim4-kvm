@@ -27,7 +27,7 @@ Panfrost 保留其原生 HDR 已验路径，不把 r7b–r11、coherent 故障 D
 | 项目 | 状态 |
 |---|---|
 | Image/两份 DT/全部模块/三外部模块/BTF/完整清单 | 全部构建、逐文件验证通过 |
-| checkpatch --strict、DT、宿主夹具、主仓离线 unittest | 代码差异、限定DT schema、宿主夹具与374项主仓测试通过，14项环境跳过；历史提交元数据诊断见下文 |
+| checkpatch --strict、DT、宿主夹具、主仓离线 unittest | 代码差异、限定DT schema、宿主夹具通过；当时主仓共374项，14项环境跳过，其余通过；历史提交元数据诊断见下文 |
 | HDMI 模式、H.264、H.265、4K60 | r3 H.264 UHD短接收通过，其余待验 |
 | SARADC（九类之外补核对） | 窗口M/N各2000次channel 2读取，4093，零错误；未操作实体键 |
 | 音频服务（按本任务不测声音） | r3 One-KVM检测到VIM4HDMIRX；HDR切换后48k采集自动恢复，无声音测试 |

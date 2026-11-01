@@ -87,7 +87,7 @@ measure用VIDIOC_QUERY_DV_TIMINGS读取真实输入；verify必须匹配目标�
 矩阵在真实输入资格确认后才接收视频，并继续核对实际解码尺寸、三处帧号和RGB色块；19档已通过，细节见正式记录。
 离线回归包含M窗的“800×600 backing/UHD60输入”反例、19份EDID解码/音频/单时序约束、
 同尺寸错误刷新率、失锁查询和真实Linux UAPI结构解码；后增空EDID长度查询两例，共7项通过。
-导出的正式Linux UAPI与C夹具逐字节一致；当时主仓374项通过、14项环境跳过，
+导出的正式Linux UAPI与C夹具逐字节一致；当时主仓共374项，14项环境跳过，其余通过，
 日志为`logs/p0-1-unified73/edid-reader-full-tests.log`。
 
 ## 修复短窗O/P/Q
