@@ -1,8 +1,26 @@
 # 工具目录
 
-`packaging/hdr10/application-receiver.mjs`：P0-5 三应用 WebRTC 接收候选，显式板票据和 sampling 下运行；
+`packaging/hdr10/application-receiver.mjs`：P0-5 四应用 WebRTC 接收候选，显式板票据和 sampling 下运行；
 不改源/HDR/应用配置、不发送键鼠、不分析声音；保存真实解码统计、VideoFrame 色彩空间和首个
-HEVC 关键帧供离线 SPS/VUI/SEI 解析。仅离线语法检查，尚未经三应用实板验收。
+HEVC 关键帧供离线 SPS/VUI/SEI 解析。本机 Chrome 的 VP8 收流、解码及失败拒绝已测，尚未实板验收。
+`test-receiver.mjs` 是回环 RTP/HTTP offer/close 自测，不连接板子，需 heavy 票据。
+
+`packaging/hdr10/assemble-phase2.py`：Linux ARM64 离线组装，输入固定内核包/用户态包及其来源哈希，
+核对完整模块清单、静态 PID1、逐文件 SHA，生成两种 GPU 的私有 RAM payload；只接受 uhd6 上板包，
+uhd5 仅限显式 dry-run。`phase2-run` 只在该 payload 内选择应用/GPU，不安装正式程序。
+
+`packaging/hdr10/phase2-window.py`：先核对 origin/main tested_build，再自动经 board-queue 申请一次
+≤30 分钟票据；目标≤15分钟，两 GPU 链式 RAM 启动、全程 sampling、三分钟稳定性、模式/尺寸往返、
+官方 UU 连接/RR、CMA/taint/WARN，最后一次回5.15并恢复应用配置、M6 HDR关和 Chrome 前台。
+`m6-gates.py` 逐屏验证 Settings/Displays/HDR 标签/开关像素；只对 M6 发必要点击、滚动和恢复 Escape，
+不盲重放；`screen-observe.swift` 只对已取得图片做 Vision OCR/像素采样，不控制本机桌面。
+`phase2-board.py` 由该窗口上传，仅保存/恢复视频配置、互斥切换应用、读取 HDMI controls 和内核状态。
+未登记 uhd6 时不取板票；`--plan-only` 校验归档、不访问板子，允许 dry-run。用法及时间预算见
+[第二阶段记录](bringup/2026-10-31-hdr10-phase2-offline.md)。
+
+`packaging/hdr10/analyze-phase2.py`：释放板票后，FFmpeg 独立解析 SPS/VUI，并逐字节比较 SEI/HDMI
+controls；`ffmpeg-vm.py` 只把显式输入通过 stdin 送到构建 VM 的 FFmpeg，不遍历 Mac 共享目录。
+分析用 heavy 票据。UU 的 RR 只证明 RTP 接收，不证明官方客户端解码/渲染。
 
 `packaging/hdr10/ram-payload.py`：离线把已封存r3制品与已审阅HDR2 RAM启动模板封装为
 私有PID1/runtime/完整模块归档，可编译或复用已校验的静态ARM64 PID1；模块流式入tar保留大小写，

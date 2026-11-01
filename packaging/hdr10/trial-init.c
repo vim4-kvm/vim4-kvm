@@ -142,6 +142,9 @@ int main(void)
 	puts("DISPLAY_ONCE: matching modules mounted; starting systemd");
 	fflush(stdout);
 	step = "exec systemd";
+#ifdef PHASE2_RUNTIME
+#include "phase2-bindings.h"
+#else
 	const char *names[] = {"vim4-board-runtime", "vim4-kvm-run",
 		"vim4-mainline-prepare", "vim4-mainline-gadget-prepare", "one-kvm-edge",
 		"one-kvm", "gstreamer-1.0"};
@@ -149,11 +152,12 @@ int main(void)
 		"/usr/libexec/vim4-mainline-prepare", "/usr/libexec/vim4-mainline-gadget-prepare",
 		"/opt/vim4-onekvm-edge/one-kvm-edge", "/opt/vim4-onekvm/one-kvm",
 		"/usr/lib/vim4-kvm/mainline-gstreamer-1.0"};
-	for (unsigned int i = 0; i < 7; i++) {
+#endif
+	for (unsigned int i = 0; i < sizeof(names) / sizeof(names[0]); i++) {
 		step = "private runtime bind";
 		if (snprintf(source, sizeof(source), "%s/runtime/%s", executable, names[i]) >= (int)sizeof(source) ||
 		    stat(source, &source_info) ||
-		    (i == 6 ? !S_ISDIR(source_info.st_mode) : !S_ISREG(source_info.st_mode)) ||
+		    (!strcmp(names[i], "gstreamer-1.0") ? !S_ISDIR(source_info.st_mode) : !S_ISREG(source_info.st_mode)) ||
 		    source_info.st_uid != 0 || (source_info.st_mode & 022) ||
 		    mount(source, targets[i], NULL, MS_BIND, NULL) ||
 		    mount(NULL, targets[i], NULL, MS_BIND | MS_REMOUNT | MS_RDONLY, NULL))

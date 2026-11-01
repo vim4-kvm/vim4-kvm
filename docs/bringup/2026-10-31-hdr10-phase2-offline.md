@@ -43,13 +43,73 @@ JPEG 阶段保留既有 SDR 裁剪、缩放和压缩。持续 JPEG 对 GPU 带�
 | NanoKVM / JetKVM | VIM4 Go 全套测试及程序构建通过；Nano 含同源截图三次开阀、取消与视频继续推进测试 |
 | One-KVM | Rust 822 通过、4 忽略，release 构建完成 |
 | PiKVM 后端 | uStreamer/Janus 构建及 RTP 包回归完成；未运行声音测试 |
-| 主仓 | unittest 365 项通过，14 跳过 |
-| 三应用接收器 | application-receiver.mjs 仅语法检查；保存真实解码色彩/统计及关键帧的候选，尚未实板验证 |
+| 主仓 | 首批365项；追加后381项、14跳过，其余通过；最终日志 root-phase2-final-tests.log |
+| 四入口接收器 | 本机 Chrome 实际 RTP 收流/解码，含 One-KVM HTTP offer/close；160×96 VP8 约30fps、零 dropped，错误编码/PQ/停帧拒绝；不是三应用 ARM 后端或板上 HEVC 证明 |
+| 窗口/分析回归 | 16项通过：真实 OCR、收证失败仍恢复、转发替换、精确配置恢复、监控失联拒绝、模块清单/哈希、SEI非零夹具/转义/重复/截断、SPS字段缺失/冲突 |
+| 独立码流解析器 | VM FFmpeg 重新解析保留 r13 前缀，Main10/10-bit/PQ/BT.2020 limited 与 SEI137/144→HDMI逐字节一致；源仍全零，不计新增实板或非零源验收 |
 
 原始日志与用户态封存档在本 worktree 的 `build/p0-5/`；`manifest.json` 明确
 `hardware_validated=false`，不含 Image/DTB/模块，**不能直接作为 RAM 启动候选**。
 私有标准 V4L2 插件复用 r13 的 b9269d05…，没有重编已通过组件或完整内核。
-恢复会话时核对队列空闲、无遗留构建，两个保留验证容器仅运行 idle tail。
+恢复会话时核对无本任务遗留票据/VM构建；验证容器已停止，保留归档与构建缓存。
+
+## 无人值守窗口与离线干跑
+
+`phase2-window.py` 已串起 M6 空闲截图、逐屏 HDR 开关/恢复、两 GPU 链式启动、28段真实接收、
+One-KVM 原生期间 SDR 截图、应用原生/缩放/映射/恢复、官方 UU CLI 与新鲜 Receiver Report、
+CMA 回收、首个 WARN/fault 停负载、collect、单次 return-baseline、精确视频配置恢复。
+每次 RAM 启动及回5.15均重建自己的 SSH 转发，避免旧 SSH 进程仍存活但通道已断。
+恢复步骤独立执行，收证失败不跳过回基线或 M6 恢复；HDR 动作失败不自动重放。
+截图 OCR 使用 r13 的真实截图夹具，General→Displays、HDR 行移动、Chrome 拒绝及恢复均有测试。
+只允许截图确认的 M6 布置操作，不操作 M4。稳定性默认180秒，整个采样期阻止 heavy。
+结束后释放板票，再用 heavy 票据运行独立 FFmpeg SPS/VUI 和 SEI/HDMI 字节比对。
+
+内核组装输入是归档路径和来源 SHA，不重编内核、不混 BTF；完整静态 ARM64 PID1 编译与归档复验
+已用正式 uhd5 包实际干跑，两包各2341模块，包含大小写不同的 xt_DSCP/xt_dscp。静态 PID1 的
+names/targets 由当次 runtime inventory 生成，复用其 GPU/板级启动器，应用/私有插件只做候选 bind。
+
+| 制品 | SHA256 |
+|---|---|
+| 用户态 r14a | `08286d72f264da183a3b5581545e1c2aa390b124d8e9c009e8100f6b89e52175` |
+| 输入 uhd5-final-r12.tar.gz | `174cf528c8e12a4fa71c5adbf42c95bc39ba987e4ba6133db7b5912e2da85b0b` |
+| Panfrost 干跑 RAM | `ace1a43ac3bd7ad5fabe54e9988a402ba71258632e3e33890051467a252d6720` |
+| kbase 干跑 RAM | `c172dfc315838500bb1da0eae7ee11aeb20d011d7412db2af642c200ed075ca1` |
+
+这两份 RAM manifest 均为 `dry_run=true, hardware_validated=false`，窗口命令拒绝上板。
+归档及其 JSON 证明在 `build/p0-5/ram-dry/`；实际记录为 `assembly-dryrun2.log`、`phase2-plan.json`、
+`receiver-local-r3.log`、`phase2-window-tests.log`。接收器本机自测使用 heavy 排队，不干扰他人采样。
+测试不调用 M6 MCP 或板上 SSH；构建 VM 仅访问本任务目录，没有遍历 Mac 共享目录。
+
+uhd6 发布后，先在 Linux ARM64/独立构建目录组装，每种 GPU 一份（dry-run 时才加该参数）。
+以下命令在协调主机 `tools/board-queue run --heavy` 已管理的 ARM64 构建进程内运行，不能在VM另取独立锁：
+
+```sh
+python3 packaging/hdr10/assemble-phase2.py --kernel "$KERNEL_ARCHIVE" --kernel-sha256 "$KERNEL_SHA" \
+  --userspace "$USERSPACE_ARCHIVE" --userspace-sha256 "$USERSPACE_SHA" --baseline "$BASELINE_IDENTITY" \
+  --gpu panfrost --payload-id phase2-panfrost-r14 --output "$PAN_ARCHIVE"
+```
+
+另一份改为 `--gpu kbase`、唯一 payload-id 与输出名。baseline identity 须含已验证 root PARTUUID；
+baseline-files JSON 列表沿用 board-window 的保护文件合同，不把候选 bind 程序放进去。
+Swift observer 已编在 `build/p0-5/screen-observe`；可重建 `swiftc packaging/hdr10/screen-observe.swift -o <输出>`。
+认证沿用管理器环境变量（不打印），所有准备完成后，只执行这一条无人值守命令：
+
+```sh
+python3 packaging/hdr10/phase2-window.py \
+  --panfrost "$PAN_ARCHIVE" --panfrost-sha256 "$PAN_SHA" \
+  --kbase "$KBASE_ARCHIVE" --kbase-sha256 "$KBASE_SHA" \
+  --observer build/p0-5/screen-observe --baseline-files build/p0-5/baseline-files.json \
+  --ffmpeg packaging/hdr10/ffmpeg-vm.py --window hdr10-phase2-r14
+```
+
+加 `--plan-only` 可复现本次 uhd5 离线校验，不取板票。实际执行会 fetch main 并严格核对 uhd6
+release/build ID/内核归档哈希/Image 哈希，预检管理器认证、UU 空闲与唯一目标，不接管已有 UU 会话。
+正常预算：布置/恢复约2分钟、两次候选启动/传输及回基线约4分钟、接收与180秒稳定性约7分钟、
+应用切换/UU及状态检查约2分钟，合计目标15分钟；硬上限30分钟，工作阶段24分钟截止并预留恢复。
+
+官方 CLI 没有 HDR 设置参数，脚本尊重官方客户端能力和 enable_hdr 请求；若未请求原生，PQ 门禁失败。
+新鲜 RR 加共享 Main10/PQ 码流只能证明官方端收到 RTP，**不能冒充官方客户端解码或持续 HDR 显示**。
+该项仍需客户端可观测证据才能完成 P0-5；不会通过管理接口强开来绕过客户端协商。
 
 ## 上板结果与余项
 
@@ -63,9 +123,7 @@ JPEG 阶段保留既有 SDR 裁剪、缩放和压缩。持续 JPEG 对 GPU 带�
 | kbase / Panfrost + 稳定性/CMA/taint/WARNING | 本候选未上板；不能沿用 r13 或 llvmpipe 结果计通过 |
 
 最新 main 在核对时为 583e411，tested_build 仍为 uhd5，尚未登记可复用的统一 uhd6。
-未取板票等待它，也未使用不匹配模块/BTF。下一步先取 P0-1 的固定归档/哈希和运行时合同，
-把上述用户态提交纳入独立 payload；补完并离线验证 M6 逐屏截图门禁及完整无人值守窗口脚本。
-脚本未就绪之前不排板窗。窗口目标≤15分钟、硬上限30分钟，采样前 sampling on；失败收证据、
-停相关负载、回5.15、M6 HDR关与恢复前台、服务/UDC/保护哈希核验后释放。
+未取板票等待它，也未使用不匹配模块/BTF。下一步取 P0-1 固定 uhd6 归档/哈希，复用已封存用户态
+生成正式候选，再执行上述命令；板上失败收证据并释放，离线修复后重排，不持板编译。
 
 无需用户操作或新授权；当前仍是未完成的 P0-5 候选阶段，不请求放宽实板门禁。
