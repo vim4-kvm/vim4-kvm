@@ -36,8 +36,8 @@ revision = "166719c5b8acdfb1ab995c440aabc8a0e39ae08d"
 name = "One-KVM"
 url = "https://github.com/vim4-kvm/One-KVM.git"
 branch = "vim4"
-# r14e plus reviewed audio fix; merge authorization does not imply listening acceptance.
-revision = "dae5089fc59aa069399539fa304412c37f0c3f08"
+# r14e, reviewed audio fix, and board-accepted USB endpoint merge (docs/bringup/2026-11-01-usb-endpoint-merge.md).
+revision = "ffc613064165f1afb6685019565c12e90864fe26"
 
 [[repos]]
 name = "kvmd"
