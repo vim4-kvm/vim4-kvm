@@ -7,6 +7,16 @@ kbase uhd5 RAM窗口使用；新payload目录、真实build ID校验及正常候
 不同主机的 `/tmp` 不互通。Python入口无第三方依赖；浏览器接收/像素比较复用项目已有
 Node、Playwright与Chrome，配置见 [工具目录](tools.md)。
 
+## 占板时间最短化
+
+只有一块板，所有任务排同一队列；每分钟占板都会推迟其他任务。
+
+- 取锁前完成全部构建、离线测试和窗口脚本；持锁期间只执行无人值守脚本，不读文档、改代码、编译或现场排查。
+- 常规窗口目标15分钟内，30分钟为硬上限。失败即收集证据、回收并释放，离线分析后再排队。
+- 只跑与改动相关的门禁；九类全量只给正式候选跑一次。稳定性观察默认不超过10分钟，非必要不加。
+- 当天5.15哈希未变就复用基线，不重测；同批候选链式启动，批末回5.15一次。
+- 就绪用状态轮询判断，不写固定长等待；能离线判定的（码流、日志、哈希）拷回本机再分析。
+
 ## 排队、采样与迁移
 
 ```sh
@@ -95,6 +105,13 @@ cmdline仅单独审阅`reboot_mode=normal`与`reboot_mode=watchdog_reboot`之间
 
 ## 基线与证据
 
+重复性能窗口可显式传 `boot-candidate --reuse-staged`：已存在的同一payload逐文件核对
+原归档哈希并重新检查基线后复用，不覆盖Image/DTB/模块/运行时。默认仍拒绝重复目录；
+任何文件改变均拒绝。返回时已清理的空模块bind目标会重新登记本次inode供安全清理。
+复用还核对首次 staging 的 root 所有者、0555目录及0555/0444文件模式，拒绝内部符号链接目录。
+`perf-quick.py` 每段操作前保留采样/恢复时间；清理失败分别记录 `cleanup-errors.json`，不覆盖原始错误。
+租约失效或恢复预算不足时不越权停启服务/重启，写 `recovery-required.json` 交接，SSH转发仍在本机清理。
+
 `baseline --files /boot/... /opt/...` 必须列出当前5.15 Image、One-KVM程序、插件、
 所有默认启动/DTB/initrd与运行时登记文件（按当前部署清单选，不能只给uname）。
 例如受保护配置含 `/boot/extlinux/extlinux.conf`、`/etc/vim4-kvm/kernels.json`、
@@ -102,8 +119,10 @@ cmdline仅单独审阅`reboot_mode=normal`与`reboot_mode=watchdog_reboot`之间
 缓存键还含host、运行内核GNU build ID、cmdline、接收URL/时长/接收LAN IP；
 当天相同键返回 `reused: true` 和 `source_time`，变化/跨日才测；失败不缓存。
 测量后再次核身份，避免将变化中结果写缓存。缓存位于共享队列目录，不随worktree分裂。
-更换信源、编码设置、浏览器或接收机器时应清理对应缓存，或使用独立 `BOARD_QUEUE_ROOT`，
-后者所有排队会话必须同时迁移，不能创建互不相通的板锁队列。
+性能对照额外传 `baseline --settings public-settings.json`，把信源/运动程序哈希、编码设置、
+浏览器版本和接收机器身份放进公开JSON，内容进入缓存键；不要放凭据。
+更换这些设置须更新JSON。未传settings的旧调用只适合短接收门禁，不证明性能配置相同。
+不要为清缓存切换 `BOARD_QUEUE_ROOT`，否则会创建互不相通的板锁队列。
 
 `collect --readonly`只执行已审阅状态读取：dmesg、服务、UDC、/proc计数与One-KVM info，
 不访问regmap/MMIO/HID/采集节点，不停启服务。其余子命令要求未过期板票据。

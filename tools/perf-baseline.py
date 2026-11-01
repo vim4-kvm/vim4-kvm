@@ -11,6 +11,26 @@ from pathlib import Path
 import statistics
 
 
+def matrix():
+    """Worst-case serial budgets include watchdogs and recovery, not queue waits."""
+    segments = [dict(id=f'native-{n}', count=3, timeout_s=240, overhead_s=480)
+                for n in range(4)]
+    segments += [dict(id=f'receiver-{n}', count=8, timeout_s=165, overhead_s=360)
+                 for n in range(2)]
+    segments += [dict(id='quality', count=10, timeout_s=90, overhead_s=480),
+                 dict(id='cpu-memory', count=7, timeout_s=135, overhead_s=480)]
+    for segment in segments:
+        segment['budget_s'] = segment['count'] * segment['timeout_s'] + segment['overhead_s']
+    return dict(schema=1, execution='plan-only', segments=segments,
+                blocks=['A0', 'B1', 'A1', 'B2', 'A2', 'B3', 'A3'],
+                windows=7 * len(segments),
+                board_seconds=7 * sum(s['budget_s'] for s in segments),
+                first_group=dict(configuration='2160p60 H.264 60Mbps GOP60',
+                                 blocks=['A0', 'B1', 'A1'], windows=3,
+                                 board_seconds=3 * (2 * 240 + 2 * 165 + 480)),
+                note='No audio; GPU r11 reused. Queue waits excluded; expired/failed windows stop.')
+
+
 def plan(backend):
     env = ('GST_PLUGIN_PATH=/usr/lib/vim4-kvm/gstreamer-1.0 '
            'LD_LIBRARY_PATH=/opt/vim4-onekvm/lib' if backend == 'stock' else
@@ -26,11 +46,9 @@ def plan(backend):
                           note='7200 frames: >=120s at 60Hz; timeout is failure, not a sample'))
     for name, location, seconds, command in (
         ('video-latency', 'Mac', 120,
-         'node tools/latency-receiver.mjs "$URL" 120 --verify-coherence > "$OUT/receiver.json"'),
+         'node tools/latency-receiver.mjs "$URL" 120 --one-kvm --width=$WIDTH --expect-codec=$CODEC --verify-coherence > "$OUT/receiver.json"'),
         ('video-cadence', 'Mac', 120,
-         'node tools/latency-receiver.mjs "$URL" 120 --no-pixels > "$OUT/cadence.json"'),
-        ('audio-skew', 'Mac', 180,
-         'node tools/one-kvm-av-sync-check.mjs --exclusive --seconds=180 --mode=$CODEC > "$OUT/av.jsonl"'),
+         'node tools/latency-receiver.mjs "$URL" 120 --one-kvm --width=$WIDTH --expect-codec=$CODEC --no-pixels > "$OUT/cadence.json"'),
         ('hid', 'Mac', 40,
          'node tools/input-check.mjs /tmp/vim4-input-target "$OUT/input" "$URL"'),
         ('cpu-single', 'board', 120,
@@ -66,7 +84,7 @@ def plan(backend):
     ):
         cases.append(dict(id=name, location=location, seconds=seconds, command=command))
     return dict(schema=1, backend=backend, execution='plan-only', status='待测',
-                locks=['/tmp/vim4-board.lock', '/tmp/vim4-heavy.lock'],
+                locks=['tools/board-queue run (<=30min)', 'sampling on/off around measurement'],
                 repetitions='three A/B/A groups, A=5.15 B=7.3', cases=cases)
 
 
@@ -101,6 +119,20 @@ def compare(report):
         runs = [group[key] for key in ('before', 'candidate', 'after')]
         if any(run.get('valid') is not True or not run.get('evidence') for run in runs):
             return dict(status='受干扰', reason='invalid run or missing raw evidence')
+        if report.get('schema') == 2:
+            # A build between windows invalidates pairing even if the installed
+            # binaries happen to be unchanged. Epoch is frozen by the operator.
+            for field in ('epoch', 'day', 'source_sha256'):
+                if not all(run.get(field) for run in runs) or len({r[field] for r in runs}) != 1:
+                    return dict(status='受干扰', reason=f'pairing {field} changed or missing')
+            identities = [r.get('run_id') for r in runs]
+            if not all(identities) or len(set(identities)) != 3:
+                return dict(status='受干扰', reason='distinct A/B/A run identities required')
+            if [r.get('backend') for r in runs] != ['stock', 'edge', 'stock']:
+                return dict(status='受干扰', reason='expected stock/edge/stock')
+            candidate_ids = [g['candidate'].get('run_id') for g in groups]
+            if len(set(candidate_ids)) != len(candidate_ids):
+                return dict(status='受干扰', reason='candidate samples reused between groups')
         if len({run['config_sha256'] for run in runs}) != 1:
             return dict(status='受干扰', reason='workload/userspace configuration mismatch')
         fingerprint = runs[0]['config_sha256']
@@ -133,10 +165,21 @@ def main():
     commands = parser.add_subparsers(dest='action', required=True)
     commands.add_parser('plan').add_argument('--backend', choices=('stock', 'edge'), required=True)
     commands.add_parser('compare').add_argument('report', type=Path)
+    commands.add_parser('matrix')
+    commands.add_parser('summary').add_argument('reports', nargs='+', type=Path)
     args = parser.parse_args()
-    result = plan(args.backend) if args.action == 'plan' else compare(json.loads(args.report.read_text()))
+    if args.action == 'plan':
+        result = plan(args.backend)
+    elif args.action == 'matrix':
+        result = matrix()
+    elif args.action == 'summary':
+        result = {str(path): compare(json.loads(path.read_text())) for path in args.reports}
+    else:
+        result = compare(json.loads(args.report.read_text()))
     print(json.dumps(result, ensure_ascii=False, indent=2))
     if args.action == 'compare' and result['status'] != '通过':
+        raise SystemExit(1)
+    if args.action == 'summary' and any(r['status'] != '通过' for r in result.values()):
         raise SystemExit(1)
 
 

@@ -75,7 +75,7 @@ H.264/H.265 硬编码已取得实验结果，见
 | 优先级 | 方向 | 当前边界与下一步 |
 |---|---|---|
 | F0，最高 | KVM采集与音频稳定性 | FDET分类、PCM XRUN与资格重开已正式保留；TOP测量空窗误判已有同链路定位并正式修复，更多源及长期连续性待覆盖 |
-| F1，最高 | Wave5恢复与HEVC尺寸正式实现 | [正式隔离](bringup/2026-10-23-wave5-isolation-final.md)已有watchdog/job_abort和保留DMA到重启，但无运行时硬件复位/固件重载、真实挂死未验。继续正式恢复，再退出[尺寸保护](bringup/2026-10-22-edge-wave5-deploy.md)/AVC回退 |
+| F1，最高 | Wave5恢复与HEVC尺寸正式实现 | 正式分支已含[genpd循环与固件冷加载](bringup/2026-10-23-wave5-runtime-window.md)，失败保留DMA；[P0-3审查](bringup/2026-10-31-wave5-real-hang-safety.md)确认真实挂死注入尚无安全证据。保持尺寸保护/AVC回退，先补安全注入再验恢复 |
 | F1→F2 | 本地显示M1+与采集共存 | M0 simpledrm已过，M1由现有任务承接；统一共享VCBUS/MMIO/时钟归属，后续原生DRM modeset/EDID/HPD、多平面及HDMI声音，不以固定handoff当终态 |
 | F2 | 输入格式完整化与硬件解码 | HLG/隔行拒绝需正式色彩/去隔行实现；12bit动态路径已实现但真源未验。解码沿[既有VDEC门禁](bringup/2026-10-22-vdec-mdec-offline.md)，先安全平台层和H.264正确帧，再扩codec/位深/多实例 |
 | F2→F5 | 全部音频路由 | HDMI-TX播放先行，再I²S/PCM/SPDIF/PDM/EXTN/loopback/ASRC/effect/VAD/DSP；当前RX采集不代表输出、eARC或全部厂商路由可用 |

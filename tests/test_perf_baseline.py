@@ -72,6 +72,38 @@ class PerformanceGateTest(unittest.TestCase):
             run['config_sha256'] = 'b' * 64
         self.assertEqual(perf.compare(report)['status'], '受干扰')
 
+    def window_report(self):
+        report = self.report()
+        report['schema'] = 2
+        for index, group in enumerate(report['groups']):
+            for side, backend in [('before', 'stock'), ('candidate', 'edge'), ('after', 'stock')]:
+                group[side].update(run_id=f'{index}-{side}', backend=backend,
+                                   epoch='frozen-build', day='2026-10-31', source_sha256='b' * 64)
+        return report
+
+    def test_build_between_windows_and_reused_candidates_invalidate(self):
+        report = self.window_report()
+        self.assertEqual(perf.compare(report)['status'], '通过')
+        report['groups'][0]['after']['epoch'] = 'new-build'
+        self.assertEqual(perf.compare(report)['status'], '受干扰')
+        report = self.window_report()
+        report['groups'][1]['candidate']['run_id'] = report['groups'][0]['candidate']['run_id']
+        self.assertEqual(perf.compare(report)['status'], '受干扰')
+
+    def test_cross_day_source_change_and_wrong_backend_invalidate(self):
+        for field, value in [('day', '2026-11-01'), ('source_sha256', 'c' * 64), ('backend', 'stock')]:
+            with self.subTest(field=field):
+                report = self.window_report()
+                report['groups'][0]['candidate'][field] = value
+                self.assertEqual(perf.compare(report)['status'], '受干扰')
+
+    def test_matrix_includes_recovery_and_obeys_lease_limit(self):
+        result = perf.matrix()
+        self.assertGreater(result['board_seconds'], 3 * 3600)
+        self.assertTrue(all(s['budget_s'] <= 1800 for s in result['segments']))
+        self.assertEqual(result['board_seconds'], 7 * sum(
+            s['count'] * s['timeout_s'] + s['overhead_s'] for s in result['segments']))
+
     def test_missing_and_unreadable_sensors_are_not_zero(self):
         with patch.object(sensors, 'PATTERNS', ('missing', 'unreadable')), \
                 patch.object(sensors.glob, 'glob', side_effect=[[], ['/sensor/power']]), \
