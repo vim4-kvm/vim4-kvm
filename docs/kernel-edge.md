@@ -1,19 +1,16 @@
 # VIM4 新内核基线
 
-2026-10-31：当前7.3统一候选、来源差异与本轮门禁见
-[uhd6统一记录](bringup/2026-10-31-uhd6-unified.md)。正式源码HEAD为f951e2d24d32；
-EDID撤回修复已过review及定向短窗，uhd6完整重建中，全量验收与安装未完成。sources.toml的tested_build仍为已烟测uhd5，
-retained_runtime仍为uhd1；5.15保持默认，切默认由用户在全部P0完成后决定。
+2026-11-01：当前7.3为[已验收并持久安装的uhd6](bringup/2026-10-31-uhd6-formal.md)，
+正式源码HEAD为f951e2d24d32，tested_build与retained_runtime均已统一登记。
+19模式/双编码及600秒运动通过，其余未改路径明确复用本轮r3证据，声音按要求未测。
+板子仍运行且默认5.15；切默认由用户在全部P0完成后决定。
 
 当前开发分支已接通 HDMI 输入、VDIN 直接 DMA、Wave5 H.264/H.265、硬件 JPEG 与音频，
 并部署完整 manager 和四种 KVM 的双内核运行时；5.15 可保留启动，共用同一应用的数据。
-当前包、匹配内核、安装/回退与实际验收范围见
-[双内核完整系统集成](bringup/2026-10-21-dual-kernel-integration.md)。
+双内核运行时的基础集成见[双内核完整系统集成](bringup/2026-10-21-dual-kernel-integration.md)，
+当前完整包、匹配内核和实际验收范围以上述uhd6记录为准。
 本页保留 Armbian 编译基线与专项历史记录；通用 edge.config 不等于已验收的整板配置。
-最近登记的7.3保留运行时为正式 `vim4-kvm-7.3@213f271505411`，release
-`7.3.0-vim4kvm-uhd1+`、build ID `7a473adf9353013fd1ab01908d20bbf503a063fb`；
-使用当时含ACM的uhd1配置、M0 simpledrm/tty0和同次完整2337模块；仓库当前uhd1.config已应用nodebug，不能用于逐字节复现旧产物。
-统一候选在uhd4的ADLA/nodebug/M0、HDR2恢复系列之上纳入已验原生HDR源码与uhd5外部GPU模块；
+uhd6在uhd4的ADLA/nodebug/M0、HDR2恢复系列之上纳入已验原生HDR源码与uhd5外部GPU模块；
 用户态、同次完整模块和验收范围以统一记录为准，旧产物不能混装。
 尺寸、QP/无损、ACM板侧及GPU的实际通过/未验证边界见[批量验证](bringup/2026-10-30-kernel73-gap-validation.md)
 和[第三/四轮复验](bringup/2026-10-30-kernel73-gap-r3.md)。该轮GPU sudo CPU预算问题为历史边界，

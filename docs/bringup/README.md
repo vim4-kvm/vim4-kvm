@@ -19,7 +19,8 @@
 
 ## 2026-10-31
 
-- [uhd6统一候选](2026-10-31-uhd6-unified.md) — kernel gpu video deployment；修复短窗通过，正式完整重建中，未安装
+- [uhd6正式完整构建与验收](2026-10-31-uhd6-formal.md) — kernel video gpu deployment；九类汇总/19模式/600秒运动通过，持久安装，5.15仍默认
+- [uhd6统一来源与过程](2026-10-31-uhd6-unified.md) — kernel gpu video deployment；来源冲突、r3证据与失败历史
 - [uhd6 EDID恢复取证与修复门禁](2026-10-31-uhd6-edid-review.md) — kernel video deployment；自动回5.15，review及撤回/恢复短窗通过
 - [P0-2分窗性能准备与接收预检](2026-10-31-p0-2-performance.md) — board video performance offline
 - [P0-3公开停机协议与合法等待研究](2026-10-31-wave5-stop-research.md) — kernel video offline safety

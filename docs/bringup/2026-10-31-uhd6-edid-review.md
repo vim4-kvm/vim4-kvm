@@ -2,7 +2,7 @@
 
 状态：板子已自动恢复5.15，未执行用户RESET。修复`f951e2d24d32d5df0e701e7c355b3db4c91eaf74`
 独立review认可修复方向、未发现新增乘积≥5缺陷。Q窗同条件门禁通过后，正式分支已快进到本提交；
-正在新O=目录完整构建uhd6，尚未通过正式九类或持久安装。
+新O=完整构建、正式验收与持久安装已完成，见[正式uhd6记录](2026-10-31-uhd6-formal.md)。
 统一候选进度见[主记录](2026-10-31-uhd6-unified.md)。
 
 ## 已恢复的身份与重启证据
@@ -84,10 +84,10 @@ macOS模式列表现在只用于源端诊断，不作为HDMI模式覆盖证明�
 新增[单DTD夹具工具](../../packaging/kernel-edge/hdmi-mode-fixture.py)和固定19档
 [时序数据](../../packaging/kernel-edge/hdmi-modes.json)：prepare离线删除其他时序、保留音频及HDMI/SCDC；
 measure用VIDIOC_QUERY_DV_TIMINGS读取真实输入；verify必须匹配目标几何和刷新率。
-矩阵在真实输入资格确认后才接收视频，并继续核对实际解码尺寸、三处帧号和RGB色块。
+矩阵在真实输入资格确认后才接收视频，并继续核对实际解码尺寸、三处帧号和RGB色块；19档已通过，细节见正式记录。
 离线回归包含M窗的“800×600 backing/UHD60输入”反例、19份EDID解码/音频/单时序约束、
 同尺寸错误刷新率、失锁查询和真实Linux UAPI结构解码；后增空EDID长度查询两例，共7项通过。
-新夹具仍待M6硬件验收。导出的正式Linux UAPI与C夹具逐字节一致；最新主仓374项通过、14项环境跳过，
+导出的正式Linux UAPI与C夹具逐字节一致；当时主仓374项通过、14项环境跳过，
 日志为`logs/p0-1-unified73/edid-reader-full-tests.log`。
 
 ## 修复短窗O/P/Q

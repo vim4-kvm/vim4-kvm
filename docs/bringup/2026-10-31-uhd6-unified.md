@@ -1,13 +1,13 @@
 # 2026-10-31：uhd6 统一候选
 
-状态：r3部分门禁通过，SError修复已过独立review及Q窗定向门禁；正式源码f951e2d24d32完整重建中，尚未完成全量验收或安装。5.15 保持默认；`tested_build` 仍是
-已验 uhd5，`retained_runtime` 仍是 uhd1。构建通过不能代替下表验收。
+现行状态见[uhd6正式构建、验收与安装](2026-10-31-uhd6-formal.md)：正式源码f951e2d24d32，tested_build/retained_runtime均为uhd6，5.15保持默认。
+本页保留来源差异与r3过程证据；下表部分门禁是当时状态。
 
 ## 来源与冲突处理
 
 | 层 | 已核对差异 | uhd6 选择 |
 |---|---|---|
-| 内核 | uhd4/uhd5 Image 均为 8bca939；r13 在其上加 Wave5 P010/HDR10 和 VDIN AMLY/metadata 两提交 | 正式远端 vim4-kvm-7.3 HEAD dc220366a1222a03423d5b5987fab3f027ec1d7a；独立 VM worktree/O=，不混入实验分支 |
+| 内核 | uhd4/uhd5均为8bca939；r13加入Wave5 P010/HDR10与VDIN AMLY/metadata两提交至dc220366 | 正式vim4-kvm-7.3在Q窗后加EDID修复至f951e2d24d32；独立worktree/O= |
 | 配置 | uhd4/uhd5 只差 LOCALVERSION 与 THERMAL_EMULATION | uhd6.config 以 uhd5 为基，只改 release，保留模块 BTF；2338 基础模块全部重编 |
 | DT | 两项原生 HDR 提交无 DTS 改动；uhd5 的 kbase DT 由完整 M0 DT 生成 | 同次构建 M0 DT 生成互斥 kbase/Panfrost 两份；默认 kbase，Panfrost 可选 |
 | 外部模块 | uhd5 有 mali_kbase、vim4_kbase_heaps、governor_vim4；r13 没有 | 沿用已验补丁和源码，对新 vmlinux/Module.symvers 全量重编三模块及 BTF，不复制 uhd5 .ko |
@@ -138,4 +138,4 @@ pstore补齐link工作队列的完整panic，固件报告watchdog_reboot，详�
 
 独立修复f951e2d24d32d已通过review和Q窗撤回/保持/重复/发布/恢复采集门禁，已进入正式分支；根因及5.15对照见上述记录。
 [定向包清单](../../packaging/kernel-edge/uhd6-edid-repair.json)固定来源与哈希；仅替换一个匹配模块，
-正式完整重封及全量验收完成前，不提升tested_build/retained_runtime。
+定向包未用于正式安装；最终完整产物与安装锁见上述正式记录。

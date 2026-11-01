@@ -1,11 +1,11 @@
 {
   "vendor": "80a07ad5406d57855c996285ae75a50a1b9147ae",
-  "kernel": "dc220366a1222a03423d5b5987fab3f027ec1d7a",
+  "kernel": "f951e2d24d32d5df0e701e7c355b3db4c91eaf74",
   "boardTested": false,
   "runtimeManifestSha256": "c267b980f5930c520ed96a5cfdb834132993005279aecc644ae9cc42ea14b48c",
-  "moduleSha256": "6e5d80a34c883b86247f836aedb2e17982a2d224ba0f55ebe9aab4e161f6d2dc",
-  "heapModuleSha256": "a4e98486491572e554f261bc6ea04de201cbd53ff9836e2deaef798deea94f14",
-  "governorModuleSha256": "c9385e2c001f97b50f7ea5e4513d6f2fdbe4a222d5d24f7143c37ec040e52108",
+  "moduleSha256": "f2e4c7571b0e5cbb004aaa5ec9a1a6cf614215bda52ad2e30eb7f7b5b473d190",
+  "heapModuleSha256": "d1c4bb6e373e7c08a4ea49e0b94f0bc84d40478b044c94a2a5e81fda357daec4",
+  "governorModuleSha256": "c191ec628a95b92d3ff26d8fa66c62eed3c8ae3a929191e36ef35803d7a52936",
   "governorSources": {
     "Makefile": "91e0b1608cd761ac1f9dd5f4cff72940c2230bb56926a0ef4946d78d1fdfc294",
     "governor_vim4.c": "29bfc4e63b6890020e0e961bcc881ac6b237bedf69b17d1830b4cf50ca1dccab"
@@ -32,6 +32,6 @@
   "kernelFiles": {
     ".config": "c9fc73eb509575f16ff26f61313aaa50cc5803289c1a59a5481bdf191baf4e57",
     "Module.symvers": "d2fb843dbd5edd6f9d160e1f6876469b7b4bd1897381811cd1562764ce61f8b3",
-    "arch/arm64/boot/Image": "9cf35c4485bcc58b88691591ec1d9e1a9e3c85edd5facaf17fc656ba3d0180b5"
+    "arch/arm64/boot/Image": "b6ae30f387baf40271efaf2c7ed96690d7193bcd6f9eef0195bfa59b1f7d568c"
   }
 }
