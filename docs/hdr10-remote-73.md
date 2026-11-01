@@ -3,13 +3,15 @@
 2026-11-01按用户授权已持久安装r14e并改默认为uhd6/kbase，交用户手测；
 仅完成安装身份/服务/插件核验，Pi/kbase/UU/CMA功能边界未升级为通过。
 当前入口与完整身份见[r14e安装记录](bringup/2026-11-01-hdr10-r14e-installed.md)。
+随后用户明确授权 HDR/r14e、MAC 与音频修复全部合入正式主线并停止，
+见[合入清单与未验边界](bringup/2026-11-01-p0-hdr-final-merge.md)。
+这不是用户已确认音频听测或第二阶段全部功能通过；不再排后续自动测试。
 
 本分支实现 `VDIN AMLY → Vulkan → P010 → Wave5 Main10 → 用户态 HDR10 SEI`。
 Panfrost 下 One-KVM 网页 4K60 Main10/PQ、SEI及恢复已通过最小主路径验收，
 见[最终记录与边界](bringup/2026-10-31-hdr10-native-final.md)。
-第二阶段 P0-5 继续补齐四应用、UU 实际客户端、原生 SDR 截图和两种 GPU 栈验收。
-当前已验边界仍限于上述 Panfrost / One-KVM 网页主路径；新增接入在独立分支验证，
-优先使用 P0-1 在 `sources.toml` 登记的统一 uhd6 候选，不以插件探测代替实板验收。
+第二阶段 P0-5 的四应用、UU、原生 SDR 截图和两种 GPU 栈接入按实际证据交付，
+新增源码已经合入，Pi/kbase/UU/CMA 等剩余未验边界继续保留；不以插件探测代替实板验收。
 新增公共源、三应用接入及同源 SDR 截图的离线候选与未验项见
 [第二阶段记录](bringup/2026-10-31-hdr10-phase2-offline.md)与
 [uhd6 实板短窗及失败恢复](bringup/2026-11-01-hdr10-phase2-uhd6.md)。下表的已验范围仍指 r13。

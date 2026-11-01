@@ -5,7 +5,7 @@
 name = "NanoKVM"
 url = "https://github.com/vim4-kvm/NanoKVM.git"
 branch = "vim4"
-revision = "63fa80f6b03d26d7bf0c66abe8fbfb81793b7183"
+revision = "0525dea7d5d2417b3b5c5eee754f026d9ca4c671"
 
 [[repos]]
 name = "common_drivers"
@@ -17,27 +17,27 @@ revision = "31619c527655514b4c89516ef609b6db1dd47db6"
 name = "gst-plugin-venc"
 url = "https://github.com/vim4-kvm/gst-plugin-venc.git"
 branch = "vim4"
-# Board-validated Wave5 update; remote vim4 matches this revision.
-revision = "b3b82a98cac16c4e845fad6357189b57cf8b2db4"
+# Approved P0-5 HDR integration; evidence boundaries are recorded in docs/bringup/.
+revision = "3a74cc9c0f074ff8bf980440e426438bba65d1db"
 
 [[repos]]
 name = "gst-plugin-vfmcap"
 url = "https://github.com/vim4-kvm/gst-plugin-vfmcap.git"
 branch = "main"
-revision = "b43e564595407b0b637a23f49a3cb390d4a6cbfa"
+revision = "5de382e36350fc37b43d9ff11f693fa3f2bb0323"
 
 [[repos]]
 name = "kvm"
 url = "https://github.com/vim4-kvm/kvm.git"
 branch = "vim4"
-revision = "f2b8122505cacda2762948a91c99c1acdb107ef0"
+revision = "166719c5b8acdfb1ab995c440aabc8a0e39ae08d"
 
 [[repos]]
 name = "One-KVM"
 url = "https://github.com/vim4-kvm/One-KVM.git"
 branch = "vim4"
-# Preserves HDR2 DMA leases; native HDR accepted by the Panfrost r13 smoke.
-revision = "2cf9ef4da71f5572173cabe3c60c58730a1d539f"
+# r14e plus reviewed audio fix; merge authorization does not imply listening acceptance.
+revision = "dae5089fc59aa069399539fa304412c37f0c3f08"
 
 [[repos]]
 name = "kvmd"
@@ -49,7 +49,7 @@ revision = "b074481150086146ce0cae4b3c9bca9baade5f10"
 name = "ustreamer"
 url = "https://github.com/vim4-kvm/ustreamer.git"
 branch = "vim4"
-revision = "8d8a4eec16e774422e67168b221142ec052b46ad"
+revision = "97eb951d10a0ccebd312d6951acc91624f5f0876"
 
 [[repos]]
 name = "vim4-manager"

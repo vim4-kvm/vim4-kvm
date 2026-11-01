@@ -19,6 +19,7 @@
 
 ## 2026-11-01
 
+- [HDR/r14e、MAC 与音频最终合入](2026-11-01-p0-hdr-final-merge.md) — application audio deployment；用户授权合入并停止，未验边界保留
 - [One-KVM 音频源变化恢复与稳定设备名](2026-11-01-onekvm-audio-source-recovery.md) — audio application deployment；API/现有采集通过，待用户听测
 - [跨内核原厂MAC传递修复与部署](2026-11-01-ethernet-mac-handoff.md) — network kernel deployment
 - [r14e持久安装与用户手测](2026-11-01-hdr10-r14e-installed.md) — deployment kernel application hdr10 kbase

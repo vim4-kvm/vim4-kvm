@@ -2,7 +2,8 @@
 
 用户手测报告：7.3 切换 HDR 出现 `Audio device lost: hw:0,0`，音频输入列表也与
 5.15 不一致。限定修改 One-KVM，不动内核、其他应用或 M6，不播放测试音或额外录制。
-**修复已独立复审、部署；真实 API 和现有采集健全检查通过，等待用户切 HDR/听测确认，尚未合产品主线。**
+**修复已独立复审、部署；真实 API 和现有采集健全检查通过。后续用户明确授权直接合入并停止，
+见[合入记录](2026-11-01-p0-hdr-final-merge.md)；这不代表用户已经确认 HDR 切换/听测通过。**
 
 ## 固定来源与根因
 
@@ -85,7 +86,8 @@ MAC generator、原 r14e 收据、extlinux 哈希不变，MAC 仍 `c8:63:14:74:7
 
 手测入口 **http://192.168.50.210** → One-KVM → 音频输入选择 HDMI input。
 请用户正常播放自己的内容并切换 HDR，确认不再误报设备丢失、切换后声音恢复、设备选择不漂移。
-用户确认前不合产品主线。原 r14e 的 Pi/kbase/UU/CMA 等未验边界不因本音频修复改变。
+原“用户确认前不合产品主线”的限制由上述后续明确授权更新；听测仍未记录为通过。
+原 r14e 的 Pi/kbase/UU/CMA 等未验边界不因本音频修复改变。
 
 原始证据 `logs/one-kvm-audio-source-fix/`：before-api.json、before-journal.txt、
 source-transition-journal.txt、installed-api-sanity.json、saved-database-audio.json、
