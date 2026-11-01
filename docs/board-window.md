@@ -108,6 +108,9 @@ cmdline仅单独审阅`reboot_mode=normal`与`reboot_mode=watchdog_reboot`之间
 重复性能窗口可显式传 `boot-candidate --reuse-staged`：已存在的同一payload逐文件核对
 原归档哈希并重新检查基线后复用，不覆盖Image/DTB/模块/运行时。默认仍拒绝重复目录；
 任何文件改变均拒绝。返回时已清理的空模块bind目标会重新登记本次inode供安全清理。
+复用还核对首次 staging 的 root 所有者、0555目录及0555/0444文件模式，拒绝内部符号链接目录。
+`perf-quick.py` 每段操作前保留采样/恢复时间；清理失败分别记录 `cleanup-errors.json`，不覆盖原始错误。
+租约失效或恢复预算不足时不越权停启服务/重启，写 `recovery-required.json` 交接，SSH转发仍在本机清理。
 
 `baseline --files /boot/... /opt/...` 必须列出当前5.15 Image、One-KVM程序、插件、
 所有默认启动/DTB/initrd与运行时登记文件（按当前部署清单选，不能只给uname）。

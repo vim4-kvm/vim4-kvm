@@ -12,6 +12,7 @@ import os
 from pathlib import Path, PurePosixPath
 import re
 import shutil
+import stat
 import struct
 import tarfile
 import tempfile
@@ -351,9 +352,25 @@ def stage(bundle, retained_baseline=None, reuse_staged=False):
                 raise FileExistsError(target)
             # Performance A/B/A revisits an immutable candidate. Never overwrite
             # its payload: verify every archived file before selecting it again.
-            for name, digest in plan['files'].items():
+            directories = {target}
+            for name in entries:
+                parent = (target / name).parent
+                while parent != target:
+                    directories.add(parent)
+                    parent = parent.parent
+            for directory in directories:
+                info = directory.lstat()
+                if not stat.S_ISDIR(info.st_mode) or info.st_uid or stat.S_IMODE(info.st_mode) != 0o555:
+                    raise ValueError('untrusted staged directory: ' + str(directory))
+            for name, member in entries.items():
                 path = target / name
-                if path.is_symlink() or not path.is_file() or sha(path) != digest:
+                info = path.lstat()
+                executable = name == 'init' or ((metadata == 'manifest.json' or 'namespace' in plan) and member.mode & 0o111)
+                mode = 0o555 if executable else 0o444
+                if not stat.S_ISREG(info.st_mode) or info.st_uid or stat.S_IMODE(info.st_mode) != mode:
+                    raise ValueError('untrusted staged file permissions: ' + name)
+                digest = plan['files'][name] if name != metadata else hashlib.sha256(archive.extractfile(member).read()).hexdigest()
+                if sha(path) != digest:
                     raise ValueError('staged trial file hash mismatch: ' + name)
             static_arm64(target / 'init')
             check(plan)
