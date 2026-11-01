@@ -72,6 +72,7 @@ class RecoveryBudgetTest(unittest.TestCase):
                 panfrost=Path('payload'),panfrost_sha256='sha',baseline_files=baseline,
                 url='http://127.0.0.1:18080',local_ip='192.0.2.1')
             runner=window.Window(args)
+            runner.start_m6_preview=Mock(return_value=Mock())
 
             def ssh(host,command,**kwargs):
                 if command.startswith('cat '):return '{"api_key":"unit"}'

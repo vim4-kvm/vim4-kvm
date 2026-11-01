@@ -260,6 +260,31 @@ class AssemblyTests(unittest.TestCase):
 
 
 class WindowTests(unittest.TestCase):
+    def test_live_m6_preview_rejects_frozen_or_non_chrome_without_source_actions(self):
+        for name,decoded in (('chrome',120),('grok',120),('chrome',0)):
+            with self.subTest(name=name,decoded=decoded),tempfile.TemporaryDirectory() as tmp:
+                runner=object.__new__(window.Window);runner.output=Path(tmp);runner.require_work=Mock()
+                runner.args=SimpleNamespace(url='http://localhost:18080',local_ip='192.0.2.1',observer=Path('/observer'))
+                viewer=Mock()
+                def start(command,**kwargs):
+                    directory=Path(command[4]);directory.mkdir()
+                    (directory/'ready.json').write_text(json.dumps(dict(decoded=decoded,fps=60,dropped=0)))
+                    (directory/'source-ready.jpg').write_bytes(b'observer fixture')
+                    return viewer
+                screen=SCREENS['chrome'] if name=='chrome' else dict(SCREENS['chrome'],
+                    items=[dict(text='Grok Bot',x=50,y=8,w=65,h=20)])
+                with patch.object(window.subprocess,'Popen',side_effect=start), \
+                     patch.object(window.subprocess,'check_output',return_value=json.dumps(screen)), \
+                     patch.object(window.w.MCP,'call') as hid:
+                    if name=='chrome' and decoded:
+                        self.assertIs(runner.start_m6_preview(),viewer)
+                        viewer.terminate.assert_not_called()
+                        runner.stop_m6_preview(viewer)
+                    else:
+                        with self.assertRaises((RuntimeError,window.g.GateError)):runner.start_m6_preview()
+                    hid.assert_not_called()
+                viewer.terminate.assert_called_once();viewer.wait.assert_called_once_with(timeout=10)
+
     def test_pikvm_snapshot_evidence_requires_fresh_jpeg(self):
         for image,seconds,valid in ((b'\xff\xd8jpeg',.1,True),(b'not-jpeg',.1,False),(b'\xff\xd8jpeg',2.,False)):
             with self.subTest(image=image,seconds=seconds),tempfile.TemporaryDirectory() as tmp:
@@ -327,6 +352,7 @@ class WindowTests(unittest.TestCase):
             runner.recovery_cli=cli
             queue=held_queue();tunnel=Mock();tunnel.poll.return_value=None
             runner.open_tunnel=Mock(return_value=tunnel)
+            runner.start_m6_preview=Mock(return_value=Mock())
             client=Mock();client.idle.return_value=dict(idle=True)
             m6=Mock();m6.restore_needed=False
             m6.toggle.side_effect=lambda *args:setattr(m6,'restore_needed',True)
@@ -359,6 +385,7 @@ class WindowTests(unittest.TestCase):
                 with patch.object(window,'REPO',Path(tmp)):
                     runner=window.Window(SimpleNamespace(window='rejected',observer=Path('/bin/true'),device='unused'))
                 runner.api=Mock(return_value={});runner.open_tunnel=Mock(return_value=Mock())
+                runner.start_m6_preview=Mock(return_value=Mock())
                 runner.cli=Mock();runner.recovery_cli=Mock()
                 runner.board=Mock(side_effect=RuntimeError('save failure'))
                 client=Mock();client.idle.return_value=dict(idle=cause!='not-idle')

@@ -333,6 +333,43 @@ print(json.dumps(dict(jpeg=base64.b64encode(image).decode(),seconds=elapsed,stat
         (self.output/f'{gpu}-pikvm-{mode}-sdr.jpg').write_bytes(image)
         (self.output/f'{gpu}-pikvm-{mode}-state.json').write_text(json.dumps(jpeg,indent=2))
 
+    @staticmethod
+    def stop_m6_preview(viewer):
+        viewer.terminate()
+        try: viewer.wait(timeout=10)
+        except subprocess.TimeoutExpired:
+            viewer.kill();viewer.wait(timeout=5)
+
+    def start_m6_preview(self):
+        self.require_work(65)
+        directory=self.output/'m6-preparation';directory.mkdir()
+        receiver=directory/'receiver'
+        with (directory/'receiver.log').open('w') as log:
+            viewer=subprocess.Popen(['node',str(HERE/'application-receiver.mjs'),self.args.url,
+                'onekvm',str(receiver),'sdr','120','','',self.args.local_ip,'--prepare-source'],
+                stdout=log,stderr=subprocess.STDOUT)
+        qualified=False
+        try:
+            until=time.monotonic()+45
+            while not (receiver/'ready.json').exists():
+                self.require_work(15)
+                if viewer.poll() is not None or time.monotonic()>=until:
+                    raise RuntimeError('M6 live video preparation failed')
+                time.sleep(.1)
+            proof=json.loads((receiver/'ready.json').read_text())
+            if proof['decoded']<=0 or proof['fps']<59 or proof['dropped']:
+                raise RuntimeError('M6 preparation lacks advancing decoded frames')
+            screen=json.loads(subprocess.check_output([str(self.args.observer),
+                str(receiver/'source-ready.jpg')],text=True,timeout=10))
+            (directory/'actual-source.json').write_text(json.dumps(screen,indent=2))
+            # A fresh non-Chrome foreground is a refusal, never a reason to
+            # widen the source-action authorization or operate its UI.
+            g.chrome_front(screen)
+            qualified=True
+            return viewer
+        finally:
+            if not qualified:self.stop_m6_preview(viewer)
+
     def run(self):
         queue,token=w.require_board()
         key=json.loads(w.ssh('vim4','cat /var/lib/one-kvm/mcp/credentials.json'))['api_key']
@@ -345,15 +382,18 @@ print(json.dumps(dict(jpeg=base64.b64encode(image).decode(),seconds=elapsed,stat
             tunnel=self.open_tunnel()
             initial_hdr=w.source_hdr('vim4')
             if initial_hdr is not False: raise RuntimeError('start with M6 HDR off')
-            if not client.idle(self.output)['idle']: raise RuntimeError('M6 is not visually idle')
-            m6.qualify(initial_hdr)
-            data=base64.b64encode((HERE/'phase2-board.py').read_bytes()).decode()
-            script=f"from pathlib import Path; import base64; p=Path({self.remote+'.py'!r}); p.write_bytes(base64.b64decode({data!r})); p.chmod(0o700)"
-            self.work_ssh('sudo -n python3 -c '+shlex.quote(script))
-            self.board('save'); saved=True
-            with self.operations:
-                self.require_work(120)
-                m6.toggle(True); m6.close()
+            preview=self.start_m6_preview()
+            try:
+                if not client.idle(self.output)['idle']: raise RuntimeError('M6 is not visually idle')
+                m6.qualify(initial_hdr)
+                data=base64.b64encode((HERE/'phase2-board.py').read_bytes()).decode()
+                script=f"from pathlib import Path; import base64; p=Path({self.remote+'.py'!r}); p.write_bytes(base64.b64decode({data!r})); p.chmod(0o700)"
+                self.work_ssh('sudo -n python3 -c '+shlex.quote(script))
+                self.board('save'); saved=True
+                with self.operations:
+                    self.require_work(120)
+                    m6.toggle(True); m6.close()
+            finally:self.stop_m6_preview(preview)
             for gpu in ('panfrost','kbase'):
                 # The matched uhd6 kbase modules intentionally set TAINT_OOT_MODULE.
                 # All other taint bits and all WARN/faults remain failures.

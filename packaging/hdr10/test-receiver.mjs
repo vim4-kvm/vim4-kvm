@@ -70,7 +70,9 @@ try {
  try {
    senderPage=await senderBrowser.newPage();await senderPage.goto(origin+'/sender');
    await receive({url:origin,app:'onekvm',output:`${output}/onekvm`,hdr:'sdr',seconds:1,
-     codec:'video/VP8',minFps:20,localBackend:true,width:160,height:96});
+     codec:'video/VP8',minFps:20,localBackend:true,width:160,height:96,prepareSource:true});
+   assert(JSON.parse(await fs.readFile(`${output}/onekvm/ready.json`)).decoded>0);
+   assert.equal((await fs.readFile(`${output}/onekvm/source-ready.jpg`)).readUInt16BE(),0xffd8);
    assert.equal(closedSessions,1,'One-KVM close API must release the session');
  } finally {await senderBrowser.close();}
  await assert.rejects(receive({url:origin,app:'nanokvm',output:`${output}/wrong-codec`,hdr:'sdr',seconds:1,

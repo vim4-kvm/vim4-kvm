@@ -8,7 +8,7 @@ import { loginManager } from '../../tools/manager-login.mjs';
 import { measureDecoded } from '../../tools/board-window-timing.mjs';
 const { chromium } = await import(process.env.PLAYWRIGHT_MODULE || 'playwright');
 export async function receive({url, app, output, hdr = 'pq', seconds = 20,
-  codec = 'video/H265', minFps = 59, localBackend = false, width, height, localIP}) {
+  codec = 'video/H265', minFps = 59, localBackend = false, width, height, localIP, prepareSource = false}) {
 assert(['onekvm', 'nanokvm', 'jetkvm', 'pikvm'].includes(app));
 assert(['pq', 'sdr'].includes(hdr));
 assert(seconds >= 1 && seconds <= 300);
@@ -114,6 +114,25 @@ try {
     throw Error('No decoded video');
   });
   const before = await stats();
+  if (prepareSource) {
+    const warm = await measureDecoded(async () => {
+      const value = await stats(); return {...value, codec:value.codec.mimeType};
+    }, 2, {readyTimeoutMs:1000});
+    const first = warm.samples[0], last = warm.samples.at(-1);
+    const proof = {decoded:last.framesDecoded-first.framesDecoded,
+      dropped:last.framesDropped-first.framesDropped,fps:warm.fps};
+    assert(proof.decoded>0 && proof.fps>=minFps && proof.dropped===0,JSON.stringify(proof));
+    const jpeg = await page.evaluate(() => {
+      const video=document.querySelector('video'), canvas=document.createElement('canvas');
+      canvas.width=Math.min(1920,video.videoWidth);
+      canvas.height=Math.round(video.videoHeight*canvas.width/video.videoWidth);
+      canvas.getContext('2d').drawImage(video,0,0,canvas.width,canvas.height);
+      return canvas.toDataURL('image/jpeg',.95).split(',')[1];
+    });
+    await fs.writeFile(`${output}/source-ready.jpg`,Buffer.from(jpeg,'base64'));
+    await fs.writeFile(`${output}/ready.json.tmp`,JSON.stringify(proof));
+    await fs.rename(`${output}/ready.json.tmp`,`${output}/ready.json`);
+  }
   const cadence = await measureDecoded(async () => {
     const value = await stats();
     return { ...value, codec: value.codec.mimeType };
@@ -155,5 +174,6 @@ try {
 if (import.meta.url === pathToFileURL(process.argv[1]).href) {
   const [url, app, output, hdr = 'pq', seconds = '20', width, height, localIP] = process.argv.slice(2);
   await receive({ url, app, output, hdr, seconds: Number(seconds),
-    width: width ? Number(width) : undefined, height: height ? Number(height) : undefined, localIP });
+    width: width ? Number(width) : undefined, height: height ? Number(height) : undefined, localIP,
+    prepareSource: process.argv.includes('--prepare-source') });
 }
