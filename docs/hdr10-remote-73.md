@@ -3,8 +3,11 @@
 本分支实现 `VDIN AMLY → Vulkan → P010 → Wave5 Main10 → 用户态 HDR10 SEI`。
 Panfrost 下 One-KVM 网页 4K60 Main10/PQ、SEI及恢复已通过最小主路径验收，
 见[最终记录与边界](bringup/2026-10-31-hdr10-native-final.md)。
-四应用完整 P0、UU 实际客户端、原生 SDR 截图和 kbase 原生 HDR 对照未验；
-按用户收敛指令合入后停止，不再启动后续工作。
+第二阶段 P0-5 继续补齐四应用、UU 实际客户端、原生 SDR 截图和两种 GPU 栈验收。
+当前已验边界仍限于上述 Panfrost / One-KVM 网页主路径；新增接入在独立分支验证，
+优先使用 P0-1 在 `sources.toml` 登记的统一 uhd6 候选，不以插件探测代替实板验收。
+新增公共源、三应用接入及同源 SDR 截图的离线候选与未验项见
+[第二阶段记录](bringup/2026-10-31-hdr10-phase2-offline.md)。下表的已验范围仍指 r13。
 
 ## DMA与模式
 
@@ -73,8 +76,9 @@ One-KVM能力探测不读uname：VDIN AMLY枚举、两类metadata controls大小
 | NanoKVM / JetKVM / PiKVM | 仍需扩展公共vim4h265src的Wave5后端，各网页/Janus独立验收；本轮未改 |
 | JPEG / H.264 / 截图 | 映射模式保留；原生Wave5暂无并行SDR分支，截图不可用。需GPU tone map或同源第二VDIN才可宣称双路径/P0 |
 
-离线完整候选与最小实板门禁已完成。四应用、SDR截图、UU恢复和GPU配对性能的原规划
-不属于本轮结束范围，保留未验边界，不继续排队或估算后续实施。
+离线完整候选与最小实板门禁已完成。第二阶段保留这些已验证产物，扩展公共源后分别验证
+四应用、SDR截图、UU恢复和两种 GPU 栈；没有真实 HLG、动态或非零静态元数据源时明确记为未验。
+取板票前完成全部构建、离线测试和无人值守脚本，常规窗口目标不超过15分钟，硬上限30分钟。
 
 主要风险是固件P010解释、PanVK/kbase外部内存能力、CMA峰值与UHD60带宽。
 

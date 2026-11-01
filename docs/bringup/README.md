@@ -19,6 +19,8 @@
 
 ## 2026-10-31
 
+- [原生HDR第二阶段离线接入候选](2026-10-31-hdr10-phase2-offline.md) — video application uu gpu offline
+
 - [P0-3公开停机协议与合法等待研究](2026-10-31-wave5-stop-research.md) — kernel video offline safety
 - [P0-3真实挂死注入安全审查](2026-10-31-wave5-real-hang-safety.md) — kernel video offline safety
 - [原生HDR最小主路径验收与合入](2026-10-31-hdr10-native-final.md) — kernel board video application hdr

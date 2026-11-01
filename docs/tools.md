@@ -1,5 +1,9 @@
 # 工具目录
 
+`packaging/hdr10/application-receiver.mjs`：P0-5 三应用 WebRTC 接收候选，显式板票据和 sampling 下运行；
+不改源/HDR/应用配置、不发送键鼠、不分析声音；保存真实解码统计、VideoFrame 色彩空间和首个
+HEVC 关键帧供离线 SPS/VUI/SEI 解析。仅离线语法检查，尚未经三应用实板验收。
+
 `packaging/hdr10/ram-payload.py`：离线把已封存r3制品与已审阅HDR2 RAM启动模板封装为
 私有PID1/runtime/完整模块归档，可编译或复用已校验的静态ARM64 PID1；模块流式入tar保留大小写，
 生成逐文件和归档SHA256。输出目录仅为打包暂存，上板传入tar.gz；
