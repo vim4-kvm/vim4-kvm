@@ -3,6 +3,8 @@
 # The stock kernel stays available as the "Stock" extlinux entry.
 #
 # Usage (on the board): sudo sh kernel-install.sh vim4kvm-<release>.tgz
+# Unified edge: kernel-install.sh --edge unified.tar.gz --keep-directory-symlink
+# The explicit edge path preserves the installed 5.15 default.
 set -eu
 
 if [ "${1:-}" = --edge ]; then

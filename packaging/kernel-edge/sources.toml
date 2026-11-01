@@ -178,6 +178,41 @@ kernel_revision = "dc220366a1222a03423d5b5987fab3f027ec1d7a"
 capture_revision = "b43e564595407b0b637a23f49a3cb390d4a6cbfa"
 onekvm_revision = "2cf9ef4da71f5572173cabe3c60c58730a1d539f"
 
+# Complete unified payload; partial RAM gates only. Do not promote this table
+# to tested_build or retained_runtime until all P0-1 gates pass.
+[candidate_build]
+release = "7.3.0-vim4kvm-uhd6+"
+status = "partial-ram-gates-not-installed"
+image_source_revision = "dc220366a1222a03423d5b5987fab3f027ec1d7a"
+build_id = "0db732dfaf0d7f1fb60e5cd61b1423ef7cb403d4"
+image_sha256 = "9cf35c4485bcc58b88691591ec1d9e1a9e3c85edd5facaf17fc656ba3d0180b5"
+config_path = "uhd6.config"
+config_sha256 = "c9fc73eb509575f16ff26f61313aaa50cc5803289c1a59a5481bdf191baf4e57"
+package_file = "p0-1-uhd6-r3.tar.gz"
+package_sha256 = "3afb18e92a0eee055d991845ee9662bee3f9157aa1c229bf87037bea6a51e2ae"
+manifest_path = "uhd6-manifest.json"
+manifest_sha256 = "907eeb49145d379e25efdb99db5f0490cee24f414e6f920387b86f129c8e25cf"
+external_manifest_path = "uhd6-external-manifest.json"
+external_manifest_sha256 = "cd8e0ae0625a63856f113e55e529fbbd317feab3e091c986d1bbbb44c7172221"
+runtime_files_path = "uhd6-runtime-files.json"
+runtime_files_sha256 = "cc965c0859e3434341e9476354a8dc255ba0c2695ba83fb3d97dd2719f1d29f1"
+modules_sha256 = "6269c49fa1489574e9e26ee11b0b34cf3daefcc43f393fb35e92a8d6108a4e01"
+module_count = 2341
+base_module_count = 2338
+external_module_count = 3
+module_btf = true
+module_symvers_sha256 = "d2fb843dbd5edd6f9d160e1f6876469b7b4bd1897381811cd1562764ce61f8b3"
+vmlinux_btf_sha256 = "e6759552ee3e6625a6dac7461745e82d1f96934728609cf7a3abf1c529669540"
+gpu_default = "kbase"
+board_dtb_sha256 = "0247cd50be9690d3925a4ea7c95dabb18f4ed045b9d5c1dda17b85abdabeddda"
+panfrost_dtb_sha256 = "3b8b423f566ce8de11f4983672cdf8e94cec70b5c4abe2f29199931d41c19e30"
+ram_payload_id = "uhd6-r3"
+ram_sha256 = "714e6bf671b2ed9f69fb01ea8b7c16233ef6c4c02a6ce81f9cdc49f0a2008d2b"
+manager_revision = "f4b823bc9ebcf9b6e7b45e432087c94ea118c871"
+manager_package = "2.5.1+vim4.20261029.102.dev.6.gf4b823b"
+manager_binary_sha256 = "f619943882710022afbde5a973af4d2812526898c7971e6ebc430127bbdcd676"
+evidence = "docs/bringup/2026-10-31-uhd6-unified.md"
+
 [armbian]
 url = "https://github.com/armbian/build.git"
 revision = "ecc676bf89af37788f972db9a7ff3f92844a43eb"

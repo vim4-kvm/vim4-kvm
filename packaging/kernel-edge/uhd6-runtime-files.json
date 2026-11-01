@@ -1,0 +1,11 @@
+{
+  "one-kvm": "34e8808e61c9a52eb62a88e2b01440d4ecef0f60bc7253dc0a7d403410b99337",
+  "gstreamer-1.0/libgstvideo4linux2.so": "b9269d0509d43b8107a8c686415f7f0c7e5a86e17c04a19d685eb3dca736c4f0",
+  "gstreamer-1.0/libgstvfmcap.so": "8cf5655b9b1e3ccbb1f29feb8f848b4127b80c0843c2fe40e7336da13c681395",
+  "gstreamer-1.0/libgstvim4wave5.so": "0240de1c003974d97316ff3f73f771a5cc8db2ced1b7330bcbe64c4ba9cbe229",
+  "usr/libexec/vim4-board-runtime": "164316a866f288be82e024fb0d279b23abfadf3dc48136ab67d9092eb3a8eaba",
+  "usr/libexec/vim4-kvm-run": "5f6a038eea357cd12cc8c8b544b755c34b471db67537123fa5b900b0ff9d22be",
+  "usr/libexec/vim4-mainline-prepare": "c6d1c9b75a2569cc4285ae1493c3e7be7321bed9fb25d2662faf99dd5bd8fc57",
+  "usr/libexec/vim4-mainline-gadget-prepare": "7e8a62b29dca2fb7505c092bda272656fc03605f88dfdaf14d8015764c79522d",
+  "usr/lib/vim4-kvm/python/vim4gpu.py": "5b7e09f7a3a0b84db7325403f4c5e06a951759c4a8efa6e6acab1b258e12c0b8"
+}
