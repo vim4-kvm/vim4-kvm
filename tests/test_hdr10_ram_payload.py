@@ -89,6 +89,8 @@ class HDR10PayloadTest(unittest.TestCase):
                 target = runtime / 'usr/libexec' / name
                 target.parent.mkdir(parents=True, exist_ok=True)
                 target.write_text(name)
+            (runtime / 'usr/libexec/vim4-kvm-run').write_text(
+                'exec python3 /usr/lib/vim4-kvm/python/vim4gpu.py "$@"\n')
             target = runtime / 'usr/lib/vim4-kvm/python/vim4gpu.py'
             target.parent.mkdir(parents=True)
             target.write_text('driver-selected')
@@ -99,6 +101,8 @@ class HDR10PayloadTest(unittest.TestCase):
             with tarfile.open(root / 'payload.tar.gz') as archive:
                 plan, _, entries = once.read_trial(archive)
                 self.assertEqual(plan['release'], report['release'])
-                self.assertEqual(archive.extractfile('runtime/vim4-kvm-run').read(), b'vim4-kvm-run')
+                launcher = archive.extractfile('runtime/vim4-kvm-run').read().decode()
+                self.assertIn(str(once.candidate_prefix(plan)) + '/runtime/vim4gpu.py', launcher)
+                self.assertNotIn('/usr/lib/vim4-kvm/python/vim4gpu.py', launcher)
                 self.assertEqual(archive.extractfile('runtime/vim4gpu.py').read(), b'driver-selected')
                 self.assertEqual(sum(name.startswith('modules/') for name in entries), 2)

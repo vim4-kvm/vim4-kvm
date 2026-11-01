@@ -57,6 +57,9 @@ if args.unified:
     shutil.copy2(runtime / 'usr/lib/vim4-kvm/python/vim4gpu.py', runtime / 'vim4gpu.py')
     for name in ('vim4-board-runtime', 'vim4-kvm-run', 'vim4-mainline-prepare', 'vim4-mainline-gadget-prepare'):
         shutil.copy2(runtime / 'usr/libexec' / name, runtime / name)
+    launcher = runtime / 'vim4-kvm-run'
+    launcher.write_text(launcher.read_text().replace(
+        '/usr/lib/vim4-kvm/python/vim4gpu.py', prefix + '/runtime/vim4gpu.py'))
 else:
     runtime.mkdir()
     for source, name in [('board-runtime', 'vim4-board-runtime'),

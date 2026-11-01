@@ -1,6 +1,6 @@
 # 2026-10-31：uhd6 统一候选
 
-状态：离线准备中，尚未上板、未持久安装。5.15 保持默认；`tested_build` 仍是
+状态：首窗启动门禁失败，未持久安装。5.15 保持默认；`tested_build` 仍是
 已验 uhd5，`retained_runtime` 仍是 uhd1。构建通过不能代替下表验收。
 
 ## 来源与冲突处理
@@ -38,3 +38,18 @@ Panfrost 保留其原生 HDR 已验路径，不把 r7b–r11、coherent 故障 D
 所有上板和重负载操作分别经 board-queue 板票与 heavy 票；单板窗口≤30分钟。
 优先 board-window RAM 启动与 return-baseline，分窗记录，声音与开发 Mac HID 禁止。
 不改默认启动、不刷 U-Boot、不新增备份或回退脚本。
+
+## 首窗：USB 助手遗漏 release，停止验收
+
+完整内核 build ID `0db732dfaf0d7f1fb60e5cd61b1423ef7cb403d4`，Image
+SHA256 `9cf35c4485bcc58b88691591ec1d9e1a9e3c85edd5facaf17fc656ba3d0180b5`。
+全部2341模块均逐个核对vermagic/GNU build ID/BTF；运行时包剥离基础模块debug信息、保留BTF，
+不把最初未strip的625MiB开发包作为正式候选。M0 DT通过Panfrost/shared-dma-pool限定schema检查。
+主仓366项通过、14项环境跳过；HDMI/Wave5宿主夹具通过。
+严格代码差异检查零错误/告警/check；历史原生HDR两提交缺说明/签署的元数据诊断原样保留，未伪造签署。
+
+RAM包`uhd6-r2` SHA256 `bf5aa00ad6f03e71b7d516b35559654880bbc8ee5bdd163d69d548f750ea6215`。
+实板进入uhd6，HDMI服务active、三个kbase模块加载；taint=4096为外部模块标记。
+USB准备助手仍拒绝uhd6，gadget失败，One-KVM因依赖未启动。未开始九类/HDR/尺寸/GPU负载验收，
+不把驱动加载写成GPU烟测通过。保存`logs/p0-1-window-a/`串口、完整dmesg及服务日志后回5.15；
+修复助手准入并扩展既有活跃gadget不重绑定回归，再重新排队。不在失败窗口现场修补。

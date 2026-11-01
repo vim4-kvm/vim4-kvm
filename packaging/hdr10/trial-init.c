@@ -145,9 +145,6 @@ int main(void)
 	const char *names[] = {"vim4-board-runtime", "vim4-kvm-run",
 		"vim4-mainline-prepare", "vim4-mainline-gadget-prepare", "one-kvm-edge",
 		"one-kvm", "gstreamer-1.0",
-#ifdef UNIFIED_RUNTIME
-		"vim4gpu.py",
-#endif
 	};
 	const char *targets[] = {"/usr/libexec/vim4-board-runtime", "/usr/libexec/vim4-kvm-run",
 		"/usr/libexec/vim4-mainline-prepare", "/usr/libexec/vim4-mainline-gadget-prepare",
@@ -158,9 +155,6 @@ int main(void)
 		"/opt/vim4-onekvm/one-kvm",
 #endif
 		"/usr/lib/vim4-kvm/mainline-gstreamer-1.0",
-#ifdef UNIFIED_RUNTIME
-		"/usr/lib/vim4-kvm/python/vim4gpu.py",
-#endif
 	};
 	for (unsigned int i = 0; i < sizeof(names) / sizeof(names[0]); i++) {
 		step = "private runtime bind";
