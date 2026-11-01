@@ -1,5 +1,10 @@
 # 工具目录
 
+`packaging/hdr10/persistent-r14e.py`：为用户手测离线封装固定r14e及完整uhd6来源，
+在独占部署窗口核对已安装内核/双DT/2341模块，再安装真实持久私有目录和仅7.3使用的启动器。
+保留5.15程序、应用配置与/lib符号链接；不发HID、不测试HDR、不自行改默认或重启。
+`verify`只做已启动系统的身份、服务、插件可用性核验，并写手测候选收据，不代表功能验收。
+
 `packaging/hdr10/application-receiver.mjs`：P0-5 四应用 WebRTC 接收候选，显式板票据和 sampling 下运行；
 不改源/HDR/应用配置、不发送键鼠、不分析声音；保存真实解码统计、VideoFrame 色彩空间和首个
 HEVC 关键帧供离线 SPS/VUI/SEI 解析。本机 Chrome 的 VP8 收流、解码及失败拒绝已测，尚未实板验收。
