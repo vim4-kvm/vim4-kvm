@@ -1,6 +1,6 @@
 # 2026-10-31：uhd6 统一候选
 
-状态：r3已启动，部分门禁通过，全量验收未完成，未持久安装。5.15 保持默认；`tested_build` 仍是
+状态：r3部分门禁通过，但窗口N发生SError，自动恢复失败，待物理RESET；全量验收未完成，未持久安装。5.15 保持默认；`tested_build` 仍是
 已验 uhd5，`retained_runtime` 仍是 uhd1。构建通过不能代替下表验收。
 
 ## 来源与冲突处理
@@ -29,6 +29,7 @@ Panfrost 保留其原生 HDR 已验路径，不把 r7b–r11、coherent 故障 D
 | Image/两份 DT/全部模块/三外部模块/BTF/完整清单 | 全部构建、逐文件验证通过 |
 | checkpatch --strict、DT、宿主夹具、主仓离线 unittest | 代码差异、限定DT schema、宿主夹具与367项主仓测试通过，14项环境跳过；历史提交元数据诊断见下文 |
 | HDMI 模式、H.264、H.265、4K60 | r3 H.264 UHD短接收通过，其余待验 |
+| SARADC（九类之外补核对） | 窗口M/N各2000次channel 2读取，4093，零错误；未操作实体键 |
 | 音频服务（按本任务不测声音） | r3 One-KVM检测到VIM4HDMIRX；HDR切换后48k采集自动恢复，无声音测试 |
 | M6 HID、虚拟介质、GPU、管理页 | HID/GLES像素/当前管理页通过；窗口J完整只读/可写/重启保留/安全弹出通过 |
 | 原生 HDR、HDR2 各一次短验收 | 窗口E通过；Main10/PQ/BT.2020与SEI见下文 |
@@ -45,11 +46,9 @@ Panfrost 保留其原生 HDR 已验路径，不把 r7b–r11、coherent 故障 D
 SHA256 `9cf35c4485bcc58b88691591ec1d9e1a9e3c85edd5facaf17fc656ba3d0180b5`。
 全部2341模块均逐个核对vermagic/GNU build ID/BTF；运行时包剥离基础模块debug信息、保留BTF，
 不把最初未strip的625MiB开发包作为正式候选。M0 DT通过Panfrost/shared-dma-pool限定schema检查。
-主仓366项通过、14项环境跳过；HDMI/Wave5宿主夹具通过。
 严格代码差异检查零错误/告警/check；历史原生HDR两提交缺说明/签署的元数据诊断原样保留，未伪造签署。
 
-RAM包`uhd6-r2` SHA256 `bf5aa00ad6f03e71b7d516b35559654880bbc8ee5bdd163d69d548f750ea6215`。
-实板进入uhd6，HDMI服务active、三个kbase模块加载；taint=4096为外部模块标记。
+r2进入uhd6，HDMI服务active、三个kbase模块加载；taint=4096为外部模块标记。
 USB准备助手仍拒绝uhd6，gadget失败，One-KVM因依赖未启动。未开始九类/HDR/尺寸/GPU负载验收，
 不把驱动加载写成GPU烟测通过。保存`logs/p0-1-window-a/`串口、完整dmesg及服务日志后回5.15；
 修复助手准入并扩展既有活跃gadget不重绑定回归，再重新排队。不在失败窗口现场修补。
@@ -81,8 +80,7 @@ M6出现P01UHD6未正确弹出的提示。窗口C确认卷消失、LUN为空，�
 不复制、不备份已安装运行时，再使用同一已封存归档启动成功。
 HDR配置请求当时仍在H.264模式，等待目标输出超时返回500，未进入原生HEVC接收；已恢复原设置及源SDR，
 保留日志。修正测试前置顺序为先选HEVC、再开HDR，回5.15后重新排队。无新内核WARN/Oops，taint保持外部模块4096。
-管理器旧夹具的.kernel-panel已不存在，按当前组件和实际运行release重新验证通过；首次LAN进程EHOSTUNREACH
-经SSH回环转发完成认证，未改Mac网络。截图、码流不推Git。
+管理器按当前组件、实际release及SSH回环转发验证；截图、码流不推Git。
 
 ## 后续无人值守窗口
 
@@ -106,8 +104,7 @@ E随后无订阅者的尺寸配置请求超时；日志显示管线3秒自动停
 窗口H预检发现他线heavy任务仍在运行，立即释放、完全未触板。
 后续窗口先确认实际解码后再准备M6，持板期间只运行预先准备的无人值守脚本。
 
-窗口I解码通过，但M6 Terminal命令首字母丢失，辅助端未启动；205秒内回5.15。
-改为先确认提示符、命令前加空格后，窗口J的完整介质验收通过：只读拒写、可写1MiB，
+窗口I因M6命令首字母丢失未测，205秒内回5.15；修正测试准备后，J完整介质验收通过：只读拒写、可写1MiB，
 SHA256 `bd8a5183fdafb052402b7f52480145004a781b927f0d376e4fbd922da44f6926`；
 One-KVM重启保留同一LUN，M6再次校验后安全弹出，板端读回一致，fsck -n零错误，
 随后仅删除本轮夹具。三个独立NV12夹具也通过：1366×768的SPS为1368×768、右裁2px，
@@ -118,3 +115,29 @@ J共162秒，回5.15及受保护文件核对通过；收尾旧MCP会话因应用
 但辅助端退出任务未送达。K的截图证实仍是本轮辅助循环占用Terminal，故身份握手超时，
 202秒内回5.15，模式矩阵未开始。下一窗先停止这个已确认的本轮前台命令，
 辅助端遇本地服务关闭即退出；清理不再依赖重启前的MCP会话。
+
+## 模式准备错误与EDID撤回故障
+
+L因他线heavy任务重叠未触板。M共191秒：M6 CoreGraphics已报告800×600 backing raster，
+但实际接收仍是3840×2160@60，尺寸断言正确拒绝，不能计作物理模式覆盖；已恢复原模式及5.15。
+此前正式19模式使用单DTD临时EDID；历史生成夹具已不在本工作区或板上，故离线按正式内核
+v4l2-dv-timings.h和已验RTK QHD DTD准备19份夹具，校验和、几何往返、保留音频块与无其他视频时序均通过。
+
+窗口N在停止One-KVM、确认capture_users=0后，先用VIDIOC_S_EDID零块撤回EDID；
+随后写入第一份EDID时SSH已不可达。串口补采原文：
+
+```text
+[43.039041] SError Interrupt on CPU2, code 0x00000000bf000002 -- SError
+[43.039055] CPU: 2 UID: 0 PID: 28 Comm: kworker/2:0 Tainted: G   M       O        7.3.0-vim4kvm-uhd6+
+```
+
+矩阵尚未开始；完整记录在`logs/p0-1-window-n/`及`logs/p0-1-unified73/window-n-run.log`。
+return-baseline因SSH不通失败，105秒后释放票据；补采串口仅取得部分SError，未取得完整调用栈，
+未观察到看门狗复位，不能声称已回5.15。已请求一次物理RESET，启动文件未作持久更改。
+
+离线源码发现：零块EDID调用ddc_stop，恢复探测前TOP reset/port，而运行中工作队列仍访问接收器。
+这与现场相符，但调用栈不完整，根因仍需实板复验。最小修复改为只拉低HPD并清空可读EDID，
+保留DDC资源归属供驱动退出时完整清理；宿主实际C回归覆盖撤回、重复撤回、零块读回和重新发布，
+DDC测试与checkpatch --strict通过。独立内核分支p0-1-unified73已推送f951e2d24d32d；
+定向模块RAM包的来源、BTF及哈希见[修复试验清单](../../packaging/kernel-edge/uhd6-edid-repair.json)。
+此包沿用同一Image、只替换一个匹配模块，仅供修复门禁；未上板，不提升正式锁。通过后仍须完整重封和全量验收。

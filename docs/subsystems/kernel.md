@@ -1,7 +1,7 @@
 # 内核与驱动
 
 当前7.3来源、统一候选及本轮门禁见[uhd6统一记录](../bringup/2026-10-31-uhd6-unified.md)：
-正式源码HEAD为dc220366a122；uhd6已RAM启动、全量门禁未完，tested_build仍为uhd5、保留运行时仍为uhd1，5.15仍默认。
+正式源码HEAD为dc220366a122；uhd6在EDID撤回窗口发生SError，未完成全量验收或安装；tested_build仍为uhd5、保留运行时仍为uhd1，5.15仍默认。
 
 VDIN HDR2主题候选uhd4完整构建见[集成门禁](../bringup/2026-10-31-hdr2-uhd4-gate.md)，
 [新PQ窗口](../bringup/2026-10-31-hdr2-mcp-ice-pq.md)已恢复MCP与接收、通过PQ/DMA/VUI/4K60；

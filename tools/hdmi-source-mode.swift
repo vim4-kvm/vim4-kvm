@@ -1,5 +1,6 @@
 // Compile on macOS; run on the HDMI source host. Does not send HID or play audio.
-// list prints physical display modes; set DISPLAY_ID MODE_ID changes one mode.
+// list prints backing-raster modes; set DISPLAY_ID MODE_ID changes one mode.
+// This does not prove HDMI wire timings: confirm them at the receiver.
 // Save the current mode ID from list and explicitly restore it after a test.
 import CoreGraphics
 import Foundation

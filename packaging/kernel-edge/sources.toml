@@ -182,7 +182,7 @@ onekvm_revision = "2cf9ef4da71f5572173cabe3c60c58730a1d539f"
 # to tested_build or retained_runtime until all P0-1 gates pass.
 [candidate_build]
 release = "7.3.0-vim4kvm-uhd6+"
-status = "partial-ram-gates-not-installed"
+status = "failed-edid-withdrawal-serror-not-installed"
 image_source_revision = "dc220366a1222a03423d5b5987fab3f027ec1d7a"
 build_id = "0db732dfaf0d7f1fb60e5cd61b1423ef7cb403d4"
 image_sha256 = "9cf35c4485bcc58b88691591ec1d9e1a9e3c85edd5facaf17fc656ba3d0180b5"
@@ -212,6 +212,12 @@ manager_revision = "f4b823bc9ebcf9b6e7b45e432087c94ea118c871"
 manager_package = "2.5.1+vim4.20261029.102.dev.6.gf4b823b"
 manager_binary_sha256 = "f619943882710022afbde5a973af4d2812526898c7971e6ebc430127bbdcd676"
 evidence = "docs/bringup/2026-10-31-uhd6-unified.md"
+
+[repair_trial]
+status = "offline-only-not-installed"
+descriptor_path = "uhd6-edid-repair.json"
+kernel_revision = "f951e2d24d32d5df0e701e7c355b3db4c91eaf74"
+kernel_branch = "p0-1-unified73"
 
 [armbian]
 url = "https://github.com/armbian/build.git"
