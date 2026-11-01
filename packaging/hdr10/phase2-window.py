@@ -214,7 +214,7 @@ class Window:
         if previous is not None:
             previous.terminate(); previous.wait(timeout=10)
         tunnel=subprocess.Popen(['ssh','-N','-oExitOnForwardFailure=yes',
-            '-L','18081:127.0.0.1:8081','vim4'])
+            '-L','18081:127.0.0.1:8081','-L','18080:127.0.0.1:8080','vim4'])
         until=time.monotonic()+8
         try:
             while True:
@@ -314,7 +314,7 @@ class Window:
                 self.expected_taint=4096 if gpu=='kbase' else 0
                 booted=True
                 self.cli('boot-candidate',getattr(self.args,gpu),'--sha256',getattr(self.args,gpu+'_sha256'),
-                    '--baseline-files',*json.loads(self.args.baseline_files.read_text()))
+                    '--reuse-staged','--baseline-files',*json.loads(self.args.baseline_files.read_text()))
                 tunnel=self.open_tunnel(tunnel)
                 end=threading.Event(); ready=threading.Event()
                 monitor=threading.Thread(target=self.watch,args=(end,ready),daemon=True); monitor.start()
@@ -404,7 +404,8 @@ def main():
         parser.add_argument('--'+gpu+'-sha256',required=True)
     parser.add_argument('--observer',type=Path,required=True)
     parser.add_argument('--baseline-files',type=Path,required=True)
-    parser.add_argument('--url',default='http://192.168.50.210:8080')
+    parser.add_argument('--url',default='http://127.0.0.1:18080',
+        help='authenticated manager URL; defaults to this window\'s SSH forward')
     parser.add_argument('--local-ip',default='192.168.50.239')
     parser.add_argument('--device',default='/dev/cu.usbserial-1100')
     parser.add_argument('--window',default='hdr10-phase2-'+str(int(time.time())))
