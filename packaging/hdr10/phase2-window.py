@@ -539,7 +539,8 @@ def main():
     args=parser.parse_args()
     if args.plan_only:
         data=preflight(args)
-        print(json.dumps(dict(estimated_minutes=15,hard_max_minutes=30,stability_seconds=args.stability_seconds,
+        print(json.dumps(dict(estimated_minutes=12 if args.remaining_short else 15,hard_max_minutes=30,
+            stability_seconds=10 if args.remaining_short else args.stability_seconds,
             dry_run={k:v['manifest'].get('dry_run',False) for k,v in data.items()},
             board_access=False,uu_official_receive='official client RR plus independently captured shared Main10; rendering unverified')))
         return
