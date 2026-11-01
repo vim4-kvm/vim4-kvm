@@ -227,6 +227,7 @@ def install(args):
                 shutil.copyfile(path, destination)
                 destination.chmod(0o755)
         binary = Path('/opt/vim4-onekvm-edge/one-kvm')
+        binary.parent.mkdir(parents=True, exist_ok=True)
         shutil.copyfile(root / 'runtime/one-kvm', binary)
         binary.chmod(0o755)
         for path in (root / 'runtime/gstreamer-1.0').iterdir():
