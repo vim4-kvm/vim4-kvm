@@ -4,7 +4,12 @@
 校验外部模块ABI/产物与r13用户态来源，生成完整清单；不访问板子、不部署、不含vendor blob。
 
 `tools/hdmi-source-mode.swift`：macOS编译，运行在HDMI信源机；list输出显示器与模式ID，
-set显式选择ID并输出结果，调用者保存/恢复原ID。不发HID、不播声音；改变信源模式须独占板窗。
+set只选择backing raster，不能证明HDMI线上的时序，调用者保存/恢复原ID。
+不发HID、不播声音；改变信源模式须独占板窗。
+
+`packaging/kernel-edge/hdmi-mode-fixture.py`：prepare离线生成19档单DTD EDID，保留音频/HDMI/SCDC；
+measure仅在板票窗口内经V4L2查询真实输入，不写EDID/HPD；verify离线比对测量几何和刷新率。
+`hdmi-modes.json`固定正式内核时序来源；CoreGraphics缩放尺寸不能替代接收器测量。
 
 `packaging/hdr10/ram-payload.py`：离线把已封存r3制品与已审阅HDR2 RAM启动模板封装为
 私有PID1/runtime/完整模块归档，可编译或复用已校验的静态ARM64 PID1；模块流式入tar保留大小写，

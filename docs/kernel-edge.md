@@ -2,7 +2,7 @@
 
 2026-10-31：当前7.3统一候选、来源差异与本轮门禁见
 [uhd6统一记录](bringup/2026-10-31-uhd6-unified.md)。正式源码HEAD为dc220366a122；
-uhd6部分RAM门禁通过，但EDID撤回窗口触发SError，未通过全量验收、未持久安装。sources.toml的tested_build仍为已烟测uhd5，
+uhd6部分RAM门禁通过，EDID撤回SError后已自动回5.15，修复待独立review；全量验收与安装未完成。sources.toml的tested_build仍为已烟测uhd5，
 retained_runtime仍为uhd1；5.15保持默认，切默认由用户在全部P0完成后决定。
 
 当前开发分支已接通 HDMI 输入、VDIN 直接 DMA、Wave5 H.264/H.265、硬件 JPEG 与音频，

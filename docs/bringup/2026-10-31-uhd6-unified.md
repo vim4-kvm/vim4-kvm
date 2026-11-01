@@ -1,6 +1,6 @@
 # 2026-10-31：uhd6 统一候选
 
-状态：r3部分门禁通过，但窗口N发生SError，自动恢复失败，待物理RESET；全量验收未完成，未持久安装。5.15 保持默认；`tested_build` 仍是
+状态：r3部分门禁通过，N窗发生SError后已自动回5.15；修复待独立review，未完成全量验收或安装。5.15 保持默认；`tested_build` 仍是
 已验 uhd5，`retained_runtime` 仍是 uhd1。构建通过不能代替下表验收。
 
 ## 来源与冲突处理
@@ -27,7 +27,7 @@ Panfrost 保留其原生 HDR 已验路径，不把 r7b–r11、coherent 故障 D
 | 项目 | 状态 |
 |---|---|
 | Image/两份 DT/全部模块/三外部模块/BTF/完整清单 | 全部构建、逐文件验证通过 |
-| checkpatch --strict、DT、宿主夹具、主仓离线 unittest | 代码差异、限定DT schema、宿主夹具与367项主仓测试通过，14项环境跳过；历史提交元数据诊断见下文 |
+| checkpatch --strict、DT、宿主夹具、主仓离线 unittest | 代码差异、限定DT schema、宿主夹具与372项主仓测试通过，14项环境跳过；历史提交元数据诊断见下文 |
 | HDMI 模式、H.264、H.265、4K60 | r3 H.264 UHD短接收通过，其余待验 |
 | SARADC（九类之外补核对） | 窗口M/N各2000次channel 2读取，4093，零错误；未操作实体键 |
 | 音频服务（按本任务不测声音） | r3 One-KVM检测到VIM4HDMIRX；HDR切换后48k采集自动恢复，无声音测试 |
@@ -132,12 +132,10 @@ v4l2-dv-timings.h和已验RTK QHD DTD准备19份夹具，校验和、几何往�
 ```
 
 矩阵尚未开始；完整记录在`logs/p0-1-window-n/`及`logs/p0-1-unified73/window-n-run.log`。
-return-baseline因SSH不通失败，105秒后释放票据；补采串口仅取得部分SError，未取得完整调用栈，
-未观察到看门狗复位，不能声称已回5.15。已请求一次物理RESET，启动文件未作持久更改。
+return-baseline因SSH不通失败，105秒后释放票据，当时串口只取得部分SError。
+随后只读取证确认已自动回5.15，13项受保护哈希、四服务及UDC均通过；未执行用户RESET。
+pstore补齐link工作队列的完整panic，固件报告watchdog_reboot，详见[恢复取证与待审修复](2026-10-31-uhd6-edid-review.md)。
 
-离线源码发现：零块EDID调用ddc_stop，恢复探测前TOP reset/port，而运行中工作队列仍访问接收器。
-这与现场相符，但调用栈不完整，根因仍需实板复验。最小修复改为只拉低HPD并清空可读EDID，
-保留DDC资源归属供驱动退出时完整清理；宿主实际C回归覆盖撤回、重复撤回、零块读回和重新发布，
-DDC测试与checkpatch --strict通过。独立内核分支p0-1-unified73已推送f951e2d24d32d；
-定向模块RAM包的来源、BTF及哈希见[修复试验清单](../../packaging/kernel-edge/uhd6-edid-repair.json)。
-此包沿用同一Image、只替换一个匹配模块，仅供修复门禁；未上板，不提升正式锁。通过后仍须完整重封和全量验收。
+独立修复f951e2d24d32d已通过宿主夹具、checkpatch及模块/BTF构建；根因、5.15对照和边界见上述待审记录。
+[定向包清单](../../packaging/kernel-edge/uhd6-edid-repair.json)固定来源与哈希；仅替换一个匹配模块，
+待独立review前不上板。通过后仍须正式来源合入、完整重封和全量验收，不提升当前正式锁。
