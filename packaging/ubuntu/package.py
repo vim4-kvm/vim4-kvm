@@ -303,6 +303,9 @@ fi
 def manager(stage):
     deploy = ROOT / 'vim4-manager/deploy'
     copy(ROOT / 'build/vim4-manager', stage, 'opt/vim4-manager/vim4-manager', 0o755)
+    command = stage / 'usr/sbin/vim4-manager'
+    command.parent.mkdir(parents=True, exist_ok=True)
+    command.symlink_to('/opt/vim4-manager/vim4-manager')
     copy(deploy / 'vim4-manager-helper', stage, 'usr/libexec/vim4-manager-helper', 0o755)
     copy(deploy / 'vim4-manager-helper.sudoers', stage, 'etc/sudoers.d/vim4-manager-helper', 0o440)
     copy(deploy / 'vim4-manager.service', stage, 'usr/lib/systemd/system/vim4-manager.service')

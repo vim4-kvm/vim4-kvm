@@ -19,6 +19,7 @@
 
 ## 2026-11-01
 
+- [vim4-manager HTTPS 部署验收](2026-11-01-manager-https.md) — manager application deployment；443/8443、本机 CA、Tailscale 证书、HTTP 开关
 - [USB 端点合并部署验收](2026-11-01-usb-endpoint-merge.md) — usb application deployment；多媒体键并入绝对鼠标，4/5 端点含麦克风
 - [HDR/r14e、MAC 与音频最终合入](2026-11-01-p0-hdr-final-merge.md) — application audio deployment；用户授权合入并停止，未验边界保留
 - [One-KVM 音频源变化恢复与稳定设备名](2026-11-01-onekvm-audio-source-recovery.md) — audio application deployment；API/现有采集通过，待用户听测

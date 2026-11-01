@@ -55,8 +55,8 @@ revision = "97eb951d10a0ccebd312d6951acc91624f5f0876"
 name = "vim4-manager"
 url = "https://github.com/vim4-kvm/vim4-manager.git"
 branch = "main"
-# Board-validated manager; remote main matches this revision.
-revision = "0c89b292eac4fd07c85fdf142dfa18591c04a329"
+# Board-validated HTTPS manager (docs/bringup/2026-11-01-manager-https.md); remote main matches this revision.
+revision = "70aa76da270bb15ab4dc130edbcb9741c1f0fbc5"
 
 [kernel]
 url = "https://github.com/vim4-kvm/linux.git"
