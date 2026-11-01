@@ -23,6 +23,16 @@ controls；`ffmpeg-vm.py` 只把显式输入通过 stdin 送到构建 VM 的 FFm
 分析用 heavy 票据。UU 的 RR 只证明 RTP 接收，不证明官方客户端解码/渲染。
 `packaging/hdr10/check-phase2-plugins.py`：离线检查组装后目录的实际GStreamer factory及插件路径，
 拒绝被系统副本掩盖的缺项；设备生成的V4L2编码factory在候选窗口用 `--device-factories` 补验。
+`packaging/kernel-edge/package-unified.py`：离线封存uhd6同次Image、互斥GPU DT、全部模块和BTF，
+校验外部模块ABI/产物与r13用户态来源，生成完整清单；不访问板子、不部署、不含vendor blob。
+
+`tools/hdmi-source-mode.swift`：macOS编译，运行在HDMI信源机；list输出显示器与模式ID，
+set只选择backing raster，不能证明HDMI线上的时序，调用者保存/恢复原ID。
+不发HID、不播声音；改变信源模式须独占板窗。
+
+`packaging/kernel-edge/hdmi-mode-fixture.py`：prepare离线生成19档单DTD EDID，保留音频/HDMI/SCDC；
+measure/read-edid仅在板票窗口内经V4L2查询真实输入/已发布EDID，不写EDID/HPD；verify离线比对测量几何和刷新率。
+`hdmi-modes.json`固定正式内核时序来源；CoreGraphics缩放尺寸不能替代接收器测量。
 
 `packaging/hdr10/ram-payload.py`：离线把已封存r3制品与已审阅HDR2 RAM启动模板封装为
 私有PID1/runtime/完整模块归档，可编译或复用已校验的静态ARM64 PID1；模块流式入tar保留大小写，
@@ -81,7 +91,7 @@ PiKVM smoke 可用 `PIKVM_CDP` 接入专用测试 Chrome；结束时关闭测试
 | packaging/kernel-edge/build-gstreamer.py | 容器/VM | 无 | 校验固定源码、应用 V4L2 生命周期补丁并构建私有插件，不改系统库 | [音视频](subsystems/video.md) |
 | packaging/kernel-edge/test_gstreamer_visible_crop.py | 容器/VM | 无 | 提取实际 V4L2 caps／padding／crop 函数，以模拟 ioctl 离线回放 Wave5 非对齐尺寸协商 | [音视频](subsystems/video.md) |
 | packaging/kernel-edge/maintain.py | Linux ARM64 VM | 无 | inventory 导出按主题存放的保序补丁并证明 tree 一致；forward 在新分支 rebase；verify 汇总 host C/KUnit 入口、strict checkpatch、schema/DTB 与可选完整构建，不自动 fetch、部署 | [补丁清单](archive/kernel-patch-inventory.md) |
-| packaging/kernel-edge/register-runtime.py | VM / 板 | inventory 无；register 改启动配置 | 核对完整 Image/模块清单后登记双内核，保留当前默认项；不安装、不重启 | [双内核集成](bringup/2026-10-21-dual-kernel-integration.md) |
+| packaging/kernel-edge/register-runtime.py | VM / 板 | inventory 无；register 登记；install 安装 | 核对完整 Image/模块清单；install仅接受统一uhd6封包，保持5.15默认、不新增备份、不重启 | [双内核集成](bringup/2026-10-21-dual-kernel-integration.md) |
 | packaging/kernel-edge/package-final.py | VM | 无 | 打包 UHD / hdr10rN 完整构建，生成哈希/build ID 清单；--dtb 显式选择 audio-test/display-m0/display-m1；M1 检查驱动与 DT 互斥；不编译 Image、不上板 | [M1 合入](bringup/2026-10-23-display-m2.md) |
 | packaging/kernel-edge/display-once.py、display-once-init.c | VM / 板 | prepare 无；stage 独占；串口选择后重启 | 私有归档与静态 PID 1 模块 bind；保留默认启动项；一次性启动、预检失败回退及重启回默认已实测，物理 RESET 未测 | [M1 安全网](bringup/2026-10-23-display-m1-safety.md) |
 | packaging/kernel-edge/final-window.py、final-board.py | Mac → 板 | stage/dry-run 无；execute 独占、重启 | 双锁备份、安装与回归；kernel-only 保留用户态；--require-all-checks 任一失败回退，--framebuffer-console 登记 tty0；--ir-keytable 将 ARM64 IR 检查工具保存在 bundle；支持正常重启 pstore 读回，HDMI 恢复最多等 35 秒 | [pstore 部署与回退](bringup/2026-10-22-edge-pstore-deploy.md) |
@@ -123,7 +133,7 @@ PiKVM smoke 可用 `PIKVM_CDP` 接入专用测试 Chrome；结束时关闭测试
 | tools/uart-run.py | Mac | 取决于命令 | 串口执行命令；超时后命令可能仍在运行 | [部署](subsystems/deployment.md) |
 | tools/uart-log.py | Mac | 读（`--send` 除外） | 只读抓串口日志 | [部署](subsystems/deployment.md) |
 | tools/oowow-flash.sh | Mac（板在 OOWOW） | 破坏 | 手工 URL 刷写，优先用 board.py flash | [板级工具](board-tools.md) |
-| tools/kernel-install.sh | 板（root） | 改启动项 | 安装厂商内核包并保留 Stock；7.x 在解包前拒绝，走独立 edge 窗口 | [内核](kernel.md) |
+| tools/kernel-install.sh | 板（root） | 安装内核 | 厂商包保留Stock；--edge ARCHIVE --keep-directory-symlink 安装统一7.3完整包，预检/boot空间、仅完全匹配模块允许续装，保留5.15默认 | [内核](kernel.md) |
 | packaging/kernel/promote.py | 板（root，双锁） | 改默认；可删除显式淘汰的未登记旧产物 | 将已运行验证的厂商候选登记至标准 vim4boot 和透传资格清单；可备份回退或显式不备份，不重启 | [原生 HDR 交付](bringup/2026-10-25-native-hdr-dual-path.md) |
 | tools/passthrough-monitor.py | 板（只读硬件，写指定日志） | 不控制硬件 | 默认十分钟观察 TX 重设、RX 失锁与扫描输出停顿；排除无输入/主动关闭，不代替光学黑屏检测 | [HDR 输出开关](bringup/2026-10-25-passthrough-hdr-switch.md) |
 | tools/rootfs-policy.py | 板（root，随包安装） | 改启动项 | 根分区 ordered/commit=5，重启生效 | [Ubuntu 构建](ubuntu-build.md) |
@@ -197,7 +207,7 @@ PiKVM smoke 可用 `PIKVM_CDP` 接入专用测试 Chrome；结束时关闭测试
 | tools/latency-summary.py | Mac | 无 | 匹配时间戳与呈现节奏；`--window-start`/`--window-seconds` 比较长测首尾，拒绝错误帧号匹配及失准时钟 | [延迟测量](latency.md) |
 | tools/latency-rtp-summary.py | 离线 | 无 | 用独立解码验证的 AU→RTP 映射关联所有回调，报告缺失关联及像素回读错帧；拒绝重复映射、SSRC 变化和失准时钟，不通过推算帧周期补帧号 | [延迟测量](latency.md) |
 | tools/video-timing-summary.py | Mac | 无 | 汇总 VIM4_VIDEO_TIMING 分段计时 | [延迟测量](latency.md) |
-| tools/input-target.swift | Mac | 覆盖显示器 | input-check 的临时接收窗口 | [输入验证](input-latency.md) |
+| tools/input-target.swift | Mac | 覆盖显示器 | input-check临时接收窗口；--normal-level允许HDR设置窗口置前 | [输入验证](input-latency.md) |
 | tools/input-summary.py | Mac | 无 | 汇总 input-check 日志 | [输入验证](input-latency.md) |
 | tools/key-repeat.html | 被控电脑浏览器 | 只接收本页面手动输入，不注入键鼠 | Backspace 直连 / KVM 长按频率、首次重复等待、释放事件对照，导出 JSON | [输入验证](input-latency.md#手动对照-backspace-长按) |
 | tools/uu-scroll-probe.swift | Mac | 无 | 只测本窗口收到的滚轮事件，不注入输入 | [UU 滚轮](uu-scroll.md) |

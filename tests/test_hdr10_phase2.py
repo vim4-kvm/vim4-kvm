@@ -131,7 +131,8 @@ class AssemblyTests(unittest.TestCase):
         module_files = {release + '/kernel/xt_DSCP.ko':b'upper', release + '/kernel/xt_dscp.ko':b'lower'}
         mod = root/'modules.tar.gz'; archive(mod, module_files)
         base = {'Image':b'image', 'vim4.dtb':b'kbase-dt', 'panfrost.dtb':b'panfrost-dt', 'modules.tar.gz':mod.read_bytes(),
-                'runtime/usr/libexec/vim4-kvm-run':b'old launcher'}
+                'runtime/usr/libexec/vim4-kvm-run':b'old launcher',
+                'runtime/gstreamer-1.0/old.so':b'old plugin','runtime/one-kvm':b'old app'}
         report = dict(source='a'*40, release=release, kernel_build_id='1'*40,
             modules={name.split('/',1)[1]:pack.digest(data) for name,data in module_files.items()},
             files={name:pack.digest(data) for name,data in base.items()})
@@ -150,6 +151,9 @@ class AssemblyTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as tmp:
             args=self.fixture(Path(tmp))
             def cc(command, **kwargs):
+                bindings=(Path(next(s[2:] for s in command if s.startswith('-I')))/'phase2-bindings.h').read_text()
+                self.assertNotIn('"/gstreamer-1.0/',bindings)
+                self.assertNotIn('"/one-kvm"',bindings)
                 root=next(s.split('=',1)[1].strip('"') for s in command if s.startswith('-DTRIAL_ROOT='))
                 Path(command[-1]).write_bytes(static_elf()+root.encode()+b'\0')
             with patch.object(pack.subprocess, 'run', side_effect=cc), \
@@ -290,6 +294,12 @@ class WindowTests(unittest.TestCase):
                 window.uu_device(Path('/bin/sh'))
             self.assertEqual(call.call_count,1)
 
+    def test_official_uu_other_online_device_is_not_connected(self):
+        runner=object.__new__(window.Window);runner.args=SimpleNamespace(uu_device_id='requested')
+        runner.api=Mock(return_value={'status':{'device_id':'different'}});runner.command=Mock()
+        with self.assertRaisesRegex(RuntimeError,'does not belong'):runner.uu('panfrost')
+        runner.command.assert_not_called()
+
     def test_initial_monitor_read_failure_blocks_workload(self):
         with tempfile.TemporaryDirectory() as tmp,patch.object(window,'REPO',Path(tmp)):
             runner=window.Window(SimpleNamespace(window='monitor-failure'))
@@ -302,6 +312,16 @@ class WindowTests(unittest.TestCase):
                 with self.assertRaisesRegex(RuntimeError,'monitor rejected workload'):
                     runner.command(['never-executed'])
             start.assert_not_called()
+
+    def test_kbase_allows_only_the_formally_expected_external_module_taint(self):
+        for taint in (4096,4096|512,0):
+            with self.subTest(taint=taint),tempfile.TemporaryDirectory() as tmp, \
+                 patch.object(window,'REPO',Path(tmp)):
+                runner=window.Window(SimpleNamespace(window='taint'));runner.expected_taint=4096
+                runner.halt=Mock();done=Mock();done.wait.return_value=True
+                with patch.object(window.w,'ssh',side_effect=['boot complete',str(taint)]):runner.watch(done)
+                if taint==4096:runner.halt.assert_not_called()
+                else:runner.halt.assert_called_once_with('boot fault/taint',None)
 
     def test_fault_deadline_and_lease_reject_all_work_before_remote_dispatch(self):
         for reason in ('fault','deadline','expired','short-lease'):
@@ -453,6 +473,7 @@ int main(void) { printf("%u %u %zu %zu %zu %zu",V4L2_CID_COLORIMETRY_HDR10_CLL_I
                 if value is None:return {'mode':'h265'} if path=='stream/mode' else {'output':{'hdr':False}}
                 policy.write_text('API changed policy');absent.write_text('API created file')
             with patch.object(board,'FILES',[str(policy),str(absent)]), \
+                 patch.object(board,'PROTECTED',[str(policy)]), \
                  patch.object(board,'api',side_effect=api), \
                  patch.object(board.subprocess,'run'):
                 board.save(checkpoint)

@@ -10,6 +10,7 @@ import hashlib
 import importlib.util
 import io
 import json
+import re
 from pathlib import Path, PurePosixPath
 import shutil
 import subprocess
@@ -21,6 +22,8 @@ for name in ('bundle', 'template', 'output'):
     parser.add_argument(name, type=Path)
 parser.add_argument('existing_init', type=Path, nargs='?')
 parser.add_argument('--payload-id')
+parser.add_argument('--unified', action='store_true', help='Use the sealed uhd6 runtime and complete external modules')
+parser.add_argument('--gpu', choices=('kbase', 'panfrost'), default='kbase', help='Unified DT profile')
 args = parser.parse_args()
 bundle, template, output = args.bundle, args.template, args.output
 existing_init = args.existing_init
@@ -35,7 +38,7 @@ layout = {} if args.payload_id is None else dict(namespace='hdr10', payload_id=a
 plan = dict(layout, build_id=build_id)
 prefix = str(once.candidate_prefix(plan))
 trial_root = str(once.candidate_parent(plan)) + '/'
-if release != '7.3.0-vim4kvm-hdr10r3+':
+if release != ('7.3.0-vim4kvm-uhd6+' if args.unified else '7.3.0-vim4kvm-hdr10r3+'):
     raise ValueError('This runtime requires the r3 kernel')
 if existing_init is not None:
     once.static_arm64(existing_init)
@@ -47,27 +50,39 @@ for name, expected in candidate['sha256'].items():
 config = (template / 'extlinux.conf').read_text()
 output.mkdir()
 runtime = output / 'runtime'
-runtime.mkdir()
-for source, name in [('board-runtime', 'vim4-board-runtime'),
-                     ('gadget-prepare', 'vim4-mainline-gadget-prepare'),
-                     ('one-kvm-edge', 'one-kvm-edge')]:
-    shutil.copy2(recipe / source, runtime / name)
-for source, name in [('hdr10-prepare', 'vim4-mainline-prepare'),
-                     ('hdr10-run', 'hdr10-run'), ('one-kvm', 'one-kvm')]:
-    shutil.copy2(bundle / source, runtime / name)
-shutil.copytree(bundle / 'gstreamer-1.0', runtime / 'gstreamer-1.0')
-launcher = runtime / 'vim4-kvm-run'
-launcher.write_text('#!/bin/sh\nset -eu\n'
-    'test "${1:-}" = onekvm || exit 2\nshift\n'
-    'for icd in /opt/vim4-mesa-26.2.6/share/vulkan/icd.d/*panfrost*.json; do\n'
-    ' if [ -r "$icd" ]; then export VK_DRIVER_FILES="$icd"; break; fi\ndone\n'
-    'export PAN_I_WANT_A_BROKEN_VULKAN_DRIVER=1\n'
-    f'exec {prefix}/runtime/hdr10-run "$@"\n')
+if args.unified:
+    shutil.copytree(bundle / 'runtime', runtime)
+    # Keep the existing edge unit executable present; it is masked in FullKvm.
+    shutil.copy2(recipe / 'one-kvm-edge', runtime / 'one-kvm-edge')
+    shutil.copy2(runtime / 'usr/lib/vim4-kvm/python/vim4gpu.py', runtime / 'vim4gpu.py')
+    for name in ('vim4-board-runtime', 'vim4-kvm-run', 'vim4-mainline-prepare', 'vim4-mainline-gadget-prepare'):
+        shutil.copy2(runtime / 'usr/libexec' / name, runtime / name)
+    launcher = runtime / 'vim4-kvm-run'
+    launcher.write_text(launcher.read_text().replace(
+        '/usr/lib/vim4-kvm/python/vim4gpu.py', prefix + '/runtime/vim4gpu.py'))
+else:
+    runtime.mkdir()
+    for source, name in [('board-runtime', 'vim4-board-runtime'),
+                         ('gadget-prepare', 'vim4-mainline-gadget-prepare'),
+                         ('one-kvm-edge', 'one-kvm-edge')]:
+        shutil.copy2(recipe / source, runtime / name)
+    for source, name in [('hdr10-prepare', 'vim4-mainline-prepare'),
+                         ('hdr10-run', 'hdr10-run'), ('one-kvm', 'one-kvm')]:
+        shutil.copy2(bundle / source, runtime / name)
+    shutil.copytree(bundle / 'gstreamer-1.0', runtime / 'gstreamer-1.0')
+    launcher = runtime / 'vim4-kvm-run'
+    launcher.write_text('#!/bin/sh\nset -eu\n'
+        'test "${1:-}" = onekvm || exit 2\nshift\n'
+        'for icd in /opt/vim4-mesa-26.2.6/share/vulkan/icd.d/*panfrost*.json; do\n'
+        ' if [ -r "$icd" ]; then export VK_DRIVER_FILES="$icd"; break; fi\ndone\n'
+        'export PAN_I_WANT_A_BROKEN_VULKAN_DRIVER=1\n'
+        f'exec {prefix}/runtime/hdr10-run "$@"\n')
 for path in runtime.iterdir():
     if path.is_file():
         path.chmod(0o755)
 for name in ('Image', 'vim4.dtb'):
-    shutil.copy2(bundle / name, output / name)
+    source_name = 'panfrost.dtb' if args.unified and args.gpu == 'panfrost' and name == 'vim4.dtb' else name
+    shutil.copy2(bundle / source_name, output / name)
 # Keep case-distinct module names inside tar even on a macOS host filesystem.
 module_files = {}
 with tarfile.open(bundle / 'modules.tar.gz') as archive:
@@ -87,10 +102,13 @@ if module_files != report['modules']:
 if existing_init is None:
     subprocess.run(['cc', '-static', '-O2', '-Wall', '-Wextra', '-Werror',
                     '-DTRIAL_ROOT="' + trial_root + '"',
+                    *(['-DRELEASE="' + release + '"', '-DUNIFIED_RUNTIME'] if args.unified else []),
                     str(recipe / 'trial-init.c'), '-o', str(output / 'init')], check=True)
 else:
     shutil.copy2(existing_init, output / 'init')
-config = config.replace('/var/lib/vim4-kvm/hdr2-unified/' + build_id, prefix)
+config = re.sub(r'/var/lib/vim4-kvm/hdr2-unified/[0-9a-f]{40}', prefix, config)
+if args.unified and args.gpu == 'kbase':
+    config = config.replace('modprobe.blacklist=', 'modprobe.blacklist=panfrost,')
 if f'init={prefix}/init' not in config:
     raise ValueError('Template lacks the reviewed private PID1 path')
 (output / 'extlinux.conf').write_text(config)

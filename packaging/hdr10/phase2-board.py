@@ -17,6 +17,15 @@ UNITS = {'onekvm':'one-kvm.service','nanokvm':'nanokvm.service',
          'jetkvm':'vim4-kvm.service','pikvm':'vim4-pikvm.service'}
 FILES = ['/etc/default/vim4-kvm-hdr','/etc/kvm/video.json','/var/lib/jetkvm/config.json',
          '/var/lib/kvmd/video-codec','/var/lib/kvmd/video-output-height']
+PROTECTED = ['/opt/vim4-onekvm/one-kvm','/opt/vim4-nanokvm/NanoKVM-Server',
+    '/opt/vim4-jetkvm/jetkvm','/usr/bin/ustreamer','/usr/lib/ustreamer/janus/libjanus_ustreamer.so',
+    *['/usr/lib/vim4-kvm/mainline-gstreamer-1.0/'+name for name in
+      ('libgstvfmcap.so','libgstvideo4linux2.so','libgstvim4wave5.so','libgstvim4jpegenc.so')]]
+
+
+def protected_hashes():
+    return {name:hashlib.sha256(Path(name).read_bytes()).hexdigest() if Path(name).is_file() else None
+        for name in PROTECTED}
 
 # include/uapi/linux/v4l2-controls.h; t7-vdin-test registers these standard IDs.
 V4L2_CTRL_CLASS_COLORIMETRY = 0x00a50000
@@ -91,6 +100,7 @@ def save(path):
         else: records[name]=None
     records['onekvm_video']=api('config/video')
     records['onekvm_mode']=api('stream/mode')['mode']
+    records['protected_sha256']=protected_hashes()
     path.write_text(json.dumps(records)); path.chmod(0o600)
 
 
@@ -152,7 +162,10 @@ def restore(path):
             file.write_bytes(bytes.fromhex(record['data']))
             os.chown(file,record['uid'],record['gid']); file.chmod(record['mode'])
         elif file.exists(): file.unlink()
-    print(json.dumps(dict(restored=True,sha256={n:hashlib.sha256(Path(n).read_bytes()).hexdigest()
+    if protected_hashes()!=records['protected_sha256']:
+        raise RuntimeError('baseline application/plugin hashes changed')
+    print(json.dumps(dict(restored=True,protected_sha256=records['protected_sha256'],
+        sha256={n:hashlib.sha256(Path(n).read_bytes()).hexdigest()
         if Path(n).exists() else None for n in FILES})))
 
 

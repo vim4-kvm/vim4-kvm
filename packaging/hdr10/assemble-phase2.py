@@ -69,7 +69,9 @@ def assemble(args):
     files = {'Image': base['Image'], 'vim4.dtb': base[args.gpu + '.dtb'] if args.gpu == 'panfrost' else base['vim4.dtb']}
     runtime = {str(PurePosixPath(name).relative_to('runtime')): value
                for name, value in base.items() if name.startswith('runtime/')}
-    bindings = {name: '/' + name for name in runtime}
+    # Unified packages also carry flat app/plugin files. Plugins are bound as
+    # one directory below; only absolute-layout helpers map directly to /usr.
+    bindings = {name: '/' + name for name in runtime if name.startswith('usr/')}
     for name, target in {'one-kvm':'/opt/vim4-onekvm/one-kvm', 'nanokvm':'/opt/vim4-nanokvm/NanoKVM-Server',
             'jetkvm':'/opt/vim4-jetkvm/jetkvm', 'ustreamer':'/usr/bin/ustreamer',
             'libjanus_ustreamer.so':'/usr/lib/ustreamer/janus/libjanus_ustreamer.so'}.items():

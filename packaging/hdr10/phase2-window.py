@@ -95,6 +95,7 @@ class Window:
         self.output.mkdir(parents=True,exist_ok=False)
         self.failures=[]; self.child=None; self.number=0
         self.operations=threading.Lock()
+        self.expected_taint=0
         self.remote='/var/tmp/'+args.window
         self.deadline=time.monotonic()+30*60-RECOVERY_RESERVE
 
@@ -234,7 +235,7 @@ class Window:
         except Exception as error:
             self.halt('initial monitor read failed: '+str(error),ready)
             return
-        if re.search(FAULT,initial) or taint!='0':
+        if re.search(FAULT,initial) or int(taint)!=self.expected_taint:
             (self.output/'boot-fault.log').write_text(initial)
             self.halt('boot fault/taint',ready); return
         if ready is not None: ready.set()
@@ -243,7 +244,7 @@ class Window:
                 current=w.ssh('vim4','sudo -n dmesg',timeout=5)
                 new=current[len(initial):] if current.startswith(initial) else current
                 taint=w.ssh('vim4','cat /proc/sys/kernel/tainted',timeout=5).strip()
-                if re.search(FAULT,new) or taint!='0':
+                if re.search(FAULT,new) or int(taint)!=self.expected_taint:
                     (self.output/'first-fault.log').write_text(new+'\ntaint='+taint)
                     self.halt('kernel fault/taint'); return
             except Exception as error:
@@ -257,6 +258,8 @@ class Window:
         producer by the independent receiver, not inferred from sender FPS.
         """
         device=self.args.uu_device_id
+        if self.api('config/uu-remote')['status']['device_id']!=device:
+            raise RuntimeError('selected official UU target does not belong to this board')
         self.command([str(self.args.uu_cli),'device','connect',device],timeout=20)
         samples=[]; done=threading.Event()
         def sample():
@@ -306,6 +309,9 @@ class Window:
                 self.require_work(120)
                 m6.toggle(True); m6.close()
             for gpu in ('panfrost','kbase'):
+                # The matched uhd6 kbase modules intentionally set TAINT_OOT_MODULE.
+                # All other taint bits and all WARN/faults remain failures.
+                self.expected_taint=4096 if gpu=='kbase' else 0
                 booted=True
                 self.cli('boot-candidate',getattr(self.args,gpu),'--sha256',getattr(self.args,gpu+'_sha256'),
                     '--baseline-files',*json.loads(self.args.baseline_files.read_text()))
@@ -332,14 +338,14 @@ class Window:
                                 '1920' if height else '3840',str(height or 2160)],timeout=65)
                     self.board('stop')
                     after=json.loads(self.board('status'))
-                    if after['taint'] or after['cma']['CmaFree']<before:
+                    if after['taint']!=self.expected_taint or after['cma']['CmaFree']<before:
                         raise RuntimeError('CMA not fully returned or taint changed')
                     self.recovery_cli('collect','--readonly',reserve_after=RECOVERY_RESERVE)
                     self.board('configure','--app','onekvm')
                     self.uu(gpu)
                     self.board('stop')
                     final=json.loads(self.board('status'))
-                    if final['taint'] or final['cma']['CmaFree']<before:
+                    if final['taint']!=self.expected_taint or final['cma']['CmaFree']<before:
                         raise RuntimeError('UU teardown did not return CMA or taint changed')
                 finally:
                     end.set(); monitor.join(timeout=12)

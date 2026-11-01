@@ -70,3 +70,39 @@ class HDR10PayloadTest(unittest.TestCase):
             self.assertNotEqual(result.returncode, 0)
             self.assertIn('TRIAL_ROOT does not match', result.stderr)
             self.assertFalse((root / 'payload').exists())
+
+    def test_unified_runtime_keeps_driver_selection_and_complete_module_inventory(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            command = self.fixture(root, '/var/lib/vim4-kvm/ram-candidates/hdr10/r6-p010caps/')
+            bundle = root / 'bundle'
+            report = json.loads((bundle / 'manifest.json').read_text())
+            report['release'] = '7.3.0-vim4kvm-uhd6+'
+            (bundle / 'manifest.json').write_text(json.dumps(report))
+            with tarfile.open(bundle / 'modules.tar.gz', 'w:gz') as archive:
+                for name, value in [('kernel/xt_DSCP.ko', b'upper'), ('kernel/xt_dscp.ko', b'lower')]:
+                    member = tarfile.TarInfo(report['release'] + '/' + name)
+                    member.size = len(value)
+                    archive.addfile(member, io.BytesIO(value))
+            runtime = bundle / 'runtime'
+            for name in ('vim4-board-runtime', 'vim4-kvm-run', 'vim4-mainline-prepare', 'vim4-mainline-gadget-prepare'):
+                target = runtime / 'usr/libexec' / name
+                target.parent.mkdir(parents=True, exist_ok=True)
+                target.write_text(name)
+            (runtime / 'usr/libexec/vim4-kvm-run').write_text(
+                'exec python3 /usr/lib/vim4-kvm/python/vim4gpu.py "$@"\n')
+            target = runtime / 'usr/lib/vim4-kvm/python/vim4gpu.py'
+            target.parent.mkdir(parents=True)
+            target.write_text('driver-selected')
+            (bundle / 'candidate.json').write_text(json.dumps(dict(sha256={
+                str(path.relative_to(bundle)): once.sha(path)
+                for path in bundle.rglob('*') if path.is_file() and path.name != 'candidate.json'})))
+            subprocess.run([*command, '--unified'], check=True, capture_output=True)
+            with tarfile.open(root / 'payload.tar.gz') as archive:
+                plan, _, entries = once.read_trial(archive)
+                self.assertEqual(plan['release'], report['release'])
+                launcher = archive.extractfile('runtime/vim4-kvm-run').read().decode()
+                self.assertIn(str(once.candidate_prefix(plan)) + '/runtime/vim4gpu.py', launcher)
+                self.assertNotIn('/usr/lib/vim4-kvm/python/vim4gpu.py', launcher)
+                self.assertEqual(archive.extractfile('runtime/vim4gpu.py').read(), b'driver-selected')
+                self.assertEqual(sum(name.startswith('modules/') for name in entries), 2)

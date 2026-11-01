@@ -147,11 +147,18 @@ int main(void)
 #else
 	const char *names[] = {"vim4-board-runtime", "vim4-kvm-run",
 		"vim4-mainline-prepare", "vim4-mainline-gadget-prepare", "one-kvm-edge",
-		"one-kvm", "gstreamer-1.0"};
+		"one-kvm", "gstreamer-1.0",
+	};
 	const char *targets[] = {"/usr/libexec/vim4-board-runtime", "/usr/libexec/vim4-kvm-run",
 		"/usr/libexec/vim4-mainline-prepare", "/usr/libexec/vim4-mainline-gadget-prepare",
-		"/opt/vim4-onekvm-edge/one-kvm-edge", "/opt/vim4-onekvm/one-kvm",
-		"/usr/lib/vim4-kvm/mainline-gstreamer-1.0"};
+		"/opt/vim4-onekvm-edge/one-kvm-edge",
+#ifdef UNIFIED_RUNTIME
+		"/opt/vim4-onekvm-edge/one-kvm",
+#else
+		"/opt/vim4-onekvm/one-kvm",
+#endif
+		"/usr/lib/vim4-kvm/mainline-gstreamer-1.0",
+	};
 #endif
 	for (unsigned int i = 0; i < sizeof(names) / sizeof(names[0]); i++) {
 		step = "private runtime bind";

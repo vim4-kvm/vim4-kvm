@@ -16,7 +16,9 @@ build ID `f483ea42fee88be39ea67c43478638be67334d6e`，含simpledrm控制台和�
 [M0正式部署](bringup/2026-10-23-display-m0-r4.md)。下方厂商5.15流程保留。
 正式版持久运行时支持与部署脚本见 [离线准备](bringup/2026-10-22-deploy-7-3-final-prep.md)；
 第二轮即时 EDID 检查触发的回退另见 [历史窗口](bringup/2026-10-22-edge-7-3-final-deploy.md)。
-7.x 使用 `/boot/edge` 与完整匹配模块，不使用下方的厂商 `kernel-install.sh`。
+7.x 使用 `/boot/edge` 与完整匹配模块；统一uhd6包仅可在全量门禁通过后用
+`tools/kernel-install.sh --edge unified.tar.gz --keep-directory-symlink`安装，保留5.15默认。
+该路径要求脚本及相邻`packaging/kernel-edge/register-runtime.py`同时存在，不使用厂商默认安装路径。
 
 ## 构建（OrbStack VM `vim4-build`，Ubuntu 24.04 arm64）
 
