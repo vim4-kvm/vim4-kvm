@@ -1,11 +1,11 @@
 {
   "kind": "offline-userspace-overlay-not-boot-candidate",
-  "name": "hdr10-p0-5-userspace-r14d2",
-  "supersedes": "hdr10-p0-5-userspace-r14c",
+  "name": "hdr10-p0-5-userspace-r14e",
+  "supersedes": "hdr10-p0-5-userspace-r14d2",
   "branch": "p0-5-native-hdr",
   "sources": {
     "gst-venc": "3a74cc9c0f074ff8bf980440e426438bba65d1db",
-    "gst-vfmcap": "b2df852e6b294088b53dc0caf4a38a4b1411f1fc",
+    "gst-vfmcap": "5de382e36350fc37b43d9ff11f693fa3f2bb0323",
     "One-KVM": "50f0b4d433c0ebb8c83f806f49084622547afe99",
     "NanoKVM": "0525dea7d5d2417b3b5c5eee754f026d9ca4c671",
     "kvm": "166719c5b8acdfb1ab995c440aabc8a0e39ae08d",
@@ -20,7 +20,7 @@
     "gstreamer-1.0/libgstvim4hevc10.so": "f0de5d107d4d2c55a4ac2dfd2bf47054363ad90a45fab19c38b4ab41e0931e21",
     "gstreamer-1.0/libgstvideo4linux2.so": "b9269d0509d43b8107a8c686415f7f0c7e5a86e17c04a19d685eb3dca736c4f0",
     "gstreamer-1.0/libgstvim4wave5.so": "521eac5a15625e6dbd3df68c4c873dbef9648730b3554b39744cc4403169a0a8",
-    "gstreamer-1.0/libgstvfmcap.so": "f30eb256d38cd960b74b6596a9e3afb681352fd28a862e21c2b4d07c1712f40d",
+    "gstreamer-1.0/libgstvfmcap.so": "3edfad305031b282af802f3cc773216f6344b431083e6735efe7a4cc4e73847b",
     "gstreamer-1.0/libgstvim4jpegenc.so": "bc21e64cdaf932d7eb25712bcd9e41bd476ad7858de1bbe9e72a202cab5c730b",
     "web/assets/CheckOutlined-Cz7KJ6JO.js": "9bcf5bfc5f39279ccccb5d90292cdeb39c34781e5a519b16b8314e646a6e33c5",
     "web/assets/LockOutlined-T_VghTy_.js": "14ad7ec9fb5087b89b3c59ac6f4bddf16cf696418c19786e3af1410a794278a8",
@@ -56,18 +56,14 @@
     "rust_passed": 822,
     "rust_ignored": 4,
     "go": "NanoKVM and JetKVM VIM4 full suites and builds passed",
-    "capture": "7 Meson tests passed",
+    "capture": "7 Meson suites passed; actual NV12 passthrough pipeline returns 60/60 buffers (before fix 0/60)",
     "encoder": "DMA lifecycle, 9 source contracts including metadata recovery, profile selection and 4 HDR10 tests passed",
     "pikvm": "2 host tests including Wave5 SDR lifetime/policy roundtrip/backoff; uStreamer/Janus build passed",
     "shader_max_8bit_error": 1,
     "nanokvm_web": "pnpm frozen install and VITE_PLATFORM=vim4 production build; assets included beside private executable"
   },
   "pending": [
-    "r14d RAM acceptance on formal uhd6 (r14c One-KVM/Panfrost stability retained)",
-    "official UU HDR receive",
-    "three application viewers, scaling and mode roundtrips",
-    "GPU screenshots and both GPU stacks on board",
-    "nonzero HDMI metadata byte fidelity",
-    "stability/CMA/taint/WARNING"
+    "fixed PiKVM HDR/SDR roundtrip, official UU receive, kbase, CMA on formal uhd6",
+    "nonzero HDMI metadata, HLG and dynamic HDR without real source remain unverified"
   ]
 }

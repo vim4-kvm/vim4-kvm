@@ -260,6 +260,21 @@ class AssemblyTests(unittest.TestCase):
 
 
 class WindowTests(unittest.TestCase):
+    def test_pikvm_snapshot_evidence_requires_fresh_jpeg(self):
+        for image,seconds,valid in ((b'\xff\xd8jpeg',.1,True),(b'not-jpeg',.1,False),(b'\xff\xd8jpeg',2.,False)):
+            with self.subTest(image=image,seconds=seconds),tempfile.TemporaryDirectory() as tmp:
+                runner=object.__new__(window.Window);runner.output=Path(tmp)
+                runner.work_ssh=Mock(return_value=json.dumps(dict(
+                    jpeg=window.base64.b64encode(image).decode(),seconds=seconds,state={'streamer':{}})))
+                if valid:
+                    runner.record_pikvm_jpeg('panfrost','mapped')
+                    self.assertEqual((Path(tmp)/'panfrost-pikvm-mapped-sdr.jpg').read_bytes(),image)
+                    self.assertNotIn('jpeg',json.loads((Path(tmp)/'panfrost-pikvm-mapped-state.json').read_text()))
+                else:
+                    with self.assertRaisesRegex(RuntimeError,'JPEG branch'):runner.record_pikvm_jpeg('panfrost','mapped')
+                    self.assertEqual(list(Path(tmp).iterdir()),[])
+                self.assertEqual(runner.work_ssh.call_args.kwargs['timeout'],6)
+
     def test_source_recovery_primes_cache_before_hid_and_reaps_viewer(self):
         for failed in (False,True):
             with self.subTest(failed=failed),tempfile.TemporaryDirectory() as tmp:

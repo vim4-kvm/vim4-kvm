@@ -316,6 +316,23 @@ class Window:
                     except subprocess.TimeoutExpired:
                         viewer.kill();viewer.wait(timeout=max(0,min(5,deadline-time.monotonic())))
 
+    def record_pikvm_jpeg(self,gpu,mode):
+        script="""import base64,json,time,urllib.request
+started=time.monotonic()
+with urllib.request.urlopen('http://127.0.0.1:8081/api/streamer/snapshot',timeout=2) as response:
+    image=response.read()
+elapsed=time.monotonic()-started
+with urllib.request.urlopen('http://127.0.0.1:8081/api/streamer',timeout=2) as response:
+    state=json.load(response)
+print(json.dumps(dict(jpeg=base64.b64encode(image).decode(),seconds=elapsed,state=state)))
+"""
+        jpeg=json.loads(self.work_ssh('python3 -c '+shlex.quote(script),timeout=6))
+        image=base64.b64decode(jpeg.pop('jpeg'))
+        if not image.startswith(b'\xff\xd8') or jpeg['seconds']>=2:
+            raise RuntimeError('PiKVM live JPEG branch failed')
+        (self.output/f'{gpu}-pikvm-{mode}-sdr.jpg').write_bytes(image)
+        (self.output/f'{gpu}-pikvm-{mode}-state.json').write_text(json.dumps(jpeg,indent=2))
+
     def run(self):
         queue,token=w.require_board()
         key=json.loads(w.ssh('vim4','cat /var/lib/one-kvm/mcp/credentials.json'))['api_key']
@@ -358,13 +375,20 @@ class Window:
                         str(self.output/f'{gpu}-onekvm-native'),'pq',str(seconds),'3840','2160',
                         self.args.local_ip],timeout=seconds+70)
                     self.screenshot(client,self.output/f'{gpu}-native-sdr-snapshot.jpg')
-                    for app in ('nanokvm','jetkvm','pikvm'):
+                    apps=('pikvm',) if gpu=='panfrost' and self.args.panfrost_pikvm_only else ('nanokvm','jetkvm','pikvm')
+                    for app in apps:
                         for name,height,hdr in (('native',0,'on'),('scaled',1080,'on'),('mapped',1080,'off'),('restored',0,'on')):
                             self.board('configure','--app',app,'--height',str(height),'--hdr',hdr)
                             url=self.args.url.rstrip('/')+('/kvm/' if app=='pikvm' else '/')
                             self.command(['node',str(HERE/'application-receiver.mjs'),url,app,
                                 str(self.output/f'{gpu}-{app}-{name}'),'pq' if hdr=='on' else 'sdr','10',
                                 '1920' if height else '3840',str(height or 2160)],timeout=65)
+                            if app=='pikvm':
+                                self.record_pikvm_jpeg(gpu,name)
+                    journal=self.work_ssh('sudo -n journalctl -b -u vim4-pikvm.service --no-pager -o short-monotonic',timeout=8)
+                    (self.output/f'{gpu}-pikvm-journal.log').write_text(journal)
+                    if 'no frames for 3 seconds' in journal:
+                        raise RuntimeError('PiKVM capture restarted after starvation')
                     self.board('stop')
                     after=json.loads(self.board('status'))
                     if after['taint']!=self.expected_taint or after['cma']['CmaFree']<before:
@@ -439,6 +463,8 @@ def main():
     parser.add_argument('--ffmpeg',default='ffmpeg',help='local executable for post-window SPS/VUI checks')
     parser.add_argument('--stability-seconds',type=int,choices=(10,180),default=180,
         help='use 10 only when reusing a retained 180-second sample of the identical payload')
+    parser.add_argument('--panfrost-pikvm-only',action='store_true',
+        help='retain separately recorded Panfrost NanoKVM/JetKVM evidence; test PiKVM, UU and the full kbase matrix')
     parser.add_argument('--plan-only',action='store_true')
     parser.add_argument('--execute',action='store_true',help=argparse.SUPPRESS)
     args=parser.parse_args()
@@ -458,7 +484,8 @@ def main():
         subprocess.run(command,check=True)
         subprocess.run([str(REPO/'tools/board-queue'),'run','--heavy','--who','hdr10',
             '--purpose','phase2-bitstream-analysis','--',sys.executable,str(HERE/'analyze-phase2.py'),
-            str(REPO/'logs'/args.window),'--ffmpeg',args.ffmpeg],check=True)
+            str(REPO/'logs'/args.window),'--ffmpeg',args.ffmpeg,
+            *(['--panfrost-pikvm-only'] if args.panfrost_pikvm_only else [])],check=True)
 
 
 if __name__=='__main__': main()
