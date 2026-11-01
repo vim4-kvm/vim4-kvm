@@ -66,7 +66,7 @@ def check_sei(data,metadata):
         nonzero_source=any(any(value) for value in expected.values()))
 
 
-def analyze(directory,ffmpeg,panfrost_pikvm_only=False):
+def analyze(directory,ffmpeg,panfrost_pikvm_only=False,remaining_short=False):
     results=[]
     for prefix in sorted(directory.glob('*/first-keyframe.h265')):
         result=json.loads((prefix.parent/'result.json').read_text())['result']
@@ -78,10 +78,11 @@ def analyze(directory,ffmpeg,panfrost_pikvm_only=False):
         pq=result['hdr']=='pq';proof=dict(sample=prefix.parent.name,sps_vui=check_trace(process.stderr,pq))
         if pq: proof['sei']=check_sei(prefix.read_bytes(),json.loads((directory/f'{gpu}-hdmi-metadata.json').read_text()))
         results.append(proof)
-    expected=20 if panfrost_pikvm_only else 28
+    expected=11 if remaining_short else (20 if panfrost_pikvm_only else 28)
     if len(results)!=expected: raise ValueError(f'expected {expected} HEVC samples, got {len(results)}')
     (directory/'bitstream-proof.json').write_text(json.dumps(dict(samples=results,
         retained_panfrost_apps=['nanokvm','jetkvm'] if panfrost_pikvm_only else [],
+        shared_gpu_paths_only=remaining_short,
         uu_limit='Shared producer plus official-client RR; client decoding/rendering remains unproven'),indent=2)+'\n')
 
 
@@ -90,4 +91,5 @@ if __name__=='__main__':
     parser.add_argument('directory',type=Path)
     parser.add_argument('--ffmpeg',default='ffmpeg')
     parser.add_argument('--panfrost-pikvm-only',action='store_true')
-    args=parser.parse_args();analyze(args.directory,args.ffmpeg,args.panfrost_pikvm_only)
+    parser.add_argument('--remaining-short',action='store_true')
+    args=parser.parse_args();analyze(args.directory,args.ffmpeg,args.panfrost_pikvm_only,args.remaining_short)

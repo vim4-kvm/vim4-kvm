@@ -45,6 +45,17 @@ def chrome_front(screen):
         raise GateError('Unqualified original M6 foreground')
 
 
+def source_foreground(screen):
+    try:
+        chrome_front(screen)
+        return 'Chrome'
+    except GateError:
+        row=find(screen,'Grok Bot',top=True)
+        if (screen['width'],screen['height'])!=(1920,1080) or not 35<=row['x']<=90 or row['text']!='Grok Bot':
+            raise GateError('Unknown M6 foreground')
+        return 'Grok Bot'
+
+
 def settings(screen):
     front_settings(screen)
     title = [row for row in screen['items'] if row['text'].lstrip('> •') == 'Displays' and row['x'] > 1200]
@@ -61,6 +72,7 @@ class M6:
         self.output.mkdir(parents=True, exist_ok=True)
         self.sequence = 0
         self.initial_hdr = None
+        self.initial_app = 'Chrome'
         self.restore_needed = False
         self.deadline = None
 
@@ -75,11 +87,43 @@ class M6:
         return self.source_hdr(timeout=self.remaining(30))
 
     def qualify(self, initial_hdr):
-        # This window only knows how to return to its original Chrome window.
-        # Reject a pre-existing Settings foreground without touching it.
         screen = self.screen()
-        chrome_front(screen)
+        # User explicitly allowed the observed Grok Bot -> Chrome preparation
+        # and requires restoring that original foreground at the end.
+        self.initial_app=source_foreground(screen)
         self.initial_hdr = initial_hdr
+
+    def activate_recent(self,target):
+        expected={'Google Chrome':'Chrome','Grok Bot':'Grok Bot'}[target]
+        if source_foreground(self.screen())==expected:return expected
+        self.click((27,13))
+        deadline=time.monotonic()+8
+        while True:
+            menu=self.screen()
+            try:
+                row=find(menu,'Recent Items')
+                if row['x']>250 or not 25<row['y']<220:raise GateError('Unqualified Recent Items menu')
+                break
+            except GateError:
+                if time.monotonic()>=deadline:raise
+                time.sleep(self.remaining(.25))
+        self.hid('mouse_move',{'coordinate':[round(row['x']+row['w']/2),round(row['y']+row['h']/2)]})
+        deadline=time.monotonic()+8
+        while True:
+            menu=self.screen()
+            choices=[r for r in menu['items'] if r['text'].lstrip('• ')==target and 250<r['x']<700 and 25<r['y']<950]
+            if len(choices)==1:break
+            if time.monotonic()>=deadline:raise GateError('Requested recent application is not visible')
+            time.sleep(self.remaining(.25))
+        row=choices[0]
+        self.click((round(row['x']+row['w']/2),round(row['y']+row['h']/2)))
+        deadline=time.monotonic()+8
+        while True:
+            try:
+                if source_foreground(self.screen())==expected:return expected
+            except GateError:pass
+            if time.monotonic()>=deadline:raise GateError('Application foreground did not change')
+            time.sleep(self.remaining(.25))
 
     def hid(self, name, arguments=None):
         if self.initial_hdr is None:
@@ -204,7 +248,7 @@ class M6:
             time.sleep(self.remaining(.25))
         settings(self.screen())
 
-    def close(self):
+    def close(self, expected='Chrome'):
         screen = self.screen()
         def apple_menu(current):
             return any(r['text'].lstrip('• ') == 'About This Mac' and r['x']<250
@@ -235,9 +279,10 @@ class M6:
         while True:
             current = self.screen()
             try:
-                chrome_front(current)
+                app=source_foreground(current)
+                if expected is not None and app!=expected:raise GateError('Original foreground did not return')
                 if apple_menu(current): raise GateError('Apple menu remains open')
-                break
+                return app
             except GateError:
                 if time.monotonic() >= deadline: raise
                 time.sleep(self.remaining(.25))
@@ -247,7 +292,9 @@ class M6:
         self.deadline = deadline
         self.remaining(30)
         self.toggle(self.initial_hdr)
-        self.close()
+        app=self.close(expected=None if self.initial_app=='Grok Bot' else 'Chrome')
+        if app!=self.initial_app:
+            self.activate_recent('Grok Bot')
         if self.read_source() != self.initial_hdr:
             raise GateError('M6 HDR was not restored to its saved state')
         self.restore_needed = False

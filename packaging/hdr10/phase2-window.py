@@ -138,6 +138,7 @@ class Window:
                         raise
                     time.sleep(.2)
                 if self.child.returncode: raise RuntimeError('window command failed: '+str(path))
+                return path
             finally: self.child=None
 
     def cli(self,*args,timeout=300):
@@ -279,13 +280,36 @@ class Window:
             fresh=[s for s in remote if s['video_stats']['receiver']['age_ms']<6000
                 and s['video_stats']['receiver']['total_lost']==0]
             if len(fresh)<2: raise RuntimeError('no fresh official-client HEVC Receiver Reports')
+            rendered=self.record_uu_render(gpu)
             (self.output/f'{gpu}-uu-receive.json').write_text(json.dumps(dict(
                 official_client=True,shared_producer='Main10/PQ independently captured',receiver_reports=samples,
-                proves='RTP reception; does not prove UU decoder/rendering or optical HDR'),indent=2))
+                rendered=rendered,proves='official client renders source Chrome; shared stream independently Main10/PQ',
+                limit='No optical HDR or independent native-client decoded-FPS measurement'),indent=2))
         finally:
             done.set(); thread.join(timeout=16)
             subprocess.run([str(self.args.uu_cli),'device','disconnect',device],check=True,timeout=15,
                 stdout=subprocess.DEVNULL)
+
+    def record_uu_render(self,gpu):
+        # Read only the official client's own window. No M4 HID, foreground
+        # activation or application setting changes are used for this proof.
+        listing=self.command([str(self.args.uu_cli),'device','list'],timeout=10)
+        devices=json.loads(listing.read_text())['data']['devices']
+        name=next(d['deviceName'] for d in devices if d['deviceId']==self.args.uu_device_id)
+        script='ObjC.import("CoreGraphics"); var a=ObjC.deepUnwrap(ObjC.castRefToObject($.CGWindowListCopyWindowInfo(1,0))); JSON.stringify(a.filter(w=>/UU|uuremote/i.test(w.kCGWindowOwnerName)).map(w=>({id:w.kCGWindowNumber,owner:w.kCGWindowOwnerName,title:w.kCGWindowName,bounds:w.kCGWindowBounds})))'
+        listing=self.command(['osascript','-l','JavaScript','-e',script],timeout=5)
+        windows=json.loads(listing.read_text())
+        (self.output/f'{gpu}-uu-windows.json').write_text(json.dumps(windows,indent=2))
+        matched=[w for w in windows if name.lower() in (w.get('title') or '').lower()
+            and w['bounds']['Width']>=800 and w['bounds']['Height']>=500]
+        if len(matched)!=1:raise RuntimeError('Cannot identify the official UU video window for this device')
+        path=self.output/f'{gpu}-uu-render.png'
+        self.command(['screencapture','-x','-o','-l',str(matched[0]['id']),str(path)],timeout=5)
+        observed=self.command([str(self.args.observer),str(path)],timeout=10)
+        screen=json.loads(observed.read_text())
+        if not any('Chrome' in row['text'] and row['y']<screen['height']/3 for row in screen['items']):
+            raise RuntimeError('Official UU window has not rendered the source Chrome desktop')
+        return matched[0]
 
     def restore_source(self,m6,reserve_after):
         with self.operations:
@@ -362,9 +386,9 @@ print(json.dumps(dict(jpeg=base64.b64encode(image).decode(),seconds=elapsed,stat
             screen=json.loads(subprocess.check_output([str(self.args.observer),
                 str(receiver/'source-ready.jpg')],text=True,timeout=10))
             (directory/'actual-source.json').write_text(json.dumps(screen,indent=2))
-            # A fresh non-Chrome foreground is a refusal, never a reason to
-            # widen the source-action authorization or operate its UI.
-            g.chrome_front(screen)
+            # Only the two observed/authorized source applications qualify.
+            # Grok Bot is saved and restored around the approved Chrome test.
+            g.source_foreground(screen)
             qualified=True
             return viewer
         finally:
@@ -392,6 +416,7 @@ print(json.dumps(dict(jpeg=base64.b64encode(image).decode(),seconds=elapsed,stat
                 self.board('save'); saved=True
                 with self.operations:
                     self.require_work(120)
+                    if m6.initial_app=='Grok Bot':m6.activate_recent('Google Chrome')
                     m6.toggle(True); m6.close()
             finally:self.stop_m6_preview(preview)
             for gpu in ('panfrost','kbase'):
@@ -410,19 +435,20 @@ print(json.dumps(dict(jpeg=base64.b64encode(image).decode(),seconds=elapsed,stat
                     self.board('stop'); before=json.loads(self.board('status'))['cma']['CmaFree']
                     self.board('configure','--app','onekvm')
                     (self.output/f'{gpu}-hdmi-metadata.json').write_text(self.board('metadata'))
-                    seconds=self.args.stability_seconds if gpu=='panfrost' else 10
+                    seconds=10 if self.args.remaining_short else (self.args.stability_seconds if gpu=='panfrost' else 10)
                     self.command(['node',str(HERE/'application-receiver.mjs'),self.args.url,'onekvm',
                         str(self.output/f'{gpu}-onekvm-native'),'pq',str(seconds),'3840','2160',
                         self.args.local_ip],timeout=seconds+70)
                     self.screenshot(client,self.output/f'{gpu}-native-sdr-snapshot.jpg')
-                    apps=('pikvm',) if gpu=='panfrost' and self.args.panfrost_pikvm_only else ('nanokvm','jetkvm','pikvm')
+                    apps=('pikvm',) if self.args.remaining_short or (gpu=='panfrost' and self.args.panfrost_pikvm_only) else ('nanokvm','jetkvm','pikvm')
                     for app in apps:
                         for name,height,hdr in (('native',0,'on'),('scaled',1080,'on'),('mapped',1080,'off'),('restored',0,'on')):
                             self.board('configure','--app',app,'--height',str(height),'--hdr',hdr)
                             url=self.args.url.rstrip('/')+('/kvm/' if app=='pikvm' else '/')
+                            sample_seconds=30 if self.args.remaining_short and name=='mapped' else 10
                             self.command(['node',str(HERE/'application-receiver.mjs'),url,app,
-                                str(self.output/f'{gpu}-{app}-{name}'),'pq' if hdr=='on' else 'sdr','10',
-                                '1920' if height else '3840',str(height or 2160)],timeout=65)
+                                str(self.output/f'{gpu}-{app}-{name}'),'pq' if hdr=='on' else 'sdr',str(sample_seconds),
+                                '1920' if height else '3840',str(height or 2160)],timeout=sample_seconds+55)
                             if app=='pikvm':
                                 self.record_pikvm_jpeg(gpu,name)
                     journal=self.work_ssh('sudo -n journalctl -b -u vim4-pikvm.service --no-pager -o short-monotonic',timeout=8)
@@ -434,12 +460,13 @@ print(json.dumps(dict(jpeg=base64.b64encode(image).decode(),seconds=elapsed,stat
                     if after['taint']!=self.expected_taint or after['cma']['CmaFree']<before:
                         raise RuntimeError('CMA not fully returned or taint changed')
                     self.recovery_cli('collect','--readonly',reserve_after=RECOVERY_RESERVE)
-                    self.board('configure','--app','onekvm')
-                    self.uu(gpu)
-                    self.board('stop')
-                    final=json.loads(self.board('status'))
-                    if final['taint']!=self.expected_taint or final['cma']['CmaFree']<before:
-                        raise RuntimeError('UU teardown did not return CMA or taint changed')
+                    if not self.args.remaining_short or gpu=='kbase':
+                        self.board('configure','--app','onekvm')
+                        self.uu(gpu)
+                        self.board('stop')
+                        final=json.loads(self.board('status'))
+                        if final['taint']!=self.expected_taint or final['cma']['CmaFree']<before:
+                            raise RuntimeError('UU teardown did not return CMA or taint changed')
                 finally:
                     end.set(); monitor.join(timeout=12)
                 if self.failures: raise RuntimeError('; '.join(self.failures))
@@ -505,6 +532,8 @@ def main():
         help='use 10 only when reusing a retained 180-second sample of the identical payload')
     parser.add_argument('--panfrost-pikvm-only',action='store_true',
         help='retain separately recorded Panfrost NanoKVM/JetKVM evidence; test PiKVM, UU and the full kbase matrix')
+    parser.add_argument('--remaining-short',action='store_true',
+        help='finish PiKVM/UU and both shared GPU paths; retain the separately identified r14d2 app/stability evidence')
     parser.add_argument('--plan-only',action='store_true')
     parser.add_argument('--execute',action='store_true',help=argparse.SUPPRESS)
     args=parser.parse_args()
@@ -525,7 +554,8 @@ def main():
         subprocess.run([str(REPO/'tools/board-queue'),'run','--heavy','--who','hdr10',
             '--purpose','phase2-bitstream-analysis','--',sys.executable,str(HERE/'analyze-phase2.py'),
             str(REPO/'logs'/args.window),'--ffmpeg',args.ffmpeg,
-            *(['--panfrost-pikvm-only'] if args.panfrost_pikvm_only else [])],check=True)
+            *(['--panfrost-pikvm-only'] if args.panfrost_pikvm_only else []),
+            *(['--remaining-short'] if args.remaining_short else [])],check=True)
 
 
 if __name__=='__main__': main()

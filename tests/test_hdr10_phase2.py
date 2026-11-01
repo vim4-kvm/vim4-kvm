@@ -42,6 +42,25 @@ def held_queue():
 
 
 class M6Tests(unittest.TestCase):
+    def test_approved_grok_foreground_switches_chrome_and_restores_original(self):
+        grok=dict(SCREENS['chrome'],items=[dict(text='Grok Bot',x=53,y=8,w=70,h=20)])
+        def recent(front,target):
+            return dict(front,items=[*front['items'],dict(text='Recent Items',x=20,y=140,w=100,h=20),
+                dict(text=target,x=290,y=180,w=130,h=20)])
+        client=Mock();control=gates.M6(client,lambda timeout=30:False,'/unused',
+            Path(tempfile.gettempdir())/'m6-grok')
+        control.screen=Mock(side_effect=[grok,grok,recent(grok,'Google Chrome'),
+            recent(grok,'Google Chrome'),SCREENS['chrome'],SCREENS['chrome'],SCREENS['chrome'],
+            SCREENS['chrome'],recent(SCREENS['chrome'],'Grok Bot'),
+            recent(SCREENS['chrome'],'Grok Bot'),grok])
+        control.qualify(False)
+        client.call.assert_not_called()
+        control.activate_recent('Google Chrome')
+        control.restore()
+        self.assertEqual(control.initial_app,'Grok Bot')
+        self.assertFalse(control.restore_needed)
+        self.assertEqual(sum(c.args[0]=='left_click' for c in client.call.call_args_list),4)
+
     def test_observed_combined_chrome_menu_qualifies_without_hid(self):
         screen = dict(SCREENS['chrome'], items=[dict(
             text='• Chrome File Edit View History Bookmarks',
@@ -260,8 +279,8 @@ class AssemblyTests(unittest.TestCase):
 
 
 class WindowTests(unittest.TestCase):
-    def test_live_m6_preview_rejects_frozen_or_non_chrome_without_source_actions(self):
-        for name,decoded in (('chrome',120),('grok',120),('chrome',0)):
+    def test_live_m6_preview_rejects_frozen_or_unknown_without_source_actions(self):
+        for name,decoded in (('chrome',120),('grok',120),('unknown',120),('chrome',0)):
             with self.subTest(name=name,decoded=decoded),tempfile.TemporaryDirectory() as tmp:
                 runner=object.__new__(window.Window);runner.output=Path(tmp);runner.require_work=Mock()
                 runner.args=SimpleNamespace(url='http://localhost:18080',local_ip='192.0.2.1',observer=Path('/observer'))
@@ -272,11 +291,11 @@ class WindowTests(unittest.TestCase):
                     (directory/'source-ready.jpg').write_bytes(b'observer fixture')
                     return viewer
                 screen=SCREENS['chrome'] if name=='chrome' else dict(SCREENS['chrome'],
-                    items=[dict(text='Grok Bot',x=50,y=8,w=65,h=20)])
+                    items=[dict(text='Grok Bot' if name=='grok' else 'Unknown',x=50,y=8,w=65,h=20)])
                 with patch.object(window.subprocess,'Popen',side_effect=start), \
                      patch.object(window.subprocess,'check_output',return_value=json.dumps(screen)), \
                      patch.object(window.w.MCP,'call') as hid:
-                    if name=='chrome' and decoded:
+                    if name in ('chrome','grok') and decoded:
                         self.assertIs(runner.start_m6_preview(),viewer)
                         viewer.terminate.assert_not_called()
                         runner.stop_m6_preview(viewer)
