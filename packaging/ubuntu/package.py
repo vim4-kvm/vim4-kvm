@@ -86,6 +86,8 @@ if [ "${1:-}" = configure ]; then /usr/libexec/vim4-logging; fi
     copy(ROOT / 'board/vim4media.py', stage, 'usr/lib/vim4-kvm/python/vim4media.py', 0o644)
     copy(ROOT / 'board/vim4video.py', stage, 'usr/lib/vim4-kvm/python/vim4video.py', 0o644)
     copy(ROOT / 'board/vim4boot.py', stage, 'usr/lib/vim4-kvm/python/vim4boot.py', 0o644)
+    copy(ROOT / 'board/vim4-ethernet-generator.py', stage,
+         'usr/lib/systemd/system-generators/vim4-ethernet-generator', 0o755)
     copy(ROOT / 'board/vim4pd.py', stage, 'usr/lib/vim4-kvm/python/vim4pd.py', 0o644)
     copy(ROOT / 'board/vim4-wave5-monitor.py', stage, 'usr/libexec/vim4-wave5-monitor', 0o755)
     copy(ROOT / 'board/vim4-wave5-monitor.conf', stage, 'etc/default/vim4-wave5-monitor', 0o644)

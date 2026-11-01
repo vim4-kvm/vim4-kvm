@@ -19,6 +19,7 @@
 
 ## 2026-11-01
 
+- [跨内核原厂MAC传递（离线待复审）](2026-11-01-ethernet-mac-handoff.md) — network kernel deployment offline
 - [r14e持久安装与用户手测](2026-11-01-hdr10-r14e-installed.md) — deployment kernel application hdr10 kbase
 - [HDR r14e准备与恢复记录](2026-11-01-hdr10-phase2-preparation.md) — board video application source-recovery
 - [HDR 第二阶段 uhd6 短窗](2026-11-01-hdr10-phase2-uhd6.md) — board video application uu

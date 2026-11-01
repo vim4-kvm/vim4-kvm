@@ -46,7 +46,7 @@ def modules(root):
 def boot_profile(source, legacy_services=(), *, framebuffer_console=False):
     words = [word for word in source['APPEND'].split()
              if not word.startswith(('systemd.mask=', 'vim4.one_kvm='))]
-    words += ['vim4.full_kvm=1'] + ['systemd.mask=' + unit for unit in (
+    words += ['vim4.full_kvm=1', 'vim4.eth_mac=${eth_mac}'] + ['systemd.mask=' + unit for unit in (
         'tvserver.service', 'audioserver.service', 'one-kvm-edge.service',
         'one-kvm-edge-gateway.service', 'one-kvm-edge-usb.service', *legacy_services)]
     if framebuffer_console and 'console=tty0' not in words:
@@ -60,7 +60,11 @@ def update_boot_entry(text, existing, previous, full):
         return text
     if existing is None:
         return text + '\nLABEL FullKvm\n' + ''.join(f'  {key} {value}\n' for key, value in full.items())
-    if existing != previous:
+    # Upgrade the earlier exact profile without factory-MAC handoff. Other
+    # administrator changes still require an explicit deployment review.
+    before_mac = {**full, 'APPEND':' '.join(w for w in full['APPEND'].split()
+                                          if w != 'vim4.eth_mac=${eth_mac}')}
+    if existing != previous and existing != before_mac:
         raise ValueError('FullKvm has custom boot arguments; refusing to replace it')
     # Upgrade only our exact earlier profile, leaving every other label intact.
     label = None

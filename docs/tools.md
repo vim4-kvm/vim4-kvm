@@ -1,5 +1,9 @@
 # 工具目录
 
+`board/vim4-ethernet-generator.py`：7.3完整启动时读取U-Boot从每板eFuse取得的
+`vim4.eth_mac=${eth_mac}`，在udev/NetworkManager启动前生成/run下的网口.link文件；
+不写死MAC/IP，不改NetworkManager配置，5.15不介入。随board组件安装。
+
 `packaging/hdr10/persistent-r14e.py`：为用户手测离线封装固定r14e及完整uhd6来源，
 在独占部署窗口核对已安装内核/双DT/2341模块，再安装真实持久私有目录和仅7.3使用的启动器。
 保留5.15程序、应用配置与/lib符号链接；不发HID、不测试HDR、不自行改默认或重启。
