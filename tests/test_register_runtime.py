@@ -26,6 +26,34 @@ boot = load('profile_boot', 'board/vim4boot.py')
 
 
 class BootProfileTest(unittest.TestCase):
+    def test_install_resumes_only_with_the_complete_identical_module_set(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory) / 'release'
+            root.mkdir()
+            (root / 'wave5.ko').write_bytes(b'matched module')
+            (root / 'modules.dep').write_text('wave5.ko:\n')
+            expected = {p.name: runtime.digest(p) for p in root.iterdir()}
+            with patch.object(runtime.subprocess, 'run') as extract:
+                runtime.install_complete_modules(Path('unused.tar.gz'), root, expected)
+                extract.assert_not_called()
+            (root / 'wave5.ko').write_bytes(b'mixed module')
+            with patch.object(runtime.subprocess, 'run') as extract:
+                with self.assertRaisesRegex(ValueError, 'existing module set'):
+                    runtime.install_complete_modules(Path('unused.tar.gz'), root, expected)
+                extract.assert_not_called()
+
+    def test_install_does_not_resume_with_an_extra_module(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory) / 'release'
+            root.mkdir()
+            (root / 'wave5.ko').write_bytes(b'matched module')
+            expected = {'wave5.ko': runtime.digest(root / 'wave5.ko')}
+            (root / 'old.ko').write_bytes(b'unmatched old module')
+            with patch.object(runtime.subprocess, 'run') as extract:
+                with self.assertRaisesRegex(ValueError, 'existing module set'):
+                    runtime.install_complete_modules(Path('unused.tar.gz'), root, expected)
+                extract.assert_not_called()
+
     def test_unified_install_rejects_mixed_modules_before_touching_boot_or_runtime(self):
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)

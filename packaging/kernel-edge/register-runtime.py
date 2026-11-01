@@ -166,6 +166,20 @@ def register(args):
         {'id': record['id'], 'release': record['release'], 'artifacts': len(record['artifacts'])} for record in records]}))
 
 
+def install_complete_modules(archive, root, expected):
+    """Resume after a boot-file copy failure only with the exact complete set."""
+    if root.exists() and any(root.iterdir()):
+        paths = list(root.rglob('*'))
+        if any(path.is_symlink() for path in paths):
+            raise ValueError('Refusing to overwrite an existing module set')
+        current = {str(path.relative_to(root)): digest(path) for path in paths if path.is_file()}
+        if current != expected:
+            raise ValueError('Refusing to overwrite an existing module set')
+        return
+    subprocess.run(['tar', 'xzf', str(archive), '-C', str(root.parent),
+                    '--no-same-owner', '--keep-directory-symlink'], check=True)
+
+
 def install(args):
     """Install a sealed complete uhd6 set while retaining the default 5.15 entry."""
     if os.geteuid() != 0:
@@ -211,14 +225,17 @@ def install(args):
                 actual[name] = hashlib.file_digest(archive.extractfile(member), 'sha256').hexdigest()
             if actual != report['modules']:
                 raise ValueError('Incomplete or mismatched module archive')
-        module_root = Path('/lib/modules') / version
-        if module_root.exists() and any(module_root.iterdir()):
-            raise ValueError('Refusing to overwrite an existing module set')
-        subprocess.run(['tar', 'xzf', str(root / 'modules.tar.gz'), '-C', '/lib/modules',
-                        '--no-same-owner', '--keep-directory-symlink'], check=True)
         edge = boot.BOOT / 'edge'
         edge.mkdir(exist_ok=True)
-        for name in ('Image', 'vim4.dtb', 'panfrost.dtb', 'config', 'Module.symvers', 'vmlinux.btf', 'manifest.json'):
+        boot_files = ('Image', 'vim4.dtb', 'panfrost.dtb', 'config', 'Module.symvers', 'vmlinux.btf', 'manifest.json')
+        required = sum(max(0, (root / name).stat().st_size -
+                           ((edge / name).stat().st_size if (edge / name).exists() else 0))
+                       + 4096 for name in boot_files)
+        if shutil.disk_usage(edge).free < required:
+            raise ValueError('Insufficient /boot space for the complete edge runtime')
+        install_complete_modules(root / 'modules.tar.gz', Path('/lib/modules') / version,
+                                 report['modules'])
+        for name in boot_files:
             shutil.copyfile(root / name, edge / name)
         for path in (root / 'runtime/usr').rglob('*'):
             if path.is_file():
