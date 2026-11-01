@@ -54,11 +54,13 @@ class RecoveryBudgetTest(unittest.TestCase):
              patch.object(window.w,'require_board',return_value=(queue,'token')), \
              patch.object(window.w,'MCP',return_value=client), \
              patch.object(window.w,'source_hdr',return_value=False), \
-             patch.object(window.g,'M6',return_value=m6):
+             patch.object(window.g,'M6',return_value=m6), \
+             patch.object(window.subprocess,'Popen',return_value=Mock()):
             queue.root=Path(tmp)/'queue'
             baseline=Path(tmp)/'files.json';baseline.write_text('[]')
             args=SimpleNamespace(window='boundary',observer=Path('/bin/true'),device='unused',
-                panfrost=Path('payload'),panfrost_sha256='sha',baseline_files=baseline)
+                panfrost=Path('payload'),panfrost_sha256='sha',baseline_files=baseline,
+                url='http://127.0.0.1:18080',local_ip='192.0.2.1')
             runner=window.Window(args)
 
             def ssh(host,command,**kwargs):

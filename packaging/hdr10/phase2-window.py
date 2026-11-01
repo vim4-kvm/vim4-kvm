@@ -287,6 +287,31 @@ class Window:
             subprocess.run([str(self.args.uu_cli),'device','disconnect',device],check=True,timeout=15,
                 stdout=subprocess.DEVNULL)
 
+    def restore_source(self,m6,reserve_after):
+        with self.operations:
+            self.require_lease(RECOVERY_SECONDS['source']+reserve_after)
+            # Restoring config restarts One-KVM. Its baseline snapshot cache
+            # needs an active viewer; no cached frame is not a lost HDMI input.
+            with (self.output/'source-recovery-viewer.log').open('w') as log:
+                viewer=subprocess.Popen(['node',str(HERE/'application-receiver.mjs'),
+                    self.args.url,'onekvm',str(self.output/'source-recovery-viewer'),
+                    'pq','120','','',self.args.local_ip],stdout=log,stderr=subprocess.STDOUT)
+                try:
+                    until=time.monotonic()+20
+                    while True:
+                        try:
+                            m6.client.screenshot(self.output/'source-recovery-ready.jpg')
+                            break
+                        except RuntimeError:
+                            if viewer.poll() is not None or time.monotonic()>=until: raise
+                            time.sleep(.25)
+                    m6.restore()
+                finally:
+                    viewer.terminate()
+                    try: viewer.wait(timeout=10)
+                    except subprocess.TimeoutExpired:
+                        viewer.kill();viewer.wait(timeout=5)
+
     def run(self):
         queue,token=w.require_board()
         key=json.loads(w.ssh('vim4','cat /var/lib/one-kvm/mcp/credentials.json'))['api_key']
@@ -357,10 +382,6 @@ class Window:
             def reconnect(reserve_after):
                 nonlocal tunnel
                 tunnel=self.open_tunnel(tunnel,recovery=True,reserve_after=reserve_after)
-            def restore_source(reserve_after):
-                with self.operations:
-                    self.require_lease(RECOVERY_SECONDS['source']+reserve_after)
-                    m6.restore()
             steps=[]
             if booted:
                 steps.extend([
@@ -369,7 +390,7 @@ class Window:
             if saved:
                 steps.append(('config',lambda reserve:self.recovery_board('restore',reserve_after=reserve)))
             if m6.restore_needed:
-                steps.append(('source',restore_source))
+                steps.append(('source',lambda reserve:self.restore_source(m6,reserve)))
             remaining=sum(RECOVERY_SECONDS[name] for name,_ in steps)+LOCAL_CLEANUP_SECONDS
             try: self.recovery_cli('collect','--readonly',reserve_after=remaining)
             except Exception as error: errors.append(str(error))

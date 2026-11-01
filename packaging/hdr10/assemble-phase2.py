@@ -77,7 +77,11 @@ def assemble(args):
             'libjanus_ustreamer.so':'/usr/lib/ustreamer/janus/libjanus_ustreamer.so'}.items():
         runtime[name] = overlay[name]; bindings[name] = target
     for name, value in overlay.items():
-        if name.startswith('gstreamer-1.0/'): runtime[name] = value
+        if name.startswith(('gstreamer-1.0/', 'web/')): runtime[name] = value
+    # NanoKVM finds web/ beside os.Executable(). A file bind exposes the
+    # payload executable's real path, so the private runtime needs its assets.
+    if 'web/index.html' not in overlay:
+        raise ValueError('userspace bundle must include NanoKVM web/index.html')
     if 'gstreamer-1.0/libgstvim4jpegenc.so' not in overlay:
         raise ValueError('userspace bundle must include the pinned vim4jpegenc plugin')
     plugin_proof=verify_plugins(runtime)

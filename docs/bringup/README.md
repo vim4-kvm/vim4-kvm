@@ -17,6 +17,10 @@
 
 以下保留完整日期索引。这些里程碑记录的是历史证据；查找当前架构和约束时，仍应先读对应子系统入口。
 
+## 2026-11-01
+
+- [HDR 第二阶段 uhd6 短窗](2026-11-01-hdr10-phase2-uhd6.md) — board video application uu
+
 ## 2026-10-31
 
 - [HDR窗口恢复预算D1修复](2026-10-31-hdr10-recovery-budget.md) — video application offline safety

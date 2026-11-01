@@ -7,7 +7,8 @@ Panfrost 下 One-KVM 网页 4K60 Main10/PQ、SEI及恢复已通过最小主路�
 当前已验边界仍限于上述 Panfrost / One-KVM 网页主路径；新增接入在独立分支验证，
 优先使用 P0-1 在 `sources.toml` 登记的统一 uhd6 候选，不以插件探测代替实板验收。
 新增公共源、三应用接入及同源 SDR 截图的离线候选与未验项见
-[第二阶段记录](bringup/2026-10-31-hdr10-phase2-offline.md)。下表的已验范围仍指 r13。
+[第二阶段记录](bringup/2026-10-31-hdr10-phase2-offline.md)与
+[uhd6 实板短窗及失败恢复](bringup/2026-11-01-hdr10-phase2-uhd6.md)。下表的已验范围仍指 r13。
 
 ## DMA与模式
 

@@ -169,7 +169,7 @@ def archive(path, files):
 
 
 class AssemblyTests(unittest.TestCase):
-    def fixture(self, root, without_jpeg=False):
+    def fixture(self, root, without_jpeg=False, without_web=False):
         release = '7.3.0-vim4kvm-uhd5+'
         module_files = {release + '/kernel/xt_DSCP.ko':b'upper', release + '/kernel/xt_dscp.ko':b'lower'}
         mod = root/'modules.tar.gz'; archive(mod, module_files)
@@ -182,6 +182,9 @@ class AssemblyTests(unittest.TestCase):
         base['manifest.json'] = json.dumps(report).encode()
         kernel = root/'kernel.tar.gz'; archive(kernel, base)
         data = {name:b'elf fixture' for name in ('one-kvm','nanokvm','jetkvm','ustreamer','libjanus_ustreamer.so')}
+        data['web/index.html'] = b'<script src="/assets/viewer.js"></script>'
+        data['web/assets/viewer.js'] = b'/* cached frontend fixture */'
+        if without_web: del data['web/index.html']
         data.update({'gstreamer-1.0/'+name:b'plugin fixture' for name in set(factories.PRIVATE.values())})
         if without_jpeg: del data['gstreamer-1.0/libgstvim4jpegenc.so']
         data['manifest.json'] = json.dumps(dict(sha256={n:pack.digest(d) for n,d in data.items()})).encode()
@@ -209,6 +212,7 @@ class AssemblyTests(unittest.TestCase):
                 self.assertTrue(json.load(tar.extractfile('manifest.json'))['dry_run'])
                 self.assertIn('runtime/gstreamer-1.0/libgstvim4jpegenc.so',entries)
                 self.assertIn('runtime/check-phase2-plugins.py',entries)
+                self.assertEqual(tar.extractfile('runtime/web/assets/viewer.js').read(),b'/* cached frontend fixture */')
 
     def test_wrong_source_hash_and_uhd5_board_mode_rejected(self):
         with tempfile.TemporaryDirectory() as tmp:
@@ -226,6 +230,14 @@ class AssemblyTests(unittest.TestCase):
                 check.assert_not_called()
             self.assertFalse(args.output.exists())
 
+    def test_missing_nano_frontend_rejected_before_compilation(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            args=self.fixture(Path(tmp),without_web=True)
+            with patch.object(pack.subprocess,'run') as compile:
+                with self.assertRaisesRegex(ValueError,'web/index.html'):pack.assemble(args)
+                compile.assert_not_called()
+            self.assertFalse(args.output.exists())
+
     def test_system_jpeg_factory_cannot_mask_an_incomplete_private_directory(self):
         with tempfile.TemporaryDirectory() as tmp:
             root=Path(tmp).resolve()
@@ -239,6 +251,24 @@ class AssemblyTests(unittest.TestCase):
 
 
 class WindowTests(unittest.TestCase):
+    def test_source_recovery_primes_cache_before_hid_and_reaps_viewer(self):
+        for failed in (False,True):
+            with self.subTest(failed=failed),tempfile.TemporaryDirectory() as tmp:
+                runner=object.__new__(window.Window)
+                runner.args=SimpleNamespace(url='http://127.0.0.1:18080',local_ip='192.0.2.1')
+                runner.output=Path(tmp);runner.operations=threading.Lock();runner.require_lease=Mock()
+                m6=Mock();m6.client.screenshot.side_effect=[RuntimeError('No video signal'),None]
+                viewer=Mock();viewer.poll.return_value=1 if failed else None
+                with patch.object(window.subprocess,'Popen',return_value=viewer),patch.object(window.time,'sleep'):
+                    if failed:
+                        with self.assertRaisesRegex(RuntimeError,'No video'):runner.restore_source(m6,20)
+                        m6.restore.assert_not_called()
+                    else:
+                        runner.restore_source(m6,20)
+                        m6.restore.assert_called_once()
+                runner.require_lease.assert_called_once_with(window.RECOVERY_SECONDS['source']+20)
+                viewer.terminate.assert_called_once();viewer.wait.assert_called_once_with(timeout=10)
+
     def test_uhd5_cannot_take_board_ticket(self):
         args=SimpleNamespace(observer=Path('/bin/sh'))
         fixture={g:dict(manifest=dict(gpu=g,dry_run=True)) for g in ('panfrost','kbase')}
@@ -254,7 +284,8 @@ class WindowTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as tmp:
             runner=object.__new__(window.Window)
             runner.args=SimpleNamespace(window='unit',observer=Path('/bin/true'),device='unused',
-                baseline_files=Path(tmp)/'baseline.json',panfrost=Path('pan'),panfrost_sha256='0'*64)
+                baseline_files=Path(tmp)/'baseline.json',panfrost=Path('pan'),panfrost_sha256='0'*64,
+                url='http://127.0.0.1:18080',local_ip='192.0.2.1')
             runner.args.baseline_files.write_text('[]')
             runner.output=Path(tmp);runner.remote='/var/tmp/unit';runner.failures=[]
             runner.operations=threading.Lock();runner.deadline=time.monotonic()+1440
@@ -283,7 +314,7 @@ class WindowTests(unittest.TestCase):
                  patch.object(window.w,'MCP',return_value=client), \
                  patch.object(window.w,'source_hdr',return_value=False), \
                  patch.object(window.g,'M6',return_value=m6), \
-                 patch.object(window.subprocess,'Popen',return_value=tunnel), \
+                 patch.object(window.subprocess,'Popen',return_value=Mock()), \
                  patch.object(window.subprocess,'run') as cleanup, \
                  patch.object(window.threading,'Event'), \
                  patch.object(window.threading,'Thread'):
