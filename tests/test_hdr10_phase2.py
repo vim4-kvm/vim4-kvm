@@ -42,6 +42,45 @@ def held_queue():
 
 
 class M6Tests(unittest.TestCase):
+    def test_r14e_r3_actual_complete_prepare_and_restore_video_ready(self):
+        sequence=json.loads((ROOT/'tests/fixtures/m6-r14e-r3-sequence.json').read_text())
+        state=[False];point=[0,0];hdr_clicks=[];client=Mock()
+        def call(name,args=None):
+            if name=='mouse_move':point[:]=args['coordinate']
+            if name=='left_click' and point[0]>1600:
+                state[0]=not state[0];hdr_clicks.append(tuple(point))
+        client.call.side_effect=call
+        control=gates.M6(client,lambda timeout=30:state[0],'/unused',
+                         Path(tempfile.gettempdir())/'m6-r3-sequence')
+        control.screen=Mock(side_effect=[f['screen'] for f in sequence['prepare']])
+        with patch.object(gates.time,'sleep'):
+            control.qualify(False)
+            control.activate_recent('Google Chrome')
+            control.toggle(True)
+            self.assertEqual(control.close(),'Chrome')
+        self.assertTrue(state[0]);self.assertTrue(control.restore_needed)
+        restore=[f['screen'] for f in sequence['restore']]
+        control.screen=Mock(side_effect=[*restore[:22],RuntimeError('No video signal.'),*restore[22:]])
+        with patch.object(gates.time,'sleep'):control.restore()
+        self.assertFalse(state[0]);self.assertFalse(control.restore_needed)
+        self.assertEqual(gates.source_foreground(control.screen()),'Grok Bot')
+        # Exactly two HDR clicks for the full on/off roundtrip; observing
+        # video readiness cannot replay either transition.
+        self.assertEqual(len(hdr_clicks),2)
+
+    def test_close_last_settings_window_explicitly_activates_original_app(self):
+        bar=dict(SCREENS['chrome'],items=[dict(text='System Settings',x=50,y=6,w=112,h=20)])
+        grok=dict(SCREENS['chrome'],items=[dict(text='Grok Bot',x=50,y=6,w=65,h=20)])
+        recent=dict(bar,items=[*bar['items'],dict(text='Recent Items',x=20,y=137,w=84,h=14),
+            dict(text='Grok Bot',x=265,y=183,w=81,h=17)])
+        control=gates.M6(Mock(),lambda timeout=30:False,'/unused',
+                         Path(tempfile.gettempdir())/'m6-settings-app')
+        control.initial_hdr=False;control.initial_app='Grok Bot';control.restore_needed=True
+        control.screen=Mock(side_effect=[SCREENS['off'],bar,bar,recent,recent,grok,grok])
+        control.restore()
+        self.assertFalse(control.restore_needed)
+        self.assertEqual(sum(c.args[0]=='left_click' for c in control.client.call.call_args_list),3)
+
     def test_r14e_all_saved_preparation_and_recovery_ocr(self):
         frames=json.loads((ROOT/'tests/fixtures/m6-r14e-preparation.json').read_text())
         for frame in frames:
@@ -140,6 +179,14 @@ class M6Tests(unittest.TestCase):
         self.assertEqual(len(points), 3)
         self.assertTrue(1688 < points[1][0] < 1720 and 533 < points[1][1] < 552)
         self.assertTrue(1030 < points[2][0] < 1048 and 193 < points[2][1] < 208)
+
+    def test_eotf_ready_waits_for_viewer_without_replaying_hdr_click(self):
+        control,client,state=self.controller([])
+        control.screen=Mock(side_effect=[SCREENS['general'],SCREENS['off'],SCREENS['off'],
+            SCREENS['off'],RuntimeError('MCP tool error: No video signal.'),SCREENS['on']])
+        with patch.object(gates.time,'sleep'):control.toggle(True)
+        self.assertTrue(state[0])
+        self.assertEqual(sum(c.args[0]=='left_click' for c in client.call.call_args_list),2)
 
     def test_observed_sidebar_icon_does_not_hide_displays_target(self):
         general=dict(SCREENS['general'],items=[dict(r,text='• Displays') if r['text']=='Displays' else r

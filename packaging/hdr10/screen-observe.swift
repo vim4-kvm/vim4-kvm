@@ -8,12 +8,26 @@ let request = VNRecognizeTextRequest()
 request.recognitionLevel = .accurate
 request.recognitionLanguages = ["en-US"]
 try VNImageRequestHandler(cgImage: cg).perform([request])
-let rows: [[String: Any]] = (request.results ?? []).compactMap { item in
+// A page with a large dark body can make Vision read the menu upside down.
+// Recognize the fixed physical menu strip separately; body text must not
+// determine its orientation or authorize foreground-dependent HID.
+let menu = VNRecognizeTextRequest()
+menu.recognitionLevel = .accurate
+menu.recognitionLanguages = ["en-US"]
+let menuHeight = 40.0
+let menuImage = cg.cropping(to: CGRect(x: 0, y: 0, width: Double(cg.width), height: menuHeight))!
+try VNImageRequestHandler(cgImage: menuImage).perform([menu])
+// Keep the original individual app-name observations as well: the strip
+// recognizer can merge adjacent menus. The existing exact title/geometry gates
+// qualify either observation; no page text is granted foreground authority.
+let observations = (request.results ?? []).map { ($0, Double(cg.height)) }
+    + (menu.results ?? []).map { ($0, menuHeight) }
+let rows: [[String: Any]] = observations.compactMap { item, height in
     guard let text = item.topCandidates(1).first else { return nil }
     let r = item.boundingBox
     return ["text": text.string, "x": r.minX * Double(cg.width),
-            "y": (1-r.maxY) * Double(cg.height), "w": r.width * Double(cg.width),
-            "h": r.height * Double(cg.height)]
+            "y": (1-r.maxY) * height, "w": r.width * Double(cg.width),
+            "h": r.height * height]
 }
 let bitmap = NSBitmapImageRep(cgImage: cg)
 var samples: [[Double]] = []

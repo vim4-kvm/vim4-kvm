@@ -98,9 +98,14 @@ class M6:
         self.initial_app=source_foreground(screen)
         self.initial_hdr = initial_hdr
 
-    def activate_recent(self,target):
+    def activate_recent(self,target,*,allow_settings=False):
         expected={'Google Chrome':'Chrome','Grok Bot':'Grok Bot'}[target]
-        if source_foreground(self.screen())==expected:return expected
+        before=self.screen()
+        try:
+            if source_foreground(before)==expected:return expected
+        except GateError:
+            if not allow_settings:raise
+            front_settings(before)
         self.click((27,13))
         deadline=time.monotonic()+8
         while True:
@@ -248,13 +253,23 @@ class M6:
             raise GateError('HDR switch pixels and source EOTF disagree')
         self.click(xy)
         deadline = time.monotonic() + 15
-        while self.read_source() != enabled:
+        while True:
+            if self.read_source() == enabled:
+                try:
+                    after=self.screen()
+                except RuntimeError as error:
+                    # RX EOTF can settle before the active viewer has produced
+                    # the first new frame. Observe only; never replay the toggle.
+                    if 'No video signal.' not in str(error):raise
+                else:
+                    settings(after)
+                    break
             if time.monotonic() >= deadline: raise GateError('HDR EOTF transition timed out; no replay')
             time.sleep(self.remaining(.25))
-        settings(self.screen())
 
     def close(self, expected='Chrome'):
         screen = self.screen()
+        closed_settings=False
         def apple_menu(current):
             return any(r['text'].lstrip('• ') == 'About This Mac' and r['x']<250
                        and r['y']<180 for r in current['items'])
@@ -280,10 +295,18 @@ class M6:
                 if search['text'] != 'Q Search': raise GateError('Unknown Settings header')
                 xy = (round(search['x'] + 6), round(search['y'] + search['h']/2 - 50))
             self.click(xy)
+            closed_settings=True
         deadline = time.monotonic() + 8
         while True:
             current = self.screen()
             try:
+                # Closing the last Settings window can leave its application
+                # menu active. Explicitly return to the saved app through the
+                # same screenshot-qualified Recent Items menu.
+                if closed_settings and any('System Settings' in r['text'] and r['y']<25 for r in current['items']):
+                    self.activate_recent('Grok Bot' if expected is None and self.initial_app=='Grok Bot'
+                                         else 'Google Chrome',allow_settings=True)
+                    current=self.screen()
                 app=source_foreground(current)
                 if expected is not None and app!=expected:raise GateError('Original foreground did not return')
                 if apple_menu(current): raise GateError('Apple menu remains open')
