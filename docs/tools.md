@@ -21,6 +21,8 @@ uhd5 仅限显式 dry-run。`phase2-run` 只在该 payload 内选择应用/GPU�
 `packaging/hdr10/analyze-phase2.py`：释放板票后，FFmpeg 独立解析 SPS/VUI，并逐字节比较 SEI/HDMI
 controls；`ffmpeg-vm.py` 只把显式输入通过 stdin 送到构建 VM 的 FFmpeg，不遍历 Mac 共享目录。
 分析用 heavy 票据。UU 的 RR 只证明 RTP 接收，不证明官方客户端解码/渲染。
+`packaging/hdr10/check-phase2-plugins.py`：离线检查组装后目录的实际GStreamer factory及插件路径，
+拒绝被系统副本掩盖的缺项；设备生成的V4L2编码factory在候选窗口用 `--device-factories` 补验。
 
 `packaging/hdr10/ram-payload.py`：离线把已封存r3制品与已审阅HDR2 RAM启动模板封装为
 私有PID1/runtime/完整模块归档，可编译或复用已校验的静态ARM64 PID1；模块流式入tar保留大小写，

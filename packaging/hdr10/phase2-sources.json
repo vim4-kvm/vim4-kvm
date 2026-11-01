@@ -1,7 +1,7 @@
 {
   "kind": "offline-userspace-overlay-not-boot-candidate",
-  "name": "hdr10-p0-5-userspace-r14b-review",
-  "supersedes": "hdr10-p0-5-userspace-r14a",
+  "name": "hdr10-p0-5-userspace-r14c",
+  "supersedes": "hdr10-p0-5-userspace-r14b-review",
   "branch": "p0-5-native-hdr",
   "sources": {
     "gst-venc": "3a74cc9c0f074ff8bf980440e426438bba65d1db",
@@ -12,6 +12,7 @@
     "ustreamer": "97eb951d10a0ccebd312d6951acc91624f5f0876"
   },
   "sha256": {
+    "gstreamer-1.0/libgstvim4jpegenc.so": "bc21e64cdaf932d7eb25712bcd9e41bd476ad7858de1bbe9e72a202cab5c730b",
     "gstreamer-1.0/libgstvfmcap.so": "f30eb256d38cd960b74b6596a9e3afb681352fd28a862e21c2b4d07c1712f40d",
     "gstreamer-1.0/libgstvideo4linux2.so": "b9269d0509d43b8107a8c686415f7f0c7e5a86e17c04a19d685eb3dca736c4f0",
     "gstreamer-1.0/libgstvim4hevc10.so": "f0de5d107d4d2c55a4ac2dfd2bf47054363ad90a45fab19c38b4ab41e0931e21",

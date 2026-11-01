@@ -12,6 +12,7 @@ import io
 import json
 from pathlib import Path, PurePosixPath
 import subprocess
+import sys
 import tarfile
 import tempfile
 
@@ -36,6 +37,16 @@ def read_archive(path, expected):
             if name in result: raise ValueError('duplicate archive member')
             result[name] = archive.extractfile(member).read()
     return result
+
+
+def verify_plugins(runtime):
+    with tempfile.TemporaryDirectory() as temporary:
+        directory=Path(temporary)
+        for name,data in runtime.items():
+            if name.startswith('gstreamer-1.0/'):
+                path=directory/Path(name).name;path.write_bytes(data)
+        return json.loads(subprocess.check_output([sys.executable,
+            str(ROOT/'hdr10/check-phase2-plugins.py'),str(directory)],text=True))
 
 
 def assemble(args):
@@ -65,6 +76,10 @@ def assemble(args):
         runtime[name] = overlay[name]; bindings[name] = target
     for name, value in overlay.items():
         if name.startswith('gstreamer-1.0/'): runtime[name] = value
+    if 'gstreamer-1.0/libgstvim4jpegenc.so' not in overlay:
+        raise ValueError('userspace bundle must include the pinned vim4jpegenc plugin')
+    plugin_proof=verify_plugins(runtime)
+    runtime['check-phase2-plugins.py']=(ROOT/'hdr10/check-phase2-plugins.py').read_bytes()
     bindings['gstreamer-1.0'] = '/usr/lib/vim4-kvm/mainline-gstreamer-1.0'
     # Candidate launcher selects GPU by the declared payload, never changes the
     # system ICD or reuses a different release's modules. Probe gates remain in apps.
@@ -104,6 +119,7 @@ def assemble(args):
     manifest = dict(plan, release=release, source_commit=report['source'], hardware_validated=False,
         dry_run=args.dry_run, kernel_archive_sha256=args.kernel_sha256, userspace_sha256=args.userspace_sha256,
         module_count=sum('.ko' in name for name in modules), gpu=args.gpu,
+        plugin_check=plugin_proof,
         sha256={name: digest(value) for name, value in files.items()})
     args.output.parent.mkdir(parents=True, exist_ok=True)
     with tarfile.open(args.output, 'x:gz') as archive:

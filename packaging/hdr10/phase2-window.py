@@ -233,6 +233,7 @@ class Window:
                 monitor=threading.Thread(target=self.watch,args=(end,ready),daemon=True); monitor.start()
                 try:
                     if not ready.wait(8) or self.failures: raise RuntimeError('kernel monitor startup failed')
+                    self.board('plugins')
                     self.board('stop'); before=json.loads(self.board('status'))['cma']['CmaFree']
                     self.board('configure','--app','onekvm')
                     (self.output/f'{gpu}-hdmi-metadata.json').write_text(self.board('metadata'))

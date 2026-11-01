@@ -72,6 +72,14 @@ def metadata():
         luminance=[mastering.maximum,mastering.minimum],cll=[cll.maximum,cll.fall])
 
 
+def plugins():
+    import sys
+    init=next(word[5:] for word in Path('/proc/cmdline').read_text().split() if word.startswith('init='))
+    runtime=Path(init).parent/'runtime'
+    subprocess.run([sys.executable,str(runtime/'check-phase2-plugins.py'),str(runtime/'gstreamer-1.0'),
+        '--device-factories'],check=True,timeout=60)
+
+
 def save(path):
     if path.exists(): raise ValueError('checkpoint already exists')
     records={}
@@ -150,7 +158,7 @@ def restore(path):
 
 if __name__=='__main__':
     parser=argparse.ArgumentParser(description=__doc__)
-    parser.add_argument('operation',choices=('save','configure','restore','status','stop','metadata'))
+    parser.add_argument('operation',choices=('save','configure','restore','status','stop','metadata','plugins'))
     parser.add_argument('--checkpoint',type=Path,required=True)
     parser.add_argument('--app',choices=UNITS,default='onekvm')
     parser.add_argument('--height',type=int,choices=(0,1080),default=0)
@@ -161,4 +169,5 @@ if __name__=='__main__':
     elif args.operation=='configure': configure(args.checkpoint,args.app,args.height,args.hdr=='on')
     elif args.operation=='stop': stop(); print(json.dumps(status()))
     elif args.operation=='metadata': print(json.dumps(metadata()))
+    elif args.operation=='plugins': plugins()
     else: print(json.dumps(status()))

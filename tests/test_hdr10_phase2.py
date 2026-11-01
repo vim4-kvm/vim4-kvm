@@ -28,6 +28,7 @@ gates, pack = load('m6-gates'), load('assemble-phase2')
 window = load('phase2-window')
 inspect = load('analyze-phase2')
 board = load('phase2-board')
+factories = load('check-phase2-plugins')
 SCREENS = json.loads((ROOT / 'tests/fixtures/m6-hdr-gates.json').read_text())
 
 
@@ -91,7 +92,7 @@ def archive(path, files):
 
 
 class AssemblyTests(unittest.TestCase):
-    def fixture(self, root):
+    def fixture(self, root, without_jpeg=False):
         release = '7.3.0-vim4kvm-uhd5+'
         module_files = {release + '/kernel/xt_DSCP.ko':b'upper', release + '/kernel/xt_dscp.ko':b'lower'}
         mod = root/'modules.tar.gz'; archive(mod, module_files)
@@ -102,7 +103,9 @@ class AssemblyTests(unittest.TestCase):
             files={name:pack.digest(data) for name,data in base.items()})
         base['manifest.json'] = json.dumps(report).encode()
         kernel = root/'kernel.tar.gz'; archive(kernel, base)
-        data = {name:b'elf fixture' for name in ('one-kvm','nanokvm','jetkvm','ustreamer','libjanus_ustreamer.so','gstreamer-1.0/plugin.so')}
+        data = {name:b'elf fixture' for name in ('one-kvm','nanokvm','jetkvm','ustreamer','libjanus_ustreamer.so')}
+        data.update({'gstreamer-1.0/'+name:b'plugin fixture' for name in set(factories.PRIVATE.values())})
+        if without_jpeg: del data['gstreamer-1.0/libgstvim4jpegenc.so']
         data['manifest.json'] = json.dumps(dict(sha256={n:pack.digest(d) for n,d in data.items()})).encode()
         user = root/'user.tar.gz'; archive(user, data)
         baseline = root/'baseline.json'; baseline.write_text(json.dumps(dict(cmdline='root=PARTUUID=12345678-02 rw')))
@@ -115,13 +118,16 @@ class AssemblyTests(unittest.TestCase):
             def cc(command, **kwargs):
                 root=next(s.split('=',1)[1].strip('"') for s in command if s.startswith('-DTRIAL_ROOT='))
                 Path(command[-1]).write_bytes(static_elf()+root.encode()+b'\0')
-            with patch.object(pack.subprocess, 'run', side_effect=cc): pack.assemble(args)
+            with patch.object(pack.subprocess, 'run', side_effect=cc), \
+                 patch.object(pack,'verify_plugins',return_value={'offline_fixture':True}): pack.assemble(args)
             with tarfile.open(args.output) as tar:
                 plan,_,entries=pack.once.read_trial(tar)
                 self.assertIn('modules/7.3.0-vim4kvm-uhd5+/kernel/xt_DSCP.ko',entries)
                 self.assertIn('modules/7.3.0-vim4kvm-uhd5+/kernel/xt_dscp.ko',entries)
                 self.assertEqual(plan['build_id'],'1'*40)
                 self.assertTrue(json.load(tar.extractfile('manifest.json'))['dry_run'])
+                self.assertIn('runtime/gstreamer-1.0/libgstvim4jpegenc.so',entries)
+                self.assertIn('runtime/check-phase2-plugins.py',entries)
 
     def test_wrong_source_hash_and_uhd5_board_mode_rejected(self):
         with tempfile.TemporaryDirectory() as tmp:
@@ -130,6 +136,25 @@ class AssemblyTests(unittest.TestCase):
             args.kernel_sha256=pack.once.sha(args.kernel); args.dry_run=False
             with self.assertRaisesRegex(ValueError,'dry-run only'): pack.assemble(args)
             self.assertFalse(args.output.exists())
+
+    def test_missing_jpeg_rejected_before_compilation_or_publication(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            args=self.fixture(Path(tmp),without_jpeg=True)
+            with patch.object(pack,'verify_plugins') as check:
+                with self.assertRaisesRegex(ValueError,'vim4jpegenc'): pack.assemble(args)
+                check.assert_not_called()
+            self.assertFalse(args.output.exists())
+
+    def test_system_jpeg_factory_cannot_mask_an_incomplete_private_directory(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root=Path(tmp).resolve()
+            for name in set(factories.PRIVATE.values()): (root/name).write_bytes(b'fixture')
+            def inspect(command,**kwargs):
+                name=command[-1]
+                path=(Path('/baseline') if name=='vim4jpegenc' else root)/factories.PRIVATE[name]
+                return SimpleNamespace(returncode=0,stdout='  Filename '+str(path)+'\n',stderr='')
+            with patch.object(factories.subprocess,'run',side_effect=inspect):
+                with self.assertRaisesRegex(ValueError,'outside.*vim4jpegenc'): factories.check(root)
 
 
 class WindowTests(unittest.TestCase):
