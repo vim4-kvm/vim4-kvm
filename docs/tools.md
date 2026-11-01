@@ -178,7 +178,7 @@ PiKVM smoke 可用 `PIKVM_CDP` 接入专用测试 Chrome；结束时关闭测试
 | tools/latency-summary.py | Mac | 无 | 匹配时间戳与呈现节奏；`--window-start`/`--window-seconds` 比较长测首尾，拒绝错误帧号匹配及失准时钟 | [延迟测量](latency.md) |
 | tools/latency-rtp-summary.py | 离线 | 无 | 用独立解码验证的 AU→RTP 映射关联所有回调，报告缺失关联及像素回读错帧；拒绝重复映射、SSRC 变化和失准时钟，不通过推算帧周期补帧号 | [延迟测量](latency.md) |
 | tools/video-timing-summary.py | Mac | 无 | 汇总 VIM4_VIDEO_TIMING 分段计时 | [延迟测量](latency.md) |
-| tools/input-target.swift | Mac | 覆盖显示器 | input-check 的临时接收窗口 | [输入验证](input-latency.md) |
+| tools/input-target.swift | Mac | 覆盖显示器 | input-check临时接收窗口；--normal-level允许HDR设置窗口置前 | [输入验证](input-latency.md) |
 | tools/input-summary.py | Mac | 无 | 汇总 input-check 日志 | [输入验证](input-latency.md) |
 | tools/key-repeat.html | 被控电脑浏览器 | 只接收本页面手动输入，不注入键鼠 | Backspace 直连 / KVM 长按频率、首次重复等待、释放事件对照，导出 JSON | [输入验证](input-latency.md#手动对照-backspace-长按) |
 | tools/uu-scroll-probe.swift | Mac | 无 | 只测本窗口收到的滚轮事件，不注入输入 | [UU 滚轮](uu-scroll.md) |

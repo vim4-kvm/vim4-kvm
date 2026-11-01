@@ -29,7 +29,9 @@ for screen in NSScreen.screens {
     let w = TargetWindow(contentRect:screen.frame, styleMask:[.borderless], backing:.buffered, defer:false)
     // Keep USB clicks inside this disposable target even while the HDMI motion
     // fixture occupies the screen-saver layer underneath it.
-    w.level = NSWindow.Level(rawValue: NSWindow.Level.screenSaver.rawValue + 1)
+    // HDR preparation uses a static test desktop while allowing Settings above it.
+    w.level = CommandLine.arguments.contains("--normal-level") ? .normal
+        : NSWindow.Level(rawValue: NSWindow.Level.screenSaver.rawValue + 1)
     let view = TargetView(frame:NSRect(origin:.zero, size:screen.frame.size))
     w.contentView = view
     w.makeKeyAndOrderFront(nil)
