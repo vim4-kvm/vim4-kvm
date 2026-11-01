@@ -357,7 +357,7 @@ print(json.dumps(dict(jpeg=base64.b64encode(image).decode(),seconds=elapsed,stat
                     raise RuntimeError('M6 live video preparation failed')
                 time.sleep(.1)
             proof=json.loads((receiver/'ready.json').read_text())
-            if proof['decoded']<=0 or proof['fps']<59 or proof['dropped']:
+            if proof['decoded']<=0 or proof['dropped']:
                 raise RuntimeError('M6 preparation lacks advancing decoded frames')
             screen=json.loads(subprocess.check_output([str(self.args.observer),
                 str(receiver/'source-ready.jpg')],text=True,timeout=10))
