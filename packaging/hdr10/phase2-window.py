@@ -28,6 +28,16 @@ REPO=Path(__file__).resolve().parents[2]
 HERE=Path(__file__).resolve().parent
 UU=Path('/Applications/UURemote.app/Contents/Helpers/uuyc-cli')
 FAULT=r'WARNING:|BUG:|Oops:|GPU [Ff]ault|job [Ff]ault|Kernel panic|cma_alloc.*fail'
+# The real finally order, including bounded local cleanup. Reconnect includes
+# reaping the old tunnel, the last HTTP readiness request and failure cleanup.
+RECOVERY_SECONDS = {'collect':45, 'baseline':300, 'reconnect':45, 'config':65,
+                    'source':120, 'sampling':10, 'tunnel':10}
+LOCAL_CLEANUP_SECONDS = RECOVERY_SECONDS['sampling'] + RECOVERY_SECONDS['tunnel']
+REQUIRED_RECOVERY_SECONDS = sum(RECOVERY_SECONDS.values()) - RECOVERY_SECONDS['collect']
+# Fault stop can run in parallel with child/UU/thread unwinding. A current
+# workload operation has already reserved its own timeout before this margin.
+UNWIND_SECONDS = max(RECOVERY_SECONDS['config'], 15 + 16 + 15 + 12)
+RECOVERY_RESERVE = sum(RECOVERY_SECONDS.values()) + UNWIND_SECONDS + 15
 
 
 def load(name,path):
@@ -86,7 +96,7 @@ class Window:
         self.failures=[]; self.child=None; self.number=0
         self.operations=threading.Lock()
         self.remote='/var/tmp/'+args.window
-        self.deadline=time.monotonic()+24*60  # keep six minutes for mandatory recovery
+        self.deadline=time.monotonic()+30*60-RECOVERY_RESERVE
 
     def require_lease(self,seconds):
         queue,token=w.require_board()
@@ -98,9 +108,9 @@ class Window:
     def require_work(self,seconds=0):
         if self.failures: raise RuntimeError('monitor rejected workload: '+'; '.join(self.failures))
         if time.monotonic()+seconds>self.deadline: raise RuntimeError('workload deadline; reserve recovery time')
-        self.require_lease(seconds+360)
+        self.require_lease(seconds+RECOVERY_RESERVE)
 
-    def work_ssh(self,command,timeout=65):
+    def work_ssh(self,command,timeout=RECOVERY_SECONDS['config']):
         with self.operations:
             self.require_work(timeout)
             return w.ssh('vim4',command,timeout=timeout)
@@ -135,13 +145,18 @@ class Window:
             self.require_work(timeout)
             self._cli(args,timeout)
 
-    def recovery_cli(self,*args):
-        if args==('collect','--readonly'): timeout=45
-        elif args==('return-baseline',): timeout=300
+    def recovery_cli(self,*args,reserve_after=0):
+        if args==('collect','--readonly'): timeout=RECOVERY_SECONDS['collect']
+        elif args==('return-baseline',): timeout=RECOVERY_SECONDS['baseline']
         else: raise ValueError('not an allowed recovery CLI operation')
         with self.operations:
-            self.require_lease(timeout)
+            try: self.require_lease(timeout+reserve_after)
+            except RuntimeError as error:
+                if args[0]!='collect': raise
+                (self.output/'collection-skipped.json').write_text(json.dumps(dict(reason=str(error))))
+                return False
             self._cli(args,timeout)
+            return True
 
     def _cli(self,args,timeout):
         subprocess.run([str(REPO/'tools/board-window'),'--window',self.args.window,
@@ -151,18 +166,18 @@ class Window:
         if operation not in ('save','configure','stop','status','metadata','plugins'):
             raise ValueError('not an allowed workload operation')
         with self.operations:
-            self.require_work(65)
+            self.require_work(RECOVERY_SECONDS['config'])
             return self._board(operation,args)
 
-    def recovery_board(self,operation):
+    def recovery_board(self,operation,reserve_after=0):
         if operation not in ('stop','status','restore'): raise ValueError('not an allowed recovery board operation')
         with self.operations:
-            self.require_lease(65)
+            self.require_lease(RECOVERY_SECONDS['config']+reserve_after)
             return self._board(operation,())
 
     def _board(self,operation,args):
         command=['sudo','-n','python3',self.remote+'.py',operation,'--checkpoint',self.remote+'.json',*args]
-        value=w.ssh('vim4',shlex.join(command),timeout=65)
+        value=w.ssh('vim4',shlex.join(command),timeout=RECOVERY_SECONDS['config'])
         if value.strip():
             self.number+=1; (self.output/f'{self.number:03}-{operation}.json').write_text(value)
         return value
@@ -173,7 +188,7 @@ class Window:
         # workload checks the latch while holding that same lock.
         self.failures.append(reason)
         if ready is not None: ready.set()
-        try: self.recovery_board('stop')
+        try: self.recovery_board('stop',reserve_after=REQUIRED_RECOVERY_SECONDS)
         except Exception as error:
             self.failures.append('fault stop failed: '+str(error))
             (self.output/'fault-stop-error.log').write_text(str(error))
@@ -189,12 +204,12 @@ class Window:
             headers={'Content-Type':'application/json'},method=method)
         return json.load(urllib.request.urlopen(request,timeout=15))
 
-    def open_tunnel(self, previous=None, recovery=False):
+    def open_tunnel(self, previous=None, recovery=False,reserve_after=0):
         # A RAM reboot can leave the old SSH process alive briefly while its
         # forwarding channel is already unusable. Recreate our own transport
         # after every boot, including the final baseline return.
-        if recovery: self.require_lease(25)
-        else: self.require_work(25)
+        if recovery: self.require_lease(RECOVERY_SECONDS['reconnect']+reserve_after)
+        else: self.require_work(RECOVERY_SECONDS['reconnect'])
         if previous is not None:
             previous.terminate(); previous.wait(timeout=10)
         tunnel=subprocess.Popen(['ssh','-N','-oExitOnForwardFailure=yes',
@@ -319,7 +334,7 @@ class Window:
                     after=json.loads(self.board('status'))
                     if after['taint'] or after['cma']['CmaFree']<before:
                         raise RuntimeError('CMA not fully returned or taint changed')
-                    self.recovery_cli('collect','--readonly')
+                    self.recovery_cli('collect','--readonly',reserve_after=RECOVERY_RESERVE)
                     self.board('configure','--app','onekvm')
                     self.uu(gpu)
                     self.board('stop')
@@ -333,25 +348,39 @@ class Window:
             # Keep each recovery independent; a failed collection cannot skip
             # baseline return, config restoration or M6 HDR/window restoration.
             errors=[]
-            def reconnect():
+            def reconnect(reserve_after):
                 nonlocal tunnel
-                if booted: tunnel=self.open_tunnel(tunnel,recovery=True)
-            def restore_source():
-                if m6.restore_needed:
-                    with self.operations:
-                        self.require_lease(120)
-                        m6.restore()
-            for action in (lambda:self.recovery_cli('collect','--readonly'),
-                lambda:self.recovery_cli('return-baseline') if booted else None,
-                reconnect,
-                lambda:self.recovery_board('restore') if saved else None,
-                restore_source):
-                try: action()
-                except Exception as error: errors.append(str(error))
-            try: queue.sampling(token,False)
+                tunnel=self.open_tunnel(tunnel,recovery=True,reserve_after=reserve_after)
+            def restore_source(reserve_after):
+                with self.operations:
+                    self.require_lease(RECOVERY_SECONDS['source']+reserve_after)
+                    m6.restore()
+            steps=[]
+            if booted:
+                steps.extend([
+                    ('baseline',lambda reserve:self.recovery_cli('return-baseline',reserve_after=reserve)),
+                    ('reconnect',reconnect)])
+            if saved:
+                steps.append(('config',lambda reserve:self.recovery_board('restore',reserve_after=reserve)))
+            if m6.restore_needed:
+                steps.append(('source',restore_source))
+            remaining=sum(RECOVERY_SECONDS[name] for name,_ in steps)+LOCAL_CLEANUP_SECONDS
+            try: self.recovery_cli('collect','--readonly',reserve_after=remaining)
             except Exception as error: errors.append(str(error))
-            if tunnel is not None:
-                tunnel.terminate(); tunnel.wait(timeout=10)
+            for name,action in steps:
+                remaining-=RECOVERY_SECONDS[name]
+                try: action(remaining)
+                except Exception as error: errors.append(name+': '+str(error))
+            # Queue release must not consume an unbounded part of the lease.
+            try:
+                subprocess.run([str(REPO/'tools/board-queue'),'--root',str(queue.root),
+                    'sampling','--ticket',token,'off'],check=True,capture_output=True,text=True,
+                    timeout=RECOVERY_SECONDS['sampling'])
+            except Exception as error: errors.append('sampling: '+str(error))
+            try:
+                if tunnel is not None:
+                    tunnel.terminate(); tunnel.wait(timeout=RECOVERY_SECONDS['tunnel'])
+            except Exception as error: errors.append('tunnel: '+str(error))
             (self.output/'recovery.json').write_text(json.dumps(dict(errors=errors,
                 source_recovery_pending=m6.restore_needed),indent=2))
             if errors: raise RuntimeError('Recovery incomplete: '+'; '.join(errors))

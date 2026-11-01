@@ -212,7 +212,7 @@ class WindowTests(unittest.TestCase):
             runner.output=Path(tmp);runner.remote='/var/tmp/unit';runner.failures=[]
             runner.operations=threading.Lock();runner.deadline=time.monotonic()+1440
             runner.api=Mock(return_value={})
-            def board(operation,*args):
+            def board(operation,*args,**kwargs):
                 events.append(operation)
                 if operation=='status':return '{"taint":0,"cma":{"CmaFree":100}}'
                 if operation=='configure':raise RuntimeError('injected workload failure')
@@ -237,6 +237,7 @@ class WindowTests(unittest.TestCase):
                  patch.object(window.w,'source_hdr',return_value=False), \
                  patch.object(window.g,'M6',return_value=m6), \
                  patch.object(window.subprocess,'Popen',return_value=tunnel), \
+                 patch.object(window.subprocess,'run') as cleanup, \
                  patch.object(window.threading,'Event'), \
                  patch.object(window.threading,'Thread'):
                 with self.assertRaisesRegex(RuntimeError,'Recovery incomplete.*collection'):
@@ -244,7 +245,9 @@ class WindowTests(unittest.TestCase):
             self.assertLess(events.index('collect'),events.index('return-baseline'))
             self.assertLess(events.index('return-baseline'),events.index('restore'))
             self.assertLess(events.index('restore'),events.index('m6-restored'))
-            self.assertEqual(queue.sampling.call_args_list[-1].args,('token',False))
+            self.assertEqual(queue.sampling.call_args_list[-1].args,('token',True))
+            self.assertEqual(cleanup.call_args.args[0][-4:],['sampling','--ticket','token','off'])
+            self.assertEqual(cleanup.call_args.kwargs['timeout'],window.RECOVERY_SECONDS['sampling'])
             tunnel.terminate.assert_called_once()
             self.assertEqual(runner.open_tunnel.call_count,3)
 
@@ -262,6 +265,7 @@ class WindowTests(unittest.TestCase):
                      patch.object(window.w,'ssh',return_value='{"api_key":"unit"}'), \
                      patch.object(window.w,'MCP',return_value=client), \
                      patch.object(window.w,'source_hdr',return_value=cause=='hdr-on'), \
+                     patch.object(window.subprocess,'run'), \
                      patch.object(window.g,'M6',return_value=m6):
                     with self.assertRaises(RuntimeError):runner.run()
                 m6.toggle.assert_not_called();m6.restore.assert_not_called()
@@ -293,7 +297,7 @@ class WindowTests(unittest.TestCase):
             with patch.object(window.w,'ssh',side_effect=RuntimeError('SSH unavailable')):
                 runner.watch(Mock())
             self.assertRegex(runner.failures[0],'initial monitor read failed.*SSH unavailable')
-            runner.recovery_board.assert_called_once_with('stop')
+            runner.recovery_board.assert_called_once_with('stop',reserve_after=window.REQUIRED_RECOVERY_SECONDS)
             with patch.object(window.subprocess,'Popen') as start:
                 with self.assertRaisesRegex(RuntimeError,'monitor rejected workload'):
                     runner.command(['never-executed'])

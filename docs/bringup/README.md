@@ -19,6 +19,7 @@
 
 ## 2026-10-31
 
+- [HDR窗口恢复预算D1修复](2026-10-31-hdr10-recovery-budget.md) — video application offline safety
 - [原生HDR第二阶段窗口补审修复](2026-10-31-hdr10-phase2-window-fixes.md) — video application offline safety
 - [原生HDR第二阶段四项审查修复](2026-10-31-hdr10-phase2-review-fixes.md) — video application offline safety
 - [原生HDR第二阶段离线接入候选](2026-10-31-hdr10-phase2-offline.md) — video application uu gpu offline
