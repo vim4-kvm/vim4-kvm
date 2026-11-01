@@ -120,6 +120,9 @@ class M6:
             current = self.screen()
             try:
                 front_settings(current)
+                # The menu bar changes before Settings has painted its
+                # sidebar. Do not decide where to click from that empty frame.
+                find(current, 'Displays')
                 break
             except GateError:
                 if time.monotonic() >= deadline: raise
@@ -138,7 +141,16 @@ class M6:
             if len(choices) != 1: raise GateError('Displays sidebar target is not visible')
             row = choices[0]
             self.click((round(row['x']+row['w']/2), round(row['y']+row['h']/2)))
-            settings(self.screen())
+            deadline = time.monotonic() + 8
+            while True:
+                current = self.screen()
+                front_settings(current)
+                try:
+                    settings(current)
+                    break
+                except GateError:
+                    if time.monotonic() >= deadline: raise
+                    time.sleep(.25)
 
     def toggle(self, enabled):
         if self.source_hdr() == enabled:

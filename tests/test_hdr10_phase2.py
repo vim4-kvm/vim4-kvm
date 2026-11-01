@@ -121,7 +121,8 @@ class M6Tests(unittest.TestCase):
         menu=dict(SCREENS['chrome'],items=[*SCREENS['chrome']['items'],
             dict(text='• System Settings...',x=22,y=75,w=150,h=20)])
         control,client,_=self.controller([])
-        control.screen=Mock(side_effect=[SCREENS['chrome'],SCREENS['chrome'],menu,SCREENS['general']])
+        unpainted=dict(SCREENS['general'],items=[dict(text='System Settings Edit View Window Help',x=45,y=6,w=300,h=20)])
+        control.screen=Mock(side_effect=[SCREENS['chrome'],SCREENS['chrome'],menu,unpainted,SCREENS['general']])
         control.displays=Mock()
         with patch.object(gates.time,'sleep'):
             control.open()
