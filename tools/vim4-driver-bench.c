@@ -451,6 +451,8 @@ int main(int argc, char **argv)
         gst_object_unref(file_sink);
     }
     GstElement *capture = gst_bin_get_by_name(GST_BIN(bench.pipeline), "source");
+    if (secondary)
+        g_object_set(capture, "height", height, NULL);
     if (edge) {
         if (!video_device_is(device, "t7-vdin-test")) {
             g_printerr("Capture must be t7-vdin-test\n"); return 1;

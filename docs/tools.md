@@ -184,7 +184,8 @@ PiKVM smoke 可用 `PIKVM_CDP` 接入专用测试 Chrome；结束时关闭测试
 | tools/encoder-vbv-summary.py、tools/encoder-vbv-quality.py | 离线；quality需ffmpeg | 不访问硬件；解码需避开性能窗口 | 分场景峰值、编码耗时、固定带宽FIFO模型；选定帧与原始输入的PSNR/SSIM，不代表真实网络或全片画质 | [VBV 对照](bringup/2026-10-26-encoder-vbv.md) |
 | tools/display-color.py、tools/display-color.c | 离线 / 板（root） | chart/analyze/diff 无；run 独占显示/采集；snapshot 只读控制和矩阵 | KMS dumb 图案、V4L2 原始 NV12 三帧、≤2 码值色块分析；5.15 同 sink 寄存器对照、TX/RX AVI；调用者持双锁并管理服务/一次性启动 | [颜色校准](display-color-calibration.md) |
 | tools/hdmi-color-check.py | 离线，PNG分析需Pillow | 不接触板子 | 按16色块的RX前矩阵10-bit Y/Cb/Cr探针值，计算SDR709或PQ2020→SDR参考并统计解码帧码值误差；不替代显示器测色 | [HDR切换颜色修复](bringup/2026-10-25-native-hdr-color.md) |
-| tools/perf-baseline.py | 离线 | 无 | 5.15/7.3命令计划与三组A/B/A单指标门禁；缺失/受干扰不算通过，不执行命令 | [性能基线](performance-baseline.md) |
+| tools/perf-baseline.py | 离线 | 无 | plan/matrix预算、跨窗epoch配对门禁与summary逐项汇总；不执行命令、不测声音 | [性能基线](performance-baseline.md) |
+| tools/perf-quick.py、perf-motion.html | Mac / M6浏览器 / 板 | MCP发送目标机HID；native独占采集编码、暂停并恢复One-KVM；window可RAM启动/恢复 | 快速1080p实验、HTTP标记源、MCP与三种原生采样；dispatch延迟包含源端HTTP及调度 | [快速实验](bringup/2026-10-31-p0-2-performance.md) |
 | tools/perf-sensors.py | 板 | 读；性能窗口内 | 1Hz温度/功率/频率/runtime状态JSONL，不改时钟；缺传感器不记0 | [性能基线](performance-baseline.md) |
 | tools/vendor-boot-plan.py | 离线 | 无 | 从启动快照和已解析厂商profile生成一次性配置；不stage、不改默认、不重启 | [厂商对照启动](vendor-boot-baseline.md) |
 | tools/latency-source.swift | Mac | 占用 HDMI 画面；可输出 HDMI 音频 | 把帧号画进 HDMI 输出；`--display-link` 可选跟随刷新，默认60Hz Timer；`--motion` 运动网格，`--motion-cycle=运动秒数,周期秒数` 交替滚动/静止背景并记录状态；`--verify-coherence` 三处标记，`--hdr-chart`/`--color-chart` 灰阶/色块，`--no-labels` 禁用字体；仅显式 `--sync-audio=设备名` 输出同步闪块/音调，不改默认音频设备 | [延迟测量](latency.md) |

@@ -1,7 +1,7 @@
 // Reuses the project's browser/login transport. No audio tracks or HID.
 import fs from 'node:fs/promises';
 import { loginManager } from './manager-login.mjs';
-import { measureDecoded } from './board-window-timing.mjs';
+import { measureDecoded, connectVideo, closeVideo } from './board-window-timing.mjs';
 const { chromium } = await import(process.env.PLAYWRIGHT_MODULE || 'playwright');
 const browser = await chromium.launch({ ...(process.env.VIM4_TEST_CHROME
   ? { executablePath: process.env.VIM4_TEST_CHROME } : { channel: 'chrome' }),
@@ -44,35 +44,7 @@ try {
     if (localIP && !/^\d{1,3}(\.\d{1,3}){3}$/.test(localIP)) throw new Error('Invalid LAN IPv4');
     const target = new URL(url);
     await loginManager(context, url, { localBackend: ['127.0.0.1', 'localhost', '[::1]'].includes(target.hostname) });
-    await page.route('**/__board_receiver', route => route.fulfill({ contentType: 'text/html',
-      body: '<video autoplay muted playsinline></video>' }));
-    await page.goto(new URL('/__board_receiver', target).href);
-    await page.evaluate(async localIP => {
-      const pc = new RTCPeerConnection({iceServers: []});
-      window.boardPeers = [pc];
-      pc.addTransceiver('video', {direction: 'recvonly'});
-      pc.ontrack = e => { document.querySelector('video').srcObject = new MediaStream([e.track]); };
-      await pc.setLocalDescription(await pc.createOffer());
-      if (pc.iceGatheringState !== 'complete') {
-        await Promise.race([new Promise(resolve => { pc.onicegatheringstatechange = () => {
-          if (pc.iceGatheringState === 'complete') resolve();
-        }; }), new Promise(r => setTimeout(r, 2000))]);
-      }
-      let sdp = pc.localDescription.sdp;
-      // r17's literal host candidates are the default above. An explicit LAN
-      // override is available for browsers that still hide their host address.
-      if (/[\w-]+\.local/.test(sdp)) {
-        if (!localIP) throw new Error('Host candidates still use mDNS; supply receiver --local-ip');
-        sdp = sdp.replace(/[\w-]+\.local/g, localIP);
-      }
-      const response = await fetch('/api/webrtc/offer', {method: 'POST',
-        headers: {'Content-Type': 'application/json'}, body: JSON.stringify({sdp})});
-      if (!response.ok) throw new Error('offer HTTP ' + response.status);
-      const answer = await response.json();
-      window.boardSession = answer.session_id;
-      await pc.setRemoteDescription({type: 'answer', sdp: answer.sdp});
-      for (const ice of answer.ice_candidates || []) await pc.addIceCandidate(ice);
-    }, localIP);
+    await connectVideo(page, url, localIP);
     const sample = () => page.evaluate(async () => {
       for (const peer of window.boardPeers) {
         if (peer.connectionState !== 'connected') continue;
@@ -90,11 +62,7 @@ try {
   }
 } finally {
   for (const context of browser.contexts()) for (const page of context.pages()) {
-    await page.evaluate(async () => {
-      for (const peer of window.boardPeers || []) peer.close();
-      if (window.boardSession) await fetch('/api/webrtc/close', {method: 'POST',
-        headers: {'Content-Type': 'application/json'}, body: JSON.stringify({session_id: window.boardSession})});
-    }).catch(() => {});
+    await closeVideo(page).catch(() => {});
   }
   await browser.close();
 }

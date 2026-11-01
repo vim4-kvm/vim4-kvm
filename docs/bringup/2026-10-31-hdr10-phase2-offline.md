@@ -122,7 +122,8 @@ release/build ID/内核归档哈希/Image 哈希，预检管理器认证、UU �
 | HLG / 动态 metadata | 无真实源，未验 |
 | kbase / Panfrost + 稳定性/CMA/taint/WARNING | 本候选未上板；不能沿用 r13 或 llvmpipe 结果计通过 |
 
-最新 main 在核对时为 583e411，tested_build 仍为 uhd5，尚未登记可复用的统一 uhd6。
+最新 main 在核对时为 16f3280，已同步其工具更新；tested_build 仍为 uhd5，尚未登记可复用的统一 uhd6。
+同步 main 后的全量回归单独保存在 `root-phase2-main-tests.log`。
 未取板票等待它，也未使用不匹配模块/BTF。下一步取 P0-1 固定 uhd6 归档/哈希，复用已封存用户态
 生成正式候选，再执行上述命令；板上失败收证据并释放，离线修复后重排，不持板编译。
 

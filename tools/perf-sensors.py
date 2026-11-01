@@ -18,7 +18,7 @@ PATTERNS = (
     '/sys/class/devfreq/*/available_frequencies', '/sys/class/devfreq/*/device/power/runtime_status',
     '/sys/class/hwmon/hwmon*/name', '/sys/class/hwmon/hwmon*/power*_input',
     '/sys/class/hwmon/hwmon*/power*_label', '/sys/class/hwmon/hwmon*/energy*_input',
-    '/proc/loadavg', '/proc/stat', '/proc/sys/kernel/tainted',
+    '/proc/loadavg', '/proc/stat', '/proc/meminfo', '/proc/sys/kernel/tainted',
 )
 
 
