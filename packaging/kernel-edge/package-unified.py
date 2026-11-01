@@ -15,7 +15,7 @@ import subprocess
 import tempfile
 import tarfile
 
-KERNEL = 'dc220366a1222a03423d5b5987fab3f027ec1d7a'
+KERNEL = 'f951e2d24d32d5df0e701e7c355b3db4c91eaf74'
 RELEASE = '7.3.0-vim4kvm-uhd6+'
 
 

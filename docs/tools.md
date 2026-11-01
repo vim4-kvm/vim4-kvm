@@ -8,7 +8,7 @@ set只选择backing raster，不能证明HDMI线上的时序，调用者保存/�
 不发HID、不播声音；改变信源模式须独占板窗。
 
 `packaging/kernel-edge/hdmi-mode-fixture.py`：prepare离线生成19档单DTD EDID，保留音频/HDMI/SCDC；
-measure仅在板票窗口内经V4L2查询真实输入，不写EDID/HPD；verify离线比对测量几何和刷新率。
+measure/read-edid仅在板票窗口内经V4L2查询真实输入/已发布EDID，不写EDID/HPD；verify离线比对测量几何和刷新率。
 `hdmi-modes.json`固定正式内核时序来源；CoreGraphics缩放尺寸不能替代接收器测量。
 
 `packaging/hdr10/ram-payload.py`：离线把已封存r3制品与已审阅HDR2 RAM启动模板封装为

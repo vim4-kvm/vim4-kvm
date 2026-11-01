@@ -126,7 +126,12 @@ class WindowTests(unittest.TestCase):
     def test_generic_release_stages_and_cleans_only_its_empty_mountpoint(self):
         self.stage_private_payload('7.3.0-vim4kvm-future_hdr10.r42+')
 
-    def stage_private_payload(self, release):
+    def test_reuse_refuses_changed_execution_permissions_owners_and_directory_links(self):
+        for damage in ('init-exec', 'runtime-exec', 'runtime-write', 'directory-link', 'owner', 'file-owner', 'directory-write'):
+            with self.subTest(damage=damage):
+                self.stage_private_payload('7.3.0-vim4kvm-reuse-test+', damage)
+
+    def stage_private_payload(self, release, damage=None):
         from test_display_once import static_elf
         once = window.load('payload_stage', ROOT / 'packaging/kernel-edge/display-once.py')
         with tempfile.TemporaryDirectory() as directory:
@@ -149,12 +154,40 @@ class WindowTests(unittest.TestCase):
             baseline.write_bytes(b'unchanged')
             proof = dict(release='5.15.test', build_id='c'*40, cmdline='baseline', files={str(baseline): once.sha(baseline)})
             lstat = Path.lstat
+            bad_owner = set()
             def owned(path):
-                values = list(lstat(path)); values[4] = 0; values[0] &= ~0o022
+                values = list(lstat(path)); values[4] = 1000 if path in bad_owner else 0
+                if not path.is_relative_to(candidate): values[0] &= ~0o022
                 return os.stat_result(values)
             (root / 'module-mounts').mkdir()
             with patch.object(once, 'ROOT', root / 'display-m1'), patch.object(once, 'MODULE_ROOT', root / 'module-mounts'), patch.object(once.os, 'geteuid', return_value=0), patch.object(Path, 'lstat', owned):
                 once.stage(bundle, retained_baseline=proof)
+                with self.assertRaises(FileExistsError):
+                    once.stage(bundle, retained_baseline=proof)
+                once.stage(bundle, retained_baseline=proof, reuse_staged=True)
+                if damage:
+                    if damage == 'init-exec': (candidate / 'init').chmod(0o444)
+                    elif damage == 'runtime-exec': (candidate / 'runtime/helper').chmod(0o444)
+                    elif damage == 'runtime-write': (candidate / 'runtime/helper').chmod(0o575)
+                    elif damage == 'owner': bad_owner.add(candidate)
+                    elif damage == 'file-owner': bad_owner.add(candidate / 'runtime/helper')
+                    elif damage == 'directory-write': (candidate / 'runtime').chmod(0o755)
+                    else:
+                        candidate.chmod(0o755)
+                        (candidate / 'runtime').chmod(0o755)
+                        (candidate / 'runtime').rename(root / 'outside-runtime')
+                        (root / 'outside-runtime').chmod(0o555)
+                        (candidate / 'runtime').symlink_to(root / 'outside-runtime', target_is_directory=True)
+                        candidate.chmod(0o555)
+                    with self.assertRaisesRegex(ValueError, 'untrusted staged'):
+                        once.stage(bundle, retained_baseline=proof, reuse_staged=True)
+                    return
+                image = candidate / 'Image'
+                image.chmod(0o644)
+                image.write_bytes(b'changed kernel')
+                image.chmod(0o444)
+                with self.assertRaisesRegex(ValueError, 'hash mismatch'):
+                    once.stage(bundle, retained_baseline=proof, reuse_staged=True)
             self.assertEqual(list((root / 'module-mounts' / manifest['release']).iterdir()), [])
             self.assertTrue((candidate / 'runtime/helper').stat().st_mode & 0o111)
             self.assertEqual(baseline.read_bytes(), b'unchanged')
@@ -207,6 +240,11 @@ class WindowTests(unittest.TestCase):
                 changed = dict(proof, files=dict(proof['files'], **{name: 'changed'}))
                 self.assertFalse(cache.get(changed, measure, '2026-10-31')['reused'])
             self.assertFalse(cache.get(proof, measure, '2026-11-01')['reused'])
+            configured = dict(proof, measurement={'settings': {'codec': 'h264', 'source': 'm6'}})
+            self.assertFalse(cache.get(configured, measure, '2026-10-31')['reused'])
+            self.assertTrue(cache.get(configured, measure, '2026-10-31')['reused'])
+            configured['measurement']['settings']['codec'] = 'h265'
+            self.assertFalse(cache.get(configured, measure, '2026-10-31')['reused'])
             with self.assertRaises(ValueError):
                 cache.get(dict(proof, release='7.3.test'), measure)
 
@@ -284,6 +322,38 @@ clock=0;
 await assert.rejects(measureDecoded(async()=>({framesDecoded:0}),.2,options),/No actual decoded/);
 clock=0;
 await assert.rejects(measureDecoded(async()=>({id:'v',ssrc:clock?2:1,framesDecoded:1}),.2,options),/stream changed/);
+'''
+        subprocess.run(['node', '--input-type=module', '-e', script], cwd=ROOT, check=True, timeout=10)
+
+    @unittest.skipUnless(shutil.which('node'), 'Node is required for receiver transport replay')
+    def test_video_transport_has_no_audio_or_hid_and_closes_session(self):
+        script = r'''
+import assert from 'node:assert/strict';
+import {connectVideo,closeVideo} from './tools/board-window-timing.mjs';
+const requests=[], tracks=[];
+globalThis.window={};
+globalThis.document={querySelector:()=>({})};
+globalThis.MediaStream=class {};
+globalThis.RTCPeerConnection=class {
+  iceGatheringState='complete';
+  localDescription={sdp:'v=0'};
+  addTransceiver(...args){tracks.push(args);}
+  async createOffer(){return {};}
+  async setLocalDescription(){}
+  async setRemoteDescription(answer){assert.equal(answer.sdp,'answer');}
+  close(){this.closed=true;}
+};
+globalThis.fetch=async (url,options)=>{
+  requests.push([url,JSON.parse(options.body)]);
+  return {ok:true,json:async()=>({session_id:'test-session',sdp:'answer'})};
+};
+const page={route:async()=>{},goto:async()=>{},evaluate:async(fn,arg)=>fn(arg)};
+await connectVideo(page,'http://example.test',undefined);
+assert.deepEqual(tracks,[['video',{direction:'recvonly'}]]);
+await closeVideo(page);
+assert.equal(window.boardPeers[0].closed,true);
+assert.deepEqual(requests.map(r=>r[0]),['/api/webrtc/offer','/api/webrtc/close']);
+assert.deepEqual(requests[1][1],{session_id:'test-session'});
 '''
         subprocess.run(['node', '--input-type=module', '-e', script], cwd=ROOT, check=True, timeout=10)
 

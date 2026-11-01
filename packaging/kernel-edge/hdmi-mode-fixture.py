@@ -2,10 +2,11 @@
 """Prepare single-DTD EDIDs offline and qualify actual V4L2 input timings.
 
 CoreGraphics backing dimensions never substitute for receiver measurements.
-Only measure opens a device, read-only, using VIDIOC_QUERY_DV_TIMINGS. The caller
+Only measure/read-edid open a device, read-only, using V4L2 queries. The caller
 must hold the shared board ticket; no EDID write or HPD operation occurs here.
 """
 import argparse
+import ctypes
 import fcntl
 import hashlib
 import json
@@ -20,6 +21,29 @@ sys.path.insert(0, str(ROOT))
 TIMINGS = Path(__file__).with_name('hdmi-modes.json')
 BASELINE = ROOT / 'board/edid/rtk-uhd-hdr.bin'
 QUERY_DV_TIMINGS = 0x80845663  # _IOR('V', 99, struct v4l2_dv_timings), 132 bytes.
+GET_EDID = 0xc0285628
+
+
+class EdidRequest(ctypes.Structure):
+    _fields_ = [('pad', ctypes.c_uint32), ('start_block', ctypes.c_uint32),
+                ('blocks', ctypes.c_uint32), ('reserved', ctypes.c_uint32 * 5),
+                ('edid', ctypes.c_void_p)]
+
+
+def read_edid(device):
+    """Query the published length first; zero blocks is a valid withdrawn EDID."""
+    fd = os.open(device, os.O_RDONLY | os.O_NONBLOCK)
+    try:
+        request = EdidRequest()
+        fcntl.ioctl(fd, GET_EDID, request)
+        if not request.blocks:
+            return b''
+        buffer = ctypes.create_string_buffer(request.blocks * 128)
+        request.edid = ctypes.addressof(buffer)
+        fcntl.ioctl(fd, GET_EDID, request)
+        return bytes(buffer[:request.blocks * 128])
+    finally:
+        os.close(fd)
 
 
 def load_modes():
@@ -148,6 +172,8 @@ def main():
     build.add_argument('destination', type=Path)
     read = actions.add_parser('measure', help='Board only; read actual V4L2 input timings')
     read.add_argument('device')
+    edid = actions.add_parser('read-edid', help='Board only; query EDID length then published bytes')
+    edid.add_argument('device')
     verify = actions.add_parser('verify', help='Offline; qualify a measured JSON against one mode')
     verify.add_argument('mode', type=int)
     verify.add_argument('measurement', type=Path)
@@ -157,6 +183,9 @@ def main():
             result = prepare(args.destination)
         elif args.action == 'measure':
             result = measure(args.device)
+        elif args.action == 'read-edid':
+            data = read_edid(args.device)
+            result = dict(blocks=len(data) // 128, edid_hex=data.hex())
         else:
             mode = next(m for m in load_modes() if m['id'] == args.mode)
             result = qualify(mode, json.loads(args.measurement.read_text()))

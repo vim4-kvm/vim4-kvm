@@ -1,6 +1,6 @@
 # 2026-10-31：uhd6 统一候选
 
-状态：r3部分门禁通过，N窗发生SError后已自动回5.15；修复待独立review，未完成全量验收或安装。5.15 保持默认；`tested_build` 仍是
+状态：r3部分门禁通过，SError修复已过独立review及Q窗定向门禁；正式源码f951e2d24d32完整重建中，尚未完成全量验收或安装。5.15 保持默认；`tested_build` 仍是
 已验 uhd5，`retained_runtime` 仍是 uhd1。构建通过不能代替下表验收。
 
 ## 来源与冲突处理
@@ -27,7 +27,7 @@ Panfrost 保留其原生 HDR 已验路径，不把 r7b–r11、coherent 故障 D
 | 项目 | 状态 |
 |---|---|
 | Image/两份 DT/全部模块/三外部模块/BTF/完整清单 | 全部构建、逐文件验证通过 |
-| checkpatch --strict、DT、宿主夹具、主仓离线 unittest | 代码差异、限定DT schema、宿主夹具与372项主仓测试通过，14项环境跳过；历史提交元数据诊断见下文 |
+| checkpatch --strict、DT、宿主夹具、主仓离线 unittest | 代码差异、限定DT schema、宿主夹具与374项主仓测试通过，14项环境跳过；历史提交元数据诊断见下文 |
 | HDMI 模式、H.264、H.265、4K60 | r3 H.264 UHD短接收通过，其余待验 |
 | SARADC（九类之外补核对） | 窗口M/N各2000次channel 2读取，4093，零错误；未操作实体键 |
 | 音频服务（按本任务不测声音） | r3 One-KVM检测到VIM4HDMIRX；HDR切换后48k采集自动恢复，无声音测试 |
@@ -136,6 +136,6 @@ return-baseline因SSH不通失败，105秒后释放票据，当时串口只取�
 随后只读取证确认已自动回5.15，13项受保护哈希、四服务及UDC均通过；未执行用户RESET。
 pstore补齐link工作队列的完整panic，固件报告watchdog_reboot，详见[恢复取证与待审修复](2026-10-31-uhd6-edid-review.md)。
 
-独立修复f951e2d24d32d已通过宿主夹具、checkpatch及模块/BTF构建；根因、5.15对照和边界见上述待审记录。
+独立修复f951e2d24d32d已通过review和Q窗撤回/保持/重复/发布/恢复采集门禁，已进入正式分支；根因及5.15对照见上述记录。
 [定向包清单](../../packaging/kernel-edge/uhd6-edid-repair.json)固定来源与哈希；仅替换一个匹配模块，
-待独立review前不上板。通过后仍须正式来源合入、完整重封和全量验收，不提升当前正式锁。
+正式完整重封及全量验收完成前，不提升tested_build/retained_runtime。

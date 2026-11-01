@@ -12,6 +12,7 @@ import os
 from pathlib import Path, PurePosixPath
 import re
 import shutil
+import stat
 import struct
 import tarfile
 import tempfile
@@ -322,7 +323,7 @@ def read_trial(archive, baseline=None):
     return plan, metadata, entries
 
 
-def stage(bundle, retained_baseline=None):
+def stage(bundle, retained_baseline=None, reuse_staged=False):
     def check(plan):
         if retained_baseline is None:
             preflight(plan)
@@ -347,7 +348,44 @@ def stage(bundle, retained_baseline=None):
                 raise RuntimeError('untrusted staging ancestor: ' + str(ancestor))
         target = stage_root / plan['build_id']
         if target.exists() or target.is_symlink():
-            raise FileExistsError(target)
+            if not reuse_staged or target.is_symlink() or not target.is_dir():
+                raise FileExistsError(target)
+            # Performance A/B/A revisits an immutable candidate. Never overwrite
+            # its payload: verify every archived file before selecting it again.
+            directories = {target}
+            for name in entries:
+                parent = (target / name).parent
+                while parent != target:
+                    directories.add(parent)
+                    parent = parent.parent
+            for directory in directories:
+                info = directory.lstat()
+                if not stat.S_ISDIR(info.st_mode) or info.st_uid or stat.S_IMODE(info.st_mode) != 0o555:
+                    raise ValueError('untrusted staged directory: ' + str(directory))
+            for name, member in entries.items():
+                path = target / name
+                info = path.lstat()
+                executable = name == 'init' or ((metadata == 'manifest.json' or 'namespace' in plan) and member.mode & 0o111)
+                mode = 0o555 if executable else 0o444
+                if not stat.S_ISREG(info.st_mode) or info.st_uid or stat.S_IMODE(info.st_mode) != mode:
+                    raise ValueError('untrusted staged file permissions: ' + name)
+                digest = plan['files'][name] if name != metadata else hashlib.sha256(archive.extractfile(member).read()).hexdigest()
+                if sha(path) != digest:
+                    raise ValueError('staged trial file hash mismatch: ' + name)
+            static_arm64(target / 'init')
+            check(plan)
+            if metadata == 'manifest.json' or 'namespace' in plan:
+                mountpoint = MODULE_ROOT / plan['release']
+                created = not mountpoint.exists()
+                mountpoint.mkdir(mode=0o755, exist_ok=True)
+                if mountpoint.is_symlink() or not mountpoint.is_dir():
+                    raise RuntimeError('untrusted module bind destination')
+                if created:
+                    info = mountpoint.stat()
+                    (target / '.created-module-mountpoint.json').write_text(json.dumps(
+                        dict(device=info.st_dev, inode=info.st_ino)))
+            print('REUSED_VERIFIED', target)
+            return
         with tempfile.TemporaryDirectory(prefix='.incomplete-', dir=stage_root) as directory:
             work = Path(directory)
             seen = set()

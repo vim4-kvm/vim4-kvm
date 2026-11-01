@@ -1,5 +1,5 @@
 {
-  "status": "unvalidated-targeted-module-trial-not-a-formal-build",
+  "status": "qualified-targeted-module-trial-not-a-formal-build",
   "image_source": "dc220366a1222a03423d5b5987fab3f027ec1d7a",
   "module_source": "f951e2d24d32d5df0e701e7c355b3db4c91eaf74",
   "kernel_branch": "p0-1-unified73",
@@ -10,10 +10,13 @@
   "old_sha256": "9bf6371f57603fbc22b604994812e2405bdf7805dbfd6d1c3627096af2d3ced8",
   "sha256": "abe146d15f47aee2f03443f85f412169769296d001f0534dd682b97e7a9005aa",
   "build_id": "e16729b7ad79a09cc938b01776bbc05ba6137b17",
-  "ram_payload_id": "uhd6-edid-f951",
-  "ram_archive": "p0-1-uhd6-edid-f951-ram.tar.gz",
-  "ram_sha256": "9bb17d0015acee3a0aed7a5e40bc808db13b7dc233f905a206f8c7735324134e",
+  "ram_payload_id": "uhd6-edid-f951-r3",
+  "ram_archive": "p0-1-uhd6-edid-f951-r3-ram.tar.gz",
+  "ram_sha256": "07328181697fa46e2a6d47009956cc537689bc6539a18f537041ae060a62599b",
   "module_count": 2341,
   "unchanged_modules": 2340,
-  "hardware_validated": false
+  "hardware_validated": true,
+  "acceptance_scope": "two-withdraw-hold-repeat-republish-cycles-and-video-recovery",
+  "evidence": "docs/bringup/2026-10-31-uhd6-edid-review.md",
+  "raw_evidence": "logs/p0-1-window-q"
 }

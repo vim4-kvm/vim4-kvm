@@ -214,7 +214,7 @@ manager_binary_sha256 = "f619943882710022afbde5a973af4d2812526898c7971e6ebc43012
 evidence = "docs/bringup/2026-10-31-uhd6-unified.md"
 
 [repair_trial]
-status = "reviewed-awaiting-targeted-ram-gate"
+status = "reviewed-targeted-ram-gate-passed-formal-rebuilding"
 descriptor_path = "uhd6-edid-repair.json"
 kernel_revision = "f951e2d24d32d5df0e701e7c355b3db4c91eaf74"
 kernel_branch = "p0-1-unified73"

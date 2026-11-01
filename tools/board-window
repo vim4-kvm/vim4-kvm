@@ -444,10 +444,12 @@ def main():
     p = commands.add_parser('boot-candidate')
     p.add_argument('candidate', type=Path)
     p.add_argument('--sha256', required=True, help='trusted candidate.tar SHA256')
+    p.add_argument('--reuse-staged', action='store_true', help='verify and reuse the exact immutable payload')
     p.add_argument('--baseline-files', nargs='+', help='first HDR2 payload: original 5.15 recovery files')
     commands.add_parser('return-baseline')
     p = commands.add_parser('baseline')
     p.add_argument('--files', nargs='+', required=True, help='kernel, programs and all default boot files')
+    p.add_argument('--settings', type=Path, help='public source/browser/codec/settings JSON included in cache key')
     p.add_argument('--url', default='http://192.168.50.210:8080')
     p.add_argument('--local-ip')
     p.add_argument('--seconds', type=float, default=10)
@@ -478,6 +480,7 @@ def main():
         queue, token = require_board()
         queue.sampling(token, True)
         try:
+            save(directory / ('sampling-' + str(time.time_ns()) + '.json'), queue.read(token))
             result = receiver(args.url, args.seconds, args.local_ip)
         finally:
             queue.sampling(token, False)
@@ -488,6 +491,7 @@ def main():
         def measure():
             queue.sampling(token, True)
             try:
+                save(directory / ('sampling-' + str(time.time_ns()) + '.json'), queue.read(token))
                 metrics = receiver(args.url, args.seconds, args.local_ip)
                 if identity(args.host, args.files) != proof:
                     raise RuntimeError('baseline identity changed during measurement')
@@ -495,8 +499,9 @@ def main():
             finally:
                 queue.sampling(token, False)
         cache = BaselineCache(queue.root / 'baseline-cache.json')
+        settings = json.loads(args.settings.read_text()) if args.settings else None
         result = cache.get(dict(proof, host=args.host, measurement=dict(url=args.url,
-                           seconds=args.seconds, local_ip=args.local_ip)), measure)
+                           seconds=args.seconds, local_ip=args.local_ip, settings=settings)), measure)
     elif args.action == 'mcp':
         key = os.environ.get('ONEKVM_MCP_KEY')
         if not key:
@@ -565,8 +570,8 @@ def main():
 s=importlib.util.spec_from_file_location('once',SCRIPT)
 m=importlib.util.module_from_spec(s);s.loader.exec_module(m)
 assert m.sha(BUNDLE)==DIGEST
-m.stage(BUNDLE,retained_baseline=PROOF)
-""".replace('SCRIPT', repr(remote + '.py')).replace('BUNDLE', repr(remote + '.tar')).replace('DIGEST', repr(digest)).replace('PROOF', repr(proof))
+m.stage(BUNDLE,retained_baseline=PROOF,reuse_staged=REUSE)
+""".replace('SCRIPT', repr(remote + '.py')).replace('BUNDLE', repr(remote + '.tar')).replace('DIGEST', repr(digest)).replace('PROOF', repr(proof)).replace('REUSE', repr(args.reuse_staged))
         ssh(args.host, 'sudo -n python3 -c ' + shlex.quote(script), timeout=180)
         require_board()
         boot(args.host, args.device, directory, plan)
