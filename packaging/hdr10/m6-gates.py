@@ -31,9 +31,13 @@ def front_settings(screen):
 
 def chrome_front(screen):
     chrome = find(screen, 'Chrome', top=True)
-    # r13 OCR places the left edge at 41.8px; the manually reviewed anchor
-    # was 53px. Both describe this same 1920x1080 menu bar.
-    if (screen['width'], screen['height']) != (1920, 1080) or not 35 <= chrome['x'] <= 65:
+    # Vision sometimes merges the Apple icon and the Chrome menu headings
+    # into one row (observed r14c). Qualify that whole menu, rather than
+    # treating the icon's left edge as the Chrome word's position.
+    text = chrome['text'].lstrip(' •')
+    separate = text == 'Chrome' and 35 <= chrome['x'] <= 65
+    merged = text.startswith('Chrome File Edit View ') and -1 <= chrome['x'] <= 65
+    if (screen['width'], screen['height']) != (1920, 1080) or not (separate or merged):
         raise GateError('Unqualified original M6 foreground')
 
 

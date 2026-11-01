@@ -42,6 +42,22 @@ def held_queue():
 
 
 class M6Tests(unittest.TestCase):
+    def test_observed_combined_chrome_menu_qualifies_without_hid(self):
+        screen = dict(SCREENS['chrome'], items=[dict(
+            text='• Chrome File Edit View History Bookmarks',
+            x=-0.294, y=2.679, w=393.937, h=27.421)])
+        client = Mock()
+        control = gates.M6(client, lambda: False, '/unused',
+                           Path(tempfile.gettempdir()) / 'm6-merged')
+        control.screen = Mock(return_value=screen)
+        control.qualify(False)
+        client.call.assert_not_called()
+        self.assertFalse(control.restore_needed)
+        for text in ('Safari Chrome File Edit View', 'Chrome webpage'):
+            screen['items'][0]['text'] = text
+            with self.assertRaises(gates.GateError): control.qualify(False)
+        client.call.assert_not_called()
+
     def controller(self, screens):
         client = Mock()
         state = [False]
