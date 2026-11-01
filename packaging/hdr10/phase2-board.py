@@ -18,6 +18,12 @@ UNITS = {'onekvm':'one-kvm.service','nanokvm':'nanokvm.service',
 FILES = ['/etc/default/vim4-kvm-hdr','/etc/kvm/video.json','/var/lib/jetkvm/config.json',
          '/var/lib/kvmd/video-codec','/var/lib/kvmd/video-output-height']
 
+# include/uapi/linux/v4l2-controls.h; t7-vdin-test registers these standard IDs.
+V4L2_CTRL_CLASS_COLORIMETRY = 0x00a50000
+V4L2_CID_COLORIMETRY_CLASS_BASE = V4L2_CTRL_CLASS_COLORIMETRY | 0x900
+V4L2_CID_COLORIMETRY_HDR10_CLL_INFO = V4L2_CID_COLORIMETRY_CLASS_BASE + 0
+V4L2_CID_COLORIMETRY_HDR10_MASTERING_DISPLAY = V4L2_CID_COLORIMETRY_CLASS_BASE + 1
+
 
 def stop():
     subprocess.run(['systemctl','stop',*UNITS.values()],check=True,timeout=25)
@@ -55,9 +61,9 @@ def metadata():
         if p.read_text().strip()=='t7-vdin-test']
     if len(nodes)!=1: raise ValueError('expected one VDIN capture node')
     mastering,cll=Mastering(),Cll()
-    # Linux ARM64 V4L2 UAPI, identical to the r13 read-only metadata probe.
-    controls=(Control*2)(Control(0xa50902,c.sizeof(mastering),0,c.addressof(mastering)),
-        Control(0xa50901,c.sizeof(cll),0,c.addressof(cll)))
+    controls=(Control*2)(Control(V4L2_CID_COLORIMETRY_HDR10_MASTERING_DISPLAY,
+        c.sizeof(mastering),0,c.addressof(mastering)),
+        Control(V4L2_CID_COLORIMETRY_HDR10_CLL_INFO,c.sizeof(cll),0,c.addressof(cll)))
     query=Controls();query.count=2;query.controls=controls
     fd=os.open('/dev/'+nodes[0],os.O_RDONLY|os.O_NONBLOCK)
     try: fcntl.ioctl(fd,0xc0205647,query)

@@ -1,9 +1,14 @@
 import importlib.util
+import ctypes
+import fcntl
 import io
 import json
 from pathlib import Path
 import tarfile
 import tempfile
+import struct
+import subprocess
+import sys
 import unittest
 from unittest.mock import Mock, patch
 from types import SimpleNamespace
@@ -246,6 +251,38 @@ class BitstreamTests(unittest.TestCase):
 
 
 class BoardRecoveryTests(unittest.TestCase):
+    def test_metadata_requests_uapi_ids_sizes_and_decodes_nonzero_native_layout(self):
+        node=Mock();node.parent.name='video7';node.read_text.return_value='t7-vdin-test\n'
+        def ioctl(fd,request,query):
+            self.assertEqual((fd,request,query.count),(42,0xc0205647,2))
+            self.assertEqual(ctypes.sizeof(query),32)
+            self.assertEqual([(v.id,v.size) for v in query.controls[:2]],[(0xa50901,24),(0xa50900,4)])
+            self.assertEqual(ctypes.sizeof(query.controls[0]),20)
+            # UAPI groups all x coordinates, then all y coordinates.
+            ctypes.memmove(query.controls[0].ptr,struct.pack('<8H2I',11,12,13,21,22,23,31,32,100000,5),24)
+            ctypes.memmove(query.controls[1].ptr,struct.pack('<2H',1000,400),4)
+        with patch.object(Path,'glob',return_value=[node]),patch.object(board.os,'open',return_value=42), \
+             patch.object(board.os,'close') as close,patch.object(fcntl,'ioctl',side_effect=ioctl):
+            self.assertEqual(json.loads(json.dumps(board.metadata())),dict(primaries=[[11,21],[12,22],[13,23]],
+                white=[31,32],luminance=[100000,5],cll=[1000,400]))
+        close.assert_called_once_with(42)
+
+    @unittest.skipUnless(sys.platform.startswith('linux'),'requires Linux UAPI headers and C compiler')
+    def test_metadata_ids_and_layout_match_installed_linux_uapi(self):
+        source='''#include <linux/videodev2.h>
+#include <linux/v4l2-controls.h>
+#include <stdio.h>
+int main(void) { printf("%u %u %zu %zu %zu %zu",V4L2_CID_COLORIMETRY_HDR10_CLL_INFO,
+ V4L2_CID_COLORIMETRY_HDR10_MASTERING_DISPLAY,sizeof(struct v4l2_ctrl_hdr10_cll_info),
+ sizeof(struct v4l2_ctrl_hdr10_mastering_display),sizeof(struct v4l2_ext_control),sizeof(struct v4l2_ext_controls)); }
+'''
+        with tempfile.TemporaryDirectory() as tmp:
+            c=Path(tmp)/'uapi.c';binary=Path(tmp)/'uapi';c.write_text(source)
+            subprocess.run(['cc','-Wall','-Werror',str(c),'-o',str(binary)],check=True)
+            values=list(map(int,subprocess.check_output([str(binary)],text=True).split()))
+            self.assertEqual(values,[board.V4L2_CID_COLORIMETRY_HDR10_CLL_INFO,
+                board.V4L2_CID_COLORIMETRY_HDR10_MASTERING_DISPLAY,4,24,20,32])
+
     def test_exact_config_recovery_after_api_rewrites_policy_and_creates_file(self):
         with tempfile.TemporaryDirectory() as tmp:
             root=Path(tmp);policy=root/'policy';absent=root/'absent'

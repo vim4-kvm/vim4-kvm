@@ -67,3 +67,22 @@ uhd5 的 Image / DT / 外部模块 / BTF 锁不变，未把本候选模块混入
 相关用户选项默认关闭，能力仍按格式/controls/插件探测；不按内核名自动开放。
 本次不代表四应用全部 P0 完成。上述范围不再排队，合入 push 后停止。
 5.15 默认启动不变，未发布 GitHub Release，未刷 U-Boot 或推送 vendor blob。
+
+## 2026-10-31 追加：metadata 探针 ID 复核
+
+第二阶段 `phase2-board.py` 曾错误使用 mastering=`0xa50902`、CLL=`0xa50901`，已另行修复。
+这不等于 r13 实际探针也用了错误 ID：保留的执行日志 `/tmp/codex-hdr10/quick-merge.log`
+28110行记录先把r12改为 mastering=`0xa50901`、CLL=`0xa50900`，33187–33189行随后复制为r13，
+34573–34574行启动r13窗口；保留的 `build/hdr10-r13-check.py:88` 同样使用正确ID。
+该脚本SHA256为 `0ab56c508097994a277f98cd9200423c5744b5e2afbe5ff26c9da69f0c89b193`。
+探针让ioctl错误向上传播，未以初始化零值替代读取错误。
+
+对照r13内核dc220366的 `include/uapi/linux/v4l2-controls.h:3557/3564` 及
+`drivers/media/platform/amlogic/t7-hdmirx/t7-vdin-test.c:1492–1503`，驱动实际注册的正是标准
+CLL=`0xa50900`/4字节、mastering=`0xa50901`/24字节。原r13零值及逐字节对照结论保留，
+只适用于那次真实源；没有因此获得非零metadata的验证。
+原始 `hdmi-metadata.json` SHA256仍为
+`6aedcffd45fb63554d45b06bd1c0cae55d63f0a4e548db46b249e24d1f0cace4`，未改写历史数据。
+
+P0-5下一次窗口必须重新读取这两个标准控件并与实际接收SEI逐字节对照；读取失败即门禁失败，
+不得用历史零值代替。非零源如不可取得，仍明确标为未验。
