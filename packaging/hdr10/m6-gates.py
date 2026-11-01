@@ -95,9 +95,23 @@ class M6:
             self.displays(before)
             return
         chrome_front(before)
-        self.click((27, 13))  # r13 Apple menu, qualified by the captured menu bar.
-        menu = self.screen()
-        item = find(menu, 'System Settings')
+        # A stopped preparation can leave our Apple menu open. Reuse its
+        # visible Settings entry; clicking the Apple icon again would close it.
+        menu = before
+        visible_menu = any('System Settings' in r['text'] and r['x'] < 250
+                           and 25 < r['y'] < 160 for r in before['items'])
+        if not visible_menu:
+            self.click((27, 13))  # r13 Apple menu, qualified by the captured menu bar.
+        deadline = time.monotonic() + 8
+        while True:
+            if not visible_menu: menu = self.screen()
+            chrome_front(menu)
+            try:
+                item = find(menu, 'System Settings')
+                break
+            except GateError:
+                if time.monotonic() >= deadline: raise
+                time.sleep(.25)
         if item['x'] > 250 or item['y'] > 160:
             raise GateError('System Settings menu item is not the Apple menu')
         self.click((round(item['x'] + item['w']/2), round(item['y'] + item['h']/2)))
@@ -160,9 +174,17 @@ class M6:
 
     def close(self):
         screen = self.screen()
-        if any(r['text']=='About This Mac' and r['x']<250 and r['y']<180 for r in screen['items']):
+        def apple_menu(current):
+            return any(r['text'].lstrip('• ') == 'About This Mac' and r['x']<250
+                       and r['y']<180 for r in current['items'])
+        if apple_menu(screen):
             self.hid('key', {'text':'Escape'})
-            screen=self.screen()
+            deadline = time.monotonic() + 8
+            while True:
+                screen=self.screen()
+                if not apple_menu(screen): break
+                if time.monotonic() >= deadline: raise GateError('Apple menu did not close')
+                time.sleep(.25)
         if any('System Settings' in r['text'] and r['y'] < 25 for r in screen['items']):
             front_settings(screen)
             search = find(screen, 'Search')
@@ -177,7 +199,16 @@ class M6:
                 if search['text'] != 'Q Search': raise GateError('Unknown Settings header')
                 xy = (round(search['x'] + 6), round(search['y'] + search['h']/2 - 50))
             self.click(xy)
-        find(self.screen(), 'Chrome', top=True)
+        deadline = time.monotonic() + 8
+        while True:
+            current = self.screen()
+            try:
+                chrome_front(current)
+                if apple_menu(current): raise GateError('Apple menu remains open')
+                break
+            except GateError:
+                if time.monotonic() >= deadline: raise
+                time.sleep(.25)
 
     def restore(self):
         if not self.restore_needed: return

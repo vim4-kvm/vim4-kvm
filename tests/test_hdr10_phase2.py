@@ -109,13 +109,35 @@ class M6Tests(unittest.TestCase):
 
     def test_failed_menu_launch_recovers_open_apple_menu_without_replay(self):
         menu=dict(SCREENS['chrome'],items=[*SCREENS['chrome']['items'],
-            dict(text='About This Mac',x=20,y=40,w=120,h=20)])
+            dict(text='• About This Mac',x=20,y=40,w=120,h=20)])
         control,client,_=self.controller([])
         control.hid('mouse_move',{'coordinate':[27,13]})
-        control.screen=Mock(side_effect=[menu,SCREENS['chrome'],SCREENS['chrome']])
+        control.screen=Mock(side_effect=[menu,menu,SCREENS['chrome'],SCREENS['chrome']])
         control.restore()
         self.assertEqual(client.call.call_count,2)
         self.assertEqual(client.call.call_args.args,('key',{'text':'Escape'}))
+
+    def test_menu_animation_is_observed_without_replaying_click(self):
+        menu=dict(SCREENS['chrome'],items=[*SCREENS['chrome']['items'],
+            dict(text='• System Settings...',x=22,y=75,w=150,h=20)])
+        control,client,_=self.controller([])
+        control.screen=Mock(side_effect=[SCREENS['chrome'],SCREENS['chrome'],menu,SCREENS['general']])
+        control.displays=Mock()
+        with patch.object(gates.time,'sleep'):
+            control.open()
+        clicks=[c for c in client.call.call_args_list if c.args[0]=='left_click']
+        self.assertEqual(len(clicks),2)
+        control.displays.assert_called_once_with(SCREENS['general'])
+
+    def test_visible_menu_from_stopped_preparation_is_reused(self):
+        menu=dict(SCREENS['chrome'],items=[*SCREENS['chrome']['items'],
+            dict(text='• System Settings...',x=22,y=75,w=150,h=20)])
+        control,client,_=self.controller([])
+        control.screen=Mock(side_effect=[menu,SCREENS['general']])
+        control.displays=Mock()
+        control.open()
+        points=[c.args[1]['coordinate'] for c in client.call.call_args_list if c.args[0]=='mouse_move']
+        self.assertEqual(points,[[97,85]])
 
     def test_unqualified_restore_does_not_touch_existing_hdr_or_foreground(self):
         client=Mock()
