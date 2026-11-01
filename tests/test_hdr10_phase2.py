@@ -51,6 +51,8 @@ class M6Tests(unittest.TestCase):
                            Path(tempfile.gettempdir()) / 'm6-merged')
         control.screen = Mock(return_value=screen)
         control.qualify(False)
+        screen['items'][0]['text'] = '\uf8ff Chrome File Edit View History Bookmarks'
+        control.qualify(False)
         client.call.assert_not_called()
         self.assertFalse(control.restore_needed)
         for text in ('Safari Chrome File Edit View', 'Chrome webpage'):
