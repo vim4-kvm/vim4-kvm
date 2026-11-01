@@ -1,4 +1,5 @@
 import { loginManager } from './manager-login.mjs';
+import { connectVideo, closeVideo } from './board-window-timing.mjs';
 // Usage: PLAYWRIGHT_MODULE=/absolute/path/to/playwright/index.mjs node ... URL SECONDS
 // --expect-codec=h264|h265 rejects an unexpected negotiated codec before sampling.
 // Read frame IDs from actual decoded pixels. Source and receiver must run on
@@ -21,13 +22,16 @@ if (expectedCodec && !['h264', 'h265'].includes(expectedCodec)) {
 // Prefer GPU drawing of the tiny marker; keep the old hint for overhead controls.
 const cpuReadback = process.argv.includes('--cpu-readback');
 const pikvm = process.argv.includes('--pikvm');
+const oneKvm = process.argv.includes('--one-kvm');
+if (pikvm && oneKvm) throw new Error('Choose one receiver backend');
 const cdp = process.env.LATENCY_CDP;
 const width = Number(process.argv.find(arg => arg.startsWith('--width='))?.split('=')[1] || 3840);
 if (![1280, 1920, 3840].includes(width)) throw new Error('Unsupported --width');
 if (!Number.isFinite(seconds) || seconds <= 0) throw new Error('Invalid duration');
 const browser = cdp ? await chromium.connectOverCDP(cdp)
   : await chromium.launch({ ...(process.env.VIM4_TEST_CHROME
-    ? { executablePath: process.env.VIM4_TEST_CHROME } : { channel: 'chrome' }), headless: true });
+    ? { executablePath: process.env.VIM4_TEST_CHROME } : { channel: 'chrome' }), headless: true,
+    args: oneKvm ? ['--disable-features=WebRtcHideLocalIpsWithMdns'] : [] });
 const context = await browser.newContext();
 try {
   await loginManager(context, url, { localBackend: process.argv.includes('--local-backend') });
@@ -62,7 +66,9 @@ try {
       localStorage.setItem('stream.audio', '100');
     }
   }, {localIP: process.env.LATENCY_LOCAL_IP, remoteIP: process.env.LATENCY_REMOTE_IP, pikvm});
-  if (pikvm) {
+  if (oneKvm) {
+    await connectVideo(page, url, process.env.LATENCY_LOCAL_IP);
+  } else if (pikvm) {
     const origin = new URL(url).origin;
     await page.goto(origin + '/kvm/');
   } else await page.goto(url);
@@ -251,8 +257,10 @@ try {
   if (verifyCoherence && (result.incoherentMarkers || result.invalidMarkers)) {
     throw new Error('Frame coherence check failed; inspect the emitted samples');
   }
-  await page.close();
 } finally {
+  if (oneKvm) {
+    for (const page of context.pages()) await closeVideo(page).catch(() => {});
+  }
   await context.close();
   await browser.close();
 }

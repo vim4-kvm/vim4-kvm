@@ -65,19 +65,19 @@ kvim4 274项/242启用，kvim4n 261项/227启用。启用LCD/触摸/传感器候
 
 能力通过不代表性能通过。两内核同板同用户空间，按 [性能基线协议](../performance-baseline.md)
 的三组A/B/A、命令、固定容差与互斥规则执行；全部保留原始证据。
-目前仅有下列GPU短测/栈识别，其余性能对照待测；旧单轮FPS不充当配对验收。
-5.15临时启动见 [一次性对照方案](../vendor-boot-baseline.md)，整夜任务见
-[待确认执行计划](../overnight-performance-plan.md)。
+GPU复用下列uhd5 r11实测，其余性能对照待测；旧单轮FPS不充当配对验收。
+P0-2范围、56个短窗口预算与首组缩减见[分窗矩阵](../overnight-performance-plan.md)。
+本轮准备和阻塞见[记录](../bringup/2026-10-31-p0-2-performance.md)。
 
 | 性能范围 | 5.15 | 7.3 | 对齐结论 |
 |---|---|---|---|
-| HDMI-IN采集FPS/丢帧/帧完整性 | 待测 | 待测 | 待测 |
-| 各编码器H.264/H.265/JPEG吞吐、CPU、分段延迟/画质 | 待测 | 待测 | 待测 |
-| 软件/光学端到端视频延迟、呈现尾部与30分钟增长 | 待测 | 待测 | 待测 |
-| 音频绝对延迟、AV偏移/连续性 | 待测 | 待测 | 待测 |
+| HDMI-IN采集FPS/丢帧/帧完整性 | 待测 | 待测 | [待测：物理运动源未就绪](../bringup/2026-10-31-p0-2-performance.md) |
+| 各编码器H.264/H.265/JPEG吞吐、CPU、分段延迟/画质 | 待测 | 待测 | [待测：未完成A/B/A](../bringup/2026-10-31-p0-2-performance.md) |
+| 软件/光学端到端视频延迟、呈现尾部与30分钟增长 | 仅4K H.264接收冒烟59.88fps | 待测 | [待测：无同钟源ID，不能判延迟](../bringup/2026-10-31-p0-2-performance.md)；光学/30分钟增长本轮不测 |
+| 音频绝对延迟、AV偏移/连续性 | 本轮不测声音 | 本轮不测声音 | 待测；仅检查服务状态 |
 | Wave5/vdec逐codec解码吞吐 | 待测 | 待测；当前C01–C04能力缺失 | 待测；缺失不记0fps |
-| GPU离屏/DRM场景、kmscube帧节奏 | 已识别Mesa/llvmpipe：glmark2短测19分，4096×2160；缺专有libMali | M1候选Panfrost短测925分，1920×1080；正式基线待测 | [本次证据](../bringup/2026-10-23-vendor-boot-gpu.md)；后端/尺寸不同不可比，硬件对照与DRM/kmscube待测 |
-| CPU各簇单核/全核、内存读写带宽 | 待测 | 待测 | 待测 |
+| GPU API负载（复用uhd5 r11） | DMA中位/P95 1.692/3.618ms；GLES 616.361fps；CL SP 101.69 GFLOPS | DMA 1.535/3.570ms；GLES 646.280fps；CL SP 101.74 GFLOPS | [r11七轮实测](../bringup/2026-10-31-kbase-r11-policy.md)：这些负载达到对照；非本轮统一候选实测，DRM/kmscube与功耗仍待测 |
+| CPU各簇单核/全核、内存读写带宽 | 待测 | 待测 | [待测：剩余分窗矩阵](../overnight-performance-plan.md) |
 | eMMC/SD/USB存储吞吐与IO尾延迟 | 待测 | 待测 | 待测 |
 | 有线/Wi-Fi网络吞吐、丢包/jitter | 待测 | 待测 | 待测 |
 | HID发送到原生事件延迟、纯USB报告延迟 | 待测 | 待测 | 待测 |

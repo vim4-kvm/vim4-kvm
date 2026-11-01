@@ -207,6 +207,11 @@ class WindowTests(unittest.TestCase):
                 changed = dict(proof, files=dict(proof['files'], **{name: 'changed'}))
                 self.assertFalse(cache.get(changed, measure, '2026-10-31')['reused'])
             self.assertFalse(cache.get(proof, measure, '2026-11-01')['reused'])
+            configured = dict(proof, measurement={'settings': {'codec': 'h264', 'source': 'm6'}})
+            self.assertFalse(cache.get(configured, measure, '2026-10-31')['reused'])
+            self.assertTrue(cache.get(configured, measure, '2026-10-31')['reused'])
+            configured['measurement']['settings']['codec'] = 'h265'
+            self.assertFalse(cache.get(configured, measure, '2026-10-31')['reused'])
             with self.assertRaises(ValueError):
                 cache.get(dict(proof, release='7.3.test'), measure)
 
@@ -284,6 +289,38 @@ clock=0;
 await assert.rejects(measureDecoded(async()=>({framesDecoded:0}),.2,options),/No actual decoded/);
 clock=0;
 await assert.rejects(measureDecoded(async()=>({id:'v',ssrc:clock?2:1,framesDecoded:1}),.2,options),/stream changed/);
+'''
+        subprocess.run(['node', '--input-type=module', '-e', script], cwd=ROOT, check=True, timeout=10)
+
+    @unittest.skipUnless(shutil.which('node'), 'Node is required for receiver transport replay')
+    def test_video_transport_has_no_audio_or_hid_and_closes_session(self):
+        script = r'''
+import assert from 'node:assert/strict';
+import {connectVideo,closeVideo} from './tools/board-window-timing.mjs';
+const requests=[], tracks=[];
+globalThis.window={};
+globalThis.document={querySelector:()=>({})};
+globalThis.MediaStream=class {};
+globalThis.RTCPeerConnection=class {
+  iceGatheringState='complete';
+  localDescription={sdp:'v=0'};
+  addTransceiver(...args){tracks.push(args);}
+  async createOffer(){return {};}
+  async setLocalDescription(){}
+  async setRemoteDescription(answer){assert.equal(answer.sdp,'answer');}
+  close(){this.closed=true;}
+};
+globalThis.fetch=async (url,options)=>{
+  requests.push([url,JSON.parse(options.body)]);
+  return {ok:true,json:async()=>({session_id:'test-session',sdp:'answer'})};
+};
+const page={route:async()=>{},goto:async()=>{},evaluate:async(fn,arg)=>fn(arg)};
+await connectVideo(page,'http://example.test',undefined);
+assert.deepEqual(tracks,[['video',{direction:'recvonly'}]]);
+await closeVideo(page);
+assert.equal(window.boardPeers[0].closed,true);
+assert.deepEqual(requests.map(r=>r[0]),['/api/webrtc/offer','/api/webrtc/close']);
+assert.deepEqual(requests[1][1],{session_id:'test-session'});
 '''
         subprocess.run(['node', '--input-type=module', '-e', script], cwd=ROOT, check=True, timeout=10)
 

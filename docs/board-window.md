@@ -102,8 +102,10 @@ cmdline仅单独审阅`reboot_mode=normal`与`reboot_mode=watchdog_reboot`之间
 缓存键还含host、运行内核GNU build ID、cmdline、接收URL/时长/接收LAN IP；
 当天相同键返回 `reused: true` 和 `source_time`，变化/跨日才测；失败不缓存。
 测量后再次核身份，避免将变化中结果写缓存。缓存位于共享队列目录，不随worktree分裂。
-更换信源、编码设置、浏览器或接收机器时应清理对应缓存，或使用独立 `BOARD_QUEUE_ROOT`，
-后者所有排队会话必须同时迁移，不能创建互不相通的板锁队列。
+性能对照额外传 `baseline --settings public-settings.json`，把信源/运动程序哈希、编码设置、
+浏览器版本和接收机器身份放进公开JSON，内容进入缓存键；不要放凭据。
+更换这些设置须更新JSON。未传settings的旧调用只适合短接收门禁，不证明性能配置相同。
+不要为清缓存切换 `BOARD_QUEUE_ROOT`，否则会创建互不相通的板锁队列。
 
 `collect --readonly`只执行已审阅状态读取：dmesg、服务、UDC、/proc计数与One-KVM info，
 不访问regmap/MMIO/HID/采集节点，不停启服务。其余子命令要求未过期板票据。
