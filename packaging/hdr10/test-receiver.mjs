@@ -76,7 +76,7 @@ try {
  await assert.rejects(receive({url:origin,app:'nanokvm',output:`${output}/wrong-codec`,hdr:'sdr',seconds:1,
    localBackend:true,minFps:20}), /video\/h265|video\/vp8/i);
  await assert.rejects(receive({url:origin,app:'pikvm',output:`${output}/wrong-pq`,hdr:'pq',seconds:1,
-   codec:'video/VP8',localBackend:true,minFps:20}), /smpte2084/);
+   codec:'video/VP8',localBackend:true,minFps:20}), /pq/);
  await assert.rejects(receive({url:origin+'/?freeze',app:'jetkvm',output:`${output}/freeze`,hdr:'sdr',seconds:3,
    codec:'video/VP8',localBackend:true,minFps:20}), /fps|stopped|Decoded frames/i);
  console.log('PASS: four local decoded receivers including HTTP offer/close; wrong codec/PQ/frozen video rejected');

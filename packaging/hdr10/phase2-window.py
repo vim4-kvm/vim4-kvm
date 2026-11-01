@@ -324,7 +324,7 @@ class Window:
                     self.board('stop'); before=json.loads(self.board('status'))['cma']['CmaFree']
                     self.board('configure','--app','onekvm')
                     (self.output/f'{gpu}-hdmi-metadata.json').write_text(self.board('metadata'))
-                    seconds=180 if gpu=='panfrost' else 10
+                    seconds=self.args.stability_seconds if gpu=='panfrost' else 10
                     self.command(['node',str(HERE/'application-receiver.mjs'),self.args.url,'onekvm',
                         str(self.output/f'{gpu}-onekvm-native'),'pq',str(seconds),'3840','2160',
                         self.args.local_ip],timeout=seconds+70)
@@ -412,12 +412,14 @@ def main():
     parser.add_argument('--uu-cli',type=Path,default=UU)
     parser.add_argument('--uu-device-id')
     parser.add_argument('--ffmpeg',default='ffmpeg',help='local executable for post-window SPS/VUI checks')
+    parser.add_argument('--stability-seconds',type=int,choices=(10,180),default=180,
+        help='use 10 only when reusing a retained 180-second sample of the identical payload')
     parser.add_argument('--plan-only',action='store_true')
     parser.add_argument('--execute',action='store_true',help=argparse.SUPPRESS)
     args=parser.parse_args()
     if args.plan_only:
         data=preflight(args)
-        print(json.dumps(dict(estimated_minutes=15,hard_max_minutes=30,stability_seconds=180,
+        print(json.dumps(dict(estimated_minutes=15,hard_max_minutes=30,stability_seconds=args.stability_seconds,
             dry_run={k:v['manifest'].get('dry_run',False) for k,v in data.items()},
             board_access=False,uu_official_receive='official client RR plus independently captured shared Main10; rendering unverified')))
         return

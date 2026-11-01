@@ -132,11 +132,11 @@ try {
   if (width) assert.equal(result.width, width);
   if (height) assert.equal(result.height, height);
   if (hdr === 'pq') {
-    assert.equal(result.color.transfer, 'smpte2084');
+    assert.equal(result.color.transfer, 'pq');
     assert.equal(result.color.primaries, 'bt2020');
     assert.equal(result.color.matrix, 'bt2020-ncl');
     assert.equal(result.color.fullRange, false);
-  } else assert.notEqual(result.color.transfer, 'smpte2084');
+  } else assert(!['pq', 'smpte2084'].includes(result.color.transfer));
   console.log(JSON.stringify(result));
   return result;
 } finally {
