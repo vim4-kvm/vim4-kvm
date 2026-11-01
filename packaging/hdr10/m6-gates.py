@@ -62,6 +62,17 @@ class M6:
         self.sequence = 0
         self.initial_hdr = None
         self.restore_needed = False
+        self.deadline = None
+
+    def remaining(self, maximum):
+        if self.deadline is None: return maximum
+        remaining = self.deadline - time.monotonic()
+        if remaining <= 0: raise GateError('M6 recovery deadline expired')
+        return min(maximum, remaining)
+
+    def read_source(self):
+        if self.deadline is None: return self.source_hdr()
+        return self.source_hdr(timeout=self.remaining(30))
 
     def qualify(self, initial_hdr):
         # This window only knows how to return to its original Chrome window.
@@ -76,15 +87,20 @@ class M6:
         # Establish responsibility before dispatch: an MCP failure can mean
         # the action happened but its reply was lost.
         self.restore_needed = True
-        return self.client.call(name, arguments)
+        self.remaining(30)
+        if self.deadline is None: return self.client.call(name, arguments)
+        return self.client.call(name, arguments, deadline=self.deadline)
 
     def screen(self, xy=None):
         self.sequence += 1
         path = self.output / f'step-{self.sequence:03}.jpg'
-        self.client.screenshot(path)
+        self.remaining(30)
+        if self.deadline is None: self.client.screenshot(path)
+        else: self.client.screenshot(path, deadline=self.deadline)
         command = [str(self.observer), str(path)]
         if xy: command.extend(map(str, xy))
-        result = json.loads(subprocess.check_output(command, text=True))
+        timeout=None if self.deadline is None else self.remaining(30)
+        result = json.loads(subprocess.check_output(command, text=True,timeout=timeout))
         path.with_suffix('.json').write_text(json.dumps(result, indent=2))
         return result
 
@@ -115,7 +131,7 @@ class M6:
                 break
             except GateError:
                 if time.monotonic() >= deadline: raise
-                time.sleep(.25)
+                time.sleep(self.remaining(.25))
         if item['x'] > 250 or item['y'] > 160:
             raise GateError('System Settings menu item is not the Apple menu')
         self.click((round(item['x'] + item['w']/2), round(item['y'] + item['h']/2)))
@@ -130,7 +146,7 @@ class M6:
                 break
             except GateError:
                 if time.monotonic() >= deadline: raise
-                time.sleep(.25)
+                time.sleep(self.remaining(.25))
         # Only observation is repeated while Settings launches. A failed
         # post-click screenshot must escape to recovery, never replay the click.
         self.displays(current)
@@ -154,10 +170,10 @@ class M6:
                     break
                 except GateError:
                     if time.monotonic() >= deadline: raise
-                    time.sleep(.25)
+                    time.sleep(self.remaining(.25))
 
     def toggle(self, enabled):
-        if self.source_hdr() == enabled:
+        if self.read_source() == enabled:
             return
         self.open()
         for _ in range(8):
@@ -179,13 +195,13 @@ class M6:
         blue = sum(b > .6 and b > r + .25 for r, g, b in pixels) / max(1, len(pixels))
         gray = sum(.65 < r < .95 and abs(r-g) < .05 and abs(g-b) < .05 for r,g,b in pixels) / max(1,len(pixels))
         observed = True if blue > .2 else False if gray > .2 else None
-        if observed is None or observed != self.source_hdr():
+        if observed is None or observed != self.read_source():
             raise GateError('HDR switch pixels and source EOTF disagree')
         self.click(xy)
         deadline = time.monotonic() + 15
-        while self.source_hdr() != enabled:
+        while self.read_source() != enabled:
             if time.monotonic() >= deadline: raise GateError('HDR EOTF transition timed out; no replay')
-            time.sleep(.25)
+            time.sleep(self.remaining(.25))
         settings(self.screen())
 
     def close(self):
@@ -200,7 +216,7 @@ class M6:
                 screen=self.screen()
                 if not apple_menu(screen): break
                 if time.monotonic() >= deadline: raise GateError('Apple menu did not close')
-                time.sleep(.25)
+                time.sleep(self.remaining(.25))
         if any('System Settings' in r['text'] and r['y'] < 25 for r in screen['items']):
             front_settings(screen)
             search = find(screen, 'Search')
@@ -224,12 +240,14 @@ class M6:
                 break
             except GateError:
                 if time.monotonic() >= deadline: raise
-                time.sleep(.25)
+                time.sleep(self.remaining(.25))
 
-    def restore(self):
+    def restore(self, *, deadline=None):
         if not self.restore_needed: return
+        self.deadline = deadline
+        self.remaining(30)
         self.toggle(self.initial_hdr)
         self.close()
-        if self.source_hdr() != self.initial_hdr:
+        if self.read_source() != self.initial_hdr:
             raise GateError('M6 HDR was not restored to its saved state')
         self.restore_needed = False

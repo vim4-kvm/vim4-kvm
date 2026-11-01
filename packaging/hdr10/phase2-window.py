@@ -290,6 +290,10 @@ class Window:
     def restore_source(self,m6,reserve_after):
         with self.operations:
             self.require_lease(RECOVERY_SECONDS['source']+reserve_after)
+            deadline=time.monotonic()+RECOVERY_SECONDS['source']
+            # Terminate/wait(10), then kill/wait(5), are part of the same
+            # 120-second step. Source actions must finish before those 15s.
+            action_deadline=deadline-15
             # Restoring config restarts One-KVM. Its baseline snapshot cache
             # needs an active viewer; no cached frame is not a lost HDMI input.
             with (self.output/'source-recovery-viewer.log').open('w') as log:
@@ -297,27 +301,27 @@ class Window:
                     self.args.url,'onekvm',str(self.output/'source-recovery-viewer'),
                     'pq','120','','',self.args.local_ip],stdout=log,stderr=subprocess.STDOUT)
                 try:
-                    until=time.monotonic()+20
+                    until=min(time.monotonic()+20,action_deadline)
                     while True:
                         try:
-                            m6.client.screenshot(self.output/'source-recovery-ready.jpg')
+                            m6.client.screenshot(self.output/'source-recovery-ready.jpg',deadline=until)
                             break
                         except RuntimeError:
                             if viewer.poll() is not None or time.monotonic()>=until: raise
-                            time.sleep(.25)
-                    m6.restore()
+                            time.sleep(min(.25,max(0,until-time.monotonic())))
+                    m6.restore(deadline=action_deadline)
                 finally:
                     viewer.terminate()
-                    try: viewer.wait(timeout=10)
+                    try: viewer.wait(timeout=max(0,min(10,deadline-time.monotonic()-5)))
                     except subprocess.TimeoutExpired:
-                        viewer.kill();viewer.wait(timeout=5)
+                        viewer.kill();viewer.wait(timeout=max(0,min(5,deadline-time.monotonic())))
 
     def run(self):
         queue,token=w.require_board()
         key=json.loads(w.ssh('vim4','cat /var/lib/one-kvm/mcp/credentials.json'))['api_key']
         tunnel=None
         client=w.MCP('http://127.0.0.1:18081/api/mcp',key)
-        m6=g.M6(client,lambda:w.source_hdr('vim4'),self.args.observer,self.output/'m6')
+        m6=g.M6(client,lambda timeout=30:w.source_hdr('vim4',timeout=timeout),self.args.observer,self.output/'m6')
         saved=False; booted=False
         try:
             queue.sampling(token,True)

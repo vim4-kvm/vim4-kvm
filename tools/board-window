@@ -105,6 +105,7 @@ class MCP:
 
     Current One-KVM is stateless; session headers also support sessionful builds.
     Only safe read calls retry after transport failure, avoiding duplicate HID.
+    An optional monotonic deadline also bounds initialization and read retries.
     """
     def __init__(self, url, key, opener=None):
         self.url, self.key = url, key
@@ -112,7 +113,7 @@ class MCP:
         self.session = None
         self.sequence = 0
 
-    def rpc(self, method, params, notification=False):
+    def rpc(self, method, params, notification=False, *, deadline=None):
         self.sequence += 1
         headers = {'Content-Type': 'application/json', 'Accept': 'application/json',
                    'Authorization': 'Bearer ' + self.key, 'MCP-Protocol-Version': '2025-06-18'}
@@ -122,7 +123,9 @@ class MCP:
         if notification:
             payload.pop('id')
         request = urllib.request.Request(self.url, json.dumps(payload).encode(), headers)
-        with self.opener(request, timeout=30) as response:
+        timeout=30 if deadline is None else min(30,deadline-time.monotonic())
+        if timeout<=0: raise TimeoutError('MCP operation deadline expired')
+        with self.opener(request, timeout=timeout) as response:
             session = response.headers.get('Mcp-Session-Id')
             if session:
                 self.session = session
@@ -137,28 +140,28 @@ class MCP:
             raise RuntimeError('MCP tool error: ' + json.dumps(result))
         return result
 
-    def initialize(self):
+    def initialize(self, *, deadline=None):
         self.session = None
         self.rpc('initialize', dict(protocolVersion='2025-06-18', capabilities={},
-                                   clientInfo=dict(name='board-window', version='1')))
-        self.rpc('notifications/initialized', {}, notification=True)
+                                   clientInfo=dict(name='board-window', version='1')),deadline=deadline)
+        self.rpc('notifications/initialized', {}, notification=True,deadline=deadline)
 
-    def call(self, name, arguments=None):
+    def call(self, name, arguments=None, *, deadline=None):
         # Current One-KVM is stateless and gives no restart/session signal.
         # Initializing each action also covers a restart between two HDR steps.
-        self.initialize()
+        self.initialize(deadline=deadline)
         try:
-            return self.rpc('tools/call', dict(name=name, arguments=arguments or {}))
+            return self.rpc('tools/call', dict(name=name, arguments=arguments or {}),deadline=deadline)
         except (urllib.error.URLError, TimeoutError) as exc:
             if isinstance(exc, urllib.error.HTTPError):
                 exc.close()
-            self.initialize()
+            self.initialize(deadline=deadline)
             if name not in ('screenshot', 'zoom', 'cursor_position'):
                 raise RuntimeError('MCP restarted; action outcome unknown, initialized again; inspect screenshot')
-            return self.rpc('tools/call', dict(name=name, arguments=arguments or {}))
+            return self.rpc('tools/call', dict(name=name, arguments=arguments or {}),deadline=deadline)
 
-    def screenshot(self, path):
-        result = self.call('screenshot')
+    def screenshot(self, path, *, deadline=None):
+        result = self.call('screenshot',deadline=deadline)
         images = [b for b in result['content'] if b['type'] == 'image']
         if not images:
             raise RuntimeError('MCP did not return an image')
@@ -256,8 +259,8 @@ class UnknownHDRState(RuntimeError):
     """Source metadata is not currently sufficient to decide the HDR switch."""
 
 
-def source_hdr(host):
-    state = json.loads(ssh(host, "curl -fsS --max-time 10 http://127.0.0.1:8081/api/vim4/video"))
+def source_hdr(host, *, timeout=30):
+    state = json.loads(ssh(host, "curl -fsS --max-time 10 http://127.0.0.1:8081/api/vim4/video",timeout=timeout))
     eotf = state['hdr_eotf'].strip().upper()
     if re.search(r'ST2084|PQ|HDR10', eotf):
         return True

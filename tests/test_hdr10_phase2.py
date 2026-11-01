@@ -315,7 +315,7 @@ class WindowTests(unittest.TestCase):
             client=Mock();client.idle.return_value=dict(idle=True)
             m6=Mock();m6.restore_needed=False
             m6.toggle.side_effect=lambda *args:setattr(m6,'restore_needed',True)
-            def restored():
+            def restored(*,deadline):
                 events.append('m6-restored');m6.restore_needed=False
             m6.restore.side_effect=restored
             with patch.object(window.w,'require_board',return_value=(queue,'token')), \

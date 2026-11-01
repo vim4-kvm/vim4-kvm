@@ -38,14 +38,24 @@ class RecoveryBudgetTest(unittest.TestCase):
             clock.advance(COSTS[name])
             if name==fail_step:raise RuntimeError('injected '+name+' failure')
 
-        def restored():
-            consume('source');m6.restore_needed=False
+        def restored(*,deadline):
+            self.assertEqual(deadline-clock.now,100)
+            clock.advance(100)
+            m6.restore_needed=False
 
         m6.restore.side_effect=restored
         def reap(timeout):
             self.assertEqual(timeout,10)
             consume('tunnel')
         tunnel.wait.side_effect=reap
+        viewer=Mock()
+        def start_viewer(*args,**kwargs):
+            events.append('source');clock.advance(5)
+            return viewer
+        def reap_viewer(timeout):
+            clock.advance(timeout)
+            if timeout==10:raise window.subprocess.TimeoutExpired('viewer',timeout)
+        viewer.wait.side_effect=reap_viewer
 
         with tempfile.TemporaryDirectory() as tmp, \
              patch.object(window,'REPO',Path(tmp)), \
@@ -55,7 +65,7 @@ class RecoveryBudgetTest(unittest.TestCase):
              patch.object(window.w,'MCP',return_value=client), \
              patch.object(window.w,'source_hdr',return_value=False), \
              patch.object(window.g,'M6',return_value=m6), \
-             patch.object(window.subprocess,'Popen',return_value=Mock()):
+             patch.object(window.subprocess,'Popen',side_effect=start_viewer):
             queue.root=Path(tmp)/'queue'
             baseline=Path(tmp)/'files.json';baseline.write_text('[]')
             args=SimpleNamespace(window='boundary',observer=Path('/bin/true'),device='unused',
