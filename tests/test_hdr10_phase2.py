@@ -9,6 +9,9 @@ import tempfile
 import struct
 import subprocess
 import sys
+import threading
+import time
+from concurrent.futures import ThreadPoolExecutor
 import unittest
 from unittest.mock import Mock, patch
 from types import SimpleNamespace
@@ -30,6 +33,12 @@ inspect = load('analyze-phase2')
 board = load('phase2-board')
 factories = load('check-phase2-plugins')
 SCREENS = json.loads((ROOT / 'tests/fixtures/m6-hdr-gates.json').read_text())
+
+
+def held_queue():
+    queue=Mock()
+    queue.read.return_value=dict(state='held',heavy=False,started=time.time(),seconds=1800)
+    return queue
 
 
 class M6Tests(unittest.TestCase):
@@ -201,17 +210,20 @@ class WindowTests(unittest.TestCase):
                 baseline_files=Path(tmp)/'baseline.json',panfrost=Path('pan'),panfrost_sha256='0'*64)
             runner.args.baseline_files.write_text('[]')
             runner.output=Path(tmp);runner.remote='/var/tmp/unit';runner.failures=[]
+            runner.operations=threading.Lock();runner.deadline=time.monotonic()+1440
             runner.api=Mock(return_value={})
             def board(operation,*args):
                 events.append(operation)
                 if operation=='status':return '{"taint":0,"cma":{"CmaFree":100}}'
                 if operation=='configure':raise RuntimeError('injected workload failure')
             runner.board=board
+            runner.recovery_board=board
             def cli(*args,**kwargs):
                 events.append(args[0])
                 if args[0]=='collect':raise RuntimeError('injected collection failure')
             runner.cli=cli
-            queue=Mock();tunnel=Mock();tunnel.poll.return_value=None
+            runner.recovery_cli=cli
+            queue=held_queue();tunnel=Mock();tunnel.poll.return_value=None
             runner.open_tunnel=Mock(return_value=tunnel)
             client=Mock();client.idle.return_value=dict(idle=True)
             m6=Mock();m6.restore_needed=False
@@ -242,10 +254,11 @@ class WindowTests(unittest.TestCase):
                 with patch.object(window,'REPO',Path(tmp)):
                     runner=window.Window(SimpleNamespace(window='rejected',observer=Path('/bin/true'),device='unused'))
                 runner.api=Mock(return_value={});runner.open_tunnel=Mock(return_value=Mock())
-                runner.cli=Mock();runner.board=Mock(side_effect=RuntimeError('save failure'))
+                runner.cli=Mock();runner.recovery_cli=Mock()
+                runner.board=Mock(side_effect=RuntimeError('save failure'))
                 client=Mock();client.idle.return_value=dict(idle=cause!='not-idle')
                 m6=Mock();m6.restore_needed=False
-                with patch.object(window.w,'require_board',return_value=(Mock(),'token')), \
+                with patch.object(window.w,'require_board',return_value=(held_queue(),'token')), \
                      patch.object(window.w,'ssh',return_value='{"api_key":"unit"}'), \
                      patch.object(window.w,'MCP',return_value=client), \
                      patch.object(window.w,'source_hdr',return_value=cause=='hdr-on'), \
@@ -257,6 +270,7 @@ class WindowTests(unittest.TestCase):
 
     def test_reboot_replaces_alive_but_stale_forwarder_before_readiness(self):
         runner=object.__new__(window.Window)
+        runner.require_work=Mock();runner.require_lease=Mock()
         previous=Mock();current=Mock()
         runner.api=Mock(return_value={})
         with patch.object(window.subprocess,'Popen',return_value=current) as start:
@@ -273,14 +287,84 @@ class WindowTests(unittest.TestCase):
             self.assertEqual(call.call_count,1)
 
     def test_initial_monitor_read_failure_blocks_workload(self):
-        runner=object.__new__(window.Window);runner.failures=[]
-        with patch.object(window.w,'ssh',side_effect=RuntimeError('SSH unavailable')):
-            runner.watch(Mock())
-        self.assertRegex(runner.failures[0],'initial monitor read failed.*SSH unavailable')
-        with patch.object(window.subprocess,'Popen') as start:
-            with self.assertRaisesRegex(RuntimeError,'monitor rejected workload'):
-                runner.command(['never-executed'])
-        start.assert_not_called()
+        with tempfile.TemporaryDirectory() as tmp,patch.object(window,'REPO',Path(tmp)):
+            runner=window.Window(SimpleNamespace(window='monitor-failure'))
+            runner.recovery_board=Mock()
+            with patch.object(window.w,'ssh',side_effect=RuntimeError('SSH unavailable')):
+                runner.watch(Mock())
+            self.assertRegex(runner.failures[0],'initial monitor read failed.*SSH unavailable')
+            runner.recovery_board.assert_called_once_with('stop')
+            with patch.object(window.subprocess,'Popen') as start:
+                with self.assertRaisesRegex(RuntimeError,'monitor rejected workload'):
+                    runner.command(['never-executed'])
+            start.assert_not_called()
+
+    def test_fault_deadline_and_lease_reject_all_work_before_remote_dispatch(self):
+        for reason in ('fault','deadline','expired','short-lease'):
+            with self.subTest(reason=reason),tempfile.TemporaryDirectory() as tmp, \
+                 patch.object(window,'REPO',Path(tmp)):
+                runner=window.Window(SimpleNamespace(window='guards',device='unused'))
+                queue=held_queue()
+                if reason=='fault':runner.failures.append('kernel fault')
+                elif reason=='deadline':runner.deadline=time.monotonic()-1
+                elif reason=='expired':queue.read.return_value['state']='expired'
+                else:queue.read.return_value['seconds']=370
+                with patch.object(window.w,'require_board',return_value=(queue,'token')), \
+                     patch.object(window.w,'ssh') as remote,patch.object(window.subprocess,'Popen') as process, \
+                     patch.object(window.subprocess,'run') as cli:
+                    for operation in ('save','configure','plugins','metadata','stop','status'):
+                        with self.assertRaises(RuntimeError):runner.board(operation)
+                    with self.assertRaises(RuntimeError):runner.work_ssh('upload checkpoint')
+                    with self.assertRaises(RuntimeError):runner.cli('boot-candidate','payload')
+                    with self.assertRaises(RuntimeError):runner.command(['receiver'],timeout=65)
+                    client=Mock()
+                    with self.assertRaises(RuntimeError):runner.screenshot(client,Path(tmp)/'screen.jpg')
+                    remote.assert_not_called();process.assert_not_called();cli.assert_not_called()
+                    client.screenshot.assert_not_called()
+
+    def test_inflight_configure_finishes_before_fault_stop_and_no_configure_can_restart(self):
+        entered=threading.Event();release=threading.Event();cancelled=threading.Event();events=[]
+        class Failures(list):
+            def append(self,value):
+                super().append(value);cancelled.set()
+        with tempfile.TemporaryDirectory() as tmp,patch.object(window,'REPO',Path(tmp)):
+            runner=window.Window(SimpleNamespace(window='ordered-stop'));runner.failures=Failures()
+            def ssh(host,command,**kwargs):
+                if ' configure ' in command:
+                    events.append('configure-start');entered.set()
+                    if not release.wait(5):raise RuntimeError('test failed to release configure')
+                    events.append('configure-end')
+                else:events.append('stop')
+                return '{}'
+            with patch.object(window.w,'require_board',return_value=(held_queue(),'token')), \
+                 patch.object(window.w,'ssh',side_effect=ssh) as remote,ThreadPoolExecutor(2) as workers:
+                configure=workers.submit(runner.board,'configure','--app','onekvm')
+                self.assertTrue(entered.wait(5))
+                fault=workers.submit(runner.halt,'kernel fault/taint')
+                self.assertTrue(cancelled.wait(5));release.set()
+                configure.result(5);fault.result(5)
+                with self.assertRaisesRegex(RuntimeError,'monitor rejected'):
+                    runner.board('configure','--app','nanokvm')
+                self.assertEqual(events,['configure-start','configure-end','stop'])
+                self.assertEqual(remote.call_count,2)
+
+    def test_recovery_is_restricted_and_does_not_clear_work_cancellation(self):
+        with tempfile.TemporaryDirectory() as tmp,patch.object(window,'REPO',Path(tmp)):
+            runner=window.Window(SimpleNamespace(window='recovery',device='unused'))
+            runner.failures.append('kernel fault');runner.deadline=0
+            with patch.object(window.w,'require_board',return_value=(held_queue(),'token')), \
+                 patch.object(window.w,'ssh',return_value='{}') as remote, \
+                 patch.object(window.subprocess,'run') as cli:
+                runner.recovery_board('stop');runner.recovery_board('restore')
+                runner.recovery_cli('collect','--readonly');runner.recovery_cli('return-baseline')
+                with self.assertRaises(ValueError):runner.recovery_board('configure')
+                with self.assertRaises(ValueError):runner.recovery_cli('boot-candidate','payload')
+                with self.assertRaises(RuntimeError):runner.board('configure')
+                self.assertEqual(remote.call_count,2);self.assertEqual(cli.call_count,2)
+            with patch.object(window.w,'require_board',side_effect=RuntimeError('expired')), \
+                 patch.object(window.w,'ssh') as remote:
+                with self.assertRaisesRegex(RuntimeError,'expired'):runner.recovery_board('stop')
+                remote.assert_not_called()
 
 
 class BitstreamTests(unittest.TestCase):

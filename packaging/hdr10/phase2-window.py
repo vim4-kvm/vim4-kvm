@@ -84,40 +84,104 @@ class Window:
         self.args=args; self.output=REPO/'logs'/args.window
         self.output.mkdir(parents=True,exist_ok=False)
         self.failures=[]; self.child=None; self.number=0
+        self.operations=threading.Lock()
         self.remote='/var/tmp/'+args.window
         self.deadline=time.monotonic()+24*60  # keep six minutes for mandatory recovery
 
-    def command(self,command,timeout=60):
+    def require_lease(self,seconds):
+        queue,token=w.require_board()
+        lease=queue.read(token)
+        remaining=lease['started']+lease['seconds']-time.time()
+        if lease['state']!='held' or lease['heavy'] or remaining<seconds:
+            raise RuntimeError('board lease cannot cover this operation')
+
+    def require_work(self,seconds=0):
         if self.failures: raise RuntimeError('monitor rejected workload: '+'; '.join(self.failures))
+        if time.monotonic()+seconds>self.deadline: raise RuntimeError('workload deadline; reserve recovery time')
+        self.require_lease(seconds+360)
+
+    def work_ssh(self,command,timeout=65):
+        with self.operations:
+            self.require_work(timeout)
+            return w.ssh('vim4',command,timeout=timeout)
+
+    def command(self,command,timeout=60):
         self.number+=1
         path=self.output/f'{self.number:03}-command.log'
         with path.open('w') as log:
-            self.child=subprocess.Popen(command,stdout=log,stderr=subprocess.STDOUT,start_new_session=True)
+            with self.operations:
+                self.require_work(timeout)
+                self.child=subprocess.Popen(command,stdout=log,stderr=subprocess.STDOUT,start_new_session=True)
             try:
                 until=min(self.deadline,time.monotonic()+timeout)
                 while self.child.poll() is None:
-                    if self.failures or time.monotonic()>until:
+                    try:
+                        self.require_work()
+                        if time.monotonic()>until: raise RuntimeError('window command timed out')
+                    except Exception:
                         os.killpg(self.child.pid,signal.SIGTERM)
                         try: self.child.wait(timeout=10)
                         except subprocess.TimeoutExpired:
                             os.killpg(self.child.pid,signal.SIGKILL)
                             self.child.wait(timeout=5)
-                        raise RuntimeError('fault or workload deadline; stopped: '+str(path))
+                        raise
                     time.sleep(.2)
                 if self.child.returncode: raise RuntimeError('window command failed: '+str(path))
             finally: self.child=None
 
     def cli(self,*args,timeout=300):
-        # Recovery deliberately uses a fresh budget even after workload failure.
+        if args[0]!='boot-candidate': raise ValueError('use the restricted recovery CLI for collection/return')
+        with self.operations:
+            self.require_work(timeout)
+            self._cli(args,timeout)
+
+    def recovery_cli(self,*args):
+        if args==('collect','--readonly'): timeout=45
+        elif args==('return-baseline',): timeout=300
+        else: raise ValueError('not an allowed recovery CLI operation')
+        with self.operations:
+            self.require_lease(timeout)
+            self._cli(args,timeout)
+
+    def _cli(self,args,timeout):
         subprocess.run([str(REPO/'tools/board-window'),'--window',self.args.window,
             '--device',self.args.device,*map(str,args)],check=True,timeout=timeout)
 
     def board(self,operation,*args):
+        if operation not in ('save','configure','stop','status','metadata','plugins'):
+            raise ValueError('not an allowed workload operation')
+        with self.operations:
+            self.require_work(65)
+            return self._board(operation,args)
+
+    def recovery_board(self,operation):
+        if operation not in ('stop','status','restore'): raise ValueError('not an allowed recovery board operation')
+        with self.operations:
+            self.require_lease(65)
+            return self._board(operation,())
+
+    def _board(self,operation,args):
         command=['sudo','-n','python3',self.remote+'.py',operation,'--checkpoint',self.remote+'.json',*args]
         value=w.ssh('vim4',shlex.join(command),timeout=65)
         if value.strip():
             self.number+=1; (self.output/f'{self.number:03}-{operation}.json').write_text(value)
         return value
+
+    def halt(self,reason,ready=None):
+        # Latch cancellation before waiting for an in-flight configure. The
+        # shared operation lock orders its completion before stop; every later
+        # workload checks the latch while holding that same lock.
+        self.failures.append(reason)
+        if ready is not None: ready.set()
+        try: self.recovery_board('stop')
+        except Exception as error:
+            self.failures.append('fault stop failed: '+str(error))
+            (self.output/'fault-stop-error.log').write_text(str(error))
+
+    def screenshot(self,client,path):
+        with self.operations:
+            self.require_work(40)
+            client.screenshot(path)
 
     def api(self,path,value=None,method=None):
         request=urllib.request.Request('http://127.0.0.1:18081/api/'+path,
@@ -125,10 +189,12 @@ class Window:
             headers={'Content-Type':'application/json'},method=method)
         return json.load(urllib.request.urlopen(request,timeout=15))
 
-    def open_tunnel(self, previous=None):
+    def open_tunnel(self, previous=None, recovery=False):
         # A RAM reboot can leave the old SSH process alive briefly while its
         # forwarding channel is already unusable. Recreate our own transport
         # after every boot, including the final baseline return.
+        if recovery: self.require_lease(25)
+        else: self.require_work(25)
         if previous is not None:
             previous.terminate(); previous.wait(timeout=10)
         tunnel=subprocess.Popen(['ssh','-N','-oExitOnForwardFailure=yes',
@@ -151,14 +217,11 @@ class Window:
             initial=w.ssh('vim4','sudo -n dmesg',timeout=5)
             taint=w.ssh('vim4','cat /proc/sys/kernel/tainted',timeout=5).strip()
         except Exception as error:
-            self.failures.append('initial monitor read failed: '+str(error))
-            if ready is not None: ready.set()
+            self.halt('initial monitor read failed: '+str(error),ready)
             return
         if re.search(FAULT,initial) or taint!='0':
             (self.output/'boot-fault.log').write_text(initial)
-            self.failures.append('boot fault/taint')
-            if ready is not None: ready.set()
-            self.board('stop'); return
+            self.halt('boot fault/taint',ready); return
         if ready is not None: ready.set()
         while not event.wait(2):
             try:
@@ -167,10 +230,9 @@ class Window:
                 taint=w.ssh('vim4','cat /proc/sys/kernel/tainted',timeout=5).strip()
                 if re.search(FAULT,new) or taint!='0':
                     (self.output/'first-fault.log').write_text(new+'\ntaint='+taint)
-                    self.failures.append('kernel fault/taint')
-                    self.board('stop'); return
+                    self.halt('kernel fault/taint'); return
             except Exception as error:
-                self.failures.append('monitor failed: '+str(error)); return
+                self.halt('monitor failed: '+str(error)); return
 
     def uu(self,gpu):
         """Actual official client + fresh Receiver Reports; never send HID.
@@ -223,15 +285,17 @@ class Window:
             m6.qualify(initial_hdr)
             data=base64.b64encode((HERE/'phase2-board.py').read_bytes()).decode()
             script=f"from pathlib import Path; import base64; p=Path({self.remote+'.py'!r}); p.write_bytes(base64.b64decode({data!r})); p.chmod(0o700)"
-            w.ssh('vim4','sudo -n python3 -c '+shlex.quote(script))
+            self.work_ssh('sudo -n python3 -c '+shlex.quote(script))
             self.board('save'); saved=True
-            m6.toggle(True); m6.close()
+            with self.operations:
+                self.require_work(120)
+                m6.toggle(True); m6.close()
             for gpu in ('panfrost','kbase'):
                 booted=True
                 self.cli('boot-candidate',getattr(self.args,gpu),'--sha256',getattr(self.args,gpu+'_sha256'),
                     '--baseline-files',*json.loads(self.args.baseline_files.read_text()))
                 tunnel=self.open_tunnel(tunnel)
-                self.failures.clear(); end=threading.Event(); ready=threading.Event()
+                end=threading.Event(); ready=threading.Event()
                 monitor=threading.Thread(target=self.watch,args=(end,ready),daemon=True); monitor.start()
                 try:
                     if not ready.wait(8) or self.failures: raise RuntimeError('kernel monitor startup failed')
@@ -243,7 +307,7 @@ class Window:
                     self.command(['node',str(HERE/'application-receiver.mjs'),self.args.url,'onekvm',
                         str(self.output/f'{gpu}-onekvm-native'),'pq',str(seconds),'3840','2160',
                         self.args.local_ip],timeout=seconds+70)
-                    client.screenshot(self.output/f'{gpu}-native-sdr-snapshot.jpg')
+                    self.screenshot(client,self.output/f'{gpu}-native-sdr-snapshot.jpg')
                     for app in ('nanokvm','jetkvm','pikvm'):
                         for name,height,hdr in (('native',0,'on'),('scaled',1080,'on'),('mapped',1080,'off'),('restored',0,'on')):
                             self.board('configure','--app',app,'--height',str(height),'--hdr',hdr)
@@ -255,7 +319,7 @@ class Window:
                     after=json.loads(self.board('status'))
                     if after['taint'] or after['cma']['CmaFree']<before:
                         raise RuntimeError('CMA not fully returned or taint changed')
-                    self.cli('collect','--readonly')
+                    self.recovery_cli('collect','--readonly')
                     self.board('configure','--app','onekvm')
                     self.uu(gpu)
                     self.board('stop')
@@ -271,12 +335,17 @@ class Window:
             errors=[]
             def reconnect():
                 nonlocal tunnel
-                if booted: tunnel=self.open_tunnel(tunnel)
-            for action in (lambda:self.cli('collect','--readonly'),
-                lambda:self.cli('return-baseline') if booted else None,
+                if booted: tunnel=self.open_tunnel(tunnel,recovery=True)
+            def restore_source():
+                if m6.restore_needed:
+                    with self.operations:
+                        self.require_lease(120)
+                        m6.restore()
+            for action in (lambda:self.recovery_cli('collect','--readonly'),
+                lambda:self.recovery_cli('return-baseline') if booted else None,
                 reconnect,
-                lambda:self.board('restore') if saved else None,
-                lambda:m6.restore() if m6.restore_needed else None):
+                lambda:self.recovery_board('restore') if saved else None,
+                restore_source):
                 try: action()
                 except Exception as error: errors.append(str(error))
             try: queue.sampling(token,False)
