@@ -5,6 +5,14 @@
 # Usage (on the board): sudo sh kernel-install.sh vim4kvm-<release>.tgz
 set -eu
 
+if [ "${1:-}" = --edge ]; then
+    [ "${3:-}" = --keep-directory-symlink ] || {
+        echo 'Usage: kernel-install.sh --edge unified.tar.gz --keep-directory-symlink' >&2
+        exit 2
+    }
+    exec python3 "$(dirname "$0")/../packaging/kernel-edge/register-runtime.py" install "$2"
+fi
+
 TGZ=$1
 R=$(tar tzf "$TGZ" | sed -n 's#^lib/modules/\([^/]*\)/$#\1#p' | head -1)
 STOCK=5.15.137

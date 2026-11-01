@@ -38,7 +38,7 @@ case "$(uname -r)" in
             fi
         fi
         ;;
-    7.3.0-rc7-vim4kvm-uhd1+|7.3.0-vim4kvm-uhd1+|7.3.0-vim4kvm-uhd2+|7.3.0-vim4kvm-uhd2-nodebug+|7.3.0-vim4kvm-uhd3+|7.3.0-vim4kvm-uhd4+|7.3.0-vim4kvm-uhd5+|7.3.0-vim4kvm-npu1+|7.3.0-vim4kvm-npu2+|7.3.0-vim4kvm-npu3+|7.3.0-vim4kvm-npu4+)
+    7.3.0-rc7-vim4kvm-uhd1+|7.3.0-vim4kvm-uhd1+|7.3.0-vim4kvm-uhd2+|7.3.0-vim4kvm-uhd2-nodebug+|7.3.0-vim4kvm-uhd3+|7.3.0-vim4kvm-uhd4+|7.3.0-vim4kvm-uhd5+|7.3.0-vim4kvm-uhd6+|7.3.0-vim4kvm-npu1+|7.3.0-vim4kvm-npu2+|7.3.0-vim4kvm-npu3+|7.3.0-vim4kvm-npu4+)
         export VIM4_VIDEO_BACKEND=wave5
         export VIM4_SHARED_DATA=1
         export GST_PLUGIN_PATH=/usr/lib/vim4-kvm/mainline-gstreamer-1.0
@@ -66,12 +66,32 @@ run_app() {
         if [ "${driver##*/}" = mali ]; then
             exec /usr/bin/python3 /usr/lib/vim4-kvm/python/vim4gpu.py --graphics direct -- "$@"
         fi
+        if [ "${driver##*/}" = panfrost ] && [ "$(uname -r)" = '7.3.0-vim4kvm-uhd6+' ]; then
+            # Native AMLY conversion was accepted with this private PanVK.
+            for icd in /opt/vim4-mesa-26.2.6/share/vulkan/icd.d/*panfrost*.json; do
+                if [ -r "$icd" ]; then
+                    export VK_DRIVER_FILES="$icd"
+                    export PAN_I_WANT_A_BROKEN_VULKAN_DRIVER=1
+                    break
+                fi
+            done
+            test -n "${VK_DRIVER_FILES:-}" || {
+                echo 'Qualified private PanVK ICD is missing' >&2
+                exit 1
+            }
+        fi
     fi
     exec "$@"
 }
 case "$app" in
     nanokvm) run_app /opt/vim4-nanokvm/NanoKVM-Server ;;
     jetkvm) run_app /opt/vim4-jetkvm/jetkvm ;;
-    onekvm) run_app /opt/vim4-onekvm/one-kvm --data-dir "$state" --address 127.0.0.1 --port 8081 --auth-mode managed ;;
+    onekvm)
+        binary=/opt/vim4-onekvm/one-kvm
+        if [ "$(uname -r)" = '7.3.0-vim4kvm-uhd6+' ]; then
+            binary=/opt/vim4-onekvm-edge/one-kvm
+        fi
+        run_app "$binary" --data-dir "$state" --address 127.0.0.1 --port 8081 --auth-mode managed
+        ;;
     pikvm) run_app /usr/libexec/vim4-pikvm-run ;;
 esac

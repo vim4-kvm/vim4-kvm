@@ -15,7 +15,11 @@ import json
 import os
 from pathlib import Path
 import re
+import shutil
+import subprocess
 import sys
+import tarfile
+import tempfile
 
 
 def digest(path):
@@ -92,7 +96,7 @@ def register(args):
     import vim4boot as boot
     proof = json.loads(args.proof.read_text())
     version = proof['release']
-    if version not in ('7.3.0-rc7-vim4kvm-uhd1+', '7.3.0-vim4kvm-uhd1+'):
+    if version not in ('7.3.0-rc7-vim4kvm-uhd1+', '7.3.0-vim4kvm-uhd1+', '7.3.0-vim4kvm-uhd6+'):
         raise ValueError('No validated application launcher for this kernel release')
     if digest(boot.BOOT / 'edge/Image') != proof['image_sha256']:
         raise ValueError('Installed mainline Image differs from the build inventory')
@@ -146,7 +150,7 @@ def register(args):
         boot.validate_entry(record, text, hashes=True)
         records.append(record)
     backup = boot.CONFIG.with_name('extlinux.conf.before-full-runtime')
-    if not backup.exists():
+    if not getattr(args, 'no_backup', False) and not backup.exists():
         boot.atomic_write(backup, original.encode())
     boot.MANIFEST.parent.mkdir(parents=True, exist_ok=True)
     try:
@@ -162,6 +166,79 @@ def register(args):
         {'id': record['id'], 'release': record['release'], 'artifacts': len(record['artifacts'])} for record in records]}))
 
 
+def install(args):
+    """Install a sealed complete uhd6 set while retaining the default 5.15 entry."""
+    if os.geteuid() != 0:
+        raise ValueError('Installation requires root')
+    sys.path.insert(0, '/usr/lib/vim4-kvm/python')
+    import vim4boot as boot
+    original = boot.CONFIG.read_bytes()
+    entries = boot.boot_entries(original.decode())
+    label = boot.default_label(original.decode())
+    if not release(boot.BOOT / entries[label]['LINUX'].lstrip('/')).startswith('5.15.'):
+        raise ValueError('Installation requires 5.15 as the saved default')
+    if not Path('/lib').is_symlink():
+        raise ValueError('Expected Ubuntu /lib symlink')
+    with tempfile.TemporaryDirectory(prefix='vim4-edge-install-') as temporary:
+        root = Path(temporary)
+        with tarfile.open(args.archive) as archive:
+            for member in archive.getmembers():
+                path = Path(member.name)
+                if path.is_absolute() or '..' in path.parts or not (member.isdir() or member.isfile()):
+                    raise ValueError('Unsafe package member: ' + member.name)
+            archive.extractall(root, filter='data')
+        candidate = json.loads((root / 'candidate.json').read_text())
+        for name, expected in candidate['sha256'].items():
+            if digest(root / name) != expected:
+                raise ValueError('Package hash mismatch: ' + name)
+        report = json.loads((root / 'manifest.json').read_text())
+        version = report['release']
+        if version != '7.3.0-vim4kvm-uhd6+' or release(root / 'Image') != version:
+            raise ValueError('Expected the unified uhd6 Image')
+        with tarfile.open(root / 'modules.tar.gz') as archive:
+            actual = {}
+            for member in archive:
+                path = Path(member.name)
+                if path.is_absolute() or '..' in path.parts or not path.parts or path.parts[0] != version:
+                    raise ValueError('Unsafe module member: ' + member.name)
+                if member.isdir():
+                    continue
+                if not member.isfile():
+                    raise ValueError('Nonregular module member: ' + member.name)
+                name = str(Path(*path.parts[1:]))
+                if name in actual:
+                    raise ValueError('Duplicate module member: ' + name)
+                actual[name] = hashlib.file_digest(archive.extractfile(member), 'sha256').hexdigest()
+            if actual != report['modules']:
+                raise ValueError('Incomplete or mismatched module archive')
+        module_root = Path('/lib/modules') / version
+        if module_root.exists() and any(module_root.iterdir()):
+            raise ValueError('Refusing to overwrite an existing module set')
+        subprocess.run(['tar', 'xzf', str(root / 'modules.tar.gz'), '-C', '/lib/modules',
+                        '--no-same-owner', '--keep-directory-symlink'], check=True)
+        edge = boot.BOOT / 'edge'
+        edge.mkdir(exist_ok=True)
+        for name in ('Image', 'vim4.dtb', 'panfrost.dtb', 'config', 'Module.symvers', 'vmlinux.btf', 'manifest.json'):
+            shutil.copyfile(root / name, edge / name)
+        for path in (root / 'runtime/usr').rglob('*'):
+            if path.is_file():
+                destination = Path('/usr') / path.relative_to(root / 'runtime/usr')
+                destination.parent.mkdir(parents=True, exist_ok=True)
+                shutil.copyfile(path, destination)
+                destination.chmod(0o755)
+        binary = Path('/opt/vim4-onekvm-edge/one-kvm')
+        shutil.copyfile(root / 'runtime/one-kvm', binary)
+        binary.chmod(0o755)
+        for path in (root / 'runtime/gstreamer-1.0').iterdir():
+            shutil.copyfile(path, Path('/usr/lib/vim4-kvm/mainline-gstreamer-1.0') / path.name)
+        register(argparse.Namespace(proof=root / 'runtime-proof.json', source_label=args.source_label,
+                                    framebuffer_console=True, no_backup=True))
+    if boot.CONFIG.read_bytes() != original:
+        raise ValueError('Boot configuration changed during installation')
+    os.sync()
+    print('Installed complete uhd6 runtime; saved default remains 5.15')
+
+
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     commands = parser.add_subparsers(dest='command', required=True)
@@ -174,9 +251,13 @@ def main():
                            help='Register tty0 output for a qualified simpledrm handoff')
     installed.add_argument('proof', type=Path)
     installed.add_argument('--source-label', default='OneKvmTest')
+    installed.add_argument('--no-backup', action='store_true')
+    package = commands.add_parser('install')
+    package.add_argument('archive', type=Path)
+    package.add_argument('--source-label', default='OneKvmTest')
     args = parser.parse_args()
     try:
-        (inventory if args.command == 'inventory' else register)(args)
+        {'inventory': inventory, 'register': register, 'install': install}[args.command](args)
     except (ValueError, OSError, KeyError) as failure:
         parser.exit(1, str(failure) + '\n')
 

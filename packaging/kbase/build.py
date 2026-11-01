@@ -74,6 +74,8 @@ def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--vendor', required=True, type=Path)
     parser.add_argument('--kernel-source', required=True, type=Path)
+    parser.add_argument('--kernel-revision', default=KERNEL,
+                        help='Exact clean kernel commit; must descend from the accepted uhd4 base')
     parser.add_argument('--kernel-build', required=True, type=Path)
     parser.add_argument('--output', required=True, type=Path, help='New empty directory')
     parser.add_argument('--dtb', required=True, type=Path, help='Retained complete DTB; never modified')
@@ -83,13 +85,15 @@ def main():
         if actual != expected:
             parser.error(f'{path}: expected {expected}, found {actual}')
     run('git', '-C', str(args.kernel_source), 'merge-base', '--is-ancestor', KERNEL, 'HEAD')
-    # The worktree may commit the isolated DT and trial evidence, never kernel code.
-    run('git', '-C', str(args.kernel_source), 'diff', '--exit-code', KERNEL, '--', '.',
-        ':!arch/arm64/boot/dts/amlogic/amlogic-t7-a311d2-khadas-vim4-kbase.dts',
-        ':!Documentation/gpu/vim4-kbase-trial.rst')
+    revision = subprocess.check_output(
+        ['git', '-C', str(args.kernel_source), 'rev-parse', 'HEAD'], text=True).strip()
+    dirty = subprocess.check_output(
+        ['git', '-C', str(args.kernel_source), 'status', '--porcelain'], text=True).strip()
+    if revision != args.kernel_revision or dirty:
+        parser.error('Kernel source must match the requested clean commit')
     build_source = (args.kernel_build / 'source').resolve()
     actual = subprocess.check_output(['git', '-C', str(build_source), 'rev-parse', 'HEAD'], text=True).strip()
-    if actual != KERNEL:
+    if actual != revision:
         parser.error('Kernel build directory references a different source revision')
     output = args.output.resolve()
     output.mkdir(parents=True, exist_ok=False)
@@ -195,7 +199,7 @@ def main():
     run('fdtput', '-t', 'x', str(dtb), '/kbase-heaps', 'memory-region', format(phandle, 'x'))
     # Keep the existing MCU fan map; add an independent GPU frequency map.
     add_gpu_cooling(dtb, gpu, phandle + 1)
-    manifest = {'vendor': VENDOR, 'kernel': KERNEL, 'boardTested': False,
+    manifest = {'vendor': VENDOR, 'kernel': revision, 'boardTested': False,
                 'runtimeManifestSha256': sha(output / 'runtime-files.json'),
                 'moduleSha256': sha(module),
                 'heapModuleSha256': sha(heap_module),
