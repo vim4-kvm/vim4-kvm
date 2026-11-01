@@ -217,8 +217,10 @@ class Window:
         try:
             queue.sampling(token,True)
             tunnel=self.open_tunnel()
-            if w.source_hdr('vim4') is not False: raise RuntimeError('start with M6 HDR off')
+            initial_hdr=w.source_hdr('vim4')
+            if initial_hdr is not False: raise RuntimeError('start with M6 HDR off')
             if not client.idle(self.output)['idle']: raise RuntimeError('M6 is not visually idle')
+            m6.qualify(initial_hdr)
             data=base64.b64encode((HERE/'phase2-board.py').read_bytes()).decode()
             script=f"from pathlib import Path; import base64; p=Path({self.remote+'.py'!r}); p.write_bytes(base64.b64decode({data!r})); p.chmod(0o700)"
             w.ssh('vim4','sudo -n python3 -c '+shlex.quote(script))
@@ -274,14 +276,15 @@ class Window:
                 lambda:self.cli('return-baseline') if booted else None,
                 reconnect,
                 lambda:self.board('restore') if saved else None,
-                m6.restore):
+                lambda:m6.restore() if m6.restore_needed else None):
                 try: action()
                 except Exception as error: errors.append(str(error))
             try: queue.sampling(token,False)
             except Exception as error: errors.append(str(error))
             if tunnel is not None:
                 tunnel.terminate(); tunnel.wait(timeout=10)
-            (self.output/'recovery.json').write_text(json.dumps(dict(errors=errors,hdr_off=not errors),indent=2))
+            (self.output/'recovery.json').write_text(json.dumps(dict(errors=errors,
+                source_recovery_pending=m6.restore_needed),indent=2))
             if errors: raise RuntimeError('Recovery incomplete: '+'; '.join(errors))
 
 

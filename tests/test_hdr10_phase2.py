@@ -37,7 +37,8 @@ class M6Tests(unittest.TestCase):
         client = Mock()
         state = [False]
         controller = gates.M6(client, lambda: state[0], '/unused', Path(tempfile.gettempdir()) / 'm6-unit')
-        controller.screen = Mock(side_effect=[SCREENS[name] for name in screens])
+        controller.screen = Mock(side_effect=[SCREENS['chrome'],*[SCREENS[name] for name in screens]])
+        controller.qualify(False)
         def call(name, args=None):
             if name == 'mouse_move': client.point = args['coordinate']
             if name == 'left_click' and client.point[0] > 1600: state[0] = not state[0]
@@ -56,11 +57,11 @@ class M6Tests(unittest.TestCase):
 
     def test_restore_reobserves_moved_hdr_row(self):
         control, client, state = self.controller(['on','on','on','off','off','chrome'])
-        state[0] = True
+        control.click((1704,540))
         control.restore()
         self.assertFalse(state[0])
         points = [c.args[1]['coordinate'] for c in client.call.call_args_list if c.args[0] == 'mouse_move']
-        self.assertTrue(570 < points[0][1] < 590)
+        self.assertTrue(570 < points[1][1] < 590)
 
     def test_chrome_cannot_pass_settings_scroll_gate(self):
         with self.assertRaises(gates.GateError): gates.settings(SCREENS['chrome'])
@@ -74,14 +75,38 @@ class M6Tests(unittest.TestCase):
         client.call.side_effect = RuntimeError('MCP action outcome unknown')
         with self.assertRaises(RuntimeError): control.toggle(True)
         self.assertEqual(client.call.call_count, 1)
+        self.assertTrue(control.restore_needed)
+        client.call.side_effect=None
+        control.screen=Mock(return_value=SCREENS['chrome'])
+        control.restore()
+        self.assertFalse(control.restore_needed)
+        self.assertEqual(client.call.call_count,1)
 
     def test_failed_menu_launch_recovers_open_apple_menu_without_replay(self):
         menu=dict(SCREENS['chrome'],items=[*SCREENS['chrome']['items'],
             dict(text='About This Mac',x=20,y=40,w=120,h=20)])
         control,client,_=self.controller([])
+        control.hid('mouse_move',{'coordinate':[27,13]})
         control.screen=Mock(side_effect=[menu,SCREENS['chrome'],SCREENS['chrome']])
         control.restore()
-        client.call.assert_called_once_with('key',{'text':'Escape'})
+        self.assertEqual(client.call.call_count,2)
+        self.assertEqual(client.call.call_args.args,('key',{'text':'Escape'}))
+
+    def test_unqualified_restore_does_not_touch_existing_hdr_or_foreground(self):
+        client=Mock()
+        control=gates.M6(client,lambda:True,'/unused',Path(tempfile.gettempdir())/'m6-unqualified')
+        control.screen=Mock(side_effect=AssertionError('restore must not observe or act'))
+        control.restore()
+        client.call.assert_not_called()
+        self.assertFalse(control.restore_needed)
+
+    def test_preexisting_settings_is_rejected_without_close_or_hdr_change(self):
+        client=Mock()
+        control=gates.M6(client,lambda:False,'/unused',Path(tempfile.gettempdir())/'m6-settings')
+        control.screen=Mock(return_value=SCREENS['general'])
+        with self.assertRaises(gates.GateError):control.qualify(False)
+        control.restore()
+        client.call.assert_not_called()
 
 
 def archive(path, files):
@@ -189,7 +214,11 @@ class WindowTests(unittest.TestCase):
             queue=Mock();tunnel=Mock();tunnel.poll.return_value=None
             runner.open_tunnel=Mock(return_value=tunnel)
             client=Mock();client.idle.return_value=dict(idle=True)
-            m6=Mock();m6.restore.side_effect=lambda:events.append('m6-restored')
+            m6=Mock();m6.restore_needed=False
+            m6.toggle.side_effect=lambda *args:setattr(m6,'restore_needed',True)
+            def restored():
+                events.append('m6-restored');m6.restore_needed=False
+            m6.restore.side_effect=restored
             with patch.object(window.w,'require_board',return_value=(queue,'token')), \
                  patch.object(window.w,'ssh',return_value='{"api_key":"unit"}'), \
                  patch.object(window.w,'MCP',return_value=client), \
@@ -206,6 +235,25 @@ class WindowTests(unittest.TestCase):
             self.assertEqual(queue.sampling.call_args_list[-1].args,('token',False))
             tunnel.terminate.assert_called_once()
             self.assertEqual(runner.open_tunnel.call_count,3)
+
+    def test_initial_rejections_and_pre_hid_failure_never_take_m6_restore_ownership(self):
+        for cause in ('hdr-on','not-idle','save-failure'):
+            with self.subTest(cause=cause),tempfile.TemporaryDirectory() as tmp:
+                with patch.object(window,'REPO',Path(tmp)):
+                    runner=window.Window(SimpleNamespace(window='rejected',observer=Path('/bin/true'),device='unused'))
+                runner.api=Mock(return_value={});runner.open_tunnel=Mock(return_value=Mock())
+                runner.cli=Mock();runner.board=Mock(side_effect=RuntimeError('save failure'))
+                client=Mock();client.idle.return_value=dict(idle=cause!='not-idle')
+                m6=Mock();m6.restore_needed=False
+                with patch.object(window.w,'require_board',return_value=(Mock(),'token')), \
+                     patch.object(window.w,'ssh',return_value='{"api_key":"unit"}'), \
+                     patch.object(window.w,'MCP',return_value=client), \
+                     patch.object(window.w,'source_hdr',return_value=cause=='hdr-on'), \
+                     patch.object(window.g,'M6',return_value=m6):
+                    with self.assertRaises(RuntimeError):runner.run()
+                m6.toggle.assert_not_called();m6.restore.assert_not_called()
+                client.call.assert_not_called()
+                if cause!='save-failure':runner.board.assert_not_called()
 
     def test_reboot_replaces_alive_but_stale_forwarder_before_readiness(self):
         runner=object.__new__(window.Window)

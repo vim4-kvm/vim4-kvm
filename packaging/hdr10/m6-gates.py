@@ -29,6 +29,14 @@ def front_settings(screen):
     find(screen, 'System Settings', top=True)
 
 
+def chrome_front(screen):
+    chrome = find(screen, 'Chrome', top=True)
+    # r13 OCR places the left edge at 41.8px; the manually reviewed anchor
+    # was 53px. Both describe this same 1920x1080 menu bar.
+    if (screen['width'], screen['height']) != (1920, 1080) or not 35 <= chrome['x'] <= 65:
+        raise GateError('Unqualified original M6 foreground')
+
+
 def settings(screen):
     front_settings(screen)
     title = [row for row in screen['items'] if row['text'].lstrip('> ') == 'Displays' and row['x'] > 1200]
@@ -44,6 +52,23 @@ class M6:
         self.observer, self.output = observer, Path(output)
         self.output.mkdir(parents=True, exist_ok=True)
         self.sequence = 0
+        self.initial_hdr = None
+        self.restore_needed = False
+
+    def qualify(self, initial_hdr):
+        # This window only knows how to return to its original Chrome window.
+        # Reject a pre-existing Settings foreground without touching it.
+        screen = self.screen()
+        chrome_front(screen)
+        self.initial_hdr = initial_hdr
+
+    def hid(self, name, arguments=None):
+        if self.initial_hdr is None:
+            raise GateError('M6 was not qualified; no source actions allowed')
+        # Establish responsibility before dispatch: an MCP failure can mean
+        # the action happened but its reply was lost.
+        self.restore_needed = True
+        return self.client.call(name, arguments)
 
     def screen(self, xy=None):
         self.sequence += 1
@@ -56,18 +81,16 @@ class M6:
         return result
 
     def click(self, xy):
-        self.client.call('mouse_move', {'coordinate': list(xy)})
+        self.hid('mouse_move', {'coordinate': list(xy)})
         # HID failure is never retried. The caller's finally must reobserve.
-        self.client.call('left_click')
+        self.hid('left_click')
 
     def open(self):
         before = self.screen()
         if any('System Settings' in row['text'] and row['y'] < 25 for row in before['items']):
             self.displays(before)
             return
-        chrome = find(before, 'Chrome', top=True)
-        if (before['width'], before['height']) != (1920, 1080) or abs(chrome['x'] - 53) > 8:
-            raise GateError('Unqualified M6 front window')
+        chrome_front(before)
         self.click((27, 13))  # r13 Apple menu, qualified by the captured menu bar.
         menu = self.screen()
         item = find(menu, 'System Settings')
@@ -109,8 +132,8 @@ class M6:
             labels = [r for r in screen['items'] if 'High Dynamic Range' in r['text']]
             if labels: break
             # Confirmed right pane only; never scroll Chrome.
-            self.client.call('mouse_move', {'coordinate': [round(title['x']+300), 700]})
-            self.client.call('scroll', {'scroll_direction': 'down', 'scroll_amount': 2})
+            self.hid('mouse_move', {'coordinate': [round(title['x']+300), 700]})
+            self.hid('scroll', {'scroll_direction': 'down', 'scroll_amount': 2})
             settings(self.screen())
         else: raise GateError('HDR control did not become visible')
         label = labels[0]
@@ -134,7 +157,7 @@ class M6:
     def close(self):
         screen = self.screen()
         if any(r['text']=='About This Mac' and r['x']<250 and r['y']<180 for r in screen['items']):
-            self.client.call('key', {'text':'Escape'})
+            self.hid('key', {'text':'Escape'})
             screen=self.screen()
         if any('System Settings' in r['text'] and r['y'] < 25 for r in screen['items']):
             front_settings(screen)
@@ -153,7 +176,9 @@ class M6:
         find(self.screen(), 'Chrome', top=True)
 
     def restore(self):
-        self.toggle(False)
+        if not self.restore_needed: return
+        self.toggle(self.initial_hdr)
         self.close()
-        if self.source_hdr() is not False:
-            raise GateError('M6 HDR was not restored off')
+        if self.source_hdr() != self.initial_hdr:
+            raise GateError('M6 HDR was not restored to its saved state')
+        self.restore_needed = False
