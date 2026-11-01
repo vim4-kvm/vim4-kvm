@@ -42,6 +42,36 @@ def held_queue():
 
 
 class M6Tests(unittest.TestCase):
+    def test_r14e_all_saved_preparation_and_recovery_ocr(self):
+        frames=json.loads((ROOT/'tests/fixtures/m6-r14e-preparation.json').read_text())
+        for frame in frames:
+            with self.subTest(frame=frame['path']):
+                if frame['expected'] is None:
+                    with self.assertRaises(gates.GateError):gates.source_foreground(frame['screen'])
+                else:self.assertEqual(gates.source_foreground(frame['screen']),frame['expected'])
+        # The actual recovery traverses the observed partial Chrome headings,
+        # delayed Apple submenu, then the original Grok Bot foreground.
+        recovery=[f['screen'] for f in frames if 'source-recovery/' in f['path']]
+        client=Mock()
+        control=gates.M6(client,lambda timeout=30:False,'/unused',
+                         Path(tempfile.gettempdir())/'m6-actual-recovery')
+        control.initial_hdr=False;control.initial_app='Grok Bot';control.restore_needed=True
+        control.screen=Mock(side_effect=recovery)
+        with patch.object(gates.time,'sleep'):control.restore()
+        self.assertFalse(control.restore_needed)
+        self.assertEqual(sum(c.args[0]=='left_click' for c in client.call.call_args_list),2)
+        # Failed OCR at the menu-opening boundary must only reobserve. It
+        # cannot authorize a click or cause the Apple click to be replayed.
+        by_name={f['path']:f['screen'] for f in frames}
+        prefix='logs/hdr-phase2-r14e-uhd6-r2/m6/'
+        control.initial_app='Chrome'
+        control.screen=Mock(side_effect=[by_name[prefix+'step-010.json'],
+            by_name[prefix+'step-011.json'],by_name[prefix+'step-012.json'],SCREENS['general']])
+        control.displays=Mock();client.reset_mock()
+        with patch.object(gates.time,'sleep'):control.open()
+        self.assertEqual(sum(c.args[0]=='left_click' for c in client.call.call_args_list),2)
+        control.displays.assert_called_once_with(SCREENS['general'])
+
     def test_approved_grok_foreground_switches_chrome_and_restores_original(self):
         grok=dict(SCREENS['chrome'],items=[dict(text='Grok Bot',x=53,y=8,w=70,h=20)])
         def recent(front,target):
@@ -80,6 +110,14 @@ class M6Tests(unittest.TestCase):
             screen['items'][0]['text'] = text
             with self.assertRaises(gates.GateError): control.qualify(False)
         client.call.assert_not_called()
+
+    def test_observed_chrome_menu_split_after_file(self):
+        screen = dict(SCREENS['chrome'], items=[
+            dict(text='\uf8ff Chrome File',x=0,y=3,w=145,h=20),
+            dict(text='Edit View History',x=148,y=6,w=160,h=20)])
+        gates.chrome_front(screen)
+        screen['items'][1]['text']='Some webpage'
+        with self.assertRaises(gates.GateError): gates.chrome_front(screen)
 
     def controller(self, screens):
         client = Mock()

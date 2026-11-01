@@ -41,7 +41,12 @@ def chrome_front(screen):
     # menu animation. Require the full adjacent Chrome headings, allowing
     # only that single icon position before them.
     merged = bool(headings) and len(prefix.strip()) <= 1 and -1 <= chrome['x'] <= 65
-    if (screen['width'], screen['height']) != (1920, 1080) or not (separate or merged):
+    # r14e's real menu is split after File, with the remaining headings
+    # recognized as a separate adjacent row.
+    split = (text == 'Chrome File' and -1 <= chrome['x'] <= 65
+             and any(r['text'] == 'Edit View History' and 140 <= r['x'] <= 180
+                     and r['y'] < 25 for r in screen['items']))
+    if (screen['width'], screen['height']) != (1920, 1080) or not (separate or merged or split):
         raise GateError('Unqualified original M6 foreground')
 
 
@@ -169,8 +174,8 @@ class M6:
         deadline = time.monotonic() + 8
         while True:
             if not visible_menu: menu = self.screen()
-            chrome_front(menu)
             try:
+                chrome_front(menu)
                 item = find(menu, 'System Settings')
                 break
             except GateError:
