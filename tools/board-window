@@ -444,6 +444,7 @@ def main():
     p = commands.add_parser('boot-candidate')
     p.add_argument('candidate', type=Path)
     p.add_argument('--sha256', required=True, help='trusted candidate.tar SHA256')
+    p.add_argument('--reuse-staged', action='store_true', help='verify and reuse the exact immutable payload')
     p.add_argument('--baseline-files', nargs='+', help='first HDR2 payload: original 5.15 recovery files')
     commands.add_parser('return-baseline')
     p = commands.add_parser('baseline')
@@ -569,8 +570,8 @@ def main():
 s=importlib.util.spec_from_file_location('once',SCRIPT)
 m=importlib.util.module_from_spec(s);s.loader.exec_module(m)
 assert m.sha(BUNDLE)==DIGEST
-m.stage(BUNDLE,retained_baseline=PROOF)
-""".replace('SCRIPT', repr(remote + '.py')).replace('BUNDLE', repr(remote + '.tar')).replace('DIGEST', repr(digest)).replace('PROOF', repr(proof))
+m.stage(BUNDLE,retained_baseline=PROOF,reuse_staged=REUSE)
+""".replace('SCRIPT', repr(remote + '.py')).replace('BUNDLE', repr(remote + '.tar')).replace('DIGEST', repr(digest)).replace('PROOF', repr(proof)).replace('REUSE', repr(args.reuse_staged))
         ssh(args.host, 'sudo -n python3 -c ' + shlex.quote(script), timeout=180)
         require_board()
         boot(args.host, args.device, directory, plan)

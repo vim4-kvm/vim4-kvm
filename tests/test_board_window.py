@@ -155,6 +155,14 @@ class WindowTests(unittest.TestCase):
             (root / 'module-mounts').mkdir()
             with patch.object(once, 'ROOT', root / 'display-m1'), patch.object(once, 'MODULE_ROOT', root / 'module-mounts'), patch.object(once.os, 'geteuid', return_value=0), patch.object(Path, 'lstat', owned):
                 once.stage(bundle, retained_baseline=proof)
+                with self.assertRaises(FileExistsError):
+                    once.stage(bundle, retained_baseline=proof)
+                once.stage(bundle, retained_baseline=proof, reuse_staged=True)
+                image = candidate / 'Image'
+                image.chmod(0o644)
+                image.write_bytes(b'changed kernel')
+                with self.assertRaisesRegex(ValueError, 'hash mismatch'):
+                    once.stage(bundle, retained_baseline=proof, reuse_staged=True)
             self.assertEqual(list((root / 'module-mounts' / manifest['release']).iterdir()), [])
             self.assertTrue((candidate / 'runtime/helper').stat().st_mode & 0o111)
             self.assertEqual(baseline.read_bytes(), b'unchanged')

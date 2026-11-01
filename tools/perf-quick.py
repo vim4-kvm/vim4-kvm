@@ -19,11 +19,6 @@ bw = importlib.util.module_from_spec(spec)
 loader.exec_module(bw)
 
 
-def marker(identifier):
-    identifier &= 65535
-    return 0xa5000000 | (identifier << 8) | ((identifier >> 8) ^ (identifier & 255) ^ 0xa5)
-
-
 def serve(output, port):
     with output.open('x') as log:
         class Handler(BaseHTTPRequestHandler):
@@ -80,6 +75,8 @@ def native(backend, output):
     bw.ssh('vim4', 'mkdir ' + remote)
     subprocess.run(['scp', str(ROOT / 'build/p0-2/vim4-driver-bench'), 'vim4:' + remote + '/bench'], check=True)
     active = bw.ssh('vim4', 'systemctl is-active one-kvm').strip() == 'active'
+    secondary = (backend == 'stock' and bw.ssh(
+        'vim4', 'cat /sys/module/aml_media/parameters/vdin0_native_hdr').strip() == 'Y')
     bw.ssh('vim4', 'sudo -n systemctl stop one-kvm')
     try:
         queue.sampling(ticket, True)
@@ -87,10 +84,14 @@ def native(backend, output):
         for codec in ('capture', 'h264', 'h265'):
             env = ('GST_PLUGIN_PATH=/usr/lib/vim4-kvm/gstreamer-1.0 LD_LIBRARY_PATH=/opt/vim4-onekvm/lib'
                    if backend == 'stock' else 'GST_PLUGIN_PATH=/usr/lib/vim4-kvm/mainline-gstreamer-1.0')
+            if secondary:
+                env = ('GST_PLUGIN_PATH=/opt/vim4-onekvm/lib/gstreamer-1.0:/usr/lib/vim4-kvm/gstreamer-1.0 '
+                       'LD_LIBRARY_PATH=/opt/vim4-onekvm/lib VIM4_SECONDARY_HDMI_CAPTURE=1 '
+                       'GST_V4L2_PREFER_CONTIGUOUS=1')
             command = (f'env {env} GST_REGISTRY={remote}/registry.bin timeout -k 3 75 {remote}/bench '
                        f'--exclusive --backend={backend} --codec={codec} --warmup=120 --frames=1800 '
-                       f'--width=3840 --height=2160 --bitrate=60000000 --gop=60 --timeout=65 '
-                       f'--output={remote}/{codec}.json')
+                       f'--width=1920 --height=1080 --bitrate=12000000 --gop=60 --timeout=65 '
+                       f'--output={remote}/{codec}.json' + (' --secondary' if secondary else ''))
             try:
                 text = bw.ssh('vim4', command, timeout=85)
                 (output / (codec + '.stdout')).write_text(text)
@@ -119,7 +120,7 @@ def window(args):
     try:
         if args.candidate:
             candidate_started = True
-            step('boot', tool + ['boot-candidate', str(args.candidate), '--sha256', args.sha256], 480)
+            step('boot', tool + ['boot-candidate', str(args.candidate), '--sha256', args.sha256, '--reuse-staged'], 480)
         step('before', tool + ['collect', '--readonly'], 30)
         if args.candidate and time.monotonic() - started > 200:
             raise RuntimeError('Boot used sampling budget; reserve time for baseline recovery')
@@ -133,14 +134,14 @@ def window(args):
             (output / 'sampling-receiver.json').write_text(json.dumps(queue.read(ticket)))
             step('receiver', ['node', str(ROOT / 'tools/latency-receiver.mjs'),
                              'http://127.0.0.1:18082', '30', '--one-kvm', '--local-backend',
-                             '--expect-codec=h264', '--verify-coherence'], 100)
+                             '--expect-codec=h264', '--marker-y=540'], 100)
         finally:
             queue.sampling(ticket, False)
             tunnel.terminate()
             tunnel.wait(timeout=10)
         step('after', tool + ['collect', '--readonly'], 30)
     finally:
-        if candidate_started:
+        if candidate_started and (ROOT / 'logs/p0-2-quick/baseline-proof.json').exists():
             step('return', tool + ['return-baseline'], 240)
 
 

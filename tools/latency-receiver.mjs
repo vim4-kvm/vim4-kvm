@@ -12,6 +12,10 @@ if (!Number.isFinite(statsInterval) || statsInterval < 0 || (statsInterval > 0 &
   throw new Error('Invalid --stats-interval (0 disables periodic snapshots; otherwise >=5 seconds)');
 }
 const verifyCoherence = process.argv.includes('--verify-coherence');
+const markerY = Number(process.argv.find(arg => arg.startsWith('--marker-y='))?.split('=')[1] || 85);
+if (!Number.isFinite(markerY) || markerY < 2 || markerY > 1078 || (verifyCoherence && markerY !== 85)) {
+  throw new Error('Invalid marker row or incompatible coherence check');
+}
 const noPixels = process.argv.includes('--no-pixels');
 const rtpTimeline = process.argv.includes('--rtp-timeline');
 const expectedCodec = process.argv.find(arg => arg.startsWith('--expect-codec='))?.split('=')[1];
@@ -103,7 +107,7 @@ try {
       }
     }
   });
-  await page.evaluate(({verifyCoherence, noPixels, cpuReadback, rtpTimeline}) => {
+  await page.evaluate(({verifyCoherence, noPixels, cpuReadback, rtpTimeline, markerY}) => {
     const video = document.querySelector('video');
     const canvas = document.createElement('canvas');
     canvas.width = 32; canvas.height = verifyCoherence ? 216 : 1;
@@ -154,7 +158,7 @@ try {
       const readStartMs = performance.timeOrigin + performance.now() + clockOffsetMs;
       // Coordinates are normalized to the source window's logical 1920x1080.
       ctx.drawImage(video, 20 / 1920 * video.videoWidth,
-        verifyCoherence ? 0 : 85 / 1080 * video.videoHeight - 2,
+        verifyCoherence ? 0 : markerY / 1080 * video.videoHeight - 2,
         1880 / 1920 * video.videoWidth, verifyCoherence ? video.videoHeight : 4,
         0, 0, 32, canvas.height);
       const pixels = ctx.getImageData(0, 0, 32, canvas.height).data;
@@ -189,7 +193,7 @@ try {
       video.requestVideoFrameCallback(frame);
     };
     video.requestVideoFrameCallback(frame);
-  }, {verifyCoherence, noPixels, cpuReadback, rtpTimeline});
+  }, {verifyCoherence, noPixels, cpuReadback, rtpTimeline, markerY});
   // Warm up canvas allocation and GPU readback before measuring.
   await page.waitForTimeout(3000);
   const before = await stats();
@@ -246,7 +250,7 @@ try {
   console.log(JSON.stringify({ before, after, startedMs, noPixels, rtpTimeline, statsInterval, statsHistory,
     clockMapping: 'per-sample-wall-offset',
     readbackMode: cpuReadback ? 'cpu-preferred' : 'gpu-preferred', browserVersion: browser.version(),
-    streamerBefore, streamerAfter, negotiation, verifyCoherence, ...result }, null, 2));
+    streamerBefore, streamerAfter, negotiation, verifyCoherence, markerY, ...result }, null, 2));
   if (JSON.stringify(streamerBefore) !== JSON.stringify(streamerAfter)) {
     throw new Error('PiKVM stream configuration changed during measurement');
   }

@@ -105,6 +105,10 @@ cmdline仅单独审阅`reboot_mode=normal`与`reboot_mode=watchdog_reboot`之间
 
 ## 基线与证据
 
+重复性能窗口可显式传 `boot-candidate --reuse-staged`：已存在的同一payload逐文件核对
+原归档哈希并重新检查基线后复用，不覆盖Image/DTB/模块/运行时。默认仍拒绝重复目录；
+任何文件改变均拒绝。返回时已清理的空模块bind目标会重新登记本次inode供安全清理。
+
 `baseline --files /boot/... /opt/...` 必须列出当前5.15 Image、One-KVM程序、插件、
 所有默认启动/DTB/initrd与运行时登记文件（按当前部署清单选，不能只给uname）。
 例如受保护配置含 `/boot/extlinux/extlinux.conf`、`/etc/vim4-kvm/kernels.json`、

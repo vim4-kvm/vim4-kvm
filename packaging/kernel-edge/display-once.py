@@ -322,7 +322,7 @@ def read_trial(archive, baseline=None):
     return plan, metadata, entries
 
 
-def stage(bundle, retained_baseline=None):
+def stage(bundle, retained_baseline=None, reuse_staged=False):
     def check(plan):
         if retained_baseline is None:
             preflight(plan)
@@ -347,7 +347,28 @@ def stage(bundle, retained_baseline=None):
                 raise RuntimeError('untrusted staging ancestor: ' + str(ancestor))
         target = stage_root / plan['build_id']
         if target.exists() or target.is_symlink():
-            raise FileExistsError(target)
+            if not reuse_staged or target.is_symlink() or not target.is_dir():
+                raise FileExistsError(target)
+            # Performance A/B/A revisits an immutable candidate. Never overwrite
+            # its payload: verify every archived file before selecting it again.
+            for name, digest in plan['files'].items():
+                path = target / name
+                if path.is_symlink() or not path.is_file() or sha(path) != digest:
+                    raise ValueError('staged trial file hash mismatch: ' + name)
+            static_arm64(target / 'init')
+            check(plan)
+            if metadata == 'manifest.json' or 'namespace' in plan:
+                mountpoint = MODULE_ROOT / plan['release']
+                created = not mountpoint.exists()
+                mountpoint.mkdir(mode=0o755, exist_ok=True)
+                if mountpoint.is_symlink() or not mountpoint.is_dir():
+                    raise RuntimeError('untrusted module bind destination')
+                if created:
+                    info = mountpoint.stat()
+                    (target / '.created-module-mountpoint.json').write_text(json.dumps(
+                        dict(device=info.st_dev, inode=info.st_ino)))
+            print('REUSED_VERIFIED', target)
+            return
         with tempfile.TemporaryDirectory(prefix='.incomplete-', dir=stage_root) as directory:
             work = Path(directory)
             seen = set()
