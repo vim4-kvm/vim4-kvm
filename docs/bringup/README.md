@@ -19,6 +19,8 @@
 
 ## 2026-10-31
 
+- [P0-3公开停机协议与合法等待研究](2026-10-31-wave5-stop-research.md) — kernel video offline safety
+- [P0-3真实挂死注入安全审查](2026-10-31-wave5-real-hang-safety.md) — kernel video offline safety
 - [原生HDR最小主路径验收与合入](2026-10-31-hdr10-native-final.md) — kernel board video application hdr
 - [uhd5 GPU正式来源锁与最小烟测合入](2026-10-31-uhd5-main-integration.md) — kernel gpu deployment
 - [uhd5完整封包、正常回退与正式推广阻塞](2026-10-31-kbase-r12-package.md) — kernel gpu board deployment
