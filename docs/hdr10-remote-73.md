@@ -1,5 +1,9 @@
 # 7.3 原生远程 HDR10 候选与门禁
 
+2026-11-01按用户授权已持久安装r14e并改默认为uhd6/kbase，交用户手测；
+仅完成安装身份/服务/插件核验，Pi/kbase/UU/CMA功能边界未升级为通过。
+当前入口与完整身份见[r14e安装记录](bringup/2026-11-01-hdr10-r14e-installed.md)。
+
 本分支实现 `VDIN AMLY → Vulkan → P010 → Wave5 Main10 → 用户态 HDR10 SEI`。
 Panfrost 下 One-KVM 网页 4K60 Main10/PQ、SEI及恢复已通过最小主路径验收，
 见[最终记录与边界](bringup/2026-10-31-hdr10-native-final.md)。

@@ -8,6 +8,7 @@ import subprocess
 import tarfile
 import tempfile
 import unittest
+from unittest.mock import patch
 
 ROOT=Path(__file__).resolve().parents[1]
 spec=importlib.util.spec_from_file_location('persistent',ROOT/'packaging/hdr10/persistent-r14e.py')
@@ -15,6 +16,17 @@ persistent=importlib.util.module_from_spec(spec);spec.loader.exec_module(persist
 
 
 class PersistentTests(unittest.TestCase):
+    def test_kbase_wrapper_main_pid_is_not_mistaken_for_application(self):
+        with tempfile.TemporaryDirectory() as temp:
+            root=Path(temp);group=root/'group';group.mkdir()
+            (group/'cgroup.procs').write_text('900\n951\n1075\n')
+            program=root/'candidate/one-kvm';program.parent.mkdir();program.touch()
+            for pid,target in (('900','/usr/bin/python3'),('951',str(program)),('1075','/usr/bin/ttyd')):
+                directory=root/'proc'/pid;directory.mkdir(parents=True)
+                (directory/'exe').symlink_to(target)
+            with patch.object(persistent,'PREFIX',str(program.parent)):
+                self.assertEqual(persistent.one_kvm_pid(group,root/'proc'),951)
+
     def test_kernel_specific_launcher_preserves_vendor_and_routes_all_four_apps(self):
         original=(ROOT/'tests/fixtures/uhd6-installed-kvm-run').read_bytes()
         self.assertEqual(hashlib.sha256(original).hexdigest(),

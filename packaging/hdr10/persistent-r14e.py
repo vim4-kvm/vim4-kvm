@@ -171,7 +171,11 @@ def install(args):
         record=json.loads(Path('/etc/vim4-kvm/runtime-build.json').read_text())
         record.update(manual_test_candidate='hdr10-r14e',kernel_source=proof['kernel_source'],
             kernel_build_id=proof['kernel_build_id'],module_count=2341,
-            deployed_components={**record.get('deployed_components',{}),**proof['sources']},
+            deployed_components={**record.get('deployed_components',{}),
+                'kernel':proof['kernel_source'],'capture':proof['sources']['gst-vfmcap'],
+                'encoder':proof['sources']['gst-venc'],'onekvm':proof['sources']['One-KVM'],
+                'nanokvm':proof['sources']['NanoKVM'],'jetkvm':proof['sources']['kvm'],
+                'ustreamer':proof['sources']['ustreamer']},
             hdr10_r14e=dict(archive_sha256=args.sha256,userspace_sha256=USER_SHA,prefix=PREFIX,
                            hardware_validated=False,pending=proof['pending']))
         vim4boot.atomic_write(Path('/etc/vim4-kvm/runtime-build.json'),json.dumps(record,indent=2).encode())
@@ -203,6 +207,15 @@ def note_id(data):
     raise ValueError('GNU build ID missing')
 
 
+def one_kvm_pid(group,proc_root=Path('/proc')):
+    # kbase's graphics wrapper remains the systemd MainPID. Locate only the
+    # actual program inside this service, excluding the wrapper and ttyd.
+    matches=[int(pid) for pid in (group/'cgroup.procs').read_text().split()
+             if (proc_root/pid/'exe').resolve()==Path(PREFIX).resolve()/'one-kvm']
+    if len(matches)!=1:raise ValueError('Expected one r14e One-KVM process in service cgroup')
+    return matches[0]
+
+
 def verify(args):
     proof=json.loads(Path(RECEIPT).read_text());prefix=Path(PREFIX)
     assert platform.release()==RELEASE
@@ -232,7 +245,8 @@ def verify(args):
     assert any(p.read_text().strip()=='configured' for p in Path('/sys/class/udc').glob('*/state'))
     for unit in UNITS:
         assert subprocess.check_output(['systemctl','show','-p','LoadState','--value',unit],text=True).strip()=='loaded',unit
-    pid=int(subprocess.check_output(['systemctl','show','-p','MainPID','--value','one-kvm'],text=True))
+    group=subprocess.check_output(['systemctl','show','-p','ControlGroup','--value','one-kvm'],text=True).strip()
+    pid=one_kvm_pid(Path('/sys/fs/cgroup')/group.lstrip('/'))
     assert file_sha(Path('/proc')/str(pid)/'exe')==proof['files']['one-kvm']
     mapped={line.split()[-1] for line in (Path('/proc')/str(pid)/'maps').read_text().splitlines()
             if PREFIX+'/gstreamer-1.0/' in line}
@@ -247,6 +261,8 @@ def verify(args):
     assert status['tainted']==4096,'Unexpected taint (kbase out-of-tree bit expected)'
     record=json.loads(Path('/etc/vim4-kvm/runtime-build.json').read_text())
     record.update(running=RELEASE,default='FullKvm',loaded_module_build_ids={n:v['build_id'] for n,v in modules.items()},
+                  module_archive_sha256=manifest['files']['modules.tar.gz'],
+                  config_sha256=proof['boot_files']['/boot/edge/config'],
                   tainted=status['tainted'],services={n:'active' for n in units},observed_at=time.time())
     record.setdefault('sha256',{}).update({PREFIX+'/'+n:h for n,h in proof['files'].items()})
     record['sha256'].update(proof['boot_files']);record['sha256'][WRAPPER]=file_sha(Path(WRAPPER))
