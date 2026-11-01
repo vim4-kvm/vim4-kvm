@@ -1,7 +1,8 @@
-# 2026-11-01：跨内核原厂MAC传递修复（离线，待复审/重启授权核实）
+# 2026-11-01：跨内核原厂MAC传递修复与部署
 
-现状：r14e已持久安装，7.3/kbase运行且默认，地址仍为192.168.50.162。
-本修复尚未部署、未重启，不将离线时序测试当作实板成功。
+现状：固定217c9e4经独立复审通过，按用户明确部署/正常重启授权完成45.468秒短窗。
+r14e/uhd6/kbase运行且默认，MAC与本板5.15既有证据一致，管理页恢复为
+**http://192.168.50.210**。没有硬编码MAC/IP，没有改M6或运行HDR矩阵。
 
 ## 来源证据
 
@@ -19,7 +20,7 @@
 `ethernet@fdc00000/local-mac-address`和eth0均为该值；addr_assign_type=0，NM无cloned MAC配置。
 因此是两条身份来源没有统一，不是DHCP修改MAC。
 
-以上证明旧厂商参数的实际展开；**新7.3参数`vim4.eth_mac=${eth_mac}`尚未重启验证实际展开**。
+以上是部署前旧厂商参数的展开证据；新7.3参数的实际展开已由下方短窗补齐。
 源码经VM中的固定git对象只读核对，不读取猜测的寄存器、不刷改U-Boot。
 
 ## 最小实现及边界
@@ -49,8 +50,33 @@ profile增加此参数，其他标签、默认项和管理员自定义参数仍�
 旧精确profile迁移时保留其他标签和默认值。实际网卡ID_PATH已只读核对。
 
 交付前全量451项通过、15环境跳过；MAC/注册定向13项通过。
-复审与授权核实前不取板票、不重启；后续只需一次正常启动核对动态参数、MAC、DHCP、
-SSH/管理器/One-KVM/HDMI/UDC，默认继续7.3，不跑HDR/性能矩阵或操作M6。
+复审前未取板票、未部署；独立报告`/tmp/herdr-workers/review-mac-handoff.result.md`
+未发现确认缺陷，13项定向回归通过。随后收到明确部署及必要正常重启授权，才进入下述窗口。
+
+## 实板部署结果
+
+唯一窗口`logs/mac-handoff-217c9e4-r1/`，FIFO持票45.468秒，正常重启一次。
+安装generator并经register-runtime只升级精确旧FullKvm参数/登记清单；保留默认FullKvm、
+其他启动标签、NetworkManager连接配置、r14e程序、Image/双DT/2341模块和/lib符号链接。
+备份`/var/lib/vim4-kvm/before-mac-handoff-1793534466005449573`。
+
+| 核验 | 实际证据 |
+|---|---|
+| 动态展开 | 串口读出的运行cmdline为`vim4.eth_mac=c8:63:14:74:70:0d`；磁盘配置仍是`${eth_mac}`变量 |
+| 跨5.15身份 | 最终eth0=`c8:63:14:74:70:0d`，与既有5.15记录逐字相同；未重新启动5.15 |
+| 精确网卡/配置选择 | ID_PATH=`platform-fdc00000.ethernet`，ID_NET_LINK_FILE=`/run/systemd/network/10-vim4-ethernet.link` |
+| udev/NM顺序 | udev USEC_INITIALIZED=3789136；NM首次发现该网口=6865509微秒；NM激活后MAC仍相同 |
+| DHCP地址 | 由串口`ip`和NM租约日志读取192.168.50.210，不按预设IP判通过 |
+| 启动身份 | 7.3.0-vim4kvm-uhd6+，GNU ID仍48106f6f9fb09b12d1eaf6a5fe91953dba53d9cb，FullKvm默认，kbase配置保留 |
+| 用户态/就绪 | 真实r14e One-KVM SHA仍79678cbff6ab7885de3fb0aff6f3c9ec229ea63aa1f217e7ebafb12853d6162a；manager/One-KVM/HDMI/gadget active，UDC configured，HTTP200 |
+
+原始证据：`serial-network.json`、`udev-nm.txt`、`udev-nm-order.json`、`kernel-status.json`、
+`identity.json`、`r14e-sanity.json`、`result.json`及正常重启串口日志。
+generator SHA256 `ceff3267730cec55ec30cf86326bf76daff567477dc67fc1d39311d53f4ea62c`。
+文件由generator在unit加载前生成，实际MAC由udev应用；不把“生成文件”说成已在udev执行前改过网卡。
+
+本窗无失败、未写U-Boot环境/引导区，未写死IP/MAC或改动NM用户连接。票据与串口已释放。
+Pi/kbase/UU/CMA及HDR未验边界保持[安装记录](2026-11-01-hdr10-r14e-installed.md)所述，交用户手测后停止。
 
 ## 用户指令来源
 
@@ -59,5 +85,6 @@ SSH/管理器/One-KVM/HDMI/UDC，默认继续7.3，不跑HDR/性能矩阵或操�
 1. `yes 这个要修一下`
 2. `不能硬编码`
 
-它们直接授权修复跨内核MAC且不得硬编码。没有把它们改写成“已单独明确授权本次重启”；
-按协调者新增门禁，先提交/只读复审，重启前由协调者核实授权范围。
+它们直接授权修复跨内核MAC且不得硬编码，最初未将其改写成单独明确的重启授权。
+此后收到新的明确指令：“部署上去我再测”，且说明“包含本MAC修复部署及必要正常重启”；
+复审返回后又明确要求现在部署并正常重启，才执行本次唯一短窗。
