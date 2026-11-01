@@ -47,7 +47,7 @@ def chrome_front(screen):
 
 def settings(screen):
     front_settings(screen)
-    title = [row for row in screen['items'] if row['text'].lstrip('> ') == 'Displays' and row['x'] > 1200]
+    title = [row for row in screen['items'] if row['text'].lstrip('> •') == 'Displays' and row['x'] > 1200]
     if len(title) != 1:
         raise GateError('Displays window is not confirmed in foreground')
     find(screen, 'RTK UHD HDR')
@@ -141,7 +141,7 @@ class M6:
             settings(screen)
             return
         except GateError:
-            choices = [r for r in screen['items'] if r['text'] == 'Displays' and 900 < r['x'] < 1200 and 200 < r['y'] < 800]
+            choices = [r for r in screen['items'] if r['text'].lstrip('• ') == 'Displays' and 900 < r['x'] < 1200 and 200 < r['y'] < 800]
             if len(choices) != 1: raise GateError('Displays sidebar target is not visible')
             row = choices[0]
             self.click((round(row['x']+row['w']/2), round(row['y']+row['h']/2)))

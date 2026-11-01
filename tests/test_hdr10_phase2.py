@@ -84,6 +84,15 @@ class M6Tests(unittest.TestCase):
         self.assertTrue(1688 < points[1][0] < 1720 and 533 < points[1][1] < 552)
         self.assertTrue(1030 < points[2][0] < 1048 and 193 < points[2][1] < 208)
 
+    def test_observed_sidebar_icon_does_not_hide_displays_target(self):
+        general=dict(SCREENS['general'],items=[dict(r,text='• Displays') if r['text']=='Displays' else r
+            for r in SCREENS['general']['items']])
+        with patch.dict(SCREENS,general=general):
+            control,client,state=self.controller(['general','off','off','off','on','on','chrome'])
+            control.toggle(True);control.close()
+        self.assertTrue(state[0])
+        self.assertEqual(sum(c.args[0]=='left_click' for c in client.call.call_args_list),3)
+
     def test_restore_reobserves_moved_hdr_row(self):
         control, client, state = self.controller(['on','on','on','off','off','chrome'])
         control.click((1704,540))
