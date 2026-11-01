@@ -36,7 +36,11 @@ def chrome_front(screen):
     # treating the icon's left edge as the Chrome word's position.
     text = chrome['text'].lstrip(' •\uf8ff')
     separate = text == 'Chrome' and 35 <= chrome['x'] <= 65
-    merged = text.startswith('Chrome File Edit View ') and -1 <= chrome['x'] <= 65
+    prefix, headings, _ = text.partition('Chrome File Edit View ')
+    # The Apple icon was also recognized as a single "L" in the captured
+    # menu animation. Require the full adjacent Chrome headings, allowing
+    # only that single icon position before them.
+    merged = bool(headings) and len(prefix.strip()) <= 1 and -1 <= chrome['x'] <= 65
     if (screen['width'], screen['height']) != (1920, 1080) or not (separate or merged):
         raise GateError('Unqualified original M6 foreground')
 
