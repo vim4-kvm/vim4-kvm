@@ -17,6 +17,10 @@
 
 以下保留完整日期索引。这些里程碑记录的是历史证据；查找当前架构和约束时，仍应先读对应子系统入口。
 
+## 2026-11-02
+
+- [HDMI-RX COR 锁部署与 Wi-Fi 有界流量](2026-11-02-hdmirx-cor-lock-deploy.md) — kernel deployment video network；三次 EDID、4K60 600秒、Wi-Fi 600秒与恢复
+
 ## 2026-11-01
 
 - [HDMI-RX EDID 撤回 SError 审计与 COR 复位竞争修复](2026-11-01-hdmirx-edid-serror-audit.md) — kernel video offline；根因边界、候选分支未上板、登记 issue
