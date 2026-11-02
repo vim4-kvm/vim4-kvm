@@ -19,6 +19,8 @@
 
 ## 2026-11-02
 
+- [BCM43752 SDIO 主机路径优化与 5.15 同窗对照](2026-11-02-wifi-sdio-host-path.md) — kernel network board；可缓存中转缓冲区、SDIO 中断使能过滤、硬中断完成、GPIOX_7 独立中断，同窗 120 秒 D2 401.6 对 5.15 363.3
+
 - [BCM43752 下载上限与 SDIO 每聚合周期](2026-11-02-wifi-glom-cycle.md) — kernel network board；tracepoint 拆解每聚合周期，7.3 对 5.15 的中转复制与中断路径差额
 
 - [BCM43752 下载余差与 SDIO 接收对齐](2026-11-02-wifi-rx-alignment.md) — kernel network board；同期双内核下载、接收中转复制探针与固件对齐对照
