@@ -100,7 +100,7 @@ def register(args):
     import vim4boot as boot
     proof = json.loads(args.proof.read_text())
     version = proof['release']
-    if version not in ('7.3.0-rc7-vim4kvm-uhd1+', '7.3.0-vim4kvm-uhd1+', '7.3.0-vim4kvm-uhd6+'):
+    if version not in ('7.3.0-rc7-vim4kvm-uhd1+', '7.3.0-vim4kvm-uhd1+', '7.3.0-vim4kvm-uhd6+', '7.3.0-vim4kvm-uhd7+'):
         raise ValueError('No validated application launcher for this kernel release')
     if digest(boot.BOOT / 'edge/Image') != proof['image_sha256']:
         raise ValueError('Installed mainline Image differs from the build inventory')
@@ -185,7 +185,7 @@ def install_complete_modules(archive, root, expected):
 
 
 def install(args):
-    """Install a sealed complete uhd6 set while retaining the default 5.15 entry."""
+    """Install the sealed kernel and matching modules, preserving the saved default."""
     if os.geteuid() != 0:
         raise ValueError('Installation requires root')
     sys.path.insert(0, '/usr/lib/vim4-kvm/python')
@@ -193,8 +193,7 @@ def install(args):
     original = boot.CONFIG.read_bytes()
     entries = boot.boot_entries(original.decode())
     label = boot.default_label(original.decode())
-    if not release(boot.BOOT / entries[label]['LINUX'].lstrip('/')).startswith('5.15.'):
-        raise ValueError('Installation requires 5.15 as the saved default')
+    saved = release(boot.BOOT / entries[label]['LINUX'].lstrip('/'))
     if not Path('/lib').is_symlink():
         raise ValueError('Expected Ubuntu /lib symlink')
     with tempfile.TemporaryDirectory(prefix='vim4-edge-install-') as temporary:
@@ -211,8 +210,15 @@ def install(args):
                 raise ValueError('Package hash mismatch: ' + name)
         report = json.loads((root / 'manifest.json').read_text())
         version = report['release']
-        if version != '7.3.0-vim4kvm-uhd6+' or release(root / 'Image') != version:
-            raise ValueError('Expected the unified uhd6 Image')
+        upgrade = version == '7.3.0-vim4kvm-uhd7+'
+        if version not in ('7.3.0-vim4kvm-uhd6+', '7.3.0-vim4kvm-uhd7+') or release(root / 'Image') != version:
+            raise ValueError('Unexpected unified kernel Image')
+        if upgrade:
+            if (label != 'FullKvm' or saved != '7.3.0-vim4kvm-uhd6+' or
+                    entries[label].get('LINUX') != '/edge/Image' or entries[label].get('FDT') != '/edge/vim4.dtb'):
+                raise ValueError('The uhd7 upgrade requires the installed uhd6 FullKvm kbase profile')
+        elif not saved.startswith('5.15.'):
+            raise ValueError('Installation requires 5.15 as the saved default')
         with tarfile.open(root / 'modules.tar.gz') as archive:
             actual = {}
             for member in archive:
@@ -237,6 +243,15 @@ def install(args):
                        + 4096 for name in boot_files)
         if shutil.disk_usage(edge).free < required:
             raise ValueError('Insufficient /boot space for the complete edge runtime')
+        if upgrade:
+            updates = Path('/lib/firmware/updates')
+            name = Path('brcm/brcmfmac43752-sdio.khadas,vim4.bin')
+            firmware = updates / saved / name
+            if digest(firmware) != '3ff292ab216c13ce3019f6b4cc4234a15a81c8b553014b122f748efd9465676d':
+                raise ValueError('Expected the qualified BCM43752 .217 firmware')
+            destination = updates / version / name
+            destination.parent.mkdir(parents=True, exist_ok=True)
+            shutil.copyfile(firmware, destination)
         install_complete_modules(root / 'modules.tar.gz', Path('/lib/modules') / version,
                                  report['modules'])
         for name in boot_files:
@@ -247,18 +262,19 @@ def install(args):
                 destination.parent.mkdir(parents=True, exist_ok=True)
                 shutil.copyfile(path, destination)
                 destination.chmod(0o755)
-        binary = Path('/opt/vim4-onekvm-edge/one-kvm')
-        binary.parent.mkdir(parents=True, exist_ok=True)
-        shutil.copyfile(root / 'runtime/one-kvm', binary)
-        binary.chmod(0o755)
-        for path in (root / 'runtime/gstreamer-1.0').iterdir():
-            shutil.copyfile(path, Path('/usr/lib/vim4-kvm/mainline-gstreamer-1.0') / path.name)
+        if not upgrade:
+            binary = Path('/opt/vim4-onekvm-edge/one-kvm')
+            binary.parent.mkdir(parents=True, exist_ok=True)
+            shutil.copyfile(root / 'runtime/one-kvm', binary)
+            binary.chmod(0o755)
+            for path in (root / 'runtime/gstreamer-1.0').iterdir():
+                shutil.copyfile(path, Path('/usr/lib/vim4-kvm/mainline-gstreamer-1.0') / path.name)
         register(argparse.Namespace(proof=root / 'runtime-proof.json', source_label=args.source_label,
                                     framebuffer_console=True, no_backup=True))
     if boot.CONFIG.read_bytes() != original:
         raise ValueError('Boot configuration changed during installation')
     os.sync()
-    print('Installed complete uhd6 runtime; saved default remains 5.15')
+    print(f'Installed {version}; saved default remains {label}')
 
 
 def main():

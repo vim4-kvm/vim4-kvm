@@ -30,14 +30,18 @@ def run(*args):
 
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument('--uhd7-launcher', type=Path,
+                        help='Build the uhd7 package using the installed uhd6 USB-overlay application launcher')
     for name in ('kernel', 'stage', 'candidate', 'native', 'wave5-plugin', 'output'):
         parser.add_argument('--' + name, required=True, type=Path)
     args = parser.parse_args()
     k, stage, candidate, output = args.kernel, args.stage, args.candidate, args.output
-    assert run('git', '-C', (k/'source').resolve(), 'rev-parse', 'HEAD') == KERNEL
-    assert (k/'include/config/kernel.release').read_text().strip() == RELEASE
+    revision, release = (('52b95c8493264b195fe5fa10ccf07ad28670f16f', '7.3.0-vim4kvm-uhd7+')
+                         if args.uhd7_launcher else (KERNEL, RELEASE))
+    assert run('git', '-C', (k/'source').resolve(), 'rev-parse', 'HEAD') == revision
+    assert (k/'include/config/kernel.release').read_text().strip() == release
     external = json.loads((candidate/'manifest.json').read_text())
-    assert external['kernel'] == KERNEL
+    assert external['kernel'] == revision
     recipe = Path(__file__).resolve().parent
     native = json.loads((recipe.parent/'hdr10/native-runtime.json').read_text())
     assert sha(args.native.with_suffix('.tar.gz')) == native['component_archive_sha256']
@@ -52,7 +56,7 @@ def main():
     assert sha(args.native/'gstreamer-1.0/libgstvideo4linux2.so') == native['gstreamer_v4l2_sha256']
     for name, value in external['kernelFiles'].items():
         assert sha(k/name) == value, name
-    modules = stage/'lib/modules'/RELEASE
+    modules = stage/'lib/modules'/release
     expected = {str(Path(n).with_suffix('.ko')) for n in (k/'modules.order').read_text().splitlines()}
     installed = {str(p.relative_to(modules/'kernel')).removesuffix('.xz')
                  for p in (modules/'kernel').rglob('*.ko*')}
@@ -64,14 +68,19 @@ def main():
         assert sha(modules/'extra'/name) == external[key]
     assert not any(p.is_symlink() for p in modules.rglob('*'))
     ids = {}
+    inventory = {}
     with tempfile.TemporaryDirectory(prefix='uhd5-module-check-') as temporary:
         raw = Path(temporary)/'module.ko'
         for path in sorted(modules.rglob('*.ko*')):
             raw.write_bytes(lzma.decompress(path.read_bytes()) if path.suffix == '.xz' else path.read_bytes())
-            assert run('modinfo', '-F', 'vermagic', raw).split()[0] == RELEASE, path
+            vermagic = run('modinfo', '-F', 'vermagic', raw)
+            assert vermagic.split()[0] == release, path
             assert '.BTF ' in run('readelf', '-SW', raw), path
             ids[str(path.relative_to(modules))] = re.search(r'Build ID: ([0-9a-f]+)', run('readelf', '-n', raw))[1]
-    subprocess.run(['depmod', '-b', str(stage), RELEASE], check=True)
+            if args.uhd7_launcher:
+                name = str(path.relative_to(modules))
+                inventory[name] = dict(vermagic=vermagic, build_id=ids[name], BTF=True, sha256=sha(path))
+    subprocess.run(['depmod', '-b', str(stage), release], check=True)
     output.mkdir(parents=True, exist_ok=False)
     for source, name in [(k/'arch/arm64/boot/Image', 'Image'), (k/'.config', 'config'),
                          (k/'Module.symvers', 'Module.symvers'), (candidate/'candidate.dtb', 'vim4.dtb'),
@@ -80,7 +89,7 @@ def main():
     # Dump without writing back to the retained vmlinux.
     with tempfile.TemporaryDirectory(prefix='uhd5-btf-') as temporary:
         run('objcopy', '--dump-section', '.BTF='+str(output/'vmlinux.btf'), k/'vmlinux', Path(temporary)/'vmlinux')
-    run('tar', '-czf', output/'modules.tar.gz', '-C', modules.parent, RELEASE)
+    run('tar', '-czf', output/'modules.tar.gz', '-C', modules.parent, release)
     shutil.copytree(candidate/'runtime', output/'runtime')
     shutil.copyfile(candidate/'runtime-files.json', output/'runtime-files.json')
     shutil.copyfile(candidate/'manifest.json', output/'external-manifest.json')
@@ -90,14 +99,21 @@ def main():
     shutil.copyfile(args.native/'one-kvm', output/'runtime/one-kvm')
     # The Wave5 plugin is a shared dependency; preserve the accepted binary.
     shutil.copyfile(args.native/'candidate.json', output/'native-candidate.json')
+    if args.uhd7_launcher:
+        assert sha(args.uhd7_launcher) == 'cda5abcbe961ba26a8f24a59ae5568619d2191b190381c4f2f040b17a66ca905'
+        launcher = output/'runtime/usr/libexec/vim4-kvm-run'
+        shutil.copyfile(args.uhd7_launcher, launcher)
+        run('patch', '--batch', launcher, recipe/'uhd7-r14e-launcher.patch')
+        assert sha(launcher) == 'a322759bafff03d8de79fefce560026ef443d91335baf957e236abdb1468a0ee'
+        (output/'module-inventory.json').write_text(json.dumps(inventory, indent=2)+'\n')
     runtime_files = {str(p.relative_to(output/'runtime')): sha(p)
                      for p in (output/'runtime').rglob('*') if p.is_file()}
     (output/'runtime-files.json').write_text(json.dumps(runtime_files, indent=2)+'\n')
-    proof = dict(release=RELEASE, image_sha256=sha(output/'Image'),
+    proof = dict(release=release, image_sha256=sha(output/'Image'),
                  module_sha256={str(p.relative_to(modules)): sha(p)
                                 for p in modules.rglob('*.ko*')})
     (output/'runtime-proof.json').write_text(json.dumps(proof, indent=2)+'\n')
-    result = dict(source=KERNEL, release=RELEASE, base_modules=2338, external_modules=3,
+    result = dict(source=revision, release=release, base_modules=2338, external_modules=3,
                   module_count=len(ids), sources=native['sources'], hardware_validated=False,
                   kernel_build_id=re.search(r'Build ID: ([0-9a-f]+)', run('readelf', '-n', k/'vmlinux'))[1],
                   modules={str(p.relative_to(modules)): sha(p) for p in modules.rglob('*') if p.is_file()},

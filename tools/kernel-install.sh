@@ -4,7 +4,7 @@
 #
 # Usage (on the board): sudo sh kernel-install.sh vim4kvm-<release>.tgz
 # Unified edge: kernel-install.sh --edge unified.tar.gz --keep-directory-symlink
-# The explicit edge path preserves the installed 5.15 default.
+# The edge path preserves the saved default (5.15 for uhd6, FullKvm for uhd7).
 set -eu
 
 if [ "${1:-}" = --edge ]; then
