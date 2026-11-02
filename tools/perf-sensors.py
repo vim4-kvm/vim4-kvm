@@ -85,9 +85,16 @@ def phase_state(backend):
     state['one_kvm'] = subprocess.check_output(
         ['systemctl', 'show', 'one-kvm', '-p', 'ActiveState', '--value'], text=True).strip()
     if state['one_kvm'] == 'active':
-        with urllib.request.urlopen('http://127.0.0.1:8081/api/stream/status', timeout=3) as response:
-            state['clients'] = json.load(response)['clients']
+        state['clients'] = api_status('stream/status')['clients']
+        state['webrtc_sessions'] = api_status('webrtc/status')['session_count']
+        state['uu_desktop_sessions'] = len(api_status('config/uu-remote')['status']['sessions'])
+        state['external_subscriber_count'] = '未核实'
     return state
+
+
+def api_status(endpoint):
+    with urllib.request.urlopen('http://127.0.0.1:8081/api/' + endpoint, timeout=3) as response:
+        return json.load(response)
 
 
 def main():
@@ -95,6 +102,7 @@ def main():
     parser.add_argument('--phase-state', choices=('stock', 'edge'))
     parser.add_argument('--seconds', type=int)
     parser.add_argument('--output', type=Path)
+    parser.add_argument('--bench-done', type=Path)
     parser.add_argument('--gpu-devfreq-only', action='store_true',
                         help='Avoid polling unrelated devfreq drivers in the video window')
     args = parser.parse_args()
@@ -110,9 +118,14 @@ def main():
                      or name.startswith('/sys/class/devfreq/fe400000.gpu/')]
         for _ in range(args.seconds):
             start = time.monotonic()
+            finished = args.bench_done and args.bench_done.exists()
             output.write(json.dumps(snapshot(names)) + '\n')
             output.flush()
+            if finished:
+                return
             time.sleep(max(0, start + 1 - time.monotonic()))
+        if args.bench_done:
+            raise TimeoutError('bench exceeded telemetry window')
 
 
 if __name__ == '__main__':

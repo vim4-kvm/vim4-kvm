@@ -551,6 +551,9 @@ int main(int argc, char **argv)
         100.0 * (1.0 - (gdouble)(bench.end.idle - bench.start.idle) / (bench.end.total - bench.start.total)) : 0;
     append_string(json, "error", bench.error);
     append_string(json, "raw_caps", bench.raw_caps); append_string(json, "encoded_caps", bench.encoded_caps);
+    g_string_append_printf(json, ",\n  \"measurement_start_monotonic_us\": %" G_GINT64_FORMAT
+                           ",\n  \"measurement_end_monotonic_us\": %" G_GINT64_FORMAT,
+                           bench.start.at_us, bench.end.at_us);
     g_string_append_printf(json, ",\n  \"success\": %s,\n  \"warmup_frames\": %d,\n  \"measured_frames\": %d,"
         "\n  \"raw_frames\": %u,\n  \"output_frames\": %u,\n  \"measurement_seconds\": %.6f,"
         "\n  \"whole_board_cpu_percent\": %.6f,\n  \"process_one_core_cpu_percent\": %.6f,"

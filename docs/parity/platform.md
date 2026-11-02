@@ -8,7 +8,7 @@
 | ID / 厂商能力及来源 | 7.3 状态 | 差异与证据 | 路线、依赖 / 人日 / 风险 / 验证硬件 |
 |---|---|---|---|
 | P01 八核SMP、内存、GIC/定时器/基础启动；V2:23–300，V1 memory | 完全对齐 | 限本行基础启动功能，E0/E1八核与约7.69GiB可用，双内核重启回归。[首次启动](../bringup/2026-10-19-edge-firstboot.md)、[M0](../bringup/2026-10-23-display-m0-r4.md)；不包含idle/低功耗 | 保持主线架构；后续版本升级做启动/内存压力回归，1–2 / M / 两板型、串口；非新增缺口 |
-| P02 CPU DVFS/调压/芯片分档；V1:2147–2235，V2:477–1228 | 部分对齐 | 两簇四bin、T7/T7C共184个频压条目与7.3逐项一致；标准OPP/PWM和按簇secure bin已接。默认governor与温控策略有差异，全部批次稳定性未验。[对照](../archive/platform-pm-offline.md#cputhermal-与风扇对照) | 保持主线cpufreq/OPP/regulator；验证升压先于升频和各bin/温区，6–12 / H / 两芯片批次、可测电压与负载/散热；不试表外电压 |
+| P02 CPU DVFS/调压/芯片分档；V1:2147–2235，V2:477–1228 | 部分对齐 | 两簇四bin、T7/T7C共184个频压条目与7.3逐项一致；标准OPP/PWM和按簇secure bin已接。编译默认 governor 有差异；5.15 上次两簇实录 performance，主组按启动块核对实际策略。两侧温控阈值有差异，全部批次稳定性未验。[对照](../archive/platform-pm-offline.md#cputhermal-与风扇对照) | 保持主线cpufreq/OPP/regulator；验证升压先于升频和各bin/温区，6–12 / H / 两芯片批次、可测电压与负载/散热；不试表外电压 |
 | P03 GPU OpenGL/渲染、devfreq；V2 GPU，V8 | 部分对齐 | 默认 kbase + governor_vim4，Panfrost 为可选 DT；Panfrost与250/400/500/666/800MHz纯调频通过，但旧Mali专有用户态功能/全部API未齐。[GPU](../bringup/2026-10-21-edge-gpu-devfreq.md)，E0:109 | 主线DRM/Panfrost＋Mesa，配D01/D02作GBM/compositor/压力及API覆盖；5–10 / M / HDMI sink、渲染测试、GPU压力 |
 | P04 GPU逐频调压；V2o:4744，V8 | 部分对齐 | **保持启动PWM电压**；追查厂商Linux、U-Boot PWM编码、GPU leakage/corner及签名BL31后仍无可信逐频电压表；已检查的厂商Linux路径只切频，未添加opp-microvolt。[本轮结论](../archive/platform-pm-offline.md#gpu-电压结论) | 保留主线OPP/devfreq/regulator；先取得T7板型/分档电压表和PWM实测标定，3–7＋等待 / H / 万用表/示波器、GPU负载、温控；禁止表外电压，不据闭源固件缺源码断言其绝不调压 |
 | P05 NPU推理与驱动；V0→V2o四NNA wrapper，V1→V2:386 ADLA，V7 | 缺失 | kvim4n实际加载adla_core，不能把Vivante AMLOGIC_NPU/Galcore当其驱动。E仅有NNA电源域/供电命名，无推理链 | 外围先厂商移植后整理；分清T7/T7C IP，先可控DMA/IOCTL/PM和匹配SDK验证，再评估accel/DRM通用接口；12–25起 / H / 对应板型、可合法使用的SDK和模型、参考CPU结果；Q07依赖 |

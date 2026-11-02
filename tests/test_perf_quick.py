@@ -1,6 +1,9 @@
 """A failed benchmark must release sampling and restore the original service."""
 import importlib.util
 import json
+import os
+import re
+import signal
 from pathlib import Path
 import tempfile
 import unittest
@@ -14,90 +17,174 @@ quick = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(quick)
 
 
-class QuickRecoveryTest(unittest.TestCase):
-    def test_idle_preflight_rejects_wrong_input_or_viewer_without_mutations(self):
-        for hdmi, clients in (({'signal': False}, 0),
-                              (dict(signal=True, width=3840, height=2160, refreshHz=59.94), 1)):
-            queue = self.queue()
-            def ssh(host, command, **kwargs):
-                if command == 'uname -r':
-                    return '7.3.0-vim4kvm-uhd6+'
-                if command.startswith('for f in'):
-                    return '/policy0 performance'
-                if '--phase-state' in command:
-                    return json.dumps(dict(hdmi=hdmi, one_kvm='active', clients=clients))
-                if command.startswith('mkdir '):
-                    return ''
-                self.fail('Unexpected operation: ' + command)
+class PMWindowTest(unittest.TestCase):
+    def setUp(self):
+        temp = tempfile.TemporaryDirectory()
+        self.addCleanup(temp.cleanup)
+        self.args = SimpleNamespace(phase='h264', output=Path(temp.name)/'A'/'h264', schedutil=True)
+        self.queue = Mock()
+        self.item = dict(state='held', heavy=False, started=time.time(), seconds=1800)
+        self.queue.read.return_value = self.item
+        self.events = []
+        self.queue.sampling.side_effect = lambda _, on: self.events.append(('sampling', on))
+        self.service = 'active'
+        self.hdmi = dict(signal=True, width=3840, height=2160, refreshHz=59.94)
+        self.viewers = dict(clients=0, webrtc_sessions=0, uu_desktop_sessions=0)
+        self.governor = 'performance'
+        self.cancel = None
+        self.encoding_error = False
+        self.short_lease = False
+        self.api_error = False
+        self.copy_error = False
+        self.end_signal_loss = False
+        for target, attr, effect in [(quick.bw, 'require_board', lambda: (self.queue, 'ticket')),
+                                     (quick.bw, 'ssh', self.ssh), (quick.subprocess, 'run', self.copy)]:
+            mock = patch.object(target, attr, side_effect=effect)
+            mock.start()
+            self.addCleanup(mock.stop)
 
-            with self.subTest(hdmi=hdmi, clients=clients), tempfile.TemporaryDirectory() as folder, \
-                    patch.object(quick.bw, 'require_board', return_value=(queue, 'ticket')), \
-                    patch.object(quick.bw, 'ssh', side_effect=ssh), patch.object(quick.subprocess, 'run'):
-                args = SimpleNamespace(phase='idle', output=Path(folder)/'run', schedutil=True)
-                with self.assertRaisesRegex(RuntimeError, 'preflight'):
-                    quick.pm_phase(args)
-                self.assertEqual(json.loads((args.output/'phase.json').read_text())['preflight']['hdmi'], hdmi)
-                queue.sampling.assert_not_called()
-
-    def test_idle_end_signal_loss_invalidates_sample_and_restarts_service(self):
-        queue = self.queue()
-        hdmi = dict(signal=True, width=3840, height=2160, refreshHz=60)
-        states = iter([dict(hdmi=hdmi, one_kvm='active', clients=0),
-                       dict(hdmi=hdmi, one_kvm='inactive'),
-                       dict(hdmi={'signal': False}, one_kvm='inactive')])
-        def ssh(host, command, **kwargs):
-            if command == 'uname -r':
-                return '5.15.137-vim4kvm-hdrdual6'
-            if command.startswith('for f in'):
-                return '/policy0 schedutil'
-            if '--phase-state' in command:
-                return json.dumps(next(states))
-            return ''
-        with tempfile.TemporaryDirectory() as folder, patch.object(quick.bw, 'ssh', side_effect=ssh) as remote, \
-                patch.object(quick.bw, 'require_board', return_value=(queue, 'ticket')), \
-                patch.object(quick.subprocess, 'run'):
-            args = SimpleNamespace(phase='idle', output=Path(folder)/'run', schedutil=False)
-            with self.assertRaises(ExceptionGroup):
-                quick.pm_phase(args)
-            phase = json.loads((args.output/'phase.json').read_text())
-            self.assertEqual(phase['start']['one_kvm'], 'inactive')
-            self.assertIn('end_error', phase)
-            remote.assert_any_call('vim4', 'sudo -n systemctl stop one-kvm')
-            self.assertEqual(remote.call_args.args[1], 'sudo -n systemctl start one-kvm')
-            queue.sampling.assert_called_with('ticket', False)
-
-    def test_pm_diagnostic_restores_each_cluster_after_encoder_failure(self):
-        queue = self.queue()
-        changes = []
-        service = 'active'
-        def ssh(host, command, **kwargs):
-            nonlocal service
-            if command == 'uname -r':
-                return '7.3.0-vim4kvm-uhd6+'
-            if command == 'sudo -n systemctl stop one-kvm':
-                service = 'inactive'
-            if '--phase-state' in command:
-                return json.dumps(dict(hdmi=dict(signal=True, width=3840, height=2160, refreshHz=60),
-                                       one_kvm=service, clients=0))
-            if command.startswith('for f in'):
-                return '/policy0 performance\n/policy4 performance'
-            if 'tee' in command:
-                changes.append(command.split()[1:2] + [command.split()[-2]])
-            if '--exclusive' in command:
-                self.assertIn('--width=3840 --height=2160', command)
+    def ssh(self, host, command, **kwargs):
+        self.events.append(command)
+        if command == 'uname -r':
+            return '7.3.0-vim4kvm-uhd6+' if self.args.schedutil else '5.15.test'
+        if 'random/boot_id' in command:
+            return 'test-boot'
+        if command.startswith('for f in'):
+            return f'/policy0 {self.governor}\n/policy4 {self.governor}'
+        if '--phase-state' in command:
+            return json.dumps(dict(hdmi=self.hdmi, one_kvm=self.service, **self.viewers))
+        if command == 'sudo -n systemctl stop one-kvm':
+            self.service = 'inactive'
+        if command == 'sudo -n systemctl start one-kvm':
+            self.service = 'active'
+        if 'tee /policy4' in command and self.short_lease:
+            self.item['seconds'] = 125
+        if command.startswith('timeout ') and '/result' in command:
+            if self.end_signal_loss:
+                self.hdmi['signal'] = False
+            if self.cancel:
+                os.kill(os.getpid(), self.cancel)
+            if self.encoding_error:
                 raise RuntimeError('pool allocation')
-            return ''
+        if 'api/stream/status' in command and self.api_error:
+            raise RuntimeError('API did not become ready')
+        return ''
 
-        with tempfile.TemporaryDirectory() as folder, patch.object(quick.bw, 'ssh', side_effect=ssh) as remote, \
-                patch.object(quick.bw, 'require_board', return_value=(queue, 'ticket')), \
-                patch.object(quick.subprocess, 'run'):
-            args = SimpleNamespace(phase='h264', output=Path(folder)/'run', schedutil=True)
-            with self.assertRaisesRegex(RuntimeError, 'pool allocation'):
-                quick.pm_phase(args)
-            self.assertEqual(changes, [['schedutil', '/policy0'], ['schedutil', '/policy4'],
-                                       ['performance', '/policy4'], ['performance', '/policy0']])
-            self.assertEqual(remote.call_args.args[1], 'sudo -n systemctl start one-kvm')
-            queue.sampling.assert_called_with('ticket', False)
+    def copy(self, argv, **kwargs):
+        if argv[1].startswith('vim4:'):
+            self.events.append('fetch')
+            if self.copy_error:
+                raise OSError('copy failure')
+            output = self.args.output
+            (output/'pm.jsonl').write_text(''.join(json.dumps(dict(monotonic_ns=t))+'\n'
+                                                  for t in [900, 1300, 1700, 3000]))
+            if self.args.phase in ('h264', 'h265'):
+                (output/(self.args.phase+'.json')).write_text(json.dumps(dict(
+                    success=True, measurement_start_monotonic_us=1, measurement_end_monotonic_us=2)))
+
+    def event(self, prefix):
+        return next(i for i, event in enumerate(self.events) if isinstance(event, str) and event.startswith(prefix))
+
+    def test_idle_rejects_unlocked_or_external_viewers_before_sampling(self):
+        self.args.phase = 'idle'
+        for i, viewer in enumerate(('signal_loss', 'webrtc_sessions', 'uu_desktop_sessions')):
+            self.args.output = self.args.output.parent / str(i)
+            self.hdmi['signal'] = viewer != 'signal_loss'
+            self.viewers.update(webrtc_sessions=int(viewer=='webrtc_sessions'),
+                                uu_desktop_sessions=int(viewer=='uu_desktop_sessions'))
+            with self.subTest(reason=viewer), self.assertRaisesRegex(RuntimeError, 'preflight'):
+                quick.pm_phase(self.args)
+            self.assertTrue(self.events[-1].startswith('rm -rf -- /var/tmp/p0-2-pm-'))
+            self.queue.sampling.assert_not_called()
+            self.assertFalse(any('tee ' in s or 'stop one-kvm' in s for s in self.events))
+
+    def test_stock_running_performance_allowed_and_block_drift_rejected(self):
+        self.args.schedutil = False
+        self.args.phase = 'signal'
+        quick.pm_phase(self.args)
+        self.assertEqual(json.loads((self.args.output/'phase.json').read_text())['governors']['/policy4'], 'performance')
+        self.assertFalse(any('tee ' in s for s in self.events if isinstance(s, str)))
+        self.governor = 'schedutil'
+        self.args.output = self.args.output.parent / 'next'
+        with self.assertRaisesRegex(RuntimeError, 'within PM block'):
+            quick.pm_phase(self.args)
+
+    def test_interruption_stops_unit_and_recovers_before_fetch(self):
+        for sig in (signal.SIGTERM, signal.SIGINT):
+            self.events.clear()
+            self.args.output = self.args.output.parent / sig.name
+            self.cancel = sig
+            with self.subTest(signal=sig), self.assertRaises(InterruptedError):
+                quick.pm_phase(self.args)
+            stop = self.event('if [ "$(systemctl show')
+            self.assertLess(stop, self.event('echo performance'))
+            self.assertLess(self.event('echo performance'), self.event('sudo -n systemctl start one-kvm'))
+            self.assertLess(self.event('timeout 20'), self.events.index(('sampling', False)))
+            self.assertLess(self.events.index(('sampling', False)), self.event('fetch'))
+            self.assertLess(self.event('fetch'), self.event('rm -rf'))
+
+    def test_late_short_lease_does_not_start_work_and_restores_settings(self):
+        self.short_lease = True
+        with self.assertRaisesRegex(RuntimeError, 'cannot cover'):
+            quick.pm_phase(self.args)
+        self.assertFalse(any('systemd-run' in s for s in self.events))
+        self.assertIn('sudo -n systemctl start one-kvm', self.events)
+        self.assertTrue(any('tee /policy4' in s and 'performance' in s for s in self.events))
+
+    def test_api_recovery_and_copy_failures_leave_actionable_evidence(self):
+        self.api_error = self.copy_error = True
+        with self.assertRaises(ExceptionGroup):
+            quick.pm_phase(self.args)
+        self.assertIn('API did not become ready', (self.args.output/'recovery-required.json').read_text())
+        phase = json.loads((self.args.output/'phase.json').read_text())
+        self.assertTrue(phase['retained_remote'].startswith('/var/tmp/p0-2-pm-'))
+        self.assertFalse(any('rm -rf' in s for s in self.events))
+        self.queue.sampling.assert_called_with('ticket', False)
+
+    def test_bench_and_pm_use_overlapping_board_clock_and_full_57fps_budget(self):
+        quick.pm_phase(self.args)
+        unit = self.events[self.event('sudo -n systemd-run')]
+        deadline = int(re.search(r'--timeout=(\d+)', unit)[1])
+        self.assertGreater(deadline, (36000 + 120) / 57)
+        self.assertIn(f'timeout -k 3 {deadline + 10}', unit)
+        self.assertIn('--bench-done=', unit)
+        phase = json.loads((self.args.output/'phase.json').read_text())
+        self.assertEqual(phase['common_interval'], dict(start_ns=1300, end_ns=1700, samples=2))
+        self.assertNotIn('retained_remote', phase)
+        (self.args.output/'pm.jsonl').write_text('{"monotonic_ns": 1500}\n')
+        with self.assertRaisesRegex(RuntimeError, 'cover'):
+            quick.pm_interval(self.args.output, self.args.phase)
+
+    def test_encoder_failure_preserves_end_snapshot_and_restores_service(self):
+        self.encoding_error = True
+        with self.assertRaisesRegex(RuntimeError, 'pool allocation'):
+            quick.pm_phase(self.args)
+        phase = json.loads((self.args.output/'phase.json').read_text())
+        self.assertEqual(phase['end']['one_kvm'], 'inactive')
+        self.assertIn('sudo -n systemctl start one-kvm', self.events)
+
+    def test_idle_signal_loss_at_end_is_recorded_before_service_restart(self):
+        self.args.phase = 'idle'
+        self.end_signal_loss = True
+        with self.assertRaises(ExceptionGroup):
+            quick.pm_phase(self.args)
+        phase = json.loads((self.args.output/'phase.json').read_text())
+        self.assertIn('end_error', phase)
+        self.assertEqual(phase['end']['one_kvm'], 'inactive')
+        self.assertEqual(self.service, 'active')
+
+    def test_sampling_request_interrupted_before_ack_is_cleared(self):
+        def sampling(ticket, enabled):
+            if enabled:
+                os.kill(os.getpid(), signal.SIGTERM)
+        self.queue.sampling.side_effect = sampling
+        with self.assertRaises(InterruptedError):
+            quick.pm_phase(self.args)
+        self.queue.sampling.assert_called_with('ticket', False)
+        self.assertNotIn('sudo -n systemctl stop one-kvm', self.events)
+
+
+class QuickRecoveryTest(unittest.TestCase):
 
     def queue(self):
         queue = Mock()

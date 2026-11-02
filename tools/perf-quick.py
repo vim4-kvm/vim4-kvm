@@ -7,7 +7,10 @@ import argparse
 import importlib.machinery
 import importlib.util
 import json
+import math
 import shlex
+import signal
+from contextlib import contextmanager
 from http.server import BaseHTTPRequestHandler, HTTPServer
 from pathlib import Path
 import subprocess
@@ -162,85 +165,218 @@ def native(backend, output, reserve_seconds=0):
                 lambda: bw.ssh('vim4', 'sudo -n systemctl start one-kvm', timeout=40)) if active else None)])
 
 
+@contextmanager
+def pm_cancellation():
+    # Short mutations and rollback run to completion. Interrupt only waits
+    # whose remote owner is already known, then unwind under the same ticket.
+    cancelled = False
+    interruptible = False
+
+    def check():
+        if cancelled:
+            raise InterruptedError('PM window cancelled')
+
+    def receive(signum, frame):
+        nonlocal cancelled
+        cancelled = True
+        if interruptible:
+            check()
+
+    def wait(action):
+        nonlocal interruptible
+        interruptible = True
+        try:
+            check()
+            return action()
+        finally:
+            interruptible = False
+
+    previous = {sig: signal.signal(sig, receive) for sig in (signal.SIGTERM, signal.SIGINT)}
+    try:
+        yield check, wait
+        check()
+    finally:
+        for sig, handler in previous.items():
+            signal.signal(sig, handler)
+
+
+def pm_ssh(command, timeout=15):
+    return bw.ssh('vim4', command, timeout=timeout, isolated=True)
+
+
+def pm_block(output):
+    boot = pm_ssh('cat /proc/sys/kernel/random/boot_id').strip()
+    policies = dict(line.split() for line in pm_ssh(
+        'for f in /sys/devices/system/cpu/cpufreq/policy*/scaling_governor; do '
+        'value=$(cat "$f") || exit 1; echo "$f $value"; done').splitlines())
+    if not boot or not policies:
+        raise RuntimeError('Missing boot ID or CPU policy')
+    actual = dict(boot_id=boot, governors=policies)
+    baseline = output.parent / 'boot-policies.json'
+    if baseline.exists():
+        if json.loads(baseline.read_text()) != actual:
+            (output / 'rejected-boot-policies.json').write_text(json.dumps(actual))
+            raise RuntimeError('Boot ID or policy changed within PM block')
+    else:
+        baseline.write_text(json.dumps(actual))
+    return actual
+
+
+def pm_interval(output, codec):
+    bench = json.loads((output / (codec + '.json')).read_text())
+    start = bench['measurement_start_monotonic_us'] * 1000
+    end = bench['measurement_end_monotonic_us'] * 1000
+    with (output / 'pm.jsonl').open() as stream:
+        stamps = [json.loads(line)['monotonic_ns'] for line in stream]
+    common = [stamp for stamp in stamps if start <= stamp <= end]
+    if not (bench['success'] and len(common) >= 2 and stamps[0] <= start < end <= stamps[-1]):
+        raise RuntimeError('PM telemetry does not cover successful bench interval')
+    return dict(start_ns=common[0], end_ns=common[-1], samples=len(common))
+
+
+def pm_ready():
+    # A simple unit may report active before its HTTP server is listening.
+    probe = "import json, urllib.request; s=json.load(urllib.request.urlopen(" \
+            "'http://127.0.0.1:8081/api/stream/status',timeout=2)); assert 'clients' in s and 'state' in s"
+    command = 'systemctl is-active --quiet one-kvm && python3 -c ' + shlex.quote(probe)
+    pm_ssh('timeout 20 sh -c ' + shlex.quote('until ' + command + '; do sleep 1; done'), timeout=25)
+
+
 def pm_phase(args):
+    with pm_cancellation() as (check, wait):
+        run_pm_phase(args, check, wait)
+
+
+def run_pm_phase(args, check, wait):
     seconds = PM_PHASE_SECONDS[args.phase]
+    load = args.phase in ('h264', 'h265')
+    frames = seconds * 60
+    deadline = math.ceil((frames + 120) / 57) + 20
+    work_timeout = deadline + 35 if load else seconds + 10
+    # Stop unit, end probe, restore both policies/service/API, fetch evidence, remove directory.
+    finish_budget = 180
     queue, ticket = bw.require_board()
-    require_budget(queue, ticket, seconds + 240)
-    release = bw.ssh('vim4', 'uname -r').strip()
+    require_budget(queue, ticket, work_timeout + finish_budget + 120)
+    release = pm_ssh('uname -r').strip()
     edge = release == '7.3.0-vim4kvm-uhd6+'
     if not (edge or release.startswith('5.15.')) or (args.schedutil and not edge):
         raise RuntimeError(f'Unexpected kernel for PM group: {release}')
-    load = args.phase in ('h264', 'h265')
+    backend = 'edge' if edge else 'stock'
     output = args.output
     output.mkdir(parents=True, exist_ok=False)
-    remote = '/var/tmp/p0-2-pm-' + str(time.time_ns())
-    bw.ssh('vim4', 'mkdir ' + remote)
-    def copy(source, target):
-        subprocess.run(['scp', str(source), str(target)], check=True, timeout=30)
-
-    copy(ROOT / 'tools/perf-sensors.py', 'vim4:' + remote + '/sensors.py')
-    sampler = f'python3 {remote}/sensors.py --gpu-devfreq-only --seconds={seconds} --output={remote}/pm.jsonl'
-    command = sampler
-    if load:
-        copy(ROOT / 'build/p0-2/vim4-driver-bench', 'vim4:' + remote + '/bench')
-        secondary = not edge and bw.ssh('vim4', 'cat /sys/module/aml_media/parameters/vdin0_native_hdr').strip() == 'Y'
-        bench = bench_command('edge' if edge else 'stock', remote, args.phase, secondary,
-                              width=3840, height=2160, frames=seconds * 60, deadline=seconds + 30) + ' --skip-debug-clocks'
-        command = (f'{sampler} & sampler=$!; {bench}; result=$?; '
-                   'if [ "$result" != 0 ]; then kill "$sampler"; wait "$sampler"; exit "$result"; fi; wait "$sampler"')
-    policies = dict(line.split() for line in bw.ssh('vim4',
-        'for f in /sys/devices/system/cpu/cpufreq/policy*/scaling_governor; do '
-        'value=$(cat "$f") || exit 1; echo "$f $value"; done').splitlines())
-    expected = 'performance' if edge else 'schedutil'
-    if not policies or set(policies.values()) != {expected}:
-        raise RuntimeError(f'Expected default {expected} on all policies, found {policies}')
+    unit = 'p0-2-pm-' + str(time.time_ns())
+    remote = '/var/tmp/' + unit
     phase = dict(release=release, phase=args.phase, seconds=seconds, schedutil=args.schedutil,
-                 governors=policies, board_power='缺测', remote=remote)
-    backend = 'edge' if edge else 'stock'
+                 board_power='缺测', **pm_block(output))
+
+    def save():
+        (output / 'phase.json').write_text(json.dumps(phase, indent=2))
+
     def check_state(point, service):
         try:
-            state = json.loads(bw.ssh('vim4', f'python3 {remote}/sensors.py --phase-state {backend}'))
+            state = json.loads(pm_ssh(f'python3 {remote}/sensors.py --phase-state {backend}'))
             phase[point] = state
             hdmi = state['hdmi']
             if not (hdmi['signal'] and not hdmi.get('interlaced') and (hdmi['width'], hdmi['height']) == (3840, 2160)
                     and abs(hdmi['refreshHz'] - 60) <= 0.5):
                 raise RuntimeError(f'{point}: expected locked 3840x2160p60, got {hdmi}')
-            if state['one_kvm'] != service or (service == 'active' and state['clients'] != 0):
+            if state['one_kvm'] != service or (service == 'active' and
+                    any(state[key] != 0 for key in ('clients', 'webrtc_sessions', 'uu_desktop_sessions'))):
                 raise RuntimeError(f'{point}: expected one-kvm {service} with no viewers, got {state}')
         except Exception as error:
             phase[point + '_error'] = str(error)
             raise
         finally:
-            (output / 'phase.json').write_text(json.dumps(phase, indent=2))
+            save()
 
-    check_state('preflight', 'active')
     def set_governor(path, value):
-        bw.ssh('vim4', f'echo {shlex.quote(value)} | sudo -n tee {shlex.quote(path)} >/dev/null')
+        path, value = shlex.quote(path), shlex.quote(value)
+        pm_ssh(f'echo {value} | sudo -n tee {path} >/dev/null && test "$(cat {path})" = {value}')
+
+    def restart():
+        pm_ssh('sudo -n systemctl start one-kvm')
+        pm_ready()
+
+    def stop_work():
+        pm_ssh(f'if [ "$(systemctl show {unit}.service -p LoadState --value)" != not-found ]; '
+               f'then sudo -n systemctl stop {unit}.service || exit 1; fi; touch {remote}/stopped')
+
+    def scp(*paths):
+        subprocess.run(['scp', *paths], check=True, timeout=30, start_new_session=True)
+
+    def finish_files():
+        if started:
+            require_budget(queue, ticket, 45)
+            names = ['pm.jsonl', 'stdout'] + ([args.phase + '.json'] if load else [])
+            scp(*['vim4:' + remote + '/' + name for name in names], str(output))
+        require_budget(queue, ticket, 15)
+        pm_ssh('rm -rf -- ' + remote)
+        phase.pop('retained_remote', None)
 
     restore = []
-    queue.sampling(ticket, True)
+    started = False
+    service = 'active' if args.phase == 'signal' else 'inactive'
     try:
-        require_budget(queue, ticket, seconds + 220)
-        (output / 'sampling.json').write_text(json.dumps(queue.read(ticket)))
-        service = 'active' if args.phase == 'signal' else 'inactive'
-        if service == 'inactive':
-            restore.append(('restart one-kvm', lambda: bw.ssh('vim4', 'sudo -n systemctl start one-kvm')))
-            bw.ssh('vim4', 'sudo -n systemctl stop one-kvm')
-        check_state('start', service)
-        if args.schedutil:
-            for path, previous in policies.items():
-                restore.append(('restore ' + path, lambda p=path, v=previous: set_governor(p, v)))
-                set_governor(path, 'schedutil')
+        phase['retained_remote'] = remote
+        pm_ssh('mkdir ' + remote)
+        scp(str(ROOT / 'tools/perf-sensors.py'), 'vim4:' + remote + '/sensors.py')
+        sampler = f'python3 {remote}/sensors.py --gpu-devfreq-only --output={remote}/pm.jsonl'
+        script = f'{sampler} --seconds={seconds}'
+        if load:
+            scp(str(ROOT / 'build/p0-2/vim4-driver-bench'), 'vim4:' + remote + '/bench')
+            secondary = not edge and pm_ssh('cat /sys/module/aml_media/parameters/vdin0_native_hdr').strip() == 'Y'
+            bench = bench_command(backend, remote, args.phase, secondary, width=3840, height=2160,
+                                  frames=frames, deadline=deadline) + ' --skip-debug-clocks'
+            script = (f'{sampler} --seconds={work_timeout} --bench-done={remote}/done & sampler=$!; '
+                      f'while [ ! -s {remote}/pm.jsonl ]; do kill -0 "$sampler" || exit 1; sleep 0.1; done; '
+                      f'{bench}; rc=$?; touch {remote}/done; wait "$sampler" || exit 1; exit "$rc"')
+        check_state('preflight', 'active')
         try:
-            (output / 'stdout').write_text(bw.ssh('vim4', command, timeout=seconds + 55))
+            wait(lambda: queue.sampling(ticket, True))
+            require_budget(queue, ticket, work_timeout + finish_budget + 55)
+            (output / 'sampling.json').write_text(json.dumps(queue.read(ticket)))
+            if service == 'inactive':
+                check_state('before_stop', 'active')
+                check()
+                restore.append(('restart one-kvm and verify API', restart))
+                pm_ssh('sudo -n systemctl stop one-kvm')
+            check_state('start', service)
+            if args.schedutil:
+                for path, previous in phase['governors'].items():
+                    check()
+                    restore.append(('restore ' + path, lambda p=path, v=previous: set_governor(p, v)))
+                    set_governor(path, 'schedutil')
+            check()
+            require_budget(queue, ticket, work_timeout + finish_budget)
+            # Start synchronously, so cancellation always has a known unit to stop.
+            started = True
+            body = f'( {script} ) >{remote}/stdout 2>&1; echo $? >{remote}/result'
+            pm_ssh(f'sudo -n systemd-run --quiet --collect --unit={unit} --uid="$(id -un)" '
+                   f'-p Type=exec -p TimeoutStopSec=4 -p RuntimeMaxSec={work_timeout} '
+                   '/bin/sh -c ' + shlex.quote(body))
+            monitor = (f'while [ ! -s {remote}/result ]; do [ -d {remote} ] && [ ! -e {remote}/stopped ] '
+                       f'|| exit 1; sleep 1; done; test "$(cat {remote}/result)" = 0')
+            wait(lambda: pm_ssh('timeout ' + str(work_timeout) + ' sh -c ' + shlex.quote(monitor),
+                                timeout=work_timeout + 5))
         finally:
-            files = ['pm.jsonl'] + ([args.phase + '.json'] if load else [])
-            cleanup(output, [('qualify phase end', lambda: check_state('end', service))] +
-                    [(name, lambda n=name: copy('vim4:' + remote + '/' + n, output / n)) for name in files])
+            actions = []
+            if started:
+                actions += [('stop remote workload', lambda: restore_owned(queue, ticket, 15, output,
+                               'stop ' + unit, stop_work)), ('qualify phase end', lambda: check_state('end', service))]
+            actions += [(name, lambda n=name, a=action: restore_owned(queue, ticket, 45, output, n, a))
+                        for name, action in reversed(restore)]
+            if service == 'active' and started:
+                actions.append(('verify one-kvm API', lambda: restore_owned(
+                    queue, ticket, 25, output, 'verify one-kvm active and API ready', pm_ready)))
+            cleanup(output, actions + [('sampling off', lambda: queue.sampling(ticket, False))])
     finally:
-        actions = [(name, lambda n=name, a=action: restore_owned(queue, ticket, 30, output, n, a))
-                   for name, action in reversed(restore)]
-        cleanup(output, actions + [('sampling off', lambda: queue.sampling(ticket, False))])
+        try:
+            cleanup(output, [('retrieve evidence and remove remote directory', finish_files)])
+        finally:
+            save()
+    if load:
+        phase['common_interval'] = pm_interval(output, args.phase)
+        save()
 
 
 def window(args):

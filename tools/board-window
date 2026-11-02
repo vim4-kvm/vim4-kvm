@@ -52,9 +52,9 @@ def save(path, value):
     temp.replace(path)
 
 
-def ssh(host, command, timeout=30):
+def ssh(host, command, timeout=30, *, isolated=False):
     return subprocess.check_output(['ssh', '-oBatchMode=yes', '-oConnectTimeout=5',
-                                    host, command], timeout=timeout, text=True)
+                                    host, command], timeout=timeout, text=True, start_new_session=isolated)
 
 
 def require_board():
