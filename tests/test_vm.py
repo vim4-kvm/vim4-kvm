@@ -57,11 +57,14 @@ class VMTests(unittest.TestCase):
             if args[:2] == ('rev-list', '--count'):
                 return '3'
             if args[0] == 'worktree':
-                return f'worktree {self.tool.repo}\0HEAD {SHA}\0branch refs/heads/vim4-kvm-7.3\0\0'
+                return (f'worktree {self.tool.repo}\0HEAD {SHA}\0branch refs/heads/vim4-kvm-7.3\0\0'
+                        f'worktree {self.tool.repo}-old\0HEAD {SHA}\0detached\0\0')
             return ''
         self.tool.git.side_effect = git
         result = self.tool.status()
         self.assertEqual(len(result['warnings']), 5)
+        self.assertIn(f'unregistered worktree: {self.tool.repo}-old', result['warnings'])
+        self.assertNotIn(f'unregistered worktree: {self.tool.repo}', result['warnings'])
         self.assertTrue(any('behind' in w for w in result['warnings']))
         self.assertTrue(any('upstream' in w for w in result['warnings']))
         self.assertTrue(any('pin' in w for w in result['warnings']))

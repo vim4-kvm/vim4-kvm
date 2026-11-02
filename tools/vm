@@ -167,7 +167,8 @@ class VM:
                     ahead, behind = map(int, self.git('rev-list', '--left-right', '--count',
                                                      f'HEAD...{upstream}', path=path).split())
             task = next((name for name, item in records.items() if item['path'] == path), None)
-            if not task:
+            # The primary checkout hosts every task worktree and is never a task.
+            if not task and path != str(self.repo):
                 warnings.append(f'unregistered worktree: {path}')
             trees.append(dict(path=path, branch=branch or None, head=fields['HEAD'][:12],
                               upstream=upstream or None, ahead=ahead, behind=behind,
