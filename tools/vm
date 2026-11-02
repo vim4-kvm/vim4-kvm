@@ -1,0 +1,341 @@
+#!/usr/bin/env python3
+"""Manage registered kernel tasks on OrbStack; run on the Mac.
+
+status/build-dirs only inspect (status first fetches origin). Workers create
+independent tasks from a SHA; only the coordinator uses push. Python 3.11+ on Mac.
+"""
+import argparse
+from contextlib import contextmanager
+from datetime import datetime, timezone
+import fcntl
+from functools import wraps
+import json
+import os
+from pathlib import Path
+import re
+import shlex
+import shutil
+import subprocess
+import sys
+import tempfile
+
+
+def task_name(value):
+    if not re.fullmatch(r'[a-z0-9-]{1,32}', value):
+        raise argparse.ArgumentTypeError('task must match [a-z0-9-]{1,32}')
+    return value
+
+
+def registry_transaction(operation):
+    @wraps(operation)
+    def locked(self, *args, **kwargs):
+        with self.guard():
+            return operation(self, *args, **kwargs)
+    return locked
+
+
+class VM:
+    def __init__(self, config, home=None):
+        self.config = config
+        self.home = (Path(home) if home else Path.home()).resolve()
+        self.repo = self.home / 'src/linux-7.3'
+        self.registry = self.home / 'src/.vm-worktrees.json'
+        self.build_root = self.home / 'build'
+        self.formal = {item['branch'] for item in config['kernels']}
+        self.base = config['kernels'][1]
+
+    def run(self, argv, credentials=False):
+        env = dict(os.environ, GIT_OPTIONAL_LOCKS='0', GIT_TERMINAL_PROMPT='0')
+        if credentials:
+            env = {key: value for key, value in env.items()
+                   if not key.startswith('GIT_TRACE') and key != 'GIT_CURL_VERBOSE'}
+        result = subprocess.run([str(a) for a in argv], text=True, capture_output=True,
+                                env=env)
+        if result.returncode:
+            if credentials:
+                raise RuntimeError(f'credential-related git command failed (exit {result.returncode})')
+            raise RuntimeError(f'{shlex.join([str(a) for a in argv])} failed:\n'
+                               f'{result.stderr.strip()}')
+        return result.stdout.rstrip('\n')
+
+    def git(self, *args, path=None, credentials=False):
+        return self.run(['git', '-C', path or self.repo, *args], credentials=credentials)
+
+    def fetch(self):
+        # Never fast-forward or switch a local branch, including the main worktree.
+        self.git('fetch', '--prune', '--no-auto-maintenance', 'origin')
+
+    @contextmanager
+    def guard(self):
+        self.check_roots()
+        # The lock inode stays independent of the atomically replaced JSON.
+        with self.registry.with_suffix('.lock').open('a') as lock:
+            fcntl.flock(lock, fcntl.LOCK_EX)
+            yield
+
+    def check_roots(self):
+        for root in (self.repo.parent, self.build_root):
+            if root.is_symlink() or root.resolve() != root:
+                raise ValueError(f'symlink root refused: {root}')
+
+    def records(self):
+        return json.loads(self.registry.read_text()) if self.registry.exists() else {}
+
+    def save(self, records):
+        with tempfile.NamedTemporaryFile(mode='w', dir=self.registry.parent,
+                                         prefix='.vm-worktrees-', delete=False) as out:
+            temporary = Path(out.name)
+            json.dump(records, out, indent=2)
+            out.write('\n')
+        temporary.replace(self.registry)
+
+    def registered(self, task, missing_ok=False):
+        records = self.records()
+        if task not in records:
+            raise ValueError(f'unregistered task: {task}')
+        item = records[task]
+        if (item['path'] != str(self.repo.with_name('linux-7.3-' + task)) or
+                item['build'] != str(self.build_root / task) or item['branch'] != task):
+            raise ValueError(f'registry paths/branch do not match task: {task}')
+        if task in self.formal:
+            raise ValueError(f'formal branch is protected: {task}')
+        if not missing_ok or Path(item['path']).exists():
+            branch = self.git('symbolic-ref', '--short', 'HEAD', path=item['path'])
+            if branch != item['branch']:
+                raise ValueError(f'task worktree is on {branch}, expected {item["branch"]}')
+        return records, item
+
+    def worktrees(self):
+        output = self.git('worktree', 'list', '--porcelain', '-z')
+        return [dict(field.partition(' ')[::2] for field in block.split('\0'))
+                for block in output.strip('\0').split('\0\0') if block]
+
+    def removal_paths(self, item):
+        self.check_roots()
+        for target in (Path(item['path']), Path(item['build'])):
+            if target.is_symlink() or target.resolve() != target:
+                raise ValueError(f'symlink target refused: {target}')
+        found = False
+        for tree in self.worktrees():
+            same_path = tree['worktree'] == item['path']
+            same_branch = tree.get('branch') == 'refs/heads/' + item['branch']
+            if same_branch or same_path:
+                if (not same_path or not same_branch or
+                        Path(tree['worktree']).resolve() != Path(item['path'])):
+                    raise ValueError('registered path differs from actual Git worktree')
+                found = True
+        if Path(item['path']).exists() and not found:
+            raise ValueError('registered path is not an actual Git worktree')
+        return found
+
+    def refs(self):
+        output = self.git('for-each-ref', '--format=%(refname)\t%(objectname)\t%(upstream:short)',
+                          'refs/heads', 'refs/remotes')
+        return {parts[0]: parts[1:] for line in output.splitlines()
+                if (parts := line.split('\t'))}
+
+    def status(self):
+        self.fetch()
+        records, refs = self.records(), self.refs()
+        warnings, trees = [], []
+        for branch in sorted(self.formal):
+            local = refs.get('refs/heads/' + branch)
+            remote = refs.get('refs/remotes/origin/' + branch)
+            if local:
+                if local[1] != 'origin/' + branch:
+                    warnings.append(f'{branch}: upstream {local[1] or "(none)"}, expected origin/{branch}')
+                if remote:
+                    behind = int(self.git('rev-list', '--count', f'{local[0]}..{remote[0]}'))
+                    if behind:
+                        warnings.append(f'{branch}: local branch behind origin/{branch} by {behind}')
+        for kernel in self.config['kernels']:
+            branch = kernel['branch']
+            remote = refs.get('refs/remotes/origin/' + branch)
+            if not remote or remote[0] != kernel['revision']:
+                warnings.append(f'pin {kernel["revision"]} differs from origin/{branch}: '
+                                f'{remote[0] if remote else "missing"}')
+        # -z preserves paths exactly, including spaces and Git quoting characters.
+        for fields in self.worktrees():
+            path = fields['worktree']
+            branch = fields.get('branch', '').removeprefix('refs/heads/')
+            upstream = refs.get('refs/heads/' + branch, ['', ''])[1]
+            ahead = behind = None
+            if upstream:
+                if 'refs/remotes/' + upstream not in refs and 'refs/heads/' + upstream not in refs:
+                    warnings.append(f'{path}: upstream reference missing: {upstream}')
+                else:
+                    ahead, behind = map(int, self.git('rev-list', '--left-right', '--count',
+                                                     f'HEAD...{upstream}', path=path).split())
+            task = next((name for name, item in records.items() if item['path'] == path), None)
+            if not task:
+                warnings.append(f'unregistered worktree: {path}')
+            trees.append(dict(path=path, branch=branch or None, head=fields['HEAD'][:12],
+                              upstream=upstream or None, ahead=ahead, behind=behind,
+                              dirty=bool(self.git('status', '--porcelain', '--untracked-files=all', path=path)),
+                              task=task))
+        return dict(worktrees=trees, warnings=warnings)
+
+    @registry_transaction
+    def new(self, task, start):
+        task_name(task)
+        if task in self.formal:
+            raise ValueError(f'formal branch is protected: {task}')
+        if not (re.fullmatch(r'[0-9a-fA-F]{7,40}', start) or start.startswith('origin/')):
+            raise ValueError('--from requires a SHA or origin/<branch>')
+        self.fetch()
+        sha = self.git('rev-parse', '--verify', '--end-of-options', start + '^{commit}')
+        print(f'from {start} -> {sha}', flush=True)
+        records = self.records()
+        path, build = self.repo.with_name('linux-7.3-' + task), self.build_root / task
+        if task in records or path.exists() or build.exists() or 'refs/heads/' + task in self.refs():
+            raise ValueError(f'task, branch, worktree or build directory already exists: {task}')
+        self.git('check-ref-format', '--branch', task)
+        build.mkdir(parents=True)
+        try:
+            self.git('worktree', 'add', '-b', task, str(path), sha)
+        except RuntimeError:
+            build.rmdir()
+            raise
+        records[task] = dict(task=task, path=str(path), branch=task, start=sha,
+                             build=str(build), created=datetime.now(timezone.utc).isoformat())
+        self.save(records)
+        print(json.dumps(records[task], indent=2))
+
+    @registry_transaction
+    def remove(self, task, force=False):
+        records, item = self.registered(task, missing_ok=True)
+        listed = self.removal_paths(item)
+        if Path(item['path']).exists() and self.git('status', '--porcelain', '--untracked-files=all', path=item['path']):
+            raise ValueError('dirty worktree; removal refused even with --force')
+        self.fetch()
+        branch_exists = 'refs/heads/' + task in self.refs()
+        unpushed = (self.git('log', '--oneline', 'refs/heads/' + task,
+                             '--not', '--remotes=origin') if branch_exists else '')
+        if unpushed and not force:
+            raise ValueError('commits not pushed to origin (use --force to discard):\n' + unpushed)
+        if listed:
+            self.git('worktree', 'remove', item['path'])
+        if branch_exists:
+            self.git('branch', '-D', item['branch'])
+        if Path(item['build']).exists():
+            shutil.rmtree(item['build'])
+        del records[task]
+        self.save(records)
+
+    @registry_transaction
+    def push(self, task, target):
+        if not self.config.get('coordinator', os.environ.get('VM_PUSH_COORDINATOR') == '1'):
+            raise ValueError('仅协调者推送：需要 VM_PUSH_COORDINATOR=1')
+        target = target.removeprefix('refs/heads/')
+        if target in self.formal:
+            raise ValueError(f'formal branch is protected: {target}')
+        self.git('check-ref-format', 'refs/heads/' + target)
+        _, item = self.registered(task)
+        self.fetch()
+        sha = self.git('rev-parse', 'HEAD', path=item['path'])
+        url = self.base['url']
+        # remote -v expands both insteadOf and pushInsteadOf for a temporary
+        # command-scoped remote, without saving configuration or contacting it.
+        remotes = self.git('-c', f'remote.vm-push-check.url={url}', 'remote', '-v',
+                           path=item['path'], credentials=True)
+        effective = [parts[1] for line in remotes.splitlines()
+                     if len(parts := line.split()) == 3
+                     and parts[0] == 'vm-push-check' and parts[2] == '(push)']
+        if effective != [url] or not url.startswith('https://github.com/'):
+            raise ValueError('push URL differs from configured https://github.com/ URL')
+        print(f'push {sha} -> origin/{target}', flush=True)
+        print(self.git('log', '--oneline', f'origin/{self.base["branch"]}..{sha}', path=item['path']),
+              flush=True)
+        # Reset inherited helpers. Token travels only in helper stdout to Git;
+        # store/erase do nothing, and neither token nor helper is saved to disk.
+        helper = ('!f() { if test "$1" = get; then '
+                  'protocol=; host=; while IFS= read -r line && test -n "$line"; do '
+                  'case "$line" in protocol=*) protocol=${line#protocol=};; '
+                  'host=*) host=${line#host=};; esac; done; '
+                  'test "$protocol" = https && test "$host" = github.com || exit 0; '
+                  'token=$(mac gh auth token) || exit 1; '
+                  'printf "username=x-access-token\\npassword=%s\\n" "$token"; fi; }; f')
+        print(self.git('-c', 'credential.helper=', '-c', 'credential.helper=' + helper,
+                       'push', '--no-follow-tags', self.base['url'],
+                       f'{sha}:refs/heads/{target}', path=item['path'], credentials=True), flush=True)
+
+    def build_dirs(self):
+        self.check_roots()
+        owned = {item['build'] for item in self.records().values()}
+        result = []
+        if self.build_root.exists():
+            for path in sorted(self.build_root.iterdir()):
+                # Do not follow symlinks into shared Mac filesystems.
+                if path.is_symlink() or not path.is_dir() or str(path) in owned:
+                    continue
+                size = self.run(['du', '-sx', '--', path]).split()[0]
+                result.append(dict(path=str(path), size_kib=int(size),
+                                   mtime=datetime.fromtimestamp(path.stat().st_mtime,
+                                                               timezone.utc).isoformat()))
+        return result
+
+
+def parser():
+    root = argparse.ArgumentParser(description=__doc__)
+    commands = root.add_subparsers(dest='command', required=True)
+    commands.add_parser('status').add_argument('--json', action='store_true')
+    worktree = commands.add_parser('worktree').add_subparsers(dest='action', required=True)
+    new = worktree.add_parser('new')
+    new.add_argument('task', type=task_name)
+    new.add_argument('--from', dest='start', required=True)
+    remove = worktree.add_parser('rm')
+    remove.add_argument('task', type=task_name)
+    remove.add_argument('--force', action='store_true')
+    push = commands.add_parser('push')
+    push.add_argument('task', type=task_name)
+    push.add_argument('remote_branch')
+    commands.add_parser('build-dirs')
+    return root
+
+
+def execute(config, args):
+    vm = VM(config)
+    if args.command == 'status':
+        result = vm.status()
+        if args.json:
+            print(json.dumps(result, indent=2))
+        else:
+            for tree in result['worktrees']:
+                print('{path} branch={branch} HEAD={head} upstream={upstream} '
+                      'ahead={ahead} behind={behind} dirty={dirty} task={task}'.format(**tree))
+            for warning in result['warnings']:
+                print('WARNING: ' + warning)
+    elif args.command == 'build-dirs':
+        for item in vm.build_dirs():
+            print('{path}\t{size_kib} KiB\t{mtime}'.format(**item))
+    elif args.command == 'push':
+        vm.push(args.task, args.remote_branch)
+    elif args.action == 'new':
+        vm.new(args.task, args.start)
+    else:
+        vm.remove(args.task, args.force)
+
+
+def main():
+    if sys.argv[1:2] == ['_vm']:
+        execute(json.loads(sys.argv[2]), parser().parse_args(sys.argv[3:]))
+        return 0
+    parser().parse_args()  # Reject invalid commands before contacting the VM.
+    import tomllib
+    root = Path(__file__).resolve().parents[1]
+    kernel = tomllib.loads((root / 'workspace.toml').read_text())['kernel']
+    edge = tomllib.loads((root / 'packaging/kernel-edge/sources.toml').read_text())['kernel']
+    config = dict(kernels=[kernel, edge], coordinator=os.environ.get('VM_PUSH_COORDINATOR') == '1')
+    # Send this same single file via stdin; no shared filesystem traversal needed.
+    command = ['python3', '-c', 'import sys; exec(sys.stdin.read())',
+               '_vm', json.dumps(config), *sys.argv[1:]]
+    return subprocess.run(['orb', '-m', kernel['vm'], '-w', '/', *command],
+                          input=Path(__file__).read_text(), text=True).returncode
+
+
+if __name__ == '__main__':
+    try:
+        sys.exit(main())
+    except (ValueError, RuntimeError, OSError) as exc:
+        print(str(exc), file=sys.stderr)
+        sys.exit(1)
