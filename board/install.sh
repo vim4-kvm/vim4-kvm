@@ -32,6 +32,7 @@ install -m 0755 ../tools/hdmi-setup.sh /usr/sbin/hdmi-setup.sh
 install -m 0755 ../tools/hdr-curve.sh /usr/sbin/vim4-hdr-curve
 install -m 0755 ../tools/kvm-gadget.sh /usr/sbin/kvm-gadget.sh
 install -m 0644 99-vfm-cap.rules /etc/udev/rules.d/99-vfm-cap.rules
+install -m 0644 90-vim4-wifi-rps.rules /etc/udev/rules.d/90-vim4-wifi-rps.rules
 install -m 0644 90-vim4-encoder.conf /etc/modprobe.d/90-vim4-encoder.conf
 install -m 0644 vim4-kvm-hdmi.service vim4-kvm-gadget.service vim4-kvm-pd.service /etc/systemd/system/
 install -m 0644 vim4-wave5-monitor.service /etc/systemd/system/
