@@ -86,7 +86,9 @@ worker 只用 `tools/vm` 管理 VM 内核工作树：先 `tools/vm status`，只
 “正式分支”以 fetch 后的 `origin/…` 为准，本地同名分支和目录名不能证明版本。
 登记保存在 VM 的 `~/src/.vm-worktrees.json`；`worktree rm <task>` 永远拒绝 dirty，
 未推送提交默认拒绝，`--force` 才允许丢弃。`build-dirs` 只读列出未登记目录的 KiB 和 mtime。
-worker 不 push；由协调者执行 `tools/vm push <task> <remote-branch>`，禁止推正式分支。
+worker 不 push，任务中不得设置 `VM_PUSH_COORDINATOR`；协调者显式使用
+`VM_PUSH_COORDINATOR=1 tools/vm push <task> <remote-branch>`，禁止推正式分支。
+该开关防止误用，不是恶意调用者的权限隔离；worker 只可删除自己的任务。
 不修改他人工作树，不遍历 VM 中的 Mac 共享路径。
 
 部署仍显式使用 board/install.sh、tools/kernel-install.sh 或 NanoKVM 的安装工具，

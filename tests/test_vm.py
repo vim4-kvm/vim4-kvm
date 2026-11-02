@@ -1,5 +1,6 @@
 """Offline VM safety and lifecycle checks; never contacts OrbStack or a board."""
 import argparse
+from concurrent.futures import ThreadPoolExecutor
 from contextlib import redirect_stdout
 import importlib.machinery
 import importlib.util
@@ -8,7 +9,9 @@ import json
 import os
 from pathlib import Path
 import subprocess
+import shutil
 import tempfile
+import threading
 import unittest
 from unittest.mock import Mock, patch
 
@@ -18,7 +21,7 @@ spec = importlib.util.spec_from_loader('vm_tool', loader)
 vm = importlib.util.module_from_spec(spec)
 loader.exec_module(vm)
 SHA = 'a' * 40
-CONFIG = dict(kernels=[dict(branch='vim4-kvm-5.15'),
+CONFIG = dict(kernels=[dict(branch='vim4-kvm-5.15', revision=SHA),
                        dict(branch='vim4-kvm-7.3', revision=SHA,
                             url='https://github.com/example/linux.git')])
 
@@ -58,7 +61,7 @@ class VMTests(unittest.TestCase):
             return ''
         self.tool.git.side_effect = git
         result = self.tool.status()
-        self.assertEqual(len(result['warnings']), 4)
+        self.assertEqual(len(result['warnings']), 5)
         self.assertTrue(any('behind' in w for w in result['warnings']))
         self.assertTrue(any('upstream' in w for w in result['warnings']))
         self.assertTrue(any('pin' in w for w in result['warnings']))
@@ -70,6 +73,8 @@ class VMTests(unittest.TestCase):
         def git(*args, **kwargs):
             if args[0] == 'for-each-ref':
                 return (f'refs/heads/task\t{SHA}\torigin/task\n'
+                        f'refs/remotes/origin/task\t{SHA}\t\n'
+                        f'refs/remotes/origin/vim4-kvm-5.15\t{SHA}\t\n'
                         f'refs/heads/vim4-kvm-7.3\t{SHA}\torigin/vim4-kvm-7.3\n'
                         f'refs/remotes/origin/vim4-kvm-7.3\t{SHA}\t')
             if args[:2] == ('rev-list', '--count'):
@@ -91,40 +96,9 @@ class VMTests(unittest.TestCase):
 
     def test_push_rejects_both_formal_branches_including_full_ref(self):
         for target in ('vim4-kvm-7.3', 'vim4-kvm-5.15', 'refs/heads/vim4-kvm-7.3'):
-            with self.subTest(target=target), self.assertRaisesRegex(ValueError, 'protected'):
+            with self.subTest(target=target), patch.dict(os.environ, VM_PUSH_COORDINATOR='1'), self.assertRaisesRegex(ValueError, 'protected'):
                 self.tool.push('task', target)
         self.tool.git.assert_not_called()
-
-    def test_remove_dirty_even_with_force_and_unpushed_by_default(self):
-        self.register()
-        for force in (False, True):
-            self.tool.git.side_effect = lambda *a, **k: 'task' if a[0] == 'symbolic-ref' else ' M source'
-            with self.assertRaisesRegex(ValueError, 'dirty'):
-                self.tool.remove('task', force)
-        self.tool.git.side_effect = lambda *a, **k: {'symbolic-ref': 'task', 'log': 'abc private fix'}.get(a[0], '')
-        with self.assertRaisesRegex(ValueError, 'abc private fix'):
-            self.tool.remove('task')
-        self.assertIn('task', self.tool.records())
-        self.assertFalse(any(c.args[:2] == ('worktree', 'remove') for c in self.tool.git.call_args_list))
-
-    def test_remove_force_removes_registered_task_and_build_only(self):
-        item = self.register()
-        Path(item['build']).mkdir(parents=True)
-        other = self.tool.build_root / 'other'
-        other.mkdir()
-        self.tool.git.side_effect = lambda *a, **k: {'symbolic-ref': 'task', 'log': 'abc private fix'}.get(a[0], '')
-        self.tool.remove('task', True)
-        self.assertEqual(self.tool.records(), {})
-        self.assertFalse(Path(item['build']).exists())
-        self.assertTrue(other.exists())
-
-    def test_unregistered_remove_and_switched_branch_refused(self):
-        with self.assertRaisesRegex(ValueError, 'unregistered'):
-            self.tool.remove('task', True)
-        self.register()
-        self.tool.git.return_value = 'someone-else'
-        with self.assertRaisesRegex(ValueError, 'expected task'):
-            self.tool.remove('task', True)
 
     def test_new_resolves_sha_and_registers_without_switching_existing_tree(self):
         self.tool.git.side_effect = lambda *a, **k: SHA if a[0] == 'rev-parse' else ''
@@ -143,9 +117,11 @@ class VMTests(unittest.TestCase):
         calls = []
         def run(argv, **kwargs):
             calls.append(argv)
-            output = 'task' if 'symbolic-ref' in argv else SHA if 'rev-parse' in argv else ''
+            output = ('task' if 'symbolic-ref' in argv else SHA if 'rev-parse' in argv
+                      else 'vm-push-check\t' + CONFIG['kernels'][1]['url'] + ' (push)'
+                      if 'remote' in argv else '')
             return subprocess.CompletedProcess(argv, 0, output, '')
-        with patch.object(vm.subprocess, 'run', side_effect=run), redirect_stdout(io.StringIO()):
+        with patch.dict(os.environ, VM_PUSH_COORDINATOR='1'), patch.object(vm.subprocess, 'run', side_effect=run), redirect_stdout(io.StringIO()):
             self.tool.push('task', 'review')
         push = next(argv for argv in calls if 'push' in argv)
         self.assertIn(f'{SHA}:refs/heads/review', push)
@@ -158,23 +134,51 @@ class VMTests(unittest.TestCase):
         # must reach Git's credential protocol, never the invocation arguments.
         script = 'mac() { printf "%s\\n" "$TEST_TOKEN"; }; ' + helper[1:] + ' get'
         result = subprocess.run(['sh', '-c', script], capture_output=True, text=True,
+                                input='protocol=https\nhost=github.com\n\n',
                                 env=dict(os.environ, TEST_TOKEN='ghp_secret'), check=True)
         self.assertIn('password=ghp_secret\n', result.stdout)
         self.assertFalse(any('ghp_secret' in arg for argv in calls for arg in argv))
         self.assertNotIn('ghp_secret', script)
+        for request in ('protocol=http\nhost=github.com\n\n',
+                        'protocol=https\nhost=elsewhere.test\n\n'):
+            result = subprocess.run(['sh', '-c', script], input=request,
+                                    capture_output=True, text=True,
+                                    env=dict(os.environ, TEST_TOKEN='ghp_secret'), check=True)
+            self.assertEqual(result.stdout, '')
         for operation in ('store', 'erase'):
             script = 'mac() { exit 9; }; ' + helper[1:] + ' ' + operation
             result = subprocess.run(['sh', '-c', script], capture_output=True, text=True, check=True)
             self.assertEqual(result.stdout, '')
 
     def test_mac_entry_sends_source_via_orb_without_shared_paths(self):
-        with patch.object(vm.sys, 'argv', [str(TOOL), 'status', '--json']), \
+        with patch.dict(os.environ, VM_PUSH_COORDINATOR='1'), \
+                patch.object(vm.sys, 'argv', [str(TOOL), 'status', '--json']), \
                 patch.object(vm.subprocess, 'run', return_value=Mock(returncode=0)) as run:
             self.assertEqual(vm.main(), 0)
         argv = run.call_args.args[0]
         self.assertEqual(argv[:3], ['orb', '-m', 'vim4-build'])
         self.assertEqual(argv[-2:], ['status', '--json'])
         self.assertIn('class VM:', run.call_args.kwargs['input'])
+        config = json.loads(argv[argv.index('_vm') + 1])
+        self.assertTrue(config['coordinator'])
+
+    def test_push_requires_explicit_coordinator_switch(self):
+        for value in ('', '0', 'true'):
+            with patch.dict(os.environ, VM_PUSH_COORDINATOR=value), self.assertRaisesRegex(ValueError, '仅协调者推送'):
+                self.tool.push('task', 'review')
+        self.tool.git.assert_not_called()
+
+    def test_credential_commands_strip_trace_environment_and_hide_stderr(self):
+        self.tool.git = vm.VM.git.__get__(self.tool)
+        debug = dict(GIT_TRACE='1', GIT_TRACE_CURL='1', GIT_TRACE_REDACT='0',
+                     GIT_TRACE2_EVENT='/tmp/trace', GIT_CURL_VERBOSE='1')
+        with patch.dict(os.environ, debug), patch.object(vm.subprocess, 'run') as run:
+            run.return_value = subprocess.CompletedProcess([], 128, '', 'Authorization: Basic SECRET')
+            with self.assertRaisesRegex(RuntimeError, 'exit 128') as error:
+                self.tool.git('push', credentials=True)
+        self.assertNotIn('SECRET', str(error.exception))
+        self.assertNotIn('Authorization', str(error.exception))
+        self.assertFalse(set(debug) & run.call_args.kwargs['env'].keys())
 
     def test_build_dirs_only_du_local_unowned_children(self):
         item = self.register()
@@ -187,6 +191,191 @@ class VMTests(unittest.TestCase):
         self.tool.run.assert_called_once_with(['du', '-sx', '--', unowned])
         self.assertEqual(result[0]['size_kib'], 42)
         self.assertEqual(result[0]['path'], str(unowned))
+
+
+class RealGitTests(unittest.TestCase):
+    """Private local remotes reproduce ref/path lifecycle, without any network."""
+    def setUp(self):
+        self.temp = tempfile.TemporaryDirectory()
+        self.addCleanup(self.temp.cleanup)
+        self.home = Path(self.temp.name).resolve()
+        self.origin = self.home / 'origin.git'
+        self.repo = self.home / 'src/linux-7.3'
+        self.repo.mkdir(parents=True)
+        self.git('init', '--bare', str(self.origin), cwd=self.home)
+        self.git('init', '-b', 'main')
+        self.git('commit', '--allow-empty', '-m', 'base')
+        self.git('remote', 'add', 'origin', str(self.origin))
+        for branch in ('vim4-kvm-5.15', 'vim4-kvm-7.3'):
+            self.git('push', 'origin', 'HEAD:refs/heads/' + branch)
+        sha = self.git('rev-parse', 'HEAD')
+        config = dict(kernels=[dict(branch=k['branch'], revision=sha,
+                                    url=CONFIG['kernels'][1]['url']) for k in CONFIG['kernels']])
+        self.tool = vm.VM(config, self.home)
+
+    def git(self, *args, cwd=None):
+        env = dict(os.environ, GIT_AUTHOR_NAME='VM test', GIT_AUTHOR_EMAIL='vm@example.test',
+                   GIT_COMMITTER_NAME='VM test', GIT_COMMITTER_EMAIL='vm@example.test',
+                   GIT_CONFIG_GLOBAL=os.devnull, GIT_CONFIG_NOSYSTEM='1')
+        return subprocess.run(['git', '-C', str(cwd or self.repo), *args],
+                              capture_output=True, text=True, check=True, env=env).stdout.rstrip('\n')
+
+    def new(self, task='task'):
+        with redirect_stdout(io.StringIO()):
+            self.tool.new(task, 'origin/vim4-kvm-7.3')
+        return self.tool.records()[task]
+
+    def private_commit(self, item):
+        self.git('commit', '--allow-empty', '-m', 'private change', cwd=item['path'])
+        return self.git('rev-parse', 'HEAD', cwd=item['path'])
+
+    def test_pruned_origin_and_other_remote_cannot_prove_push(self):
+        item = self.new()
+        sha = self.private_commit(item)
+        self.git('push', 'origin', 'task:refs/heads/review')
+        self.tool.fetch()
+        self.git('update-ref', 'refs/remotes/upstream/review', sha)
+        self.git('update-ref', '-d', 'refs/heads/review', cwd=self.origin)
+        with self.assertRaisesRegex(ValueError, 'private change'):
+            self.tool.remove('task')
+        self.assertTrue(Path(item['path']).exists())
+        self.assertNotIn('refs/remotes/origin/review', self.tool.refs())
+        self.assertIn('refs/remotes/upstream/review', self.tool.refs())
+
+    def test_status_continues_when_upstream_is_pruned(self):
+        item = self.new()
+        self.git('push', 'origin', 'task:refs/heads/review')
+        self.tool.fetch()
+        self.git('branch', '--set-upstream-to=origin/review', 'task')
+        self.git('update-ref', '-d', 'refs/heads/review', cwd=self.origin)
+        status = self.tool.status()
+        tree = next(t for t in status['worktrees'] if t['task'] == 'task')
+        self.assertIsNone(tree['ahead'])
+        self.assertIsNone(tree['behind'])
+        self.assertTrue(any('upstream reference missing: origin/review' in w for w in status['warnings']))
+        self.assertEqual(len(status['worktrees']), 2)
+
+    def test_status_checks_both_pins_and_prunes_deleted_formal_ref(self):
+        self.git('commit', '--allow-empty', '-m', 'changed 5.15')
+        self.git('push', 'origin', 'HEAD:refs/heads/vim4-kvm-5.15')
+        status = self.tool.status()
+        self.assertTrue(any('pin ' in w and 'origin/vim4-kvm-5.15' in w for w in status['warnings']))
+        self.git('update-ref', '-d', 'refs/heads/vim4-kvm-7.3', cwd=self.origin)
+        status = self.tool.status()
+        self.assertTrue(any('origin/vim4-kvm-7.3: missing' in w for w in status['warnings']))
+
+    def test_remove_refuses_moved_worktree_even_if_old_path_missing(self):
+        item = self.new()
+        moved = self.home / 'src/moved'
+        self.git('worktree', 'move', item['path'], str(moved))
+        with self.assertRaisesRegex(ValueError, 'actual Git worktree'):
+            self.tool.remove('task', True)
+        Path(item['path']).symlink_to(moved)
+        with self.assertRaisesRegex(ValueError, 'symlink'):
+            self.tool.remove('task', True)
+        self.assertTrue((moved / '.git').exists())
+
+    def test_remove_and_build_dirs_refuse_symlink_roots_and_targets(self):
+        item = self.new()
+        build = self.tool.build_root
+        elsewhere = self.home / 'elsewhere'
+        build.rename(elsewhere)
+        build.symlink_to(elsewhere)
+        with self.assertRaisesRegex(ValueError, 'symlink root'):
+            self.tool.remove('task', True)
+        with self.assertRaisesRegex(ValueError, 'symlink root'):
+            self.tool.build_dirs()
+        build.unlink()
+        elsewhere.rename(build)
+        Path(item['build']).rmdir()
+        Path(item['build']).symlink_to(elsewhere)
+        with self.assertRaisesRegex(ValueError, 'symlink target'):
+            self.tool.remove('task', True)
+        src = self.repo.parent
+        moved_src = self.home / 'moved-src'
+        src.rename(moved_src)
+        src.symlink_to(moved_src)
+        with self.assertRaisesRegex(ValueError, 'symlink root'):
+            self.tool.remove('task', True)
+
+    def test_remove_dirty_and_private_commits_refused_force_only_skips_commits(self):
+        item = self.new()
+        dirty = Path(item['path']) / 'untracked'
+        dirty.write_text('keep')
+        for force in (False, True):
+            with self.assertRaisesRegex(ValueError, 'dirty'):
+                self.tool.remove('task', force)
+        dirty.unlink()
+        self.private_commit(item)
+        with self.assertRaisesRegex(ValueError, 'private change'):
+            self.tool.remove('task')
+        self.tool.remove('task', True)
+        self.assertEqual(self.tool.records(), {})
+
+    def test_unregistered_and_switched_tasks_are_not_removed(self):
+        with self.assertRaisesRegex(ValueError, 'unregistered'):
+            self.tool.remove('task', True)
+        item = self.new()
+        self.git('switch', '-c', 'someone-else', cwd=item['path'])
+        with self.assertRaisesRegex(ValueError, 'expected task'):
+            self.tool.remove('task', True)
+        self.assertTrue(Path(item['path']).exists())
+
+    def test_remove_resumes_after_build_cleanup_failed(self):
+        item = self.new()
+        with patch.object(vm.shutil, 'rmtree', side_effect=PermissionError('build permission')):
+            with self.assertRaises(PermissionError):
+                self.tool.remove('task')
+        self.assertFalse(Path(item['path']).exists())
+        self.assertIn('task', self.tool.records())
+        self.tool.remove('task')
+        self.assertEqual(self.tool.records(), {})
+        self.assertFalse(Path(item['build']).exists())
+
+    def test_remove_resumes_missing_worktree_with_branch_and_checks_commits(self):
+        item = self.new()
+        self.private_commit(item)
+        shutil.rmtree(item['path'])
+        with self.assertRaisesRegex(ValueError, 'private change'):
+            self.tool.remove('task')
+        self.tool.remove('task', True)
+        self.assertNotIn('refs/heads/task', self.tool.refs())
+        self.assertEqual(self.tool.records(), {})
+
+    def test_push_url_rewrites_refused_before_credentials(self):
+        self.new()
+        for kind in ('pushInsteadOf', 'insteadOf'):
+            key = f'url.http://127.0.0.1:9/.{kind}'
+            self.git('config', key, 'https://github.com/')
+            with patch.dict(os.environ, VM_PUSH_COORDINATOR='1'), self.assertRaisesRegex(ValueError, 'push URL differs'):
+                self.tool.push('task', 'review')
+            self.git('config', '--unset', key)
+
+    def test_registry_transactions_preserve_two_concurrent_creations(self):
+        first_read = threading.Event()
+        second_lock = threading.Event()
+        original_records = self.tool.records
+        original_flock = vm.fcntl.flock
+        def records():
+            value = original_records()
+            if threading.current_thread().name.startswith('first'):
+                first_read.set()
+                self.assertTrue(second_lock.wait(10))
+            return value
+        def flock(fd, operation):
+            if threading.current_thread().name.startswith('second'):
+                second_lock.set()
+            return original_flock(fd, operation)
+        with patch.object(self.tool, 'records', side_effect=records), \
+                patch.object(vm.fcntl, 'flock', side_effect=flock), \
+                ThreadPoolExecutor(1, thread_name_prefix='first') as first, \
+                ThreadPoolExecutor(1, thread_name_prefix='second') as second, redirect_stdout(io.StringIO()):
+            a = first.submit(self.tool.new, 'one', 'origin/vim4-kvm-7.3')
+            self.assertTrue(first_read.wait(10))
+            b = second.submit(self.tool.new, 'two', 'origin/vim4-kvm-7.3')
+            a.result(timeout=20)
+            b.result(timeout=20)
+        self.assertEqual(set(self.tool.records()), {'one', 'two'})
 
 
 if __name__ == '__main__':
