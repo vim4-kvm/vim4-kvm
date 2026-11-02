@@ -112,6 +112,16 @@ class PerformanceGateTest(unittest.TestCase):
         self.assertEqual(result['values'], {})
         self.assertIn('/sensor/power', result['errors'])
 
+    def test_stock_receiver_checks_lock_after_reading_cached_yuv420_timing(self):
+        info = 'Hactive: 1920\nVactive: 2160\nColor Space: 3-YUV420\nFrame Rate: 5994\nInterlace: 0'
+        for final_lock in ('10000', '00000'):
+            with patch.object(Path, 'read_text', side_effect=['10000', info, final_lock]):
+                state = sensors.receiver_state('stock')
+            if final_lock == '10000':
+                self.assertEqual((state['width'], state['height'], state['refreshHz']), (3840, 2160, 59.94))
+            else:
+                self.assertFalse(state['signal'])
+
 
 CONFIG = '''DEFAULT FullKvm
 LABEL FullKvm

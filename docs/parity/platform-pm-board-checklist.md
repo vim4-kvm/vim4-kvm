@@ -8,15 +8,17 @@ uhd6 已登记 tested_build，board/vim4-board-runtime、vim4-kvm-run 均匹配�
 | 顺序 | 操作、时长和证据 |
 |---|---|
 | 准备 | 离线在 heavy 票据下按[驱动基准](../driver-benchmark.md)准备 build/p0-2/vim4-driver-bench，核哈希，释放 heavy。准备已验双内核入口及回当前 uhd6 的恢复证明。禁止复用旧 5.15 默认项证明。 |
-| 就绪，10 min/启动 | FIFO board 票据内按[短窗口规程](../board-window.md)切内核、collect 身份、启动项、服务、UDC。固定环境温度、供电、散热、应用版本、码率和信源。源断开、无 viewer、温度回到同一起点才开始。 |
+| 就绪，10 min/启动 | FIFO board 票据内按[短窗口规程](../board-window.md)切内核、collect 身份、启动项、服务、UDC。固定环境温度、供电、散热、应用版本、码率和信源。保持同一 4K60 SDR 输入，温度回到同一起点。工具预检实际输入、服务 active 和 clients=0。 |
 | A/B 每阶段 | 在独立 board-queue run 票据下运行 python3 tools/perf-quick.py pm-phase PHASE --output DIR；每次用新目录。idle、signal 分别 5 min（各预留 10 min 票据），h264、h265 分别 10 min（各预留 15 min 票据）。sampling 排斥 heavy；队列等待、冷却、切换不计入采样。跨票据有其他负载时重新冷却，身份/环境变化则该块作废。 |
-| idle / signal | idle 无 HDMI 信号、无观看者，保留正常服务；signal 接入同一 3840×2160p60 SDR 信号，仍无观看者。操作者记录源、应用会话及 HDMI 锁定证据；不以浏览器后台 tick 证明物理信号。 |
+| idle / signal | idle 保持 HDMI 锁定，停止 One-KVM 并核实 inactive；signal 保持服务 active，要求 /api/stream/status 的 clients=0。两者比较常开服务的空闲开销。现有 M6 准备流程可切 HDR 和恢复前台，未找到可独立关闭物理输出并恢复的已验流程；无信号功耗仍缺测。 |
 | h264 / h265 | 同一物理输出全屏 perf-motion.html；沿用 perf-quick.py source，确认运动页未被遮挡。原生阶段独占采集、停 One-KVM 后按原状态启动。3840×2160p60、12 Mbps、GOP60，120帧预热、36000测量帧。记录 H.264/H.265 FPS、实际尺寸、缓冲数、CPU、sink→src p50/p95；前 300 s 升温，后 300 s 检查温度是否稳定，仍在爬升则稳态未证实。接收测量另循原 P0-2 receiver 流程，同钟且 ≥1000 有效标记才报端到端延迟。 |
 | 诊断 | 主组完成后单独在 uhd6 重做四阶段，各命令追加 --schedutil。逐 policy 记录原 governor 并恢复；核对 phase.json 与恢复后的 sysfs。诊断样本不计入主组。CPU 85°C vs 厂商 95°C 只记录何时触发及对应吞吐。 |
 | 判定 | 每阶段保留 pm.jsonl；用各 policy 的 time_in_state 和各核 idle usage/time 末减首，重启/计数回退作废。用 type 关联 zone/cdev，观察 GPU 频率、限频、风扇百分比；5.15 私有 DVFS 另读 /sys/class/mpgpu/cur_freq，缺节点则标缺测。uhd6 默认 kbase/governor_vim4，95°C、0–4 档 map 已在正式 DT；无自然触发则只报告观察到的状态。风扇命令百分比不能换算声压。无整板实测读数入口，标缺测；外接功率计可按[基线协议](../performance-baseline.md)提供同时间轴 CSV。PD 合同和单轨 hwmon 均不能代替整板瓦数。 |
 | 失败与恢复，5–10 min | 无 4K 缓冲池、服务失败、异常温度、丢帧或恢复错误，停止该组，保留双方原始 JSON、journal、信源与采样票据；不缩为1080p。恢复 governor/服务，核验 HID、LUN、管理面。过期交接下一张票据，按已验路径回本次进入前默认 uhd6，再验身份/画面/服务/UDC。 |
 
 主组按同日同 epoch 三组 A/B/A（相邻 A 可共享，共七个启动块），每块含操作、冷却约 45–60 min，另加诊断 45–60 min 和原接收端窗口。预算约 6–8 小时加接收/排队。遵守每票 ≤30 min。按基线门禁比较吞吐 ≥95%、同吞吐功耗 ≤105%、稳态温升差 ≤2°C、错误为零，缺测项保留未验。
+
+每阶段在 phase.json 保存预检、开始和结束的 HDMI/服务状态。5.15 在读取 info 前后检查 hw_info 锁定位；uhd6 在采集前后只做 QUERY_DV_TIMINGS。要求逐行 3840×2160、60±0.5 Hz。开始不符不启动遥测，结束不符保留数据并判该阶段失败，照常恢复已改设置。这些快照只证明取样时刻的状态。
 
 ## 独立 CPU idle 候选
 

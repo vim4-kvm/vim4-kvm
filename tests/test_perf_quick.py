@@ -15,14 +15,70 @@ spec.loader.exec_module(quick)
 
 
 class QuickRecoveryTest(unittest.TestCase):
+    def test_idle_preflight_rejects_wrong_input_or_viewer_without_mutations(self):
+        for hdmi, clients in (({'signal': False}, 0),
+                              (dict(signal=True, width=3840, height=2160, refreshHz=59.94), 1)):
+            queue = self.queue()
+            def ssh(host, command, **kwargs):
+                if command == 'uname -r':
+                    return '7.3.0-vim4kvm-uhd6+'
+                if command.startswith('for f in'):
+                    return '/policy0 performance'
+                if '--phase-state' in command:
+                    return json.dumps(dict(hdmi=hdmi, one_kvm='active', clients=clients))
+                if command.startswith('mkdir '):
+                    return ''
+                self.fail('Unexpected operation: ' + command)
+
+            with self.subTest(hdmi=hdmi, clients=clients), tempfile.TemporaryDirectory() as folder, \
+                    patch.object(quick.bw, 'require_board', return_value=(queue, 'ticket')), \
+                    patch.object(quick.bw, 'ssh', side_effect=ssh), patch.object(quick.subprocess, 'run'):
+                args = SimpleNamespace(phase='idle', output=Path(folder)/'run', schedutil=True)
+                with self.assertRaisesRegex(RuntimeError, 'preflight'):
+                    quick.pm_phase(args)
+                self.assertEqual(json.loads((args.output/'phase.json').read_text())['preflight']['hdmi'], hdmi)
+                queue.sampling.assert_not_called()
+
+    def test_idle_end_signal_loss_invalidates_sample_and_restarts_service(self):
+        queue = self.queue()
+        hdmi = dict(signal=True, width=3840, height=2160, refreshHz=60)
+        states = iter([dict(hdmi=hdmi, one_kvm='active', clients=0),
+                       dict(hdmi=hdmi, one_kvm='inactive'),
+                       dict(hdmi={'signal': False}, one_kvm='inactive')])
+        def ssh(host, command, **kwargs):
+            if command == 'uname -r':
+                return '5.15.137-vim4kvm-hdrdual6'
+            if command.startswith('for f in'):
+                return '/policy0 schedutil'
+            if '--phase-state' in command:
+                return json.dumps(next(states))
+            return ''
+        with tempfile.TemporaryDirectory() as folder, patch.object(quick.bw, 'ssh', side_effect=ssh) as remote, \
+                patch.object(quick.bw, 'require_board', return_value=(queue, 'ticket')), \
+                patch.object(quick.subprocess, 'run'):
+            args = SimpleNamespace(phase='idle', output=Path(folder)/'run', schedutil=False)
+            with self.assertRaises(ExceptionGroup):
+                quick.pm_phase(args)
+            phase = json.loads((args.output/'phase.json').read_text())
+            self.assertEqual(phase['start']['one_kvm'], 'inactive')
+            self.assertIn('end_error', phase)
+            remote.assert_any_call('vim4', 'sudo -n systemctl stop one-kvm')
+            self.assertEqual(remote.call_args.args[1], 'sudo -n systemctl start one-kvm')
+            queue.sampling.assert_called_with('ticket', False)
+
     def test_pm_diagnostic_restores_each_cluster_after_encoder_failure(self):
         queue = self.queue()
         changes = []
+        service = 'active'
         def ssh(host, command, **kwargs):
+            nonlocal service
             if command == 'uname -r':
                 return '7.3.0-vim4kvm-uhd6+'
-            if command == 'systemctl is-active one-kvm':
-                return 'active'
+            if command == 'sudo -n systemctl stop one-kvm':
+                service = 'inactive'
+            if '--phase-state' in command:
+                return json.dumps(dict(hdmi=dict(signal=True, width=3840, height=2160, refreshHz=60),
+                                       one_kvm=service, clients=0))
             if command.startswith('for f in'):
                 return '/policy0 performance\n/policy4 performance'
             if 'tee' in command:
@@ -39,7 +95,7 @@ class QuickRecoveryTest(unittest.TestCase):
             with self.assertRaisesRegex(RuntimeError, 'pool allocation'):
                 quick.pm_phase(args)
             self.assertEqual(changes, [['schedutil', '/policy0'], ['schedutil', '/policy4'],
-                                       ['performance', '/policy0'], ['performance', '/policy4']])
+                                       ['performance', '/policy4'], ['performance', '/policy0']])
             self.assertEqual(remote.call_args.args[1], 'sudo -n systemctl start one-kvm')
             queue.sampling.assert_called_with('ticket', False)
 

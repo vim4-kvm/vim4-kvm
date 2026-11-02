@@ -188,16 +188,32 @@ def pm_phase(args):
                               width=3840, height=2160, frames=seconds * 60, deadline=seconds + 30) + ' --skip-debug-clocks'
         command = (f'{sampler} & sampler=$!; {bench}; result=$?; '
                    'if [ "$result" != 0 ]; then kill "$sampler"; wait "$sampler"; exit "$result"; fi; wait "$sampler"')
-    if bw.ssh('vim4', 'systemctl is-active one-kvm').strip() != 'active':
-        raise RuntimeError('one-kvm readiness failed')
     policies = dict(line.split() for line in bw.ssh('vim4',
         'for f in /sys/devices/system/cpu/cpufreq/policy*/scaling_governor; do '
         'value=$(cat "$f") || exit 1; echo "$f $value"; done').splitlines())
     expected = 'performance' if edge else 'schedutil'
     if not policies or set(policies.values()) != {expected}:
         raise RuntimeError(f'Expected default {expected} on all policies, found {policies}')
-    (output / 'phase.json').write_text(json.dumps(dict(release=release, phase=args.phase,
-        seconds=seconds, schedutil=args.schedutil, governors=policies, board_power='缺测', remote=remote)))
+    phase = dict(release=release, phase=args.phase, seconds=seconds, schedutil=args.schedutil,
+                 governors=policies, board_power='缺测', remote=remote)
+    backend = 'edge' if edge else 'stock'
+    def check_state(point, service):
+        try:
+            state = json.loads(bw.ssh('vim4', f'python3 {remote}/sensors.py --phase-state {backend}'))
+            phase[point] = state
+            hdmi = state['hdmi']
+            if not (hdmi['signal'] and not hdmi.get('interlaced') and (hdmi['width'], hdmi['height']) == (3840, 2160)
+                    and abs(hdmi['refreshHz'] - 60) <= 0.5):
+                raise RuntimeError(f'{point}: expected locked 3840x2160p60, got {hdmi}')
+            if state['one_kvm'] != service or (service == 'active' and state['clients'] != 0):
+                raise RuntimeError(f'{point}: expected one-kvm {service} with no viewers, got {state}')
+        except Exception as error:
+            phase[point + '_error'] = str(error)
+            raise
+        finally:
+            (output / 'phase.json').write_text(json.dumps(phase, indent=2))
+
+    check_state('preflight', 'active')
     def set_governor(path, value):
         bw.ssh('vim4', f'echo {shlex.quote(value)} | sudo -n tee {shlex.quote(path)} >/dev/null')
 
@@ -206,21 +222,24 @@ def pm_phase(args):
     try:
         require_budget(queue, ticket, seconds + 220)
         (output / 'sampling.json').write_text(json.dumps(queue.read(ticket)))
+        service = 'active' if args.phase == 'signal' else 'inactive'
+        if service == 'inactive':
+            restore.append(('restart one-kvm', lambda: bw.ssh('vim4', 'sudo -n systemctl start one-kvm')))
+            bw.ssh('vim4', 'sudo -n systemctl stop one-kvm')
+        check_state('start', service)
         if args.schedutil:
             for path, previous in policies.items():
                 restore.append(('restore ' + path, lambda p=path, v=previous: set_governor(p, v)))
                 set_governor(path, 'schedutil')
-        if load:
-            restore.append(('restart one-kvm', lambda: bw.ssh('vim4', 'sudo -n systemctl start one-kvm')))
-            bw.ssh('vim4', 'sudo -n systemctl stop one-kvm')
         try:
             (output / 'stdout').write_text(bw.ssh('vim4', command, timeout=seconds + 55))
         finally:
             files = ['pm.jsonl'] + ([args.phase + '.json'] if load else [])
-            cleanup(output, [(name, lambda n=name: copy('vim4:' + remote + '/' + n, output / n)) for name in files])
+            cleanup(output, [('qualify phase end', lambda: check_state('end', service))] +
+                    [(name, lambda n=name: copy('vim4:' + remote + '/' + n, output / n)) for name in files])
     finally:
         actions = [(name, lambda n=name, a=action: restore_owned(queue, ticket, 30, output, n, a))
-                   for name, action in restore]
+                   for name, action in reversed(restore)]
         cleanup(output, actions + [('sampling off', lambda: queue.sampling(ticket, False))])
 
 
