@@ -24,8 +24,8 @@ class TestedRuntimeLockTest(unittest.TestCase):
     def test_module_overlay_receipts_match_source_and_artifact_identity(self):
         recipe = ROOT / 'packaging/kernel-edge'
         lock = tomllib.loads((recipe / 'sources.toml').read_text())
-        built = lock['tested_build']
-        for name, overlay in lock['retained_runtime'].get('module_overlays', {}).items():
+        built = lock['uhd6_tested_build']
+        for name, overlay in lock['uhd6_retained_runtime']['module_overlays'].items():
             with self.subTest(module=name):
                 path = recipe / overlay['receipt_path']
                 self.assertEqual(hashlib.sha256(path.read_bytes()).hexdigest(),
@@ -53,6 +53,33 @@ class TestedRuntimeLockTest(unittest.TestCase):
         for key, field in [('source', 'image_source_revision'), ('kernel_build_id', 'build_id'),
                            ('package_sha256', 'package_sha256')]:
             self.assertEqual(qualified[key], built[field])
+        inventory = json.loads((recipe / built['module_inventory_path']).read_text())
+        manifest = json.loads((recipe / built['manifest_path']).read_text())
+        self.assertEqual(set(inventory), set(manifest['module_build_ids']))
+        for name, module in inventory.items():
+            self.assertEqual(module['vermagic'].split()[0], built['release'])
+            self.assertEqual(module['sha256'], manifest['modules'][name])
+            self.assertEqual(module['build_id'], manifest['module_build_ids'][name])
+            self.assertTrue(module['BTF'])
+        for key in ('release', 'build_id', 'image_sha256', 'manifest_sha256', 'package_sha256'):
+            self.assertEqual(retained[key], built[key])
+        self.assertEqual(retained['revision'], built['image_source_revision'])
+        proof = recipe / retained['installed_proof_path']
+        self.assertEqual(hashlib.sha256(proof.read_bytes()).hexdigest(), retained['live_proof_sha256'])
+        installed = json.loads(proof.read_text())
+        self.assertEqual(retained['default_boot'], installed['default'])
+        self.assertEqual(installed['release'], built['release'])
+        self.assertEqual(installed['kernel_build_id'], built['build_id'])
+        self.assertEqual(installed['manifest_sha256'], built['manifest_sha256'])
+        self.assertEqual(installed['module_count'], built['module_count'])
+        self.assertEqual(installed['kernels_sha256'], retained['kernels_manifest_sha256'])
+
+    def test_uhd6_full_video_matrix_remains_archived(self):
+        recipe = ROOT / 'packaging/kernel-edge'
+        lock = tomllib.loads((recipe / 'sources.toml').read_text())['uhd6_tested_build']
+        receipt = recipe / lock['validation_path']
+        self.assertEqual(hashlib.sha256(receipt.read_bytes()).hexdigest(), lock['validation_sha256'])
+        qualified = json.loads(receipt.read_text())
         self.assertEqual(qualified['status'], 'qualified')
         self.assertEqual(len(qualified['regression']), 9)
         self.assertTrue(all(row['status'] == 'passed' for row in qualified['regression']))
@@ -60,18 +87,6 @@ class TestedRuntimeLockTest(unittest.TestCase):
         modes = json.loads((recipe / 'hdmi-modes.json').read_text())['modes']
         self.assertEqual({(row['mode'], row['codec']) for row in qualified['matrix']},
                          {(mode['id'], codec) for mode in modes for codec in ('h264', 'h265')})
-        for key in ('release', 'build_id', 'image_sha256', 'manifest_sha256', 'package_sha256'):
-            self.assertEqual(retained[key], built[key])
-        self.assertEqual(retained['revision'], built['image_source_revision'])
-        self.assertEqual(retained['default_boot'], '5.15')
-        proof = recipe / retained['installed_proof_path']
-        self.assertEqual(hashlib.sha256(proof.read_bytes()).hexdigest(), retained['live_proof_sha256'])
-        installed = json.loads(proof.read_text())
-        self.assertEqual(installed['release'], built['release'])
-        self.assertEqual(installed['kernel_build_id'], built['build_id'])
-        self.assertEqual(installed['manifest_sha256'], built['manifest_sha256'])
-        self.assertEqual(installed['module_count'], built['module_count'])
-        self.assertEqual(installed['kernels_sha256'], retained['kernels_manifest_sha256'])
 
     def check_build(self, built, *, installed):
         recipe = ROOT / 'packaging/kernel-edge'
@@ -102,7 +117,7 @@ class TestedRuntimeLockTest(unittest.TestCase):
         external_files = json.loads(checked(built.get('external_runtime_files_path', runtime_path),
                                             external['runtimeManifestSha256']).read_text())
         self.assertTrue(external_files)
-        for name, digest in external_files.items():
+        for name, digest in (external_files | built.get('launcher_overrides', {})).items():
             self.assertEqual(runtime_files[name], digest)
         for name, digest in runtime_files.items():
             self.assertEqual(manifest['files']['runtime/' + name], digest)
@@ -123,7 +138,7 @@ class TestedRuntimeLockTest(unittest.TestCase):
         self.assertEqual(runtime['image_source_revision'], built['image_source_revision'])
         self.assertEqual(runtime['package_sha256'], built['package_sha256'])
         self.assertEqual(runtime['installed'], installed)
-        self.assertEqual(runtime['default_boot'], '5.15')
+        self.assertEqual(runtime['default_boot'], built.get('default_boot', '5.15'))
         self.assertEqual(runtime['profiles']['kbase']['sha256'], built['board_dtb_sha256'])
         self.assertEqual(runtime['profiles']['panfrost']['sha256'], built['panfrost_dtb_sha256'])
         self.assertNotEqual(runtime['profiles']['kbase']['gpu_driver'], runtime['profiles']['panfrost']['gpu_driver'])

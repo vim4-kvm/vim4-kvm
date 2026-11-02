@@ -32,7 +32,8 @@ controls；`ffmpeg-vm.py` 只把显式输入通过 stdin 送到构建 VM 的 FFm
 分析用 heavy 票据。UU 的 RR 只证明 RTP 接收，不证明官方客户端解码/渲染。
 `packaging/hdr10/check-phase2-plugins.py`：离线检查组装后目录的实际GStreamer factory及插件路径，
 拒绝被系统副本掩盖的缺项；设备生成的V4L2编码factory在候选窗口用 `--device-factories` 补验。
-`packaging/kernel-edge/package-unified.py`：离线封存uhd6同次Image、互斥GPU DT、全部模块和BTF，
+`packaging/kernel-edge/package-unified.py`：离线封存同次 Image、互斥 GPU DT、全部模块和 BTF；
+`--uhd7-launcher` 读取已安装的 USB overlay 启动器并为新 release 保留 r14e 应用选择，
 校验外部模块ABI/产物与r13用户态来源，生成完整清单；不访问板子、不部署、不含vendor blob。
 
 `tools/hdmi-source-mode.swift`：macOS编译，运行在HDMI信源机；list输出显示器与模式ID，
@@ -101,7 +102,7 @@ PiKVM smoke 可用 `PIKVM_CDP` 接入专用测试 Chrome；结束时关闭测试
 | packaging/kernel-edge/build-gstreamer.py | 容器/VM | 无 | 校验固定源码、应用 V4L2 生命周期补丁并构建私有插件，不改系统库 | [音视频](subsystems/video.md) |
 | packaging/kernel-edge/test_gstreamer_visible_crop.py | 容器/VM | 无 | 提取实际 V4L2 caps／padding／crop 函数，以模拟 ioctl 离线回放 Wave5 非对齐尺寸协商 | [音视频](subsystems/video.md) |
 | packaging/kernel-edge/maintain.py | Linux ARM64 VM | 无 | inventory 导出按主题存放的保序补丁并证明 tree 一致；forward 在新分支 rebase；verify 汇总 host C/KUnit 入口、strict checkpatch、schema/DTB 与可选完整构建，不自动 fetch、部署 | [补丁清单](archive/kernel-patch-inventory.md) |
-| packaging/kernel-edge/register-runtime.py | VM / 板 | inventory 无；register 登记；install 安装 | 核对完整 Image/模块清单；install仅接受统一uhd6封包，保持5.15默认、不新增备份、不重启 | [双内核集成](bringup/2026-10-21-dual-kernel-integration.md) |
+| packaging/kernel-edge/register-runtime.py | VM / 板 | inventory 无；register 登记；install 安装 | 安装匹配 Image/模块；uhd6 保持 5.15 默认，uhd7 升级已安装的 FullKvm/kbase 并沿用 .217 固件。不新增备份、不重启 | [正式升级](bringup/2026-11-02-wifi-sdio-formal.md) |
 | packaging/kernel-edge/package-final.py | VM | 无 | 打包 UHD / hdr10rN 完整构建，生成哈希/build ID 清单；--dtb 显式选择 audio-test/display-m0/display-m1；M1 检查驱动与 DT 互斥；不编译 Image、不上板 | [M1 合入](bringup/2026-10-23-display-m2.md) |
 | packaging/kernel-edge/display-once.py、display-once-init.c | VM / 板 | prepare 无；stage 独占；串口选择后重启 | 私有归档与静态 PID 1 模块 bind；保留默认启动项；一次性启动、预检失败回退及重启回默认已实测，物理 RESET 未测 | [M1 安全网](bringup/2026-10-23-display-m1-safety.md) |
 | packaging/kernel-edge/final-window.py、final-board.py | Mac → 板 | stage/dry-run 无；execute 独占、重启 | 双锁备份、安装与回归；kernel-only 保留用户态；--require-all-checks 任一失败回退，--framebuffer-console 登记 tty0；--ir-keytable 将 ARM64 IR 检查工具保存在 bundle；支持正常重启 pstore 读回，HDMI 恢复最多等 35 秒 | [pstore 部署与回退](bringup/2026-10-22-edge-pstore-deploy.md) |

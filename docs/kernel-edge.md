@@ -1,14 +1,13 @@
 # VIM4 新内核基线
 
-2026-11-01：当前7.3为[已验收并持久安装的uhd6](bringup/2026-10-31-uhd6-formal.md)，
-正式源码HEAD为f951e2d24d32，tested_build与retained_runtime均已统一登记。
-19模式/双编码及600秒运动通过，其余未改路径明确复用本轮r3证据，声音按要求未测。
-板子仍运行且默认5.15；切默认由用户在全部P0完成后决定。
+2026-11-02：板子默认 FullKvm/kbase，运行正式源码 `52b95c8493264` 的 uhd7。
+本次验证覆盖 BCM43752 独立中断、eMMC 读回及 HID/UDC。HDMI 无输入，
+画面与编码未验证；测量条件和安装身份见 [uhd7 正式部署](bringup/2026-11-02-wifi-sdio-formal.md)。
 
 当前开发分支已接通 HDMI 输入、VDIN 直接 DMA、Wave5 H.264/H.265、硬件 JPEG 与音频，
 并部署完整 manager 和四种 KVM 的双内核运行时；5.15 可保留启动，共用同一应用的数据。
 双内核运行时的基础集成见[双内核完整系统集成](bringup/2026-10-21-dual-kernel-integration.md)，
-当前完整包、匹配内核和实际验收范围以上述uhd6记录为准。
+此前 19 模式、双编码和 600 秒运动结果见 [uhd6 正式验收](bringup/2026-10-31-uhd6-formal.md)。
 本页保留 Armbian 编译基线与专项历史记录；通用 edge.config 不等于已验收的整板配置。
 uhd6在uhd4的ADLA/nodebug/M0、HDR2恢复系列之上纳入已验原生HDR源码与uhd5外部GPU模块；
 用户态、同次完整模块和验收范围以统一记录为准，旧产物不能混装。
@@ -103,22 +102,20 @@ H.264/H.265 硬编码已取得实验结果，见
 脚本执行 olddefconfig，最终配置写入
 外部构建目录并记录校验和；并非复现 Armbian 镜像构建的所有配置钩子。
 
-当前已验uhd4的准确配置为 `packaging/kernel-edge/uhd4.config`，Linux ARM64 上可用
-`bash packaging/kernel-edge/build.sh SOURCE NEW_OUTPUT packaging/kernel-edge/uhd4.config`
+当前正式配置为 `packaging/kernel-edge/uhd7.config`，Linux ARM64 上可用
+`bash packaging/kernel-edge/build.sh SOURCE NEW_OUTPUT packaging/kernel-edge/uhd7.config`
 重建匹配 release；不传第三参数仍构建通用 edge 基线。该命令不安装、不重启，
 DTB/固件和完整模块的安装与登记按双内核记录执行，保留当前板子的 DTB/MAC 配置。
 
 两份配置均启用 `CONFIG_USB_CONFIGFS_ACM=y`；`olddefconfig` 会选择
 `CONFIG_USB_F_ACM=m` 与 `CONFIG_USB_U_SERIAL=m`。`uhd1.config` 是独立保存的完整配置，
 构建时不会从 `edge.config` 重新派生，修改公共功能须同步两者。
-tested_build 已与正式213f2715及该ACM配置配套更新。ACM板侧已验，M6主机数据传输未验。
+此前 213f2715 已验 ACM 板侧，M6 主机数据传输未验。
 锁定构建入口只接受 sources.toml 中的精确revision和干净源码，输出必须为新的外部目录。
 第四参数 `--validate-only` 执行相同版本/目录检查和olddefconfig后退出，不编译、不部署；
 本轮已在VM实际验证并比对最终配置哈希。完整构建省略该参数。
-`tested_build.image_sha256` 是适应当前启动分区容量的确定性gzip Image，
-`uncompressed_image_sha256` 是build.sh原始Image。当前uhd4使用原始Image，
-image/uncompressed哈希相同；manifest/source_manifest也相同，runtime_proof只证明候选载荷。
-`live_proof_sha256` 对应板上运行快照；retained_runtime单独记录旧uhd1的gzip安装身份。
+uhd7 使用原始 Image，`tested_build.image_sha256` 与 `uncompressed_image_sha256` 相同。
+`retained_runtime.live_proof_sha256` 对应重启后核验收据。
 
 下方是最初 Armbian rc7 导入的历史步骤；当前分支已基于 v7.3 重放并合入板级修复，
 准确复现应检出 sources.toml 的提交，不重新执行这段导入。固定 Armbian 快照为 7.3 选择 rc7，

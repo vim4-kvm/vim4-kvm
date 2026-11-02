@@ -1,7 +1,8 @@
 # 内核与驱动
 
-当前7.3见[uhd6正式构建、验收与安装](../bringup/2026-10-31-uhd6-formal.md)：
-正式源码HEAD为f951e2d24d32，tested_build和保留运行时均为uhd6；九类按改动范围汇总通过、600秒运动通过，[11 月 1 日安装记录](../bringup/2026-11-01-hdr10-r14e-installed.md)确认当前默认运行 uhd6/kbase。
+当前正式源码 `52b95c8493264`，默认 FullKvm/kbase 运行 uhd7。BCM43752 主机路径、
+单子系统门禁、HDMI 无信号边界及 Wi-Fi 测量见 [uhd7 构建与安装](../bringup/2026-11-02-wifi-sdio-formal.md)。
+上一版的九类资格与 600 秒运动记录见 [uhd6 验收](../bringup/2026-10-31-uhd6-formal.md)。
 
 VDIN HDR2主题候选uhd4完整构建见[集成门禁](../bringup/2026-10-31-hdr2-uhd4-gate.md)，
 [新PQ窗口](../bringup/2026-10-31-hdr2-mcp-ice-pq.md)已恢复MCP与接收、通过PQ/DMA/VUI/4K60；
