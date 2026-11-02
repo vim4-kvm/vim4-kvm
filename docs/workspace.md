@@ -74,11 +74,20 @@ VM 工作树为 `~/src/u-boot`，版本记在 workspace.toml 的 `uboot` 表。
 启动风扇测试的修改与实板结果见 [上板记录](bringup/2026-10-17-uboot-quiet-fan.md)。
 
 实验 7.3 内核同样存放在 OrbStack `vim4-build` 的 Linux 文件系统中：
-源码为 `/home/deepdream/src/linux-7.3`，配套 U-Boot 为
+仓库入口为 `/home/deepdream/src/linux-7.3`（当前检出 `vim4-display-color` 功能分支，
+不是正式分支工作树），配套 U-Boot 为
 `/home/deepdream/src/u-boot-edge`；它们不是当前目录下的子仓库，bootstrap 不创建它们。
 当前目录的 [packaging/kernel-edge](../packaging/kernel-edge/) 保存配置和源码版本锁，
 `build/kernel-edge/` 只保存部分构建产物与备份，不是源码工作树。
 构建方法和分支信息见 [新内核基线](kernel-edge.md)。
+
+worker 只用 `tools/vm` 管理 VM 内核工作树：先 `tools/vm status`，只引用完整 SHA，
+再 `tools/vm worktree new <task> --from <SHA>` 创建独立源码和 `~/build/<task>`。
+“正式分支”以 fetch 后的 `origin/…` 为准，本地同名分支和目录名不能证明版本。
+登记保存在 VM 的 `~/src/.vm-worktrees.json`；`worktree rm <task>` 永远拒绝 dirty，
+未推送提交默认拒绝，`--force` 才允许丢弃。`build-dirs` 只读列出未登记目录的 KiB 和 mtime。
+worker 不 push；由协调者执行 `tools/vm push <task> <remote-branch>`，禁止推正式分支。
+不修改他人工作树，不遍历 VM 中的 Mac 共享路径。
 
 部署仍显式使用 board/install.sh、tools/kernel-install.sh 或 NanoKVM 的安装工具，
 分别遵循对应文档。完成构建不意味着硬件回归或整机镜像验证通过。

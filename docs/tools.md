@@ -92,6 +92,7 @@ PiKVM smoke 可用 `PIKVM_CDP` 接入专用测试 Chrome；结束时关闭测试
 
 | 入口 | 运行位置 | 影响 | 用途 | 文档 |
 |---|---|---|---|---|
+| tools/vm | Mac → OrbStack VM | 无板子访问；new/rm 改任务工作树，push 写远端 | status 核对 origin/SHA；登记独立工作树和 build 目录，保护正式分支 | [工作区](workspace.md#构建) |
 | tools/memory-bench.c、memory-bench.py | C：Linux ARM64编译；runner：Linux/板 | 独占CPU/内存/tmpfs；无频率写入、部署、HID | 单核强制绑定、逐段实际CPU/每核频率、多尺寸分布与fault，≤3分钟、采温度并恢复亲和 | [内存拷贝审查](memory-copy-audit.md)、[绑核门禁与配置草案](nodebug-performance-gate.md) |
 | tools/gpu-diagnose.py、gpu-cl-map.c | 板；CL工具先ARM64编译 | 独占GPU；诊断器可临时锁频/PM/profiling并恢复；不写电压、不ptrace | 自有子进程fdinfo/周期/忙闲估计、trans_stat与CPU；小buffer CL map复现 | [GPU性能复核](gpu-performance-diagnosis.md) |
 | packaging/gpu/（含 compiler-compare.sh、corpus-check.sh、corpus-report.py、gpu-probe.c、hdr-check.sh、hdr-check.py、hdr-probe.c、hdr.comp、hdr-vulkan.py、hdr-dmabuf.c/h、hdr-dmabuf-test.c） | Docker ARM64；probe：板 | 构建无；probe占GPU | 固定shader-db、全帧RGBA；HDR参考/GBM负载、候选外部buffer导入与退休，不接生产DMA | [GPU运行时](bringup/2026-10-30-gpu-runtime.md)、[HDR规格](gpu-hdr-pipeline.md) |

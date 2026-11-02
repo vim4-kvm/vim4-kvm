@@ -6,6 +6,7 @@
 
 | 触发条件 / 错误 | 原因与正确做法 | 验证入口 |
 |---|---|---|
+| VM 本地分支过期，误报正式分支版本 | 先 `tools/vm status`；以 fetch 后的 origin 与 SHA 为准，不凭本地分支 | tools/vm |
 | 读取 debugfs audiobus regmap 导致 external abort 和自动重启 | 只读回调也可能访问未上电 MMIO；通用 dump 不受管道 head 限制。硬件诊断同样遵守板锁，只读已审阅的具名状态接口，不盲扫寄存器 | [音频诊断事故](docs/bringup/2026-10-25-audiobus-read-abort.md) |
 | 临时窗口进程死亡或内核 oops，finally 恢复被卡住，留下半安装 | 回退不能依赖候选 Linux 或窗口清理；保留默认基线，候选只在当次 U-Boot RAM 中选择。恢复 stop 必须有界，失败仍写回启动文件并同步；中断安装与无清理进程退出须离线注入测试 | [M1 事故与安全网](docs/bringup/2026-10-23-display-m1-safety.md) |
 | U-Boot 主机测试通过便刷入 eMMC，随后早期循环复位 | 主机 mock 不覆盖上电顺序、总线不返回或供电复位。候选先从 microSD 验证，失败断电拔卡回退；FUNCTION+RESET 依赖 eMMC U-Boot 到达按键检测，早期故障须拔 SD、按住 FUNCTION 冷上电进 OOWOW | [现场失败与恢复](docs/bringup/2026-10-22-p2-uboot-combined.md) |
