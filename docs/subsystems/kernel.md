@@ -11,8 +11,9 @@ VDIN HDR2主题候选uhd4完整构建见[集成门禁](../bringup/2026-10-31-hdr
 7.3通用内存/拷贝与锁调试配置差异、离线微基准及下一窗口见[内存拷贝审查](../memory-copy-audit.md)。
 
 实验性 Armbian edge 基线及构建见 [新内核基线](../kernel-edge.md)，不替代现有 5.15 发布流程。
-Wi-Fi 固件崩溃的诊断能力、P2P 兼容问题与转储保存见
-[Wi-Fi 排查](../bringup/2026-10-21-edge-wifi-fps.md)；历史崩溃根因尚未确认。
+FullKvm 的 BCM43752 使用 .217 SDIO 固件和配套 brcmfmac/WCC 模块，构建输入、
+连接验证及回退见[固件对照](../bringup/2026-11-02-wifi-fw217.md)。
+旧版 PHY trap 的固件内部根因尚未确认，转储保存见[Wi-Fi 排查](../bringup/2026-10-21-edge-wifi-fps.md)。
 BCM43752 外部 SAE 的 WCC 协议与 AKM 声明见
 [管理器与 WPA3 适配](../bringup/2026-10-21-manager-mainline-status.md)。
 P2P 已移除能力屏蔽，修正 discovery、扫描版本、ARP/ND 控制和并发发送流控，见

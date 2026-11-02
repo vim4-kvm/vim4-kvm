@@ -4,8 +4,12 @@
 [kernel]
 url = "https://github.com/vim4-kvm/linux.git"
 branch = "vim4-kvm-7.3"
-revision = "0d0bdced8193be4169955ef21509a75d80bfd246"
-tree = "6d434d9cb8216931308debe1177b2e05547340d1"
+# Local overlay branch wifi-43752-fw217; replayable before formal integration.
+revision = "923aa01fdd7d454076ea41b560afe267291b5618"
+tree = "06adc9a93d927c29dda50428bf1692e357932813"
+patch_base = "0d0bdced8193be4169955ef21509a75d80bfd246"
+patch_path = "bcm43752-fw217.patch"
+patch_sha256 = "0f300dde32799a37b05f55bf41f33b6d53a80a363af0a76cc347891c85031cc2"
 upstream_url = "https://github.com/gregkh/linux.git"
 # Evidence: docs/bringup/2026-10-31-uhd6-formal.md. No artifact publication.
 upstream_tag = "v7.3"
@@ -203,13 +207,22 @@ receipt_sha256 = "9970a6713f38c38a3bced7142341ebea49ded43a2170c0d56231f2f869b66b
 evidence = "docs/bringup/2026-11-02-hdmirx-cor-lock-deploy.md"
 
 [retained_runtime.module_overlays.brcmfmac]
-revision = "0d0bdced8193be4169955ef21509a75d80bfd246"
+revision = "923aa01fdd7d454076ea41b560afe267291b5618"
 path = "kernel/drivers/net/wireless/broadcom/brcm80211/brcmfmac/brcmfmac.ko.xz"
-sha256 = "a13c7461bddba2b18014d714f0d0790504c7468617d723a1346cae5b151d5d74"
-build_id = "da667c427b389418706c4de5107745a46531ac42"
-receipt_path = "uhd6-brcmfmac-txstatus-deployment.json"
-receipt_sha256 = "400561b58a6c1a4c7d2fe60c7f7d16b95759910336bb1e9e59cfc407447a1360"
-evidence = "docs/bringup/2026-11-02-wifi-txstatus.md"
+sha256 = "3c9f3592ca9392a64bd61d3e58b13df335cf2b46abc8bda74ac90355ec2f61b3"
+build_id = "5b9d11db20f8c51ef4edf479316829d7646a7559"
+receipt_path = "uhd6-brcmfmac-fw217-deployment.json"
+receipt_sha256 = "dc753f2a3313d1585e80b43d8ad93aebe0e00012405a504f4684dad71f06803e"
+evidence = "docs/bringup/2026-11-02-wifi-fw217.md"
+
+[retained_runtime.module_overlays.brcmfmac_wcc]
+revision = "923aa01fdd7d454076ea41b560afe267291b5618"
+path = "kernel/drivers/net/wireless/broadcom/brcm80211/brcmfmac/wcc/brcmfmac-wcc.ko.xz"
+sha256 = "d0d90f19b380f79b7273ceec7f0628a3d91e50f7be37586bf180cff020883e12"
+build_id = "8c22fe7ddb53240de25f83a19472de978ce37122"
+receipt_path = "uhd6-brcmfmac-wcc-fw217-deployment.json"
+receipt_sha256 = "9ee4f2b93d80b7e006749c56320fb9567b2b3fde342ff98af4884f873b756faa"
+evidence = "docs/bringup/2026-11-02-wifi-fw217.md"
 
 # Shared application sources are pinned in workspace.toml; hashes are read from the board.
 [integrated_runtime]
@@ -226,14 +239,16 @@ manager_binary_sha256 = "f619943882710022afbde5a973af4d2812526898c7971e6ebc43012
 
 # Diagnostic capability, not proof that the historical firmware crash is fixed.
 [wifi_diagnostics]
-firmware_fwid = "01-16e134aa"
-firmware_sha256 = "af7310c6c44da2690ea9f666eea8477a48e906810a1246a5fa207d3788fdf309"
+firmware_fwid = "01-e47f9a86"
+firmware_sha256 = "3ff292ab216c13ce3019f6b4cc4234a15a81c8b553014b122f748efd9465676d"
+firmware_url = "https://raw.githubusercontent.com/CoreELEC/brcmfmac_sdio-firmware-aml/6470abe10f2f1f2623914ee19dde5f22201b2231/firmware/brcm/fw_bcm43752a2_ag.bin"
+firmware_path = "/lib/firmware/updates/7.3.0-vim4kvm-uhd6+/brcm/brcmfmac43752-sdio.khadas,vim4.bin"
 external_sae = true
 p2p_discovery = true
-p2p_discovery_no_if_event_fwid = "01-16e134aa"
-arp_nd_primary_fwid = "01-16e134aa"
-nd_hostip_v1_fwid = "01-16e134aa"
-automatic_tx_credit_fwid = "01-16e134aa"
+p2p_discovery_no_if_event_fwid = "01-e47f9a86"
+arp_nd_primary_fwid = "01-e47f9a86"
+nd_hostip_v1_fwid = "01-e47f9a86"
+automatic_tx_credit_fwid = "01-e47f9a86"
 p2p_peer_transfer_verified = false
 brcm_debug = true
 device_coredump = true

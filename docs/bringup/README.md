@@ -19,6 +19,8 @@
 
 ## 2026-11-02
 
+- [BCM43752 固件版本与 5.15 驱动协议对照](2026-11-02-wifi-fw217.md) — kernel network board；AP6275S 程序、SAE 管理密钥、SDIO 发送窗口和 discovery
+
 - [BCM43752 厂商扫描请求与中断对照](2026-11-02-wifi-vendor-scan.md) — kernel network board；5.15 原厂 24 次激活、运行时地区和驻留、7.3 单变量验证
 
 - [BCM43752 扫描信道与 MPC 交替对照](2026-11-02-wifi-scan-pairs.md) — kernel network board；首次扫描、固件年龄、请求与 BSS 信道
