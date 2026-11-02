@@ -15,6 +15,34 @@ spec.loader.exec_module(quick)
 
 
 class QuickRecoveryTest(unittest.TestCase):
+    def test_pm_diagnostic_restores_each_cluster_after_encoder_failure(self):
+        queue = self.queue()
+        changes = []
+        def ssh(host, command, **kwargs):
+            if command == 'uname -r':
+                return '7.3.0-vim4kvm-uhd6+'
+            if command == 'systemctl is-active one-kvm':
+                return 'active'
+            if command.startswith('for f in'):
+                return '/policy0 performance\n/policy4 performance'
+            if 'tee' in command:
+                changes.append(command.split()[1:2] + [command.split()[-2]])
+            if '--exclusive' in command:
+                self.assertIn('--width=3840 --height=2160', command)
+                raise RuntimeError('pool allocation')
+            return ''
+
+        with tempfile.TemporaryDirectory() as folder, patch.object(quick.bw, 'ssh', side_effect=ssh) as remote, \
+                patch.object(quick.bw, 'require_board', return_value=(queue, 'ticket')), \
+                patch.object(quick.subprocess, 'run'):
+            args = SimpleNamespace(phase='h264', output=Path(folder)/'run', schedutil=True)
+            with self.assertRaisesRegex(RuntimeError, 'pool allocation'):
+                quick.pm_phase(args)
+            self.assertEqual(changes, [['schedutil', '/policy0'], ['schedutil', '/policy4'],
+                                       ['performance', '/policy0'], ['performance', '/policy4']])
+            self.assertEqual(remote.call_args.args[1], 'sudo -n systemctl start one-kvm')
+            queue.sampling.assert_called_with('ticket', False)
+
     def queue(self):
         queue = Mock()
         queue.read.return_value = dict(sampling=True, state='held', heavy=False,

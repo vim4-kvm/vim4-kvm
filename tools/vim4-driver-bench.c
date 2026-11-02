@@ -344,9 +344,10 @@ int main(int argc, char **argv)
     gchar *backend = NULL, *codec = NULL, *output = NULL, *device = NULL, *save_bitstream = NULL;
     gint frames = 1800, warmup = 120, bitrate = 20000000, gop = 60, width = 3840, height = 2160;
     gint timeout = 90, quality = 80, fps = 60;
-    gboolean exclusive = FALSE, secondary = FALSE;
+    gboolean exclusive = FALSE, secondary = FALSE, skip_debug_clocks = FALSE;
     GOptionEntry options[] = {
         {"backend", 0, 0, G_OPTION_ARG_STRING, &backend, "edge or stock", "BACKEND"},
+        {"skip-debug-clocks", 0, 0, G_OPTION_ARG_NONE, &skip_debug_clocks, "Skip debugfs clock snapshots during PM measurements", NULL},
         {"codec", 0, 0, G_OPTION_ARG_STRING, &codec, "capture, h264, h265 or jpeg", "CODEC"},
         {"quality", 0, 0, G_OPTION_ARG_INT, &quality, "Hardware JPEG quality", "1..100"},
         {"output", 0, 0, G_OPTION_ARG_FILENAME, &output, "New JSON report", "PATH"},
@@ -500,11 +501,14 @@ int main(int argc, char **argv)
     append_file(json, "cpu0_current_khz", "/sys/devices/system/cpu/cpufreq/policy0/scaling_cur_freq");
     append_file(json, "cpu4_current_khz", "/sys/devices/system/cpu/cpufreq/policy4/scaling_cur_freq");
     if (edge) append_file(json, "direct_dma", "/sys/module/t7_vdin_test/parameters/direct_dma");
-    append_file(json, "wave_a_hz", "/sys/kernel/debug/clk/wave_a/clk_rate");
-    append_file(json, "wave_b_hz", "/sys/kernel/debug/clk/wave_b/clk_rate");
-    append_file(json, "wave_c_hz", "/sys/kernel/debug/clk/wave_c/clk_rate");
+    if (!skip_debug_clocks) {
+        append_file(json, "wave_a_hz", "/sys/kernel/debug/clk/wave_a/clk_rate");
+        append_file(json, "wave_b_hz", "/sys/kernel/debug/clk/wave_b/clk_rate");
+        append_file(json, "wave_c_hz", "/sys/kernel/debug/clk/wave_c/clk_rate");
+        if (jpeg)
+            append_file(json, "hcodec_hz", "/sys/kernel/debug/clk/hcodec/clk_rate");
+    }
     if (jpeg) {
-        append_file(json, "hcodec_hz", "/sys/kernel/debug/clk/hcodec/clk_rate");
         g_string_append_printf(json, ",\n  \"jpeg_quality\": %d", quality);
     }
     append_file(json, "thermal0_millicelsius", "/sys/class/thermal/thermal_zone0/temp");

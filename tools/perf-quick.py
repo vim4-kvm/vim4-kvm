@@ -7,6 +7,7 @@ import argparse
 import importlib.machinery
 import importlib.util
 import json
+import shlex
 from http.server import BaseHTTPRequestHandler, HTTPServer
 from pathlib import Path
 import subprocess
@@ -23,6 +24,7 @@ NATIVE_WORK_SECONDS = 30 + 3 * (85 + 20)  # upload, bounded bench and result cop
 SERVICE_RECOVERY_SECONDS = 40
 RECEIVER_WORK_SECONDS = 111  # startup, bounded receiver, local tunnel teardown
 BASELINE_RECOVERY_SECONDS = 240
+PM_PHASE_SECONDS = {'idle': 300, 'signal': 300, 'h264': 600, 'h265': 600}
 
 
 def require_budget(queue, ticket, seconds):
@@ -115,6 +117,20 @@ def mcp(action, arguments, output, url):
         output.write_text(json.dumps(client.call(action, arguments)))
 
 
+def bench_command(backend, remote, codec, secondary, *, width=1920, height=1080,
+                  frames=1800, deadline=65):
+    env = ('GST_PLUGIN_PATH=/usr/lib/vim4-kvm/gstreamer-1.0 LD_LIBRARY_PATH=/opt/vim4-onekvm/lib'
+           if backend == 'stock' else 'GST_PLUGIN_PATH=/usr/lib/vim4-kvm/mainline-gstreamer-1.0')
+    if secondary:
+        env = ('GST_PLUGIN_PATH=/opt/vim4-onekvm/lib/gstreamer-1.0:/usr/lib/vim4-kvm/gstreamer-1.0 '
+               'LD_LIBRARY_PATH=/opt/vim4-onekvm/lib VIM4_SECONDARY_HDMI_CAPTURE=1 '
+               'GST_V4L2_PREFER_CONTIGUOUS=1')
+    return (f'env {env} GST_REGISTRY={remote}/registry.bin timeout -k 3 {deadline + 10} {remote}/bench '
+            f'--exclusive --backend={backend} --codec={codec} --warmup=120 --frames={frames} '
+            f'--width={width} --height={height} --bitrate=12000000 --gop=60 --timeout={deadline} '
+            f'--output={remote}/{codec}.json' + (' --secondary' if secondary else ''))
+
+
 def native(backend, output, reserve_seconds=0):
     queue, ticket = bw.require_board()
     require_budget(queue, ticket, NATIVE_WORK_SECONDS + SERVICE_RECOVERY_SECONDS + reserve_seconds)
@@ -132,16 +148,7 @@ def native(backend, output, reserve_seconds=0):
         (output / 'sampling.json').write_text(json.dumps(queue.read(ticket)))
         for codec in ('capture', 'h264', 'h265'):
             require_budget(queue, ticket, 85 + 20 + SERVICE_RECOVERY_SECONDS + reserve_seconds)
-            env = ('GST_PLUGIN_PATH=/usr/lib/vim4-kvm/gstreamer-1.0 LD_LIBRARY_PATH=/opt/vim4-onekvm/lib'
-                   if backend == 'stock' else 'GST_PLUGIN_PATH=/usr/lib/vim4-kvm/mainline-gstreamer-1.0')
-            if secondary:
-                env = ('GST_PLUGIN_PATH=/opt/vim4-onekvm/lib/gstreamer-1.0:/usr/lib/vim4-kvm/gstreamer-1.0 '
-                       'LD_LIBRARY_PATH=/opt/vim4-onekvm/lib VIM4_SECONDARY_HDMI_CAPTURE=1 '
-                       'GST_V4L2_PREFER_CONTIGUOUS=1')
-            command = (f'env {env} GST_REGISTRY={remote}/registry.bin timeout -k 3 75 {remote}/bench '
-                       f'--exclusive --backend={backend} --codec={codec} --warmup=120 --frames=1800 '
-                       f'--width=1920 --height=1080 --bitrate=12000000 --gop=60 --timeout=65 '
-                       f'--output={remote}/{codec}.json' + (' --secondary' if secondary else ''))
+            command = bench_command(backend, remote, codec, secondary)
             try:
                 text = bw.ssh('vim4', command, timeout=85)
                 (output / (codec + '.stdout')).write_text(text)
@@ -153,6 +160,68 @@ def native(backend, output, reserve_seconds=0):
             ('restore service', lambda: restore_owned(queue, ticket, SERVICE_RECOVERY_SECONDS, output,
                 'start previously active one-kvm',
                 lambda: bw.ssh('vim4', 'sudo -n systemctl start one-kvm', timeout=40)) if active else None)])
+
+
+def pm_phase(args):
+    seconds = PM_PHASE_SECONDS[args.phase]
+    queue, ticket = bw.require_board()
+    require_budget(queue, ticket, seconds + 240)
+    release = bw.ssh('vim4', 'uname -r').strip()
+    edge = release == '7.3.0-vim4kvm-uhd6+'
+    if not (edge or release.startswith('5.15.')) or (args.schedutil and not edge):
+        raise RuntimeError(f'Unexpected kernel for PM group: {release}')
+    load = args.phase in ('h264', 'h265')
+    output = args.output
+    output.mkdir(parents=True, exist_ok=False)
+    remote = '/var/tmp/p0-2-pm-' + str(time.time_ns())
+    bw.ssh('vim4', 'mkdir ' + remote)
+    def copy(source, target):
+        subprocess.run(['scp', str(source), str(target)], check=True, timeout=30)
+
+    copy(ROOT / 'tools/perf-sensors.py', 'vim4:' + remote + '/sensors.py')
+    sampler = f'python3 {remote}/sensors.py --gpu-devfreq-only --seconds={seconds} --output={remote}/pm.jsonl'
+    command = sampler
+    if load:
+        copy(ROOT / 'build/p0-2/vim4-driver-bench', 'vim4:' + remote + '/bench')
+        secondary = not edge and bw.ssh('vim4', 'cat /sys/module/aml_media/parameters/vdin0_native_hdr').strip() == 'Y'
+        bench = bench_command('edge' if edge else 'stock', remote, args.phase, secondary,
+                              width=3840, height=2160, frames=seconds * 60, deadline=seconds + 30) + ' --skip-debug-clocks'
+        command = (f'{sampler} & sampler=$!; {bench}; result=$?; '
+                   'if [ "$result" != 0 ]; then kill "$sampler"; wait "$sampler"; exit "$result"; fi; wait "$sampler"')
+    if bw.ssh('vim4', 'systemctl is-active one-kvm').strip() != 'active':
+        raise RuntimeError('one-kvm readiness failed')
+    policies = dict(line.split() for line in bw.ssh('vim4',
+        'for f in /sys/devices/system/cpu/cpufreq/policy*/scaling_governor; do '
+        'value=$(cat "$f") || exit 1; echo "$f $value"; done').splitlines())
+    expected = 'performance' if edge else 'schedutil'
+    if not policies or set(policies.values()) != {expected}:
+        raise RuntimeError(f'Expected default {expected} on all policies, found {policies}')
+    (output / 'phase.json').write_text(json.dumps(dict(release=release, phase=args.phase,
+        seconds=seconds, schedutil=args.schedutil, governors=policies, board_power='缺测', remote=remote)))
+    def set_governor(path, value):
+        bw.ssh('vim4', f'echo {shlex.quote(value)} | sudo -n tee {shlex.quote(path)} >/dev/null')
+
+    restore = []
+    queue.sampling(ticket, True)
+    try:
+        require_budget(queue, ticket, seconds + 220)
+        (output / 'sampling.json').write_text(json.dumps(queue.read(ticket)))
+        if args.schedutil:
+            for path, previous in policies.items():
+                restore.append(('restore ' + path, lambda p=path, v=previous: set_governor(p, v)))
+                set_governor(path, 'schedutil')
+        if load:
+            restore.append(('restart one-kvm', lambda: bw.ssh('vim4', 'sudo -n systemctl start one-kvm')))
+            bw.ssh('vim4', 'sudo -n systemctl stop one-kvm')
+        try:
+            (output / 'stdout').write_text(bw.ssh('vim4', command, timeout=seconds + 55))
+        finally:
+            files = ['pm.jsonl'] + ([args.phase + '.json'] if load else [])
+            cleanup(output, [(name, lambda n=name: copy('vim4:' + remote + '/' + n, output / n)) for name in files])
+    finally:
+        actions = [(name, lambda n=name, a=action: restore_owned(queue, ticket, 30, output, n, a))
+                   for name, action in restore]
+        cleanup(output, actions + [('sampling off', lambda: queue.sampling(ticket, False))])
 
 
 def window(args):
@@ -205,6 +274,10 @@ def main():
     p = commands.add_parser('source')
     p.add_argument('--output', type=Path, required=True)
     p.add_argument('--port', type=int, default=18090)
+    p = commands.add_parser('pm-phase')
+    p.add_argument('phase', choices=PM_PHASE_SECONDS)
+    p.add_argument('--output', required=True, type=Path)
+    p.add_argument('--schedutil', action='store_true')
     p = commands.add_parser('window')
     p.add_argument('--label', required=True)
     p.add_argument('--backend', choices=('stock', 'edge'), required=True)
@@ -221,6 +294,8 @@ def main():
     args = parser.parse_args()
     if args.command == 'source':
         serve(args.output, args.port)
+    elif args.command == 'pm-phase':
+        pm_phase(args)
     elif args.command == 'mcp':
         mcp(args.action, args.arguments, args.output, args.url)
     elif args.command == 'native':
