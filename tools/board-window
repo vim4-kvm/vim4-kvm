@@ -411,6 +411,7 @@ def boot(host, device, directory, plan=None, baseline_release=None):
     try:
         # Drain UART immediately: waiting for SSH disconnect can overflow the
         # serial buffer and lose the short autoboot prompt. Never repeat reboot.
+        # Match the prompt's tail too: the USB UART can drop its first bytes.
         rebooter = subprocess.Popen(['ssh', '-oBatchMode=yes', '-oConnectTimeout=5', host,
                                     'sudo -n reboot'], stdin=subprocess.DEVNULL,
                                    stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL,
@@ -419,7 +420,7 @@ def boot(host, device, directory, plan=None, baseline_release=None):
         while time.monotonic() < end:
             if select.select([fd], [], [], .1)[0]:
                 output += os.read(fd, 65536)
-                if plan and not interrupted and (b'Hit SPACE' in output or b'Hit any key to stop autoboot' in output):
+                if plan and not interrupted and (b'Hit SPACE' in output or b'autoboot' in output):
                     os.write(fd, b' ')
                     interrupted = True
                 if interrupted and not selected and (b'kvim4#' in output[-400:] or b'kvim4n#' in output[-400:]):

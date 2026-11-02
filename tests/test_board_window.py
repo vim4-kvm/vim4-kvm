@@ -104,6 +104,24 @@ class WindowTests(unittest.TestCase):
         ready.assert_called_once_with('mock', expected='candidate', old_boot='old-boot')
         process.terminate.assert_called_once()
 
+    def test_autoboot_prompt_with_dropped_leading_bytes_is_interrupted(self):
+        uart = Mock()
+        uart.open_port.return_value = 42
+        # Observed on VIM4: only the prompt's tail survived the UART read.
+        chunks = [b'Set reboot_mode to watchdog reboot\r\nautoboot\r\n', b'kvim4#', b'login:']
+        process = Mock()
+        process.poll.return_value = None
+        with tempfile.TemporaryDirectory() as directory, \
+                patch.object(window, 'load', return_value=uart), \
+                patch.object(window, 'ssh', side_effect=['old-boot', 'c8:63:14:74:70:0d']), \
+                patch.object(window.subprocess, 'Popen', return_value=process), \
+                patch.object(window.select, 'select', return_value=([42], [], [])), \
+                patch.object(window.os, 'read', side_effect=chunks), \
+                patch.object(window.os, 'write') as write, \
+                patch.object(window.os, 'close'), patch.object(window, 'ready'):
+            window.boot('mock', 'serial', Path(directory), dict(command='sysboot candidate', release='candidate'))
+        self.assertEqual(write.call_args_list[0].args[1], b' ')
+
     def test_m6_recipe_restores_actual_source_state_on_failure(self):
         client = window.MCP('unused', 'test')
         state = [False]
