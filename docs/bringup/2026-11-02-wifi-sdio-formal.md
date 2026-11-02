@@ -1,7 +1,7 @@
 # 2026-11-02：uhd7 正式构建与 BCM43752 SDIO 部署
 
 FullKvm 已正常重启到 `7.3.0-vim4kvm-uhd7+`，默认 kbase。无线独立中断、eMMC 读回、
-HID/UDC 通过。HDMI 无输入，用户同意将画面和编码登记为未验证后安装。
+HID/UDC 通过。HDMI 信号源（Mac mini M6）无输入，uhd6 下同样 ENOLINK；协调者据此将画面和编码登记为未验证后安装，需信号源恢复后补测。
 [D2 对照](2026-11-02-wifi-sdio-host-path.md) 与本次正式安装分别测量。
 
 ## 来源与构建
