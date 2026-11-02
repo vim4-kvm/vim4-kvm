@@ -14,9 +14,11 @@ class TestedRuntimeLockTest(unittest.TestCase):
         lock = tomllib.loads((recipe / 'sources.toml').read_text())
         built = lock['tested_build']
         overlays = lock['retained_runtime'].get('module_overlays', {})
-        qualified_revisions = {built['image_source_revision']}
-        qualified_revisions.update(overlay['revision'] for overlay in overlays.values())
-        self.assertIn(lock['kernel']['revision'], qualified_revisions)
+        if overlays:
+            overlay_revisions = {overlay['revision'] for overlay in overlays.values()}
+            self.assertIn(lock['kernel']['revision'], overlay_revisions)
+        else:
+            self.assertEqual(lock['kernel']['revision'], built['image_source_revision'])
         self.check_build(built, installed=True)
 
     def test_module_overlay_receipts_match_source_and_artifact_identity(self):

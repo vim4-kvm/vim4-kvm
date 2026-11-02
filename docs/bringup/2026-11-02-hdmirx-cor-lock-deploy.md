@@ -116,7 +116,7 @@ initramfs 失败后核对 FullKvm 无 INITRD 字段，不再构建无用 initram
 未删除他人产物。整个过程无 panic，不执行循环故障注入；pstore、journal、UART 已保留。
 
 证据在本 worktree `logs/board-batch/`：`build-r2.log`、`cor-window-r3.log`、
-`cor-functional-r2.log`、`initial/cycle1/cycle2/cycle3/mode/stability.json`、
+`cor-functional-r2.log`、`logs/board-batch/{initial,cycle1,cycle2,cycle3,mode,stability}.json`、
 `cor-before-soak.dmesg`、`cor-final.dmesg`、`cor-journal.log`、`cor-pstore.tgz`、
 `cor-uart.log`、`wifi-window.log`、`wifi-evidence.tgz`、`wifi-server.json`、`final-proof.log`。
 脚本副本也封存在该忽略目录；板上取回的登记原件在 `build/board-batch/registration-{before,after}.tgz`。
@@ -131,5 +131,5 @@ initramfs 失败后核对 FullKvm 无 INITRD 字段，不再构建无用 initram
 
 未解决：txstatus 原因、历史 Wi-Fi 固件崩溃根因、真实 P2P、运动场景及超过 10 分钟的稳定性未验。
 
-提交前主仓 `python3 -m unittest discover -s tests -p 'test_*.py'`：489 项，
-477 通过、12 项环境跳过；`git diff --check` 通过。
+提交前主仓 `python3 -m unittest discover -s tests -p 'test_*.py'`：490 项，
+478 通过、12 项环境跳过；`git diff --check` 通过。
