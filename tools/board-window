@@ -125,20 +125,7 @@ class MCP:
         request = urllib.request.Request(self.url, json.dumps(payload).encode(), headers)
         timeout=30 if deadline is None else min(30,deadline-time.monotonic())
         if timeout<=0: raise TimeoutError('MCP operation deadline expired')
-        # This POSIX CLI runs MCP on its main thread. Socket timeout bounds
-        # one blocked read, not a trickling HTTP response. Interrupt the whole
-        # exchange, including headers/body, so the response context closes it.
-        # No worker thread or request survives the caller's deadline.
-        previous_handler=None
-        previous_timer=(0,0)
         try:
-            if deadline is not None:
-                def expired(signum,frame):
-                    raise TimeoutError('MCP total HTTP deadline expired')
-                previous_handler=signal.signal(signal.SIGALRM,expired)
-                previous_timer=signal.getitimer(signal.ITIMER_REAL)
-                armed=time.monotonic()
-                signal.setitimer(signal.ITIMER_REAL,max(.000001,deadline-armed))
             with self.opener(request, timeout=timeout) as response:
                 session = response.headers.get('Mcp-Session-Id')
                 if session:
@@ -154,18 +141,10 @@ class MCP:
                 raise RuntimeError('MCP tool error: ' + json.dumps(result))
             return result
         except urllib.error.URLError as error:
-            # urlopen wraps header/connect interruption as URLError. Expose
-            # the same deadline failure as interruption during response.read.
+            # urlopen wraps a connect/header socket timeout as URLError.
             if deadline is not None and time.monotonic()>=deadline:
                 raise TimeoutError('MCP total HTTP deadline expired') from error
             raise
-        finally:
-            if previous_handler is not None:
-                signal.setitimer(signal.ITIMER_REAL,0)
-                signal.signal(signal.SIGALRM,previous_handler)
-                if previous_timer[0]:
-                    signal.setitimer(signal.ITIMER_REAL,
-                        max(.000001,previous_timer[0]-(time.monotonic()-armed)),previous_timer[1])
 
     def initialize(self, *, deadline=None):
         self.session = None
@@ -570,8 +549,8 @@ def main():
             digest = sha(bundle)
         else:
             digest = args.sha256
-        if sha(bundle) != digest:
-            raise ValueError('archive SHA256 mismatch')
+            if sha(bundle) != digest:
+                raise ValueError('archive SHA256 mismatch')
         plan = validate_bundle(bundle)
         proof_path = directory / 'baseline-proof.json'
         if proof_path.exists():

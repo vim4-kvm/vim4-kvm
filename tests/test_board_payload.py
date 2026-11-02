@@ -1,6 +1,5 @@
 import io
 import json
-import os
 from pathlib import Path
 import platform
 import subprocess
@@ -39,11 +38,7 @@ class PayloadTest(unittest.TestCase):
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory).resolve()
             (root / 'module-mounts').mkdir()
-            real = Path.lstat
-            def owned(path):
-                value = list(real(path)); value[4] = 0; value[0] &= ~0o022
-                return os.stat_result(value)
-            with patch.object(once, 'ROOT', root / 'legacy'), patch.object(once, 'MODULE_ROOT', root / 'module-mounts'), patch.object(once, 'preflight'), patch.object(Path, 'lstat', owned):
+            with patch.object(once, 'ROOT', root / 'legacy'), patch.object(once, 'MODULE_ROOT', root / 'module-mounts'), patch.object(once, 'preflight'):
                 first, a = self.bundle(root / 'a', 'first', b'dt-a')
                 second, b = self.bundle(root / 'b', 'second', b'dt-b')
                 once.stage(first); once.stage(second)

@@ -177,19 +177,8 @@ class TrialTest(unittest.TestCase):
                     if calls == fail_after:
                         raise OSError('simulated interrupted extraction')
 
-                # The staging test uses a temporary directory owned by the test user;
-                # production checks root ownership and the live build ID separately.
-                real_lstat = Path.lstat
-
-                def owned(path):
-                    result = list(real_lstat(path))
-                    result[4] = 0
-                    result[0] &= ~0o022
-                    return os.stat_result(result)
-
                 trial_root = root / 'trials'
                 with patch.object(once, 'ROOT', trial_root), patch.object(once, 'preflight'), \
-                        patch.object(Path, 'lstat', owned), \
                         patch.object(once.shutil, 'copyfileobj', interrupted_copy):
                     if fail_after:
                         with self.assertRaisesRegex(OSError, 'interrupted'):
@@ -234,17 +223,11 @@ once = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(once)
 once.ROOT = Path(sys.argv[2])
 once.preflight = lambda plan: None
-real_lstat = Path.lstat
-def owned(path):
-    fields = list(real_lstat(path))
-    fields[4] = 0
-    fields[0] &= ~0o022
-    return os.stat_result(fields)
 def die(source, output):
     output.write(source.read(1))
     output.flush()
     os._exit(91)  # No finally blocks, atexit hooks or rollback opportunity.
-with patch.object(Path, 'lstat', owned), patch.object(once.shutil, 'copyfileobj', die):
+with patch.object(once.shutil, 'copyfileobj', die):
     once.stage(Path(sys.argv[3]))
 '''
             result = subprocess.run([os.sys.executable, '-c', child, str(spec.origin),

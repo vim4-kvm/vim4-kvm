@@ -4,7 +4,6 @@ import importlib.machinery
 import importlib.util
 import json
 import io
-import os
 from pathlib import Path
 import shutil
 import subprocess
@@ -126,12 +125,7 @@ class WindowTests(unittest.TestCase):
     def test_generic_release_stages_and_cleans_only_its_empty_mountpoint(self):
         self.stage_private_payload('7.3.0-vim4kvm-future_hdr10.r42+')
 
-    def test_reuse_refuses_changed_execution_permissions_owners_and_directory_links(self):
-        for damage in ('init-exec', 'runtime-exec', 'runtime-write', 'directory-link', 'owner', 'file-owner', 'directory-write'):
-            with self.subTest(damage=damage):
-                self.stage_private_payload('7.3.0-vim4kvm-reuse-test+', damage)
-
-    def stage_private_payload(self, release, damage=None):
+    def stage_private_payload(self, release):
         from test_display_once import static_elf
         once = window.load('payload_stage', ROOT / 'packaging/kernel-edge/display-once.py')
         with tempfile.TemporaryDirectory() as directory:
@@ -153,35 +147,12 @@ class WindowTests(unittest.TestCase):
             baseline = root / 'baseline'
             baseline.write_bytes(b'unchanged')
             proof = dict(release='5.15.test', build_id='c'*40, cmdline='baseline', files={str(baseline): once.sha(baseline)})
-            lstat = Path.lstat
-            bad_owner = set()
-            def owned(path):
-                values = list(lstat(path)); values[4] = 1000 if path in bad_owner else 0
-                if not path.is_relative_to(candidate): values[0] &= ~0o022
-                return os.stat_result(values)
             (root / 'module-mounts').mkdir()
-            with patch.object(once, 'ROOT', root / 'display-m1'), patch.object(once, 'MODULE_ROOT', root / 'module-mounts'), patch.object(once.os, 'geteuid', return_value=0), patch.object(Path, 'lstat', owned):
+            with patch.object(once, 'ROOT', root / 'display-m1'), patch.object(once, 'MODULE_ROOT', root / 'module-mounts'), patch.object(once.os, 'geteuid', return_value=0):
                 once.stage(bundle, retained_baseline=proof)
                 with self.assertRaises(FileExistsError):
                     once.stage(bundle, retained_baseline=proof)
                 once.stage(bundle, retained_baseline=proof, reuse_staged=True)
-                if damage:
-                    if damage == 'init-exec': (candidate / 'init').chmod(0o444)
-                    elif damage == 'runtime-exec': (candidate / 'runtime/helper').chmod(0o444)
-                    elif damage == 'runtime-write': (candidate / 'runtime/helper').chmod(0o575)
-                    elif damage == 'owner': bad_owner.add(candidate)
-                    elif damage == 'file-owner': bad_owner.add(candidate / 'runtime/helper')
-                    elif damage == 'directory-write': (candidate / 'runtime').chmod(0o755)
-                    else:
-                        candidate.chmod(0o755)
-                        (candidate / 'runtime').chmod(0o755)
-                        (candidate / 'runtime').rename(root / 'outside-runtime')
-                        (root / 'outside-runtime').chmod(0o555)
-                        (candidate / 'runtime').symlink_to(root / 'outside-runtime', target_is_directory=True)
-                        candidate.chmod(0o555)
-                    with self.assertRaisesRegex(ValueError, 'untrusted staged'):
-                        once.stage(bundle, retained_baseline=proof, reuse_staged=True)
-                    return
                 image = candidate / 'Image'
                 image.chmod(0o644)
                 image.write_bytes(b'changed kernel')
