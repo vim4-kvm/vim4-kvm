@@ -19,7 +19,7 @@
 
 ## 2026-11-02
 
-- [Wi-Fi TX status 与历史固件崩溃离线分析](2026-11-02-wifi-txstatus.md) — kernel network offline；未知状态覆盖差异、单传输 DMA 回退、历史 AXI trap 未证实修复，未占板
+- [Wi-Fi TX status、固件崩溃与厂商对照](2026-11-02-wifi-txstatus.md) — kernel network deployment；日志overlay、AXI trap再现、厂商双向600秒、旧上传比85.68%，已恢复FullKvm
 - [HDMI-RX COR 锁部署与 Wi-Fi 有界流量](2026-11-02-hdmirx-cor-lock-deploy.md) — kernel deployment video network；三次 EDID、4K60 600秒、Wi-Fi 600秒与恢复
 
 ## 2026-11-01
