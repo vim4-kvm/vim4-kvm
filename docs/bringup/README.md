@@ -19,6 +19,8 @@
 
 ## 2026-11-02
 
+- [BCM43752 厂商扫描请求与中断对照](2026-11-02-wifi-vendor-scan.md) — kernel network board；5.15 原厂 24 次激活、运行时地区和驻留、7.3 单变量验证
+
 - [BCM43752 扫描信道与 MPC 交替对照](2026-11-02-wifi-scan-pairs.md) — kernel network board；首次扫描、固件年龄、请求与 BSS 信道
 
 - [BCM43752 连接崩溃的扫描轨迹](2026-11-02-wifi-scan-trace.md) — kernel network board；主机命令时序、PHY 数据端口与扫描 MPC 实验
