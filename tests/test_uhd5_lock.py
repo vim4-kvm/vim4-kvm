@@ -13,8 +13,29 @@ class TestedRuntimeLockTest(unittest.TestCase):
         recipe = ROOT / 'packaging/kernel-edge'
         lock = tomllib.loads((recipe / 'sources.toml').read_text())
         built = lock['tested_build']
-        self.assertEqual(built['image_source_revision'], lock['kernel']['revision'])
+        overlays = lock['retained_runtime'].get('module_overlays', {})
+        qualified_revisions = {built['image_source_revision']}
+        qualified_revisions.update(overlay['revision'] for overlay in overlays.values())
+        self.assertIn(lock['kernel']['revision'], qualified_revisions)
         self.check_build(built, installed=True)
+
+    def test_module_overlay_receipts_match_source_and_artifact_identity(self):
+        recipe = ROOT / 'packaging/kernel-edge'
+        lock = tomllib.loads((recipe / 'sources.toml').read_text())
+        built = lock['tested_build']
+        for name, overlay in lock['retained_runtime'].get('module_overlays', {}).items():
+            with self.subTest(module=name):
+                path = recipe / overlay['receipt_path']
+                self.assertEqual(hashlib.sha256(path.read_bytes()).hexdigest(),
+                                 overlay['receipt_sha256'])
+                receipt = json.loads(path.read_text())
+                for field, built_field in [('image_source_revision', 'image_source_revision'),
+                                           ('kernel_build_id', 'build_id'), ('release', 'release')]:
+                    self.assertEqual(receipt[field], built[built_field])
+                for field, overlay_field in [('module_source_revision', 'revision'),
+                                             ('module_sha256', 'sha256'),
+                                             ('module_build_id', 'build_id'), ('module_path', 'path')]:
+                    self.assertEqual(receipt[field], overlay[overlay_field])
 
     def test_previous_gpu_build_keeps_its_complete_historical_lock(self):
         lock = tomllib.loads((ROOT / 'packaging/kernel-edge/sources.toml').read_text())

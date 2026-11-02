@@ -1,11 +1,11 @@
 # Experimental kernel pins; the private GStreamer recipe below is also used
 # by the 5.15 One-KVM image builder.
-# Unified uhd6 qualified and installed; 5.15 remains the saved default.
+# The original complete package was installed with 5.15 as default; see the overlay receipt for the current FullKvm default and single-module overlay.
 [kernel]
 url = "https://github.com/vim4-kvm/linux.git"
 branch = "vim4-kvm-7.3"
-revision = "f951e2d24d32d5df0e701e7c355b3db4c91eaf74"
-tree = "b0e8d078c50d2a5a158c5c2ebd428b3a3d9703d9"
+revision = "f2e8424261af18690ee1fbf2c032365da9185568"
+tree = "d5d7777a18c69fba2f5a397f9176b331a4e45d74"
 upstream_url = "https://github.com/gregkh/linux.git"
 # Evidence: docs/bringup/2026-10-31-uhd6-formal.md. No artifact publication.
 upstream_tag = "v7.3"
@@ -177,7 +177,7 @@ t7_vdin_test = "e4c860e3a0716940b6d9f83a34091053bc7fc2af"
 t7_jpeg = "8fe7843f2e4d03b3e651a44f385391c5a6e0c482"
 crg_udc = "cb0339fb7ad842d5616c60d838a9db0df0f7eeb8"
 
-# Complete matched installation; 5.15 remains running/default.
+# The original complete package was installed with 5.15 as default; see the overlay receipt for the current FullKvm default and single-module overlay.
 [retained_runtime]
 release = "7.3.0-vim4kvm-uhd6+"
 revision = "f951e2d24d32d5df0e701e7c355b3db4c91eaf74"
@@ -192,6 +192,15 @@ installed_proof_path = "uhd6-installed-proof.json"
 kernels_manifest_sha256 = "d8ab4af0014dad9f931ccaaada4dd0e260df0f2be1ecb1697b2dfc166991aa37"
 default_boot = "5.15"
 evidence = "docs/bringup/2026-10-31-uhd6-formal.md"
+
+[retained_runtime.module_overlays.t7_hdmirx]
+revision = "f2e8424261af18690ee1fbf2c032365da9185568"
+path = "kernel/drivers/media/platform/amlogic/t7-hdmirx/t7-hdmirx.ko.xz"
+sha256 = "15f0f9c08ad52655ddf1181a9e58475a15c36e064f291d2fbbcf1b75c69c0c03"
+build_id = "9b08acc2f8ce6ec746a59a4af4bf37565c8ed25d"
+receipt_path = "uhd6-cor-lock-deployment.json"
+receipt_sha256 = "9970a6713f38c38a3bced7142341ebea49ded43a2170c0d56231f2f869b66b84"
+evidence = "docs/bringup/2026-11-02-hdmirx-cor-lock-deploy.md"
 
 # Shared application sources are pinned in workspace.toml; hashes are read from the board.
 [integrated_runtime]
