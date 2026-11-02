@@ -19,6 +19,8 @@
 
 ## 2026-11-02
 
+- [BCM43752 下载上限与 SDIO 每聚合周期](2026-11-02-wifi-glom-cycle.md) — kernel network board；tracepoint 拆解每聚合周期，7.3 对 5.15 的中转复制与中断路径差额
+
 - [BCM43752 下载余差与 SDIO 接收对齐](2026-11-02-wifi-rx-alignment.md) — kernel network board；同期双内核下载、接收中转复制探针与固件对齐对照
 
 - [BCM43752 下载吞吐与接收处理 CPU](2026-11-02-wifi-rx-cpu.md) — kernel network board；同一连接交替切换 wlan0 RPS，比较 SDIO 与 TCP 接收路径
