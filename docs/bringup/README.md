@@ -20,6 +20,7 @@
 ## 2026-11-02
 
 - [P0-2 性能与常开功耗合并窗口](2026-11-02-p0-2-pm-window.md) — video kernel offline；基准与阶段脚本已准备，等待协调放行，未上板采样
+- [Wi-Fi TX status、固件崩溃与厂商对照](2026-11-02-wifi-txstatus.md) — kernel network deployment；日志overlay、AXI trap再现、厂商双向600秒、旧上传比85.68%，已恢复FullKvm
 - [boot 空间清理](2026-11-02-boot-space-cleanup.md) — deployment kernel；四个无引用旧文件，4.09→18.95 MiB，全部登记哈希前后通过，无重启
 - [HDMI-RX COR 锁部署与 Wi-Fi 有界流量](2026-11-02-hdmirx-cor-lock-deploy.md) — kernel deployment video network；三次 EDID、4K60 600秒、Wi-Fi 600秒与恢复
 

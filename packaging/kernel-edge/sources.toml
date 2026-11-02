@@ -1,11 +1,11 @@
 # Experimental kernel pins; the private GStreamer recipe below is also used
 # by the 5.15 One-KVM image builder.
-# The original complete package was installed with 5.15 as default; see the overlay receipt for the current FullKvm default and single-module overlay.
+# The original complete package was installed with 5.15 as default; overlay receipts record the current FullKvm default and module replacements.
 [kernel]
 url = "https://github.com/vim4-kvm/linux.git"
 branch = "vim4-kvm-7.3"
-revision = "f2e8424261af18690ee1fbf2c032365da9185568"
-tree = "d5d7777a18c69fba2f5a397f9176b331a4e45d74"
+revision = "0d0bdced8193be4169955ef21509a75d80bfd246"
+tree = "6d434d9cb8216931308debe1177b2e05547340d1"
 upstream_url = "https://github.com/gregkh/linux.git"
 # Evidence: docs/bringup/2026-10-31-uhd6-formal.md. No artifact publication.
 upstream_tag = "v7.3"
@@ -201,6 +201,15 @@ build_id = "9b08acc2f8ce6ec746a59a4af4bf37565c8ed25d"
 receipt_path = "uhd6-cor-lock-deployment.json"
 receipt_sha256 = "9970a6713f38c38a3bced7142341ebea49ded43a2170c0d56231f2f869b66b84"
 evidence = "docs/bringup/2026-11-02-hdmirx-cor-lock-deploy.md"
+
+[retained_runtime.module_overlays.brcmfmac]
+revision = "0d0bdced8193be4169955ef21509a75d80bfd246"
+path = "kernel/drivers/net/wireless/broadcom/brcm80211/brcmfmac/brcmfmac.ko.xz"
+sha256 = "a13c7461bddba2b18014d714f0d0790504c7468617d723a1346cae5b151d5d74"
+build_id = "da667c427b389418706c4de5107745a46531ac42"
+receipt_path = "uhd6-brcmfmac-txstatus-deployment.json"
+receipt_sha256 = "400561b58a6c1a4c7d2fe60c7f7d16b95759910336bb1e9e59cfc407447a1360"
+evidence = "docs/bringup/2026-11-02-wifi-txstatus.md"
 
 # Shared application sources are pinned in workspace.toml; hashes are read from the board.
 [integrated_runtime]
