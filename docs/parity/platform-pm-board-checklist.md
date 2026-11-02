@@ -1,5 +1,8 @@
 # P0-2 性能与常开功耗合并窗口（待执行）
 
+[本轮记录](../bringup/2026-11-02-p0-2-pm-window.md)：离线基准与阶段脚本已准备，等待协调者“可以上板”，尚无板上样本。
+B 身份按当前安装 uhd6 及已登记模块 overlay 收据核对；不得用原整包模块 ID 拒绝已登记 overlay，也不得跳过身份检查。
+
 默认运行 uhd6/kbase。A 为 5.15，B 为正式 uhd6；主组保留每个启动块预检时各簇实际 governor。上次 5.15 两簇实录均为 performance，见[原始结果](../bringup/p0-2-quick-evidence.json)。
 uhd6 已登记 tested_build，board/vim4-board-runtime、vim4-kvm-run 均匹配完整 release。
 [安装记录](../bringup/2026-11-01-hdr10-r14e-installed.md)有服务 active 和 UDC configured；
