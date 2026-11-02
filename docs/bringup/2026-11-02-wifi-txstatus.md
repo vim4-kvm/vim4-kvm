@@ -51,36 +51,20 @@ overlay，无需改测试或虚构离线祖先验证。
 
 ## TX status 与 SDIO 的离线结论
 
-7.3 `brcmf_fws_txstatus_indicate()` 读取 TXSTATUS/COMP_TXSTATUS TLV；
-`FLAGS_MASK=0x78000000`、shift=27。处理器只识别 0–6：DISCARD、CORE_SUPPRESS、
-FW_PS_SUPPRESS、FW_TOSSED、FW_DISCARD_NOACK、FW_SUPPRESS_ACKED、HOST_TOSSED。
-因此错误日志确定表示 7–15 的未覆盖值，不是正常 no-ACK（4）或 hanger 缺包日志。
-打印后仍按 compcnt 完成 hanger/credit 处理；仅 1/2 进入 suppression 重排队，
-未知状态不直接 reset。一次压缩状态可能覆盖多个包，不能由日志条数推算丢包数。
+7.3从TXSTATUS/COMP_TXSTATUS提取四位flags，识别0–6，7–15才报错；
+打印后仍处理hanger/credit，只有1/2进入suppression重排队，不直接reset。
+一条压缩状态可覆盖多个包，日志数不是丢包数。厂商定义EXPIRED=6、DROPPED=7、
+MKTFREE=8、MAX_SUP_RETR=9、FORCED_EXPIRED=10；brcmfmac合成HOST_TOSSED=6与之重叠。
+未取得实际值前不能选定语义或盲改credit。
 
-厂商 5.15 基线 `80a07ad5406d57855c996285ae75a50a1b9147ae` 的 bcmdhd
-`include/wlfc_proto.h` 定义 EXPIRED=6、DROPPED=7、MKTFREE=8、MAX_SUP_RETR=9、
-FORCED_EXPIRED=10；`dhd_wlfc.c:_dhd_wlfc_compressed_txstatus_update()` 对 6/7
-累计到期/丢弃计数，非 suppression 状态继续完成，没有对应的默认错误打印。
-brcmfmac 的合成 HOST_TOSSED=6 与厂商 EXPIRED 数值重叠，盲目追加枚举会涉及 credit
-语义。协议覆盖差异已确认，但缺实际 flags 不能选定具体语义或宣称 BCM43752 良性。
-
-上游 `d843246ee7614828ac5ff1d58b21b1fce853044e`（状态同步及credit修复）已包含，
+上游状态同步修复`d843246ee7614828ac5ff1d58b21b1fce853044e`已包含，
 见[原邮件](https://lore.kernel.org/r/20200610152106.175257-5-chi-hsien.lin@cypress.com)。
-未找到对应本板事件的后续最小修复；lore直接访问失败，不证明上游不存在。
-
-SDIO 原告警 `unaligned sg len 112 blksize 256` 是 `meson_mmc_get_transfer_mode()`
-对当前 request 不设置 descriptor chain 标记，下一 request 重新判断，不是永久关闭 DMA。
-`meson_mmc_start_cmd()` 使用连续 bounce DMA，写前 `sg_copy_to_buffer()`、读后
-`sg_copy_from_buffer()`，增加相应方向一次 CPU 复制。`dev_warn_once()` 不能给出回退次数。
-无回退字节/次数及 CPU 对照，不能量化其吞吐损失。
-上游 `e085b51c74cc99334c290f7c67d039c95f788239` 已加入长度对齐保护，
-见[原邮件](https://lore.kernel.org/r/20201218075312.67338-1-lebed.dmitry@gmail.com)，不能删除检查消除日志。
-
-厂商 common_drivers `563cff9dab2c8cd44590bf57c8ffaa7e2dae35e1` 的实际主机实现
-`meson-gx-mmc.c`只检查8-byte SG offset，没有相同length检查。
-两边DT均4-bit、SDR50/104、200MHz上限，供电/主机实现不完全相同；7.3已含T7
-intf3 tuning，厂商也有`use_intf3_tuning`，静态上限不证明运行时实际时钟相同。
+未检索到对应本次事件的后续最小修复，lore访问失败不证明不存在。
+SDIO 112/256告警仅使当前request改用bounce DMA、增加CPU复制，不永久关闭DMA；
+warn_once不能给出回退次数，缺计数/CPU对照，不能量化损失。上游对齐保护
+`e085b51c74cc99334c290f7c67d039c95f788239`已包含，
+见[原邮件](https://lore.kernel.org/r/20201218075312.67338-1-lebed.dmitry@gmail.com)。
+厂商主机无相同length检查；DT与T7 intf3策略近似不代表全部运行配置相同。
 
 ## 新固件崩溃：停止 7.3 重试
 
@@ -168,3 +152,22 @@ checkpatch零错误/警告；主仓全量unittest 490项、12项跳过，其余�
 需要继续修复/取证的结论：固件崩溃仍存在，应继续定位精确触发命令/状态时序；
 实际txstatus值仍缺，不能选定状态语义或行为补丁；吞吐尚未达到95%验收。
 本轮到此停止，不实现额外修复、不重复触发崩溃、不推送。
+
+## 第三轮：纯离线输入/核心/初始化对照
+
+没有申请板票或连接板子（0秒），VM代码/已部署模块未改。
+为满足单条记录12KB限制，详细文件核对表、12核心表、初始化矩阵和实验/修复草案见
+[第三轮配套记录](2026-11-02-wifi-txstatus-offline.md)。
+
+三份RAM的SI core arrays与EROM CIA/CIB交叉确认：0x18001000为D11 rev82，
+wrapper=0x18101000；0x3fc/0x3fe对应公开定义的PHY间接地址/数据端口。
+这证明地址归属，尚未证明trap时核心断电或哪条主机命令致错。
+两驱动实际版本串相同；厂商日志确认bin/txt/CLM路径及pm2_sleep_ret=2000配置，
+但缺本轮厂商bin和两侧txt/CLM独立哈希，已列下次读取的具名文件，未冒充相同证明。
+
+崩溃假设优先查连接/扫描/PM状态切换，再查D11下载前reset差异；吞吐优先查
+copy36/SG32、TX/RX调度预算与MMC路径。frameburst/txbf两侧均已启用，
+两侧PM路径都可能设2000，厂商完整PMU初始化又被BCMDONGLEHOST条件排除，
+这些不能当作主线缺项照抄。每个假设均附单变量实验和成立后才采用的修复草案；
+未来窗口合计预算≤30分钟，收到“可以上板”之前不执行。
+部署备份目录尚存在，按协调者要求留待下次获准窗口删除并补记，不改写历史收据。
