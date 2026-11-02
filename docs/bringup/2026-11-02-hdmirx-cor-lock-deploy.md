@@ -123,13 +123,12 @@ initramfs 失败后核对 FullKvm 无 INITRD 字段，不再构建无用 initram
 
 ## 协调者锁更新
 
-主仓本轮只新增 overlay 部署收据，不修改 sources.toml 或原不可变正式包清单。
-通过后协调者可快进正式 linux 分支至 `f2e8424261af18690ee1fbf2c032365da9185568`，
-更新 `kernel.revision` 为该值；Image 的 image_source_revision、build ID、原包摘要保持原值。
-retained_runtime 的 default_boot 改 FullKvm，kernels_manifest_sha256 用部署收据值，
-新增 module overlay 来源、路径、哈希、GNU ID 与部署收据引用。
-旧 retained_runtime 的 manifest_sha256/live_proof/installed_proof 描述原完整包，不能直接当本次现状证明；
-引用本次 overlay 收据补足，不能把本次安装哈希写回原 tar 包来源锁。
+按主仓提交 `e56261e`，`kernel.revision` 跟随正式分支目标
+`f2e8424261af18690ee1fbf2c032365da9185568`，正式分支快进由协调者完成。
+`tested_build` 与 `retained_runtime` 的原字段保持原整包证明不变。
+当前部署由 `retained_runtime.module_overlays.t7_hdmirx` 及部署收据描述，
+`tests/test_uhd5_lock.py` 校验收据与锁的一致性。
+
 未解决：txstatus 原因、历史 Wi-Fi 固件崩溃根因、真实 P2P、运动场景及超过 10 分钟的稳定性未验。
 
 提交前主仓 `python3 -m unittest discover -s tests -p 'test_*.py'`：489 项，
