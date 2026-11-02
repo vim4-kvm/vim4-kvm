@@ -283,6 +283,10 @@ def main():
             return child.returncode
         finally:
             if child is not None and child.poll() is None:
+                # The child owns rollback. Keep its ticket until it exits even
+                # when another interrupt arrives while the parent is waiting.
+                signal.signal(signal.SIGINT, signal.SIG_IGN)
+                signal.signal(signal.SIGTERM, signal.SIG_IGN)
                 os.killpg(child.pid, signal.SIGTERM)
                 child.wait()
             queue.release(token)

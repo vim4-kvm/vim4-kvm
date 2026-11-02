@@ -1,12 +1,12 @@
 # 内核与驱动
 
 当前7.3见[uhd6正式构建、验收与安装](../bringup/2026-10-31-uhd6-formal.md)：
-正式源码HEAD为f951e2d24d32，tested_build和保留运行时均为uhd6；九类按改动范围汇总通过、600秒运动通过，5.15仍运行且默认。
+正式源码HEAD为f951e2d24d32，tested_build和保留运行时均为uhd6；九类按改动范围汇总通过、600秒运动通过，[11 月 1 日安装记录](../bringup/2026-11-01-hdr10-r14e-installed.md)确认当前默认运行 uhd6/kbase。
 
 VDIN HDR2主题候选uhd4完整构建见[集成门禁](../bringup/2026-10-31-hdr2-uhd4-gate.md)，
 [新PQ窗口](../bringup/2026-10-31-hdr2-mcp-ice-pq.md)已恢复MCP与接收、通过PQ/DMA/VUI/4K60；
 [uhd4r3恢复修复](../bringup/2026-10-31-hdr2-recovery.md)把双向中位数拉到约1.24秒，
-用户已认可两栈长尾不构成三次样本内退步；[正式uhd4短烟测](../bringup/2026-10-31-uhd4-formal-smoke.md)通过并推广源码/构建锁，5.15仍默认。HLG已实现，无真实源未验。
+用户已认可两栈长尾不构成三次样本内退步；[正式uhd4短烟测](../bringup/2026-10-31-uhd4-formal-smoke.md)通过并推广源码/构建锁，当时仍默认 5.15。HLG已实现，无真实源未验。
 
 7.3通用内存/拷贝与锁调试配置差异、离线微基准及下一窗口见[内存拷贝审查](../memory-copy-audit.md)。
 
