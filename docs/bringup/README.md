@@ -19,6 +19,8 @@
 
 ## 2026-11-02
 
+- [BCM43752 扫描信道与 MPC 交替对照](2026-11-02-wifi-scan-pairs.md) — kernel network board；首次扫描、固件年龄、请求与 BSS 信道
+
 - [BCM43752 连接崩溃的扫描轨迹](2026-11-02-wifi-scan-trace.md) — kernel network board；主机命令时序、PHY 数据端口与扫描 MPC 实验
 
 - [Wi-Fi 激活分组与聚合上限对照](2026-11-02-wifi-pm-glom.md) — kernel network board；11.90分钟、输入同哈希、PM/P2P因果未确立、状态7、32/36负结果、恢复FullKvm
