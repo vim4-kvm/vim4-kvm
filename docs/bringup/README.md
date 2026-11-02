@@ -19,6 +19,8 @@
 
 ## 2026-11-02
 
+- [BCM43752 连接崩溃的扫描轨迹](2026-11-02-wifi-scan-trace.md) — kernel network board；主机命令时序、PHY 数据端口与扫描 MPC 实验
+
 - [Wi-Fi 激活分组与聚合上限对照](2026-11-02-wifi-pm-glom.md) — kernel network board；11.90分钟、输入同哈希、PM/P2P因果未确立、状态7、32/36负结果、恢复FullKvm
 - [BCM43752 第三轮离线差异与实验草案](2026-11-02-wifi-txstatus-offline.md) — kernel network offline；D11核心表、固件输入缺口、初始化矩阵、≤30分钟实验预算，未占板
 - [Wi-Fi TX status、固件崩溃与厂商对照](2026-11-02-wifi-txstatus.md) — kernel network deployment；日志overlay、AXI trap再现、厂商双向600秒、旧上传比85.68%，已恢复FullKvm
