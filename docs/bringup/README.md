@@ -19,6 +19,8 @@
 
 ## 2026-11-02
 
+- [BCM43752 下载余差与 SDIO 接收对齐](2026-11-02-wifi-rx-alignment.md) — kernel network board；同期双内核下载、接收中转复制探针与固件对齐对照
+
 - [BCM43752 下载吞吐与接收处理 CPU](2026-11-02-wifi-rx-cpu.md) — kernel network board；同一连接交替切换 wlan0 RPS，比较 SDIO 与 TCP 接收路径
 
 - [BCM43752 固件版本与 5.15 驱动协议对照](2026-11-02-wifi-fw217.md) — kernel network board；AP6275S 程序、SAE 管理密钥、SDIO 发送窗口和 discovery
