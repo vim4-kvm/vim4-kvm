@@ -88,6 +88,10 @@ def phase_state(backend):
         state['clients'] = api_status('stream/status')['clients']
         state['webrtc_sessions'] = api_status('webrtc/status')['session_count']
         state['uu_desktop_sessions'] = len(api_status('config/uu-remote')['status']['sessions'])
+        state['vnc_connections'] = api_status('config/vnc/status')['connection_count']
+        state['recording'] = api_status('recording')['recording']
+        state['rtsp_service'] = api_status('config/rtsp/status')['service_status']
+        state['rtsp_connections'] = '未核实'
         state['external_subscriber_count'] = '未核实'
     return state
 

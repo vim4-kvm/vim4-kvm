@@ -124,13 +124,18 @@ class PerformanceGateTest(unittest.TestCase):
 
     def test_phase_state_separates_uu_desktop_peers_from_webrtc_clients(self):
         api = {'stream/status': {'clients': 0}, 'webrtc/status': {'session_count': 0},
-               'config/uu-remote': {'status': {'sessions': [{'id': 'private-peer'}]}}}
+               'config/uu-remote': {'status': {'sessions': [{'id': 'private-peer'}]}},
+               'config/vnc/status': {'connection_count': 2}, 'recording': {'recording': True},
+               'config/rtsp/status': {'service_status': 'running'}}
         with patch.object(sensors, 'api_status', side_effect=api.__getitem__), \
                 patch.object(sensors, 'receiver_state', return_value={'signal': True}), \
                 patch.object(sensors.subprocess, 'check_output', return_value='active'):
             state = sensors.phase_state('edge')
         self.assertEqual(state['uu_desktop_sessions'], 1)
         self.assertEqual(state['webrtc_sessions'], 0)
+        self.assertEqual((state['vnc_connections'], state['recording'], state['rtsp_service']),
+                         (2, True, 'running'))
+        self.assertEqual(state['rtsp_connections'], '未核实')
         self.assertEqual(state['external_subscriber_count'], '未核实')
         self.assertNotIn('private-peer', repr(state))
 

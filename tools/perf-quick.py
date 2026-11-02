@@ -165,6 +165,10 @@ def native(backend, output, reserve_seconds=0):
                 lambda: bw.ssh('vim4', 'sudo -n systemctl start one-kvm', timeout=40)) if active else None)])
 
 
+class PMCancelled(RuntimeError):
+    """Interrupt a subprocess wait without being treated as a retryable EINTR."""
+
+
 @contextmanager
 def pm_cancellation():
     # Short mutations and rollback run to completion. Interrupt only waits
@@ -174,7 +178,7 @@ def pm_cancellation():
 
     def check():
         if cancelled:
-            raise InterruptedError('PM window cancelled')
+            raise PMCancelled('PM window cancelled')
 
     def receive(signum, frame):
         nonlocal cancelled
@@ -254,7 +258,7 @@ def run_pm_phase(args, check, wait):
     deadline = math.ceil((frames + 120) / 57) + 20
     work_timeout = deadline + 35 if load else seconds + 10
     # Stop unit, end probe, restore both policies/service/API, fetch evidence, remove directory.
-    finish_budget = 180
+    finish_budget = 210
     queue, ticket = bw.require_board()
     require_budget(queue, ticket, work_timeout + finish_budget + 120)
     release = pm_ssh('uname -r').strip()
@@ -280,9 +284,13 @@ def run_pm_phase(args, check, wait):
             if not (hdmi['signal'] and not hdmi.get('interlaced') and (hdmi['width'], hdmi['height']) == (3840, 2160)
                     and abs(hdmi['refreshHz'] - 60) <= 0.5):
                 raise RuntimeError(f'{point}: expected locked 3840x2160p60, got {hdmi}')
-            if state['one_kvm'] != service or (service == 'active' and
-                    any(state[key] != 0 for key in ('clients', 'webrtc_sessions', 'uu_desktop_sessions'))):
-                raise RuntimeError(f'{point}: expected one-kvm {service} with no viewers, got {state}')
+            if state['one_kvm'] != service:
+                raise RuntimeError(f'{point}: expected one-kvm {service}, got {state}')
+            if service == 'active':
+                consumers = ('clients', 'webrtc_sessions', 'uu_desktop_sessions', 'vnc_connections')
+                if (any(state[key] != 0 for key in consumers) or state['recording'] is not False
+                        or state['rtsp_service'] != 'stopped'):
+                    raise RuntimeError(f'{point}: cannot confirm idle video consumers, got {state}')
         except Exception as error:
             phase[point + '_error'] = str(error)
             raise
@@ -294,17 +302,51 @@ def run_pm_phase(args, check, wait):
         pm_ssh(f'echo {value} | sudo -n tee {path} >/dev/null && test "$(cat {path})" = {value}')
 
     def restart():
+        if started and not unit_stopped:
+            raise RuntimeError(f'Confirm {unit}.service stopped before restarting one-kvm')
         pm_ssh('sudo -n systemctl start one-kvm')
         pm_ready()
 
     def stop_work():
-        pm_ssh(f'if [ "$(systemctl show {unit}.service -p LoadState --value)" != not-found ]; '
-               f'then sudo -n systemctl stop {unit}.service || exit 1; fi; touch {remote}/stopped')
+        nonlocal unit_stopped
+        for _ in range(2):
+            require_budget(queue, ticket, 15)
+            try:
+                pm_ssh(f'touch {remote}/stopped && sudo -n systemctl stop {unit}.service', timeout=8)
+            except (OSError, subprocess.SubprocessError):
+                pass  # A collected unit also rejects stop. Query its actual state.
+            require_budget(queue, ticket, 6)
+            try:
+                status = pm_ssh(f'systemctl show {unit}.service -p LoadState -p ActiveState || test $? = 4',
+                                timeout=5)
+            except (OSError, subprocess.SubprocessError):
+                continue
+            fields = dict(line.split('=', 1) for line in status.splitlines() if '=' in line)
+            if fields.get('LoadState') in ('not-found', 'loaded') and fields.get('ActiveState') == 'inactive':
+                unit_stopped = True
+                return
+        raise RuntimeError(f'Could not verify {unit}.service stopped; retain workload evidence')
+
+    def end_state():
+        try:
+            require_budget(queue, ticket, 15)
+            if not unit_stopped:
+                raise RuntimeError(f'{unit}.service termination unconfirmed')
+        except (OSError, ValueError, RuntimeError) as error:
+            phase.update(end='缺测', end_error=str(error))
+            save()
+            raise
+        check_state('end', service)
 
     def scp(*paths):
         subprocess.run(['scp', *paths], check=True, timeout=30, start_new_session=True)
 
     def finish_files():
+        if started and not unit_stopped:
+            (output / 'recovery-required.json').write_text(json.dumps(dict(
+                ticket=ticket, remote=remote, recovery=f'Confirm {unit}.service stopped, then verify '
+                'the governors and one-kvm state against phase.json before resuming service')))
+            return  # Keep the working directory for the recovery owner.
         if started:
             require_budget(queue, ticket, 45)
             names = ['pm.jsonl', 'stdout'] + ([args.phase + '.json'] if load else [])
@@ -315,6 +357,7 @@ def run_pm_phase(args, check, wait):
 
     restore = []
     started = False
+    unit_stopped = False
     service = 'active' if args.phase == 'signal' else 'inactive'
     try:
         phase['retained_remote'] = remote
@@ -362,7 +405,7 @@ def run_pm_phase(args, check, wait):
             actions = []
             if started:
                 actions += [('stop remote workload', lambda: restore_owned(queue, ticket, 15, output,
-                               'stop ' + unit, stop_work)), ('qualify phase end', lambda: check_state('end', service))]
+                               'stop ' + unit, stop_work)), ('qualify phase end', end_state)]
             actions += [(name, lambda n=name, a=action: restore_owned(queue, ticket, 45, output, n, a))
                         for name, action in reversed(restore)]
             if service == 'active' and started:

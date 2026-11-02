@@ -4,6 +4,8 @@ import json
 import os
 import re
 import signal
+import subprocess
+import threading
 from pathlib import Path
 import tempfile
 import unittest
@@ -15,6 +17,22 @@ ROOT = Path(__file__).resolve().parents[1]
 spec = importlib.util.spec_from_file_location('quick', ROOT / 'tools/perf-quick.py')
 quick = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(quick)
+
+
+class PMCancellationTest(unittest.TestCase):
+    def test_real_subprocess_wait_enters_rollback_promptly(self):
+        for sig in (signal.SIGTERM, signal.SIGINT):
+            with self.subTest(signal=sig), self.assertRaises(quick.PMCancelled), quick.pm_cancellation() as (_, wait):
+                timer = threading.Timer(.2, os.kill, args=(os.getpid(), sig))
+                timer.start()
+                start = time.monotonic()
+                try:
+                    wait(lambda: subprocess.check_output(['/bin/sleep', '6'], timeout=8,
+                                                         text=True, start_new_session=True))
+                    self.fail('cancelled subprocess wait returned normally')
+                finally:
+                    timer.join()
+                    self.assertLess(time.monotonic() - start, 2)
 
 
 class PMWindowTest(unittest.TestCase):
@@ -29,7 +47,8 @@ class PMWindowTest(unittest.TestCase):
         self.queue.sampling.side_effect = lambda _, on: self.events.append(('sampling', on))
         self.service = 'active'
         self.hdmi = dict(signal=True, width=3840, height=2160, refreshHz=59.94)
-        self.viewers = dict(clients=0, webrtc_sessions=0, uu_desktop_sessions=0)
+        self.viewers = dict(clients=0, webrtc_sessions=0, uu_desktop_sessions=0,
+                            vnc_connections=0, recording=False, rtsp_service='stopped')
         self.governor = 'performance'
         self.cancel = None
         self.encoding_error = False
@@ -37,6 +56,10 @@ class PMWindowTest(unittest.TestCase):
         self.api_error = False
         self.copy_error = False
         self.end_signal_loss = False
+        self.stop_failure = False
+        self.unit_status = 'LoadState=not-found\nActiveState=inactive'
+        self.lose_lease = False
+        self.remaining_after_stop = None
         for target, attr, effect in [(quick.bw, 'require_board', lambda: (self.queue, 'ticket')),
                                      (quick.bw, 'ssh', self.ssh), (quick.subprocess, 'run', self.copy)]:
             mock = patch.object(target, attr, side_effect=effect)
@@ -57,9 +80,17 @@ class PMWindowTest(unittest.TestCase):
             self.service = 'inactive'
         if command == 'sudo -n systemctl start one-kvm':
             self.service = 'active'
+        if 'sudo -n systemctl stop p0-2-pm-' in command and self.stop_failure:
+            raise subprocess.TimeoutExpired(command, 8)
+        if command.startswith('systemctl show p0-2-pm-'):
+            if self.remaining_after_stop is not None:
+                self.item['seconds'] = self.remaining_after_stop
+            return self.unit_status
         if 'tee /policy4' in command and self.short_lease:
             self.item['seconds'] = 125
         if command.startswith('timeout ') and '/result' in command:
+            if self.lose_lease:
+                self.item['state'] = 'expired'
             if self.end_signal_loss:
                 self.hdmi['signal'] = False
             if self.cancel:
@@ -87,11 +118,14 @@ class PMWindowTest(unittest.TestCase):
 
     def test_idle_rejects_unlocked_or_external_viewers_before_sampling(self):
         self.args.phase = 'idle'
-        for i, viewer in enumerate(('signal_loss', 'webrtc_sessions', 'uu_desktop_sessions')):
+        for i, viewer in enumerate(('signal_loss', 'webrtc_sessions', 'uu_desktop_sessions',
+                                    'vnc_connections', 'recording', 'rtsp_service')):
             self.args.output = self.args.output.parent / str(i)
             self.hdmi['signal'] = viewer != 'signal_loss'
             self.viewers.update(webrtc_sessions=int(viewer=='webrtc_sessions'),
-                                uu_desktop_sessions=int(viewer=='uu_desktop_sessions'))
+                                uu_desktop_sessions=int(viewer=='uu_desktop_sessions'),
+                                vnc_connections=int(viewer=='vnc_connections'), recording=viewer=='recording',
+                                rtsp_service='running' if viewer=='rtsp_service' else 'stopped')
             with self.subTest(reason=viewer), self.assertRaisesRegex(RuntimeError, 'preflight'):
                 quick.pm_phase(self.args)
             self.assertTrue(self.events[-1].startswith('rm -rf -- /var/tmp/p0-2-pm-'))
@@ -114,9 +148,9 @@ class PMWindowTest(unittest.TestCase):
             self.events.clear()
             self.args.output = self.args.output.parent / sig.name
             self.cancel = sig
-            with self.subTest(signal=sig), self.assertRaises(InterruptedError):
+            with self.subTest(signal=sig), self.assertRaises(quick.PMCancelled):
                 quick.pm_phase(self.args)
-            stop = self.event('if [ "$(systemctl show')
+            stop = self.event('systemctl show p0-2-pm-')
             self.assertLess(stop, self.event('echo performance'))
             self.assertLess(self.event('echo performance'), self.event('sudo -n systemctl start one-kvm'))
             self.assertLess(self.event('timeout 20'), self.events.index(('sampling', False)))
@@ -178,10 +212,46 @@ class PMWindowTest(unittest.TestCase):
             if enabled:
                 os.kill(os.getpid(), signal.SIGTERM)
         self.queue.sampling.side_effect = sampling
-        with self.assertRaises(InterruptedError):
+        with self.assertRaises(quick.PMCancelled):
             quick.pm_phase(self.args)
         self.queue.sampling.assert_called_with('ticket', False)
         self.assertNotIn('sudo -n systemctl stop one-kvm', self.events)
+
+    def test_failed_stop_requires_confirmed_inactive_before_restart(self):
+        self.stop_failure = True
+        for i, status in enumerate(('LoadState=loaded\nActiveState=active', '', 'LoadState=not-found\nActiveState=inactive')):
+            self.events.clear()
+            self.service = 'active'
+            self.unit_status = status
+            self.args.output = self.args.output.parent / str(i)
+            if i == 2:
+                quick.pm_phase(self.args)
+                self.assertEqual(self.service, 'active')
+                continue
+            with self.subTest(status=status), self.assertRaises(ExceptionGroup):
+                quick.pm_phase(self.args)
+            self.assertEqual(sum(str(e).startswith('systemctl show p0-2-pm-') for e in self.events), 2)
+            self.assertNotIn('sudo -n systemctl start one-kvm', self.events)
+            self.assertIn('Confirm p0-2-pm-', (self.args.output/'recovery-required.json').read_text())
+            self.assertIn('retained_remote', json.loads((self.args.output/'phase.json').read_text()))
+
+    def test_lost_ticket_skips_end_probe_and_all_remote_cleanup(self):
+        self.lose_lease = True
+        with self.assertRaises(ExceptionGroup):
+            quick.pm_phase(self.args)
+        monitor = next(i for i, event in enumerate(self.events) if str(event).startswith('timeout ') and '/result' in event)
+        self.assertEqual(self.events[monitor+1:], [('sampling', False)])
+        self.assertEqual(json.loads((self.args.output/'phase.json').read_text())['end'], '缺测')
+
+    def test_end_probe_checks_budget_even_after_stop_confirmed(self):
+        self.remaining_after_stop = 5
+        with self.assertRaises(ExceptionGroup):
+            quick.pm_phase(self.args)
+        stop = self.event('systemctl show p0-2-pm-')
+        self.assertEqual(self.events[stop+1:], [('sampling', False)])
+        phase = json.loads((self.args.output/'phase.json').read_text())
+        self.assertEqual(phase['end'], '缺测')
+        self.assertIn('cannot cover', phase['end_error'])
 
 
 class QuickRecoveryTest(unittest.TestCase):

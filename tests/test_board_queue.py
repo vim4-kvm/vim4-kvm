@@ -163,6 +163,36 @@ class QueueTests(unittest.TestCase):
         with self.assertRaises(ValueError):
             self.enqueue(minutes=31)
 
+    def test_run_holds_private_ticket_during_repeated_cancel(self):
+        child = """
+import os, signal, sys
+from pathlib import Path
+root = Path(sys.argv[1])
+def rollback(signum, frame):
+    (root / 'rolling-back').touch()
+    sys.stdin.readline()
+    raise SystemExit(1)
+signal.signal(signal.SIGTERM, rollback)
+(root / 'ready').write_text(os.environ['BOARD_TICKET'])
+signal.pause()
+"""
+        process = subprocess.Popen(self.run_tool([sys.executable, '-c', child, str(self.root)]),
+                                   stdin=subprocess.PIPE, stderr=subprocess.DEVNULL)
+        self.processes.append(process)
+        try:
+            ticket = until(lambda: (self.root/'ready').exists() and (self.root/'ready').read_text())
+            process.send_signal(signal.SIGINT)
+            until((self.root/'rolling-back').exists)
+            process.send_signal(signal.SIGINT)
+            process.send_signal(signal.SIGTERM)
+            with self.assertRaises(subprocess.TimeoutExpired):
+                process.wait(timeout=.25)
+            self.assertEqual(self.state(ticket), 'held')
+        finally:
+            process.stdin.close()  # let the child finish rollback
+        self.assertNotEqual(process.wait(timeout=5), 0)
+        self.assertEqual(self.state(ticket), 'released')
+
 
 if __name__ == '__main__':
     unittest.main()
