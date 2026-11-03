@@ -17,6 +17,10 @@
 
 以下保留完整日期索引。这些里程碑记录的是历史证据；查找当前架构和约束时，仍应先读对应子系统入口。
 
+## 2026-11-03
+
+- [Wave5 单帧 VBV 与 HEVC 帧级码控对照](2026-11-03-wave5-single-frame-vbv.md) — video board deployment；4K60 静态带宽、分带质量、接入、PLI 与延迟。
+
 ## 2026-11-02
 
 - [Wave5 静态画面行刷新](2026-11-02-wave5-refresh.md) — video board；4K 细节图、逐行带质量、按需 IDR 与丢包恢复
