@@ -1,8 +1,8 @@
 # VIM4 新内核基线
 
 2026-11-02：板子默认 FullKvm/kbase，运行正式源码 `52b95c8493264` 的 uhd7。
-本次验证覆盖 BCM43752 独立中断、eMMC 读回及 HID/UDC。HDMI 无输入，
-画面与编码未验证；测量条件和安装身份见 [uhd7 正式部署](bringup/2026-11-02-wifi-sdio-formal.md)。
+本次验证覆盖 BCM43752 独立中断、eMMC 读回及 HID/UDC；信号恢复后补测 4K60 H.265 接收
+30 秒通过（低运动画面）；测量条件和安装身份见 [uhd7 正式部署](bringup/2026-11-02-wifi-sdio-formal.md)。
 
 当前开发分支已接通 HDMI 输入、VDIN 直接 DMA、Wave5 H.264/H.265、硬件 JPEG 与音频，
 并部署完整 manager 和四种 KVM 的双内核运行时；5.15 可保留启动，共用同一应用的数据。

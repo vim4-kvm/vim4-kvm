@@ -169,3 +169,6 @@ receiver复用r17 `packaging/hdr2-pq/video-recovery.mjs` 的独立视频页面�
 优先发送literal host candidates；仍遇mDNS时才用显式 `--local-ip` 的接收机LAN地址替换，
 不能误用板IP；不修改生产ICE配置。50ms是目标采样间隔，JSON保留实际耗时，不宣称硬实时。
 接收与baseline自动开启/关闭sampling；不测声音，不发键鼠。
+Mac 的本地网络权限可能只拦 Node（`EHOSTUNREACH`，curl 正常）。此时用
+`ssh -L 18081:127.0.0.1:8081 vim4` 转发 One-KVM 回环后端，传 `--url http://127.0.0.1:18081`；
+回环地址按直连后端跳过管理面板登录，不能把隧道接到 8080 网关（offer 会 401）。
