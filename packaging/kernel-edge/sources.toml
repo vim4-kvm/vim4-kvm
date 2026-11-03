@@ -3,7 +3,7 @@
 # Current formal source and installed build; retained uhd7/uhd6 receipts follow.
 [kernel]
 url = "https://github.com/vim4-kvm/linux.git"
-branch = "kernel-731"
+branch = "vim4-kvm-7.3"
 revision = "25110086de2ef6aa9564a31a7c694eca893fd423"
 tree = "235d7aaab96f0a9f8657076d691c9009daabb7f5"
 upstream_url = "https://github.com/gregkh/linux.git"
