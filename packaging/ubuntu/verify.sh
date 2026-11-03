@@ -35,6 +35,8 @@ if has vim4-kvm-board; then
     PYTHONPATH=/tmp/package-check/root/usr/lib/vim4-kvm/python python3 -c 'import vim4media, vim4video, vim4boot'
 fi
 if has vim4-amlvenc; then
+    GST_PLUGIN_PATH=/tmp/package-check/root/usr/lib/aarch64-linux-gnu/gstreamer-1.0 \
+        GST_REGISTRY=/tmp/package-check/rate-registry.bin gst-inspect-1.0 vim4ptsrate >/dev/null
     dpkg-deb -f ./vim4-amlvenc_*.deb Provides | grep -qw vim4-wave5-api-1
     dpkg-deb -f ./vim4-amlvenc_*.deb Provides | grep -qw vim4-hevc-hdr-api-1
     dpkg-deb -f ./vim4-amlvenc_*.deb Depends | grep -qw vim4-hdr-scale-api-1

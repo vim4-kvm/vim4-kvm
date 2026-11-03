@@ -46,7 +46,7 @@ def package(name, version, output, populate, depends):
             script.write('sync\n')
         provides = 'Provides: vim4-media-api-1, vim4-media-transfer-api-1, vim4-runtime-api-1, vim4-dma-capture-api-1\n' if name == 'vim4-kvm-board' else ''
         if name == 'vim4-amlvenc':
-            provides = 'Provides: vim4-wave5-api-1, vim4-hevc-hdr-api-1, vim4-hevc-quality-api-1\n'
+            provides = 'Provides: vim4-wave5-api-1, vim4-pts-rate-api-1, vim4-hevc-hdr-api-1, vim4-hevc-quality-api-1\n'
         if name == 'vim4-vfmcap':
             provides = 'Provides: vim4-vdin1-api-1, vim4-hdr-scale-api-1, vim4-sdr-scale-api-1\n'
         if name == 'vim4-manager':
@@ -128,6 +128,9 @@ def capture(stage):
 
 
 def encoder(stage):
+    # Discover the same PTS limiter in both the vendor and mainline runtimes.
+    copy(ROOT / 'gst-plugin-venc/wave5/libgstvim4rate.so', stage,
+         'usr/lib/aarch64-linux-gnu/gstreamer-1.0/libgstvim4rate.so', 0o644)
     mainline = 'usr/lib/vim4-kvm/mainline-gstreamer-1.0/'
     copy(ROOT / 'gst-plugin-venc/wave5/libgstvim4wave5.so', stage, mainline + 'libgstvim4wave5.so', 0o644)
     copy(ROOT / 'build/mainline-gstreamer/libgstvideo4linux2.so', stage, mainline + 'libgstvideo4linux2.so', 0o644)
@@ -341,7 +344,7 @@ PACKAGES = {
         ('vim4-vfmcap', capture, GST + ', vim4-dma-capture-api-1, libvulkan1, libge2d (= 0.4-202406)'),
         ('vim4-amlvenc', encoder, GST + ', vim4-hdr-scale-api-1, vim4-sdr-scale-api-1, libdrm2, libwayland-client0, libwayland-server0, libstdc++6, libamvenc (= 0.2-202406~noble), libge2d (= 0.4-202406), gst-aml-drmbufferpool-plugins (= 0.2-202311)')],
     'nanokvm': [
-        ('vim4-nanokvm', application, GST + ', libopus0, sudo, python3, dosfstools, curl, ca-certificates, picocom, network-manager, avahi-daemon, openssh-server, chrony, alsa-utils, gstreamer1.0-alsa, gstreamer1.0-plugins-base, gstreamer1.0-plugins-good, gstreamer1.0-plugins-bad, gstreamer1.0-libav, ' + PLATFORM)],
+        ('vim4-nanokvm', application, GST + ', vim4-pts-rate-api-1, libopus0, sudo, python3, dosfstools, curl, ca-certificates, picocom, network-manager, avahi-daemon, openssh-server, chrony, alsa-utils, gstreamer1.0-alsa, gstreamer1.0-plugins-base, gstreamer1.0-plugins-good, gstreamer1.0-plugins-bad, gstreamer1.0-libav, ' + PLATFORM)],
     'jetkvm': [
         ('vim4-jetkvm', jetkvm, 'libc6 (>= 2.38), libglib2.0-0t64, libgstreamer1.0-0 (>= 1.24), '
          'libgstreamer-plugins-base1.0-0 (>= 1.24), gstreamer1.0-plugins-bad, ' + PLATFORM + ', '
