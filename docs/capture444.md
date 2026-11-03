@@ -17,3 +17,54 @@ Main/yuv420p；不能用输入格式或插件 caps 证明真彩。插件已移�
 4:4:4/4:2:2/10-bit profile 声明。软件编码未达到 4K60，详见上板记录。
 驱动的 `test_lifecycle.c` 用于独占测试 close、STREAMOFF、REQBUFS(0) 后的
 DMA-BUF 生命周期；测试结束应确认模块引用归零并可正常卸载。
+
+## 7.3 原生采集候选
+
+`yuv444` 候选在 direct DMA 模式新增标准 `V4L2_PIX_FMT_YUV24`（`YUV3`），
+单平面 Y/Cb/Cr，每像素三字节、stride 为 `ALIGN(width*3,16)`。
+VDIN 分量选择器反转 packed MIF 的 2/1/0 输出顺序，旁路矩阵、HDR2 和缩放，
+保留输入尺寸。此为源码与宿主夹具验证，真实字节序、色度和4K60仍待上板。
+
+仅准入 dynamic RX 的 SDR YCbCr444/8，支持601/709及full/limited，按源报告色彩。
+RGB、420、422、10/12bit及HDR输入返回 `EOPNOTSUPP`；失锁返回链路错误。
+TRY/S_FMT和STREAMON分别检查，运行中输入变化沿既有lease/source-change停流。
+旧内核缺YUV3或源不合格时显式失败，调用者须重新选择原有采集格式。
+原有NV12/RGB24/AMLY选择规则保留，不增加服务级格式开关。
+
+4K为11520×2160=24,883,200字节，192MiB预算扣除discard后最多7个用户缓冲，
+8帧合计199,065,600字节。direct DMA的常驻discard容量由十位最大帧提升为
+三字节最大帧，4K增加4,147,200字节；NV12/AMLY的预算上限不变。
+沿用vb2 coherent DMA及现有生命周期，不新增CPU重排或像素拷贝。
+
+标准GStreamer路径如下，`DEVICE`须由V4L2 QUERYCAP识别为T7采集节点。
+必须同时部署私有GStreamer补丁链新加的`gstreamer-v4l2-yuv24.patch`，它补齐
+1.24.2的YUV24/v308枚举、排序和双向协商；旧插件在链接阶段明确失败。
+无需videoconvert或新source元素。
+
+```sh
+gst-launch-1.0 v4l2src device="$DEVICE" io-mode=mmap num-buffers=3600 \
+  ! video/x-raw,format=v308,width=3840,height=2160 \
+  ! fakesink sync=false
+capture-integrity --v4l2 "$DEVICE" 3600 /tmp/yuv444-last.raw
+```
+
+`capture-integrity`来自gst-plugin-vfmcap的Meson构建，`--v4l2`复用三处帧号与横纵
+色度检查，最后一帧保存为紧密Y/Cb/Cr。该路径直接映射完整帧并采样标记，
+只在保存时逐行复制，计时表示raw→appsink交付，不表示每帧CPU全量读取吞吐。
+5.15不带该选项的vfmcapsrc路径保留原重排测试。
+
+### 合并窗口中的15分钟上板清单
+
+候选构建与工具编译在取板前完成，由协调者部署匹配完整包。
+
+| 分钟 | 步骤与资格 |
+|---|---|
+| 0–2 | 核对候选身份、direct_dma、CMA/taint、采集节点和YUV3枚举；停止其他采集消费者 |
+| 2–4 | M6 3840×2160p60、HDR关、1920×1080 HiDPI，运行既有capture-pattern.swift；实读AVI space=2、depth code=0/4并确认SDR。只有RGB则记录跳过444验收，验证YUV3请求失败后恢复NV12 |
+| 4–7 | 跑上述raw交付和3600帧appsink完整性检查，保存stride/sizeimage、帧率/最大间隔、帧号和色度错误计数及末帧；目标约60fps、所有完整性错误为0 |
+| 7–10 | 有界重复启停及REQBUFS释放，核对每轮CMA回收；显式申请过多缓冲确认上限7、CREATE_BUFS不突破预算；停流且持有导出fd时验证帧仍可读，最后关闭fd |
+| 10–12 | 释放池后YUV3→NV12→YUV3，再回NV12；如M6能提供RGB则补测拒绝，不强行制造其他格式；核对旧SDR/PQ主路径图像和日志 |
+| 12–15 | 恢复进入前源模式、应用和采集状态，保存CMA/taint/错误日志，由协调者完成合并窗口恢复 |
+
+无法获得YCbCr444/8就保留未验状态。HLG、隔行、像素重复、真12bit、444编码、
+JPEG444和应用UI均不属于此候选。

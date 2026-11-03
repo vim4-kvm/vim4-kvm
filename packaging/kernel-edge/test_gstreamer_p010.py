@@ -20,11 +20,25 @@ def main():
     fixture = r'''
 #include <gst/video/video.h>
 #include "ext/videodev2.h"
+typedef struct { GstObject *dbg_obj; } GstV4l2Object;
+static guint32 available_fourcc;
+static struct v4l2_fmtdesc *
+gst_v4l2_object_choose_raw_layout (GstV4l2Object *object, guint32 fourcc,
+    guint32 noncontiguous, gboolean raw)
+{
+  static struct v4l2_fmtdesc format;
+  (void)object; (void)noncontiguous;
+  g_assert_true(raw);
+  format.pixelformat = fourcc;
+  return fourcc == available_fourcc ? &format : NULL;
+}
 '''
     fixture += '\nstatic GstVideoFormat\n' + function(
         text, 'gst_v4l2_object_v4l2fourcc_to_video_format')
     fixture += '\nstatic GstStructure *\n' + function(
         text, 'gst_v4l2_object_v4l2fourcc_to_bare_struct')
+    fixture += '\nstatic gboolean\n' + function(
+        text, 'gst_v4l2_object_get_caps_info')
     fixture += r'''
 int main(void) {
   gst_init(NULL, NULL);
@@ -52,6 +66,24 @@ int main(void) {
   /* Private packed 4:2:2 data must never acquire standard raw caps here. */
   g_assert_null(gst_v4l2_object_v4l2fourcc_to_bare_struct(
       v4l2_fourcc('A', 'M', 'L', 'Y')));
+  /* Capture YUV24 must advertise raw caps and negotiate back to YUV3. */
+  GstV4l2Object object = {0};
+  struct v4l2_fmtdesc *format;
+  source = gst_caps_from_string(
+      "video/x-raw,format=v308,width=3840,height=2160,framerate=60/1");
+  structure = gst_v4l2_object_v4l2fourcc_to_bare_struct(V4L2_PIX_FMT_YUV24);
+  g_assert_nonnull(structure);
+  encoder = gst_caps_new_full(structure, NULL);
+  g_assert_true(gst_caps_can_intersect(source, encoder));
+  available_fourcc = V4L2_PIX_FMT_YUV24;
+  g_assert_true(gst_v4l2_object_get_caps_info(&object, source, &format, &info));
+  g_assert_cmpuint(format->pixelformat, ==, V4L2_PIX_FMT_YUV24);
+  g_assert_cmpint(info.stride[0], ==, 11520);
+  g_assert_cmpuint(info.size, ==, 24883200);
+  available_fourcc = V4L2_PIX_FMT_NV12;
+  g_assert_false(gst_v4l2_object_get_caps_info(&object, source, &format, &info));
+  gst_caps_unref(encoder);
+  gst_caps_unref(source);
   return 0;
 }
 '''
@@ -63,7 +95,7 @@ int main(void) {
         subprocess.run(['cc', '-Wall', '-Wextra', '-Werror', '-I', str(source.parent),
                         str(cfile), *flags, '-o', str(binary)], check=True)
         subprocess.run([str(binary)], check=True)
-    print('Native P010 source intersects actual V4L2 encoder caps: PASS')
+    print('P010 caps and bidirectional YUV24/v308 negotiation: PASS')
 
 
 if __name__ == '__main__':
