@@ -60,10 +60,10 @@ class NativeHdrLockTest(unittest.TestCase):
             lock = {'candidate_plugin_sha256': hashlib.sha256(b'candidate').hexdigest(),
                     'native_hdr_plugin_sha256': hashlib.sha256(b'historical').hexdigest()}
             with mock.patch.object(module.tomllib, 'loads', return_value={'gstreamer': lock}):
-                module.verify_v4l2_plugin(plugin, 'yuv444')
+                module.verify_v4l2_plugin(module.sha(plugin), 'yuv444')
                 with self.assertRaisesRegex(ValueError, 'hash mismatch'):
-                    module.verify_v4l2_plugin(plugin, 'native-hdr')
+                    module.verify_v4l2_plugin(module.sha(plugin), 'native-hdr')
                 plugin.write_bytes(b'historical')
-                module.verify_v4l2_plugin(plugin, 'native-hdr')
+                module.verify_v4l2_plugin(module.sha(plugin), 'native-hdr')
                 with self.assertRaisesRegex(ValueError, 'hash mismatch'):
-                    module.verify_v4l2_plugin(plugin, 'yuv444')
+                    module.verify_v4l2_plugin(module.sha(plugin), 'yuv444')
