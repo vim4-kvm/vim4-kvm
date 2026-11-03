@@ -4,6 +4,9 @@
 本次验证覆盖 BCM43752 独立中断、eMMC 读回及 HID/UDC；信号恢复后补测 4K60 H.265 接收
 30 秒通过（低运动画面）；测量条件和安装身份见 [uhd7 正式部署](bringup/2026-11-02-wifi-sdio-formal.md)。
 
+2026-11-03的[7.3.1整包试装](bringup/2026-11-03-kernel-731-deploy.md)在HID门禁未通过后已恢复uhd7，
+未推广来源锁；经授权清理Stock/VendorVapb1，当前保留Default/hdrdual6与FullKvm/uhd7。
+
 当前开发分支已接通 HDMI 输入、VDIN 直接 DMA、Wave5 H.264/H.265、硬件 JPEG 与音频，
 并部署完整 manager 和四种 KVM 的双内核运行时；5.15 可保留启动，共用同一应用的数据。
 双内核运行时的基础集成见[双内核完整系统集成](bringup/2026-10-21-dual-kernel-integration.md)，
