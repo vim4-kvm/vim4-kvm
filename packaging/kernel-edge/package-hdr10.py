@@ -9,6 +9,7 @@ import shutil
 import struct
 import subprocess
 import tarfile
+import tomllib
 
 
 def sha(path):
@@ -22,12 +23,23 @@ def commit(path):
     return subprocess.check_output(['git', '-C', str(path), 'rev-parse', 'HEAD'], text=True).strip()
 
 
+def verify_v4l2_plugin(path, profile):
+    recipe = Path(__file__).with_name('sources.toml')
+    lock = tomllib.loads(recipe.read_text())['gstreamer']
+    key = 'candidate_plugin_sha256' if profile == 'yuv444' else 'native_hdr_plugin_sha256'
+    if sha(path) != lock[key]:
+        raise ValueError(f'V4L2 plugin hash mismatch for {profile}')
+
+
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument('--v4l2-profile', choices=('native-hdr', 'yuv444'), default='native-hdr',
+                        help='Select the registered historical HDR or offline YUV24 plugin')
     for name in ('kernel_payload', 'capture_source', 'onekvm_source', 'capture_plugin',
                  'v4l2_plugin', 'onekvm_binary', 'destination'):
         parser.add_argument(name, type=Path)
     args = parser.parse_args()
+    verify_v4l2_plugin(args.v4l2_plugin, args.v4l2_profile)
     kernel = json.loads((args.kernel_payload / 'manifest.json').read_text())
     proof = json.loads((args.kernel_payload / 'runtime-proof.json').read_text())
     if not re.fullmatch(r'7\.3\.0-vim4kvm-hdr10r[1-9][0-9]*\+', kernel['release']):
@@ -56,12 +68,14 @@ def main():
         shutil.copy2(args.kernel_payload / name, args.destination / name)
     shutil.copy2(args.capture_plugin, plugins / 'libgstvfmcap.so')
     shutil.copy2(args.v4l2_plugin, plugins / 'libgstvideo4linux2.so')
+    verify_v4l2_plugin(plugins / 'libgstvideo4linux2.so', args.v4l2_profile)
     shutil.copy2(args.onekvm_binary, args.destination / 'one-kvm')
     recipe = Path(__file__).resolve().parent
     for name in ('hdr10-prepare', 'hdr10-run'):
         shutil.copy2(recipe / name, args.destination / name)
     shutil.copy2(recipe.parents[1] / 'docs/hdr10-remote-73.md', args.destination / 'README.md')
     result = dict(release=kernel['release'], sources=sources,
+                  v4l2_profile=args.v4l2_profile,
                   hardware_validated=False, vendor_firmware_included=False,
                   limitations=['native SDR snapshot branch unavailable',
                                '5.15 GPU baseline and 7.3 pixel/performance gates pending',
