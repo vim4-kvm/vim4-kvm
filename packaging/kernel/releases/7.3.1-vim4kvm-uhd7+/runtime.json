@@ -1,0 +1,54 @@
+{
+  "schema": 1,
+  "release": "7.3.1-vim4kvm-uhd7+",
+  "image_source_revision": "25110086de2ef6aa9564a31a7c694eca893fd423",
+  "build_id": "58d9b0f4148da5c2275fac40f4e177a0d0cb301b",
+  "package_sha256": "59a8343225da61a1cf81ec70a60603d451cb2d2611ce493f25f260bd83e869cc",
+  "manifest": "manifest.json",
+  "installed": true,
+  "default_boot": "FullKvm",
+  "profiles": {
+    "kbase": {
+      "dtb": "vim4.dtb",
+      "sha256": "89c4bcf6b5523cee60a6f222f28675c99b5137767ec484d78d53b14899702071",
+      "compatible": "khadas,vim4-mali-kbase-r44p0",
+      "blacklist": [
+        "panfrost"
+      ],
+      "modules": [
+        "vim4_kbase_heaps",
+        "governor_vim4",
+        "mali_kbase"
+      ],
+      "gpu_driver": "mali",
+      "wrapper": "/usr/libexec/vim4-kvm-run",
+      "gpu_wrapper": "/usr/lib/vim4-kvm/python/vim4gpu.py",
+      "egl": "private-prefix",
+      "vulkan": "private-icd",
+      "opencl": "private-icd"
+    },
+    "panfrost": {
+      "dtb": "panfrost.dtb",
+      "sha256": "9d0d39a316cea5a3f3d8e5a04e085b2a905abf60494aaba565223c29839dff1f",
+      "gpu_driver": "panfrost",
+      "userspace": "system-mesa"
+    }
+  },
+  "blob": {
+    "provision_separately": true,
+    "sha256": "536ee80c17dc5c54e7c6ff029ca43270da8efc3fdc5b3aeb263f364419368494",
+    "uk": "11.39",
+    "glvnd_vendor": false
+  },
+  "validation": {
+    "accepted": "Nine-category deployment acceptance with explicit scope limits",
+    "receipt": "validation.json",
+    "limitations": [
+      "HDMI 1080p60/4K60 round trip and no-signal recovery only; no new 19-mode matrix.",
+      "Audio service/device state only; no listening.",
+      "Official UU HEVC RTP reception verified by Receiver Reports; native decode/render unverified.",
+      "Known MCP text/IME and same-config USB helper lifecycle issues recorded in deployment evidence."
+    ]
+  },
+  "gpu_default": "kbase"
+}

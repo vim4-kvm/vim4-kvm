@@ -145,7 +145,7 @@ strict checkpatch 为 0 errors、0 warnings、0 checks。主仓库新增管道�
 VM 输出 `~/build/kernel-edge-export1-test`、模块暂存 `kernel-edge-export1-stage`；
 最终配置 SHA-256 为 `91598fe06672851a314494e9edc8682f106b72849373fbac3a59a120fc850e58`。
 部署清单在 `build/kernel-edge/export1-deploy/`，内核版本见
-[源码锁](../../packaging/kernel-edge/sources.toml)。
+[源码锁](../../packaging/kernel/sources.toml)。
 只更新实验 Image/DTB 和独立 release 的完整模块；备份在板上
 `/var/backups/vim4-before-export1-20261020/`。未改 BL31/U-Boot、分区或默认项。
 

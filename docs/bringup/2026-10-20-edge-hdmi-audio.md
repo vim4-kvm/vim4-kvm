@@ -12,10 +12,10 @@ SHA256 `32c6a60823dd676e848f8423feff1b469d07f5bac52885723dfa70b74cfda33d`。
 它的首选 UHD60 DTD 是 533.12MHz，并公布 YUV444、HDR 和深色能力；当前实验
 接收器只验证了 594MHz RGB8 UHD60，不能直接把这些未实现的能力一并公布。
 
-[音频 EDID](../../packaging/kernel-edge/uhd60-audio-edid.hex) 保留此前验证的
+[音频 EDID](https://github.com/vim4-kvm/vim4-kvm/blob/8dac974/packaging/kernel-edge/uhd60-audio-edid.hex) 保留此前验证的
 UHD60 基础块、视频及 HDMI 数据块，复用 RTK 已验证 LPCM 能力的子集：
 双声道、16bit、32/44.1/48kHz，FL/FR。每块校验和、音频能力子集和视频能力保持由
-[离线检查](../../tests/test_edge_audio_edid.py) 验证。它不是完整 RTK EDID 的逐字节复制。
+[离线检查](https://github.com/vim4-kvm/vim4-kvm/blob/8dac974/tests/test_edge_audio_edid.py) 验证。它不是完整 RTK EDID 的逐字节复制。
 新固件为 `vim4-hdmirx-ddc-test/uhd60-audio-edid.bin`，不覆盖旧 EDID 或生产活动配置。
 
 ## 驱动与部署

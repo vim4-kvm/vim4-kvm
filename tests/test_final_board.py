@@ -7,7 +7,7 @@ import tempfile
 from unittest.mock import Mock, patch
 
 spec = importlib.util.spec_from_file_location(
-    'final_board', Path(__file__).resolve().parents[1] / 'packaging/kernel-edge/final-board.py')
+    'final_board', Path(__file__).resolve().parents[1] / 'packaging/kernel/final-board.py')
 board = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(board)
 
@@ -180,7 +180,7 @@ class StopFailureRecoveryTest(unittest.TestCase):
 
     def test_sync_timeout_is_not_reported_as_durable_restore(self):
         with patch.object(board, 'bounded_command', return_value=False), self.assertRaisesRegex(RuntimeError, 'sync failed'):
-            board.sync_restored_files({'files': {'/boot/edge/Image': 'hash'}})
+            board.sync_restored_files({'files': {'/boot/kernels/7.3.1-vim4kvm-uhd7+/Image': 'hash'}})
 
     def test_daemon_reload_is_attempted_after_sync_failure(self):
         with tempfile.TemporaryDirectory() as temporary:

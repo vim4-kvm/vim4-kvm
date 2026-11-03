@@ -13,7 +13,7 @@ ROOT = Path(__file__).resolve().parents[1]
 
 class NativeHdrLockTest(unittest.TestCase):
     def test_runtime_sources_and_complete_modules_match(self):
-        recipe = ROOT / 'packaging/kernel-edge'
+        recipe = ROOT / 'packaging/kernel'
         sources = tomllib.loads((recipe / 'sources.toml').read_text())
         lock = sources['native_hdr']
         path = recipe / lock['runtime_descriptor']
@@ -50,7 +50,7 @@ class NativeHdrLockTest(unittest.TestCase):
         self.assertTrue(smoke['sei_matches_hdmi'])
 
     def test_packager_rejects_substituted_v4l2_plugin(self):
-        path = ROOT / 'packaging/kernel-edge/package-hdr10.py'
+        path = ROOT / 'packaging/kernel/package-hdr10.py'
         spec = importlib.util.spec_from_file_location('package_hdr10', path)
         module = importlib.util.module_from_spec(spec)
         spec.loader.exec_module(module)

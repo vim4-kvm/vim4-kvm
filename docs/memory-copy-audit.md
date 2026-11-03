@@ -15,7 +15,7 @@ nodebug恢复tmpfs写入与YOLO端到端，但memcpy/pread仍未追平。未动G
 
 ## 证据范围
 
-配置C5=`packaging/kernel/vim4.config`，C7=`packaging/kernel-edge/uhd2.config`；
+配置C5=`packaging/kernel/vim4.config`，C7为[历史 uhd2.config](https://github.com/vim4-kvm/vim4-kvm/blob/8dac974/packaging/kernel-edge/uhd2.config)；
 VM `~/build/npu-integration/.config`的相关项与C7一致。C7候选源码为f71b5c6289cb。
 源码K5为VM `~/src/linux` @80a07ad54，K7为`~/src/linux-7.3-npu-integration`。
 厂商驱动V=`common_drivers/`，U为VM `~/src/u-boot` @b60ff51ece。

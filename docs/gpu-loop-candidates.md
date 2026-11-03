@@ -101,7 +101,7 @@ strict checkpatch代码检查0 error/warning/check；新增文件的通用FILE_P
 Image SHA `5b850638dfa74de0233431a14ddd547e39caec895d1451620ac9c8d389ee79f7`；
 VIM4 DTB `9e78f8657bfd2f57029c09f3d43e6ec48ecb55cfcfa81e7e74927beb63fd4308`；
 panfrost.ko `f32f23a6a6d980485fd68a6f51399a1130d708c7669ea3baf8d6e482c234468a`。
-输出`~/build/gpu-panfrost-20261030`、日志`~/build/gpu-boost-*.log`；不改主仓kernel-edge配置。
+输出`~/build/gpu-panfrost-20261030`、日志`~/build/gpu-boost-*.log`；不改主仓kernel配置。
 
 ## 下一独占窗口：测量不超过20分钟
 

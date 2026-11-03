@@ -134,7 +134,7 @@ soft reset约3.7µs是另外的端点。已有trace未细分power_on内部阶段
 strict checkpatch为0 error/warning/check（新增文件通用FILE_PATH_CHANGES经审查忽略，SPDX检查正常执行）。
 新增`tools/testing/panfrost/test_ready.py`编译真实helper，覆盖快成功、慢回退、超时、额外mask位拒绝和剩余预算；
 既有boost/PM夹具也通过。夹具不模拟MMIO时序或调度器，不代替上电板测。无DT改动，未重跑dtbs_check。
-主仓kernel-edge配置不变。Image与原核一致是因Panfrost为模块；下次仍用同构建完整模块集，禁止只凭release混装。
+主仓kernel配置不变。Image与原核一致是因Panfrost为模块；下次仍用同构建完整模块集，禁止只凭release混装。
 
 ## 下一独占窗口：测量≤20分钟
 

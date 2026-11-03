@@ -35,7 +35,7 @@ KBUILD_BUILD_USER=vim4-kvm KBUILD_BUILD_HOST=vim4-build -j8`。
 board-runtime 与 kvm-run 已支持此 release，无需改脚本。
 最终在板上调用 `vim4boot.validate_entry(..., hashes=True)` 验证两项登记的全部产物，
 输出 `ALL_REGISTERED_BOOT_ARTIFACTS_VALID`，默认仍为 FullKvm。
-[部署收据](../../packaging/kernel-edge/uhd6-cor-lock-deployment.json) 固定新登记哈希。
+[部署收据](https://github.com/vim4-kvm/vim4-kvm/blob/8dac974/packaging/kernel-edge/uhd6-cor-lock-deployment.json) 固定新登记哈希。
 不覆写原正式归档清单，不把新模块称作原正式包内容；本轮无 push、无额外板上备份或回退脚本。
 
 ## HDMI 验证与边界

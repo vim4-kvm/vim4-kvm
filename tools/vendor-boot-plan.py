@@ -37,8 +37,11 @@ def parse_config(text):
 
 def generate(text, label, resolved_profile=None):
     default, entries = parse_config(text)
-    if default not in entries or entries[default].get('LINUX') != '/edge/Image':
-        raise ValueError('default must still be the 7.3 /edge/Image entry')
+    mainline = entries.get(default, {})
+    image = mainline.get('LINUX', '')
+    if (default != 'Mainline' or not re.fullmatch(r'/kernels/[A-Za-z0-9.+-]+/Image', image) or
+            mainline.get('FDT') != image.removesuffix('/Image')+'/vim4.dtb'):
+        raise ValueError('default must be Mainline in its matched release directory')
     if label == default or label not in entries:
         raise ValueError('select a separate vendor label')
     entry = resolved_profile if resolved_profile is not None else entries[label]

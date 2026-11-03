@@ -545,7 +545,7 @@ def main():
             board_access=False,uu_official_receive='official client RR plus independently captured shared Main10; rendering unverified')))
         return
     if not args.execute: subprocess.run(['git','fetch','origin'],cwd=REPO,check=True)
-    sources=tomllib.loads(subprocess.check_output(['git','show','origin/main:packaging/kernel-edge/sources.toml'],cwd=REPO,text=True))
+    sources=tomllib.loads(subprocess.check_output(['git','show','origin/main:packaging/kernel/sources.toml'],cwd=REPO,text=True))
     preflight(args,sources)
     if args.execute: Window(args).run()
     else:

@@ -21,7 +21,7 @@ Mac 的 core 回归也通过；profile/刷新回归需要 Linux V4L2 UAPI 头。
 阶段：60fps 的首帧无需等待下一帧即输出，不能将它假定为额外一帧延迟后直接删除。
 
 保留 Image `375bfd9`、音频 DTB、Wave5 `4f00b3c`、One-KVM `414e88b9`，
-只覆盖 VDIN 模块；版本和摘要见 [源码锁](../../packaging/kernel-edge/sources.toml)。
+只覆盖 VDIN 模块；版本和摘要见 [源码锁](../../packaging/kernel/sources.toml)。
 新归档 SHA256：`f2c5ac54f2edd18188ff9a0d549b648dccb166fe955e9d914412943d629c835c`。
 公共内核头文件及配置与保留 Image 一致，仅改 VDIN 私有回调；未使用 force，
 模块为 intree、taint=0。单模块不附带另一 vmlinux 的 split BTF，处理边界同

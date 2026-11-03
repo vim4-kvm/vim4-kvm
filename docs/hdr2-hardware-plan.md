@@ -75,7 +75,7 @@ PQ/HLG完整profile必须包含有符号系数、offset、LUT长度、打包位�
 |---|---|---|
 | DRM infoframe | t7-hdmirx.c:813–836：双读、包型0x87/version1/length26/checksum，EOTF=2、descriptor=0，失锁清状态；:846一秒有效期 | 已有真实PQ包处理；不是无条件把HDR EDID当输入PQ。HLG EOTF=3当前不接纳 |
 | AVI/range/位深 | t7-hdmirx.c:839–863、905–952：BT.2020 YUV、GCP与AVI一致性检查；dynamic允许420/422/444，有限PQ路径；RGB2020及HLG拒绝 | PQ limited是现成基线，不能宣称所有RGB/全范围/深色组合通过 |
-| 运行时启用 | 主仓packaging/kernel-edge/one-kvm-edge-prepare:34–38启用hdr_probe/hdr_capture及dynamic_modes；:62–65应用曲线 | 内核参数自身是实验默认，但产品prepare已经开启；缺口不是“忘了加载HDR2” |
+| 运行时启用 | 主仓packaging/kernel/one-kvm-edge-prepare:34–38启用hdr_probe/hdr_capture及dynamic_modes；:62–65应用曲线 | 内核参数自身是实验默认，但产品prepare已经开启；缺口不是“忘了加载HDR2” |
 | 矩阵/HDR2 | t7-vdin-test.c:421–457先清旧矩阵/HDR使能，再按lease调用HDR配置；t7-vdin-hdr.h:100–139写输入/输出/gamut、143点PQ、adaptive参数、enable | 已是真正的硬件映射，不是GPU或八位截断替代 |
 | LUT重载 | t7-vdin-hdr.h:70–83写149点gain与OETF（后者右移2位）；t7-vdin-test.c:240–245在AXI完成边界应用并丢过渡帧 | 已有安全边界，保留并补完整profile事务，不在任意活动帧逐点改表 |
 | 当前接口 | t7-vdin-test.c:1425–1477：298值验证后置pending，暴露私有hdr_curve sysfs | 现有兼容口需收敛；不复制到新设计作为正式寄存器/LUT UAPI |

@@ -24,10 +24,11 @@ SSH 为 ssh vim4（khadas@192.168.50.210），串口 /dev/cu.usbserial-100，921
 预算、实测和回退见 [持久日志部署](../bringup/2026-10-22-p2-journal-deploy.md)。
 
 5.15 内核安装用 tools/kernel-install.sh。当前7.3.1位于 `/boot/kernels/7.3.1-vim4kvm-uhd7+`，
-旧uhd7仍在 `/boot/edge`；用 `packaging/kernel-edge/register-runtime.py` 核对整包并登记；
+用 `packaging/kernel/register-runtime.py` 核对整包并登记；
 过程见 [双内核集成](../bringup/2026-10-21-dual-kernel-integration.md)。
 面板切换只保存默认启动项并重启，不格式化数据。Stock/VendorVapb1已按用户授权清理，
-保留Default/hdrdual6及实验入口，见[7.3.1部署](../bringup/2026-11-03-kernel-731-deploy.md)。
+厂商hdrdual6保留，见[7.3.1部署](../bringup/2026-11-03-kernel-731-deploy.md)。仓库采用 Mainline/Vendor，
+板上启动项改名和旧内核清理待独占窗口执行，当前验收收据不提前改写。
 重装清空 eMMC，须用户明确确认；
 优先使用 tools/board.py recover 远程进入 OOWOW；系统无法响应时，按住 FUNCTION、
 短按 RESET、松开 FUNCTION（要求 U-Boot 已能运行到按键检测）。若早期循环复位，
@@ -57,7 +58,7 @@ release/build ID、服务、UDC与启动文件哈希，默认启动项全程保�
 vermagic与证据；不覆盖基线模块目录。正式候选才全量回归并使用新 release 名。
 
 按内核社区流程推进：功能分支上小步提交（checkpatch、离线/KUnit 测试），候选只用
-一次性启动（packaging/kernel-edge/display-once.py）上板做针对性验证，复位即回基线；
+一次性启动（packaging/kernel/display-once.py）上板做针对性验证，复位即回基线；
 通过后合入 vim4-kvm-7.3 并部署，回归问题由夜间全量回归发现、按提交 bisect，
 不在每次部署时重复全套验收。门禁按改动范围分级：
 
@@ -71,10 +72,10 @@ vermagic与证据；不覆盖基线模块目录。正式候选才全量回归并
 
 ## 一次性启动与硬件看门狗
 
-uhd7到新release的完整包用独立候选锁，正式来源锁验收前不改。
+新release完整包可用独立候选锁，tested_build/retained_runtime验收前不改。
 boot/根分区空间不足或清单/哈希错误时拒绝安装，不创建额外备份。
-新启动文件独立暂存并核验，最后原子切换FullKvm路径；旧edge/模块树不修改。
-候选构建与启动路径说明见[新整包迁移](../kernel-edge.md#uhd7-到新整包候选)。
+新启动文件独立暂存并核验，最后原子切换Mainline路径；原release的启动文件/模块树不修改。
+候选构建与启动路径说明见[整包升级](../kernel-mainline.md#正式构建与整包升级)。
 
 危险候选测试以一次性启动保留默认基线，并先确认硬件看门狗已实测能复位当前板子。
 T7 的 Meson GXBB Watchdog 已在正式 7.3 基线上以停止喂狗验证：15 秒超时，

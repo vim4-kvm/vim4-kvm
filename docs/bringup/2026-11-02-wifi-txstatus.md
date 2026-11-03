@@ -42,7 +42,7 @@ FullKvm 没有 INITRD，不生成 initramfs。正式归档、历史完整包清�
 overlay，无需改测试或虚构离线祖先验证。
 
 部署收据与模块 SHA、build ID、最终登记文件哈希见
-[uhd6-brcmfmac-txstatus-deployment.json](../../packaging/kernel-edge/uhd6-brcmfmac-txstatus-deployment.json)。
+[uhd6-brcmfmac-txstatus-deployment.json](https://github.com/vim4-kvm/vim4-kvm/tree/8dac974/packaging/kernel-edge)。
 模块 build ID=`da667c427b389418706c4de5107745a46531ac42`；xz SHA-256=
 `a13c7461bddba2b18014d714f0d0790504c7468617d723a1346cae5b151d5d74`。
 重启及最终恢复均从 `/sys/module/*/notes/.note.gnu.build-id` 核对 brcmfmac 和 COR；

@@ -35,13 +35,13 @@ statvfs 文件系统容量 219,004,928 B（208.86 MiB），块大小 4096 B。
   vendor 的 boot artifacts 是 hdrdual6 Image、initrd、两个 DTB 与两个 overlay.env；
   mainline 的 boot artifacts 是 edge/Image、edge/vim4.dtb。全部保留。
 - `/boot/edge/manifest.json` 的 files 使用包内相对名，不能当作板上绝对路径；
-  [安装器](../../packaging/kernel-edge/register-runtime.py) 映射七个文件到 edge/。
+  [安装器](../../packaging/kernel/register-runtime.py) 映射七个文件到 edge/。
   `/opt/vim4-kvm/hdr10-r14e/manifest.json` 与 `/etc/vim4-kvm/hdr10-r14e.json`
   的 boot_files 均列出这七个绝对路径，全部保留，COR 模块 overlay 登记不变。
 - 一次性 RAM 候选：盘点了 `/var/lib/vim4-kvm/ram-candidates/` 下 kbase、hdr10
   的 extlinux.conf、manifest/trial.json，包括 completed 目录中的记录。
   LINUX/FDT、APPEND 中 init 等候选文件位于根分区私有目录，
-  [display-once](../../packaging/kernel-edge/display-once.py) 使用
+  [display-once](../../packaging/kernel/display-once.py) 使用
   `sysboot mmc 1:2 any ${pxefile_addr_r} <私有目录>/extlinux.conf; reset`，不消费被删四文件。
   baseline_files 中 `/boot` 保护路径也纳入引用表。未删除根分区候选或历史证明。
 - 5.15 厂商链：保留 Image→hdrdual6、initrd.img→hdrdual6、dtb→hdrdual6、

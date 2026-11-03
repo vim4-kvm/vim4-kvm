@@ -7,11 +7,11 @@ API 报告 initialized/online；局域网 H.264 4K60 视频同时通过短测。
 
 ## 接入方式
 
-- [USB 准备器](../../packaging/kernel-edge/one-kvm-edge-usb-prepare) 仅允许 root
+- [USB 准备器](../../packaging/kernel/one-kvm-edge-usb-prepare) 仅允许 root
   在匹配的 `7.3.0-rc7-vim4kvm-uhd1+` 运行。加载 CRG/libcomposite，挂载 configfs，
   按顺序创建 hidg0 键盘、hidg1 绝对鼠标、hidg2 相对鼠标。
-- [USB 服务](../../packaging/kernel-edge/one-kvm-edge-usb.service) 由
-  [实验应用服务](../../packaging/kernel-edge/one-kvm-edge.service) 拉起并先于应用完成。
+- [USB 服务](../../packaging/kernel/one-kvm-edge-usb.service) 由
+  [实验应用服务](../../packaging/kernel/one-kvm-edge.service) 拉起并先于应用完成。
   应用补充 input 组。服务停止不销毁 gadget，避免影响打开的 HID 文件。
 - 已准备的 gadget 只核对状态，不重新绑定；未登记的 gadget、其他应用的 gadget、
   非空 LUN 或不匹配内核均拒绝。创建失败的部分状态不冒充准备成功。

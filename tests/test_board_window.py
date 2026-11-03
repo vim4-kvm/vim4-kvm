@@ -26,7 +26,7 @@ FORMAL_RELEASE = window.once.formal_baseline()['release']
 
 class WindowTests(unittest.TestCase):
     def test_return_reboots_without_kbase_and_checks_restored_identity(self):
-        once = window.load('bind_once', ROOT/'packaging/kernel-edge/display-once.py')
+        once = window.load('bind_once', ROOT/'packaging/kernel/display-once.py')
         for upload_timeout, missing_after_reboot in ((False, False), (True, False), (False, True)):
             with self.subTest(upload_timeout=upload_timeout, missing_after_reboot=missing_after_reboot), tempfile.TemporaryDirectory() as directory:
                 root = Path(directory).resolve()
@@ -34,7 +34,7 @@ class WindowTests(unittest.TestCase):
                 contents = {'/sys/kernel/notes': note, '/proc/cmdline': b'root=test',
                             '/boot/kernels/'+FORMAL_RELEASE+'/Image': b'baseline kernel',
                             '/boot/kernels/'+FORMAL_RELEASE+'/vim4.dtb': b'baseline dt',
-                            '/boot/extlinux/extlinux.conf': ('DEFAULT FullKvm\nLABEL FullKvm\n LINUX /kernels/'+FORMAL_RELEASE+'/Image\n FDT /kernels/'+FORMAL_RELEASE+'/vim4.dtb\n').encode(),
+                            '/boot/extlinux/extlinux.conf': ('DEFAULT Mainline\nLABEL Mainline\n LINUX /kernels/'+FORMAL_RELEASE+'/Image\n FDT /kernels/'+FORMAL_RELEASE+'/vim4.dtb\n').encode(),
                             '/etc/vim4-kvm/kernels.json': b'original registry',
                             '/etc/vim4-kvm/runtime-build.json': b'original runtime',
                             '/lib/modules/'+FORMAL_RELEASE+'/wave5.ko': b'baseline module'}
@@ -161,7 +161,7 @@ class WindowTests(unittest.TestCase):
                          dict(board_path=board_path,open=lambda n,*a,**kw:open(board_path(n),*a,**kw)))
                 return out.getvalue()
             config=board_path('/boot/extlinux/extlinux.conf')
-            text='DEFAULT Default\nLABEL Default\n LINUX /vmlinuz-5.15.test\n FDT /dtb-5.15.test/test.dtb\n'
+            text='DEFAULT Vendor\nLABEL Vendor\n LINUX /vmlinuz-5.15.test\n FDT /dtb-5.15.test/test.dtb\n'
             with patch.object(window,'ssh_python',side_effect=remote), patch('platform.release',return_value='5.15.test'):
                 config.write_text(text)
                 self.assertEqual(window.identity('mock',files,baseline=True)['release'],'5.15.test')
@@ -183,7 +183,7 @@ class WindowTests(unittest.TestCase):
             boot.assert_not_called();ssh.assert_not_called()
 
     def test_formal_proof_checks_complete_modules_and_loaded_identities(self):
-        lock = window.tomllib.loads((ROOT/'packaging/kernel-edge/sources.toml').read_text())
+        lock = window.tomllib.loads((ROOT/'packaging/kernel/sources.toml').read_text())
         retained = lock['retained_runtime']
         manifest = json.loads((window.once.SOURCES.parent/lock['tested_build']['manifest_path']).read_text())
         prefix = '/lib/modules/'+retained['release']+'/'
@@ -251,7 +251,7 @@ class WindowTests(unittest.TestCase):
             window.verify_candidate_dt('unused', plan, plan['dt_properties'])
 
     def test_formal_retained_proof_and_existing_module_tree_are_preserved(self):
-        once = window.load('formal_once', ROOT / 'packaging/kernel-edge/display-once.py')
+        once = window.load('formal_once', ROOT / 'packaging/kernel/display-once.py')
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)
             modules = root / 'modules' / FORMAL_RELEASE
@@ -396,7 +396,7 @@ class WindowTests(unittest.TestCase):
 
     def stage_private_payload(self, release):
         from test_display_once import static_elf
-        once = window.load('payload_stage', ROOT / 'packaging/kernel-edge/display-once.py')
+        once = window.load('payload_stage', ROOT / 'packaging/kernel/display-once.py')
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory).resolve()
             candidate = root / 'hdr2-unified' / ('a'*40)
@@ -445,7 +445,7 @@ class WindowTests(unittest.TestCase):
                     path.chmod(0o755)
 
     def test_retained_baseline_gate_allows_chaining_but_rejects_changes(self):
-        once = window.load('trial_gate', ROOT / 'packaging/kernel-edge/display-once.py')
+        once = window.load('trial_gate', ROOT / 'packaging/kernel/display-once.py')
         proof = dict(release='5.15.test', build_id='a'*40, cmdline='root=PARTUUID=test',
                      files={'/boot/Image': 'digest'})
         plan = dict(baseline_release=proof['release'], baseline_id=proof['build_id'],

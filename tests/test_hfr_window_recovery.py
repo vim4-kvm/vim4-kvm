@@ -10,7 +10,7 @@ import time
 import unittest
 from unittest.mock import MagicMock, patch
 
-SCRIPTS = Path(__file__).resolve().parents[1] / "packaging/kernel-edge/hfr-yuv-window"
+SCRIPTS = Path(__file__).resolve().parents[1] / "packaging/kernel/hfr-yuv-window"
 
 
 class OverlayRecoveryTest(unittest.TestCase):
@@ -27,14 +27,14 @@ class OverlayRecoveryTest(unittest.TestCase):
         with patch.object(sys, "path", [str(SCRIPTS), *sys.path]):
             run = runpy.run_path(str(SCRIPTS / "window.py"))["run"]
         state = run.__globals__
-        inventory = json.loads((SCRIPTS.parent / "uhd7-module-inventory.json").read_text())
+        inventory = json.loads((SCRIPTS.parent / state['TESTED']['module_inventory_path']).read_text())
         def identity(host, files):
             digests = dict.fromkeys(files, "installed")
             for mod in ("t7-hdmirx", "t7-vdin-test", "wave5"):
                 entry, = [v for k, v in inventory.items() if k.endswith("/" + mod + ".ko.xz")]
                 note = bytes.fromhex("040000001400000003000000474e5500" + entry["build_id"])
                 digests[f"/sys/module/{mod.replace('-', '_')}/notes/.note.gnu.build-id"] = hashlib.sha256(note).hexdigest()
-            return dict(release=state["RELEASE"], build_id="d6f9c685802759c85cba6bd92bce90396d1cf6ec",
+            return dict(release=state["RELEASE"], build_id=state['TESTED']['build_id'],
                         files=digests, cmdline="reboot_mode=normal")
 
         reads = iter(["old", None, recovery_boot])

@@ -72,7 +72,7 @@ Linux VM一次性启动9项测试通过；主仓unittest 305项，7项跳过，�
 最终可stage的bundle必须等下一窗口取新证明后prepare，不能把旧证明改哈希冒充现场状态：
 
 ```sh
-python3 packaging/kernel-edge/display-once.py prepare \
+python3 packaging/kernel/display-once.py prepare \
   --payload ~/build/npu2-candidate --init ~/build/npu2-candidate/npu-once-init \
   --baseline baseline-current.json --output ~/build/npu2-once \
   --release 7.3.0-vim4kvm-npu2+ \

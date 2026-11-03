@@ -13,7 +13,7 @@ Node、Playwright与Chrome，配置见 [工具目录](tools.md)。
 
 只支持5.15或sources.toml当前tested_build/retained_runtime的精确release（当前7.3.1）。
 首次proof必须在真实基线上采集，并确认默认启动项的LINUX/FDT对应所捕获的文件；正式基线应指向
-`/kernels/<release>/Image`、`/kernels/<release>/vim4.dtb`。旧 `/edge` 保留不代表它仍是正常重启目标。
+`/kernels/<release>/Image`、`/kernels/<release>/vim4.dtb`，首次捕获时核对默认项确实指向所捕获基线。
 正式基线的非空文件清单自动扩展至 `/boot/kernels/<release>`、完整模块树、extlinux、kernels.json、
 runtime-build.json和四个启动入口，并记录采集/三个kbase模块的加载build ID、原应用及稳定DT属性；
 与当前来源锁、manifest中的完整模块文件哈希逐项比对。

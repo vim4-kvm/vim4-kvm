@@ -69,7 +69,7 @@ and early reuse, but does not prove closure of every userspace FD.
 programming or hardware LUT readback. Only reviewed controls are read while a
 powered stream lease is held; no LUT address/data ports are read.
 
-The standard `../kernel-edge/build-gstreamer.py` applies all eight locked patches,
+The standard `../kernel/build-gstreamer.py` applies all eight locked patches,
 including color probing and coded-buffer sizing, and runs their real-function
 tests. `build-gst.sh NEW_DIR` delegates without double application. System plugins
 are not replaced. `package.py SOURCE OUTPUT NEW_STAGE` seals complete private-aN

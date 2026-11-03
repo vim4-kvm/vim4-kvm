@@ -13,10 +13,10 @@ RTP 分包、默认 interceptor、真实 SRTP 和 UDP 批量发送另见
 `/work`，具备现有 VIM4 构建依赖。命令会增量编译 release 库测试，不安装应用。
 
 ```sh
-python3 tools/onekvm-local-bench.py --output logs/kernel-edge/buffers-before.json
+python3 tools/onekvm-local-bench.py --output logs/kernel/buffers-before.json
 # 修改后；仅同一环境和负载允许自动对比，20% 是本次选择的门槛。
-python3 tools/onekvm-local-bench.py --output logs/kernel-edge/buffers-after.json \
-  --baseline logs/kernel-edge/buffers-before.json --max-regression-pct 20
+python3 tools/onekvm-local-bench.py --output logs/kernel/buffers-after.json \
+  --baseline logs/kernel/buffers-before.json --max-regression-pct 20
 ```
 
 直接调用生产 `plane_view` 与 `cached_bitstream`，覆盖 1080p 的 1088 行容量、4K、
@@ -34,7 +34,7 @@ file-backed GstDmaBufMemory 仅用于布局、持有关系和 CPU 路径；
 
 ```sh
 python3 tools/onekvm-local-bench.py --board vim4 --cpu 0 \
-  --output logs/kernel-edge/board-buffers.json
+  --output logs/kernel/board-buffers.json
 ```
 
 上传校验后的独立测试程序至临时目录，只给该进程设置 CPU 亲和性，完成后删除。

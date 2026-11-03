@@ -11,7 +11,7 @@ from unittest.mock import patch
 
 
 ROOT = Path(__file__).resolve().parents[1]
-SPEC = importlib.util.spec_from_file_location('kernel_maintain', ROOT / 'packaging/kernel-edge/maintain.py')
+SPEC = importlib.util.spec_from_file_location('kernel_maintain', ROOT / 'packaging/kernel/maintain.py')
 maintain = importlib.util.module_from_spec(SPEC)
 SPEC.loader.exec_module(maintain)
 

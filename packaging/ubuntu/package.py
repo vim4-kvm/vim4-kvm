@@ -94,8 +94,8 @@ if [ "${1:-}" = configure ]; then /usr/libexec/vim4-logging; fi
     for name in ('vim4-board-runtime', 'vim4-kvm-run'):
         copy(ROOT / 'board' / name, stage, 'usr/libexec/' + name, 0o755)
     copy(ROOT / 'packaging/kbase/run.py', stage, 'usr/lib/vim4-kvm/python/vim4gpu.py', 0o755)
-    copy(ROOT / 'packaging/kernel-edge/one-kvm-edge-prepare', stage, 'usr/libexec/vim4-mainline-prepare', 0o755)
-    copy(ROOT / 'packaging/kernel-edge/one-kvm-edge-usb-prepare', stage, 'usr/libexec/vim4-mainline-gadget-prepare', 0o755)
+    copy(ROOT / 'packaging/kernel/one-kvm-edge-prepare', stage, 'usr/libexec/vim4-mainline-prepare', 0o755)
+    copy(ROOT / 'packaging/kernel/one-kvm-edge-usb-prepare', stage, 'usr/libexec/vim4-mainline-gadget-prepare', 0o755)
     copy(ROOT / 'tools/rootfs-policy.py', stage, 'usr/sbin/vim4-rootfs-policy', 0o755)
     copy(ROOT / 'build/usb-pd-init', stage, 'usr/sbin/usb-pd-init', 0o755)
     for name in ('hdmi-setup.sh', 'kvm-gadget.sh'):

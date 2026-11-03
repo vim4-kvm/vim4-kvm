@@ -39,7 +39,7 @@ def load(name, path):
 
 
 queue_module = load('board_queue', ROOT / 'tools/board-queue')
-once = load('display_once', ROOT / 'packaging/kernel-edge/display-once.py')
+once = load('display_once', ROOT / 'packaging/kernel/display-once.py')
 
 
 def sha(path):
@@ -676,7 +676,7 @@ def main():
         remote = '/tmp/board-window-' + plan['build_id']
         ssh(args.host, 'mkdir -p ' + remote)
         subprocess.run(['scp', str(bundle), args.host + ':' + remote + '/candidate.tar'], check=True)
-        subprocess.run(['scp', str(ROOT / 'packaging/kernel-edge/display-once.py'),
+        subprocess.run(['scp', str(ROOT / 'packaging/kernel/display-once.py'),
                         str(once.SOURCES), args.host + ':' + remote + '/'], check=True)
         script = """import importlib.util
 s=importlib.util.spec_from_file_location('once',SCRIPT)
@@ -707,7 +707,7 @@ m.stage(BUNDLE,retained_baseline=PROOF,reuse_staged=REUSE)
         save(directory / 'returned-baseline-identity.json', dict(identity=actual, reboot_mode=reasons))
         cleanup = '/tmp/board-window-cleanup-' + args.window
         ssh(args.host, 'mkdir -p ' + cleanup)
-        subprocess.run(['scp', str(ROOT / 'packaging/kernel-edge/display-once.py'),
+        subprocess.run(['scp', str(ROOT / 'packaging/kernel/display-once.py'),
                         str(once.SOURCES), args.host + ':' + cleanup + '/'], check=True, timeout=30)
         plans = [json.loads(path.read_text()) for path in directory.glob('candidate-*.json')]
         script = module_cleanup_script(plans, cleanup+'/display-once.py')

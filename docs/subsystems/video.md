@@ -43,7 +43,7 @@ HDR 的全局默认、原生双路径、插件部署顺序及验证边界见 [HD
 
 ## 按改动范围读取
 
-- [新内核基线](../kernel-edge.md#相关记录)：7.x 采集、编码、HDMI、音频及故障恢复的历史证据。
+- [新内核基线](../kernel-mainline.md#相关记录)：7.x 采集、编码、HDMI、音频及故障恢复的历史证据。
 - [延迟测量](../latency.md#相关记录)：软件端点、VBV、发送候选与当前延迟复测。
 - [播放差异调查](../kvm-delay-causes.md)：同步组、队列、媒体时钟及未决问题。
 - [RTP 发送审查](../rtp-send-optimization-audit.md)、[编码库审查](../encoder-fast-packing-audit.md)：发送后端、编码 ABI 与硬件验证边界。
@@ -72,7 +72,7 @@ HDMI_LOW_LATENCY=0 恢复厂商自动策略。模式含义、对照结果及帧�
 
 复位失败后必须保留 DMA 内存与映射，直到重启清除隔离。监控服务默认只记录告警；
 自动重启必须确认全部 KVM 应用停用且虚拟介质为空，不能把 One-KVM 空闲视为没有消费者。
-状态接口、计时条件、部署与回退合同见[隔离告警说明](../kernel-edge.md#wave5-隔离告警)。
+状态接口、计时条件、部署与回退合同见[隔离告警说明](../kernel-mainline.md#wave5-隔离告警)。
 
 ## 错题
 
@@ -81,7 +81,7 @@ HDMI_LOW_LATENCY=0 恢复厂商自动策略。模式含义、对照结果及帧�
 | vb2前置元数据使跨回调代号错位 | 保持vb2首成员并加编译断言；独立export不能用inode关联，cleanup不等于编码完成 | [HDR2回归](../hdr2-dma-contract.md) |
 | 见到 `last_wr_vfe` 就认为已完成图像多等一帧 | 当前 VDIN1 RDMA 提前一拍提交地址、下一拍执行、再下一拍交付。匹配实际缓冲与 pending/已执行表；寄存器 DMA 完成不能当图像写完 | [逐缓冲核实](../bringup/2026-10-25-vdin1-frame-handoff.md) |
 | 7.x JPEG DMA 导入触发 reservation-lock WARN | 新内核 map/unmap_attachment 要求调用者持锁；使用对应 unlocked helpers 管理锁，不忽略 taint 后继续验收 | t7-jpeg/test_import.py、[MJPEG 记录](../bringup/2026-10-21-edge-scaling-jpeg.md) |
-| 切分辨率后没有视频 fd，仍残留一组 CMA 分配 | GStreamer 先停用池，STREAMOFF 后另一个线程归还缓冲仍可 QBUF，随后 orphan 已无流可冲刷。先停止获取，在 QBUF 锁内停流并完成 orphan，再停用池；仅关闭 last-sample 缓存不足以修复 | packaging/kernel-edge/test_gstreamer_orphan.py、[动态模式记录](../bringup/2026-10-20-edge-dynamic-modes.md) |
+| 切分辨率后没有视频 fd，仍残留一组 CMA 分配 | GStreamer 先停用池，STREAMOFF 后另一个线程归还缓冲仍可 QBUF，随后 orphan 已无流可冲刷。先停止获取，在 QBUF 锁内停流并完成 orphan，再停用池；仅关闭 last-sample 缓存不足以修复 | packaging/kernel/test_gstreamer_orphan.py、[动态模式记录](../bringup/2026-10-20-edge-dynamic-modes.md) |
 | 7.x 无周期 IDR，仍每约 250ms 短顿 | ENUMINPUT 误用双次稳定检查，持有采集 ioctl 锁等待 20ms。实时状态使用即时读取并清除旧状态，STREAMON 保留稳定性资格检查；仅将应用查询移到另一线程仍会争用队列锁 | t7-hdmirx/test_core.py、[状态查询实测](../bringup/2026-10-20-edge-status-latency.md) |
 | 7.3 网页反复重配后 CMA 耗尽，分配失败又触发 Oops | GStreamer 1.24.2 每帧遗漏输入池 unref，空 LAST 缓冲也未归还；另有 Wave5 辅助 DMA 局部副本和实例重复释放。插件和驱动分别修复，SET_FB 后保留 DMA 直到固件停止；每轮检查 fd/CMA，不能只看进程退出后的空闲内存 | tools/wave5-lifecycle-check.py、[应用接入](../bringup/2026-10-20-onekvm-wave5.md) |
 | 原始 720×400 正常，Wave5 DMA 导入 QBUF 返回 EINVAL | VDIN 的 16 字节行对齐不足以满足 Wave5 协商得到的 32 字节 RAW 行宽。NV12 采集按 32 字节补行、保留可见宽度，UV 偏移和两平面导入使用实际 stride；同时检查高度补齐后的容量 | [输入模式覆盖](../bringup/2026-10-22-edge-hdmi-modes.md) |

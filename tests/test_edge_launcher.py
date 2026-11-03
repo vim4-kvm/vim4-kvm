@@ -27,7 +27,7 @@ class EdgeLauncherTest(unittest.TestCase):
     def run_script(self, name, release):
         env = dict(os.environ, PATH=f'{self.bin}:/usr/bin:/bin',
                    EDGE_TEST_RELEASE=release, EDGE_TEST_TRACE=str(self.trace))
-        return subprocess.run(['sh', str(ROOT / 'packaging/kernel-edge' / name)],
+        return subprocess.run(['sh', str(ROOT / 'packaging/kernel' / name)],
                               env=env, capture_output=True, text=True, timeout=5)
 
     def test_prepare_refuses_production_and_unknown_kernels_before_hardware_access(self):

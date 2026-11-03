@@ -166,7 +166,7 @@ baseline证明还须包含这五份运行时文件的哈希，避免一次性启
 最终一次性bundle须使用下一轮刚读出的5.15证明，不能拿历史启动文件哈希冒充当前状态：
 
 ```sh
-python3 packaging/kernel-edge/display-once.py prepare \
+python3 packaging/kernel/display-once.py prepare \
   --payload ~/build/npu1-candidate --init ~/build/npu-adla1/npu-once-init \
   --baseline baseline-515.json --output ~/build/npu1-once \
   --release 7.3.0-vim4kvm-npu1+ \

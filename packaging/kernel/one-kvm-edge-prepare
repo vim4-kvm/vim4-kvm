@@ -1,0 +1,77 @@
+#!/bin/sh
+# SDR 1080p/UHD60 and HDR10 UHD60 experiment; separate edge service only.
+set -eu
+kernel=$(uname -r)
+case "$kernel" in
+    7.3.1-vim4kvm-uhd7+|7.*-vim4-????????|7.*-vim4-????????.[0-9]*) ;;
+    7.3.0-rc7-vim4kvm-uhd1+|7.3.0-vim4kvm-uhd1+|7.3.0-vim4kvm-uhd2+|7.3.0-vim4kvm-uhd2-nodebug+|7.3.0-vim4kvm-uhd3+|7.3.0-vim4kvm-uhd4+|7.3.0-vim4kvm-uhd5+|7.3.0-vim4kvm-uhd[67]+|7.3.0-vim4kvm-npu1+|7.3.0-vim4kvm-npu2+|7.3.0-vim4kvm-npu3+|7.3.0-vim4kvm-npu4+) ;;
+    *) echo 'This video experiment requires its matched 7.3 kernel' >&2; exit 1 ;;
+esac
+
+# The vendor preload unit stays active after exit. Type=simple does not make
+# After= wait for its work to finish, so check completion before JPEG can open.
+attempt=0
+while [ "$(systemctl show -p SubState --value video-firmware-preload-khadas.service)" != exited ]; do
+    attempt=$((attempt + 1))
+    if [ "$attempt" -ge 100 ]; then
+        echo 'The secure video firmware preloader did not finish' >&2
+        exit 1
+    fi
+    sleep 0.1
+done
+if [ "$(systemctl show -p ExecMainStatus --value video-firmware-preload-khadas.service)" != 0 ]; then
+    echo 'The secure video firmware preloader failed' >&2
+    exit 1
+fi
+
+# These files are provisioned separately; the licensed codec firmware is not shipped here.
+if ! printf '%s\n' \
+    '873103d7520d5cad737cfe4458a2891c065d566ff556a47ab735e60f27acf031  /lib/firmware/amlogic/t7-wave521c-enc.bin' \
+    'd54359d8ebfd750684a6a97fc482791ff755b2acab29646773e6104d9c57a47b  /lib/firmware/vim4-hdmirx-ddc-test/uhd60-hdr10-audio-edid.bin' \
+    | sha256sum --check --status; then
+    echo 'The matched HDMI EDID or Wave521c firmware is missing or has changed' >&2
+    exit 1
+fi
+
+modprobe t7_hdmirx edid_firmware=vim4-hdmirx-ddc-test/uhd60-hdr10-audio-edid.bin phy_test=1 core_test=1 uhd60=1 dynamic_modes=1 audio_test=1 hdr_probe=1 hdr_capture=1
+modprobe t7_vdin_test nv12=1 direct_dma=1
+modprobe wave5
+modprobe t7_jpeg
+for parameter in phy_test core_test uhd60 dynamic_modes audio_test hdr_probe hdr_capture; do
+    if [ "$(cat "/sys/module/t7_hdmirx/parameters/$parameter")" != Y ]; then
+        echo 'HDMI receiver is already loaded with different experimental settings' >&2
+        exit 1
+    fi
+done
+for parameter in nv12 direct_dma; do
+    if [ "$(cat "/sys/module/t7_vdin_test/parameters/$parameter")" != Y ]; then
+        echo 'HDMI capture must use NV12 and leased direct DMA for this experiment' >&2
+        exit 1
+    fi
+done
+udevadm settle --timeout=15
+# Native HDR conversion imports its output pool from the reserved CMA heap.
+case "$kernel" in
+7.*-vim4-????????|7.*-vim4-????????.[0-9]*|7.3.1-vim4kvm-uhd7+|7.3.0-vim4kvm-uhd[67]+)
+    test -c /dev/dma_heap/reserved
+    chgrp video /dev/dma_heap/reserved
+    chmod 0660 /dev/dma_heap/reserved
+    ;;
+esac
+if [ ! -d /sys/bus/platform/drivers/t7-hdmirx/fe398000.hdmi-receiver ] ||
+   [ ! -d /sys/bus/platform/drivers/t7-vdin-test/ff000000.video-capture ]; then
+    echo 'Experimental HDMI receiver or capture probe failed; check the supported input profile' >&2
+    exit 1
+fi
+# Only the dedicated capture card is configured; production ALSA state is kept.
+if [ -e /proc/asound/VIM4HDMIRX/id ]; then
+    amixer -q -c VIM4HDMIRX cset name='TODDR_A SRC SEL' 'IN 8'
+else
+    echo 'Experimental HDMI audio card is not ready; video remains available' >&2
+fi
+if [ -f /etc/default/vim4-kvm-hdr ]; then
+    . /etc/default/vim4-kvm-hdr
+fi
+/usr/sbin/vim4-hdr-curve apply "${HDR_SDR_WHITE:-203}" "${HDR_SDR_PEAK:-1000}"
+# V4L2 encoder factories cache their device path; node numbering can change.
+rm -f /run/one-kvm-edge/gstreamer-registry.bin

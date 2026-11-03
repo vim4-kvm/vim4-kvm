@@ -9,7 +9,7 @@
 - 默认仍启动 `5.15.137-vim4kvm`，原服务、程序、数据库和插件保留。
 - 实验程序 `/opt/vim4-onekvm-edge/one-kvm`，数据 `/var/lib/one-kvm-edge`，
   回环端口 8082；原服务使用 8081。
-- [实验服务](../../packaging/kernel-edge/one-kvm-edge.service) 同时检查匹配的
+- [实验服务](../../packaging/kernel/one-kvm-edge.service) 同时检查匹配的
   `7.3.0-rc7-vim4kvm-uhd1+` 与 `vim4.one_kvm=1` 启动参数。5.15 下跳过，
   不通过 Conflicts 停止生产服务。
 - 一次性选择 `OneKvmTest` 启动项；该项屏蔽生产 KVM、HDMI、USB/PD 服务，
@@ -24,7 +24,7 @@
 
 ## 实现与版本
 
-源码锁见 [sources.toml](../../packaging/kernel-edge/sources.toml)。One-KVM 新增
+源码锁见 [sources.toml](../../packaging/kernel/sources.toml)。One-KVM 新增
 `VIM4_VIDEO_BACKEND=wave5`，默认仍为 vendor；Wave5 启动拒绝生产数据目录及
 非 7.x 内核。按 sysfs 设备名称发现采集与编码节点，不固定 video 编号。
 前端继续使用逻辑视频设备，底层采用 V4L2 DMA-buf 导入。
@@ -68,8 +68,8 @@ CMA 耗尽随后定位到 GStreamer，而非重建帧释放循环缺失。1.24.2
 100 帧后，leaks tracer 显示输入缓冲池 ref-count=100；每次重建残留一个设备句柄。
 另一个 EOS 错误在返回空 LAST 缓冲时先清除 QUEUED，STREAMOFF 因而遗漏回收，
 导致没有视频 fd 时仍残留整组 MMAP 分配。分别用
-[缓冲池补丁](../../packaging/kernel-edge/gstreamer-v4l2-pool-lifetime.patch) 和
-[EOS 补丁](../../packaging/kernel-edge/gstreamer-v4l2-eos-buffer.patch) 修复。
+[缓冲池补丁](../../packaging/kernel/gstreamer-v4l2-pool-lifetime.patch) 和
+[EOS 补丁](../../packaging/kernel/gstreamer-v4l2-eos-buffer.patch) 修复。
 
 三轮 EOS 图案测试修复前逐轮损失 128 MiB CMA；修复后 H.264/H.265 各三轮、
 每轮 120 帧，视频 fd 均为 0，CMA 固定 469736 KiB（初始 469760 KiB）。

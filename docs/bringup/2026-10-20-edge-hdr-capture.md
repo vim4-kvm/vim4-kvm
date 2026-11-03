@@ -18,10 +18,10 @@
   `d1f77a4554dd28cc5c031f687f5fb6c46dce553d` /
   `cfcab528dbbff129db7aad989fff99792543c7ce`。
 - One-KVM 仍为 `97e810005ea6f8dde6a66a918dc44c7d323dbdc6`，应用、私有 GStreamer
-  插件及 DTB 不变；对应摘要见 [源码锁](../../packaging/kernel-edge/sources.toml)。
+  插件及 DTB 不变；对应摘要见 [源码锁](../../packaging/kernel/sources.toml)。
 
 独立 edge prepare 启用 `hdr_probe=1 hdr_capture=1`，内核选项自身仍默认关闭。
-新增专用 [EDID](../../packaging/kernel-edge/uhd60-hdr10-audio-edid.hex)，SHA256
+新增专用 [EDID](https://github.com/vim4-kvm/vim4-kvm/blob/8dac974/packaging/kernel-edge/uhd60-hdr10-audio-edid.hex)，SHA256
 `d54359d8ebfd750684a6a97fc482791ff755b2acab29646773e6104d9c57a47b`：
 保留 594MHz 首选时序与已测 LPCM，使用 420-only VIC97 及 10bit 能力，HDR 块只声明
 SDR/PQ、静态元数据类型 1，不声明 HLG、HDR10+ 或 Dolby Vision。

@@ -28,7 +28,7 @@ VM `vim4-build`，GCC 13.3.0，独立 `~/build/sdio-formal-52b95c849326/{out,sta
 
 [完整构建清单](https://github.com/vim4-kvm/vim4-kvm/blob/8dac974/packaging/kernel-edge/uhd7-manifest.json)、
 [外部模块来源](https://github.com/vim4-kvm/vim4-kvm/blob/8dac974/packaging/kernel-edge/uhd7-external-manifest.json)、
-[2341 个模块身份](../../packaging/kernel-edge/uhd7-module-inventory.json)。
+[2341 个模块身份](https://github.com/vim4-kvm/vim4-kvm/blob/8dac974/packaging/kernel-edge/uhd7-module-inventory.json)。
 
 ## RAM 门禁与 HDMI 边界
 

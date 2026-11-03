@@ -158,8 +158,8 @@ def main():
         'usr/libexec/vim4-board-runtime': packaging.parents[1] / 'board/vim4-board-runtime',
         'usr/libexec/vim4-kvm-run': packaging.parents[1] / 'board/vim4-kvm-run',
         'usr/lib/vim4-kvm/python/vim4gpu.py': packaging / 'run.py',
-        'usr/libexec/vim4-mainline-prepare': packaging.parent / 'kernel-edge/one-kvm-edge-prepare',
-        'usr/libexec/vim4-mainline-gadget-prepare': packaging.parent / 'kernel-edge/one-kvm-edge-usb-prepare',
+        'usr/libexec/vim4-mainline-prepare': packaging.parent / 'kernel/one-kvm-edge-prepare',
+        'usr/libexec/vim4-mainline-gadget-prepare': packaging.parent / 'kernel/one-kvm-edge-usb-prepare',
     }
     for name, path in runtime_files.items():
         target = output / 'runtime' / name

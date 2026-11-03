@@ -39,7 +39,7 @@ case "$kernel" in
             fi
         fi
         ;;
-    7.3.1-vim4kvm-uhd7+|7.3.0-rc7-vim4kvm-uhd1+|7.3.0-vim4kvm-uhd1+|7.3.0-vim4kvm-uhd2+|7.3.0-vim4kvm-uhd2-nodebug+|7.3.0-vim4kvm-uhd3+|7.3.0-vim4kvm-uhd4+|7.3.0-vim4kvm-uhd5+|7.3.0-vim4kvm-uhd[67]+|7.3.0-vim4kvm-npu1+|7.3.0-vim4kvm-npu2+|7.3.0-vim4kvm-npu3+|7.3.0-vim4kvm-npu4+)
+    7.*-vim4-????????|7.*-vim4-????????.[0-9]*|7.3.1-vim4kvm-uhd7+|7.3.0-rc7-vim4kvm-uhd1+|7.3.0-vim4kvm-uhd1+|7.3.0-vim4kvm-uhd2+|7.3.0-vim4kvm-uhd2-nodebug+|7.3.0-vim4kvm-uhd3+|7.3.0-vim4kvm-uhd4+|7.3.0-vim4kvm-uhd5+|7.3.0-vim4kvm-uhd[67]+|7.3.0-vim4kvm-npu1+|7.3.0-vim4kvm-npu2+|7.3.0-vim4kvm-npu3+|7.3.0-vim4kvm-npu4+)
         export VIM4_VIDEO_BACKEND=wave5
         export VIM4_SHARED_DATA=1
         export GST_PLUGIN_PATH=/usr/lib/vim4-kvm/mainline-gstreamer-1.0
@@ -68,7 +68,7 @@ run_app() {
             exec /usr/bin/python3 /usr/lib/vim4-kvm/python/vim4gpu.py --graphics direct -- "$@"
         fi
         case "$kernel:${driver##*/}" in
-            7.3.0-vim4kvm-uhd[67]+:panfrost|7.3.1-vim4kvm-uhd7+:panfrost)
+            7.3.0-vim4kvm-uhd[67]+:panfrost|7.*-vim4-????????:panfrost|7.*-vim4-????????.[0-9]*:panfrost|7.3.1-vim4kvm-uhd7+:panfrost)
             # Native AMLY conversion was accepted with this private PanVK.
             for icd in /opt/vim4-mesa-26.2.6/share/vulkan/icd.d/*panfrost*.json; do
                 if [ -r "$icd" ]; then
@@ -92,7 +92,7 @@ case "$app" in
     onekvm)
         binary=/opt/vim4-onekvm/one-kvm
         case "$kernel" in
-            7.3.0-vim4kvm-uhd[67]+|7.3.1-vim4kvm-uhd7+) binary=/opt/vim4-onekvm-edge/one-kvm ;;
+            7.3.0-vim4kvm-uhd[67]+|7.*-vim4-????????|7.*-vim4-????????.[0-9]*|7.3.1-vim4kvm-uhd7+) binary=/opt/vim4-onekvm-edge/one-kvm ;;
         esac
         run_app "$binary" --data-dir "$state" --address 127.0.0.1 --port 8081 --auth-mode managed
         ;;

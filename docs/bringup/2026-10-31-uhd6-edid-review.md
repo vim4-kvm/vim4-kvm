@@ -71,7 +71,7 @@ f951只改变零块分支：拉低HPD并把可读EDID长度设为0，保留DDC�
 - 接收器全部`test_*.py`宿主夹具通过，包括原DDC/HPD排序、失败回滚、时序、租约和源变化。
 - 提交级`checkpatch --strict`为0 errors、0 warnings、0 checks；t7-hdmirx.ko及BTF编译通过。
 - 日志：`logs/p0-1-unified73/edid-{withdrawal-tests,all-host-build,fix-kernel-commit}.log`。
-- [定向包清单](../../packaging/kernel-edge/uhd6-edid-repair.json)固定Image、BTF、替换模块源码/哈希和RAM包摘要。
+- [定向包清单](https://github.com/vim4-kvm/vim4-kvm/blob/8dac974/packaging/kernel-edge/uhd6-edid-repair.json)固定Image、BTF、替换模块源码/哈希和RAM包摘要。
   2373文件全部SHA256核对通过；该包仅用于修复门禁，不能安装为正式保留运行时。
 
 ## 缩放模式准备的结论与回归
@@ -81,8 +81,8 @@ M窗的CoreGraphics调用成功选择800×600 backing raster，接收器日志�
 未取得真实800×600输入的证据，不能把这次准备失败归为“驱动把800×600编码成4K”。
 macOS模式列表现在只用于源端诊断，不作为HDMI模式覆盖证明。
 
-新增[单DTD夹具工具](../../packaging/kernel-edge/hdmi-mode-fixture.py)和固定19档
-[时序数据](../../packaging/kernel-edge/hdmi-modes.json)：prepare离线删除其他时序、保留音频及HDMI/SCDC；
+新增[单DTD夹具工具](../../packaging/kernel/hdmi-mode-fixture.py)和固定19档
+[时序数据](../../packaging/kernel/hdmi-modes.json)：prepare离线删除其他时序、保留音频及HDMI/SCDC；
 measure用VIDIOC_QUERY_DV_TIMINGS读取真实输入；verify必须匹配目标几何和刷新率。
 矩阵在真实输入资格确认后才接收视频，并继续核对实际解码尺寸、三处帧号和RGB色块；19档已通过，细节见正式记录。
 离线回归包含M窗的“800×600 backing/UHD60输入”反例、19份EDID解码/音频/单时序约束、

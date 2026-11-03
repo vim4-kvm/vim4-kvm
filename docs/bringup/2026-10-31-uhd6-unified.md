@@ -137,5 +137,5 @@ return-baseline因SSH不通失败，105秒后释放票据，当时串口只取�
 pstore补齐link工作队列的完整panic，固件报告watchdog_reboot，详见[恢复取证与待审修复](2026-10-31-uhd6-edid-review.md)。
 
 独立修复f951e2d24d32d已通过review和Q窗撤回/保持/重复/发布/恢复采集门禁，已进入正式分支；根因及5.15对照见上述记录。
-[定向包清单](../../packaging/kernel-edge/uhd6-edid-repair.json)固定来源与哈希；仅替换一个匹配模块，
+[定向包清单](https://github.com/vim4-kvm/vim4-kvm/blob/8dac974/packaging/kernel-edge/uhd6-edid-repair.json)固定来源与哈希；仅替换一个匹配模块，
 定向包未用于正式安装；最终完整产物与安装锁见上述正式记录。

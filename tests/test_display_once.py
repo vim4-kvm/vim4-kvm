@@ -14,7 +14,7 @@ import unittest
 from unittest.mock import patch
 
 ROOT = Path(__file__).resolve().parents[1]
-spec = importlib.util.spec_from_file_location('display_once', ROOT / 'packaging/kernel-edge/display-once.py')
+spec = importlib.util.spec_from_file_location('display_once', ROOT / 'packaging/kernel/display-once.py')
 once = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(once)
 FORMAL_RELEASE = once.formal_baseline()["release"]
@@ -31,6 +31,20 @@ def static_elf(kind=1):
 
 
 class TrialTest(unittest.TestCase):
+    def test_vendor_baseline_prepares_dated_candidate_without_mainline_boot_files(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            self.fixture(root, release='7.3.1-vim4-20261103.2')
+            state = json.loads((root/'baseline.json').read_text())
+            plan = json.loads((root/'bundle/trial.json').read_text())
+            self.assertEqual(plan['baseline_files'], state['files'])
+            self.assertFalse(any(name.endswith(('/Image', '/vim4.dtb')) for name in state['files']))
+            state['files'].pop('/boot/extlinux/extlinux.conf')
+            (root/'baseline.json').write_text(json.dumps(state))
+            with self.assertRaisesRegex(ValueError, 'boot and runtime registration'):
+                once.prepare(root/'payload', root/'init', root/'baseline.json', root/'rejected',
+                             release='7.3.1-vim4-20261103.2')
+
     def test_same_formal_image_distinct_dt_stages_and_keeps_installed_modules(self):
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory).resolve()
@@ -142,10 +156,12 @@ class TrialTest(unittest.TestCase):
             source='a' * 40, kernel_build_id='1' * 40, release=release,
             modules={name: once.hashlib.sha256(data).hexdigest() for name, data in modules.items()},
             artifacts={name: once.sha(payload / name) for name in ('Image', 'vim4.dtb', 'modules.tar.gz')})))
-        boot = '/boot/edge' if baseline_release.startswith('5.15.') else '/boot/kernels/'+baseline_release
+        boot = '/boot/kernels/'+baseline_release
         state = dict(release=baseline_release, build_id='a'*40, cmdline='root=PARTUUID=bcb80000-02 rootwait rw', files={name: 'f' * 64 for name in (
-            boot+'/Image', boot+'/vim4.dtb', '/boot/extlinux/extlinux.conf',
+            '/boot/extlinux/extlinux.conf',
             '/etc/vim4-kvm/kernels.json', '/etc/vim4-kvm/runtime-build.json')})
+        if not baseline_release.startswith('5.15.'):
+            state['files'].update({boot+'/Image':'f'*64, boot+'/vim4.dtb':'f'*64})
         if '-npu' in release or release in ('7.3.0-vim4kvm-uhd2+', '7.3.0-vim4kvm-uhd2-nodebug+', '7.3.0-vim4kvm-uhd3+', '7.3.0-vim4kvm-uhd4+'):
             runtime = {}
             for index, target in enumerate(('/usr/libexec/vim4-board-runtime',
@@ -287,7 +303,7 @@ class TrialTest(unittest.TestCase):
             root = Path(directory).resolve()
             bundle = self.fixture(root)
             baseline = root / 'default-extlinux.conf'
-            baseline.write_bytes(b'DEFAULT baseline\nLABEL baseline\nLINUX /edge/Image\n')
+            baseline.write_bytes(b'DEFAULT baseline\nLABEL baseline\nLINUX /kernels/7.3.1-vim4kvm-uhd7+/Image\n')
             child = r'''
 import importlib.util, os, sys
 from pathlib import Path
@@ -307,7 +323,7 @@ with patch.object(once.shutil, 'copyfileobj', die):
             result = subprocess.run([os.sys.executable, '-c', child, str(spec.origin),
                                      str(root / 'trials'), str(bundle)])
             self.assertEqual(result.returncode, 91)
-            self.assertEqual(baseline.read_bytes(), b'DEFAULT baseline\nLABEL baseline\nLINUX /edge/Image\n')
+            self.assertEqual(baseline.read_bytes(), b'DEFAULT baseline\nLABEL baseline\nLINUX /kernels/7.3.1-vim4kvm-uhd7+/Image\n')
             self.assertFalse((root / 'trials' / ('1' * 40)).exists())
             partial = list((root / 'trials').glob('.incomplete-*'))
             self.assertEqual(len(partial), 1)

@@ -77,9 +77,9 @@ VM 工作树为 `~/src/u-boot`，版本记在 workspace.toml 的 `uboot` 表。
 仓库入口为 `/home/deepdream/src/linux-7.3`（当前检出 `vim4-display-color` 功能分支，
 不是正式分支工作树），配套 U-Boot 为
 `/home/deepdream/src/u-boot-edge`；它们不是当前目录下的子仓库，bootstrap 不创建它们。
-当前目录的 [packaging/kernel-edge](../packaging/kernel-edge/) 保存配置和源码版本锁，
-`build/kernel-edge/` 只保存部分构建产物与备份，不是源码工作树。
-构建方法和分支信息见 [新内核基线](kernel-edge.md)。
+当前目录的 [packaging/kernel](../packaging/kernel/) 保存配置和源码版本锁，
+`build/kernel/` 只保存部分构建产物与备份，不是源码工作树。
+构建方法和分支信息见 [新内核基线](kernel-mainline.md)。
 
 worker 只用 `tools/vm` 管理 VM 内核工作树：先 `tools/vm status`，只引用完整 SHA，
 再 `tools/vm worktree new <task> --from <SHA>` 创建独立源码和 `~/build/<task>`。

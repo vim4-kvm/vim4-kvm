@@ -28,7 +28,7 @@ args = parser.parse_args()
 bundle, template, output = args.bundle, args.template, args.output
 existing_init = args.existing_init
 recipe = Path(__file__).resolve().parent
-spec = importlib.util.spec_from_file_location('once', recipe.parent / 'kernel-edge/display-once.py')
+spec = importlib.util.spec_from_file_location('once', recipe.parent / 'kernel/display-once.py')
 once = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(once)
 report = json.loads((bundle / 'manifest.json').read_text())
@@ -52,7 +52,7 @@ output.mkdir()
 runtime = output / 'runtime'
 if args.unified:
     shutil.copytree(bundle / 'runtime', runtime)
-    # Keep the existing edge unit executable present; it is masked in FullKvm.
+    # Keep the existing edge unit executable present; it is masked in Mainline.
     shutil.copy2(recipe / 'one-kvm-edge', runtime / 'one-kvm-edge')
     shutil.copy2(runtime / 'usr/lib/vim4-kvm/python/vim4gpu.py', runtime / 'vim4gpu.py')
     for name in ('vim4-board-runtime', 'vim4-kvm-run', 'vim4-mainline-prepare', 'vim4-mainline-gadget-prepare'):

@@ -10,7 +10,7 @@ def load(name,path):
     spec=importlib.util.spec_from_file_location(name,ROOT/path)
     module=importlib.util.module_from_spec(spec);spec.loader.exec_module(module);return module
 generator=load('ethernet_generator','board/vim4-ethernet-generator.py')
-runtime=load('ethernet_runtime','packaging/kernel-edge/register-runtime.py')
+runtime=load('ethernet_runtime','packaging/kernel/register-runtime.py')
 
 
 class EthernetIdentityTests(unittest.TestCase):
@@ -58,12 +58,12 @@ class EthernetIdentityTests(unittest.TestCase):
             self.assertFalse(target.exists())
 
     def test_boot_profile_uses_dynamic_efuse_variable_and_preserves_other_labels(self):
-        full=runtime.boot_profile({'APPEND':'root=test'},framebuffer_console=True)
+        full=runtime.boot_profile({'APPEND':'root=test'},version='7.3.1-vim4kvm-uhd7+',framebuffer_console=True)
         self.assertIn('vim4.eth_mac=${eth_mac}',full['APPEND'].split())
         old={**full,'APPEND':full['APPEND'].replace(' vim4.eth_mac=${eth_mac}','')}
-        text='default FullKvm\nLABEL Default\n APPEND vendor=keep\nLABEL FullKvm\n APPEND '+old['APPEND']+'\n'
+        text='default Mainline\nLABEL Vendor\n APPEND vendor=keep\nLABEL Mainline\n APPEND '+old['APPEND']+'\n'
         upgraded=runtime.update_boot_entry(text,old,None,full)
-        self.assertIn('default FullKvm\n',upgraded)
-        self.assertIn('LABEL Default\n APPEND vendor=keep\n',upgraded)
+        self.assertIn('default Mainline\n',upgraded)
+        self.assertIn('LABEL Vendor\n APPEND vendor=keep\n',upgraded)
         self.assertIn('vim4.eth_mac=${eth_mac}',upgraded)
         self.assertEqual(runtime.update_boot_entry(upgraded,full,None,full),upgraded)

@@ -6,7 +6,7 @@ import tempfile
 import unittest
 from unittest.mock import patch
 
-SCRIPT = Path(__file__).resolve().parents[1] / 'packaging/kernel-edge/one-kvm-edge-usb-prepare'
+SCRIPT = Path(__file__).resolve().parents[1] / 'packaging/kernel/one-kvm-edge-usb-prepare'
 loader = importlib.machinery.SourceFileLoader('edge_usb', str(SCRIPT))
 spec = importlib.util.spec_from_loader(loader.name, loader)
 usb = importlib.util.module_from_spec(spec)

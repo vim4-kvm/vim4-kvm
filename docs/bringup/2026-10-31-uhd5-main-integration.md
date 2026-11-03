@@ -6,7 +6,7 @@
 
 ## 正式身份
 
-- [sources.toml](../../packaging/kernel-edge/sources.toml)的tested_build为7.3.0-vim4kvm-uhd5+。
+- [sources.toml](../../packaging/kernel/sources.toml)的tested_build为7.3.0-vim4kvm-uhd5+。
   Image源码仍为正式内核8bca939d6bbd3e4d91e9f23b812e920172c99b3d；内核正式分支无需新增代码，
   不把后续文档或独立DTS审阅提交冒称Image来源。
 - build ID：90cc3dc2ddd1ad2562bf07e8de65f96eeb092a90；外部模块源码为主仓
@@ -17,7 +17,7 @@
 - [完整清单](../../packaging/kbase/uhd5-manifest.json)锁定2341个模块的摘要和GNU build ID；
   [外部清单](../../packaging/kbase/uhd5-external-manifest.json)、
   [运行时文件清单](../../packaging/kbase/uhd5-runtime-files.json)、
-  [完整配置](../../packaging/kernel-edge/uhd5.config)随仓库保存。
+  [完整配置](https://github.com/vim4-kvm/vim4-kvm/blob/8dac974/packaging/kernel-edge/uhd5.config)随仓库保存。
   包与二进制不随本次Git推送；已封存包保留在构建VM的/home/deepdream/build/uhd5-final-r12.tar.gz。
 
 ## 已验范围

@@ -123,7 +123,7 @@ Rebase 后提交：`6f1ab4a99e1d4` 电源回读、`39d42b6393f92` 恢复；拓�
 
 ## 显示任务之后的一次性启动计划
 
-采用 [display-once.py](../../packaging/kernel-edge/display-once.py) 和
+采用 [display-once.py](../../packaging/kernel/display-once.py) 和
 [第七窗口修正的静态 PID 1](2026-10-23-display-m1-window7.md)重新 prepare。
 
 先确认显示任务释放窗口及届时基线，fetch/rebase/构建完整候选。候选 Image/DTB/完整
