@@ -24,8 +24,8 @@ Agent 入口见 [AGENTS.md](AGENTS.md)（任务路由），经验记录见 [LESS
 
 可复现构建输入与 Ubuntu 组件打包入口见 [docs/ubuntu-build.md](docs/ubuntu-build.md)。
 
-- 串口：Sipeed USB to Dual Uart，UART0 = `/dev/cu.usbserial-100`，921600 8N1
-- 交互串口：`brew install tio && tio -b 921600 /dev/cu.usbserial-100`（退出 `Ctrl-t q`）
+- 串口默认/示例：Sipeed USB to Dual Uart，UART0 = `/dev/cu.usbserial-100`，921600 8N1；设备名以本次环境为准，接线与默认值见[硬件](docs/hardware.md)。
+- 交互串口示例（替换本次设备名）：`brew install tio && tio -b 921600 /dev/cu.usbserial-100`（退出 `Ctrl-t q`）
 - SSH：`ssh vim4`（`~/.ssh/config` 中 `Host vim4` → `khadas@192.168.50.210`，密钥 `~/.ssh/id_ed25519_vim4_kvm`）
 - 默认账户：khadas/khadas、root/khadas（原厂值，开发环境未改，见 [docs/hardware.md](docs/hardware.md#默认账户开发环境)）
 

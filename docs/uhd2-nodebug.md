@@ -1,13 +1,12 @@
 # uhd2-nodebug：调试配置对照候选
 
-2026-10-30正式采用已获用户批准，见[uhd3合入与回归](bringup/2026-10-30-uhd3-formal-regression.md)。
+正式采用的历史结果见[uhd3合入与回归](bringup/2026-10-30-uhd3-formal-regression.md)。
 下文保留候选阶段状态；正式uhd/edge已应用同一集合，安全基线不变。
 
 最新[三方上板结果](bringup/2026-10-30-nodebug-memory-window.md)：tmpfs/YOLO端到端恢复、视频约60fps；memcpy仍慢。默认5.15与正式配置不变。
 后续[绑核证据与两对门禁](nodebug-performance-gate.md)含正式配置最小diff草案，尚未应用。
 最新[两对实测](bringup/2026-10-30-nodebug-paired-gate.md)输出/60fps通过，性能资格仍不确定，大核memcpy未复现退化。
 
-用户授权本轮关闭纯调试开销，不需要额外批准；正式配置/pin/push仍需批准。
 **uhd1同样开启锁调试，历史7.3视频/GPU/NPU数据均包含该层成本。** 不是NPU补丁新增。
 候选独立[配置已转入 Git 历史](https://github.com/vim4-kvm/vim4-kvm/blob/8dac974/packaging/kernel-edge/uhd2-nodebug.config)，源码仍为
 `integration/npu-uhd2@f71b5c6289cb3254690e57292327e73514f0715f`，
@@ -29,8 +28,8 @@ release `7.3.0-vim4kvm-uhd2-nodebug+`。不修改uhd1/uhd2.config或正式source
 | 安全加固 | STACKPROTECTOR_STRONG/PER_TASK、INIT_STACK_ALL_ZERO、PAN/MTE/EPAN、内核PAC、KASLR、STRICT_KERNEL/MODULE_RWX等原值保持 | 属于安全基线，不作为纯调试删除；HARDENED_USERCOPY/FORTIFY_SOURCE原n，保持现状，不在本次引入安全策略变化 |
 | 分配/THP/交换 | INIT_ON_ALLOC/FREE、THP/mTHP、memcg、NUMA、zswap及迁移策略原值保持 | 避免同时改变分配/交换行为掩盖调试组效应，保留后续独立实验条件 |
 
-纯调试关闭按本轮授权执行；关闭不是安全取舍，但会减少故障诊断能力，调试构建仍应保留。
-正式配置的采用与pin另待用户批准。候选仅增加release白名单，不扩大到任意7.x。
+关闭纯调试开销会减少故障诊断能力，调试构建仍应保留。
+候选仅增加release白名单，不扩大到任意7.x。
 五个共用rootfs帮助程序按相同release分派；启动器核对CMA/首次HDMI参数与完整匹配模块。
 
 ## 构建与上板

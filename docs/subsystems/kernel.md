@@ -1,39 +1,10 @@
 # 内核与驱动
 
-当前默认 kbase 内核运行 `7.3.1-vim4kvm-uhd7+`，整包产物源码为 `25110086de2ef`，
-没有旧三模块overlay。正式 `vim4-kvm-7.3` 分支头为 `3748369`，多出的两个提交只改测试夹具。
-安装身份、九类验收及音频/UU边界见[7.3.1部署](../bringup/2026-11-03-kernel-731-deploy.md)。
-BCM43752 主机路径历史见 [uhd7 构建与安装](../bringup/2026-11-02-wifi-sdio-formal.md)。
-上一版的九类资格与 600 秒运动记录见 [uhd6 验收](../bringup/2026-10-31-uhd6-formal.md)。
+## 架构与约束
 
-VDIN HDR2主题候选uhd4完整构建见[集成门禁](../bringup/2026-10-31-hdr2-uhd4-gate.md)，
-[新PQ窗口](../bringup/2026-10-31-hdr2-mcp-ice-pq.md)已恢复MCP与接收、通过PQ/DMA/VUI/4K60；
-[uhd4r3恢复修复](../bringup/2026-10-31-hdr2-recovery.md)把双向中位数拉到约1.24秒，
-用户已认可两栈长尾不构成三次样本内退步；[正式uhd4短烟测](../bringup/2026-10-31-uhd4-formal-smoke.md)通过并推广源码/构建锁，当时仍默认 5.15。HLG已实现，无真实源未验。
-
-7.3通用内存/拷贝与锁调试配置差异、离线微基准及下一窗口见[内存拷贝审查](../memory-copy-audit.md)。
-
-主线配方、日期 release 与 Mainline/Vendor 启动项布局见[主线内核](../kernel-mainline.md)，
-板上已改名且只保留这两个内核，见[清理与重启](../bringup/2026-11-03-kernel-naming-cleanup.md)。
-这不替代现有 5.15 发布流程。
-Mainline 的 BCM43752 使用 .217 SDIO 固件和配套 brcmfmac/WCC 模块，构建输入、
-连接验证及回退见[固件对照](../bringup/2026-11-02-wifi-fw217.md)。
-旧版 PHY trap 的固件内部根因尚未确认，转储保存见[Wi-Fi 排查](../bringup/2026-10-21-edge-wifi-fps.md)。
-BCM43752 外部 SAE 的 WCC 协议与 AKM 声明见
-[管理器与 WPA3 适配](../bringup/2026-10-21-manager-mainline-status.md)。
-P2P 已移除能力屏蔽，修正 discovery、扫描版本、ARP/ND 控制和并发发送流控，见
-[Wi-Fi Direct 适配](../bringup/2026-10-21-edge-wifi-p2p.md)；尚缺真实对端协商与传输验收。
-
-构建、安装或回退内核时读 [内核构建、安装与回退](../kernel.md)；需要 VM 中的主内核工作树时读 [工作区](../workspace.md#构建)。
-
-7.3 下游补丁分类、私有接口整改、linux-next 迁移成本与统一离线验证见
-[补丁清单](../archive/kernel-patch-inventory.md)。它固定审计版本，不代表正式分支或部署版本。
-
-GPU 电压来源、CPU 分档/thermal 对照、PSCI idle 及设备系统 PM 缺口见
-[平台 PM 离线审查](../archive/platform-pm-offline.md)；
-[批量清单](../parity/platform-pm-board-checklist.md)区分正常负载和真正挂起窗口。
-G52/Panfrost 厂商功能差距、默认 cooling 离线候选及用户态打包/验收见
-[GPU 审查](../bringup/2026-10-30-gpu-parity.md)和[候选方案](../gpu-parity-plan.md)。
+当前内核身份、主线配方与 Mainline/Vendor 布局统一见[主线内核开头](../kernel-mainline.md)。
+Mainline 的 BCM43752 使用 .217 SDIO 固件和配套 brcmfmac/WCC 模块；
+PHY trap 固件内部根因未确认，P2P 尚缺真实对端协商与传输验收。
 
 MCU 风扇在 VM 主内核 drivers/misc/khadas-mcu.c，策略验证用 tools/test-fan-policy.sh。
 7.x 对应 drivers/thermal/khadas_mcu_fan.c，VIM4 默认安静自动调速；验证用同目录
@@ -46,6 +17,15 @@ VDIN、vfm_cap、Wave521、CRG USB 驱动在 common_drivers。
 
 单模块替换、initramfs 和完整包操作按内核文档执行。构建通过不代表启动、
 温控、采集和 USB 已验证；硬件回归需要独占窗口。
+
+## 按任务读取
+
+- 构建、安装与回退：[内核](../kernel.md)；VM 工作树：[工作区](../workspace.md#构建)；硬件窗口与部署门禁：[部署](deployment.md#内核开发流程与部署门禁)。
+- Wi-Fi 固件、WPA3/P2P 与旧候选证据：[主线相关记录](../kernel-mainline.md#相关记录)。
+- 内存/拷贝及锁调试配置：[内存拷贝审查](../memory-copy-audit.md)。
+- 下游补丁与迁移：[补丁清单](../archive/kernel-patch-inventory.md)（固定审计快照）。
+- 电压、thermal、idle 与挂起：[平台 PM 审查](../archive/platform-pm-offline.md)、[板测清单](../parity/platform-pm-board-checklist.md)。
+- GPU 功能差距、cooling 与打包验收：[GPU 方案](../gpu-parity-plan.md)。
 
 ## 错题
 

@@ -98,6 +98,9 @@ H.265 八轮、H.264 四轮 HDR 往返保持同一连接；HLG/其他格式及�
 
 ## 相关记录
 
+- [HDR2 集成门禁](bringup/2026-10-31-hdr2-uhd4-gate.md)、[PQ 与 MCP/ICE 窗口](bringup/2026-10-31-hdr2-mcp-ice-pq.md)、[恢复细采样](bringup/2026-10-31-hdr2-recovery.md)、[uhd4 正式烟测](bringup/2026-10-31-uhd4-formal-smoke.md)：旧候选的构建、PQ/DMA/VUI/4K60 与恢复证据；HLG 真源未验，不作为当前内核身份。
+- [5.15 信号变化恢复](bringup/2026-10-27-signal-recovery.md)：RX 锁定位、保留 WebRTC 的管线重建及 VDIN1 预算。
+- [UU HDR 验证](bringup/2026-10-27-uu-hdr.md)：十位解码声明与非对齐缩放恢复；持续显示与屏幕光度另验。
 5.15 One-KVM 的远程 Main10 HDR 与扩展尺寸验收范围见[原始记录](bringup/2026-10-26-remote-hdr-modes.md)。
 HDR降分辨率见[UU GPU 缩放](bringup/2026-10-27-uu-hdr-scale.md)及
 [四应用公共路径](bringup/2026-10-27-all-kvm-hdr-scale.md)，不能套用原尺寸性能。

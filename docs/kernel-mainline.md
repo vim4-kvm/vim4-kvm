@@ -292,6 +292,13 @@ manager 的 `GET /api/status` 新增 `encoder`，包含 `known`、`isolated`、
 
 ## 相关记录
 
+- [Wi-Fi 整包安装](bringup/2026-11-02-wifi-sdio-formal.md)、[.217 固件对照](bringup/2026-11-02-wifi-fw217.md)：BCM43752 构建输入、连接与回退；[PHY trap 排查](bringup/2026-10-21-edge-wifi-fps.md)保留转储，内部根因未确认。
+- [管理器与 WPA3](bringup/2026-10-21-manager-mainline-status.md)、[Wi-Fi Direct](bringup/2026-10-21-edge-wifi-p2p.md)：WCC/AKM 与 P2P 适配，真实对端传输未验。
+- [双内核运行时](bringup/2026-10-21-dual-kernel-integration.md)：应用数据与切换验证；此前的[独立实验网关](bringup/2026-10-20-edge-lan-gateway.md)使用回环 8082，不代表正式入口。
+- [实验 HID](bringup/2026-10-20-edge-hid-integration.md)、[USB 功能接入](bringup/2026-10-21-edge-usb-functions.md)：早期独立准备器、助手和数据目录的验证范围；当时 USB 串口未启用。
+- [NanoKVM 迁移快照](archive/nanokvm-migration.md)、[迁移前功能差异](archive/nanokvm-feature-review.md)、[旧功能表](archive/feature-status.md)、[One-KVM 审查](archive/one-kvm-audit.md)：历史应用基线，不代表现行功能。
+- [高码率实验](bringup/2026-10-14-4k60-high-bitrate-experiment.md)、[HEVC 画质模式](bringup/2026-10-27-hevc-quality.md)、[UU 文件传输](bringup/2026-10-25-uu-files.md)：应用能力的原始验收边界。
+- [看门狗运行时复位](bringup/2026-10-23-wave5-parity-window.md)：停止喂狗后的串口与恢复证据，不覆盖睡眠期硬锁。
 - [7.x 缩放与硬件 MJPEG](bringup/2026-10-21-edge-scaling-jpeg.md)：VDIN 下采样、HCODEC/OP-TEE 接入与 4K 帧率边界。
 - [UHD 清晰度复核](bringup/2026-10-20-edge-uhd-detail.md)：Mac 实际渲染栅格、原生单像素细节与 1080p 放大负对照。
 - [7.3 HDMI 音频](bringup/2026-10-20-edge-hdmi-audio.md)：独立 ALSA 声卡及网页 Opus；[动态 LPCM](bringup/2026-10-22-edge-hdmi-audio.md)记录 ACR/AIF 检测、七档采样率、重采样缓冲与无链路恢复。

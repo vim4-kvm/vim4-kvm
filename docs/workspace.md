@@ -73,9 +73,8 @@ VM 工作树为 `~/src/u-boot`，版本记在 workspace.toml 的 `uboot` 表。
 按该仓库 VIM4.md 手工构建与重打包；workspace.py 和镜像组装尚未自动集成。
 启动风扇测试的修改与实板结果见 [上板记录](bringup/2026-10-17-uboot-quiet-fan.md)。
 
-实验 7.3 内核同样存放在 OrbStack `vim4-build` 的 Linux 文件系统中：
-仓库入口为 `/home/deepdream/src/linux-7.3`（当前检出 `vim4-display-color` 功能分支，
-不是正式分支工作树），配套 U-Boot 为
+7.x 内核工作树存放在 OrbStack `vim4-build` 的 Linux 文件系统中：
+仓库入口为 `/home/deepdream/src/linux-7.3`，配套 U-Boot 为
 `/home/deepdream/src/u-boot-edge`；它们不是当前目录下的子仓库，bootstrap 不创建它们。
 当前目录的 [packaging/kernel](../packaging/kernel/) 保存配置和源码版本锁，
 `build/kernel/` 只保存部分构建产物与备份，不是源码工作树。
