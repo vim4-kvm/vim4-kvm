@@ -38,7 +38,7 @@ DISPLAY_ONCE: module directories failed (Success); reboot to the retained baseli
 ```
 
 基线模块目录保留打包机 UID/GID 501，原预检过度要求挂载点也归 root 所有。
-修正 [display-once-init.c](../../packaging/kernel-edge/display-once-init.c)：候选源目录仍须
+修正 [display-once-init.c](../../packaging/kernel/display-once-init.c)：候选源目录仍须
 root 所有且 group/other 不可写；目标须为存在的独立目录，不以其旧所有者作为拒绝理由。
 没有 chown 或修改基线模块。失败日志新增阶段和 errno；离线真实 C harness 加入
 UID 501 挂载点成功、非目录目标失败，并继续拒绝不可信源和源/目标别名。

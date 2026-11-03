@@ -92,7 +92,7 @@ static int fake_reboot(int command) { assert(command == RB_AUTOBOOT); resets++; 
 #define execl fake_exec
 #define reboot fake_reboot
 #define main trial_main
-#include "../../packaging/kernel-edge/display-once-init.c"
+#include "../../packaging/kernel/display-once-init.c"
 #undef main
 
 int main(void)

@@ -5,20 +5,11 @@
 [vim4-kvm/common_drivers](https://github.com/vim4-kvm/common_drivers) 的同名分支。
 发布名 `5.15.137-vim4kvm`，与原厂 `5.15.137` 的模块目录并存。
 主内核工作树保留在 VM，Mac 不检出内核文件；不要以第三方整套内核替代官方基线。
-2026-10-30默认启动仍为 `5.15.137-vim4kvm-hdrdual6`；7.3保留项已更新为正式
-`213f271505411`＋ACM配置，build ID `7a473adf9353013fd1ab01908d20bbf503a063fb`、
-M0 DTB与完整2337模块，登记FullKvm但不设为默认。来源、模块/应用哈希和未验范围见
-[部署锁更新](bringup/2026-10-30-kernel73-retained-pin.md)。
-功能差距的历史复核见[10月28日审查](bringup/2026-10-28-kernel73-parity-audit.md)。以下为历史M0部署记录：
-FullKvm 为v7.3 M0 `47878a0c611d`，release `7.3.0-vim4kvm-uhd1+`、
-build ID `f483ea42fee88be39ea67c43478638be67334d6e`，含simpledrm控制台和既有Wave5防护。
-九类完整回归、音频ENOLINK基线对照、专用DTB限制、整包哈希与3a61b75b回退备份见
-[M0正式部署](bringup/2026-10-23-display-m0-r4.md)。下方厂商5.15流程保留。
-正式版持久运行时支持与部署脚本见 [离线准备](bringup/2026-10-22-deploy-7-3-final-prep.md)；
-第二轮即时 EDID 检查触发的回退另见 [历史窗口](bringup/2026-10-22-edge-7-3-final-deploy.md)。
-7.x 使用 `/boot/edge` 与完整匹配模块；统一uhd6包仅可在全量门禁通过后用
-`tools/kernel-install.sh --edge unified.tar.gz --keep-directory-symlink`安装，保留5.15默认。
-该路径要求脚本及相邻`packaging/kernel-edge/register-runtime.py`同时存在，不使用厂商默认安装路径。
+当前正式主线内核为 `7.3.1-vim4kvm-uhd7+`，来源与验收见[主线内核](kernel-mainline.md)。
+厂商 `5.15.137-vim4kvm-hdrdual6` 保留；板上启动项已统一为 Mainline/Vendor，默认 Mainline。
+7.x 使用 `/boot/kernels/<release>` 与完整匹配模块；后续整包用
+`tools/kernel-install.sh --mainline vim4-kernel-<release>.tar.gz --keep-directory-symlink`安装，保留已选默认项。
+该路径要求脚本及相邻`packaging/kernel/register-runtime.py`同时存在，不使用厂商默认安装路径。
 
 ## 构建（OrbStack VM `vim4-build`，Ubuntu 24.04 arm64）
 

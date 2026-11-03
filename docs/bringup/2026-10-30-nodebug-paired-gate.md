@@ -107,7 +107,7 @@ B2性能采完后视频专项约60秒：60个接收采样，3560帧/59.203秒，
 
 最终默认5.15，12文件SHA及uid/gid/mode与本窗original及上一窗口final均一致；
 One-KVM/manager/HDMI/gadget四服务active，UDC configured，频率/亲和恢复，全部锁与串口释放。
-建议批准[nodebug正式配置草案](../../packaging/kernel-edge/nodebug-formal-draft.patch)，本轮未应用；
+建议批准[nodebug正式配置草案](https://github.com/vim4-kvm/vim4-kvm/blob/8dac974/packaging/kernel-edge/nodebug-formal-draft.patch)，本轮未应用；
 pin、正式部署与全栈性能追平结论仍不能由本次诊断直接推出。
 证据板上`/var/tmp/vim4-memory-board-r15/`、本机`build/memory-board-r15/evidence/`，
 归档SHA256 `0f58b4cc426533c040909c6b6a056283a541554f13d836ba81aed55414fddec8`。

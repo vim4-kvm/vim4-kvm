@@ -12,7 +12,7 @@ from board.vim4vrr import cta_blocks, validate
 
 ROOT = Path(__file__).resolve().parents[1]
 spec = importlib.util.spec_from_file_location(
-    'hdmi_mode_fixture', ROOT / 'packaging/kernel-edge/hdmi-mode-fixture.py')
+    'hdmi_mode_fixture', ROOT / 'packaging/kernel/hdmi-mode-fixture.py')
 fixture = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(fixture)
 

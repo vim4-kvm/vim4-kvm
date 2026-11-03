@@ -43,10 +43,10 @@ GstMemory 仍在；详细逐帧日志下连续通过，正常日志级别又复�
 GStreamer 1.24.2 的 orphan 先调用 set_active(false)，其中 stop() 未持有 QBUF
 锁。STREAMOFF 冲刷后、orphan 标志置位前，编码器归还的缓冲仍能 QBUF；后续
 streamoff 因 streaming=false 不再冲刷，留下排队内存引用。新增
-[orphan 顺序补丁](../../packaging/kernel-edge/gstreamer-v4l2-orphan-order.patch)：
+[orphan 顺序补丁](../../packaging/kernel/gstreamer-v4l2-orphan-order.patch)：
 先停止获取，在 QBUF 锁内停流并完成 orphan，再停用池。
 
-[离线夹具](../../packaging/kernel-edge/test_gstreamer_orphan.py) 提取真实 orphan / QBUF
+[离线夹具](../../packaging/kernel/test_gstreamer_orphan.py) 提取真实 orphan / QBUF
 函数，在停用回调中确定性归还采集租约。旧函数在引用归零断言失败，新函数通过；
 还检查空池、不支持 orphan、强制 drain、已 orphan 和失败请求的池所有权。
 它模拟内核队列边界，不替代真实 DMA 并发测试。可在 Linux 执行：
@@ -55,7 +55,7 @@ streamoff 因 streaming=false 不再冲刷，留下排队内存引用。新增
 python3 packaging/kernel-edge/test_gstreamer_orphan.py /path/to/sys/v4l2/gstv4l2bufferpool.c
 ```
 
-私有插件按 [源码锁](../../packaging/kernel-edge/sources.toml) 的官方 1.24.2 归档和
+私有插件按 [源码锁](../../packaging/kernel/sources.toml) 的官方 1.24.2 归档和
 四个补丁顺序重建，沿用 [Meson 命令](2026-10-19-wave521-uhd.md#固件与复现依赖)。
 不替换系统或生产插件。
 

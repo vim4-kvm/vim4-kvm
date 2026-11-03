@@ -279,7 +279,7 @@ def main():
     import tomllib
     root = Path(__file__).resolve().parents[1]
     kernel = tomllib.loads((root / 'workspace.toml').read_text())['kernel']
-    edge = tomllib.loads((root / 'packaging/kernel-edge/sources.toml').read_text())['kernel']
+    edge = tomllib.loads((root / 'packaging/kernel/sources.toml').read_text())['kernel']
     config = dict(kernels=[kernel, edge], coordinator=os.environ.get('VM_PUSH_COORDINATOR') == '1')
     # Send this same single file via stdin; no shared filesystem traversal needed.
     command = ['python3', '-c', 'import sys; exec(sys.stdin.read())',

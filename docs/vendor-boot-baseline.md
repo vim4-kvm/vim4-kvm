@@ -23,11 +23,11 @@ Image/initrd/DTB、SSH及正常重启返回默认7.3；硬挂死自动复位仍�
 
 ```sh
 python3 tools/vendor-boot-plan.py --extlinux /path/to/fresh/extlinux.conf \
-  --vendor-label Default --vendor-profile /path/to/reviewed-vendor.json \
+  --vendor-label Vendor --vendor-profile /path/to/reviewed-vendor.json \
   --output /tmp/vendor-once-plan
 ```
 
-生成器拒绝默认非 `/edge/Image`、无版本路径、缺initrd/DTB/root、变量展开、
+生成器要求默认 Mainline 的 Image/DT 位于同一 `/kernels/<release>`，拒绝无版本路径、缺initrd/DTB/root、变量展开、
 init覆盖与命令注入；它**不验证产物存在/匹配、实际分区、APPEND的硬件语义**。
 旧Stock标签是5.15.137原厂镜像，不等同于本任务的5.15.137-vim4kvm，不能混用。
 plan.json保留原extlinux哈希与完整已解析profile，生成固定路径 `perf-vendor-<hash>.conf`。

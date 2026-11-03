@@ -19,6 +19,8 @@
 
 ## 2026-11-03
 
+- [内核命名统一、旧产物清理与管理面板](2026-11-03-kernel-naming-cleanup.md) — kernel deployment manager；仅保留 Vendor/hdrdual6 和 Mainline/7.3.1，正常重启后四服务/UDC、4K H.265 59.78fps及面板卡片通过。
+
 - [7.3.1整包部署与boot清理](2026-11-03-kernel-731-deploy.md) — kernel deployment video usb；中途回uhd7确认MCP文本问题也存在于基线，补齐九类验收后留在7.3.1并推广来源锁；音频只验状态，UU只证明官方RTP接收。
 
 - [PiKVM 首帧拆段与冷启动口径](2026-11-03-pikvm-first-frame.md) — pikvm video application board；8.2秒含约6.3秒HTTP启动等待，暖接入0.64–0.70秒，按需关键帧有效。

@@ -28,7 +28,7 @@ HDR2矩阵不改变内存类型，GStreamer编码大小修复改变的是编码C
 独立工作树为`../One-KVM-hdr2-dma`，未改kbase或其它应用源码。
 构建沿用`vim4-kvm-builder:ubuntu24.04`及锁定Cargo依赖、`--release --offline --locked --features vim4`。
 全量测试816通过、4忽略；首次无网络容器的5个本地WebRTC测试超时，开启本地网络后五项及全量重跑通过。
-新程序SHA256见上板记录；正式`packaging/kernel-edge/sources.toml`仍锁原3649a8c8，未偷改正式依赖。
+新程序SHA256见上板记录；正式`packaging/kernel/sources.toml`仍锁原3649a8c8，未偷改正式依赖。
 
 ## 稳定identity与真正退休
 

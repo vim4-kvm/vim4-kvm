@@ -10,7 +10,7 @@ RNDIS 配置及枚举通过，但本次 Mac 未取得 IPv4 地址，Windows 数�
 ## 版本与隔离
 
 Linux `694ea2b5ce0ddf9a816c929a75863e42118b4b36`；One-KVM 最终版本及 ELF 哈希见
-[sources.toml](../../packaging/kernel-edge/sources.toml)。DTB 未替换，运行
+[sources.toml](../../packaging/kernel/sources.toml)。DTB 未替换，运行
 `7.3.0-rc7-vim4kvm-uhd1+`，内核 build ID
 `a01ed3a5c479be77cfa39caa3decf4f061155db2`；安装同次正常 in-tree 构建的完整 Image
 及 2334 模块集，保留 split BTF。模块包 SHA-256：

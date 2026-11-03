@@ -6,7 +6,7 @@ import tempfile
 import unittest
 from unittest.mock import patch
 
-SCRIPT = Path(__file__).resolve().parents[1] / 'packaging/kernel-edge/one-kvm-edge-usb-prepare'
+SCRIPT = Path(__file__).resolve().parents[1] / 'packaging/kernel/one-kvm-edge-usb-prepare'
 loader = importlib.machinery.SourceFileLoader('edge_usb', str(SCRIPT))
 spec = importlib.util.spec_from_loader(loader.name, loader)
 usb = importlib.util.module_from_spec(spec)
@@ -25,7 +25,7 @@ class EdgeUsbTest(unittest.TestCase):
         self.enterContext(patch.object(usb, 'ROOT', self.root))
         self.enterContext(patch.object(usb, 'MARKER', self.marker))
         self.enterContext(patch.object(usb.os, 'geteuid', return_value=0))
-        self.enterContext(patch.object(usb.platform, 'release', return_value='7.3.0-vim4kvm-uhd1+'))
+        self.enterContext(patch.object(usb.platform, 'release', return_value='7.3.1-vim4kvm-uhd7+'))
         self.run = self.enterContext(patch.object(usb.subprocess, 'run'))
 
     def existing(self):
@@ -47,10 +47,10 @@ class EdgeUsbTest(unittest.TestCase):
         self.assertEqual(before, {p: p.read_bytes() for p in gadget.rglob('*') if p.is_file()})
         self.run.assert_not_called()
 
-    def test_npu_candidate_preserves_live_gadget_without_input_or_rebind(self):
+    def test_dated_candidate_preserves_live_gadget_without_input_or_rebind(self):
         gadget = self.existing()
         before = {p: p.read_bytes() for p in gadget.rglob('*') if p.is_file()}
-        for release in ('7.3.0-vim4kvm-npu1+', '7.3.0-vim4kvm-uhd2+', '7.3.0-vim4kvm-uhd2-nodebug+', '7.3.0-vim4kvm-uhd3+', '7.3.0-vim4kvm-uhd4+', '7.3.0-vim4kvm-uhd6+'):
+        for release in ('7.3.1-vim4-20261103', '7.3.1-vim4-20261103.2'):
             with self.subTest(release=release), patch.object(usb.platform, 'release', return_value=release):
                 usb.prepare()
                 self.assertEqual(before, {p: p.read_bytes() for p in gadget.rglob('*') if p.is_file()})

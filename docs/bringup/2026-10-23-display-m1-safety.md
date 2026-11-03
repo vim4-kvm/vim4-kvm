@@ -45,7 +45,7 @@ sysboot mmc 1:2 any ${pxefile_addr_r} /var/lib/vim4-kvm/display-m1/844bfec2f4240
 不能仅改候选 localversion 就声称 KVM 启动兼容。候选保留原 release，但完整模块另存
 `<build-ID>/modules/<release>`，不在持久 `/lib/modules` 覆盖基线。
 
-[display-once-init.c](../../packaging/kernel-edge/display-once-init.c) 编译为静态 ARM64 PID 1：
+[display-once-init.c](../../packaging/kernel/display-once-init.c) 编译为静态 ARM64 PID 1：
 
 1. 挂载 proc/sys，核对 release、可执行路径末级 40 位 build ID 与真实 GNU kernel notes。
 2. 核对私有源目录为 root 所有、无 group/other 写权限；目标须为独立目录。
@@ -59,7 +59,7 @@ sysboot mmc 1:2 any ${pxefile_addr_r} /var/lib/vim4-kvm/display-m1/844bfec2f4240
 
 ## 实现、离线命令与产物
 
-[display-once.py](../../packaging/kernel-edge/display-once.py) 的 prepare 核对候选 Image/DTB/
+[display-once.py](../../packaging/kernel/display-once.py) 的 prepare 核对候选 Image/DTB/
 模块归档哈希、逐模块清单、静态 ARM64 ELF，并保留大小写不同的模块名。
 stage 是**需双锁的板级改动**：验证运行基线 build ID、release、cmdline 和五个受保护
 文件哈希，只解包普通文件到 `.incomplete-*`，检查哈希并 fsync 后原子发布私有目录。
@@ -92,7 +92,7 @@ Mac 跑 Python 测试；Linux VM 额外编译执行真实 PID 1 syscall harness�
 
 ## 旧覆盖式 restore 的独立修复
 
-[final-board.py](../../packaging/kernel-edge/final-board.py) 保留兼容旧窗口恢复入口，但 M1
+[final-board.py](../../packaging/kernel/final-board.py) 保留兼容旧窗口恢复入口，但 M1
 不再使用它安装覆盖式候选。stop 每个服务最多等 10 秒；超时 kill 后不再次无界 wait，
 非零退出同样记录并继续。优先恢复启动文件及模块，随后对本地文件系统 `sync -f`
 （每次 30 秒上限），避免全局 sync 被无关 CIFS 挂载拖住。同步失败必须报错，不能宣称落盘成功。

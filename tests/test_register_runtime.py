@@ -21,28 +21,30 @@ def load(name, path):
     return module
 
 
-runtime = load('register_runtime', 'packaging/kernel-edge/register-runtime.py')
+runtime = load('register_runtime', 'packaging/kernel/register-runtime.py')
 boot = load('profile_boot', 'board/vim4boot.py')
+CURRENT = '7.3.1-vim4kvm-uhd7+'
 
 
 class BootProfileTest(unittest.TestCase):
     def test_insufficient_boot_space_is_rejected_before_copy(self):
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)
-            edge, payload = root / 'edge', root / 'payload'
-            edge.mkdir()
+            boot_root, payload = root / 'boot', root / 'payload'
+            boot_root.mkdir()
             payload.mkdir()
             for name in runtime.BOOT_FILES:
                 (payload / name).write_bytes(b'candidate')
-                (edge / name).write_bytes(b'baseline')
+                (boot_root / name).write_bytes(b'baseline')
             with patch.object(runtime.shutil, 'disk_usage', return_value=SimpleNamespace(free=1)):
                 with self.assertRaisesRegex(ValueError, 'Insufficient /boot'):
-                    runtime.check_space(edge, payload)
-            self.assertEqual((edge / 'Image').read_bytes(), b'baseline')
+                    runtime.check_space(boot_root, payload)
+            self.assertEqual((boot_root / 'Image').read_bytes(), b'baseline')
             with patch.object(runtime.shutil, 'disk_usage', return_value=SimpleNamespace(free=len(runtime.BOOT_FILES)*4096+100)):
-                runtime.check_space(edge, payload)
                 with self.assertRaisesRegex(ValueError, 'Insufficient /boot'):
-                    runtime.check_space(edge, payload, separate_directory=True)
+                    runtime.check_space(boot_root, payload)
+            with patch.object(runtime.shutil, 'disk_usage', return_value=SimpleNamespace(free=1024*1024)):
+                runtime.check_space(boot_root, payload)
 
     def test_install_resumes_only_with_the_complete_identical_module_set(self):
         with tempfile.TemporaryDirectory() as directory:
@@ -76,10 +78,13 @@ class BootProfileTest(unittest.TestCase):
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)
             config = root / 'extlinux.conf'
-            original = b'DEFAULT Default\nLABEL Default\n LINUX /vendor\n'
+            original = ('DEFAULT Vendor\nLABEL Vendor\n LINUX /vendor\nLABEL Mainline\n LINUX /kernels/'+CURRENT+'/Image\n FDT /kernels/'+CURRENT+'/vim4.dtb\n').encode()
             config.write_bytes(original)
             (root / 'vendor').write_bytes(b'Linux version 5.15.137-vim4kvm-test (builder)')
-            version = '7.3.0-vim4kvm-uhd6+'
+            retained = root/'kernels'/CURRENT
+            retained.mkdir(parents=True)
+            (retained/'Image').write_text('Linux version '+CURRENT+' (builder)')
+            version = '7.3.1-vim4-20261103'
             payload = root / 'payload'
             payload.mkdir()
             (payload / 'Image').write_bytes(b'Linux version ' + version.encode() + b' (builder)')
@@ -119,56 +124,57 @@ class BootProfileTest(unittest.TestCase):
     def test_final_release_still_requires_matching_installed_artifacts(self):
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)
-            (root / 'edge').mkdir()
-            (root / 'edge/Image').write_bytes(b'wrong installed Image')
             proof = root / 'proof.json'
             with patch.object(runtime.os, 'geteuid', return_value=0), patch.dict(
                     sys.modules, {'vim4boot': SimpleNamespace(BOOT=root)}):
                 for release, error in (
-                    ('7.3.0-vim4kvm-uhd1+', 'Image differs'),
-                    ('7.3.0-rc7-vim4kvm-uhd1+', 'Image differs'),
+                    (CURRENT, 'Image differs'),
+                    ('7.3.1-vim4-20261103', 'Image differs'),
                     ('7.3.0-unmatched', 'No validated application'),
                 ):
                     with self.subTest(release=release):
+                        installed = root/'kernels'/release
+                        installed.mkdir(parents=True)
+                        (installed/'Image').write_bytes(b'wrong installed Image')
                         proof.write_text(json.dumps({'release': release, 'image_sha256': '0' * 64}))
                         with self.assertRaisesRegex(ValueError, error):
                             runtime.register(SimpleNamespace(proof=proof))
 
     def test_profile_upgrade_preserves_default_and_all_other_entries(self):
         source = {'APPEND': 'root=UUID=test console=ttyAML0 vim4.one_kvm=1 systemd.mask=vim4-manager.service'}
-        previous = runtime.boot_profile(source)
-        full = runtime.boot_profile(source, ['binder.service', 'bluetooth-khadas.service'])
+        previous = runtime.boot_profile(source, version=CURRENT)
+        full = runtime.boot_profile(source, ['binder.service', 'bluetooth-khadas.service'], version=CURRENT)
         block = lambda label, fields: '\nLABEL ' + label + '\n' + ''.join(
             f'  {key} {value}\n' for key, value in fields.items())
         # Even an identical append line under another label must not be changed.
-        text = 'DEFAULT Default\n' + block('Default', {'LINUX': '/Image', 'APPEND': 'vendor keep'})
-        text += block('Other', previous) + block('FullKvm', previous)
+        text = 'DEFAULT Vendor\n' + block('Vendor', {'LINUX': '/Image', 'APPEND': 'vendor keep'})
+        text += block('Other', previous) + block('Mainline', previous)
         result = runtime.update_boot_entry(text, previous, previous, full)
         before, after = boot.boot_entries(text), boot.boot_entries(result)
-        self.assertEqual(boot.default_label(result), 'Default')
-        self.assertEqual(after['Default'], before['Default'])
+        self.assertEqual(boot.default_label(result), 'Vendor')
+        self.assertEqual(after['Vendor'], before['Vendor'])
         self.assertEqual(after['Other'], before['Other'])
-        self.assertEqual(after['FullKvm'], full)
+        self.assertEqual(after['Mainline'], full)
         self.assertIn('root=UUID=test console=ttyAML0', full['APPEND'])
         self.assertNotIn('systemd.mask=vim4-manager.service', full['APPEND'])
         self.assertEqual(runtime.update_boot_entry(result, full, previous, full), result)
 
     def test_custom_full_profile_is_never_replaced(self):
-        previous = runtime.boot_profile({'APPEND': 'root=test'})
+        previous = runtime.boot_profile({'APPEND': 'root=test'}, version=CURRENT)
         custom = {**previous, 'APPEND': previous['APPEND'] + ' administrator=keep'}
         with self.assertRaisesRegex(ValueError, 'custom boot arguments'):
-            runtime.update_boot_entry('DEFAULT FullKvm\n', custom, previous,
-                                      runtime.boot_profile({'APPEND': 'root=test'}, ['binder.service']))
+            runtime.update_boot_entry('DEFAULT Mainline\n', custom, previous,
+                                      runtime.boot_profile({'APPEND': 'root=test'}, ['binder.service'], version=CURRENT))
 
     def test_framebuffer_console_upgrade_keeps_serial_preferred_and_other_entries(self):
         source = {'APPEND': 'root=test console=ttyS0,921600n8'}
-        previous = runtime.boot_profile(source, ['binder.service'])
-        full = runtime.boot_profile(source, ['binder.service'], framebuffer_console=True)
-        text = 'DEFAULT FullKvm\nLABEL Other\n APPEND administrator=keep\nLABEL FullKvm\n'
+        previous = runtime.boot_profile(source, ['binder.service'], version=CURRENT)
+        full = runtime.boot_profile(source, ['binder.service'], framebuffer_console=True, version=CURRENT)
+        text = 'DEFAULT Mainline\nLABEL Other\n APPEND administrator=keep\nLABEL Mainline\n'
         text += ''.join(f' {key} {value}\n' for key, value in previous.items())
         result = runtime.update_boot_entry(text, previous, previous, full)
         fields = boot.boot_entries(result)
         self.assertEqual(fields['Other']['APPEND'], 'administrator=keep')
-        consoles = [word for word in fields['FullKvm']['APPEND'].split() if word.startswith('console=')]
+        consoles = [word for word in fields['Mainline']['APPEND'].split() if word.startswith('console=')]
         self.assertEqual(consoles, ['console=tty0', 'console=ttyS0,921600n8'])
         self.assertEqual(runtime.update_boot_entry(result, full, previous, full), result)

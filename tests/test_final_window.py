@@ -13,7 +13,7 @@ import unittest
 from unittest.mock import patch
 
 ROOT = Path(__file__).resolve().parents[1]
-spec = importlib.util.spec_from_file_location('final_window', ROOT / 'packaging/kernel-edge/final-window.py')
+spec = importlib.util.spec_from_file_location('final_window', ROOT / 'packaging/kernel/final-window.py')
 window = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(window)
 

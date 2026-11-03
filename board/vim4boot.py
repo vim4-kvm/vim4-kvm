@@ -1,4 +1,4 @@
-"""Select installed VIM4 kernels without changing their boot arguments or data."""
+"""Select the registered Vendor/Mainline entries without changing boot arguments or data."""
 import hashlib
 import json
 import os

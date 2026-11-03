@@ -14,9 +14,10 @@ import unittest
 from unittest.mock import patch
 
 ROOT = Path(__file__).resolve().parents[1]
-spec = importlib.util.spec_from_file_location('display_once', ROOT / 'packaging/kernel-edge/display-once.py')
+spec = importlib.util.spec_from_file_location('display_once', ROOT / 'packaging/kernel/display-once.py')
 once = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(once)
+FORMAL_RELEASE = once.formal_baseline()["release"]
 
 
 def static_elf(kind=1):
@@ -30,23 +31,37 @@ def static_elf(kind=1):
 
 
 class TrialTest(unittest.TestCase):
-    def test_same_uhd7_image_distinct_dt_stages_and_keeps_installed_modules(self):
+    def test_vendor_baseline_prepares_dated_candidate_without_mainline_boot_files(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            self.fixture(root, release='7.3.1-vim4-20261103.2')
+            state = json.loads((root/'baseline.json').read_text())
+            plan = json.loads((root/'bundle/trial.json').read_text())
+            self.assertEqual(plan['baseline_files'], state['files'])
+            self.assertFalse(any(name.endswith(('/Image', '/vim4.dtb')) for name in state['files']))
+            state['files'].pop('/boot/extlinux/extlinux.conf')
+            (root/'baseline.json').write_text(json.dumps(state))
+            with self.assertRaisesRegex(ValueError, 'boot and runtime registration'):
+                once.prepare(root/'payload', root/'init', root/'baseline.json', root/'rejected',
+                             release='7.3.1-vim4-20261103.2')
+
+    def test_same_formal_image_distinct_dt_stages_and_keeps_installed_modules(self):
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory).resolve()
-            self.fixture(root, release=once.UHD7, baseline_release=once.UHD7)
+            self.fixture(root, release=FORMAL_RELEASE, baseline_release=FORMAL_RELEASE)
             payload = root / 'payload'
             report = json.loads((payload/'manifest.json').read_text())
             state = json.loads((root/'baseline.json').read_text())
-            state.update(release=once.UHD7, build_id=report['kernel_build_id'])
+            state.update(release=FORMAL_RELEASE, build_id=report['kernel_build_id'])
             state['dt_properties'] = {'soc/display/status': '64697361626c656400'}
-            state['files']['/boot/edge/Image'] = once.sha(payload/'Image')
-            state['files']['/boot/edge/vim4.dtb'] = '0'*64
-            state['files'].update({'/lib/modules/'+once.UHD7+'/'+name: digest
+            state['files']['/boot/kernels/'+FORMAL_RELEASE+'/Image'] = once.sha(payload/'Image')
+            state['files']['/boot/kernels/'+FORMAL_RELEASE+'/vim4.dtb'] = '0'*64
+            state['files'].update({'/lib/modules/'+FORMAL_RELEASE+'/'+name: digest
                                    for name, digest in report['modules'].items()})
             (root/'baseline.json').write_text(json.dumps(state))
             report['dt_properties'] = {'soc/display/status': '6f6b617900'}
             (payload/'manifest.json').write_text(json.dumps(report))
-            modules = root/'installed-modules'/once.UHD7
+            modules = root/'installed-modules'/FORMAL_RELEASE
             modules.mkdir(parents=True)
             (modules/'overlay.ko').write_bytes(b'keep this installed overlay')
             with patch.object(once, 'ROOT', root/'display-m1'), patch.object(
@@ -55,7 +70,7 @@ class TrialTest(unittest.TestCase):
                 (root/'init').write_bytes(static_elf() + (str(parent)+'/').encode() + b'\0')
                 with patch.object(once.subprocess, 'check_output', return_value='6f 6b 61 79 00'):
                     once.prepare(payload, root/'init', root/'baseline.json', root/'same-image',
-                                 release=once.UHD7, baseline_release=once.UHD7,
+                                 release=FORMAL_RELEASE, baseline_release=FORMAL_RELEASE,
                                  baseline_id=state['build_id'], namespace='passthrough', payload_id='dt-v1')
                 sha = once.sha
                 def protected_hash(path):
@@ -65,13 +80,13 @@ class TrialTest(unittest.TestCase):
                 plan = json.loads((root/'same-image/trial.json').read_text())
                 self.assertEqual(plan['dt_properties'], report['dt_properties'])
                 self.assertEqual(plan['build_id'], plan['baseline_id'])
-                with patch.object(once.os, 'uname', return_value=SimpleNamespace(release=once.UHD7)):
+                with patch.object(once.os, 'uname', return_value=SimpleNamespace(release=FORMAL_RELEASE)):
                     once.cleanup_module_mountpoint(plan)
                 self.assertEqual((modules/'overlay.ko').read_bytes(), b'keep this installed overlay')
                 with patch.object(once.subprocess, 'check_output', return_value='00'):
                     with self.assertRaisesRegex(ValueError, 'DT property mismatch'):
                         once.prepare(payload, root/'init', root/'baseline.json', root/'bad-dt',
-                                     release=once.UHD7, baseline_release=once.UHD7,
+                                     release=FORMAL_RELEASE, baseline_release=FORMAL_RELEASE,
                                      baseline_id=state['build_id'], namespace='passthrough', payload_id='dt-v1')
                 # A different DTB hash with an unchanged readable identity must
                 # fail both prepare and stage, including direct metadata input.
@@ -79,7 +94,7 @@ class TrialTest(unittest.TestCase):
                 (root/'baseline.json').write_text(json.dumps(unchanged))
                 with self.assertRaisesRegex(ValueError, 'DT identity must differ'):
                     once.prepare(payload, root/'init', root/'baseline.json', root/'unchanged',
-                                 release=once.UHD7, baseline_release=once.UHD7,
+                                 release=FORMAL_RELEASE, baseline_release=FORMAL_RELEASE,
                                  baseline_id=state['build_id'], namespace='passthrough', payload_id='dt-v1')
                 with self.assertRaisesRegex(ValueError, 'DT identity must differ'):
                     once.stage(root/'same-image/candidate.tar', retained_baseline=unchanged)
@@ -124,7 +139,7 @@ class TrialTest(unittest.TestCase):
         self.assertIn('root=UUID=filesystem', state['cmdline'])
 
     def fixture(self, root, case_pair=False, release=once.RELEASE,
-                baseline_release=once.RELEASE):
+                baseline_release='5.15.137-vim4kvm-hdrdual6'):
         payload = root / 'payload'
         payload.mkdir()
         (root / 'init').write_bytes(static_elf())
@@ -141,9 +156,12 @@ class TrialTest(unittest.TestCase):
             source='a' * 40, kernel_build_id='1' * 40, release=release,
             modules={name: once.hashlib.sha256(data).hexdigest() for name, data in modules.items()},
             artifacts={name: once.sha(payload / name) for name in ('Image', 'vim4.dtb', 'modules.tar.gz')})))
-        state = dict(cmdline='root=PARTUUID=bcb80000-02 rootwait rw', files={name: 'f' * 64 for name in (
-            '/boot/edge/Image', '/boot/edge/vim4.dtb', '/boot/extlinux/extlinux.conf',
+        boot = '/boot/kernels/'+baseline_release
+        state = dict(release=baseline_release, build_id='a'*40, cmdline='root=PARTUUID=bcb80000-02 rootwait rw', files={name: 'f' * 64 for name in (
+            '/boot/extlinux/extlinux.conf',
             '/etc/vim4-kvm/kernels.json', '/etc/vim4-kvm/runtime-build.json')})
+        if not baseline_release.startswith('5.15.'):
+            state['files'].update({boot+'/Image':'f'*64, boot+'/vim4.dtb':'f'*64})
         if '-npu' in release or release in ('7.3.0-vim4kvm-uhd2+', '7.3.0-vim4kvm-uhd2-nodebug+', '7.3.0-vim4kvm-uhd3+', '7.3.0-vim4kvm-uhd4+'):
             runtime = {}
             for index, target in enumerate(('/usr/libexec/vim4-board-runtime',
@@ -285,7 +303,7 @@ class TrialTest(unittest.TestCase):
             root = Path(directory).resolve()
             bundle = self.fixture(root)
             baseline = root / 'default-extlinux.conf'
-            baseline.write_bytes(b'DEFAULT baseline\nLABEL baseline\nLINUX /edge/Image\n')
+            baseline.write_bytes(b'DEFAULT baseline\nLABEL baseline\nLINUX /kernels/7.3.1-vim4kvm-uhd7+/Image\n')
             child = r'''
 import importlib.util, os, sys
 from pathlib import Path
@@ -305,7 +323,7 @@ with patch.object(once.shutil, 'copyfileobj', die):
             result = subprocess.run([os.sys.executable, '-c', child, str(spec.origin),
                                      str(root / 'trials'), str(bundle)])
             self.assertEqual(result.returncode, 91)
-            self.assertEqual(baseline.read_bytes(), b'DEFAULT baseline\nLABEL baseline\nLINUX /edge/Image\n')
+            self.assertEqual(baseline.read_bytes(), b'DEFAULT baseline\nLABEL baseline\nLINUX /kernels/7.3.1-vim4kvm-uhd7+/Image\n')
             self.assertFalse((root / 'trials' / ('1' * 40)).exists())
             partial = list((root / 'trials').glob('.incomplete-*'))
             self.assertEqual(len(partial), 1)
@@ -317,21 +335,21 @@ with patch.object(once.shutil, 'copyfileobj', die):
             bundle = self.fixture(root)
             with patch.object(once, 'ROOT', root / 'trials'), patch.object(once.os, 'geteuid', return_value=0), \
                     patch.object(once.os, 'uname') as uname, patch.object(once, 'running_build_id', return_value='2' * 40):
-                uname.return_value.release = once.RELEASE
+                uname.return_value.release = '5.15.test'
                 with self.assertRaisesRegex(RuntimeError, 'approved running baseline'):
                     once.stage(bundle)
                 self.assertFalse((root / 'trials').exists())
 
     def test_changed_root_partition_refuses_staging(self):
-        plan = dict(baseline_release=once.RELEASE, baseline_id=once.BASE_ID,
+        plan = dict(baseline_release='5.15.test', baseline_id='a'*40,
                     release=once.RELEASE, baseline_cmdline='root=UUID=filesystem rw',
                     root_partuuid='bcb80000-02', baseline_files={})
         with patch.object(once.os, 'geteuid', return_value=0), \
                 patch.object(once.os, 'uname') as uname, \
-                patch.object(once, 'running_build_id', return_value=once.BASE_ID), \
+                patch.object(once, 'running_build_id', return_value='a'*40), \
                 patch.object(Path, 'read_text', return_value=plan['baseline_cmdline']), \
                 patch.object(Path, 'stat', return_value=SimpleNamespace(st_rdev=1, st_dev=2)):
-            uname.return_value.release = once.RELEASE
+            uname.return_value.release = '5.15.test'
             with self.assertRaisesRegex(RuntimeError, 'root partition differs'):
                 once.preflight(plan)
 

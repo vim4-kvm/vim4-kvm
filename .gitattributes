@@ -1,3 +1,3 @@
 # Unified diffs preserve source context whitespace for git apply.
 packaging/kbase/*.patch -whitespace
-packaging/kernel-edge/bcm43752-fw217.patch -whitespace
+packaging/kernel/bcm43752-fw217.patch -whitespace

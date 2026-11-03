@@ -42,7 +42,7 @@ Image与完整基础2338模块来自r10同次构建，加入三个匹配外部�
 | 外部构建manifest SHA256 | 4ceb6bd0a632c9c1da665a3812f9c4a860c5b021751024438fdcd5de7dd2101a |
 | libmali SHA256 / UK | 536ee80c17dc5c54e7c6ff029ca43270da8efc3fdc5b3aeb263f364419368494 / 11.39 |
 
-[sources.toml](../packaging/kernel-edge/sources.toml)锁定完整uhd5.config、Module.symvers/BTF摘要、
+[历史 sources.toml](https://github.com/vim4-kvm/vim4-kvm/blob/8dac974/packaging/kernel-edge/sources.toml)记录当时完整uhd5.config、Module.symvers/BTF摘要、
 完整模块清单、外部模块源提交与manifest、两套DT及runtime helper清单。
 [runtime登记](../packaging/kbase/uhd5-runtime.json)固定用户态UK/SHA与驱动选择。
 保持现有One-KVM/GStreamer正式pin，不借此改变HDR2、NPU、USB或信源。

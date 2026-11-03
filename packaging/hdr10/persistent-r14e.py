@@ -22,6 +22,7 @@ import time
 
 PREFIX = '/opt/vim4-kvm/hdr10-r14e'
 RELEASE = '7.3.0-vim4kvm-uhd6+'
+BOOT_DIR = Path('/boot/kernels') / RELEASE
 KERNEL_SHA = '7e68dc27e46bb270d561f4307bba1cd947152ee3813a0a926f817f11f8e9dfc6'
 USER_SHA = '9069fc083a8afe1a139e6d3e5eb725c608afafb4245ec3b155f873fd3f4a5b90'
 UNITS = ['one-kvm.service', 'nanokvm.service', 'vim4-kvm.service', 'vim4-pikvm.service']
@@ -116,7 +117,7 @@ def prepare(args):
         kernel_archive_sha256=KERNEL_SHA, userspace_archive_sha256=USER_SHA,
         release=RELEASE, kernel_source=report['source'], kernel_build_id=report['kernel_build_id'],
         modules=module_files, module_count=2341, sources=user['sources'],
-        boot_files={'/boot/edge/'+n:sha(kernel[n]) for n in boot_files}, base_files=base_files,
+        boot_files={str(BOOT_DIR/n):sha(kernel[n]) for n in boot_files}, base_files=base_files,
         files={n:sha(b) for n,b in files.items()},
         pending=['Pi finite-pool/JPEG/roundtrip/CMA', 'kbase HDR path', 'UU native HDR rendering',
                  'nonzero metadata, HLG and dynamic HDR without real source'])
@@ -222,13 +223,13 @@ def verify(args):
     assert 'init=' not in Path('/proc/cmdline').read_text(),'Expected normal persistent boot'
     assert note_id(Path('/sys/kernel/notes').read_bytes())==proof['kernel_build_id']
     sys.path.insert(0,'/usr/lib/vim4-kvm/python');import vim4boot
-    assert vim4boot.default_label(vim4boot.CONFIG.read_text())=='FullKvm'
+    assert vim4boot.default_label(vim4boot.CONFIG.read_text())=='Mainline'
     assert Path('/lib').is_symlink()
     for name,expected in proof['files'].items():
         assert file_sha(prefix/name)==expected,name
     assert file_sha(Path(WRAPPER))==proof['files']['installed-launcher']
     for name,expected in proof['boot_files'].items():assert file_sha(Path(name))==expected,name
-    manifest=json.loads(Path('/boot/edge/manifest.json').read_text())
+    manifest=json.loads((BOOT_DIR/'manifest.json').read_text())
     by_name={Path(n).name.split('.ko')[0].replace('-','_'):n for n in manifest['module_build_ids']}
     modules={}
     for name in ('mali_kbase','vim4_kbase_heaps','governor_vim4','wave5','t7_hdmirx',
@@ -253,16 +254,16 @@ def verify(args):
     plugin_hashes={p:file_sha(Path(p)) for p in mapped}
     plugins=json.loads(subprocess.check_output(['runuser','-u','khadas','--','python3',
         str(prefix/'check-phase2-plugins.py'),str(prefix/'gstreamer-1.0'),'--device-factories'],text=True,timeout=60))
-    status=dict(release=platform.release(),kernel_build_id=proof['kernel_build_id'],default='FullKvm',
+    status=dict(release=platform.release(),kernel_build_id=proof['kernel_build_id'],default='Mainline',
         module_count=2341,loaded_modules=modules,one_kvm_sha256=file_sha(Path('/proc')/str(pid)/'exe'),
         loaded_application_plugins=plugin_hashes,plugin_factories=plugins,apps_available=UNITS,
         tainted=int(Path('/proc/sys/kernel/tainted').read_text()),hardware_validated=False,
         acceptance='installation-sanity-only-user-manual-test',pending=proof['pending'])
     assert status['tainted']==4096,'Unexpected taint (kbase out-of-tree bit expected)'
     record=json.loads(Path('/etc/vim4-kvm/runtime-build.json').read_text())
-    record.update(running=RELEASE,default='FullKvm',loaded_module_build_ids={n:v['build_id'] for n,v in modules.items()},
+    record.update(running=RELEASE,default='Mainline',loaded_module_build_ids={n:v['build_id'] for n,v in modules.items()},
                   module_archive_sha256=manifest['files']['modules.tar.gz'],
-                  config_sha256=proof['boot_files']['/boot/edge/config'],
+                  config_sha256=proof['boot_files'][str(BOOT_DIR/'config')],
                   tainted=status['tainted'],services={n:'active' for n in units},observed_at=time.time())
     record.setdefault('sha256',{}).update({PREFIX+'/'+n:h for n,h in proof['files'].items()})
     record['sha256'].update(proof['boot_files']);record['sha256'][WRAPPER]=file_sha(Path(WRAPPER))

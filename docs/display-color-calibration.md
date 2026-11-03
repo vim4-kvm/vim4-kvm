@@ -74,7 +74,7 @@ RX COR 经 `rhd` 字节读两次并核对。不能用 32bit 物理读替代 COR 
 `diff`逐项输出VPU、TX控制与AVI语义，包含相同项；差异原因在bringup记录逐组说明，
 工具不自动豁免差异。
 
-校准 sink 使用 [SDR EDID](../packaging/kernel-edge/display-color-sdr-edid.hex)：
+校准 sink 使用 [SDR EDID](../packaging/kernel/display-color-sdr-edid.hex)：
 1080p60、4K30、4K60，8bpc、709、600MHz/SCDC、可选量化范围，420 仅声明 VIC97。
 运行时加载后必须逐字节比对 TX 读回的 EDID；不能只检查显示器名字。厂商 repeater
 自环需临时设置 `rpt_edid_selection 1`，避免 TX 插入回调改写本板 RX 的 EDID。

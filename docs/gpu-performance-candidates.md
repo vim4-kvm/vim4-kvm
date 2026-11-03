@@ -123,7 +123,7 @@ K为VM `~/src/linux-7.3-gpu`，分支`vim4-gpu-panfrost`；旧基线d2cd4c6。
 完整`Image dtbs modules`成功；Panfrost `W=1 C=2` sparse成功，GPU目录无新增诊断，
 仅架构vdso已有`__kernel_getrandom`未声明警告。strict checkpatch **0 error/warning/check**；
 现有`tools/testing/panfrost/test_pm.py`恢复顺序/失败夹具通过；`git diff --check`通过。
-无DT改动，未重跑dtbs_check；没有修改主仓packaging/kernel-edge配置。
+无DT改动，未重跑dtbs_check；没有修改主仓packaging/kernel配置。
 10ms使活跃期定时检查最多增加到原来的5倍，功耗/CPU代价未测；当前不是可直接宣称上游接受的默认值。
 
 ## 下一独占窗口：测量预算20分钟

@@ -9,7 +9,7 @@
 
 ## 构建合同
 
-uhd5相对[uhd4配置](../packaging/kernel-edge/uhd4.config)只改
+uhd5相对[uhd4配置](https://github.com/vim4-kvm/vim4-kvm/blob/8dac974/packaging/kernel-edge/uhd4.config)只改
 [配置差分](../packaging/kbase/uhd5.config.patch)：release标识与CONFIG_THERMAL_EMULATION=y。
 因此需要一次新的Image与完整匹配模块集；不能复用uhd4模块的BTF或vermagic。
 其他只改外部模块的迭代仍只重编外部模块，不重编Image。

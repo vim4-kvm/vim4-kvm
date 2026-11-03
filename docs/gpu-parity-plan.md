@@ -49,7 +49,7 @@ VM `~/src/linux-7.3-gpu`，分支 `vim4-gpu-panfrost`，基于`213f271505411`。
 T7时钟/复位门控正常化仍需独立候选和恢复证据；本轮不改所有Amlogic型号共享的PM策略。
 厂商T7 runtime回调明确因reset影响GPU工作而省略put_autosuspend，不能仅凭上游标志存在就打开。
 
-主仓`packaging/kernel-edge/`配置文件**无需GPU改动**：现有uhd1.config已有
+当时主仓配置**无需GPU改动**：[历史 uhd1.config](https://github.com/vim4-kvm/vim4-kvm/blob/8dac974/packaging/kernel-edge/uhd1.config)已有
 `CONFIG_DRM_PANFROST=m`、`CONFIG_PM_DEVFREQ=y`、
 `CONFIG_DEVFREQ_GOV_SIMPLE_ONDEMAND=y`、`CONFIG_DEVFREQ_THERMAL=y`、
 `CONFIG_THERMAL_OF=y`、`CONFIG_THERMAL_GOV_STEP_WISE=y`、
@@ -58,7 +58,7 @@ profiling是运行时选择，不因有fdinfo便默认常开；无需增加虚�
 电压策略与厂商一致：固定电压，非缺口；不再追求逐频电压表。
 闭源固件是否另行调压未证，不从Linux只切频的证据推断固件行为。
 
-构建复制uhd1.config到私有O=目录；不经要求正式锁匹配的build.sh冒充发布构建：
+历史复现从上述快照复制uhd1.config到私有O=目录；不经要求正式锁匹配的build.sh冒充发布构建：
 
 ```sh
 cd ~/src/linux-7.3-gpu
@@ -96,7 +96,7 @@ VM Meson1.7.2配置探测在缺少rustc处失败，**没有生成Mesa库或通�
 
 按现有`packaging/ubuntu/Dockerfile`的固定Ubuntu24.04 digest、
 `20261012T000000Z`快照和`downloads.lock.json`/`fetch.py`方式扩展独立GPU builder，
-不修改本轮禁止触碰的kernel-edge配置。输入锁应包含：
+不修改本轮禁止触碰的kernel配置。输入锁应包含：
 
 | 输入 | 固定要求 |
 |---|---|
@@ -191,4 +191,4 @@ build ID、全部11个VIM4 DTB哈希；`modules.sha256`记录完整模块集，
 | modules.sha256 | `a1a15d08293bc83b284a486bce8b72c8af217a23d13dd814bbfdeb98f112465f` |
 
 主仓只提交审查、方案和两个文档入口；保留并行NPU任务提交。正式内核分支、部署锁、
-`packaging/kernel-edge/`配置和板上启动项均未由本轮修改。
+`packaging/kernel/`配置和板上启动项均未由本轮修改。

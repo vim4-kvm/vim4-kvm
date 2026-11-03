@@ -27,7 +27,7 @@ make O=/home/deepdream/build/kernel-edge-uhd1-test \
 若该目标已有带 BTF 的旧产物，先移走该目标再构建，确认新 ELF 无 `.BTF`，再
 `strip --strip-debug`、XZ 打包。主配置 SHA256 为
 `39f2c5c008bba1032913abafdde2a992d9cd2ecf2b4c6f4fc9b27330d0ba9d2c`。
-对应源码与模块摘要记在 [实验源码锁](../../packaging/kernel-edge/sources.toml)。
+对应源码与模块摘要记在 [实验源码锁](../../packaging/kernel/sources.toml)。
 覆盖前停止实验应用，确认 Wave5 引用为 0、DMA-buf 为 0，再卸载；备份旧模块、
 应用和清单，加载新模块后查询控制并核对 taint，最后启动应用。
 

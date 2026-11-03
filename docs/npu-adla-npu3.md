@@ -84,7 +84,7 @@ VM输出`~/build/npu-adla3`、载荷`~/build/npu3-candidate`。
 下一窗口按载荷runtime清单备份/安装匹配助手，再取证明；使用主仓新版打包器，不能复用npu2的旧脚本：
 
 ```sh
-python3 packaging/kernel-edge/display-once.py prepare \
+python3 packaging/kernel/display-once.py prepare \
   --payload ~/build/npu3-candidate --init ~/build/npu3-candidate/npu-once-init \
   --baseline baseline-current.json --output ~/build/npu3-once \
   --release 7.3.0-vim4kvm-npu3+ \

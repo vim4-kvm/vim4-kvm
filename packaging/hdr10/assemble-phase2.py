@@ -17,7 +17,7 @@ import tarfile
 import tempfile
 
 ROOT = Path(__file__).resolve().parents[1]
-spec = importlib.util.spec_from_file_location('once', ROOT / 'kernel-edge/display-once.py')
+spec = importlib.util.spec_from_file_location('once', ROOT / 'kernel/display-once.py')
 once = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(once)
 

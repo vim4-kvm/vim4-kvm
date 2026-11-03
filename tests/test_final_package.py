@@ -6,7 +6,7 @@ import unittest
 from unittest.mock import patch
 
 spec = importlib.util.spec_from_file_location(
-    'final_package', Path(__file__).resolve().parents[1] / 'packaging/kernel-edge/package-final.py')
+    'final_package', Path(__file__).resolve().parents[1] / 'packaging/kernel/package-final.py')
 package = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(package)
 

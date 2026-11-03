@@ -16,7 +16,7 @@ class RegisterReaderTests(unittest.TestCase):
         cls.addClassCleanup(cls.directory.cleanup)
         cls.reader = Path(cls.directory.name) / 'reader'
         subprocess.run(['cc', '-O2', '-Wall', '-Wextra', '-Werror',
-                        str(ROOT / 'packaging/kernel-edge/vdec-register-dump.c'),
+                        str(ROOT / 'packaging/kernel/vdec-register-dump.c'),
                         '-o', str(cls.reader)], check=True)
 
     def test_entire_plan_validated_before_either_hardware_interface_is_opened(self):

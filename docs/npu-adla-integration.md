@@ -41,8 +41,8 @@ strict checkpatch第2–6段均0 errors/0 warnings/0 checks；原样核心导入
 `~/src/linux-7.3-hdmi-integration`、原NPU及GPU工作树均不改。
 正式命名采用下一独立release **7.3.0-vim4kvm-uhd2+**，不覆盖uhd1或npu1–4模块目录。
 
-草案为`packaging/kernel-edge/npu-integration.toml`和`uhd2.config`；
-sources.toml只加草案指引，kernel/tested_build/integrated_runtime实值仍为原正式版本。
+历史草案为[npu-integration.toml 与 uhd2.config](https://github.com/vim4-kvm/vim4-kvm/tree/8dac974/packaging/kernel-edge)；
+当时 sources.toml 只加草案指引，kernel/tested_build/integrated_runtime实值仍为原正式版本。
 草案不会被当前build/deploy入口自动替代使用，标记pending-user-approval、board_verified=false。
 有效配置对比npu4只改LOCALVERSION，ADLA=m；启动CMA仍为
 `512M@0x10000000-0xf0000000`，保留npu4的首次HDMI模块选项和冷插拔黑名单。
@@ -51,6 +51,7 @@ build.sh仍严格校验现有sources.toml，拒绝未pin的草案源码，这是
 本轮在VM明确指定草案工作树与配置直接make，不放宽正式构建器的版本锁：
 
 ```sh
+# 历史复现：先检出 8dac974 的配方；下方路径属于该快照。
 # VM，新输出目录；主仓在VM的挂载路径。
 repo=/mnt/mac/Users/deepdream/Developer/github/localhost-copilot/vim4-kvm
 src=$HOME/src/linux-7.3-npu-integration

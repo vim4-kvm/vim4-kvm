@@ -11,7 +11,7 @@ import unittest
 from unittest.mock import patch
 
 
-SOURCE = Path(__file__).resolve().parents[1] / 'packaging/kernel-edge/vdec-window.py'
+SOURCE = Path(__file__).resolve().parents[1] / 'packaging/kernel/vdec-window.py'
 SPEC = importlib.util.spec_from_file_location('vdec_window', SOURCE)
 window = importlib.util.module_from_spec(SPEC)
 SPEC.loader.exec_module(window)
@@ -112,7 +112,7 @@ class DecoderWindowTests(unittest.TestCase):
 
     def test_once_guard_requires_protected_files_private_modules_and_panic(self):
         files = {name: 'expected' for name in
-                 ('/boot/edge/Image', '/boot/edge/vim4.dtb', '/boot/extlinux/extlinux.conf',
+                 (str(window.BOOT_DIR/'Image'), str(window.BOOT_DIR/'vim4.dtb'), '/boot/extlinux/extlinux.conf',
                   '/etc/vim4-kvm/kernels.json', '/etc/vim4-kvm/runtime-build.json')}
         baseline = {'files': files, 'buildIds': ['baseline']}
         trial = '/var/lib/vim4-kvm/display-m1/candidate'
@@ -128,7 +128,7 @@ class DecoderWindowTests(unittest.TestCase):
                                  side_effect=lambda path: content[str(path)]), \
                     patch.object(window.Path, 'resolve', return_value=Path('/usr/lib/modules', window.BASE_RELEASE)), \
                     patch.object(window, 'sha', side_effect=lambda path:
-                                 'changed' if changed_file and path == '/boot/edge/Image' else 'expected'), \
+                                 'changed' if changed_file and path == str(window.BOOT_DIR/'Image') else 'expected'), \
                     patch.object(window.os, 'uname', return_value=SimpleNamespace(release=window.BASE_RELEASE)), \
                     patch.object(window, 'require_watchdog') as watchdog:
                 if accepted:

@@ -115,7 +115,7 @@ strict checkpatch 无错误、警告或检查项。主仓库离线测试运行 8
 
 VM 输出／暂存目录分别为 `~/build/kernel-edge-ring1-test`、`kernel-edge-ring1-stage`；
 主仓库部署清单位于 `build/kernel-edge/ring1-deploy/`，源码版本见
-[实验内核锁](../../packaging/kernel-edge/sources.toml)。
+[实验内核锁](../../packaging/kernel/sources.toml)。
 只更新 `/boot/edge/` 及实验 release 模块，更新前备份在
 `/var/backups/vim4-before-ring1-20261020/`。未改 BL31/U-Boot、分区或生产默认项。
 

@@ -3,4 +3,4 @@
 set -eu
 recipe=$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)
 work=$1
-python3 "$recipe/../kernel-edge/build-gstreamer.py" "$work"
+python3 "$recipe/../kernel/build-gstreamer.py" "$work"

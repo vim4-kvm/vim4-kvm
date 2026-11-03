@@ -9,7 +9,7 @@ import unittest
 from unittest.mock import Mock, patch
 
 ROOT = Path(__file__).resolve().parents[1]
-spec = importlib.util.spec_from_file_location('final_regression', ROOT / 'packaging/kernel-edge/final-regression.py')
+spec = importlib.util.spec_from_file_location('final_regression', ROOT / 'packaging/kernel/final-regression.py')
 regression = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(regression)
 
@@ -30,7 +30,7 @@ class FixtureSnapshotTest(unittest.TestCase):
             (video / 'gpu-check.py').write_text('/var/tmp/vim4-gpu-devfreq-20261021/gles-load')
             for name in ('browser-rates.py', 'browser-audio.mjs', 'run-browser.py', 'tone', 'mac-audio'):
                 (audio / name).touch()
-            helpers = root / 'build/kernel-edge'
+            helpers = root / 'build/kernel'
             (helpers / 'gpu-ir-deploy').mkdir(parents=True)
             (helpers / 'gpu-ir-deploy/latency-source').touch()
             (helpers / 'usb-edge-transfer.img').touch()

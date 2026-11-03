@@ -140,10 +140,10 @@ class PerformanceGateTest(unittest.TestCase):
         self.assertNotIn('private-peer', repr(state))
 
 
-CONFIG = '''DEFAULT FullKvm
-LABEL FullKvm
- LINUX /edge/Image
- FDT /edge/vim4.dtb
+CONFIG = '''DEFAULT Mainline
+LABEL Mainline
+ LINUX /kernels/7.3.1-vim4kvm-uhd7+/Image
+ FDT /kernels/7.3.1-vim4kvm-uhd7+/vim4.dtb
  APPEND root=PARTUUID=test edge_only=1
 LABEL Vendor
  LINUX /vmlinuz-5.15.137-vim4kvm
@@ -172,7 +172,7 @@ class VendorBootPlanTest(unittest.TestCase):
         self.assertTrue(result['serial_command'].endswith('; reset'))
 
     def test_rejects_wrong_default_and_unversioned_artifacts(self):
-        for text in (CONFIG.replace('DEFAULT FullKvm', 'DEFAULT Vendor'),
+        for text in (CONFIG.replace('DEFAULT Mainline', 'DEFAULT Vendor'),
                      CONFIG.replace('/vmlinuz-5.15.137-vim4kvm', '/Image'),
                      CONFIG.replace('INITRD ', '#INITRD ')):
             with self.assertRaises(ValueError):

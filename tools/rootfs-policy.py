@@ -32,7 +32,7 @@ def transform(fstab, extlinux):
         fields = line.split()
         if fields and fields[0].upper() == 'LABEL':
             label = fields[1]
-        if fields and fields[0].upper() == 'APPEND' and label == 'Default':
+        if fields and fields[0].upper() == 'APPEND' and label == 'Vendor':
             for arg in fields[1:]:
                 if arg.startswith('rootflags=') and arg not in ('rootflags=data=writeback', 'rootflags=data=ordered'):
                     raise ValueError('Review custom rootflags before applying boot policy')

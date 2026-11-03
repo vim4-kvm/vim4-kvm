@@ -27,23 +27,23 @@ class EdgeLauncherTest(unittest.TestCase):
     def run_script(self, name, release):
         env = dict(os.environ, PATH=f'{self.bin}:/usr/bin:/bin',
                    EDGE_TEST_RELEASE=release, EDGE_TEST_TRACE=str(self.trace))
-        return subprocess.run(['sh', str(ROOT / 'packaging/kernel-edge' / name)],
+        return subprocess.run(['sh', str(ROOT / 'packaging/kernel' / name)],
                               env=env, capture_output=True, text=True, timeout=5)
 
     def test_prepare_refuses_production_and_unknown_kernels_before_hardware_access(self):
-        for release in ['5.15.137-vim4kvm', '7.3.0-unmatched']:
+        for release in ['5.15.137-vim4kvm', '7.3.0-unmatched', '7.3.0-vim4kvm-uhd7+', '7.3.0-vim4kvm-npu4+']:
             with self.subTest(release=release):
                 result = self.run_script('one-kvm-edge-prepare', release)
                 self.assertNotEqual(result.returncode, 0)
                 self.assertFalse(self.trace.exists())
 
     def test_invalid_firmware_prevents_module_loading(self):
-        result = self.run_script('one-kvm-edge-prepare', '7.3.0-rc7-vim4kvm-uhd1+')
+        result = self.run_script('one-kvm-edge-prepare', '7.3.1-vim4kvm-uhd7+')
         self.assertNotEqual(result.returncode, 0)
         self.assertFalse(self.trace.exists())
 
-    def test_npu_candidate_still_requires_verified_video_firmware(self):
-        result = self.run_script('one-kvm-edge-prepare', '7.3.0-vim4kvm-npu2+')
+    def test_dated_candidate_still_requires_verified_video_firmware(self):
+        result = self.run_script('one-kvm-edge-prepare', '7.3.1-vim4-20261103.2')
         self.assertNotEqual(result.returncode, 0)
         self.assertIn('firmware is missing or has changed', result.stderr)
         self.assertFalse(self.trace.exists())
@@ -51,7 +51,7 @@ class EdgeLauncherTest(unittest.TestCase):
     def test_failed_secure_preloader_prevents_module_loading(self):
         (self.bin / 'systemctl').write_text(
             '#!/bin/sh\ncase "$3" in SubState) echo exited ;; ExecMainStatus) echo 1 ;; esac\n')
-        result = self.run_script('one-kvm-edge-prepare', '7.3.0-rc7-vim4kvm-uhd1+')
+        result = self.run_script('one-kvm-edge-prepare', '7.3.1-vim4kvm-uhd7+')
         self.assertNotEqual(result.returncode, 0)
         self.assertIn('preloader failed', result.stderr)
         self.assertFalse(self.trace.exists())
@@ -59,7 +59,7 @@ class EdgeLauncherTest(unittest.TestCase):
     def test_final_release_enters_the_same_guarded_preparation_path(self):
         (self.bin / 'systemctl').write_text(
             '#!/bin/sh\ncase "$3" in SubState) echo exited ;; ExecMainStatus) echo 1 ;; esac\n')
-        result = self.run_script('one-kvm-edge-prepare', '7.3.0-vim4kvm-uhd1+')
+        result = self.run_script('one-kvm-edge-prepare', '7.3.1-vim4kvm-uhd7+')
         self.assertNotEqual(result.returncode, 0)
         self.assertIn('preloader failed', result.stderr)
         self.assertFalse(self.trace.exists())
@@ -69,7 +69,7 @@ class EdgeLauncherTest(unittest.TestCase):
         sleep = self.bin / 'sleep'
         sleep.write_text('#!/bin/sh\nexit 0\n')
         sleep.chmod(0o755)
-        result = self.run_script('one-kvm-edge-prepare', '7.3.0-rc7-vim4kvm-uhd1+')
+        result = self.run_script('one-kvm-edge-prepare', '7.3.1-vim4kvm-uhd7+')
         self.assertNotEqual(result.returncode, 0)
         self.assertIn('preloader did not finish', result.stderr)
         self.assertFalse(self.trace.exists())
@@ -87,7 +87,7 @@ class EdgeLauncherTest(unittest.TestCase):
                        '  /sys/module/*/parameters/*) echo Y ;;\n'
                        '  *) exec /bin/cat "$@" ;;\nesac\n')
         cat.chmod(0o755)
-        result = self.run_script('one-kvm-edge-prepare', '7.3.0-rc7-vim4kvm-uhd1+')
+        result = self.run_script('one-kvm-edge-prepare', '7.3.1-vim4kvm-uhd7+')
         self.assertNotEqual(result.returncode, 0)
         self.assertIn('leased direct DMA', result.stderr)
         self.assertNotIn('udevadm', self.trace.read_text())
@@ -100,7 +100,7 @@ class EdgeLauncherTest(unittest.TestCase):
                        '  /sys/module/*/parameters/*) echo Y ;;\n'
                        '  *) exec /bin/cat "$@" ;;\nesac\n')
         cat.chmod(0o755)
-        result = self.run_script('one-kvm-edge-prepare', '7.3.0-rc7-vim4kvm-uhd1+')
+        result = self.run_script('one-kvm-edge-prepare', '7.3.1-vim4kvm-uhd7+')
         self.assertNotEqual(result.returncode, 0)
         self.assertIn('HDMI receiver is already loaded', result.stderr)
         self.assertNotIn('udevadm', self.trace.read_text())

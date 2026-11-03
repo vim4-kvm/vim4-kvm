@@ -9,7 +9,7 @@
 
 用户授权本轮关闭纯调试开销，不需要额外批准；正式配置/pin/push仍需批准。
 **uhd1同样开启锁调试，历史7.3视频/GPU/NPU数据均包含该层成本。** 不是NPU补丁新增。
-候选独立配置`packaging/kernel-edge/uhd2-nodebug.config`，源码仍为
+候选独立[配置已转入 Git 历史](https://github.com/vim4-kvm/vim4-kvm/blob/8dac974/packaging/kernel-edge/uhd2-nodebug.config)，源码仍为
 `integration/npu-uhd2@f71b5c6289cb3254690e57292327e73514f0715f`，
 release `7.3.0-vim4kvm-uhd2-nodebug+`。不修改uhd1/uhd2.config或正式sources锁。
 

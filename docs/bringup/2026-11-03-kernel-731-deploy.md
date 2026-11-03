@@ -140,7 +140,7 @@ UU已断开；没有向M4发送HID，没有听音。UU之后再次恢复视频�
 不当作内核WARN堆栈。旧 `/edge` 与完整uhd7模块（含三overlay）共2361文件哈希不变。
 FullKvm指向 `/kernels/7.3.1-vim4kvm-uhd7+/Image` 和同目录vim4.dtb；Default/hdrdual6保留，
 内核面板登记SHA256为 `c3a6149c3ca13439d109923c65301d72e174aa302fc272de8821ca0a27321469`。
-正式锁更新为实际7.3.1，旧三overlay仅留uhd7历史/基线证明，不再列入当前retained_runtime。
+正式锁更新为实际7.3.1，不含旧三overlay；后续窗口工具收敛又删除旧uhd7锁与闲置收据，Git历史保留。
 
 继续验收753/754/755分别持有344.289/1490.163/259.805秒，合计34分54秒；加上首次约51分2秒，
 均主动释放。sampling、SSH转发、iperf和源HTTP服务器已关闭。

@@ -6,7 +6,7 @@ import unittest
 
 ROOT = Path(__file__).resolve().parents[1]
 spec = importlib.util.spec_from_file_location(
-    'wifi_coredump', ROOT / 'packaging/kernel-edge/save-wifi-coredump.py')
+    'wifi_coredump', ROOT / 'packaging/kernel/save-wifi-coredump.py')
 collector = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(collector)
 

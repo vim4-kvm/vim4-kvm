@@ -14,7 +14,7 @@ GPU复用[uhd5 r11](bringup/2026-10-31-kbase-r11-policy.md)。完整矩阵预算
 
 ## 窗口与配对
 
-A=5.15，B=开跑时 `packaging/kernel-edge/sources.toml` 的最新tested_build。
+A=5.15，B=开跑时 `packaging/kernel/sources.toml` 的最新tested_build。
 P0-1统一候选未完成时，可用当前uhd5验证工具；标为预演，统一候选就绪后全部重测。
 固定来源锁副本、Image/DTB/模块/固件/私有用户态哈希，不能按release名字判断相同。
 不重新构建内核、不切换其他任务的Linux分支，不把普通安装包当RAM候选归档。

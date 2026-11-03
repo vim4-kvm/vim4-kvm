@@ -23,7 +23,7 @@ class KbaseRuntimeTest(unittest.TestCase):
                 path.write_text('#!/bin/sh\necho ' + name + '\n')
                 path.chmod(0o755)
             uname = root / 'uname'
-            uname.write_text('#!/bin/sh\necho 7.3.0-vim4kvm-uhd3+\n')
+            uname.write_text('#!/bin/sh\necho 7.3.1-vim4kvm-uhd7+\n')
             uname.chmod(0o755)
             env = dict(os.environ, PATH=str(root) + os.pathsep + os.environ['PATH'])
             for action, expected in (('gadget-start', 'vim4-mainline-gadget-prepare'),
@@ -35,12 +35,18 @@ class KbaseRuntimeTest(unittest.TestCase):
                                       env=env, text=True, capture_output=True)
             self.assertNotEqual(rejected.returncode, 0)
             self.assertNotIn('prepare', rejected.stdout)
-            uname.write_text('#!/bin/sh\necho 7.3.1-vim4kvm-uhd7+\n')
-            for action, expected in (('gadget-start', 'vim4-mainline-gadget-prepare'),
-                                     ('hdmi', 'vim4-mainline-prepare')):
-                result = subprocess.run(['sh', str(launcher), action], env=env, text=True, capture_output=True)
-                self.assertEqual(result.returncode, 0, result.stderr)
-                self.assertIn(expected, result.stdout)
+            for retired in ('7.3.0-rc7-vim4kvm-uhd1+', '7.3.0-vim4kvm-uhd7+', '7.3.0-vim4kvm-npu4+'):
+                rejected = subprocess.run(['sh', str(launcher), 'check-kernel', retired],
+                                          env=env, text=True, capture_output=True)
+                self.assertNotEqual(rejected.returncode, 0, retired)
+            for version in ('7.3.1-vim4kvm-uhd7+', '7.3.1-vim4-20261103', '7.3.1-vim4-20261103.2'):
+                uname.write_text('#!/bin/sh\necho '+version+'\n')
+                for action, expected in (('gadget-start', 'vim4-mainline-gadget-prepare'),
+                                         ('hdmi', 'vim4-mainline-prepare')):
+                    with self.subTest(version=version, action=action):
+                        result = subprocess.run(['sh', str(launcher), action], env=env, text=True, capture_output=True)
+                        self.assertEqual(result.returncode, 0, result.stderr)
+                        self.assertIn(expected, result.stdout)
 
     def test_gpu_binding_selects_blob_without_changing_wave5(self):
         with tempfile.TemporaryDirectory() as directory:
@@ -61,7 +67,10 @@ class KbaseRuntimeTest(unittest.TestCase):
             wrapper.write_text('import os,sys\nprint("blob-direct",flush=True)\na=sys.argv.index("--")+1\nos.execv(sys.argv[a],sys.argv[a:])\n')
             driver = root / 'sys/bus/platform/devices/fe400000.gpu/driver'
             driver.parent.mkdir(parents=True)
-            for name, contents in (('uname', 'echo 7.3.0-vim4kvm-uhd3+'), ('taskset', 'exit 0')):
+            icd = root / 'opt/vim4-mesa-26.2.6/share/vulkan/icd.d/panfrost.json'
+            icd.parent.mkdir(parents=True)
+            icd.write_text('{}')
+            for name, contents in (('uname', 'echo 7.3.1-vim4kvm-uhd7+'), ('taskset', 'exit 0')):
                 path = root / name
                 path.write_text('#!/bin/sh\n' + contents + '\n')
                 path.chmod(0o755)

@@ -27,7 +27,7 @@ fi
 if has platform || has encoder || has onekvm || has capture; then
     gst_work=$(mktemp -d)
     trap 'rm -rf "$gst_work"' EXIT
-    python3 packaging/kernel-edge/build-gstreamer.py "$gst_work"
+    python3 packaging/kernel/build-gstreamer.py "$gst_work"
     mkdir -p build/mainline-gstreamer
     cp "$gst_work/libgstvideo4linux2.so" build/mainline-gstreamer/
     rm -rf "$gst_work"

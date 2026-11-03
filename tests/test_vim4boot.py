@@ -15,15 +15,15 @@ class BootSelectionTest(unittest.TestCase):
         self.directory = self.enterContext(tempfile.TemporaryDirectory())
         self.root = Path(self.directory)
         self.config = self.root / 'extlinux.conf'
-        self.original = ('menu background /splash.bmp\nLABEL Default\n  LINUX /Image\n'
-                         '  APPEND root=unchanged\n\ntimeout 5\ndefault Default\n\n'
-                         'LABEL FullKvm\n  LINUX /edge/Image\n  FDT /edge/vim4.dtb\n'
+        self.original = ('menu background /splash.bmp\nLABEL Vendor\n  LINUX /Image\n'
+                         '  APPEND root=unchanged\n\ntimeout 5\ndefault Vendor\n\n'
+                         'LABEL Mainline\n  LINUX /kernels/7.3.1-vim4kvm-uhd7+/Image\n  FDT /kernels/7.3.1-vim4kvm-uhd7+/vim4.dtb\n'
                          '  APPEND root=unchanged vim4.full_kvm=1\n')
         self.config.write_text(self.original)
         image = self.root / 'Image'
         image.write_bytes(b'installed kernel')
         entries = []
-        for identifier, label in (('vendor', 'Default'), ('mainline', 'FullKvm')):
+        for identifier, label in (('vendor', 'Vendor'), ('mainline', 'Mainline')):
             entries.append({'id': identifier, 'label': label,
                             'boot': boot.boot_entries(self.original)[label],
                             'artifacts': {str(image): hashlib.sha256(image.read_bytes()).hexdigest()}})
@@ -33,7 +33,7 @@ class BootSelectionTest(unittest.TestCase):
 
     def test_roundtrip_only_changes_default_and_keeps_recovery_copy(self):
         boot.select('mainline')
-        self.assertEqual(self.config.read_text(), self.original.replace('default Default', 'default FullKvm'))
+        self.assertEqual(self.config.read_text(), self.original.replace('default Vendor', 'default Mainline'))
         backup = self.config.with_name('extlinux.conf.before-kernel-switch')
         self.assertEqual(backup.read_text(), self.original)
         boot.select('mainline')
@@ -61,6 +61,6 @@ class BootSelectionTest(unittest.TestCase):
             self.assertEqual(self.config.read_text(), changed)
 
     def test_ambiguous_default_cannot_be_overwritten(self):
-        self.config.write_text(self.original + '\ndefault FullKvm\n')
+        self.config.write_text(self.original + '\ndefault Mainline\n')
         with self.assertRaises(ValueError):
             boot.select('mainline')

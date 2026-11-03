@@ -8,7 +8,7 @@
 
 ## 配置与安装
 
-新增 [one-kvm-edge-gateway.service](../../packaging/kernel-edge/one-kvm-edge-gateway.service)，
+新增 [one-kvm-edge-gateway.service](../../packaging/kernel/one-kvm-edge-gateway.service)，
 复用板上 `/opt/vim4-manager/vim4-manager` 及 `/var/lib/vim4-manager` 的账户和会话。
 不修改后端的 managed 鉴权约束，也不重置账户。网关只在匹配的 7.3 内核且启动
 参数包含 `vim4.one_kvm=1` 时启动，没有生产管理器的风扇恢复或存储迁移前置命令。

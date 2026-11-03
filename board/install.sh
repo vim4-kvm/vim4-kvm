@@ -21,8 +21,8 @@ if [ ! -e /etc/default/vim4-wave5-monitor ]; then
 fi
 install -D -m 0755 vim4-kvm-run /usr/libexec/vim4-kvm-run
 install -D -m 0755 ../packaging/kbase/run.py /usr/lib/vim4-kvm/python/vim4gpu.py
-install -D -m 0755 ../packaging/kernel-edge/one-kvm-edge-prepare /usr/libexec/vim4-mainline-prepare
-install -D -m 0755 ../packaging/kernel-edge/one-kvm-edge-usb-prepare /usr/libexec/vim4-mainline-gadget-prepare
+install -D -m 0755 ../packaging/kernel/one-kvm-edge-prepare /usr/libexec/vim4-mainline-prepare
+install -D -m 0755 ../packaging/kernel/one-kvm-edge-usb-prepare /usr/libexec/vim4-mainline-gadget-prepare
 pd_binary=$(mktemp)
 trap 'rm -f "$pd_binary"' EXIT HUP INT TERM
 cc -O2 -Wall -Wextra -Werror ../tools/usb-pd-init.c -o "$pd_binary"

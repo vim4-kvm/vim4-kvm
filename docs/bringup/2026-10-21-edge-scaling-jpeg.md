@@ -21,7 +21,7 @@ H.264/H.265 网页原生 4K60、1080p60 通过；硬件 JPEG 原生 4K 约 47fps
   edge 服务显式等待预加载成功后再启动。
 
 Image、完整模块包、板用 DTB、插件和固件哈希固定于
-[sources.toml](../../packaging/kernel-edge/sources.toml)。模块 2334 个，保留 split BTF；
+[sources.toml](../../packaging/kernel/sources.toml)。模块 2334 个，保留 split BTF；
 测试内核 build ID `cd02c1e079f4fbdf65395d337677824762e1e121`。
 最终应用 SHA256 `9520b8005a94a553fd544fc36fa0415e0eb71e1fd0c9c40c2bad34f017cf89c7`。
 板用 DTB 含本板 MAC；其哈希不是其他板子的通用安装产物。

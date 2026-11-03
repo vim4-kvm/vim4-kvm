@@ -90,7 +90,7 @@ platform core 不自动上电；无硬件、重试或 sleep。三次提交分别
 
 ## 下次现场窗口：由低到高，以下均未执行
 
-工具 [vdec-window.py](../../packaging/kernel-edge/vdec-window.py) 默认仅打印离线计划，
+工具 [vdec-window.py](../../packaging/kernel/vdec-window.py) 默认仅打印离线计划，
 所有实际动作还需 `--execute --at-board --manifest <本地清单>`。
 若其他任务尚未恢复上述基线，安装直接拒绝。不要使用正式版部署前备份来替代本轮新备份，
 旧备份可能保存的是 rc7。候选 release 不在 KVM 运行时白名单，本轮不扩充该白名单；

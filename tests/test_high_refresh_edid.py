@@ -2,7 +2,7 @@
 from pathlib import Path
 import unittest
 
-from test_edge_audio_edid import data_blocks
+from board.vim4vrr import cta_blocks
 
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -15,7 +15,7 @@ class HighRefreshEdidTest(unittest.TestCase):
         self.assertEqual(candidate[:8], bytes.fromhex('00ffffffffffff00'))
         self.assertEqual(len(candidate), 128 * (1 + candidate[126]))
         self.assertTrue(all(sum(candidate[o:o + 128]) % 256 == 0 for o in range(0, len(candidate), 128)))
-        before, after = data_blocks(original), data_blocks(candidate)
+        before, after = cta_blocks(original[128:256])[0], cta_blocks(candidate[128:256])[0]
         before_vics = next(data for tag, data in before if tag == 2)
         after_vics = next(data for tag, data in after if tag == 2)
         self.assertEqual(set(after_vics) - set(before_vics), {63, 64})

@@ -3,16 +3,16 @@
 # The stock kernel stays available as the "Stock" extlinux entry.
 #
 # Usage (on the board): sudo sh kernel-install.sh vim4kvm-<release>.tgz
-# Unified edge: kernel-install.sh --edge unified.tar.gz --keep-directory-symlink
-# The edge path preserves the saved default (5.15 for uhd6, FullKvm for uhd7).
+# Mainline: kernel-install.sh --mainline vim4-kernel-<release>.tar.gz --keep-directory-symlink
+# Mainline installation preserves the saved default label.
 set -eu
 
-if [ "${1:-}" = --edge ]; then
+if [ "${1:-}" = --mainline ]; then
     [ "${3:-}" = --keep-directory-symlink ] || {
-        echo 'Usage: kernel-install.sh --edge unified.tar.gz --keep-directory-symlink' >&2
+        echo 'Usage: kernel-install.sh --mainline vim4-kernel-<release>.tar.gz --keep-directory-symlink' >&2
         exit 2
     }
-    exec python3 "$(dirname "$0")/../packaging/kernel-edge/register-runtime.py" install "$2"
+    exec python3 "$(dirname "$0")/../packaging/kernel/register-runtime.py" install "$2"
 fi
 
 TGZ=$1
@@ -21,7 +21,7 @@ STOCK=5.15.137
 [ -n "$R" ] || { echo "no lib/modules/<release>/ in $TGZ" >&2; exit 1; }
 echo "release: $R"
 case "$R" in
-    7.*) echo 'Use the kernel-edge board window and register-runtime.py for /boot/edge; this installer owns the vendor boot layout' >&2; exit 1 ;;
+    7.*) echo 'Use --mainline and register-runtime.py for /boot/kernels/<release>' >&2; exit 1 ;;
 esac
 
 # /lib is a symlink to usr/lib on Ubuntu 24.04; without
@@ -36,7 +36,7 @@ cp -a /boot/dtb-$STOCK/amlogic/kvim4*.dtb.overlay* /boot/dtb-$R/amlogic/
 APPEND='${rootdev} ${bootargs} ${consoles} ${partitiontype} fan=${fan_mode} ${boot_user_args}'
 cat > /boot/extlinux/extlinux.conf <<EOF
 menu background /splash.bmp
-LABEL Default
+LABEL Vendor
   LINUX /Image
   INITRD /initrd.img
   FDTDIR /dtb
@@ -49,7 +49,7 @@ LABEL Stock
   APPEND $APPEND
 
 timeout 5
-default Default
+default Vendor
 EOF
 
 # the 99-uboot post-update hook repoints /boot/initrd.img

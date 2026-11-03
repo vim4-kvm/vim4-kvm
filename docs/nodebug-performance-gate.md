@@ -106,7 +106,7 @@ DDR缺失、频率/CPU不匹配、热样本温度boot中位差>3°C、背景消�
 
 ## 正式配置最小diff草案（未应用）
 
-[nodebug-formal-draft.patch](../packaging/kernel-edge/nodebug-formal-draft.patch)仅12个配置赋值，
+[nodebug-formal-draft.patch](https://github.com/vim4-kvm/vim4-kvm/blob/8dac974/packaging/kernel-edge/nodebug-formal-draft.patch)仅12个配置赋值，
 不含LOCALVERSION、不改正式文件；LOCKDEP等隐藏依赖须olddefconfig重算。
 已在VM复制配置上应用并olddefconfig，**除LOCALVERSION外与已测nodebug有效配置逐字相同**；
 未来正式7.3配置需重新审查依赖，不直接套用行号。`git apply --check`通过，仅为可审阅草案。

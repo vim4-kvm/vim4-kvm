@@ -6,7 +6,7 @@ import unittest
 from unittest import mock
 
 
-SOURCE = Path(__file__).resolve().parents[1] / 'packaging/kernel-edge/prepare-wifi-firmware.py'
+SOURCE = Path(__file__).resolve().parents[1] / 'packaging/kernel/prepare-wifi-firmware.py'
 spec = importlib.util.spec_from_file_location('edge_wifi_firmware', SOURCE)
 firmware = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(firmware)

@@ -1,11 +1,9 @@
 # 内核与驱动
 
-11月3日已持久替换 uhd7 的 HDMI RX、VDIN、Wave5 三模块，源码为 `4111568841bd`。
-四应用4K60、JetKVM第二浏览器接管关键帧及UU官方客户端接收已补验，范围见
-[安装与会话记录](../bringup/2026-11-03-mainline-modules.md)。
-
-当前正式源码 `4111568841bd`，默认 FullKvm/kbase 运行 uhd7，Image 来自 `52b95c8493264`。BCM43752 主机路径、
-单子系统门禁、HDMI 无信号边界及 Wi-Fi 测量见 [uhd7 构建与安装](../bringup/2026-11-02-wifi-sdio-formal.md)。
+当前默认 kbase 内核运行 `7.3.1-vim4kvm-uhd7+`，整包产物源码为 `25110086de2ef`，
+没有旧三模块overlay。正式 `vim4-kvm-7.3` 分支头为 `3748369`，多出的两个提交只改测试夹具。
+安装身份、九类验收及音频/UU边界见[7.3.1部署](../bringup/2026-11-03-kernel-731-deploy.md)。
+BCM43752 主机路径历史见 [uhd7 构建与安装](../bringup/2026-11-02-wifi-sdio-formal.md)。
 上一版的九类资格与 600 秒运动记录见 [uhd6 验收](../bringup/2026-10-31-uhd6-formal.md)。
 
 VDIN HDR2主题候选uhd4完整构建见[集成门禁](../bringup/2026-10-31-hdr2-uhd4-gate.md)，
@@ -15,8 +13,10 @@ VDIN HDR2主题候选uhd4完整构建见[集成门禁](../bringup/2026-10-31-hdr
 
 7.3通用内存/拷贝与锁调试配置差异、离线微基准及下一窗口见[内存拷贝审查](../memory-copy-audit.md)。
 
-实验性 Armbian edge 基线及构建见 [新内核基线](../kernel-edge.md)，不替代现有 5.15 发布流程。
-FullKvm 的 BCM43752 使用 .217 SDIO 固件和配套 brcmfmac/WCC 模块，构建输入、
+主线配方、日期 release 与 Mainline/Vendor 启动项布局见[主线内核](../kernel-mainline.md)，
+板上已改名且只保留这两个内核，见[清理与重启](../bringup/2026-11-03-kernel-naming-cleanup.md)。
+这不替代现有 5.15 发布流程。
+Mainline 的 BCM43752 使用 .217 SDIO 固件和配套 brcmfmac/WCC 模块，构建输入、
 连接验证及回退见[固件对照](../bringup/2026-11-02-wifi-fw217.md)。
 旧版 PHY trap 的固件内部根因尚未确认，转储保存见[Wi-Fi 排查](../bringup/2026-10-21-edge-wifi-fps.md)。
 BCM43752 外部 SAE 的 WCC 协议与 AKM 声明见

@@ -1,6 +1,6 @@
 # 7.3 补丁清单与主线跟进
 
-> 归档快照（2026-10-24）：固定版本的7.3 补丁清单与主线跟进，不代表当前状态，现行入口见 [补丁维护方法](../kernel-edge.md#补丁维护方法)。
+> 归档快照（2026-10-24）：固定版本的7.3 补丁清单与主线跟进，不代表当前状态，现行入口见 [补丁维护方法](../kernel-mainline.md#补丁维护方法)。
 
 2026-10-23 [统一合入记录](../bringup/2026-10-23-mainline-integration.md)另记正式源码整合、
 默认关闭项和构建检查；以下 580/291 仍是固定 `0a775305` 历史审计，不能当最终 HEAD 计数。
@@ -41,7 +41,7 @@
 | `v7.3..0a775305`，实际下游 | 291 | 290 | 1 |
 
 [逐提交清单](kernel-audit/commits.tsv)覆盖全部 580 条，包含完整哈希、主题、分类、
-strict checkpatch 计数和私有/临时标记；[机器清单](../../packaging/kernel-edge/series/inventory.json)
+strict checkpatch 计数和私有/临时标记；[机器清单](../../packaging/kernel/series/inventory.json)
 另含路径、补丁名和 SHA256。[汇总](kernel-audit/summary.json)固定比较端点。
 不能把 580 都称为待上游下游补丁，也不能把已在上游的 T7 pinctrl/pwrc 基础支持再次投递。
 
@@ -132,7 +132,7 @@ RX/VDIN 的旧 1080p/copy-only 帮助已更新为当前实际行为。`COMPILE_T
 
 ## 主题序列与一键离线验证
 
-[series](../../packaging/kernel-edge/series/series)按原始拓扑顺序列出 290 个保留作者的邮件补丁，
+[series](../../packaging/kernel/series/series)按原始拓扑顺序列出 290 个保留作者的邮件补丁，
 文件按主题分目录。**目录分组不改变应用顺序**，跨主题依赖仍按总 series 应用。
 已在独立 Git index 从 v7.3 逐个应用并比较 tree，结果与 `0a775305` 完全相同
 （`e35abde9a3661a84746427495ddc0f727bf33dda`）；不是只证明补丁能导出。
@@ -140,7 +140,7 @@ RX/VDIN 的旧 1080p/copy-only 帮助已更新为当前实际行为。`COMPILE_T
 
 工具在 Linux VM 运行，不自动 fetch。以下 `$RECIPE` 指主仓 `packaging/kernel-edge` 的副本，
 输出目录须不存在；完整构建需预留磁盘。准备独立 Python venv，安装
-[验证依赖](../../packaging/kernel-edge/maintenance-requirements.txt)，并将其 bin 加到 PATH。
+[验证依赖](../../packaging/kernel/maintenance-requirements.txt)，并将其 bin 加到 PATH。
 
 ```sh
 python3 "$RECIPE/maintain.py" inventory --source ~/src/linux-7.3 \

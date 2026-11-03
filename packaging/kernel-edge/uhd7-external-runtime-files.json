@@ -1,7 +1,0 @@
-{
-  "usr/libexec/vim4-board-runtime": "09f0651f4136762616d3e6effda2279d16febf16aeaffb844cc5a1f6e3eaea4f",
-  "usr/libexec/vim4-kvm-run": "19889ea8a3c3c1022d3305ce922d37ca08b1312d16e9d6d09b8650b4ff9b4fd1",
-  "usr/lib/vim4-kvm/python/vim4gpu.py": "5b7e09f7a3a0b84db7325403f4c5e06a951759c4a8efa6e6acab1b258e12c0b8",
-  "usr/libexec/vim4-mainline-prepare": "056a112bad11ccce8361f160ec6e604d1302c848989c3d1120175c0f7c9a74ad",
-  "usr/libexec/vim4-mainline-gadget-prepare": "dabbbf62ef5e3910bf56b95272954a25f3a9a6b9e5f0a4bbde24cf458435da4e"
-}

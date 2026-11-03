@@ -32,21 +32,21 @@ controls；`ffmpeg-vm.py` 只把显式输入通过 stdin 送到构建 VM 的 FFm
 分析用 heavy 票据。UU 的 RR 只证明 RTP 接收，不证明官方客户端解码/渲染。
 `packaging/hdr10/check-phase2-plugins.py`：离线检查组装后目录的实际GStreamer factory及插件路径，
 拒绝被系统副本掩盖的缺项；设备生成的V4L2编码factory在候选窗口用 `--device-factories` 补验。
-`packaging/kernel-edge/package-unified.py`：离线封存同次 Image、互斥 GPU DT、全部模块和 BTF；
-默认读取sources.toml正式源码/release/配置/数量锁；`--candidate-lock` 可另给未验收候选锁。
+`packaging/kernel/package-unified.py`：离线封存同次 Image、互斥 GPU DT、全部模块和 BTF；
+默认读取sources.toml固定源码与package日期/构建序号/配置/数量；`--candidate-lock` 可另给未验收候选锁。
 `--launcher` 读取已核对的 USB overlay 启动器并为正式或候选 release 保留 r14e 应用选择，
 校验外部模块ABI/产物与r13用户态来源，生成完整清单；不访问板子、不部署、不含vendor blob。
 
-`register-runtime.py install PACKAGE` 支持FullKvm/uhd7到7.3.1完整迁移；
+`register-runtime.py install PACKAGE` 将已登记 Mainline 升级至下一日期 release；
 严格核对包清单/完整模块和boot/根分区空间，不创建额外备份。
-新boot文件写独立release目录，兼容入口原子替换，最后原子切换FullKvm LINUX/FDT。
-详见[迁移合同](kernel-edge.md#uhd7-到新整包候选)。
+新boot文件写独立release目录，兼容入口原子替换，最后原子切换Mainline LINUX/FDT。
+详见[构建与升级合同](kernel-mainline.md#正式构建与整包升级)。
 
 `tools/hdmi-source-mode.swift`：macOS编译，运行在HDMI信源机；list输出显示器与模式ID，
 set只选择backing raster，不能证明HDMI线上的时序，调用者保存/恢复原ID。
 不发HID、不播声音；改变信源模式须独占板窗。
 
-`packaging/kernel-edge/hdmi-mode-fixture.py`：prepare离线生成19档单DTD EDID，保留音频/HDMI/SCDC；
+`packaging/kernel/hdmi-mode-fixture.py`：prepare离线生成19档单DTD EDID，保留音频/HDMI/SCDC；
 measure/read-edid仅在板票窗口内经V4L2查询真实输入/已发布EDID，不写EDID/HPD；verify离线比对测量几何和刷新率。
 `hdmi-modes.json`固定正式内核时序来源；CoreGraphics缩放尺寸不能替代接收器测量。
 
@@ -60,17 +60,17 @@ measure/read-edid仅在板票窗口内经V4L2查询真实输入/已发布EDID，
 不自动改服务；不是编码/网页性能。`ram-payload.py --payload-id`沿用共享namespace合同，
 静态PID1的TRIAL_ROOT必须匹配，不能用旧PID1冒充新payload。
 
-`packaging/kernel-edge/test_gstreamer_p010.py`：Linux宿主编译实际fourcc/caps函数，
+`packaging/kernel/test_gstreamer_p010.py`：Linux宿主编译实际fourcc/caps函数，
 回放原生P010源与编码器caps交集；不打开设备，私有插件构建自动运行。
 `test_gstreamer_pq.py`另以实际探测函数验证PQ元组接受、拒绝及改写后的能力边界。
 
-`packaging/kernel-edge/package-hdr10.py`：离线组装已完成的内核payload、两项私有GStreamer
+`packaging/kernel/package-hdr10.py`：离线组装已完成的内核payload、两项私有GStreamer
 插件和One-KVM为唯一名称归档；校验内核哈希/ARM64 ELF/子仓干净提交，生成candidate.json及
 归档SHA256。不编译、不连接板子、不包含vendor固件；已有目标拒绝覆盖。
 
-`packaging/kernel-edge/hdr10-prepare`：独占窗口、匹配RAM启动后校验固件哈希并加载采集/编码
+`packaging/kernel/hdr10-prepare`：独占窗口、匹配RAM启动后校验固件哈希并加载采集/编码
 模块，保留既有音频配置，不部署固件或改启动项。会占用HDMI采集资源，不能在他人采样时运行。
-`packaging/kernel-edge/hdr10-run`：仅在独占上板窗口启动已展开的HDR10候选归档，
+`packaging/kernel/hdr10-run`：仅在独占上板窗口启动已展开的HDR10候选归档，
 使用同目录One-KVM和私有GStreamer；需显式选择已验证GPU ICD，不加载模块、不自动部署、
 不改正式服务。会占用采集/编码设备与8081端口，运行前停止相应共享消费者。
 
@@ -105,18 +105,18 @@ PiKVM smoke 可用 `PIKVM_CDP` 接入专用测试 Chrome；结束时关闭测试
 | packaging/gpu/（含 compiler-compare.sh、corpus-check.sh、corpus-report.py、gpu-probe.c、hdr-check.sh、hdr-check.py、hdr-probe.c、hdr.comp、hdr-vulkan.py、hdr-dmabuf.c/h、hdr-dmabuf-test.c） | Docker ARM64；probe：板 | 构建无；probe占GPU | 固定shader-db、全帧RGBA；HDR参考/GBM负载、候选外部buffer导入与退休，不接生产DMA | [GPU运行时](bringup/2026-10-30-gpu-runtime.md)、[HDR规格](gpu-hdr-pipeline.md) |
 | tools/npu-probe.c、npu-validate.py、npu-models.json | 编译：ARM64；run：板；compare：Mac/VM | run 占用 NPU，写新结果目录；无部署、HID、声音 | 固定下载SHA、逐轮完整张量校验、均值/P50/P99/最大值；probe的--timing分段SDK外开销 | [ADLA离线候选](npu-adla.md)、[端到端分段](npu-e2e-timing.md) |
 | tools/npu-uapi-probe.c | ARM64编译→板 | 占用NPU兼容接口；无推理、HID或声音 | 初始化MMU上下文后测试ATTACH别名；负向PROFILE_CFG拒绝厂商5.15，须有界运行 | [ADLA候选与验收](npu-adla.md) |
-| packaging/kernel-edge/build-gstreamer.py | 容器/VM | 无 | 校验固定源码、应用 V4L2 生命周期补丁并构建私有插件，不改系统库 | [音视频](subsystems/video.md) |
-| packaging/kernel-edge/test_gstreamer_visible_crop.py | 容器/VM | 无 | 提取实际 V4L2 caps／padding／crop 函数，以模拟 ioctl 离线回放 Wave5 非对齐尺寸协商 | [音视频](subsystems/video.md) |
-| packaging/kernel-edge/maintain.py | Linux ARM64 VM | 无 | inventory 导出按主题存放的保序补丁并证明 tree 一致；forward 在新分支 rebase；verify 汇总 host C/KUnit 入口、strict checkpatch、schema/DTB 与可选完整构建，不自动 fetch、部署 | [补丁清单](archive/kernel-patch-inventory.md) |
-| packaging/kernel-edge/register-runtime.py | VM / 板 | inventory 无；register 登记；install 安装 | 安装匹配 Image/模块；uhd6 保持 5.15 默认，uhd7 升级已安装的 FullKvm/kbase 并沿用 .217 固件。不新增备份、不重启 | [正式升级](bringup/2026-11-02-wifi-sdio-formal.md) |
-| packaging/kernel-edge/package-final.py | VM | 无 | 打包 UHD / hdr10rN 完整构建，生成哈希/build ID 清单；--dtb 显式选择 audio-test/display-m0/display-m1；M1 检查驱动与 DT 互斥；不编译 Image、不上板 | [M1 合入](bringup/2026-10-23-display-m2.md) |
-| packaging/kernel-edge/display-once.py、display-once-init.c | VM / 板 | prepare 无；stage 独占；串口选择后重启 | 私有归档与静态 PID 1 模块 bind；保留默认启动项；一次性启动、预检失败回退及重启回默认已实测，物理 RESET 未测 | [M1 安全网](bringup/2026-10-23-display-m1-safety.md) |
-| packaging/kernel-edge/final-window.py、final-board.py | Mac → 板 | stage/dry-run 无；execute 独占、重启 | 双锁备份、安装与回归；kernel-only 保留用户态；--require-all-checks 任一失败回退，--framebuffer-console 登记 tty0；--ir-keytable 将 ARM64 IR 检查工具保存在 bundle；支持正常重启 pstore 读回，HDMI 恢复最多等 35 秒 | [pstore 部署与回退](bringup/2026-10-22-edge-pstore-deploy.md) |
-| packaging/kernel-edge/final-regression.py、final-manager-check.mjs | Mac → 板 | prepare 无；run 独占、改 HDMI/USB 设置后恢复 | 默认19模式，可用 --sample-modes 抽样；--hevc-visible-sizes 仅用于 E02 内核，增加非8对齐HEVC浏览器验收；--gpu-load 快照 ARM64 GPU 负载；音频等待CoreAudio枚举、直接AudioData检查、恢复48k后停音；仅显式 --wifi-scan 扫描并恢复 radio/autoconnect，不操作P2P；run仅由双锁窗口调用 | [正式版部署准备](bringup/2026-10-22-deploy-7-3-final-prep.md) |
-| packaging/kernel-edge/package-vdec.py | VM | 无 | 打包干净的独立构建、检查 vermagic/BTF/哈希；默认 vdec5，once 模式为同 release 私有模块，不登记运行时 | [MDEC 远程窗口](bringup/2026-10-23-vdec-mdec-window.md) |
-| packaging/kernel-edge/vdec-window.py | Mac → 板 | 默认离线；execute 双锁、加载模块；旧 boot 动作装内核 | snapshot 仅到第八步，保存外部寄存器后下电；解码仍需完整 MDEC 门禁；once 校验看门狗/私有模块/五文件，失败不重试、不强卸载 | [寄存器差分](bringup/2026-10-23-vdec-register-diff.md) |
-| packaging/kernel-edge/vdec-register-dump.c | 板 | 双锁、已上电期间只读 MMIO | 先校验完整地址清单；/dev/mem 只读映射，厂商 debugfs 只缓存单地址；拒绝内部 DOS/GCLK，每次读取前输出地址 | [寄存器差分](bringup/2026-10-23-vdec-register-diff.md) |
-| packaging/kernel-edge/check-wifi-p2p.py | 板 | 独占、临时接管 Wi-Fi 后恢复 | 已保存 SAE 客户端与 P2P 扫描、监听、双频 GO 启停；不代替真实对端传输 | [Wi-Fi Direct](bringup/2026-10-21-edge-wifi-p2p.md) |
+| packaging/kernel/build-gstreamer.py | 容器/VM | 无 | 校验固定源码、应用 V4L2 生命周期补丁并构建私有插件，不改系统库 | [音视频](subsystems/video.md) |
+| packaging/kernel/test_gstreamer_visible_crop.py | 容器/VM | 无 | 提取实际 V4L2 caps／padding／crop 函数，以模拟 ioctl 离线回放 Wave5 非对齐尺寸协商 | [音视频](subsystems/video.md) |
+| packaging/kernel/maintain.py | Linux ARM64 VM | 无 | inventory 导出按主题存放的保序补丁并证明 tree 一致；forward 在新分支 rebase；verify 汇总 host C/KUnit 入口、strict checkpatch、schema/DTB 与可选完整构建，不自动 fetch、部署 | [补丁清单](archive/kernel-patch-inventory.md) |
+| packaging/kernel/register-runtime.py | VM / 板 | inventory 无；register 登记；install 安装 | 独立 release 目录暂存匹配 Image/完整模块，最后原子切换 Mainline，保留已选默认项并沿用 .217 固件。不新增备份、不重启 | [正式升级](kernel-mainline.md#正式构建与整包升级) |
+| packaging/kernel/package-final.py | VM | 无 | 打包 UHD / hdr10rN 完整构建，生成哈希/build ID 清单；--dtb 显式选择 audio-test/display-m0/display-m1；M1 检查驱动与 DT 互斥；不编译 Image、不上板 | [M1 合入](bringup/2026-10-23-display-m2.md) |
+| packaging/kernel/display-once.py、display-once-init.c | VM / 板 | prepare 无；stage 独占；串口选择后重启 | 私有归档与静态 PID 1 模块 bind；保留默认启动项；一次性启动、预检失败回退及重启回默认已实测，物理 RESET 未测 | [M1 安全网](bringup/2026-10-23-display-m1-safety.md) |
+| packaging/kernel/final-window.py、final-board.py | Mac → 板 | stage/dry-run 无；execute 独占、重启 | 双锁备份、安装与回归；kernel-only 保留用户态；--require-all-checks 任一失败回退，--framebuffer-console 登记 tty0；--ir-keytable 将 ARM64 IR 检查工具保存在 bundle；支持正常重启 pstore 读回，HDMI 恢复最多等 35 秒 | [pstore 部署与回退](bringup/2026-10-22-edge-pstore-deploy.md) |
+| packaging/kernel/final-regression.py、final-manager-check.mjs | Mac → 板 | prepare 无；run 独占、改 HDMI/USB 设置后恢复 | 默认19模式，可用 --sample-modes 抽样；--hevc-visible-sizes 仅用于 E02 内核，增加非8对齐HEVC浏览器验收；--gpu-load 快照 ARM64 GPU 负载；音频等待CoreAudio枚举、直接AudioData检查、恢复48k后停音；仅显式 --wifi-scan 扫描并恢复 radio/autoconnect，不操作P2P；run仅由双锁窗口调用 | [正式版部署准备](bringup/2026-10-22-deploy-7-3-final-prep.md) |
+| packaging/kernel/package-vdec.py | VM | 无 | 打包干净的独立构建、检查 vermagic/BTF/哈希；默认 vdec5，once 模式为同 release 私有模块，不登记运行时 | [MDEC 远程窗口](bringup/2026-10-23-vdec-mdec-window.md) |
+| packaging/kernel/vdec-window.py | Mac → 板 | 默认离线；execute 双锁、加载模块；旧 boot 动作装内核 | snapshot 仅到第八步，保存外部寄存器后下电；解码仍需完整 MDEC 门禁；once 校验看门狗/私有模块/五文件，失败不重试、不强卸载 | [寄存器差分](bringup/2026-10-23-vdec-register-diff.md) |
+| packaging/kernel/vdec-register-dump.c | 板 | 双锁、已上电期间只读 MMIO | 先校验完整地址清单；/dev/mem 只读映射，厂商 debugfs 只缓存单地址；拒绝内部 DOS/GCLK，每次读取前输出地址 | [寄存器差分](bringup/2026-10-23-vdec-register-diff.md) |
+| packaging/kernel/check-wifi-p2p.py | 板 | 独占、临时接管 Wi-Fi 后恢复 | 已保存 SAE 客户端与 P2P 扫描、监听、双频 GO 启停；不代替真实对端传输 | [Wi-Fi Direct](bringup/2026-10-21-edge-wifi-p2p.md) |
 | tools/workspace.py | Mac / CI | 无 | bootstrap/status 子仓库（`--override` 供发布 CI 替换单个仓库提交），build 各目标（kernel 走 OrbStack） | [工作区](workspace.md) |
 | tools/mali-runtime.py | fetch：Mac / Linux；install：板（root） | 下载或写私有 GPU 目录，不重启服务 | 固定来源和 SHA 获取 r44p0 用户态驱动，安装前检查 5.15/Mali ABI 与依赖；不注册全局 ICD | [HDR GPU](bringup/2026-10-26-hdr-gpu.md) |
 | tools/mali-dma-probe.c、mali-dma-probe.comp | ARM64 容器编译 → 板 | GPU 计算、临时约25MB连续CMA，不操作采集/编码 | Vulkan计算、DMA-buf导入与逐字读回；可选第二参数指定已知连续heap路径，默认codecmm；不是视频吞吐基准 | [HDR GPU](bringup/2026-10-26-hdr-gpu.md) |
@@ -125,8 +125,8 @@ PiKVM smoke 可用 `PIKVM_CDP` 接入专用测试 Chrome；结束时关闭测试
 | tools/ubuntu-image.py | Mac → OrbStack | 无 | 内核包、候选镜像 assemble/verify/export | [候选镜像](ubuntu-image.md) |
 | packaging/ubuntu/ | 容器 | 无 | Dockerfile、锁文件、fetch.py、build.sh、package.py、verify.sh；manager-config.py 迁移网关配置；check-audio-startup.py、check-onekvm-update.py 与 pikvm/check-janus.py 为打包门禁 | [Ubuntu 构建](ubuntu-build.md) |
 | packaging/kernel/ | VM | 无 | package.sh 构建内核包，vim4.config 为配置 | [内核](kernel.md) |
-| packaging/kernel-edge/ | Linux ARM64 VM / 板 | 构建无；准备工具改固件目录；Wi-Fi 转储保存后释放其内核副本 | build.sh 构建实验内核；prepare-wave521c-firmware.py 转换匹配固件；prepare-wifi-firmware.py 建立主线名称链接；save-wifi-coredump.py 由配套 udev 规则保存至私有目录，最多两份、每份 16MiB | [新内核基线](kernel-edge.md)、[Wi-Fi 排查](bringup/2026-10-21-edge-wifi-fps.md) |
-| packaging/kernel-edge/one-kvm-edge、one-kvm-edge-prepare、one-kvm-edge.service | 板 | 独占 | 按匹配内核选择独立视频程序；准备器校验固件后加载固定 UHD60 驱动，实验服务另需启动参数显式启用 | [新内核基线](kernel-edge.md) |
+| packaging/kernel/ | Linux ARM64 VM / 板 | 构建无；准备工具改固件目录；Wi-Fi 转储保存后释放其内核副本 | build.sh 构建实验内核；prepare-wave521c-firmware.py 转换匹配固件；prepare-wifi-firmware.py 建立主线名称链接；save-wifi-coredump.py 由配套 udev 规则保存至私有目录，最多两份、每份 16MiB | [新内核基线](kernel-mainline.md)、[Wi-Fi 排查](bringup/2026-10-21-edge-wifi-fps.md) |
+| packaging/kernel/one-kvm-edge、one-kvm-edge-prepare、one-kvm-edge.service | 板 | 独占 | 按匹配内核选择独立视频程序；准备器校验固件后加载固定 UHD60 驱动，实验服务另需启动参数显式启用 | [新内核基线](kernel-mainline.md) |
 | packaging/image/ | VM（root） | 无 | assemble.sh 组装镜像文件，configure.sh 仅由其调用，verify.sh 只读检查 | [候选镜像](ubuntu-image.md) |
 | tests/ | Mac | 无 | 离线单元测试：`python3 -m unittest discover -s tests -p 'test_*.py'` | 本页 |
 
@@ -138,7 +138,7 @@ PiKVM smoke 可用 `PIKVM_CDP` 接入专用测试 Chrome；结束时关闭测试
 | tools/mali-dma-probe.c、mali-dma-probe.comp、mali-cl-probe.c | ARM64 容器编译 → 板 | GPU计算与临时内存；不操作采集/编码 | VK原生device-local/host-visible、DMA heap导入和逐字校验；可选16KiB二分；CL单kernel支持同类分配。均须外部timeout | [kbase候选](gpu-kbase-7x.md) |
 | tools/gbm-scanout-probe.c | ARM64容器编译→板 | 独占显示；保持当前mode，恢复原FB，不抢DRM master | GBM线性XR24 BO导出/导入并短时SetCrtc；布局/恢复信息不足则拒绝，需与采集并行验收并带timeout | [kbase候选](gpu-kbase-7x.md) |
 | tools/board-queue | Mac / Linux，同一协调主机 | 仅本机锁与票据；run 的影响由命令决定 | FIFO、≤30分钟租约、旧 lockf 兼容、sampling 与 heavy 协调 | [短窗口](board-window.md) |
-| tools/board-window | Mac → 板 | collect --readonly 读；baseline/receiver/MCP 截图占采集；MCP HDR 发 HID；boot-candidate/return-baseline 重启 | 哈希校验、候选链式 RAM 启动、每日基线缓存、MCP、接收与证据包 | [短窗口](board-window.md) |
+| tools/board-window | Mac → 板 | collect --readonly 读；baseline/receiver/MCP 截图占采集；MCP HDR 发 HID；boot-candidate/return-baseline 重启 | 5.15或当前正式锁基线、默认LINUX/FDT校验、链式RAM与视频恢复证明；stage/cleanup携带sources.toml | [短窗口](board-window.md) |
 | tools/board-window-receiver.mjs、board-window-timing.mjs | Mac / Node | 接收占用编码器；compare 仅本机图片 | board-window 私有浏览器接收/裁图比较入口与50ms计时；沿用 Playwright、manager-login.mjs | [短窗口](board-window.md) |
 | tools/gpu-compare.py | 板 | 独占 | vendor/system/private能力与固定离屏GLES、clpeak；超时、逐进程ICD隔离，不操作服务/HID | [GPU运行时](bringup/2026-10-30-gpu-runtime.md) |
 | tools/board.py check | Mac | 读 | 内核、服务、设备节点、8081 后端与 8080 网关状态 | [板级工具](board-tools.md) |
@@ -150,7 +150,7 @@ PiKVM smoke 可用 `PIKVM_CDP` 接入专用测试 Chrome；结束时关闭测试
 | tools/uart-run.py | Mac | 取决于命令 | 串口执行命令；超时后命令可能仍在运行 | [部署](subsystems/deployment.md) |
 | tools/uart-log.py | Mac | 读（`--send` 除外） | 只读抓串口日志 | [部署](subsystems/deployment.md) |
 | tools/oowow-flash.sh | Mac（板在 OOWOW） | 破坏 | 手工 URL 刷写，优先用 board.py flash | [板级工具](board-tools.md) |
-| tools/kernel-install.sh | 板（root） | 安装内核 | 厂商包保留Stock；--edge ARCHIVE --keep-directory-symlink 安装统一7.3完整包，预检/boot空间、仅完全匹配模块允许续装，保留5.15默认 | [内核](kernel.md) |
+| tools/kernel-install.sh | 板（root） | 安装内核 | 厂商包保留Stock；--mainline ARCHIVE --keep-directory-symlink 安装完整主线包，预检/boot和根分区空间、仅完全匹配模块允许续装，保留已选默认项 | [内核](kernel.md) |
 | packaging/kernel/promote.py | 板（root，双锁） | 改默认；可删除显式淘汰的未登记旧产物 | 将已运行验证的厂商候选登记至标准 vim4boot 和透传资格清单；可备份回退或显式不备份，不重启 | [原生 HDR 交付](bringup/2026-10-25-native-hdr-dual-path.md) |
 | tools/passthrough-monitor.py | 板（只读硬件，写指定日志） | 不控制硬件 | 默认十分钟观察 TX 重设、RX 失锁与扫描输出停顿；排除无输入/主动关闭，不代替光学黑屏检测 | [HDR 输出开关](bringup/2026-10-25-passthrough-hdr-switch.md) |
 | tools/rootfs-policy.py | 板（root，随包安装） | 改启动项 | 根分区 ordered/commit=5，重启生效 | [Ubuntu 构建](ubuntu-build.md) |

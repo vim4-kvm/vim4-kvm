@@ -23,7 +23,7 @@ ln -sfn dtb-$release /boot/dtb
 ln -sf initrd.img-$release /boot/initrd.img
 cat > /boot/extlinux/extlinux.conf <<'EOF'
 menu background /splash.bmp
-LABEL Default
+LABEL Vendor
   LINUX /Image
   INITRD /initrd.img
   FDTDIR /dtb
@@ -36,7 +36,7 @@ LABEL Stock
   APPEND ${rootdev} ${bootargs} ${consoles} ${partitiontype} fan=${fan_mode} ${boot_user_args}
 
 timeout 5
-default Default
+default Vendor
 EOF
 /usr/sbin/vim4-rootfs-policy /
 systemctl --root=/ disable usb-gadget-khadas.service audioserver.service
