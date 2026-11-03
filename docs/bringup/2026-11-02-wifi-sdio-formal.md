@@ -73,3 +73,12 @@ p10 **337.64**、p50 **372.24**、p90 **398.46 Mbit/s**。分位口径沿用 D2 
 含只读预检、唤醒、安装、重启和测量；构建和封包仅持 heavy 票。
 
 驱动审查遗留仍见 [vim4-kvm issue #1](https://github.com/vim4-kvm/vim4-kvm/issues/1)。
+
+## 信号恢复后补测
+
+M6 恢复输出后，在已安装的 uhd7 上不重启、不发键鼠补测。`QUERY_DV_TIMINGS` 为
+3840×2160 逐行、594 MHz、59.999fps；四服务 active。`tools/board-window receiver`
+经 One-KVM 回环后端接收 30 秒 H.265（Main，level 180）：解码 1804 帧、约 59.93fps，
+丢帧、丢包、冻结、PLI 均为 0，仅 1 个关键帧。码率约 2 Mbit/s，画面为低运动桌面，
+运动内容与 H.264 未在本次覆盖。原始 JSON 在本地 `logs/uhd7-signal-smoke/`。
+
