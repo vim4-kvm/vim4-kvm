@@ -57,6 +57,7 @@
 
 - [Wi-Fi 激活分组与聚合上限对照](2026-11-02-wifi-pm-glom.md) — kernel network board；11.90分钟、输入同哈希、PM/P2P因果未确立、状态7、32/36负结果、恢复FullKvm
 - [BCM43752 第三轮离线差异与实验草案](2026-11-02-wifi-txstatus-offline.md) — kernel network offline；D11核心表、固件输入缺口、初始化矩阵、≤30分钟实验预算，未占板
+- [P0-2 性能与常开功耗合并窗口](2026-11-02-p0-2-pm-window.md) — video kernel board；14分56秒后按指令停止，仅5.15 idle完成，signal取消，已回FullKvm
 - [Wi-Fi TX status、固件崩溃与厂商对照](2026-11-02-wifi-txstatus.md) — kernel network deployment；日志overlay、AXI trap再现、厂商双向600秒、旧上传比85.68%，已恢复FullKvm
 - [boot 空间清理](2026-11-02-boot-space-cleanup.md) — deployment kernel；四个无引用旧文件，4.09→18.95 MiB，全部登记哈希前后通过，无重启
 - [HDMI-RX COR 锁部署与 Wi-Fi 有界流量](2026-11-02-hdmirx-cor-lock-deploy.md) — kernel deployment video network；三次 EDID、4K60 600秒、Wi-Fi 600秒与恢复
