@@ -5,16 +5,16 @@
 > 对应回归测试时读取。
 
 主机需要 Python 3.11+、OpenSSH 和已接好的串口。默认 SSH 别名 vim4，串口
-/dev/cu.usbserial-100，921600 baud；Linux 可用 --device 指定 /dev/ttyUSB0。
+/dev/cu.usbserial-100，921600 baud（默认/示例）；Linux 示例为 --device /dev/ttyUSB0。
+设备名以本次环境为准，接线与默认值见[硬件](hardware.md)。
 所有命令从主仓库根目录运行。不要把构建成功、刷写校验成功与硬件回归通过混为一谈。
 
 ## 日常选择
 
+完整工具清单见[工具目录](tools.md)；下表用于日常板级操作。
+
 | 任务 | 入口 | 是否影响板子 |
 |---|---|---|
-| 初始化/查看源码 | tools/workspace.py bootstrap / status | 否 |
-| 用户态打包与隔离验证 | tools/ubuntu-build.py package / verify | 否 |
-| 内核包与整机镜像 | tools/ubuntu-image.py kernel / assemble / verify / export | 否 |
 | 只读服务检查 | tools/board.py check | SSH 读取、HTTP GET |
 | 首次接入（公钥 + 免密 sudo） | tools/board.py provision | 默认密码登录一次，写 authorized_keys 与 sudoers |
 | 开发板免密 sudo（单独） | tools/board.py enroll | 安装 sudoers 文件 |
@@ -71,7 +71,15 @@ board.py deploy 先在本地按 SHA256SUMS 校验七个 deb 和 sources.json 并
 不重新执行 USB-PD 协商、不重启系统、不更新内核。失败不自动启动可能混装的应用。
 这是现有 VIM4 系统的升级入口，不代替完整镜像首次安装。
 
-video-smoke.mjs 需要 Playwright 和 Chrome，默认采样 15 秒，输出实际解码帧数、
+### 浏览器测试的公共前提
+
+浏览器脚本需要 Node、Playwright 与 Chrome；PLAYWRIGHT_MODULE 指向 playwright/index.mjs 的绝对路径。
+默认网关地址为 http://192.168.50.210:8080（管理器 :80）。同一应用账户的测试依次运行。
+视频 smoke 与 kvm-switch-check.mjs 可用 VIM4_TEST_CHROME 指定浏览器绝对路径，配对测试核对实际版本。
+PiKVM smoke 可用 PIKVM_CDP 接入专用测试 Chrome，结束关闭测试 context 并保留外部浏览器。
+截图检查包含局域网响应时间，拒绝等待 3 秒超时才返回的 JPEG。
+
+video-smoke.mjs 默认采样 15 秒，输出实际解码帧数、
 尺寸、丢帧和丢包；无视频或连接断开返回失败。它使用当前页面配置，默认显示
 WebRTC 视频，不修改账户认证。此测试不测输入响应、音频或端到端延迟。
 
@@ -208,7 +216,7 @@ MANAGER_PASSWORD=… PLAYWRIGHT_MODULE=/absolute/path/to/playwright/index.mjs \
   node tools/kvm-switch-check.mjs --exclusive http://192.168.50.210
 ```
 
-`MANAGER_PASSWORD`（及可选 `MANAGER_USERNAME`，默认 admin）用于先登录管理器。
+认证与依赖见[公共前提](#浏览器测试的公共前提)。
 
 保留上一界面的视频连接，通过管理器接口执行两轮 NanoKVM → JetKVM → NanoKVM。
 每次核对服务互斥、开机启用状态，再在 Chrome 采样 10 秒实际解码帧数、丢帧和丢包。

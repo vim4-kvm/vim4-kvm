@@ -21,10 +21,7 @@ ExecStopPost 恢复原始配置；若仍挂载介质，保留介质及当前组�
 取消、离开页面、状态未知、连接中断、应用改变或等待超过 5 分钟都会结束等待。
 不提供强制弹出；仅卸载卷不等于主机发送 SCSI eject。
 
-7.3 实验版的三种 HID 接入与边界见
-[实验 HID 记录](../bringup/2026-10-20-edge-hid-integration.md)。它使用独立准备服务，
-后续 [USB 功能接入](../bringup/2026-10-21-edge-usb-functions.md) 开放消费者键、虚拟介质、
-USB 网卡与 UAC2 配置，使用独立助手、数据目录和运行时日志；USB 串口仍未启用。
+早期独立 HID/USB 入口的边界见[主线相关记录](../kernel-mainline.md#相关记录)。
 挂载介质时拒绝修改 USB 配置。
 NanoKVM 启动不再根据旧 enabled 标记自动重新连接数据盘；镜像文件保留，需用户主动连接。
 

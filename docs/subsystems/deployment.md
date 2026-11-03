@@ -4,13 +4,13 @@
 本地镜像刷写、启动日志与只读服务检查统一使用 tools/board.py。
 
 Ubuntu 隔离构建与组件打包先读 [ubuntu-build.md](../ubuntu-build.md)。
-PiKVM 使用 `--component pikvm` 单独构建和验证，部署仍使用 board.py；复用 `.24`
-或更新板级组件。切换应用前先在 USB 主机安全弹出虚拟介质。
+PiKVM 使用 `--component pikvm` 单独构建和验证，部署仍使用 board.py。切换应用前先在 USB 主机安全弹出虚拟介质。
 内核打包与离线候选镜像组装见 [ubuntu-image.md](../ubuntu-image.md)。
 
 按目标再读：内核 [kernel.md](../kernel.md)、PD [usb-pd.md](../usb-pd.md)、应用安装见各应用 VIM4.md。
 
-SSH 为 ssh vim4（khadas@192.168.50.210），串口 /dev/cu.usbserial-100，921600 8N1。
+SSH 为 ssh vim4（khadas@192.168.50.210），串口默认/示例为 /dev/cu.usbserial-100，921600 8N1。
+设备名以本次环境为准，接线与默认值见[硬件](../hardware.md)。
 命令使用 tools/uart-run.py，只读日志用 tools/uart-log.py，输出放不入库的 logs/。
 串口超时不表示板上命令终止，长任务后台运行并轮询。
 
@@ -23,12 +23,8 @@ SSH 为 ssh vim4（khadas@192.168.50.210），串口 /dev/cu.usbserial-100，921
 上限 256 MiB，停用/mask rsyslog，保留原文本日志。排查前一启动用 `journalctl -b -1`；
 预算、实测和回退见 [持久日志部署](../bringup/2026-10-22-p2-journal-deploy.md)。
 
-5.15 内核安装用 tools/kernel-install.sh。当前7.3.1位于 `/boot/kernels/7.3.1-vim4kvm-uhd7+`，
-用 `packaging/kernel/register-runtime.py` 核对整包并登记；
-过程见 [双内核集成](../bringup/2026-10-21-dual-kernel-integration.md)。
-面板切换只保存默认启动项并重启，不格式化数据。Stock/VendorVapb1已按用户授权清理，
-厂商hdrdual6保留，见[7.3.1部署](../bringup/2026-11-03-kernel-731-deploy.md)。仓库采用 Mainline/Vendor，
-板上启动项改名和旧内核清理已完成，收据按重启后实际状态更新，见[清理记录](../bringup/2026-11-03-kernel-naming-cleanup.md)。
+5.15 内核安装见 [kernel.md](../kernel.md)；主线安装合同与当前身份见[主线内核开头](../kernel-mainline.md)。
+面板切换只保存默认启动项并重启，不格式化数据。
 重装清空 eMMC，须用户明确确认；
 优先使用 tools/board.py recover 远程进入 OOWOW；系统无法响应时，按住 FUNCTION、
 短按 RESET、松开 FUNCTION（要求 U-Boot 已能运行到按键检测）。若早期循环复位，
@@ -51,7 +47,7 @@ U-Boot 候选必须先从 microSD 验证，见 [现场恢复](../bringup/2026-10
 release/build ID、服务、UDC与启动文件哈希，默认启动项全程保持原值。
 支持5.15或sources.toml当前正式锁的精确release；首次采集确认默认LINUX/FDT指向捕获的基线。
 正式基线核对release目录、完整模块文件、采集/kbase加载身份、DT属性及原应用，
-恢复时必须提供 `--video-check` 视频推进检查命令。旧uhd7文件已清理，不能作为恢复基线。
+恢复时必须提供 `--video-check` 视频推进检查命令。恢复基线必须仍有完整启动文件和模块，不能引用已清理产物。
 同Image不同DT的候选必须有独立payload ID、DT属性与完整模块证明，见[窗口合同](../board-window.md)。
 基线按当天、内核/程序/启动文件哈希及测量参数复用并注明原始时间；哈希变化或跨日
 重新测量。只改模块时可只重编匹配模块、沿用同一内核进行针对性迭代，保留模块哈希、
@@ -72,38 +68,24 @@ vermagic与证据；不覆盖基线模块目录。正式候选才全量回归并
 
 ## 一次性启动与硬件看门狗
 
-新release完整包可用独立候选锁，tested_build/retained_runtime验收前不改。
-boot/根分区空间不足或清单/哈希错误时拒绝安装，不创建额外备份。
-新启动文件独立暂存并核验，最后原子切换Mainline路径；原release的启动文件/模块树不修改。
-候选构建与启动路径说明见[整包升级](../kernel-mainline.md#正式构建与整包升级)。
+候选锁、整包暂存和原子切换合同见[正式构建与整包升级](../kernel-mainline.md#正式构建与整包升级)。
+危险候选以一次性启动保留默认基线；先确认硬件看门狗能复位当前板子。
+运行时复位证据见[主线相关记录](../kernel-mainline.md#相关记录)，不保证电源、总线或
+secure firmware 故障时计数器继续运行，也不能证明睡眠期硬锁可恢复。
+系统挂起时 watchdog suspend 回调停止计数；s2idle/deep 试验须有独立复位或经验证的
+睡眠期 watchdog 契约，见[PM 审查](../archive/platform-pm-offline.md#系统挂起与唤醒缺口)。
 
-危险候选测试以一次性启动保留默认基线，并先确认硬件看门狗已实测能复位当前板子。
-T7 的 Meson GXBB Watchdog 已在正式 7.3 基线上以停止喂狗验证：15 秒超时，
-15.036 秒出现启动串口，36.867 秒到登录，U-Boot 报 `watchdog_reboot`，默认基线自动恢复。
-命令、串口证据与范围见 [Wave5 批量窗口](../bringup/2026-10-23-wave5-parity-window.md)。
-这组机制是无人按 RESET 的危险窗口前提；不保证电源、总线或 secure firmware
-故障时计数器一定继续运行，也不能将软件超时注入当成所有真实硬锁已验证。
-
-系统挂起另有限制：`meson_gxbb_wdt` 的 suspend 回调会停止活动计数器，resume
-才重启；上面的运行时复位验证不能保证睡眠阶段硬锁自动恢复。真正 s2idle/deep
-试验须先具备独立复位或经验证的睡眠期 watchdog 契约，见
-[PM 离线审查](../archive/platform-pm-offline.md#系统挂起与唤醒缺口)。
-
-`board/60-vim4-watchdog.conf` 由 board/install.sh 和 Ubuntu board 组件包安装到
-`/usr/lib/systemd/system.conf.d/60-vim4-watchdog.conf`，两种内核共用：
-`RuntimeWatchdogSec=30s`、`RebootWatchdogSec=60s`。PID 1 负责喂狗，无新增守护进程。
-安装不重启 PID 1，下一次启动生效；受控窗口可用 `systemctl daemon-reexec` 生效。
+`board/60-vim4-watchdog.conf` 经板级安装与 Ubuntu board 包安装到
+`/usr/lib/systemd/system.conf.d/`；PID 1 共用 `RuntimeWatchdogSec=30s`、
+`RebootWatchdogSec=60s`。下一次启动生效，受控窗口可用 `systemctl daemon-reexec`。
 核对 `systemctl show -p RuntimeWatchdogUSec -p RebootWatchdogUSec`、journal 的
-`Using hardware watchdog` 与 `/dev/watchdog0` 的持有者 PID 1，不能只检查配置文件。
-管理员可用 `/etc/systemd/system.conf.d/` 中同名或字典序更后的 drop-in 覆盖；
-关闭需设置 `RuntimeWatchdogSec=off`，再 reexec 或重启。本轮未启动 5.15 验证其驱动。
+`Using hardware watchdog` 及 /dev/watchdog0 持有者 PID 1，不能只检查文件。
+管理员可在 /etc/systemd/system.conf.d/ 覆盖；关闭设置 RuntimeWatchdogSec=off 后 reexec 或重启。
 
-`board/60-vim4-panic.conf` 经同样的板级安装与 Ubuntu board 包路径安装到
-`/usr/lib/sysctl.d/60-vim4-panic.conf`，正式部署窗口也将它纳入备份、安装与回退。
-下一次启动由 systemd-sysctl 设置 `kernel.panic_on_oops=1`，配合启动参数
-`panic=20` 与上述看门狗。安装包不在构建容器中修改宿主内核参数。
-重启后须用 `sysctl kernel.panic kernel.panic_on_oops` 核实实际值；管理员可在
-`/etc/sysctl.d/` 用同名文件覆盖。该策略不替代驱动的超时恢复与设备隔离。
+`board/60-vim4-panic.conf` 同样经板级安装和 Ubuntu board 包安装到 /usr/lib/sysctl.d/，
+正式部署窗口纳入备份与回退。启动时设 kernel.panic_on_oops=1，配合 panic=20 和看门狗；
+构建容器不修改宿主参数。重启后核实 `sysctl kernel.panic kernel.panic_on_oops`；
+管理员可在 /etc/sysctl.d/ 覆盖。该策略不替代驱动的超时恢复与设备隔离。
 
 ## 错题
 

@@ -6,19 +6,13 @@
 NanoKVM 默认 12000 kbps、JetKVM 原质量档 12/6/1.2 Mbps、One-KVM 快捷档
 1/4/8/12 Mbps 保留。JetKVM 通过 custom_bitrate 能力显示自定义输入。
 部署这些版本时须同时升级 vim4-amlvenc（旧插件上限 12000 kbps），不能只更新网页。
-高码率测试依据和局限见 [高码率实验](../bringup/2026-10-14-4k60-high-bitrate-experiment.md)。
 
 改 NanoKVM 读 [NanoKVM VIM4 集成](../../NanoKVM/VIM4.md)（功能覆盖、构建、安装和限制）；
 其他应用读下方对应的 VIM4.md，只读与任务相关的一份。
 
 当前功能、缺项与验证边界以 [NanoKVM](../../NanoKVM/VIM4.md)、[JetKVM](../../kvm/VIM4.md)、[One-KVM](../../One-KVM/VIM4.md) 和 [PiKVM](../../kvmd/VIM4.md) 的现行说明为准。
-旧 [NanoKVM-Pro 功能表](../archive/feature-status.md) 仅作历史证据。
-当前基线的迁移范围与软件验证见 [NanoKVM 基线切换](../archive/nanokvm-migration.md)；
-切换前的功能差异评估见 [NanoKVM 功能差异](../archive/nanokvm-feature-review.md)，One-KVM 复核见 [One-KVM 审查](../archive/one-kvm-audit.md)。
 
-JetKVM 的功能映射、特权助手和验证见 [JetKVM VIM4 集成](../../kvm/VIM4.md)。
-
-One-KVM 的硬件映射、构建和限制见 [One-KVM VIM4 集成](../../One-KVM/VIM4.md)。
+## 架构与约束
 
 四套应用都监听 127.0.0.1:8081，由管理器 8080 网关统一登录，以 khadas 运行，
 互相 Conflicts=，不能并发占用编码器或 HID。由 vim4-manager（80 端口）选择开机启用哪一个，
@@ -32,12 +26,7 @@ One-KVM 的硬件映射、构建和限制见 [One-KVM VIM4 集成](../../One-KVM
 完整双内核运行时使用同一套 80 管理器 / 8080 网关和应用回环 8081。
 `vim4-kvm-run` 按内核选择厂商或 V4L2/Wave5 后端，保留每种应用原有数据目录。
 One-KVM 正式入口共用 `/var/lib/one-kvm`，板载设备名在内存中解析；
-不合并四套应用的不同数据库。切换与数据验证见
-[双内核集成](../bringup/2026-10-21-dual-kernel-integration.md)。
-
-保留的 7.3 独立实验入口使用回环 8082，可通过
-[实验登录网关](../bringup/2026-10-20-edge-lan-gateway.md) 在局域网 8080 访问，
-沿用管理面板账户；该网关只随实验服务启动。
+不合并四套应用的不同数据库。切换与历史实验入口见[主线相关记录](../kernel-mainline.md#相关记录)。
 
 VIM4 后端使用 -tags vim4，保留上游目标实现。共享代码修改检查两个构建目标；
 前端按锁文件构建，具体命令以 VIM4.md 为准。
@@ -46,15 +35,11 @@ VIM4 后端使用 -tags vim4，保留上游目标实现。共享代码修改检�
 
 One-KVM 的视频菜单和设置页支持 HDMI 输入状态、输出尺寸/帧率上限、码率、
 MJPEG 质量和 EDID 预设；HDR 转 SDR 开关及白点/峰值曲线统一在管理器「视频输入」设置。
-5.15 原生双路径的四套应用均支持 H.265 PQ/Main10，见
-[全应用 HDR 接入](../bringup/2026-10-26-all-kvm-hdr.md)；H.264/JPEG 保留 SDR，
-Safari 真 HDR 尚未支持。
+HDR 模式和各内核验收边界见[HDR](../hdr.md)；H.264/JPEG 保留 SDR，Safari 真 HDR 尚未支持。
 四套应用的 HDR 缩放统一使用 Mali/P010 DMA；One-KVM 的 SDR 缩放通常使用 GE2D。
-JetKVM、PiKVM 已新增输出高度入口；超宽屏 SDR 使用独立处理可见宽度和行跨度的公共 GE2D 缩放。
-尺寸入口与实测边界见[超宽屏 SDR 与尺寸选择](../bringup/2026-10-27-sdr-scale-controls.md)。
+超宽屏 SDR 缩放分别处理可见宽度和行跨度，尺寸验收见[HDR 相关记录](../hdr.md#相关记录)。
 调整输出尺寸不重启 HDMI 服务；
-修改 EDID 才重新协商显示器。其私有 DMA 分配器避免厂商库重复关闭 fd，
-随 vim4-onekvm 包安装；服务使用独立 GStreamer 注册缓存。参数与边界见
+修改 EDID 才重新协商显示器。服务使用独立 GStreamer 注册缓存；DMA fd 生命周期见[音视频错题](video.md#错题)。参数与边界见
 [One-KVM/VIM4.md](../../One-KVM/VIM4.md)。
 
 One-KVM 的 UU 远程让网易UU远程官方客户端经云端控制被控机：网页扫码绑定账号，凭据存于
@@ -62,12 +47,9 @@ One-KVM 的 UU 远程让网易UU远程官方客户端经云端控制被控机：
 客户端及其他共享服务的能力回退。官方「终端远控」可打开 KVM 板子 shell、被控机串口（USB 转串口或占 2 个端点的 USB ACM gadget）与经板子的 SSH，三项默认关闭，新会话在终端内选择目标。范围与验证限制见 One-KVM/VIM4.md 的 UU 远程一节。
 工具连接可在保留终端的同时取得桌面，统一管理 HID 接管。UU「文件传输」只暴露板子
 `/files` 与未挂载的 `/images`，不能读取被控机磁盘；上传与所有虚拟介质挂载入口互斥。
-协议、限制及验收见[UU 板子文件传输](../bringup/2026-10-25-uu-files.md)。
-原生 UU 的独立十位解码声明、HDR 开关和非对齐缩放停帧修复见
-[UU HDR 验证](../bringup/2026-10-27-uu-hdr.md)；MacBook持续显示与屏幕光度单独验收。
+协议与文件传输方法见 One-KVM/VIM4.md；UU HDR 验证见[HDR 相关记录](../hdr.md#相关记录)，持续显示与屏幕光度单独验收。
 
 One-KVM 的「第三方接入」提供共享编码 SRT 与 RTMP/RTMPS 输出，默认关闭。
-5.15 视频输出设置还支持 HEVC 固定 QP 与无损，见[画质模式验证](../bringup/2026-10-27-hevc-quality.md)。
 SRT 支持 H.264/H.265，RTMP 使用 H.264；可共享 HDMI 声音并转换为 AAC。
 独立队列、断线重连和接收方式见 One-KVM/VIM4.md 的「共享编码 SRT / RTMP 输出」。
 
@@ -77,13 +59,12 @@ One-KVM/VIM4.md 的 MCP 一节。被控机就是开发用 Mac mini 时，键鼠�
 
 客户端transport失败不等于板端MCP服务失败；先以新的只读initialize/tools/list/screenshot请求区分HTTP错误、
 工具返回无信号与进程网络差异。局域网接收仅默认mDNS candidate失败时，用接收器自身显式选项做A/B验证，
-不能直接修改个人VPN/TUN。实证与边界见[MCP/ICE诊断](../bringup/2026-10-31-hdr2-mcp-ice-pq.md)。
+不能直接修改个人VPN/TUN。实证与边界见[HDR 相关记录](../hdr.md#相关记录)。
 
 ## PiKVM VIM4 集成
 
 PiKVM 源码在 `kvmd/`，VIM4 视频后端在 `ustreamer/`，部署约定见 `kvmd/VIM4.md`。
-管理器选择 `pikvm` 启动 vim4-pikvm.service，应用监听 127.0.0.1:8081，由管理器 8080 网关统一登录。
-它保留原生 PiKVM 网页，关闭应用认证，复用公共 HDMI、HID 和编码组件；本地虚拟介质使用
+管理器选择 `pikvm` 启动 vim4-pikvm.service，保留原生网页，关闭应用认证，复用公共 HDMI、HID 和编码组件；本地虚拟介质使用
 限定助手控制现有 LUN。切换前先安全弹出虚拟盘。构建使用 ubuntu-build.py 的
 `--component pikvm`，不会替换系统 Python 或启动树莓派板级服务。
 
