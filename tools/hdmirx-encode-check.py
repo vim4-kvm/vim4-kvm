@@ -84,7 +84,7 @@ def capture(args):
         bridge_description = (
             'appsink name=bridge emit-signals=true sync=false async=false max-buffers=1 '
             'appsrc name=encoder_source is-live=true format=time block=true max-buffers=2 '
-            f'caps="video/x-raw,format=NV12,width={width},height={height},framerate=60/1,'
+            f'caps="video/x-raw,format=NV12,width={width},height={height},framerate={args.fps}/1,'
             f'colorimetry={args.colorimetry},interlace-mode=progressive,pixel-aspect-ratio=1/1" ! ')
     else:
         if args.codec != 'h264':
@@ -95,7 +95,7 @@ def capture(args):
         bridge_description = ''
     pipeline_description = (
         'v4l2src name=source io-mode=dmabuf ! '
-        f'video/x-raw,format={raw_format},width={width},height={height},framerate=60/1 ! '
+        f'video/x-raw,format={raw_format},width={width},height={height},framerate={args.fps}/1 ! '
         f'identity name=inspect ! {bridge_description}{encoder_description} ! '
         f'{args.codec}parse ! video/x-{args.codec},alignment=au ! '
         'identity name=encoded ! matroskamux ! filesink name=output sync=false async=false')
@@ -329,8 +329,8 @@ def verify(args):
         raise ValueError(f'expected encoded profile {args.expect_profile}, '
                          f'got {stream.get("profile")}')
     width, height = stream['width'], stream['height']
-    if stream['codec_name'] not in ('h264', 'hevc') or (width, height) not in ((1920, 1080), (3840, 2160)):
-        raise ValueError('expected H.264/HEVC 1080p or 4K video')
+    if stream['codec_name'] not in ('h264', 'hevc') or (width, height) not in ((1920, 1080), (2560, 1440), (3840, 2160)):
+        raise ValueError('expected H.264/HEVC 1080p, 1440p or 4K video')
     ids = []
     with tempfile.TemporaryFile() as errors:
         decoder = subprocess.Popen(['ffmpeg', '-v', 'error', '-threads', '2', '-i', str(args.video),
@@ -375,7 +375,8 @@ def main():
     board.add_argument('--format', choices=('rgb24', 'nv12'), default='rgb24')
     board.add_argument('--colorimetry', choices=('bt709', '2:3:7:1'), default='bt709',
                        help='initial Wave5 bridge caps; actual capture caps remain authoritative')
-    board.add_argument('--size', choices=('1920x1080', '3840x2160'), default='1920x1080')
+    board.add_argument('--size', choices=('1920x1080', '2560x1440', '3840x2160'), default='1920x1080')
+    board.add_argument('--fps', type=int, choices=(60, 120), default=60)
     board.add_argument('--bitrate', type=int, default=20000000)
     board.add_argument('--gop', type=int, default=60)
     board.add_argument('--intra-refresh-period', type=int, default=0,

@@ -158,10 +158,23 @@ static void plane_views_keep_capture_lease(void)
     }
 }
 
+static void initial_sps_is_separated_from_adjacent_nals(void)
+{
+    guint8 au[] = {0, 0, 0, 1, 0x40, 1, 0x80, 0, 0, 1, 0x42, 1, 0x80,
+                   0, 0, 0, 1, 0x44, 1, 0x80};
+    GstBuffer *buffer = gst_buffer_new_allocate(NULL, sizeof(au), NULL);
+    gst_buffer_fill(buffer, 0, au, sizeof(au));
+    g_autofree gchar *hevc = read_sps(buffer, TRUE);
+    g_assert_cmpstr(hevc, ==, "420180");
+    g_assert_null(read_sps(buffer, FALSE));
+    gst_buffer_unref(buffer);
+}
+
 int main(int argc, char **argv)
 {
     gst_init(&argc, &argv);
     g_test_init(&argc, &argv, NULL);
+    g_test_add_func("/bench/sps-boundaries", initial_sps_is_separated_from_adjacent_nals);
     g_test_add_func("/bench/timing-warmup-and-matching", timing_matches_frames);
     g_test_add_func("/bench/reject-unmatched-or-dropped", unmatched_and_dropped_frames_fail);
     g_test_add_func("/bench/reject-duplicate-capture-pts", capture_duplicate_pts_fails);

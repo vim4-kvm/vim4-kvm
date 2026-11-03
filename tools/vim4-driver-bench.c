@@ -35,7 +35,8 @@ typedef struct {
     guint warmup, measured, raw_count, output_count, keyframes;
     guint width, height;
     guint64 bytes, largest_frame, first_pts, last_pts;
-    gboolean capture_only;
+    gboolean capture_only, inspect_sps, hevc;
+    gchar *sps_hex;
     gchar *error, *raw_caps, *encoded_caps;
     Accounting before, start, end, after;
 } Bench;
@@ -195,6 +196,35 @@ static GstPadProbeReturn encoder_probe(GstPad *pad, GstPadProbeInfo *info, gpoin
     return GST_PAD_PROBE_OK;
 }
 
+/* Wave5 returns Annex B access units. Inspect only the initial keyframe,
+ * before the measured interval, so steady-state probes never map payloads. */
+static gchar *read_sps(GstBuffer *buffer, gboolean hevc)
+{
+    GstMapInfo map;
+    if (!gst_buffer_map(buffer, &map, GST_MAP_READ)) return NULL;
+    gsize start = 0;
+    gchar *result = NULL;
+    for (gsize i = 2; i <= map.size; i++) {
+        if (i < map.size && (map.data[i] != 1 || map.data[i - 1] || map.data[i - 2]))
+            continue;
+        if (start) {
+            guint type = hevc ? (map.data[start] >> 1) & 63 : map.data[start] & 31;
+            if (type == (hevc ? 33u : 7u)) {
+                gsize end = i == map.size ? i : i - 2;
+                while (end > start && !map.data[end - 1]) end--;
+                GString *hex = g_string_new(NULL);
+                for (gsize j = start; j < end; j++)
+                    g_string_append_printf(hex, "%02x", map.data[j]);
+                result = g_string_free(hex, FALSE);
+                break;
+            }
+        }
+        start = i + 1 < map.size ? i + 1 : 0;
+    }
+    gst_buffer_unmap(buffer, &map);
+    return result;
+}
+
 static GstPadProbeReturn output_probe(GstPad *pad, GstPadProbeInfo *info, gpointer data)
 {
     Bench *bench = data;
@@ -203,6 +233,8 @@ static GstPadProbeReturn output_probe(GstPad *pad, GstPadProbeInfo *info, gpoint
     g_mutex_lock(&bench->lock);
     Frame *frame = g_hash_table_lookup(bench->pending, &GST_BUFFER_PTS(buffer));
     if (!bench->encoded_caps) bench->encoded_caps = pad_caps(pad);
+    if (bench->inspect_sps && !bench->output_count)
+        bench->sps_hex = read_sps(buffer, bench->hevc);
     if (!frame || !frame->encoder_us) fail_locked(bench, "encoded PTS has no matching input");
     else {
         if (frame->index != bench->output_count + 1)
@@ -357,8 +389,8 @@ int main(int argc, char **argv)
         {"warmup", 0, 0, G_OPTION_ARG_INT, &warmup, "Excluded initial frames", "N"},
         {"bitrate", 0, 0, G_OPTION_ARG_INT, &bitrate, "Bits per second", "BPS"},
         {"gop", 0, 0, G_OPTION_ARG_INT, &gop, "GOP length; intra refresh disabled", "N"},
-        {"width", 0, 0, G_OPTION_ARG_INT, &width, "1920 or 3840", "PIXELS"},
-        {"height", 0, 0, G_OPTION_ARG_INT, &height, "1080 or 2160", "PIXELS"},
+        {"width", 0, 0, G_OPTION_ARG_INT, &width, "1920, 2560 or 3840", "PIXELS"},
+        {"height", 0, 0, G_OPTION_ARG_INT, &height, "1080, 1440 or 2160", "PIXELS"},
         {"fps", 0, 0, G_OPTION_ARG_INT, &fps, "Negotiated capture and encoder rate", "FPS"},
         {"secondary", 0, 0, G_OPTION_ARG_NONE, &secondary, "Stock native-HDR VDIN1 HDMI capture", NULL},
         {"timeout", 0, 0, G_OPTION_ARG_INT, &timeout, "Pipeline deadline in seconds", "SECONDS"},
@@ -379,8 +411,10 @@ int main(int argc, char **argv)
         bitrate < 1000000 || bitrate > 60000000 || gop < 1 || gop > 1000 ||
         timeout < 1 || (save_bitstream && codec && !strcmp(codec, "capture")) ||
         fps < 1 || fps > 120 || (secondary && strcmp(backend, "stock")) ||
-        (fps > 60 && (!secondary || width != 1920 || height != 1080 || !strcmp(codec, "jpeg"))) ||
-        !((width == 3840 && height == 2160) || (width == 1920 && height == 1080))) {
+        (fps > 60 && (width == 3840 || !strcmp(codec, "jpeg") ||
+                      (!strcmp(backend, "stock") && (!secondary || width != 1920)))) ||
+        !((width == 3840 && height == 2160) || (width == 1920 && height == 1080) ||
+          (!strcmp(backend, "edge") && width == 2560 && height == 1440))) {
         g_printerr("Require --exclusive --backend=edge|stock --codec=capture|h264|h265|jpeg --output=NEW.json and valid limits\n");
         return 1;
     }
@@ -415,6 +449,8 @@ int main(int argc, char **argv)
     gst_init(NULL, NULL);
     Bench bench = {.warmup = (guint)warmup, .measured = (guint)frames,
                    .width = (guint)width, .height = (guint)height, .capture_only = capture_only};
+    bench.inspect_sps = edge && fps > 60 && !capture_only && !jpeg;
+    bench.hevc = !strcmp(codec, "h265");
     g_mutex_init(&bench.lock);
     bench.pending = g_hash_table_new_full(g_int64_hash, g_int64_equal, g_free, g_free);
     bench.bridge_ms = g_array_new(FALSE, FALSE, sizeof(gdouble));
@@ -434,9 +470,9 @@ int main(int argc, char **argv)
         "caps=\"video/x-raw,format=NV12,width=%d,height=%d,framerate=%d/1,colorimetry=bt709,"
         "interlace-mode=progressive,pixel-aspect-ratio=1/1\" ! "
         "v4l2%senc name=encoder output-io-mode=dmabuf-import ! "
-        "video/x-%s,profile=%s,level=(string)%s ! ",
+        "video/x-%s,profile=%s%s ! ",
         width, height, fps, codec, codec, !strcmp(codec, "h264") ? "high" : "main",
-        "5.1");
+        !strcmp(codec, "h264") && width == 2560 && fps > 60 ? "" : ",level=(string)5.1");
     else encoding = g_strdup_printf(
         "amlvenc name=encoder bitrate=%d gop=%d framerate=%d i-qp-min=-1 qp-max=-1 intra-refresh-rows=0 ! "
         "video/x-%s ! ", bitrate / 1000, gop, fps, codec);
@@ -549,6 +585,14 @@ int main(int argc, char **argv)
     gdouble elapsed = (bench.end.at_us - bench.start.at_us) / 1e6;
     gdouble busy = bench.end.total > bench.start.total ?
         100.0 * (1.0 - (gdouble)(bench.end.idle - bench.start.idle) / (bench.end.total - bench.start.total)) : 0;
+    if (bench.inspect_sps) {
+        append_string(json, "sps_nal_hex", bench.sps_hex);
+        if (!bench.sps_hex) {
+            fail_locked(&bench, "initial access unit contained no SPS");
+            success = FALSE;
+        }
+        g_free(bench.sps_hex);
+    }
     append_string(json, "error", bench.error);
     append_string(json, "raw_caps", bench.raw_caps); append_string(json, "encoded_caps", bench.encoded_caps);
     g_string_append_printf(json, ",\n  \"measurement_start_monotonic_us\": %" G_GINT64_FORMAT
@@ -567,6 +611,9 @@ int main(int argc, char **argv)
         elapsed > 0 ? bench.bytes * 8 / elapsed : 0, bench.largest_frame, bench.keyframes,
         bench.end.vpu_irqs - bench.start.vpu_irqs, bench.end.capture_irqs - bench.start.capture_irqs,
         bench.before.cma_kib, bench.start.cma_kib, bench.after.cma_kib, bench.start.available_kib);
+    g_string_append_printf(json, ",\n  \"requested_fps\": %d,\n  \"wall_fps\": %.6f,\n  \"first_pts_ns\": %" G_GUINT64_FORMAT
+                           ",\n  \"last_pts_ns\": %" G_GUINT64_FORMAT,
+                           fps, elapsed > 0 ? frames / elapsed : 0, bench.first_pts, bench.last_pts);
     append_distribution(json, "source_to_encoder_sink_ms", bench.bridge_ms);
     append_distribution(json, "encoder_sink_to_src_ms", bench.encoder_ms);
     append_distribution(json, "source_to_encoded_ms", bench.total_ms);
