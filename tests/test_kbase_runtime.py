@@ -14,6 +14,7 @@ class KbaseRuntimeTest(unittest.TestCase):
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)
             script = (ROOT / 'board/vim4-board-runtime').read_text()
+            script = script.replace('/usr/lib/vim4-kvm/python/vim4boot.py', str(ROOT / 'board/vim4boot.py'))
             script = script.replace('/usr/libexec/', str(root) + '/')
             launcher = root / 'runtime'
             launcher.write_text(script)
@@ -35,11 +36,15 @@ class KbaseRuntimeTest(unittest.TestCase):
                                       env=env, text=True, capture_output=True)
             self.assertNotEqual(rejected.returncode, 0)
             self.assertNotIn('prepare', rejected.stdout)
-            for retired in ('7.3.0-rc7-vim4kvm-uhd1+', '7.3.0-vim4kvm-uhd7+', '7.3.0-vim4kvm-npu4+'):
+            for retired in ('7.3.0-rc7-vim4kvm-uhd1+', '7.3.0-vim4kvm-uhd7+', '7.3.0-vim4kvm-npu4+',
+                            '7.3.1-vim4-20261103.1', '7.3.1-vim4-20261103.02',
+                            '7.3.1-vim4-2026110', '7.3.1-vim4-202611030', '7.3.1-vim4-abcdefgh',
+                            '7.3.1-vim4-20261103.2extra'):
                 rejected = subprocess.run(['sh', str(launcher), 'check-kernel', retired],
                                           env=env, text=True, capture_output=True)
                 self.assertNotEqual(rejected.returncode, 0, retired)
-            for version in ('7.3.1-vim4kvm-uhd7+', '7.3.1-vim4-20261103', '7.3.1-vim4-20261103.2'):
+            for version in ('7.3.1-vim4kvm-uhd7+', '7.3.1-vim4-20261103',
+                            '7.3.1-vim4-20261103.2', '7.3.1-vim4-20261103.10'):
                 uname.write_text('#!/bin/sh\necho '+version+'\n')
                 for action, expected in (('gadget-start', 'vim4-mainline-gadget-prepare'),
                                          ('hdmi', 'vim4-mainline-prepare')):
@@ -52,6 +57,7 @@ class KbaseRuntimeTest(unittest.TestCase):
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)
             script = (ROOT / 'board/vim4-kvm-run').read_text()
+            script = script.replace('/usr/lib/vim4-kvm/python/vim4boot.py', str(ROOT / 'board/vim4boot.py'))
             script = re.sub(r'/(?:sys|usr|opt|var)/', lambda m: str(root) + m[0], script)
             launcher = root / 'launcher'
             launcher.write_text(script)

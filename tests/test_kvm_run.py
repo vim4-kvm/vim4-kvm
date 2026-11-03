@@ -16,6 +16,7 @@ class KVMRunTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)
             script = (ROOT / 'board/vim4-kvm-run').read_text()
+            script = script.replace('/usr/lib/vim4-kvm/python/vim4boot.py', str(ROOT / 'board/vim4boot.py'))
             script = re.sub(r'/(?:sys|usr|opt|var)/', lambda match: str(root) + match[0], script)
             launcher = root / 'run'
             launcher.write_text(script)

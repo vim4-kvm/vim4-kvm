@@ -27,7 +27,9 @@ class EdgeLauncherTest(unittest.TestCase):
     def run_script(self, name, release):
         env = dict(os.environ, PATH=f'{self.bin}:/usr/bin:/bin',
                    EDGE_TEST_RELEASE=release, EDGE_TEST_TRACE=str(self.trace))
-        return subprocess.run(['sh', str(ROOT / 'packaging/kernel' / name)],
+        script = (ROOT / 'packaging/kernel' / name).read_text().replace(
+            '/usr/lib/vim4-kvm/python/vim4boot.py', str(ROOT / 'board/vim4boot.py'))
+        return subprocess.run(['sh', '-c', script],
                               env=env, capture_output=True, text=True, timeout=5)
 
     def test_prepare_refuses_production_and_unknown_kernels_before_hardware_access(self):
@@ -77,7 +79,7 @@ class EdgeLauncherTest(unittest.TestCase):
     def test_unmatched_kernel_cannot_launch_either_application(self):
         result = self.run_script('one-kvm-edge', '7.3.0-unmatched')
         self.assertNotEqual(result.returncode, 0)
-        self.assertIn('No validated One-KVM backend', result.stderr)
+        self.assertIn('No validated VIM4 mainline runtime', result.stderr)
 
     def test_prepare_rejects_preloaded_copy_mode_before_application_start(self):
         (self.bin / 'sha256sum').write_text('#!/bin/sh\n/bin/cat >/dev/null; exit 0\n')

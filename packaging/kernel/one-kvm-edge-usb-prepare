@@ -8,9 +8,11 @@ import json
 import os
 from pathlib import Path
 import platform
-import re
 import subprocess
 import sys
+
+sys.path[:0] = ['/usr/lib/vim4-kvm/python', str(Path(__file__).resolve().parents[2] / 'board')]
+from vim4boot import is_mainline_release
 
 ROOT = Path('/sys/kernel/config/usb_gadget')
 UDCS = Path('/sys/class/udc')
@@ -67,9 +69,7 @@ def prepare_optional_functions(gadget):
 
 
 def prepare():
-    kernel = platform.release()
-    if (os.geteuid() != 0 or (kernel != '7.3.1-vim4kvm-uhd7+' and
-            not re.fullmatch(r'7\.\d+(?:\.\d+)?-vim4-\d{8}(?:\.(?:[2-9]|[1-9]\d+))?', kernel))):
+    if os.geteuid() != 0 or not is_mainline_release(platform.release()):
         raise ValueError('Requires root on the matched 7.3 One-KVM experimental kernel')
     if check_existing():
         prepare_optional_functions(ROOT / 'kvm')

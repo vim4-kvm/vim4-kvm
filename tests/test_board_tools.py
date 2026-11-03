@@ -40,7 +40,12 @@ class BoardToolsTests(unittest.TestCase):
         test() {
             if [ "$1" = -e ]; then [ "$2" != /dev/video_cap ]; else command test "$@"; fi
         }
-        python3() { return "$CAPTURE_STATUS"; }
+        python3() {
+            case "$1" in
+                */vim4boot.py) command python3 "./board/vim4boot.py" "$2" ;;
+                *) return "$CAPTURE_STATUS" ;;
+            esac
+        }
         curl() { return 0; }
         cat() { echo configured; }
         '''

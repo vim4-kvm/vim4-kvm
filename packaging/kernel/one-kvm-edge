@@ -9,12 +9,12 @@ case "$(uname -r)" in
         export VIM4_VIDEO_BACKEND=vendor
         exec /opt/vim4-onekvm/one-kvm --data-dir /var/lib/one-kvm --address 127.0.0.1 --port 8081 --auth-mode managed
         ;;
-    7.3.1-vim4kvm-uhd7+|7.*-vim4-????????|7.*-vim4-????????.[0-9]*)
+    *)
+        python3 /usr/lib/vim4-kvm/python/vim4boot.py "$(uname -r)" || exit 1
         export VIM4_VIDEO_BACKEND=wave5
         export GST_PLUGIN_PATH=/opt/vim4-onekvm-edge/gstreamer-1.0
         export GST_REGISTRY=/run/one-kvm-edge/gstreamer-registry.bin
         unset LD_LIBRARY_PATH
         exec /opt/vim4-onekvm-edge/one-kvm --data-dir /var/lib/one-kvm-edge --address 127.0.0.1 --port 8082 --auth-mode managed
         ;;
-    *) echo 'No validated One-KVM backend for this kernel' >&2; exit 1 ;;
 esac

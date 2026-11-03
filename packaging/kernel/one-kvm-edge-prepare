@@ -1,11 +1,7 @@
 #!/bin/sh
 # SDR 1080p/UHD60 and HDR10 UHD60 experiment; separate edge service only.
 set -eu
-kernel=$(uname -r)
-case "$kernel" in
-    7.3.1-vim4kvm-uhd7+|7.*-vim4-????????|7.*-vim4-????????.[0-9]*) ;;
-    *) echo 'This video experiment requires its matched 7.3 kernel' >&2; exit 1 ;;
-esac
+python3 /usr/lib/vim4-kvm/python/vim4boot.py "$(uname -r)" || exit 1
 
 # The vendor preload unit stays active after exit. Type=simple does not make
 # After= wait for its work to finish, so check completion before JPEG can open.

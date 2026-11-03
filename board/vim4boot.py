@@ -6,11 +6,18 @@ from pathlib import Path
 import platform
 import re
 import stat
+import sys
 import tempfile
 
 BOOT = Path('/boot')
 CONFIG = BOOT / 'extlinux/extlinux.conf'
 MANIFEST = Path('/etc/vim4-kvm/kernels.json')
+
+
+def is_mainline_release(release):
+    """Recognize date releases and the single retained legacy runtime."""
+    return release == '7.3.1-vim4kvm-uhd7+' or re.fullmatch(
+        r'[0-9]+\.[0-9]+(?:\.[0-9]+)?-vim4-[0-9]{8}(?:\.(?:[2-9]|[1-9][0-9]+))?', release) is not None
 
 
 def installed():
@@ -131,3 +138,7 @@ def select(identifier):
         raise ValueError('无法修改默认启动项')
     atomic_write(CONFIG.with_name('extlinux.conf.before-kernel-switch'), text.encode())
     atomic_write(CONFIG, updated.encode())
+
+
+if __name__ == '__main__':
+    sys.exit(None if is_mainline_release(sys.argv[1]) else 'No validated VIM4 mainline runtime for this kernel')

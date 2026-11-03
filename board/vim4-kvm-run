@@ -39,23 +39,19 @@ case "$kernel" in
             fi
         fi
         ;;
-    7.*-vim4-????????|7.*-vim4-????????.[0-9]*|7.3.1-vim4kvm-uhd7+)
+    *)
+        python3 /usr/lib/vim4-kvm/python/vim4boot.py "$kernel" || exit 1
         export VIM4_VIDEO_BACKEND=wave5
         export VIM4_SHARED_DATA=1
         export GST_PLUGIN_PATH=/usr/lib/vim4-kvm/mainline-gstreamer-1.0
         export GST_REGISTRY="$state/gstreamer-mainline-registry.bin"
-        unset VIM4_SECONDARY_HDMI_CAPTURE
         # Wave5 imports separate plane views. The vendor allocation preference
         # would make the V4L2 encoder expect one contiguous DMA-buf instead.
-        unset GST_V4L2_PREFER_CONTIGUOUS
-        unset LD_LIBRARY_PATH
-        unset VK_ICD_FILENAMES
-        unset VK_DRIVER_FILES OCL_ICD_VENDORS LD_PRELOAD
-        unset __EGL_VENDOR_LIBRARY_FILENAMES LIBGL_DRIVERS_PATH
+        unset VIM4_SECONDARY_HDMI_CAPTURE GST_V4L2_PREFER_CONTIGUOUS LD_LIBRARY_PATH VK_ICD_FILENAMES
+        unset VK_DRIVER_FILES OCL_ICD_VENDORS LD_PRELOAD __EGL_VENDOR_LIBRARY_FILENAMES LIBGL_DRIVERS_PATH
         # Match the validated mainline runtime's higher-capacity CPU group.
         taskset -pc 0-3 "$$" >/dev/null
         ;;
-    *) echo 'No validated VIM4 application backend for this kernel' >&2; exit 1 ;;
 esac
 # GStreamer caches device-specific V4L2 factories. Rediscover after a reboot,
 # driver update or app switch; do not delete another running application's cache.
@@ -67,8 +63,7 @@ run_app() {
         if [ "${driver##*/}" = mali ]; then
             exec /usr/bin/python3 /usr/lib/vim4-kvm/python/vim4gpu.py --graphics direct -- "$@"
         fi
-        case "$kernel:${driver##*/}" in
-            7.*-vim4-????????:panfrost|7.*-vim4-????????.[0-9]*:panfrost|7.3.1-vim4kvm-uhd7+:panfrost)
+        if [ "${driver##*/}" = panfrost ]; then
             # Native AMLY conversion was accepted with this private PanVK.
             for icd in /opt/vim4-mesa-26.2.6/share/vulkan/icd.d/*panfrost*.json; do
                 if [ -r "$icd" ]; then
@@ -81,8 +76,7 @@ run_app() {
                 echo 'Qualified private PanVK ICD is missing' >&2
                 exit 1
             }
-            ;;
-        esac
+        fi
     fi
     exec "$@"
 }
@@ -91,9 +85,7 @@ case "$app" in
     jetkvm) run_app /opt/vim4-jetkvm/jetkvm ;;
     onekvm)
         binary=/opt/vim4-onekvm/one-kvm
-        case "$kernel" in
-            7.*-vim4-????????|7.*-vim4-????????.[0-9]*|7.3.1-vim4kvm-uhd7+) binary=/opt/vim4-onekvm-edge/one-kvm ;;
-        esac
+        if [ "$VIM4_VIDEO_BACKEND" = wave5 ]; then binary=/opt/vim4-onekvm-edge/one-kvm; fi
         run_app "$binary" --data-dir "$state" --address 127.0.0.1 --port 8081 --auth-mode managed
         ;;
     pikvm) run_app /usr/libexec/vim4-pikvm-run ;;
