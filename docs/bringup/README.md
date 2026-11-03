@@ -19,6 +19,8 @@
 
 ## 2026-11-03
 
+- [Wave5 AVC 恢复帧 QP 与编码选择持久化](2026-11-03-wave5-avc-recovery-qp.md) — video board application deployment；逐帧 QP、网页恢复与重启验证。
+
 - [Wave5 单帧 VBV 与 HEVC 帧级码控对照](2026-11-03-wave5-single-frame-vbv.md) — video board deployment；4K60 静态带宽、分带质量、接入、PLI 与延迟。
 
 ## 2026-11-02
