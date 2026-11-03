@@ -21,7 +21,7 @@
 
 - 5.15：5.15.137-vim4kvm-hdrdual6，保留默认不变；native_hdr=1，基线从共享RX的VDIN1映射输出/video71取得。
 - 7.3：vim4-hdr2-pq@58b7ecfeb6838，7.3.0-vim4kvm-uhd3-hdr2a1+，build ID 2c88ab69181672d3ca60f93ccded2fb74612aa8c。
-- 使用[统一候选](../hdr2-unified-candidate.md)完整归档5dc67148…，同次Image/DTB/2338模块；本次选display-m0 DTB。
+- 使用[统一候选](../archive/hdr2-unified-candidate.md)完整归档5dc67148…，同次Image/DTB/2338模块；本次选display-m0 DTB。
   静态PID1验证build ID及私有目录所有者后只读绑定模块与五个私有runtime助手，只为hdr2a1增加准入。
   根位于`/var/lib/vim4-kvm/hdr2-unified/2c88ab69181672d3ca60f93ccded2fb74612aa8c`；无saveenv、不替换默认启动文件或磁盘助手。
 

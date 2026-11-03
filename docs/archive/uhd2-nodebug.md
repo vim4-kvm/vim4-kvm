@@ -1,11 +1,13 @@
 # uhd2-nodebug：调试配置对照候选
 
-正式采用的历史结果见[uhd3合入与回归](bringup/2026-10-30-uhd3-formal-regression.md)。
+> 归档快照（2026-11-03）：nodebug 候选配置与历史门禁（含 11-03 授权语句清理）；不代表当前状态，现行入口见[专题合同](../memory-copy-audit.md)。
+
+正式采用的历史结果见[uhd3合入与回归](../bringup/2026-10-30-uhd3-formal-regression.md)。
 下文保留候选阶段状态；正式uhd/edge已应用同一集合，安全基线不变。
 
-最新[三方上板结果](bringup/2026-10-30-nodebug-memory-window.md)：tmpfs/YOLO端到端恢复、视频约60fps；memcpy仍慢。默认5.15与正式配置不变。
-后续[绑核证据与两对门禁](nodebug-performance-gate.md)含正式配置最小diff草案，尚未应用。
-最新[两对实测](bringup/2026-10-30-nodebug-paired-gate.md)输出/60fps通过，性能资格仍不确定，大核memcpy未复现退化。
+最新[三方上板结果](../bringup/2026-10-30-nodebug-memory-window.md)：tmpfs/YOLO端到端恢复、视频约60fps；memcpy仍慢。默认5.15与正式配置不变。
+后续[绑核证据与两对门禁](../nodebug-performance-gate.md)含正式配置最小diff草案，尚未应用。
+最新[两对实测](../bringup/2026-10-30-nodebug-paired-gate.md)输出/60fps通过，性能资格仍不确定，大核memcpy未复现退化。
 
 **uhd1同样开启锁调试，历史7.3视频/GPU/NPU数据均包含该层成本。** 不是NPU补丁新增。
 候选独立[配置已转入 Git 历史](https://github.com/vim4-kvm/vim4-kvm/blob/8dac974/packaging/kernel-edge/uhd2-nodebug.config)，源码仍为
@@ -14,8 +16,8 @@ release `7.3.0-vim4kvm-uhd2-nodebug+`。不修改uhd1/uhd2.config或正式source
 
 ## 审计与取舍
 
-[逐项CSV](data/uhd2-nodebug-config.csv)对照厂商5.15、uhd2与候选；absent表示配置无该项，不能等同硬件缺功能。
-实际有效差异由olddefconfig生成；源Kconfig依据及既有内存性能证据见[内存审查](memory-copy-audit.md)。
+[逐项CSV](../data/uhd2-nodebug-config.csv)对照厂商5.15、uhd2与候选；absent表示配置无该项，不能等同硬件缺功能。
+实际有效差异由olddefconfig生成；源Kconfig依据及既有内存性能证据见[内存审查](../memory-copy-audit.md)。
 
 | 分类 | uhd2 → 候选 | 理由 |
 |---|---|---|

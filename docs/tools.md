@@ -10,7 +10,8 @@
 
 tests/test_docs.py 检查 Git 清单中的 tools/* 文件名是否在本页出现；
 反向存在性检查只识别本页 tools/ 下的 py、mjs、sh、swift、c 路径。
-它不检查 packaging/ 目录完整性，也不验证代码块命令。新增或删除工具时同步本页。
+它不检查 packaging/ 目录完整性；另检查现行文档中字面 `python3 tools/…`、`python3 packaging/…`
+命令的脚本路径存在性（跳过占位符及归档/上板记录，包含已存在的 One-KVM/VIM4.md）。新增或删除工具时同步本页。
 
 ## 浏览器测试的公共前提
 

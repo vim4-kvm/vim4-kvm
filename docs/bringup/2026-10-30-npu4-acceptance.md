@@ -44,7 +44,7 @@ libadla/libnnsdk SHA分别为cd5fc35e273939a50cfe14585d1fb15b60939037a670f679b20
 
 主测及最终完整dmesg的task create fail均为0，没有fixup拒绝坐标/errno日志。
 YOLO第三输出的56664值差异已消除；符合有效缓存长度检查的预期，见内核
-`drivers/misc/adla/drv/common/adlak_submit.c:994–1017`及[npu4设计](../npu-adla-npu4.md)。
+`drivers/misc/adla/drv/common/adlak_submit.c:994–1017`及[npu4设计](../archive/npu-adla-npu4.md)。
 VGG已接近5%上限，当前结果不应推广为所有环境均无退化。
 
 ## 取消、各故障前后与PM

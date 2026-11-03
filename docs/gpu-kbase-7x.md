@@ -7,9 +7,9 @@
 [r11实测](bringup/2026-10-31-kbase-r11-policy.md)已补齐live厂商跳档/软件PP保持；
 默认七轮DMA/CL SP达到5.15，API/内存/温控/服务级4K60并行通过。
 恢复dma-coherent的负向DT在原生CL触发0x51；保持默认删除。
-[正式集成清单](gpu-kbase-uhd5-integration.md)保留负向故障回退DHCP未定位限制；正常候选回退已通过。
+[正式集成清单](archive/gpu-kbase-uhd5-integration.md)保留负向故障回退DHCP未定位限制；正常候选回退已通过。
 
-当前为[uhd4基线上的uhd5候选](gpu-kbase-uhd5.md)，正式内核基线8bca939d6bbd3。
+[uhd4 基线上的 uhd5 构建](archive/gpu-kbase-uhd5.md)为历史快照；当前内核身份见[主线内核开头](kernel-mainline.md)。
 [r10历史实测](bringup/2026-10-31-kbase-r10-uhd5.md)当时默认DMA中位数慢12.12%、CL SP低1.89%，
 服务级并行及dma-coherent二分未完成；其遗留项已由r11验证，不覆写旧证据。
 下列r6/r9记录保留其原始内核与测量范围。
@@ -49,7 +49,7 @@ VK1.3.231与CL3.0设备查询通过，但VK DMA执行DEVICE_LOST/MMU fault；后
 [r3再次上板](bringup/2026-10-30-kbase-r3-window.md)：零WARN加载及KVM助手启动路径通过，
 首个GBM/EGL设备探针退出2，按门禁回5.15；该轮尚无候选API或性能通过数据。
 
-[r3离线修复与新窗口门禁](gpu-kbase-repair.md)修正timer/workqueue及生命周期问题，
+[r3离线修复与新窗口门禁](archive/gpu-kbase-repair.md)修正timer/workqueue及生命周期问题，
 新增运行时快照与CL分项预算；该离线记录保留当时的门禁与窗口清单。
 
 [首个上板窗口](bringup/2026-10-30-kbase-window.md)已完成：/dev/mali0出现，但workqueue/hrtimer
@@ -107,6 +107,30 @@ G76 r56或CSF驱动不构成G52支持证据。不能改版本常量伪装UK11.39
 再决定回移内核API/安全修复，或一起更新获得授权的匹配用户态。
 
 ## 已确认的移植面
+
+### 运行时 API 与集成维护合同
+
+timer 在 setup 时提供非 NULL callback，栈 timer 使用对应 on-stack 接口；复位等待返回后先
+hrtimer_cancel 再判断结果或 destroy，重启 timer 也在 cancel 之后。bound workqueue 在新内核
+显式带 WQ_PERCPU，保留既有 UNBOUND/max_active/优先级，不能把 API 改名当语义移植。
+对应 [0005 补丁](../packaging/kbase/0005-runtime-api.patch)由构建器自动运行
+[check-semantics.py](../packaging/kbase/check-semantics.py)，检查实际包装函数和源调用；宿主模型不证明真实中断/调度。
+dma-fence 适配 void signal 时须在公开锁接口内检查重复 signal 并保留 EINVAL，不能无条件返回成功。
+OPP 解析的早退、失败和完成路径均归还父/子节点引用，负 count 不传给数组分配；IRQ 可选探测
+仍须立即传播 EPROBE_DEFER，不能用另一个名称重试覆盖延迟 probe。
+
+governor_vim4 通过 MODULE_SOFTDEP 先于异步 kbase probe 加载，避免 request_module 与 async probe 相互等待。
+GPU thermal emulation 只在测试窗口写具名 zone，结束写 0 并核对，不改 trip/PWM/电压；不把模拟限频当真实高温验收。
+对应 [0008 策略补丁](../packaging/kbase/0008-t7-devfreq-policy.patch)及构建器的 softdep 校验必须保留。
+
+板级启动器按实际绑定驱动选择用户态，7.x 视频仍用 Wave5；kbase 核验 UK/blob SHA 后用私有
+ICD/EGL/GLES/GBM 前缀，Panfrost 清理继承的 blob 环境，不覆盖系统 Mesa。
+board 安装与 Ubuntu 包共用 [run.py](../packaging/kbase/run.py)，安装为 vim4gpu.py。
+`vim4-board-runtime check-kernel RELEASE` 只验证已知内核路线，不证明候选 build ID、完整模块和
+服务可用；部署须同时核对实际助手与 runtime-files.json 的逐文件 SHA，不只更新源码或修改收据。
+构建、ABI、DT 互斥、许可和未验范围继续按下文各节执行；旧完整集成清单见[归档](archive/gpu-kbase-uhd5-integration.md)。
+
+### 适配边界
 
 下表文件相对V:K，兼容头为V:`include/linux/version_compat_defs.h`。
 模块补丁顺序见[series](../packaging/kbase/series)，不改UAPI定义；DT单独作为第四块重放。

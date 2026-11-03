@@ -2,6 +2,16 @@
 
 这里保存固定版本的调查与交付证据。当前架构和约束请从[子系统入口](../subsystems/)按需读取。
 
+- [ADLA npu2 离线修复](npu-adla-npu2.md)：2026-10-30 快照；现行合同见 [NPU](../npu-adla.md)。
+- [ADLA npu3 离线修复](npu-adla-npu3.md)：2026-10-30 快照；现行合同见 [NPU](../npu-adla.md)。
+- [ADLA npu4 离线取证](npu-adla-npu4.md)：2026-10-30 快照；现行合同见 [NPU](../npu-adla.md)。
+- [NPU 六段集成草案](npu-adla-integration.md)：2026-10-30 快照；现行合同见 [NPU](../npu-adla.md)。
+- [nodebug 配置候选](uhd2-nodebug.md)：2026-11-03 最后实质清理；原实验为 10-30，现行合同见 [内存与拷贝](../memory-copy-audit.md)。
+- [HDR2a1 统一候选](hdr2-unified-candidate.md)：2026-10-30 快照；现行合同见 [HDR2 DMA](../hdr2-dma-contract.md)。
+- [HDR2a3 离线修复](hdr2a3-offline.md)：2026-10-30 快照；inode 关联及池上限已被后续修正，见 [HDR2 DMA](../hdr2-dma-contract.md)。
+- [kbase r3 离线修复](gpu-kbase-repair.md)：2026-10-30 快照；现行合同见 [kbase](../gpu-kbase-7x.md)。
+- [uhd5 kbase 构建](gpu-kbase-uhd5.md)：2026-10-31 快照；现行合同见 [kbase](../gpu-kbase-7x.md)。
+- [uhd5 kbase 集成清单](gpu-kbase-uhd5-integration.md)：2026-10-31 快照；现行合同见 [kbase](../gpu-kbase-7x.md)。
 - [NanoKVM-Pro 的 VIM4 功能状态](feature-status.md)：2026-10-17 快照；现行来源为[应用](../subsystems/application.md)。
 - [NanoKVM 功能差异评估](nanokvm-feature-review.md)：2026-10-13 快照；现行来源为[应用](../subsystems/application.md)。
 - [NanoKVM 基线切换](nanokvm-migration.md)：2026-10-15 快照；现行来源为[应用](../subsystems/application.md)。

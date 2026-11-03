@@ -7,13 +7,20 @@ YOLO fwrite 2.669ms、端到端34.808ms，tmpfs快检正常。安全加固与内
 
 以下保留离线审查；后续[三方nodebug实测](bringup/2026-10-30-nodebug-memory-window.md)已完成：
 nodebug恢复tmpfs写入与YOLO端到端，但memcpy/pread仍未追平。未动GPU文件、正式配置或push/pin。
-用户授权的[独立nodebug候选](uhd2-nodebug.md)已关闭纯调试开销；正式配置仍待批准。
+[独立 nodebug 候选](archive/uhd2-nodebug.md)保留关闭纯调试开销时的配置与未验边界，不代表当前待批准状态。
 后续[原始绑核核对与两启动对门禁](nodebug-performance-gate.md)补逐段实际CPU/频率及大、小核重复分布；旧CPU2亲和已确认，DDR对齐仍缺。
 最新[两对上板](bringup/2026-10-30-nodebug-paired-gate.md)：大核64MiB耗时差−4.106% [−9.912,+1.699]%，未复现变慢；tmpfs/端到端门禁仍不确定。
 [YOLO分段记录](bringup/2026-10-30-npu-e2e-window.md)把约3.46ms增量定位到tmpfs fwrite，
 尚未证明整个KVM所有拷贝都退化。**首要配置嫌疑是7.3的锁调试，不是已坐实的DDR低频或ADLA缺陷。**
 
 ## 证据范围
+
+现行配置维护合同：关闭纯调试开销不改变安全加固、分配/THP/交换策略；保留 DWARF/BTF、
+基础事件/tracepoint 和栈回溯。符号不逐调用执行，不能为性能混装 BTF 不匹配的模块。
+锁调试、SLUB_DEBUG、函数/系统调用跟踪的历史差分见[候选配置表](archive/uhd2-nodebug.md#审计与取舍)；
+有效值以[主线配置](../packaging/kernel/kernel.config)及构建后的 config 为准，不以旧表覆盖新构建。
+旧候选仅增加精确 release 准入，不放开任意 7.x；运行时仍核对 CMA、首次 HDMI 参数与完整模块。
+关闭调试会减少故障诊断能力；性能资格仍按[配对门禁](nodebug-performance-gate.md)报告，不把配置采用等同性能追平。
 
 配置C5=`packaging/kernel/vim4.config`，C7为[历史 uhd2.config](https://github.com/vim4-kvm/vim4-kvm/blob/8dac974/packaging/kernel-edge/uhd2.config)；
 VM `~/build/npu-integration/.config`的相关项与C7一致。C7候选源码为f71b5c6289cb。

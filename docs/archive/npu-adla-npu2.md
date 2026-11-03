@@ -1,5 +1,7 @@
 # ADLA npu2 离线修复与下一窗口
 
+> 归档快照（2026-10-30）：npu2 离线资源与首次加载修复；不代表当前状态，现行入口见[专题合同](../npu-adla.md)。
+
 本轮不访问板子，GPU上板会话独占。正式源码/部署锁与旧npu1产物不变。
 内核在VM `~/src/linux-7.3-npu`、分支`vim4-npu-adla`；
 新输出`~/build/npu-adla2`，载荷`~/build/npu2-candidate`，

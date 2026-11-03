@@ -1,19 +1,21 @@
 # kbase r3 离线语义修复
 
-后续[上板记录](bringup/2026-10-30-kbase-r3-window.md)已验证本页加载WARN修复与助手同步，
+> 归档快照（2026-10-30）：kbase r3 离线修复与未完成硬件门禁；不代表当前状态，现行入口见[专题合同](../gpu-kbase-7x.md)。
+
+后续[上板记录](../bringup/2026-10-30-kbase-r3-window.md)已验证本页加载WARN修复与助手同步，
 但GBM/EGL设备门禁失败；已回退。下列“尚未上板”描述保留本页离线封存时的范围。
 
 结论：修正首窗两个初始化WARN的已知原因，并补齐栈timer、OPP引用及fence返回语义。
 宿主合同检查、7.3 Werror模块构建、modpost和UK11.39 ABI对照通过；**尚未再次上板**。
 本轮只在vim4-kvm-kbase-r2与独立VM候选工作树中工作，不访问板子，不动HDR工作树。
-失败原文见[首窗记录](bringup/2026-10-30-kbase-window.md)，方案见[候选维护](gpu-kbase-7x.md)。
+失败原文见[首窗记录](../bringup/2026-10-30-kbase-window.md)，方案见[候选维护](../gpu-kbase-7x.md)。
 
 ## 根因与修复
 
 日志kernel/workqueue.c:5938的调用栈为alloc_workqueue→kbase_mmu_as_init→
 kbase_device_misc_init→kbase_platform_device_probe。旧DDK为mali_mmu队列传flags=0；
 7.3要求显式WQ_PERCPU或WQ_UNBOUND，否则WARN并补PERCPU。新增第五块
-[运行时API补丁](../packaging/kbase/0005-runtime-api.patch)，将17处alloc_workqueue统一经过
+[运行时API补丁](../../packaging/kbase/0005-runtime-api.patch)，将17处alloc_workqueue统一经过
 兼容层：7.3给原bound队列加WQ_PERCPU，已有UNBOUND保留。没有把原bound改为unbound，
 也不改变原max_active/优先级。job fault队列短名改为kbase_fault_resume，消除名字截断提示。
 
@@ -47,7 +49,7 @@ JM工作项均为静态/堆对象或父对象成员，没有发现待补INIT_WOR
 
 ## 离线门禁
 
-[check-semantics.py](../packaging/kbase/check-semantics.py)在build.py应用完整series后自动执行：
+[check-semantics.py](../../packaging/kbase/check-semantics.py)在build.py应用完整series后自动执行：
 扫描C源码，拒绝绕过兼容层的raw timer/workqueue调用、timer.function后赋值及显式NULL回调；
 提取实际兼容头包装代码，分别以5.15/7.3宿主API模型Werror编译并执行，验证setup时回调、
 stack初始化选择及bound/unbound flags。旧r2源码会被源门禁拒绝，避免只凭再编译进入下一窗口。
@@ -96,7 +98,7 @@ check-kernel只证明release路线，仍须检查候选build ID/完整模块/依
 ## clpeak与下一窗口
 
 已有ARM64 builder的clpeak 1.1.2 --help确认支持选择项目。
-[clpeak-subset.py](../packaging/kbase/clpeak-subset.py)不再默认全程序：
+[clpeak-subset.py](../../packaging/kbase/clpeak-subset.py)不再默认全程序：
 固定platform/device 0，仅跑--kernel-latency（30秒）及--compute-sp（90秒），
 每项timeout后最多5秒KILL，日志与退出码分开保存，不选global/transfer bandwidth或DP。
 同一binary/SHA、同一项目/计时方式、频点/热状态两侧一致；版本不支持这些选项直接拒绝。

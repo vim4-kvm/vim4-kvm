@@ -9,7 +9,7 @@
 
 A为5.15.137-vim4kvm-hdrdual6，ID `4a9b69d62ba7b3a5adeb41b213f7f3e573006165`；
 B为7.3.0-vim4kvm-uhd2-nodebug+，ID `af60b9bcb3cb6b84a62d6f4f664e9db53dfde202`，
-源码/配置/完整2338模块沿用[已测候选](../uhd2-nodebug.md)，没有新驱动/正式配置改动。
+源码/配置/完整2338模块沿用[已测候选](../archive/uhd2-nodebug.md)，没有新驱动/正式配置改动。
 新微基准同SHA `09f8eb10d83ece4f4a68edc95c8fb7e42b79f1d95b3c0534eba71d7724e8ef18`；
 NPU probe同`d721833446b3525f84263d8a1daf123367dafa56a1ded2ea07e79c90a73e5bd3`，SDK/输入不变。
 

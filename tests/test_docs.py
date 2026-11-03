@@ -8,6 +8,67 @@ import unittest
 ROOT = Path(__file__).resolve().parents[1]
 REPOS = {repo['name'] for repo in tomllib.loads((ROOT / 'workspace.toml').read_text())['repos']}
 LINK = re.compile(r'\]\(([^)\s]+)\)')
+PYTHON_SCRIPT = re.compile(r"\bpython3[ \t]+((?:tools|packaging)/[^\s`'\";)]+)")
+DATE_INDEX = '以下保留完整日期索引。'
+
+
+def literal_python_scripts(text):
+    # Only literal root-relative commands; no shell expansion or execution.
+    for number, line in enumerate(text.splitlines(), 1):
+        for match in PYTHON_SCRIPT.finditer(line):
+            path = match[1].rstrip('.,')
+            if any(char in path for char in '<>{}$*…') or '...' in path:
+                continue
+            yield number, path
+
+
+def date_index_errors(text, records):
+    date = None
+    seen = set()
+    errors = []
+    for line in text.split(DATE_INDEX, 1)[1].splitlines():
+        heading = re.fullmatch(r'## (\d{4}-\d{2}-\d{2})', line)
+        if heading:
+            date = heading[1]
+        for target in LINK.findall(line):
+            name = target.split('#', 1)[0]
+            record = re.fullmatch(r'(\d{4}-\d{2}-\d{2})-[\w-]+\.md', name)
+            if not record:
+                continue
+            if record[1] != date:
+                errors.append(f'{name}: under {date}, expected {record[1]}')
+            if name in seen:
+                errors.append(f'{name}: duplicate date entry')
+            seen.add(name)
+    for name in sorted(set(records) - seen):
+        errors.append(f'{name}: missing date entry')
+    return errors
+
+
+class DocsChecksTest(unittest.TestCase):
+    def test_literal_commands_keep_missing_paths_but_skip_placeholders(self):
+        text = '''python3 tools/missing.py --dry-run
+`python3 packaging/kernel/missing.py`
+python3 tools/<script>.py
+python3 tools/${SCRIPT}.py
+python3 packaging/.../script.py
+python3 tools/…
+python3 -m unittest
+'''
+        self.assertEqual(list(literal_python_scripts(text)), [
+            (1, 'tools/missing.py'), (2, 'packaging/kernel/missing.py')])
+
+    def test_date_index_ignores_shortcuts_but_rejects_misfiled_duplicates(self):
+        record = '[record](2026-10-30-sample.md)'
+        records = ['2026-10-30-sample.md']
+        text = f'{record}\n{DATE_INDEX}\n## 2026-10-30\n{record}\n'
+        self.assertEqual(date_index_errors(text, records), [])
+        self.assertEqual(date_index_errors(f'{record}\n{DATE_INDEX}\n', records),
+                         ['2026-10-30-sample.md: missing date entry'])
+        errors = date_index_errors(text + f'## 2026-10-31\n{record}\n', records)
+        self.assertEqual(len(errors), 2)
+        self.assertIn('expected 2026-10-30', errors[0])
+        self.assertIn('duplicate', errors[1])
 
 
 def tracked(pattern):
@@ -29,6 +90,31 @@ def anchors(path):
 # The isolated package builder copies sources without .git; the pre-commit run covers these.
 @unittest.skipUnless((ROOT / '.git').exists(), 'requires a Git checkout')
 class DocsTest(unittest.TestCase):
+    def test_documented_python_scripts_exist(self):
+        documents = [path for path in tracked('*.md')
+                     if not path.relative_to(ROOT).as_posix().startswith(('docs/bringup/', 'docs/archive/'))]
+        missing = []
+        for document in documents:
+            # tools/ and packaging/ commands refer to the main workspace root.
+            for number, script in literal_python_scripts(document.read_text()):
+                if not (ROOT / script).is_file():
+                    missing.append(f'{document.relative_to(ROOT)}:{number}: {script}')
+        self.assertEqual(missing, [])
+
+    def test_existing_one_kvm_integration_commands(self):
+        integration = ROOT / 'One-KVM/VIM4.md'
+        if not integration.is_file():
+            self.skipTest('One-KVM checkout absent')
+        missing = [f'{number}: {script}' for number, script in literal_python_scripts(integration.read_text())
+                   if not (ROOT / script).is_file()]
+        self.assertEqual(missing, [])
+
+    def test_bringup_date_entries_are_unique_and_under_matching_date(self):
+        index = (ROOT / 'docs/bringup/README.md').read_text()
+        self.assertIn(DATE_INDEX, index)
+        records = [path.name for path in tracked('docs/bringup/*.md') if path.name != 'README.md']
+        self.assertEqual(date_index_errors(index, records), [])
+
     def test_every_tool_is_catalogued(self):
         catalog = (ROOT / 'docs/tools.md').read_text()
         missing = [path.name for path in tracked('tools/*') if path.name not in catalog]
