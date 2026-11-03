@@ -19,6 +19,8 @@
 
 ## 2026-11-03
 
+- [5.15 amlvenc 按需 IDR 离线调研](2026-11-03-amlvenc-on-demand-research.md) — video；H.265 可只改参数，H.264 需 change_qp 转发；登记输出缓冲越界等 3 个 issue，暂不改 5.15。
+
 - [Wave5 AVC 默认按需 IDR](2026-11-03-wave5-avc-default.md) — video board application deployment；共享插件、编码切换重试与生产验证。
 
 - [Wave5 AVC 恢复帧 QP 与编码选择持久化](2026-11-03-wave5-avc-recovery-qp.md) — video board application deployment；逐帧 QP、网页恢复与重启验证。
