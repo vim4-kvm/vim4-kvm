@@ -1,0 +1,20 @@
+--- a/sys/v4l2/gstv4l2object.c
++++ b/sys/v4l2/gstv4l2object.c
+@@ -2933,4 +2933,17 @@ return_data:
+   if (G_IS_VALUE (&rates)) {
++    /* VDIN cannot program the HDMI source period. It enumerates a single
++     * interval for a fixed input and a continuous range for Gaming VRR.
++     * Fixating that range to one fps would mislabel variable input PTS. */
++    if (v4l2object->type == V4L2_BUF_TYPE_VIDEO_CAPTURE &&
++        !strcmp ((const char *) v4l2object->vcap.driver, "t7-vdin-test") &&
++        ival.type == V4L2_FRMIVAL_TYPE_CONTINUOUS) {
++      gst_structure_set_value (s, "max-framerate",
++          gst_value_get_fraction_range_max (&rates));
++      gst_structure_set (s, "framerate", GST_TYPE_FRACTION, 0, 1, NULL);
++      g_value_unset (&rates);
++      return s;
++    }
++
+     gst_v4l2src_value_simplify (&rates);
+     /* only change the framerate on the template when we have a valid probed new
+      * value */

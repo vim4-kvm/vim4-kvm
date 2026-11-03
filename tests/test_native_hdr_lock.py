@@ -31,7 +31,8 @@ class NativeHdrLockTest(unittest.TestCase):
         self.assertEqual(manifest['module_count'], runtime['module_count'])
         for component in ('kernel', 'capture', 'onekvm'):
             self.assertEqual(runtime['sources'][component], lock[component + '_revision'])
-        self.assertEqual(runtime['gstreamer_v4l2_sha256'], sources['gstreamer']['candidate_plugin_sha256'])
+        self.assertEqual(runtime['gstreamer_v4l2_sha256'], sources['gstreamer']['native_hdr_plugin_sha256'])
+        self.assertNotEqual(runtime['gstreamer_v4l2_sha256'], sources['gstreamer']['candidate_plugin_sha256'])
         # uhd5 retains its own Image, DTs and BTF-matched module inventory.
         self.assertNotEqual(runtime['build_id'], sources['tested_build']['build_id'])
         self.assertFalse(runtime['installed'])

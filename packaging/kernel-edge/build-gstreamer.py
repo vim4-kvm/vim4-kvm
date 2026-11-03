@@ -52,7 +52,10 @@ def main():
                     '-Dtests=disabled', '-Dexamples=disabled', '-Ddoc=disabled', '-Dnls=disabled'],
                    cwd=tree, check=True)
     subprocess.run(['meson', 'compile', '-C', 'build'], cwd=tree, check=True)
-    shutil.copy2(tree / 'build/sys/v4l2/libgstvideo4linux2.so', work / 'libgstvideo4linux2.so')
+    plugin = tree / 'build/sys/v4l2/libgstvideo4linux2.so'
+    subprocess.run([sys.executable, str(recipe / 'test_gstreamer_intervals.py'), str(plugin)],
+                   check=True)
+    shutil.copy2(plugin, work / 'libgstvideo4linux2.so')
 
 
 if __name__ == '__main__':
