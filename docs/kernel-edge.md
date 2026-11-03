@@ -181,7 +181,8 @@ BTF与build ID，封存Image、双GPU DT、config、Module.symvers、vmlinux.btf
 
 - I3（发生1×严重3）：kernels.json已写而extlinux尚未切换时中断，面板因boot profile不匹配
   暂时报告mainline不可用，选择mainline也会拒绝。U-Boot仍按原extlinux启动uhd7；
-  只登记此面板表现，不增加恢复服务或双份登记协议。
+  只登记此面板表现，不增加恢复服务或双份登记协议。按上文手工改回 /edge 后也会出现同样的
+  登记不匹配（kernels.json 仍是7.3.1）；需要面板可用时重新登记uhd7。
 
 在 Linux ARM64、GCC 13 环境中运行；需要 make、flex、bison、bc、OpenSSL/ELF
 开发库和 pahole。准备阶段不安装到开发机或板子。
