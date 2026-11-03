@@ -1,5 +1,9 @@
 # 内核与驱动
 
+11月3日已持久替换 uhd7 的 HDMI RX、VDIN、Wave5 三模块，源码为 `4111568841bd`。
+One-KVM 双编码及 NanoKVM 4K60 通过，JetKVM 首帧门禁阻塞，完整验收待续，见
+[安装与阻塞记录](../bringup/2026-11-03-mainline-modules.md)。
+
 当前正式源码 `52b95c8493264`，默认 FullKvm/kbase 运行 uhd7。BCM43752 主机路径、
 单子系统门禁、HDMI 无信号边界及 Wi-Fi 测量见 [uhd7 构建与安装](../bringup/2026-11-02-wifi-sdio-formal.md)。
 上一版的九类资格与 600 秒运动记录见 [uhd6 验收](../bringup/2026-10-31-uhd6-formal.md)。
