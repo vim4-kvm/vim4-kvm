@@ -1,0 +1,69 @@
+{
+  "source": "25110086de2ef6aa9564a31a7c694eca893fd423",
+  "release": "7.3.1-vim4kvm-uhd7+",
+  "kernel_build_id": "58d9b0f4148da5c2275fac40f4e177a0d0cb301b",
+  "package_sha256": "59a8343225da61a1cf81ec70a60603d451cb2d2611ce493f25f260bd83e869cc",
+  "status": "qualified",
+  "evidence": "docs/bringup/2026-11-03-kernel-731-deploy.md",
+  "regression": [
+    {
+      "category": "HDMI",
+      "status": "passed",
+      "scope": "1080p60 to 4K60 and EDID loss/recovery, measured wire timings and decoded frames"
+    },
+    {
+      "category": "H264",
+      "status": "passed",
+      "scope": "4K60 browser reception, 600 frames / 10 seconds, zero loss/drop/freeze deltas"
+    },
+    {
+      "category": "H265",
+      "status": "passed",
+      "scope": "4K60 browser reception, 600 frames / 10 seconds, zero loss/drop/freeze deltas"
+    },
+    {
+      "category": "4K60 motion",
+      "status": "passed",
+      "scope": "60 seconds, 3599 decoded frames, 59.9814 fps, zero loss/drop/freeze deltas"
+    },
+    {
+      "category": "audio",
+      "status": "passed",
+      "scope": "Services and HDMI/UAC2 PCM device states only; no listening"
+    },
+    {
+      "category": "HID",
+      "status": "passed",
+      "scope": "M6: 20 key pairs, 5 click pairs, 4 absolute moves, 4 wheel events; after USB profile reconnect, 5 key pairs and 4 relative moves"
+    },
+    {
+      "category": "virtual media",
+      "status": "passed",
+      "scope": "M6 USB read-only and writable FAT mounts, marker read and 256 KiB SHA256, safe eject clears LUN"
+    },
+    {
+      "category": "GPU",
+      "status": "passed",
+      "scope": "kbase EGL pixel 179/128/128/255, gl_error=0, loaded module identities"
+    },
+    {
+      "category": "management",
+      "status": "passed",
+      "scope": "Authentication/kernel API, four apps, second JetKVM takeover; official UU HEVC RTP reception with two fresh zero-loss RRs"
+    }
+  ],
+  "wifi": {
+    "connection": "NETGEAR_5G_Game",
+    "mhz": 5200,
+    "interface": "wlan0",
+    "seconds": 30,
+    "download_mbps": 383.4507457337502,
+    "restored_radio": "disabled"
+  },
+  "limits": [
+    "No new 19-mode matrix or 5.15 performance comparison.",
+    "Audio content/listening not tested.",
+    "UU native decode/render not verified: macOS window capture failed.",
+    "Known baseline MCP text/IME issue and same-config USB helper lifecycle issue are recorded in the evidence."
+  ]
+}

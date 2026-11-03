@@ -124,13 +124,13 @@ def validate_retained_uhd7(proof):
         return
     recipe = ROOT / 'packaging/kernel-edge'
     lock = tomllib.loads((recipe/'sources.toml').read_text())
-    retained = lock['retained_runtime']
+    retained = lock['uhd7_retained_runtime']
     expected = {'/boot/edge/Image': retained['image_sha256'],
                 '/boot/edge/vim4.dtb': retained['board_dtb_sha256']}
     inventory = json.loads((recipe/'uhd7-module-inventory.json').read_text())
     module_prefix = '/lib/modules/' + proof['release'] + '/'
     expected.update({module_prefix + name: item['sha256'] for name, item in inventory.items()})
-    ids = dict(lock['tested_build']['module_build_ids'])
+    ids = dict(lock['uhd7_tested_build']['module_build_ids'])
     for name, overlay in retained['module_overlays'].items():
         expected[module_prefix + overlay['path']] = overlay['sha256']
         ids[name] = overlay['build_id']

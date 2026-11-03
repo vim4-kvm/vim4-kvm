@@ -1,8 +1,11 @@
 # VIM4 新内核基线
 
-2026-11-02：板子默认 FullKvm/kbase，运行正式源码 `52b95c8493264` 的 uhd7。
-本次验证覆盖 BCM43752 独立中断、eMMC 读回及 HID/UDC；信号恢复后补测 4K60 H.265 接收
-30 秒通过（低运动画面）；测量条件和安装身份见 [uhd7 正式部署](bringup/2026-11-02-wifi-sdio-formal.md)。
+2026-11-03：板子默认 FullKvm/kbase，运行 `25110086de2ef` 完整构建的
+`7.3.1-vim4kvm-uhd7+`，启动文件位于 `/boot/kernels/7.3.1-vim4kvm-uhd7+`。
+[安装与九类验收](bringup/2026-11-03-kernel-731-deploy.md)含1080p/4K往返、无信号恢复、
+4K60运动、M6键鼠/介质及Wi-Fi；音频只验状态，UU只证明官方客户端RTP接收。
+中途回uhd7对照确认长文本损坏也存在于原基线，随后重新登记并继续验收。
+Stock/VendorVapb1经授权删除，Default/hdrdual6与旧 `/edge`、完整uhd7模块仍保留。
 
 当前开发分支已接通 HDMI 输入、VDIN 直接 DMA、Wave5 H.264/H.265、硬件 JPEG 与音频，
 并部署完整 manager 和四种 KVM 的双内核运行时；5.15 可保留启动，共用同一应用的数据。
@@ -102,9 +105,9 @@ H.264/H.265 硬编码已取得实验结果，见
 脚本执行 olddefconfig，最终配置写入
 外部构建目录并记录校验和；并非复现 Armbian 镜像构建的所有配置钩子。
 
-当前正式配置为 `packaging/kernel-edge/uhd7.config`，Linux ARM64 上可用
-`bash packaging/kernel-edge/build.sh SOURCE NEW_OUTPUT packaging/kernel-edge/uhd7.config`
-重建匹配 release；不传第三参数仍构建通用 edge 基线。该命令不安装、不重启，
+当前正式配置为 `packaging/kernel-edge/731.config`，Linux ARM64 上可用
+`bash packaging/kernel-edge/build.sh SOURCE NEW_OUTPUT packaging/kernel-edge/731.config`
+重建匹配 release；不传第三参数也使用该正式配置。该命令不安装、不重启，
 DTB/固件和完整模块的安装与登记按双内核记录执行，保留当前板子的 DTB/MAC 配置。
 
 两份配置均启用 `CONFIG_USB_CONFIGFS_ACM=y`；`olddefconfig` 会选择
@@ -114,7 +117,7 @@ DTB/固件和完整模块的安装与登记按双内核记录执行，保留当�
 锁定构建入口只接受 sources.toml 中的精确revision和干净源码，输出必须为新的外部目录。
 第四参数 `--validate-only` 执行相同版本/目录检查和olddefconfig后退出，不编译、不部署；
 本轮已在VM实际验证并比对最终配置哈希。完整构建省略该参数。
-uhd7 使用原始 Image，`tested_build.image_sha256` 与 `uncompressed_image_sha256` 相同。
+当前整包使用原始 Image，`tested_build.image_sha256` 与 `uncompressed_image_sha256` 相同。
 `retained_runtime.live_proof_sha256` 对应重启后核验收据。
 
 下方是最初 Armbian rc7 导入的历史步骤；当前分支已基于 v7.3 重放并合入板级修复，
@@ -149,21 +152,23 @@ git -C linux-7.3 am ../armbian-build-7.3/patch/kernel/archive/meson-s4t7-7.3/*.p
 
 ### uhd7 到新整包候选
 
-`candidate-731.toml` 独立固定7.3.1源码、release、最终配置与模块数量，不代表上板验收；
-正式 `sources.toml` 的 tested_build/retained_runtime 验收前保持不变。
-在 `build.sh SOURCE OUTPUT CONFIG` 后加 `--candidate-lock packaging/kernel-edge/candidate-731.toml`，
-可同时加 `--validate-only` 验证干净源码与olddefconfig最终配置哈希。OUTPUT必须为空。
+7.3.1已经验收并写入 `sources.toml` 的 tested_build/retained_runtime，重复候选锁已删除。
+`build.sh SOURCE OUTPUT CONFIG` 默认使用正式源码锁；CONFIG默认731.config。
+加 `--validate-only` 验证干净源码与olddefconfig最终配置哈希，OUTPUT必须为空。
+另一个尚未验收的候选仍可显式提供独立 `--candidate-lock LOCK`，不能提前改正式来源锁。
 
-`package-unified.py --candidate-lock LOCK --uhd7-launcher LAUNCHER` 沿用已有 kernel/stage/
+`package-unified.py --launcher LAUNCHER` 默认读取同一正式锁，沿用已有 kernel/stage/
 candidate/native/wave5-plugin 输入，核对同次完整基础模块、三个外部模块的SHA、vermagic、
 BTF与build ID，封存Image、双GPU DT、config、Module.symvers、vmlinux.btf、运行时和模块。
 暂存目录不得带modules_install的build/source符号链接；复制到任务私有暂存后只移除这类链接，
 不改原始构建。候选使用已核对的r14e应用启动器，增加精确新release，并带受版本管理的
-平台/HDMI/gadget入口；不推广正式来源锁。
+平台/HDMI/gadget入口；独立候选可另加 `--candidate-lock LOCK`。
+保留uhd7的旧文件证明单独记在uhd7_tested_build/uhd7_retained_runtime，供既有uhd7基线窗口核验，
+不把旧三overlay计入当前7.3.1运行时。
 
 正式安装仍须另行授权的独占板窗。7.3.1使用
 `register-runtime.py install PACKAGE`，要求默认FullKvm/uhd7；
-保留默认标签、5.15/Stock入口和旧模块目录。外层清单必须与包内文件集合完全一致；先校验包与
+保留默认标签、其余启动入口和旧模块目录。外层清单必须与包内文件集合完全一致；先校验包与
 完整模块，再预检/boot和根分区空间。根分区只预算新模块解包、运行时和固件；候选启动文件
 按全量预算，/boot与根目录同设备时合并，不能只计算新旧Image的大小差额。
 安装不创建额外备份。BCM43752 .217固件从旧release的updates目录校验后复制到新release。
@@ -179,6 +184,11 @@ BTF与build ID，封存Image、双GPU DT、config、Module.symvers、vmlinux.btf
 
 ### 登记 issue
 
+- MCP文本/输入法：同一长命令在uhd7和7.3.1均缺空格/字符，基线截图出现中文候选框。
+  One-KVM MCP `type`每字符间隔30ms、按下与释放之间无保持时长；切到US输入源、逐键保持50ms后
+  命令正确。未确认输入法与零保持时长各自影响；不算7.3.1回归，详见本次上板记录。
+- USB同配置恢复：PATCH完整原配置会重建gadget，但One-KVM因HID配置值不变跳过backend重载，
+  之后写入报endpoint shutdown。切换USB profile再恢复会走重载并恢复M6输入；本次只登记应用生命周期问题。
 - I3（发生1×严重3）：kernels.json已写而extlinux尚未切换时中断，面板因boot profile不匹配
   暂时报告mainline不可用，选择mainline也会拒绝。U-Boot仍按原extlinux启动uhd7；
   只登记此面板表现，不增加恢复服务或双份登记协议。按上文手工改回 /edge 后也会出现同样的

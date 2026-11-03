@@ -1,0 +1,37 @@
+{
+  "vendor": "80a07ad5406d57855c996285ae75a50a1b9147ae",
+  "kernel": "25110086de2ef6aa9564a31a7c694eca893fd423",
+  "boardTested": false,
+  "runtimeManifestSha256": "0cf60ccd5592b7daaaf522071f3db426fc9c7af92db09e66928f1e70da27879d",
+  "moduleSha256": "c7576ad4705d4a0fc8e90368cbe75481fab0e4fe4118438f9a5034ee3e7cb5d4",
+  "heapModuleSha256": "30f3a549690da9b45c23622cd8c2399ff2754bdcebb86e8df81d22db833d783e",
+  "governorModuleSha256": "65e4bb60a6613ec5ee2034e4a9838c2496bd6aee611303013ed9e100b39fe1a4",
+  "governorSources": {
+    "Makefile": "91e0b1608cd761ac1f9dd5f4cff72940c2230bb56926a0ef4946d78d1fdfc294",
+    "governor_vim4.c": "29bfc4e63b6890020e0e961bcc881ac6b237bedf69b17d1830b4cf50ca1dccab"
+  },
+  "heapSources": {
+    "Makefile": "462a77f2ba79cb400cc2634823246a854214c4b2838f720d932ed7077d278bff",
+    "README.md": "c1a76aa51bde4169cf4225bb8ae3d200e1901de373a2c815410a7df5eead9f0d",
+    "vim4_kbase_heaps.c": "ae91c195ba705733c49a8fa57a6886bc07f7b3ad7b01ef4c2dd9aaa6d1f58ddb"
+  },
+  "patches": {
+    "0001-kernel-api.patch": "74071bbeef8c7f1872a426799b95985af49539cf5c9270aebf1892d8ddfd5d43",
+    "0002-t7-platform.patch": "f0effab95de11f89f5d82a5b466232f80c92c25d09de9cab8ccbcd049803b6db",
+    "0003-devfreq-thermal.patch": "c19c179737a7487e968b6f6100e95a13fb64f589dd00770692683a0ef3473088",
+    "0005-runtime-api.patch": "efc3be1be2fab1e98572024daf856cfd95eac139ba1be4bbf72f7122baaae7db",
+    "0006-t7-reset-quirk.patch": "e973fd5a4b977b58cdec89e74f1c2071df35631a9cc0c62229f7e7e7220fe496",
+    "0007-mmu-fault-region.patch": "c75efedc581386645cae4cc56ad0676227416d08cfa7dee12f319f681817165f",
+    "0008-t7-devfreq-policy.patch": "db045efa9fddf4cf2de02db7ab8ded8d7056cac4b6aa62f3876590f1db7427a7",
+    "0009-system-workqueue.patch": "5fc5a2b8ec3cc9c53706c50efaab7b86f07f168bdfea51e5ec0c20edbee32434"
+  },
+  "dtPatchSha256": "295b65c361973201108d1e6d7333664f5a1c2ebc02291dd2664adb0ffca95793",
+  "abiSha256": "98b864242a760fae1c20fa6a44254549cd4837d0fd51151887309d63bd19e43a",
+  "retainedDtbSha256": "9d0d39a316cea5a3f3d8e5a04e085b2a905abf60494aaba565223c29839dff1f",
+  "candidateDtbSha256": "89c4bcf6b5523cee60a6f222f28675c99b5137767ec484d78d53b14899702071",
+  "kernelFiles": {
+    ".config": "a1821eb66defe9079d8be0beda7cf85067fd56e6c6f51cb8881bcdd9950c95f6",
+    "Module.symvers": "9e54cbe2d161279b9e818a18515e924ad9c3a9ba1f87ce9cf0f8b55c3feff78d",
+    "arch/arm64/boot/Image": "b2a0b2ae8ffe1ebc1ebbf309b5c8cf7ab506a71e0f70ab5cd4e0922f120b0321"
+  }
+}
