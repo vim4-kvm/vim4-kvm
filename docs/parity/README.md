@@ -79,7 +79,7 @@ P0-2范围、56个短窗口预算与首组缩减见[分窗矩阵](../overnight-p
 | GPU API负载（复用uhd5 r11） | DMA中位/P95 1.692/3.618ms；GLES 616.361fps；CL SP 101.69 GFLOPS | DMA 1.535/3.570ms；GLES 646.280fps；CL SP 101.74 GFLOPS | [r11七轮实测](../bringup/2026-10-31-kbase-r11-policy.md)：这些负载达到对照；非本轮统一候选实测，DRM/kmscube与功耗仍待测 |
 | CPU各簇单核/全核、内存读写带宽 | 待测 | 待测 | [待测：剩余分窗矩阵](../overnight-performance-plan.md) |
 | eMMC/SD/USB存储吞吐与IO尾延迟 | 待测 | 待测 | 待测 |
-| 有线/Wi-Fi网络吞吐、丢包/jitter | 待测 | 待测 | 待测 |
+| 有线/Wi-Fi网络吞吐、丢包/jitter | Wi-Fi同窗120秒下载p50 363.3Mbit/s；600秒历史上传296.8/下载418.9 | uhd7同窗下载p50 401.6；600秒上传316.4/下载391.4（主机路径优化前） | [Wi-Fi](platform.md)上传与同窗下载达到对照，600秒下载93.5%待uhd7复验；有线、丢包/jitter待测 |
 | HID发送到原生事件延迟、纯USB报告延迟 | 待测 | 待测 | 待测 |
 | 冷/热启动到应用、视频及HID可用 | 待测 | 待测 | 待测 |
 | 空闲/CPU/GPU/KVM负载功耗、温升与DVFS驻留 | 待测 | 待测 | 待测 |
