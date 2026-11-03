@@ -1,6 +1,6 @@
 # Experimental kernel pins; the private GStreamer recipe below is also used
 # by the 5.15 One-KVM image builder.
-# Accepted deployed build; its label/proof are updated after the board rename.
+# Accepted deployed build and post-cleanup Mainline registration.
 [kernel]
 url = "https://github.com/vim4-kvm/linux.git"
 branch = "vim4-kvm-7.3"
@@ -52,7 +52,7 @@ module_symvers_sha256 = "9e54cbe2d161279b9e818a18515e924ad9c3a9ba1f87ce9cf0f8b55
 vmlinux_btf_sha256 = "e8e6ea7cbe9368ebc810b633bbfecbc8fe3d873926f53b34ef6fce5242880b82"
 modules_sha256 = "695a48b6b38cdc801aa37cca8f846a8488f8362e18188c102b8f511f00f673aa"
 gpu_default = "kbase"
-default_boot = "FullKvm"
+default_boot = "Mainline"
 package_file = "deploy-tools-731-final.tar.gz"
 package_sha256 = "59a8343225da61a1cf81ec70a60603d451cb2d2611ce493f25f260bd83e869cc"
 runtime_descriptor = "releases/7.3.1-vim4kvm-uhd7+/runtime.json"
@@ -106,11 +106,11 @@ board_dtb_sha256 = "89c4bcf6b5523cee60a6f222f28675c99b5137767ec484d78d53b1489970
 manifest_sha256 = "59103050ef4e0fc0105728a2f55053604ebdbfda9533a711abc2728923fa3a02"
 package_sha256 = "59a8343225da61a1cf81ec70a60603d451cb2d2611ce493f25f260bd83e869cc"
 module_count = 2341
-live_proof_sha256 = "54bbfdf82f1d44b49f1c036a85f3bb971448b670ba8a7d606d1e91d519f2bb41"
+live_proof_sha256 = "e1e98bbd64f38bfeb57a3950efb049a6f2372b9165e70521454d595d6075ea0d"
 installed_proof_path = "releases/7.3.1-vim4kvm-uhd7+/installed-proof.json"
-kernels_manifest_sha256 = "c3a6149c3ca13439d109923c65301d72e174aa302fc272de8821ca0a27321469"
-default_boot = "FullKvm"
-evidence = "docs/bringup/2026-11-03-kernel-731-deploy.md"
+kernels_manifest_sha256 = "071fa4eb2955ccaf36a87f9cc6a850a5f5a787390282ab453ecd9b8df61e2c47"
+default_boot = "Mainline"
+evidence = "docs/bringup/2026-11-03-kernel-naming-cleanup.md"
 
 [wifi_diagnostics]
 firmware_fwid = "01-e47f9a86"

@@ -91,15 +91,23 @@
   "kernel_build_id": "58d9b0f4148da5c2275fac40f4e177a0d0cb301b",
   "source": "25110086de2ef6aa9564a31a7c694eca893fd423",
   "manifest_sha256": "59103050ef4e0fc0105728a2f55053604ebdbfda9533a711abc2728923fa3a02",
-  "default": "FullKvm",
-  "kernels_sha256": "c3a6149c3ca13439d109923c65301d72e174aa302fc272de8821ca0a27321469",
+  "default": "Mainline",
+  "kernels_sha256": "071fa4eb2955ccaf36a87f9cc6a850a5f5a787390282ab453ecd9b8df61e2c47",
   "registered_artifacts": 2356,
-  "udc": "configured",
+  "boot_id": "c59b6b0d-152d-4afe-a3aa-b48317839835",
   "services": [
     "one-kvm",
     "vim4-manager",
     "vim4-kvm-hdmi",
     "vim4-kvm-gadget"
   ],
-  "boot_id": "1959c0c4-4ac5-4505-a7cf-ec192209c4ab"
+  "udc": "configured",
+  "runtime_sha256": {
+    "/usr/libexec/vim4-kvm-run": "bcd6a68bdcbb4a29c62bc7b9a1fd3fde8631606eef84243e3f1821d80fa51d0f",
+    "/usr/libexec/vim4-board-runtime": "bcb96007f5af9a408c0ea803a037e23a3674c38b209fd0485ef894c94e8abfe2",
+    "/usr/libexec/vim4-mainline-prepare": "a15a0b1c7f43e81b4c450485bb4968e0e90a52ea50e1784f19a6b4cf475b60f0",
+    "/usr/libexec/vim4-mainline-gadget-prepare": "a5a4b515f4fe5b87a41db9cfef042f1c7e3d40a4cfb63d8d78f188b6f7717b75",
+    "/usr/libexec/vim4-manager-helper": "e9eb506cc5c17d675423a119895f95cf9ae94eadc025441947f70e7fd6f4a444",
+    "/usr/lib/vim4-kvm/python/vim4boot.py": "0147c30fe5532f5f970f9e78715f2642c2cbe54d29d930f2f00c4786d8f23442"
+  }
 }

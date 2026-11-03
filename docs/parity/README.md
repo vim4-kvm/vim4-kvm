@@ -19,7 +19,8 @@ DMA/电源生命周期进入 DRM/KMS、V4L2、ASoC、genpd 等主线框架，持
 区分源码合入、一次性启动验证与正式部署。当前正式来源与完整运行时均为 `25110086de2ef`，
 release `7.3.1-vim4kvm-uhd7+`；不再使用旧uhd7的三模块overlay。
 来源、九类验收及明确边界见[7.3.1部署](../bringup/2026-11-03-kernel-731-deploy.md)与
-[运行时锁](../../packaging/kernel/sources.toml)。旧启动文件和uhd7模块的清理待独占窗口执行；未创建备份。
+[运行时锁](../../packaging/kernel/sources.toml)。旧启动文件和uhd7模块已清理，默认 Mainline；
+[改名与冒烟](../bringup/2026-11-03-kernel-naming-cleanup.md)未创建备份。
 厂商固定来源仍为 Linux `80a07ad5406d` / common_drivers `4cfb128d36f8`；
 [证据索引](sources.md)中的 E0–E8 保留原审计快照，不将旧行号套在新 HEAD。
 增量取自 [Wave5 尺寸窗口](../bringup/2026-10-23-wave5-parity-window.md)、

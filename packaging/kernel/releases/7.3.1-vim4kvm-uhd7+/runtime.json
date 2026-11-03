@@ -6,7 +6,7 @@
   "package_sha256": "59a8343225da61a1cf81ec70a60603d451cb2d2611ce493f25f260bd83e869cc",
   "manifest": "manifest.json",
   "installed": true,
-  "default_boot": "FullKvm",
+  "default_boot": "Mainline",
   "profiles": {
     "kbase": {
       "dtb": "vim4.dtb",

@@ -28,7 +28,7 @@ SSH 为 ssh vim4（khadas@192.168.50.210），串口 /dev/cu.usbserial-100，921
 过程见 [双内核集成](../bringup/2026-10-21-dual-kernel-integration.md)。
 面板切换只保存默认启动项并重启，不格式化数据。Stock/VendorVapb1已按用户授权清理，
 厂商hdrdual6保留，见[7.3.1部署](../bringup/2026-11-03-kernel-731-deploy.md)。仓库采用 Mainline/Vendor，
-板上启动项改名和旧内核清理待独占窗口执行，当前验收收据不提前改写。
+板上启动项改名和旧内核清理已完成，收据按重启后实际状态更新，见[清理记录](../bringup/2026-11-03-kernel-naming-cleanup.md)。
 重装清空 eMMC，须用户明确确认；
 优先使用 tools/board.py recover 远程进入 OOWOW；系统无法响应时，按住 FUNCTION、
 短按 RESET、松开 FUNCTION（要求 U-Boot 已能运行到按键检测）。若早期循环复位，
@@ -51,7 +51,7 @@ U-Boot 候选必须先从 microSD 验证，见 [现场恢复](../bringup/2026-10
 release/build ID、服务、UDC与启动文件哈希，默认启动项全程保持原值。
 支持5.15或sources.toml当前正式锁的精确release；首次采集确认默认LINUX/FDT指向捕获的基线。
 正式基线核对release目录、完整模块文件、采集/kbase加载身份、DT属性及原应用，
-恢复时必须提供 `--video-check` 视频推进检查命令。旧uhd7文件保留不等于仍支持它作为窗口基线。
+恢复时必须提供 `--video-check` 视频推进检查命令。旧uhd7文件已清理，不能作为恢复基线。
 同Image不同DT的候选必须有独立payload ID、DT属性与完整模块证明，见[窗口合同](../board-window.md)。
 基线按当天、内核/程序/启动文件哈希及测量参数复用并注明原始时间；哈希变化或跨日
 重新测量。只改模块时可只重编匹配模块、沿用同一内核进行针对性迭代，保留模块哈希、

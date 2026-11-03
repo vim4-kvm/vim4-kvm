@@ -5,8 +5,9 @@
 [安装与九类验收](bringup/2026-11-03-kernel-731-deploy.md)含1080p/4K往返、无信号恢复、
 4K60运动、M6键鼠/介质及Wi-Fi；音频只验状态，UU只证明官方客户端RTP接收。
 中途回uhd7对照确认长文本损坏也存在于原基线，随后重新登记并继续验收。
-仓库启动项统一为 Mainline/Vendor；板上改名和旧内核清理待独占窗口执行，
-已验收收据暂保留实际部署时的标签。厂商内核仍为 `5.15.137-vim4kvm-hdrdual6`。
+板上启动项已统一为 Mainline/Vendor，默认 Mainline；旧启动目录和退役模块已删除，
+仅保留当前 7.3.1 与厂商 `5.15.137-vim4kvm-hdrdual6`。
+改名、空间与重启冒烟见[清理记录](bringup/2026-11-03-kernel-naming-cleanup.md)。
 
 当前开发分支已接通 HDMI 输入、VDIN 直接 DMA、Wave5 H.264/H.265、硬件 JPEG 与音频，
 并部署完整 manager 和四种 KVM 的双内核运行时；5.15 可保留启动，共用同一应用的数据。

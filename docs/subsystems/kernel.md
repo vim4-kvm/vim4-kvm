@@ -14,7 +14,8 @@ VDIN HDR2主题候选uhd4完整构建见[集成门禁](../bringup/2026-10-31-hdr
 7.3通用内存/拷贝与锁调试配置差异、离线微基准及下一窗口见[内存拷贝审查](../memory-copy-audit.md)。
 
 主线配方、日期 release 与 Mainline/Vendor 启动项布局见[主线内核](../kernel-mainline.md)，
-板上启动项改名待执行，不替代现有 5.15 发布流程。
+板上已改名且只保留这两个内核，见[清理与重启](../bringup/2026-11-03-kernel-naming-cleanup.md)。
+这不替代现有 5.15 发布流程。
 Mainline 的 BCM43752 使用 .217 SDIO 固件和配套 brcmfmac/WCC 模块，构建输入、
 连接验证及回退见[固件对照](../bringup/2026-11-02-wifi-fw217.md)。
 旧版 PHY trap 的固件内部根因尚未确认，转储保存见[Wi-Fi 排查](../bringup/2026-10-21-edge-wifi-fps.md)。

@@ -6,7 +6,7 @@
 发布名 `5.15.137-vim4kvm`，与原厂 `5.15.137` 的模块目录并存。
 主内核工作树保留在 VM，Mac 不检出内核文件；不要以第三方整套内核替代官方基线。
 当前正式主线内核为 `7.3.1-vim4kvm-uhd7+`，来源与验收见[主线内核](kernel-mainline.md)。
-厂商 `5.15.137-vim4kvm-hdrdual6` 保留；仓库启动项统一为 Mainline/Vendor，板上改名待执行。
+厂商 `5.15.137-vim4kvm-hdrdual6` 保留；板上启动项已统一为 Mainline/Vendor，默认 Mainline。
 7.x 使用 `/boot/kernels/<release>` 与完整匹配模块；后续整包用
 `tools/kernel-install.sh --mainline vim4-kernel-<release>.tar.gz --keep-directory-symlink`安装，保留已选默认项。
 该路径要求脚本及相邻`packaging/kernel/register-runtime.py`同时存在，不使用厂商默认安装路径。
