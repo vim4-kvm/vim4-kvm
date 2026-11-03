@@ -38,6 +38,7 @@ class TrialTest(unittest.TestCase):
             report = json.loads((payload/'manifest.json').read_text())
             state = json.loads((root/'baseline.json').read_text())
             state.update(release=once.UHD7, build_id=report['kernel_build_id'])
+            state['dt_properties'] = {'soc/display/status': '64697361626c656400'}
             state['files']['/boot/edge/Image'] = once.sha(payload/'Image')
             state['files']['/boot/edge/vim4.dtb'] = '0'*64
             state['files'].update({'/lib/modules/'+once.UHD7+'/'+name: digest
@@ -72,6 +73,31 @@ class TrialTest(unittest.TestCase):
                         once.prepare(payload, root/'init', root/'baseline.json', root/'bad-dt',
                                      release=once.UHD7, baseline_release=once.UHD7,
                                      baseline_id=state['build_id'], namespace='passthrough', payload_id='dt-v1')
+                # A different DTB hash with an unchanged readable identity must
+                # fail both prepare and stage, including direct metadata input.
+                unchanged = dict(state, dt_properties=report['dt_properties'])
+                (root/'baseline.json').write_text(json.dumps(unchanged))
+                with self.assertRaisesRegex(ValueError, 'DT identity must differ'):
+                    once.prepare(payload, root/'init', root/'baseline.json', root/'unchanged',
+                                 release=once.UHD7, baseline_release=once.UHD7,
+                                 baseline_id=state['build_id'], namespace='passthrough', payload_id='dt-v1')
+                with self.assertRaisesRegex(ValueError, 'DT identity must differ'):
+                    once.stage(root/'same-image/candidate.tar', retained_baseline=unchanged)
+                # The direct HDR2 manifest path must enforce the same rule;
+                # a caller cannot bypass prepare by supplying another metadata format.
+                manifest = dict(release=plan['release'], build_id=plan['build_id'], source_commit=plan['source'],
+                                sha256=plan['files'], namespace=plan['namespace'], payload_id=plan['payload_id'],
+                                dt_properties=state['dt_properties'])
+                with tarfile.open(root/'same-image/candidate.tar') as original, tarfile.open(root/'ambiguous.tar', 'w') as ambiguous:
+                    for member in original:
+                        if member.name != 'trial.json':
+                            ambiguous.addfile(member, original.extractfile(member))
+                    data = json.dumps(manifest).encode()
+                    member = tarfile.TarInfo('manifest.json')
+                    member.size = len(data)
+                    ambiguous.addfile(member, io.BytesIO(data))
+                with self.assertRaisesRegex(ValueError, 'DT identity must differ'):
+                    once.stage(root/'ambiguous.tar', retained_baseline=state)
             for p in root.rglob('*'):
                 if p.is_dir():
                     p.chmod(0o755)

@@ -15,13 +15,18 @@ Node、Playwright与Chrome，配置见 [工具目录](tools.md)。
 首次 proof 在真实基线上采集；uhd7 的非空文件清单自动扩展至全部 edge 文件、完整模块树、
 extlinux、kernels.json、runtime-build.json 和四个启动入口，并记录三个 overlay 与三个 kbase
 模块的加载 build ID、原应用及稳定的 DT 属性；与sources.toml和完整模块inventory逐项比对。
-传入文件清单还应包含本次用户态覆盖目标。完整proof经SSH stdin传输，避免Linux单参长度限制。
+传入文件清单还应包含本次用户态覆盖目标。候选期间只比较持久启动/登记/模块文件；
+/usr和/opt文件可能被RAM bind覆盖，其完整哈希延后到正常重启退出覆盖后逐项核对。
+链式stage同样延后这些运行时路径的字节检查，仍严格核对原proof与其他持久文件。
+完整proof经SSH stdin传输，避免Linux单参长度限制。
 缓存继续按日期、全部身份/文件哈希和测量参数失效；恢复逐项比较原 proof。
 
 同 Image 的 DT 候选须用独立 namespace/payload_id，manifest 的 `dt_properties` 是
 相对 `/sys/firmware/devicetree/base` 的属性路径到原始字节 hex 的映射，例如
 `{"soc/display/status":"6f6b617900"}`。prepare 用 fdtget 校验候选属性；启动后读实时 DT
-逐项比较，并要求新 boot ID。候选 Image 必须等于基线、DTB 必须不同、完整模块清单须与
+逐项比较，并要求新 boot ID。使用 `baseline --dt-properties soc/display/status ...` 在原基线上
+先采集所选属性；至少一项候选属性必须与实际基线不同，prepare、stage和启动核验都拒绝
+未采集或全部未变的属性。只用未变化的model/compatible不能区分候选。候选 Image 必须等于基线、DTB 必须不同、完整模块清单须与
 基线一致（含三 overlay 与依赖数据）。不同 DT/runtime 使用不同 payload_id；归档 SHA
 覆盖其全部内容，不能只凭 uname/build ID 区分。
 
@@ -29,7 +34,8 @@ extlinux、kernels.json、runtime-build.json 和四个启动入口，并记录�
 One-KVM 另检查 API。uhd7 的 `return-baseline --video-check COMMAND ...` 必须提供
 原应用的实际解码推进检查，例如现有 `node tools/board-window-receiver.mjs URL 3`，
 在 sampling 锁下运行并保存 returned-video.log，失败不记成功。其他应用使用各自已审阅的
-接收检查命令。正常重启退出RAM bind覆盖；清理只删除本次创建且仍为空的模块挂载点，
+接收检查命令。正常重启退出RAM bind覆盖；恢复上传cleanup脚本的scp限时30秒，无重试。
+清理只删除本次创建且仍为空的模块挂载点，
 已有uhd7模块目录始终保留。这些是离线合同，实际往返仍待独占板窗验证。
 
 只有一块板，所有任务排同一队列；每分钟占板都会推迟其他任务。

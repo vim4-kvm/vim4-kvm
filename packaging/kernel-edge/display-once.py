@@ -28,6 +28,22 @@ def supported_baseline(release):
     return release.startswith('5.15.') or release == UHD7
 
 
+def persistent_baseline_files(files):
+    """RAM bind targets are verified in full after reboot removes the mounts."""
+    return {name: value for name, value in files.items() if not name.startswith(('/usr/', '/opt/'))}
+
+
+def validate_distinct_dt(properties, baseline_properties):
+    if not properties or not all(name in baseline_properties for name in properties):
+        raise ValueError('DT identity properties must first be captured on the baseline')
+    for name, value in properties.items():
+        path = PurePosixPath(name)
+        if path.is_absolute() or '..' in path.parts or not re.fullmatch(r'(?:[0-9a-f]{2})*', value):
+            raise ValueError('invalid DT identity property: ' + name)
+    if not any(value != baseline_properties[name] for name, value in properties.items()):
+        raise ValueError('DT identity must differ from the baseline in at least one property')
+
+
 def candidate_parent(plan, metadata='manifest.json'):
     """Keep payload identity separate from the real kernel GNU build ID."""
     if 'namespace' not in plan and 'payload_id' not in plan:
@@ -127,6 +143,7 @@ def prepare(payload, init, baseline, output, release=RELEASE,
                 report['artifacts']['vim4.dtb'] == state['files'].get('/boot/edge/vim4.dtb') or
                 not report.get('dt_properties')):
             raise ValueError('same Image trial requires uhd7 proof, distinct DT, payload ID and DT properties')
+        validate_distinct_dt(report['dt_properties'], state.get('dt_properties', {}))
         for path, expected in report['dt_properties'].items():
             node, _, prop = path.rpartition('/')
             actual = subprocess.check_output(['fdtget', '-t', 'bx', str(payload / 'vim4.dtb'),
@@ -195,6 +212,8 @@ def prepare(payload, init, baseline, output, release=RELEASE,
         plan.update(layout)
         if same_image:
             plan['dt_properties'] = report['dt_properties']
+            plan['baseline_dt_properties'] = {name: state['dt_properties'][name]
+                                               for name in report['dt_properties']}
         if any(token.startswith('root=UUID=') for token in cmdline.split()):
             plan['root_partuuid'] = state['root_partuuid']
         with tarfile.open(payload / 'modules.tar.gz') as modules, \
@@ -287,7 +306,7 @@ def retained_preflight(plan, state):
             state['cmdline'] != plan['baseline_cmdline'] or
             state['files'] != plan['baseline_files']):
         raise RuntimeError('retained baseline differs from the approved trial proof')
-    for name, expected in state['files'].items():
+    for name, expected in persistent_baseline_files(state['files']).items():
         if sha(name) != expected:
             raise RuntimeError('retained baseline file changed: ' + name)
 
@@ -317,6 +336,8 @@ def read_trial(archive, baseline=None):
                 plan[key] = report[key]
         if 'dt_properties' in report:
             plan['dt_properties'] = report['dt_properties']
+        if 'baseline_dt_properties' in report:
+            plan['baseline_dt_properties'] = report['baseline_dt_properties']
         if baseline is not None:
             plan.update(baseline_release=baseline['release'], baseline_id=baseline['build_id'],
                         baseline_cmdline=baseline['cmdline'], baseline_files=baseline['files'])
@@ -333,6 +354,11 @@ def read_trial(archive, baseline=None):
                 plan['files']['Image'] != baseline['files'].get('/boot/edge/Image') or
                 plan['files']['vim4.dtb'] == baseline['files'].get('/boot/edge/vim4.dtb')):
             raise ValueError('same Image payload requires uhd7 proof and distinct DT identity')
+        validate_distinct_dt(plan['dt_properties'], baseline.get('dt_properties', {}))
+        if 'baseline_dt_properties' in plan and any(
+                baseline['dt_properties'].get(name) != value
+                for name, value in plan['baseline_dt_properties'].items()):
+            raise ValueError('DT identity was prepared for different baseline properties')
         prefix = '/lib/modules/' + plan['release'] + '/'
         expected = {name.removeprefix(prefix): value for name, value in baseline['files'].items()
                     if name.startswith(prefix)}

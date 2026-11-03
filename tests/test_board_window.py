@@ -1,4 +1,5 @@
 import base64
+import contextlib
 import http.server
 import importlib.machinery
 import importlib.util
@@ -7,6 +8,7 @@ import io
 from pathlib import Path
 import shutil
 import subprocess
+import struct
 import sys
 import tempfile
 import tarfile
@@ -22,6 +24,87 @@ loader.exec_module(window)
 
 
 class WindowTests(unittest.TestCase):
+    def test_bind_visible_runtime_is_checked_after_reboot_and_cleanup_upload_is_bounded(self):
+        once = window.load('bind_once', ROOT/'packaging/kernel-edge/display-once.py')
+        for upload_timeout in (False, True):
+            with self.subTest(upload_timeout=upload_timeout), tempfile.TemporaryDirectory() as directory:
+                root = Path(directory).resolve()
+                note = struct.pack('<III', 4, 20, 3) + b'GNU\0' + b'\xaa'*20
+                contents = {'/sys/kernel/notes': note, '/proc/cmdline': b'root=test',
+                            '/boot/edge/Image': b'baseline kernel', '/boot/edge/vim4.dtb': b'baseline dt',
+                            '/boot/extlinux/extlinux.conf': b'DEFAULT FullKvm\n',
+                            '/etc/vim4-kvm/kernels.json': b'original registry',
+                            '/etc/vim4-kvm/runtime-build.json': b'original runtime',
+                            '/lib/modules/7.3.0-vim4kvm-uhd7+/wave5.ko': b'baseline module'}
+                helpers = ['/usr/libexec/'+name for name in ('vim4-board-runtime', 'vim4-kvm-run',
+                                                            'vim4-mainline-prepare', 'vim4-mainline-gadget-prepare')]
+                contents.update({name: b'baseline helper' for name in helpers})
+                contents.update({'/sys/module/'+name+'/notes/.note.gnu.build-id': note for name in
+                                 ('t7_hdmirx', 't7_vdin_test', 'wave5', 'mali_kbase', 'vim4_kbase_heaps', 'governor_vim4')})
+                contents.update({'/sys/firmware/devicetree/base/'+name: b'baseline property' for name in
+                                 ('model', 'compatible', 'soc/bus@fe000000/gpu@400000/compatible')})
+                for name, data in contents.items():
+                    path = root/name.lstrip('/')
+                    path.parent.mkdir(parents=True, exist_ok=True)
+                    path.write_bytes(data)
+                def board_path(*parts):
+                    path = Path(*parts)
+                    return root/str(path).lstrip('/') if str(path).startswith(('/sys/', '/proc/', '/boot/', '/etc/', '/lib/', '/usr/')) else path
+                def board_open(name, *args, **kwargs):
+                    return open(board_path(name), *args, **kwargs)
+                def remote_python(host, script):
+                    output = io.StringIO()
+                    with contextlib.redirect_stdout(output):
+                        exec(script.replace('pathlib.Path(', 'board_path('),
+                             dict(board_path=board_path, open=board_open))
+                    return output.getvalue()
+                def commands(command, **kwargs):
+                    if command[0] == 'systemctl':
+                        return subprocess.CompletedProcess(command, 0 if command[-1] == 'one-kvm' else 3)
+                    if command[0] == 'scp' and upload_timeout:
+                        raise subprocess.TimeoutExpired(command, kwargs['timeout'])
+                    return subprocess.CompletedProcess(command, 0)
+                def reboot(*args, **kwargs):
+                    for name in helpers:
+                        board_path(name).write_bytes(contents[name])
+                # The remote script reads real fixture files; changing the
+                # visible helper bytes models the candidate's bind overlay.
+                with patch.object(window, 'ssh_python', side_effect=remote_python), patch.object(
+                        window.subprocess, 'run', side_effect=commands) as run, patch(
+                        'platform.release', return_value=once.UHD7):
+                    proof = window.identity('mock', list(contents.keys())[2:9])
+                    for name in helpers:
+                        board_path(name).write_bytes(b'candidate bind-visible helper')
+                    self.assertNotEqual(window.identity('mock', list(proof['files']))['files'], proof['files'])
+                    window.verify_persistent_files('mock', proof)
+                    plan = dict(baseline_release=proof['release'], baseline_id=proof['build_id'],
+                                baseline_cmdline=proof['cmdline'], baseline_files=proof['files'])
+                    with patch.object(once.os, 'geteuid', return_value=0), patch.object(
+                            once, 'sha', side_effect=lambda name: once.hashlib.sha256(board_path(name).read_bytes()).hexdigest()):
+                        once.retained_preflight(plan, proof)
+                    work = root/'logs/bind-return'
+                    work.mkdir(parents=True)
+                    (work/'baseline-proof.json').write_text(json.dumps(proof))
+                    load = window.load
+                    def loader(name, path):
+                        return once if name == 'persistent_once' else load(name, path)
+                    with patch.object(window, 'ROOT', root), patch.object(window, 'load', side_effect=loader), patch.object(
+                            window, 'validate_retained_uhd7'), patch.object(window, 'require_board', return_value=(Mock(), 'token')), patch.object(
+                            window, 'boot', side_effect=reboot) as boot_call, patch.object(window, 'ssh', return_value=''), patch.object(
+                            window, 'collect', return_value={'returned': True}), patch.object(
+                            sys, 'argv', ['board-window', '--window', 'bind-return', 'return-baseline', '--video-check', 'decode-check']):
+                        if upload_timeout:
+                            with self.assertRaises(subprocess.TimeoutExpired):
+                                window.main()
+                        else:
+                            window.main()
+                    self.assertEqual(boot_call.call_count, 1)
+                    upload = [call for call in run.call_args_list if call.args[0][0] == 'scp']
+                    self.assertEqual(len(upload), 1)
+                    self.assertEqual(upload[0].kwargs['timeout'], 30)
+                    returned = window.identity('mock', list(proof['files']))
+                    window.verify_baseline(proof, returned)
+
     def test_uhd7_proof_must_match_retained_lock_and_three_overlays(self):
         lock = window.tomllib.loads((ROOT/'packaging/kernel-edge/sources.toml').read_text())
         retained = lock['retained_runtime']
@@ -74,11 +157,14 @@ class WindowTests(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, 'readable DT'):
             window.verify_candidate_dt('unused', plan)
         plan['dt_properties'] = {'soc/display/status': '6f6b617900'}
+        plan['baseline_dt_properties'] = {'soc/display/status': '64697361626c656400'}
         with patch.object(window, 'ssh', return_value='6f6b617900\n'):
             window.verify_candidate_dt('unused', plan)
         with patch.object(window, 'ssh', return_value='64697361626c656400\n'):
             with self.assertRaisesRegex(RuntimeError, 'DT property differs'):
                 window.verify_candidate_dt('unused', plan)
+        with self.assertRaisesRegex(ValueError, 'DT identity must differ'):
+            window.verify_candidate_dt('unused', plan, plan['dt_properties'])
 
     def test_uhd7_retained_proof_and_existing_module_tree_are_preserved(self):
         once = window.load('uhd7_once', ROOT / 'packaging/kernel-edge/display-once.py')
