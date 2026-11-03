@@ -10,6 +10,10 @@ case "$app" in
     *) echo 'Unknown VIM4 KVM application' >&2; exit 2 ;;
 esac
 case "$(uname -r)" in
+    7.3.1-vim4kvm-uhd7+) kernel_uhd7=1 ;;
+    *) kernel_uhd7=0 ;;
+esac
+case "$(uname -r)" in
     5.15.*)
         export VIM4_VIDEO_BACKEND=vendor
         export GST_PLUGIN_PATH=/usr/lib/vim4-kvm/gstreamer-1.0
@@ -38,7 +42,7 @@ case "$(uname -r)" in
             fi
         fi
         ;;
-    7.3.0-rc7-vim4kvm-uhd1+|7.3.0-vim4kvm-uhd1+|7.3.0-vim4kvm-uhd2+|7.3.0-vim4kvm-uhd2-nodebug+|7.3.0-vim4kvm-uhd3+|7.3.0-vim4kvm-uhd4+|7.3.0-vim4kvm-uhd5+|7.3.0-vim4kvm-uhd[67]+|7.3.0-vim4kvm-npu1+|7.3.0-vim4kvm-npu2+|7.3.0-vim4kvm-npu3+|7.3.0-vim4kvm-npu4+)
+    7.3.1-vim4kvm-uhd7+|7.3.0-rc7-vim4kvm-uhd1+|7.3.0-vim4kvm-uhd1+|7.3.0-vim4kvm-uhd2+|7.3.0-vim4kvm-uhd2-nodebug+|7.3.0-vim4kvm-uhd3+|7.3.0-vim4kvm-uhd4+|7.3.0-vim4kvm-uhd5+|7.3.0-vim4kvm-uhd[67]+|7.3.0-vim4kvm-npu1+|7.3.0-vim4kvm-npu2+|7.3.0-vim4kvm-npu3+|7.3.0-vim4kvm-npu4+)
         export VIM4_VIDEO_BACKEND=wave5
         export VIM4_SHARED_DATA=1
         export GST_PLUGIN_PATH=/usr/lib/vim4-kvm/mainline-gstreamer-1.0
@@ -66,7 +70,7 @@ run_app() {
         if [ "${driver##*/}" = mali ]; then
             exec /usr/bin/python3 /usr/lib/vim4-kvm/python/vim4gpu.py --graphics direct -- "$@"
         fi
-        if [ "${driver##*/}" = panfrost ] && { [ "$(uname -r)" = '7.3.0-vim4kvm-uhd6+' ] || [ "$(uname -r)" = '7.3.0-vim4kvm-uhd7+' ]; }; then
+        if [ "${driver##*/}" = panfrost ] && { [ "$kernel_uhd7" = 1 ] || [ "$(uname -r)" = '7.3.0-vim4kvm-uhd6+' ] || [ "$(uname -r)" = '7.3.0-vim4kvm-uhd7+' ]; }; then
             # Native AMLY conversion was accepted with this private PanVK.
             for icd in /opt/vim4-mesa-26.2.6/share/vulkan/icd.d/*panfrost*.json; do
                 if [ -r "$icd" ]; then
@@ -88,7 +92,7 @@ case "$app" in
     jetkvm) run_app /opt/vim4-jetkvm/jetkvm ;;
     onekvm)
         binary=/opt/vim4-onekvm/one-kvm
-        if { [ "$(uname -r)" = '7.3.0-vim4kvm-uhd6+' ] || [ "$(uname -r)" = '7.3.0-vim4kvm-uhd7+' ]; }; then
+        if { [ "$kernel_uhd7" = 1 ] || [ "$(uname -r)" = '7.3.0-vim4kvm-uhd6+' ] || [ "$(uname -r)" = '7.3.0-vim4kvm-uhd7+' ]; }; then
             binary=/opt/vim4-onekvm-edge/one-kvm
         fi
         run_app "$binary" --data-dir "$state" --address 127.0.0.1 --port 8081 --auth-mode managed

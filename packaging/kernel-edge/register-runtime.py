@@ -7,6 +7,8 @@ register build.json [--source-label OneKvmTest] [--framebuffer-console]
 Registration requires root on the board after installing the matching Image,
 DTB and complete module set. It preserves the current default and data. It does
 not install files, enable applications, reboot or promise automatic fallback.
+install accepts a sealed complete package; uhd7 -> 7.3.1 requires --backup.
+rollback restores that complete snapshot and syncs without rebooting.
 """
 import argparse
 import gzip
@@ -20,6 +22,68 @@ import subprocess
 import sys
 import tarfile
 import tempfile
+
+UHD7 = '7.3.0-vim4kvm-uhd7+'
+CANDIDATE = '7.3.1-vim4kvm-uhd7+'
+BOOT_FILES = ('Image', 'vim4.dtb', 'panfrost.dtb', 'config', 'Module.symvers', 'vmlinux.btf', 'manifest.json')
+
+
+def check_space(edge, payload):
+    required = sum(max(0, (payload / name).stat().st_size -
+                       ((edge / name).stat().st_size if (edge / name).exists() else 0))
+                   + 4096 for name in BOOT_FILES)
+    if shutil.disk_usage(edge).free < required:
+        raise ValueError('Insufficient /boot space for the complete edge runtime')
+
+
+def save_rollback(destination, targets):
+    """Snapshot whole module trees, including overlays and depmod metadata."""
+    destination.mkdir(parents=True, exist_ok=False)
+    records = []
+    for index, target in enumerate(targets):
+        target = Path(target)
+        stored = destination / str(index)
+        present = target.exists()
+        hashes = {}
+        if present:
+            if target.is_dir():
+                shutil.copytree(target, stored, symlinks=True)
+                hashes = {str(p.relative_to(stored)): digest(p) for p in stored.rglob('*')
+                          if p.is_file() and not p.is_symlink()}
+            else:
+                shutil.copy2(target, stored)
+                hashes = {'.': digest(stored)}
+        records.append(dict(target=str(target), stored=str(index), present=present,
+                            directory=target.is_dir(), hashes=hashes))
+    (destination / 'rollback.json').write_text(json.dumps(records, indent=2) + '\n')
+    os.sync()
+
+
+def restore_rollback(destination):
+    records = json.loads((destination / 'rollback.json').read_text())
+    # Check all backup bytes before changing any installed file.
+    for record in records:
+        stored = destination / record['stored']
+        for name, expected in record['hashes'].items():
+            if digest(stored if name == '.' else stored / name) != expected:
+                raise ValueError('Rollback backup hash mismatch: ' + record['target'])
+    for record in records:
+        target, stored = Path(record['target']), destination / record['stored']
+        if record['directory']:
+            if target.exists():
+                shutil.rmtree(target)
+            shutil.copytree(stored, target, symlinks=True)
+        elif record['present']:
+            shutil.copy2(stored, target)
+        else:
+            target.unlink(missing_ok=True)
+    os.sync()
+
+
+def rollback(args):
+    if os.geteuid() != 0:
+        raise ValueError('Rollback requires root')
+    restore_rollback(args.backup)
 
 
 def digest(path):
@@ -100,7 +164,7 @@ def register(args):
     import vim4boot as boot
     proof = json.loads(args.proof.read_text())
     version = proof['release']
-    if version not in ('7.3.0-rc7-vim4kvm-uhd1+', '7.3.0-vim4kvm-uhd1+', '7.3.0-vim4kvm-uhd6+', '7.3.0-vim4kvm-uhd7+'):
+    if version not in ('7.3.0-rc7-vim4kvm-uhd1+', '7.3.0-vim4kvm-uhd1+', '7.3.0-vim4kvm-uhd6+', UHD7, CANDIDATE):
         raise ValueError('No validated application launcher for this kernel release')
     if digest(boot.BOOT / 'edge/Image') != proof['image_sha256']:
         raise ValueError('Installed mainline Image differs from the build inventory')
@@ -210,13 +274,14 @@ def install(args):
                 raise ValueError('Package hash mismatch: ' + name)
         report = json.loads((root / 'manifest.json').read_text())
         version = report['release']
-        upgrade = version == '7.3.0-vim4kvm-uhd7+'
-        if version not in ('7.3.0-vim4kvm-uhd6+', '7.3.0-vim4kvm-uhd7+') or release(root / 'Image') != version:
+        upgrade = version in (UHD7, CANDIDATE)
+        if version not in ('7.3.0-vim4kvm-uhd6+', UHD7, CANDIDATE) or release(root / 'Image') != version:
             raise ValueError('Unexpected unified kernel Image')
         if upgrade:
-            if (label != 'FullKvm' or saved != '7.3.0-vim4kvm-uhd6+' or
+            previous = UHD7 if version == CANDIDATE else '7.3.0-vim4kvm-uhd6+'
+            if (label != 'FullKvm' or saved != previous or
                     entries[label].get('LINUX') != '/edge/Image' or entries[label].get('FDT') != '/edge/vim4.dtb'):
-                raise ValueError('The uhd7 upgrade requires the installed uhd6 FullKvm kbase profile')
+                raise ValueError('Upgrade requires the installed ' + previous + ' FullKvm kbase profile')
         elif not saved.startswith('5.15.'):
             raise ValueError('Installation requires 5.15 as the saved default')
         with tarfile.open(root / 'modules.tar.gz') as archive:
@@ -237,12 +302,17 @@ def install(args):
                 raise ValueError('Incomplete or mismatched module archive')
         edge = boot.BOOT / 'edge'
         edge.mkdir(exist_ok=True)
-        boot_files = ('Image', 'vim4.dtb', 'panfrost.dtb', 'config', 'Module.symvers', 'vmlinux.btf', 'manifest.json')
-        required = sum(max(0, (root / name).stat().st_size -
-                           ((edge / name).stat().st_size if (edge / name).exists() else 0))
-                       + 4096 for name in boot_files)
-        if shutil.disk_usage(edge).free < required:
-            raise ValueError('Insufficient /boot space for the complete edge runtime')
+        boot_files = BOOT_FILES
+        check_space(edge, root)
+        if version == CANDIDATE:
+            backup = getattr(args, 'backup', None)
+            if backup is None:
+                raise ValueError('Complete upgrade requires --backup NEW_DIRECTORY')
+            targets = [boot.CONFIG, boot.MANIFEST, *(edge / name for name in boot_files),
+                       Path('/lib/modules') / saved]
+            targets += [Path('/usr') / p.relative_to(root / 'runtime/usr')
+                        for p in (root / 'runtime/usr').rglob('*') if p.is_file()]
+            save_rollback(backup, targets)
         if upgrade:
             updates = Path('/lib/firmware/updates')
             name = Path('brcm/brcmfmac43752-sdio.khadas,vim4.bin')
@@ -293,9 +363,12 @@ def main():
     package = commands.add_parser('install')
     package.add_argument('archive', type=Path)
     package.add_argument('--source-label', default='OneKvmTest')
+    package.add_argument('--backup', type=Path, help='New directory for complete pre-upgrade rollback')
+    restore = commands.add_parser('rollback')
+    restore.add_argument('backup', type=Path)
     args = parser.parse_args()
     try:
-        {'inventory': inventory, 'register': register, 'install': install}[args.command](args)
+        {'inventory': inventory, 'register': register, 'install': install, 'rollback': rollback}[args.command](args)
     except (ValueError, OSError, KeyError) as failure:
         parser.exit(1, str(failure) + '\n')
 

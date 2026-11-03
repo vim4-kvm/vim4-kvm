@@ -2,6 +2,7 @@
 # SDR 1080p/UHD60 and HDR10 UHD60 experiment; separate edge service only.
 set -eu
 case "$(uname -r)" in
+    7.3.1-vim4kvm-uhd7+) ;;
     7.3.0-rc7-vim4kvm-uhd1+|7.3.0-vim4kvm-uhd1+|7.3.0-vim4kvm-uhd2+|7.3.0-vim4kvm-uhd2-nodebug+|7.3.0-vim4kvm-uhd3+|7.3.0-vim4kvm-uhd4+|7.3.0-vim4kvm-uhd5+|7.3.0-vim4kvm-uhd[67]+|7.3.0-vim4kvm-npu1+|7.3.0-vim4kvm-npu2+|7.3.0-vim4kvm-npu3+|7.3.0-vim4kvm-npu4+) ;;
     *) echo 'This video experiment requires its matched 7.3 kernel' >&2; exit 1 ;;
 esac
@@ -49,7 +50,7 @@ for parameter in nv12 direct_dma; do
 done
 udevadm settle --timeout=15
 # Native HDR conversion imports its output pool from the reserved CMA heap.
-if { [ "$(uname -r)" = '7.3.0-vim4kvm-uhd6+' ] || [ "$(uname -r)" = '7.3.0-vim4kvm-uhd7+' ]; }; then
+if { [ "$(uname -r)" = '7.3.1-vim4kvm-uhd7+' ] || [ "$(uname -r)" = '7.3.0-vim4kvm-uhd6+' ] || [ "$(uname -r)" = '7.3.0-vim4kvm-uhd7+' ]; }; then
     test -c /dev/dma_heap/reserved
     chgrp video /dev/dma_heap/reserved
     chmod 0660 /dev/dma_heap/reserved

@@ -147,6 +147,32 @@ git -C linux-7.3 am ../armbian-build-7.3/patch/kernel/archive/meson-s4t7-7.3/*.p
 
 ## 构建
 
+### uhd7 到新整包候选
+
+`candidate-731.toml` 独立固定7.3.1源码、release、最终配置与模块数量，不代表上板验收；
+正式 `sources.toml` 的 tested_build/retained_runtime 验收前保持不变。
+在 `build.sh SOURCE OUTPUT CONFIG` 后加 `--candidate-lock packaging/kernel-edge/candidate-731.toml`，
+可同时加 `--validate-only` 验证干净源码与olddefconfig最终配置哈希。OUTPUT必须为空。
+
+`package-unified.py --candidate-lock LOCK --uhd7-launcher LAUNCHER` 沿用已有 kernel/stage/
+candidate/native/wave5-plugin 输入，核对同次完整基础模块、三个外部模块的SHA、vermagic、
+BTF与build ID，封存Image、双GPU DT、config、Module.symvers、vmlinux.btf、运行时和模块。
+暂存目录不得带modules_install的build/source符号链接；复制到任务私有暂存后只移除这类链接，
+不改原始构建。候选使用已核对的r14e应用启动器，增加精确新release，并带受版本管理的
+平台/HDMI/gadget入口；不推广正式来源锁。
+
+正式安装仍须另行授权的独占板窗。7.3.1使用
+`register-runtime.py install PACKAGE --backup NEW_DIRECTORY`，要求默认FullKvm/uhd7；
+保留默认项、5.15/Stock入口和旧模块目录，先校验包与完整模块，再预检/boot空间。
+备份目录放根分区私有目录，必须是新目录，预留完整旧模块和启动文件空间。
+备份包含extlinux、kernels.json、七个edge文件、完整uhd7模块树（含三个overlay）及被替换的
+/usr入口。BCM43752 .217固件从旧release的updates目录校验后复制到新release。
+
+失败或验收回退时执行 `register-runtime.py rollback BACKUP_DIRECTORY`，逐文件校验备份后
+整套恢复并sync；随后正常重启回保存的FullKvm/uhd7，按proof核对服务、加载模块与视频。
+安装中断仍保留备份供该命令使用；命令不自行重启，不代表自动硬件恢复。
+新release独立模块目录保留供调查，回退不删除。
+
 在 Linux ARM64、GCC 13 环境中运行；需要 make、flex、bison、bc、OpenSSL/ELF
 开发库和 pahole。准备阶段不安装到开发机或板子。
 

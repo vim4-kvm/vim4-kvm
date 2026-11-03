@@ -33,8 +33,13 @@ controls；`ffmpeg-vm.py` 只把显式输入通过 stdin 送到构建 VM 的 FFm
 `packaging/hdr10/check-phase2-plugins.py`：离线检查组装后目录的实际GStreamer factory及插件路径，
 拒绝被系统副本掩盖的缺项；设备生成的V4L2编码factory在候选窗口用 `--device-factories` 补验。
 `packaging/kernel-edge/package-unified.py`：离线封存同次 Image、互斥 GPU DT、全部模块和 BTF；
+`--candidate-lock` 使用独立候选源码/release/配置/数量锁，首例为7.3.1，不改正式来源锁。
 `--uhd7-launcher` 读取已安装的 USB overlay 启动器并为新 release 保留 r14e 应用选择，
 校验外部模块ABI/产物与r13用户态来源，生成完整清单；不访问板子、不部署、不含vendor blob。
+
+`register-runtime.py install --backup NEW_DIRECTORY` 支持FullKvm/uhd7到7.3.1完整迁移；
+先校验完整模块和空间，再备份启动/登记/edge/完整旧模块（含overlay）及运行时入口。
+`rollback BACKUP_DIRECTORY` 校验备份后整套恢复并sync，不重启。详见[迁移合同](kernel-edge.md#uhd7-到新整包候选)。
 
 `tools/hdmi-source-mode.swift`：macOS编译，运行在HDMI信源机；list输出显示器与模式ID，
 set只选择backing raster，不能证明HDMI线上的时序，调用者保存/恢复原ID。

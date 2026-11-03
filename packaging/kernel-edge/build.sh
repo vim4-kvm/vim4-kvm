@@ -1,17 +1,26 @@
 #!/bin/bash
-# Usage: build.sh SOURCE OUTPUT [CONFIG] [--validate-only]; defaults to edge.config.
+# Usage: build.sh SOURCE OUTPUT [CONFIG] [--validate-only] [--candidate-lock LOCK].
 # Compile into an external directory; never install or reboot.
 set -euo pipefail
 source_dir=$(realpath "${1:?kernel source directory required}")
 output=$(realpath -m "${2:?external build directory required}")
 recipe=$(cd "$(dirname "$0")" && pwd)
 config=$(realpath "${3:-$recipe/edge.config}")
-[[ ${4:-} == '' || ${4:-} == --validate-only ]] || { echo 'Unknown build option' >&2; exit 2; }
+shift $(( $# < 3 ? $# : 3 ))
+validate=0
+lock="$recipe/sources.toml"
+while (( $# )); do
+    case "$1" in
+        --validate-only) validate=1; shift ;;
+        --candidate-lock) lock=$(realpath "${2:?candidate lock required}"); shift 2 ;;
+        *) echo 'Unknown build option' >&2; exit 2 ;;
+    esac
+done
 [[ $(uname -s) == Linux && $(uname -m) == aarch64 ]] || { echo 'Requires Linux ARM64' >&2; exit 1; }
-python3 - "$recipe" "$source_dir" "$output" <<'PY'
+python3 - "$lock" "$source_dir" "$output" <<'PY'
 import pathlib, subprocess, sys, tomllib
-recipe, source, output = map(pathlib.Path, sys.argv[1:])
-lock = tomllib.loads((recipe / 'sources.toml').read_text())
+lock_path, source, output = map(pathlib.Path, sys.argv[1:])
+lock = tomllib.loads(lock_path.read_text())
 if output == source or output.is_relative_to(source):
     raise SystemExit('Build output must be outside the kernel source tree')
 revision = subprocess.check_output(['git', '-C', str(source), 'rev-parse', 'HEAD'], text=True).strip()
@@ -27,7 +36,14 @@ export SOURCE_DATE_EPOCH=$(git -C "$source_dir" show -s --format=%ct HEAD)
 export KBUILD_BUILD_TIMESTAMP=$(date -u -d "@$SOURCE_DATE_EPOCH")
 args=(-C "$source_dir" O="$output" ARCH=arm64 CC=gcc KBUILD_BUILD_VERSION=1 KBUILD_BUILD_USER=vim4-kvm KBUILD_BUILD_HOST=vim4-build)
 make "${args[@]}" olddefconfig
-if [[ ${4:-} == --validate-only ]]; then
+python3 - "$lock" "$output/.config" <<'PY'
+import hashlib, pathlib, sys, tomllib
+lock = tomllib.loads(pathlib.Path(sys.argv[1]).read_text())
+expected = lock.get('package', {}).get('config_sha256')
+if expected and hashlib.sha256(pathlib.Path(sys.argv[2]).read_bytes()).hexdigest() != expected:
+    raise SystemExit('Generated configuration differs from candidate lock')
+PY
+if [[ $validate == 1 ]]; then
     echo 'Validated locked source and generated configuration; compilation not requested'
     exit 0
 fi
