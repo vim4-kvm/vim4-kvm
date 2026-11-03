@@ -19,7 +19,7 @@
 
 ## 2026-11-03
 
-- [uhd7 三模块安装与 JetKVM 首帧阻塞](2026-11-03-mainline-modules.md) — kernel video application deployment；One-KVM 双编码和 NanoKVM 4K60 通过，后续会话未验。
+- [uhd7 三模块安装与四应用会话验收](2026-11-03-mainline-modules.md) — kernel video application deployment；四应用4K60、JetKVM第二浏览器接管关键帧及UU官方客户端接收，修正临时测试就绪门禁。
 
 - [5.15 amlvenc 按需 IDR 离线调研](2026-11-03-amlvenc-on-demand-research.md) — video；H.265 可只改参数，H.264 需 change_qp 转发；登记输出缓冲越界等 3 个 issue，暂不改 5.15。
 
