@@ -352,7 +352,7 @@ tested_plugin_sha256 = "ffee02fbed8a0d2bb5bfd4fb695b2ea6f8cbd4f5654072f7727d52a6
 # Historical native PQ/transfer ABI plugin accepted by the r13 Panfrost smoke.
 native_hdr_plugin_sha256 = "b9269d0509d43b8107a8c686415f7f0c7e5a86e17c04a19d685eb3dca736c4f0"
 # Current YUV24 patch stack including Wave5 AVC recovery QP.
-candidate_plugin_sha256 = "dafc3bf99ff004842f1cffa36be8e3b78cea887109c7171d112393d0f8d6388f"
+candidate_plugin_sha256 = "b0a8285c1a7f297cf1237574ec7b3188c1534909a93319ea6b29f3fef40a1eeb"
 
 # Accepted r13 component provenance; its userspace is included in tested uhd6.
 [native_hdr]
