@@ -1,8 +1,8 @@
 # 2026-11-02：uhd7 固定高刷与原生 YUV444 窗口
 
 4K60 网页回归、1080p120 AVC/HEVC 和 1440p120 HEVC 吞吐通过，1440p 生产 AVC 限 60 生效。
-三份高刷码流均有重复和缺失帧号。4K60 原生 444 的分量、横纵单像素色度和帧内一致性通过，
-3600 帧严格连续性失败。QHD HEVC 实际 SPS 低报 level。Gaming VRR 未测。已恢复已安装的 FullKvm/kbase uhd7。
+三份高刷码流和 4K60 原生 444 均未丢采集帧，图样帧号的不连续强推断由信号源呈现造成。
+444 的分量、横纵单像素色度和帧内一致性通过。QHD HEVC 实际 SPS 低报 level。Gaming VRR 未测。已恢复已安装的 FullKvm/kbase uhd7。
 
 ## 身份与临时加载
 
@@ -49,12 +49,26 @@ M6 回读原生 1080p/1440p 的 120 Hz 模式 ID 86/119；未单独验到 1080p1
 | 1440p HEVC | 119.897 / 119.890 | 660 帧，重复 7、缺 7，Main 5.0 |
 
 每项预热 60 帧，计时 600 帧。三份码流均为 yuv420p，完整解码逐帧检查黑白标记、三处帧号与校验和，
-各 660 帧均可读且三处一致，无倒序；三份都未通过严格帧号连续性。M6 绘制日志在重复 ID 后仍有新绘制，
-仅凭绘制时间不能定位丢失或重复发生在源显示、采集还是编码。
+各 660 帧均可读且三处一致。三份编码 bench 各有 raw_frames=output_frames=660，计时段 capture_irqs/vpu_irqs 均为 600/601。
+1080p AVC、1080p HEVC、1440p HEVC 的最大采集 PTS 间隔分别是 8.337、8.337、8.350 ms（1080p raw 为 8.339 ms）。
+444 最大交付间隔为 17.484 ms。均未出现丢一个 HDMI 帧应有的约 16.7 ms（120 Hz）或 33.3 ms（60 Hz）间隔。
+三份码流中相邻帧号的重复和跳号成对，有时先跳后重，无旧帧倒序或帧内撕裂。444 实际计数见下节。
+
+**接收端无丢帧。严格帧号连续性的失败由信号源呈现造成（强推断，缺呈现回执故未证明）。**
+高刷源 `latency-source --display-link` 在三份码流覆盖的帧号区间内，逐次 vsync 回调未见重复或缺失 target。
+1080p 启动时 ID 6→7 的 target 间隔为 16.667 ms，在 bench 取样之前。帧号记在 AppKit NSView.draw。
+若绘制错过合成器锁存，屏幕会多显示一遍上一帧，随后跳到新帧号。444 的 capture-pattern 用 1/60 秒 NSTimer，
+也未与 vsync 同步。5.15 同一图样曾出现过一次重复、一次跳号。[5.15 全帧记录](2026-10-16-yuv444-full-frame-4k60.md)
+
+**登记 issue：测试源呈现回执。** 测试源需使用 CAMetalLayer 并在 presentedHandler 中逐帧记录 presentedTime，
+与实际采集的图样帧号对照后，才能把严格连续性作为采集/编码门禁。本轮保留原测试源。
 
 **QHD HEVC 的 level 信令失败。** bench 的编码 caps 为 5.1，实际 SPS 的 level_idc 为 150（5.0）。
 2560×1440 按实测速率约需 4.42 亿亮度样本/秒，超过 5.0 的 267,386,880 上限。该结论来自保存的 bench 码流；
-网页 H.265 的解码速率另按 getStats 记录。[FFmpeg 的 HEVC level 表](https://github.com/FFmpeg/FFmpeg/blob/n7.1/libavcodec/h265_profile_level.c#L19-L36)
+同为 5.0 的 1080p120 约需 2.49 亿样本/秒，符合该上限。QHD 网页 H.265 实际解码 119.826 fps。[FFmpeg 的 HEVC level 表](https://github.com/FFmpeg/FFmpeg/blob/n7.1/libavcodec/h265_profile_level.c#L19-L36)
+
+**登记 issue：QHD HEVC SPS 低报。** wave5 将 HEVC_LEVEL 控件的 5.1 映射到 153 并写入寄存器。
+尚未区分是 GStreamer 实际设置的控件值还是固件夹取导致 SPS 为 150。频率 2 × 严重度 2 = 4，低于处理阈值 5，本轮只登记。
 
 ## YUV444 和未验项
 
@@ -67,6 +81,21 @@ M6 回 3840×2160、1920×1080 HiDPI，运行 capture-pattern。v308 appsink 实
 此时结束新增用例并恢复。7 帧池、25 MiB CREATE_BUFS 拒绝、关采集后的导出 fd、显式回 NV12 均未执行；
 本次确实收到 YCbCr444，RGB 回退分支未触发。1080p/4K Variable、基准未知、限流慢转快、
 专门 EDID 撤回失锁与重新协商均跳过。固定模式切换时的短暂失锁不计作专门失锁测试。
+
+## VRR 补测
+
+**M6 不提供 Variable，VRR 未测。** 通过已安装 One-KVM 的 MCP，在 M6 系统设置中展开 RTK UHD HDR 的刷新率菜单。
+两张截图均显示完整菜单，显示模式由源端独立读回。
+
+| M6 物理模式 | 模式 ID | 菜单勾选 | 菜单全部可选刷新率（Hz） |
+|---|---:|---:|---|
+| 1920×1080 原生 | 86 | 120 | 120、100、60、50、30、25、24 |
+| 3840×2160（逻辑 1920×1080） | 88 | 60 | 60、50、30、25、24 |
+
+未申请板票、装载候选或重启。补测持板 **0 秒**，累计 **1355.600 秒（22 分 35.600 秒）**。
+M6 已切回原 mode 88 并读回物理 3840×2160、60 Hz。两档 Variable 变速、Gaming VTEM、VRR 控件与固定回零、
+PTS/Vtotal、source-change、网页解码及未知基准的本地 60 fps 预算均无本轮实测数据。
+菜单截图、OCR 和源端回执在 `logs/hfr-yuv-vrr-followup/` 的 `1080-menu.jpg`、`4k-menu.jpg` 及配套文件。
 
 ## 板时与恢复
 
