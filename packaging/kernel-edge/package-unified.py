@@ -16,9 +16,6 @@ import tempfile
 import tarfile
 import tomllib
 
-KERNEL = 'f951e2d24d32d5df0e701e7c355b3db4c91eaf74'
-RELEASE = '7.3.0-vim4kvm-uhd6+'
-
 
 def sha(p):
     with p.open('rb') as stream:
@@ -33,27 +30,28 @@ def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--candidate-lock', type=Path,
                         help='Independent source/release/module-count lock; requires the qualified launcher')
-    parser.add_argument('--uhd7-launcher', type=Path,
-                        help='Build the uhd7 package using the installed uhd6 USB-overlay application launcher')
+    parser.add_argument('--launcher', type=Path, required=True,
+                        help='Qualified USB-overlay application launcher; preserve r14e app selection')
     for name in ('kernel', 'stage', 'candidate', 'native', 'wave5-plugin', 'output'):
         parser.add_argument('--' + name, required=True, type=Path)
     args = parser.parse_args()
     k, stage, candidate, output = args.kernel, args.stage, args.candidate, args.output
-    revision, release = (('52b95c8493264b195fe5fa10ccf07ad28670f16f', '7.3.0-vim4kvm-uhd7+')
-                         if args.uhd7_launcher else (KERNEL, RELEASE))
-    contract = dict(base_modules=2338, external_modules=3)
+    recipe = Path(__file__).resolve().parent
+    lock = tomllib.loads((args.candidate_lock or recipe/'sources.toml').read_text())
+    revision = lock['kernel']['revision']
     if args.candidate_lock:
-        if not args.uhd7_launcher:
-            raise ValueError('Candidate package requires the qualified application launcher')
-        lock = tomllib.loads(args.candidate_lock.read_text())
-        revision, contract = lock['kernel']['revision'], lock['package']
-        release = contract['release']
-        assert sha(k/'.config') == contract['config_sha256']
+        contract = lock['package']
+    else:
+        built = lock['tested_build']
+        contract = dict(release=built['release'], base_modules=built['base_module_count'],
+                        external_modules=built['external_module_count'], upgrade_from=built['upgrade_from'],
+                        config_sha256=built['config_sha256'])
+    release = contract['release']
+    assert sha(k/'.config') == contract['config_sha256']
     assert run('git', '-C', (k/'source').resolve(), 'rev-parse', 'HEAD') == revision
     assert (k/'include/config/kernel.release').read_text().strip() == release
     external = json.loads((candidate/'manifest.json').read_text())
     assert external['kernel'] == revision
-    recipe = Path(__file__).resolve().parent
     native = json.loads((recipe.parent/'hdr10/native-runtime.json').read_text())
     assert sha(args.native.with_suffix('.tar.gz')) == native['component_archive_sha256']
     with tarfile.open(args.native.with_suffix('.tar.gz')) as archive:
@@ -89,9 +87,8 @@ def main():
             assert vermagic.split()[0] == release, path
             assert '.BTF ' in run('readelf', '-SW', raw), path
             ids[str(path.relative_to(modules))] = re.search(r'Build ID: ([0-9a-f]+)', run('readelf', '-n', raw))[1]
-            if args.uhd7_launcher:
-                name = str(path.relative_to(modules))
-                inventory[name] = dict(vermagic=vermagic, build_id=ids[name], BTF=True, sha256=sha(path))
+            name = str(path.relative_to(modules))
+            inventory[name] = dict(vermagic=vermagic, build_id=ids[name], BTF=True, sha256=sha(path))
     subprocess.run(['depmod', '-b', str(stage), release], check=True)
     output.mkdir(parents=True, exist_ok=False)
     for source, name in [(k/'arch/arm64/boot/Image', 'Image'), (k/'.config', 'config'),
@@ -111,22 +108,19 @@ def main():
     shutil.copyfile(args.native/'one-kvm', output/'runtime/one-kvm')
     # The Wave5 plugin is a shared dependency; preserve the accepted binary.
     shutil.copyfile(args.native/'candidate.json', output/'native-candidate.json')
-    if args.uhd7_launcher:
-        assert sha(args.uhd7_launcher) == 'cda5abcbe961ba26a8f24a59ae5568619d2191b190381c4f2f040b17a66ca905'
-        launcher = output/'runtime/usr/libexec/vim4-kvm-run'
-        shutil.copyfile(args.uhd7_launcher, launcher)
-        run('patch', '--batch', launcher, recipe/'uhd7-r14e-launcher.patch')
-        assert sha(launcher) == 'a322759bafff03d8de79fefce560026ef443d91335baf957e236abdb1468a0ee'
-        if args.candidate_lock:
-            launcher.write_text(launcher.read_text().replace(
-                '7.3.0-vim4kvm-uhd[67]+', '7.3.0-vim4kvm-uhd[67]+|' + release))
-            # Use the reviewed platform entry, rather than a private build-recipe exception.
-            shutil.copyfile(recipe.parents[1]/'board/vim4-board-runtime',
-                            output/'runtime/usr/libexec/vim4-board-runtime')
-            for source, target in (('one-kvm-edge-prepare', 'vim4-mainline-prepare'),
-                                   ('one-kvm-edge-usb-prepare', 'vim4-mainline-gadget-prepare')):
-                shutil.copyfile(recipe/source, output/'runtime/usr/libexec'/target)
-        (output/'module-inventory.json').write_text(json.dumps(inventory, indent=2)+'\n')
+    assert sha(args.launcher) == 'cda5abcbe961ba26a8f24a59ae5568619d2191b190381c4f2f040b17a66ca905'
+    launcher = output/'runtime/usr/libexec/vim4-kvm-run'
+    shutil.copyfile(args.launcher, launcher)
+    run('patch', '--batch', launcher, recipe/'uhd7-r14e-launcher.patch')
+    assert sha(launcher) == 'a322759bafff03d8de79fefce560026ef443d91335baf957e236abdb1468a0ee'
+    launcher.write_text(launcher.read_text().replace(
+        '7.3.0-vim4kvm-uhd[67]+', '7.3.0-vim4kvm-uhd[67]+|' + release))
+    shutil.copyfile(recipe.parents[1]/'board/vim4-board-runtime',
+                    output/'runtime/usr/libexec/vim4-board-runtime')
+    for source, target in (('one-kvm-edge-prepare', 'vim4-mainline-prepare'),
+                           ('one-kvm-edge-usb-prepare', 'vim4-mainline-gadget-prepare')):
+        shutil.copyfile(recipe/source, output/'runtime/usr/libexec'/target)
+    (output/'module-inventory.json').write_text(json.dumps(inventory, indent=2)+'\n')
     runtime_files = {str(p.relative_to(output/'runtime')): sha(p)
                      for p in (output/'runtime').rglob('*') if p.is_file()}
     (output/'runtime-files.json').write_text(json.dumps(runtime_files, indent=2)+'\n')

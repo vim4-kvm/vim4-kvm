@@ -1,15 +1,15 @@
 # Experimental kernel pins; the private GStreamer recipe below is also used
 # by the 5.15 One-KVM image builder.
-# Current formal source and installed build. Historical uhd6 overlay receipts follow.
+# Current formal source and installed build; retained uhd7/uhd6 receipts follow.
 [kernel]
 url = "https://github.com/vim4-kvm/linux.git"
-branch = "vim4-kvm-7.3"
-revision = "4111568841bd83ca33b9b9a044ed9a7077f95004"
-tree = "13ad62e755b868109fc357f470b09b132ef16081"
+branch = "kernel-731"
+revision = "25110086de2ef6aa9564a31a7c694eca893fd423"
+tree = "235d7aaab96f0a9f8657076d691c9009daabb7f5"
 upstream_url = "https://github.com/gregkh/linux.git"
-# Evidence: docs/bringup/2026-11-03-mainline-modules.md. Image retains its uhd7 source below.
-upstream_tag = "v7.3"
-upstream_revision = "c03c1a14507dfaf8b856c2608f9ac216021fc222"
+# Evidence: docs/bringup/2026-11-03-kernel-731-deploy.md
+upstream_tag = "v7.3.1"
+upstream_revision = "79a907609d53d5cd645b42c11550d295d43abf99"
 
 # Accepted native HDR userspace included in the unified runtime.
 [onekvm]
@@ -20,6 +20,90 @@ features = ["vim4"]
 tested_binary_sha256 = "34e8808e61c9a52eb62a88e2b01440d4ecef0f60bc7253dc0a7d403410b99337"
 
 [tested_build]
+release = "7.3.1-vim4kvm-uhd7+"
+upgrade_from = "7.3.0-vim4kvm-uhd7+"
+localversion = "-vim4kvm-uhd7"
+image_source_revision = "25110086de2ef6aa9564a31a7c694eca893fd423"
+build_id = "58d9b0f4148da5c2275fac40f4e177a0d0cb301b"
+config_path = "731.config"
+config_sha256 = "a1821eb66defe9079d8be0beda7cf85067fd56e6c6f51cb8881bcdd9950c95f6"
+image_sha256 = "b2a0b2ae8ffe1ebc1ebbf309b5c8cf7ab506a71e0f70ab5cd4e0922f120b0321"
+uncompressed_image_sha256 = "b2a0b2ae8ffe1ebc1ebbf309b5c8cf7ab506a71e0f70ab5cd4e0922f120b0321"
+board_dtb_path = "vim4.dtb"
+board_dtb_sha256 = "89c4bcf6b5523cee60a6f222f28675c99b5137767ec484d78d53b14899702071"
+board_dtb_generator = "../kbase/build.py"
+panfrost_dtb_path = "panfrost.dtb"
+panfrost_dtb_sha256 = "9d0d39a316cea5a3f3d8e5a04e085b2a905abf60494aaba565223c29839dff1f"
+module_count = 2341
+base_module_count = 2338
+external_module_count = 3
+module_btf = true
+module_symvers_sha256 = "9e54cbe2d161279b9e818a18515e924ad9c3a9ba1f87ce9cf0f8b55c3feff78d"
+vmlinux_btf_sha256 = "e8e6ea7cbe9368ebc810b633bbfecbc8fe3d873926f53b34ef6fce5242880b82"
+modules_sha256 = "695a48b6b38cdc801aa37cca8f846a8488f8362e18188c102b8f511f00f673aa"
+gpu_default = "kbase"
+default_boot = "FullKvm"
+package_file = "deploy-tools-731-final.tar.gz"
+package_sha256 = "59a8343225da61a1cf81ec70a60603d451cb2d2611ce493f25f260bd83e869cc"
+runtime_descriptor = "731-runtime.json"
+acceptance_scope = "nine-category-deployment-with-explicit-limits"
+evidence = "docs/bringup/2026-11-03-kernel-731-deploy.md"
+manifest_path = "731-manifest.json"
+manifest_sha256 = "59103050ef4e0fc0105728a2f55053604ebdbfda9533a711abc2728923fa3a02"
+external_manifest_path = "731-external-manifest.json"
+external_manifest_sha256 = "674207ce9957bba6524ed2364fb45786c485db7187440059914af43fde0a62fb"
+external_runtime_files_path = "731-external-runtime-files.json"
+external_runtime_files_sha256 = "0cf60ccd5592b7daaaf522071f3db426fc9c7af92db09e66928f1e70da27879d"
+runtime_files_path = "731-runtime-files.json"
+runtime_files_sha256 = "ecaad6ec42785bc47bace9510e228ef2ca10be28e9d95cbaa523e2e5cee56537"
+module_inventory_path = "731-module-inventory.json"
+module_inventory_sha256 = "d9eb28d7c2d1b61face3722a2bf264af531b1e59774fd65fe791f6961658d770"
+validation_path = "731-validation.json"
+validation_sha256 = "dc395033bf0c39d126ad9a6d0fff4b4eecec5c3b833a83d1eebc5a107a6fe681"
+
+[tested_build.external_modules]
+mali_kbase = "c7576ad4705d4a0fc8e90368cbe75481fab0e4fe4118438f9a5034ee3e7cb5d4"
+vim4_kbase_heaps = "30f3a549690da9b45c23622cd8c2399ff2754bdcebb86e8df81d22db833d783e"
+governor_vim4 = "65e4bb60a6613ec5ee2034e4a9838c2496bd6aee611303013ed9e100b39fe1a4"
+
+
+[tested_build.module_build_ids]
+mali_kbase = "ecdf45b16509c090ad56cbe4eab2df3acfbd0a03"
+vim4_kbase_heaps = "560bcc5339c3636f7258c0d96815ca9fc942c456"
+governor_vim4 = "f13fe0a20b23c8351fc7052156c43c0faa1e93bd"
+wave5 = "9cc5bca35769e6fce7eb271cba0b2c0207f1c2f2"
+t7_hdmirx = "ef0fcf99fd2e8415680065f08b4d643a2ee6d117"
+t7_vdin_test = "52b9c8deeda8af166d1061fbb89ffdd0efea87ac"
+t7_jpeg = "adba52396fa8e577063ca05f0eab20a500b392b2"
+crg_udc = "51c09e111ddda011d8fbbeea6621492ac21303dd"
+dwmac_meson8b = "93facd2fbc0508125b3d5478ab44b3e796c0babb"
+brcmfmac = "c89933b544ba2d9978b75960e68395140ac0c71a"
+brcmfmac_wcc = "f299ba76299f29cd1f06766ae0e5e4cd02496a9a"
+
+
+[tested_build.launcher_overrides]
+"usr/libexec/vim4-mainline-prepare" = "a9cab6ec9a0c151ec3dd74a866aac05056830511ebf7e3633aac694f57f95955"
+"usr/libexec/vim4-mainline-gadget-prepare" = "972de4a9e86855474d31c70a1526796d89aa29e984a6b9f26259246e65465ddd"
+"usr/libexec/vim4-kvm-run" = "5270e2ae4e90f5243577ba758921aca6fe64318aa0abd0ea2e4b920659ca813d"
+
+
+[retained_runtime]
+release = "7.3.1-vim4kvm-uhd7+"
+revision = "25110086de2ef6aa9564a31a7c694eca893fd423"
+build_id = "58d9b0f4148da5c2275fac40f4e177a0d0cb301b"
+image_sha256 = "b2a0b2ae8ffe1ebc1ebbf309b5c8cf7ab506a71e0f70ab5cd4e0922f120b0321"
+board_dtb_sha256 = "89c4bcf6b5523cee60a6f222f28675c99b5137767ec484d78d53b14899702071"
+manifest_sha256 = "59103050ef4e0fc0105728a2f55053604ebdbfda9533a711abc2728923fa3a02"
+package_sha256 = "59a8343225da61a1cf81ec70a60603d451cb2d2611ce493f25f260bd83e869cc"
+module_count = 2341
+live_proof_sha256 = "54bbfdf82f1d44b49f1c036a85f3bb971448b670ba8a7d606d1e91d519f2bb41"
+installed_proof_path = "731-installed-proof.json"
+kernels_manifest_sha256 = "c3a6149c3ca13439d109923c65301d72e174aa302fc272de8821ca0a27321469"
+default_boot = "FullKvm"
+evidence = "docs/bringup/2026-11-03-kernel-731-deploy.md"
+
+# Retained uhd7 files still support explicit baseline recovery/proof.
+[uhd7_tested_build]
 release = "7.3.0-vim4kvm-uhd7+"
 localversion = "-vim4kvm-uhd7"
 image_source_revision = "52b95c8493264b195fe5fa10ccf07ad28670f16f"
@@ -62,13 +146,13 @@ module_inventory_sha256 = "d2d384091bdc3c75fcaa3da2da994cc76d023c6db587b7d2abb25
 validation_path = "uhd7-validation.json"
 validation_sha256 = "927a1b060a4591f7e4c72c14acf3d9c6d4606e475a3c237db740b123ba5c3afb"
 
-[tested_build.external_modules]
+[uhd7_tested_build.external_modules]
 mali_kbase = "f530b1d304679f0ea68b5a75eca040709b208274032056beefc2c3ff43e7cb1d"
 vim4_kbase_heaps = "9f1a6e663a5d5c0793c18eebada4bf9b6232e1d395cfe4b3d025eb1436a138e2"
 governor_vim4 = "fa4f8ca319e7ea38b425536b84cc6cab17ed5de2c212baceb3b4b67ad68d0283"
 
-# Loaded identities include retained_runtime.module_overlays; archive manifests retain the original complete build.
-[tested_build.module_build_ids]
+# Retained uhd7 identities include uhd7_retained_runtime.module_overlays.
+[uhd7_tested_build.module_build_ids]
 mali_kbase = "a3dc2287540ffa3bacb7ba294364ee218c5eda1e"
 vim4_kbase_heaps = "84bddf342701ea8a3d9cc02308762b79c4185de1"
 governor_vim4 = "9fbe83f3e57ea0104d695307c6e85a7dad3a8aa4"
@@ -81,11 +165,11 @@ dwmac_meson8b = "25dcf492b7b749a87542f7bc0cadf37509d492bc"
 brcmfmac = "a3441b9068bf335c91552be4ee9b2e2eb9afc32f"
 brcmfmac_wcc = "0b3466f9c4900895a960d402e2fd9d64c6ff01b6"
 
-[tested_build.launcher_overrides]
+[uhd7_tested_build.launcher_overrides]
 "usr/libexec/vim4-kvm-run" = "a322759bafff03d8de79fefce560026ef443d91335baf957e236abdb1468a0ee"
 
 # Original complete uhd7 installation; later module identities are recorded in the overlays below.
-[retained_runtime]
+[uhd7_retained_runtime]
 release = "7.3.0-vim4kvm-uhd7+"
 revision = "52b95c8493264b195fe5fa10ccf07ad28670f16f"
 build_id = "d6f9c685802759c85cba6bd92bce90396d1cf6ec"
@@ -100,7 +184,7 @@ kernels_manifest_sha256 = "5f2927fbcb36256daaf8299f8d8ff8e8f9407b9e6de54556c3090
 default_boot = "FullKvm"
 evidence = "docs/bringup/2026-11-02-wifi-sdio-formal.md"
 
-[retained_runtime.module_overlays.t7_hdmirx]
+[uhd7_retained_runtime.module_overlays.t7_hdmirx]
 revision = "4111568841bd83ca33b9b9a044ed9a7077f95004"
 path = "kernel/drivers/media/platform/amlogic/t7-hdmirx/t7-hdmirx.ko.xz"
 sha256 = "200607fa7c1e763c01456be7d34f8d98fea0c68b989335b48b7e7c61c44cba9f"
@@ -109,7 +193,7 @@ receipt_path = "uhd7-t7-hdmirx-deployment.json"
 receipt_sha256 = "3ad4a0cd0eabd1e8a15141c726b84f74bdb625e046185a1348b14f3dd6dd4c83"
 evidence = "docs/bringup/2026-11-03-mainline-modules.md"
 
-[retained_runtime.module_overlays.t7_vdin_test]
+[uhd7_retained_runtime.module_overlays.t7_vdin_test]
 revision = "4111568841bd83ca33b9b9a044ed9a7077f95004"
 path = "kernel/drivers/media/platform/amlogic/t7-hdmirx/t7-vdin-test.ko.xz"
 sha256 = "8b9bb37cd3aa3416f45bb79dfb8a7ca3ac62fe3295497e155ee6925baa64b775"
@@ -118,7 +202,7 @@ receipt_path = "uhd7-t7-vdin-test-deployment.json"
 receipt_sha256 = "8b2ccd85a5054d09359b89b26a966ce42f6823e2a6d49f8426fb449bea9207b3"
 evidence = "docs/bringup/2026-11-03-mainline-modules.md"
 
-[retained_runtime.module_overlays.wave5]
+[uhd7_retained_runtime.module_overlays.wave5]
 revision = "4111568841bd83ca33b9b9a044ed9a7077f95004"
 path = "kernel/drivers/media/platform/chips-media/wave5/wave5.ko.xz"
 sha256 = "baf6ffb03ddbae1a4cbd6767980411a3bdd2f51115909ba81cb4a6aa5d4a9755"

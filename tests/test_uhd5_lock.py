@@ -25,9 +25,10 @@ class TestedRuntimeLockTest(unittest.TestCase):
         recipe = ROOT / 'packaging/kernel-edge'
         lock = tomllib.loads((recipe / 'sources.toml').read_text())
         for build_key, runtime_key in [('tested_build', 'retained_runtime'),
+                                       ('uhd7_tested_build', 'uhd7_retained_runtime'),
                                        ('uhd6_tested_build', 'uhd6_retained_runtime')]:
             built = lock[build_key]
-            for name, overlay in lock[runtime_key]['module_overlays'].items():
+            for name, overlay in lock[runtime_key].get('module_overlays', {}).items():
                 with self.subTest(runtime=runtime_key, module=name):
                     path = recipe / overlay['receipt_path']
                     self.assertEqual(hashlib.sha256(path.read_bytes()).hexdigest(),

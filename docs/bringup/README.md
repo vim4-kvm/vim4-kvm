@@ -19,7 +19,7 @@
 
 ## 2026-11-03
 
-- [7.3.1整包试装、boot清理与uhd7恢复](2026-11-03-kernel-731-deploy.md) — kernel deployment video usb；独立目录安装启动及部分门禁通过，M6长文本输入不一致后按要求停止验收并回到uhd7，未推广来源锁。
+- [7.3.1整包部署与boot清理](2026-11-03-kernel-731-deploy.md) — kernel deployment video usb；中途回uhd7确认MCP文本问题也存在于基线，补齐九类验收后留在7.3.1并推广来源锁；音频只验状态，UU只证明官方RTP接收。
 
 - [PiKVM 首帧拆段与冷启动口径](2026-11-03-pikvm-first-frame.md) — pikvm video application board；8.2秒含约6.3秒HTTP启动等待，暖接入0.64–0.70秒，按需关键帧有效。
 

@@ -23,10 +23,11 @@ SSH 为 ssh vim4（khadas@192.168.50.210），串口 /dev/cu.usbserial-100，921
 上限 256 MiB，停用/mask rsyslog，保留原文本日志。排查前一启动用 `journalctl -b -1`；
 预算、实测和回退见 [持久日志部署](../bringup/2026-10-22-p2-journal-deploy.md)。
 
-5.15 内核安装用 tools/kernel-install.sh。7.x 独立保留在 `/boot/edge`，安装匹配的
-Image / 完整模块后，用 `packaging/kernel-edge/register-runtime.py` 核对构建清单并登记；
+5.15 内核安装用 tools/kernel-install.sh。当前7.3.1位于 `/boot/kernels/7.3.1-vim4kvm-uhd7+`，
+旧uhd7仍在 `/boot/edge`；用 `packaging/kernel-edge/register-runtime.py` 核对整包并登记；
 过程见 [双内核集成](../bringup/2026-10-21-dual-kernel-integration.md)。
-面板切换只保存默认启动项并重启，保留 5.15 Image、Stock 与实验入口，不格式化数据。
+面板切换只保存默认启动项并重启，不格式化数据。Stock/VendorVapb1已按用户授权清理，
+保留Default/hdrdual6及实验入口，见[7.3.1部署](../bringup/2026-11-03-kernel-731-deploy.md)。
 重装清空 eMMC，须用户明确确认；
 优先使用 tools/board.py recover 远程进入 OOWOW；系统无法响应时，按住 FUNCTION、
 短按 RESET、松开 FUNCTION（要求 U-Boot 已能运行到按键检测）。若早期循环复位，

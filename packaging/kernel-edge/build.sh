@@ -5,7 +5,7 @@ set -euo pipefail
 source_dir=$(realpath "${1:?kernel source directory required}")
 output=$(realpath -m "${2:?external build directory required}")
 recipe=$(cd "$(dirname "$0")" && pwd)
-config=$(realpath "${3:-$recipe/edge.config}")
+config=$(realpath "${3:-$recipe/731.config}")
 shift $(( $# < 3 ? $# : 3 ))
 validate=0
 lock="$recipe/sources.toml"
@@ -39,9 +39,9 @@ make "${args[@]}" olddefconfig
 python3 - "$lock" "$output/.config" <<'PY'
 import hashlib, pathlib, sys, tomllib
 lock = tomllib.loads(pathlib.Path(sys.argv[1]).read_text())
-expected = lock.get('package', {}).get('config_sha256')
+expected = lock['package']['config_sha256'] if 'package' in lock else lock['tested_build']['config_sha256']
 if expected and hashlib.sha256(pathlib.Path(sys.argv[2]).read_bytes()).hexdigest() != expected:
-    raise SystemExit('Generated configuration differs from candidate lock')
+    raise SystemExit('Generated configuration differs from build lock')
 PY
 if [[ $validate == 1 ]]; then
     echo 'Validated locked source and generated configuration; compilation not requested'

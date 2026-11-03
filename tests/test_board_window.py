@@ -122,13 +122,13 @@ class WindowTests(unittest.TestCase):
 
     def test_uhd7_proof_must_match_retained_lock_and_three_overlays(self):
         lock = window.tomllib.loads((ROOT/'packaging/kernel-edge/sources.toml').read_text())
-        retained = lock['retained_runtime']
+        retained = lock['uhd7_retained_runtime']
         inventory = json.loads((ROOT/'packaging/kernel-edge/uhd7-module-inventory.json').read_text())
         prefix = '/lib/modules/'+retained['release']+'/'
         files = {prefix+name: value['sha256'] for name, value in inventory.items()}
         files.update({'/boot/edge/Image': retained['image_sha256'],
                       '/boot/edge/vim4.dtb': retained['board_dtb_sha256']})
-        ids = dict(lock['tested_build']['module_build_ids'])
+        ids = dict(lock['uhd7_tested_build']['module_build_ids'])
         for name, overlay in retained['module_overlays'].items():
             files[prefix+overlay['path']] = overlay['sha256']
             ids[name] = overlay['build_id']

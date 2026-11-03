@@ -5,7 +5,7 @@
 下方97项及子表是历史BSP全能力审计，不代表当前产品完成率；已合入、已启用、已部署分别核对。
 
 10月30日[NPU/nodebug正式uhd3](../bringup/2026-10-30-uhd3-formal-regression.md)已合入并通过
-三模型字节比对与限定RAM回归；该窗口当时保留uhd1；当前保留运行时已是uhd7，见下方部署来源。
+三模型字节比对与限定RAM回归；该窗口当时保留uhd1；当前运行时已是7.3.1，见下方部署来源。
 
 目标是达到 VIM4 厂商 5.15 实际适用的全部功能，**且同条件性能不低于5.15**。显示、解码、采集、音频、编码及其
 DMA/电源生命周期进入 DRM/KMS、V4L2、ASoC、genpd 等主线框架，持续跟进新 Linux；
@@ -16,9 +16,10 @@ DMA/电源生命周期进入 DRM/KMS、V4L2、ASoC、genpd 等主线框架，持
 并在记录中写明5.15的做法、错误原因与7.3的选择，同时告知用户。
 
 2026-10-23 上板证据重计，10-24 完成整合收尾；[统一合入记录](../bringup/2026-10-23-mainline-integration.md)
-区分源码合入、一次性启动验证与正式部署。当前正式源码为 `4111568841bd`，uhd7 Image 来源为 `52b95c8493264`，
-HDMI RX/VDIN/Wave5 三模块已持久覆盖并重启核验。来源与加载身份见
-[11月3日部署](../bringup/2026-11-03-mainline-modules.md)及[运行时锁](../../packaging/kernel-edge/sources.toml)。
+区分源码合入、一次性启动验证与正式部署。当前正式来源与完整运行时均为 `25110086de2ef`，
+release `7.3.1-vim4kvm-uhd7+`；不再使用旧uhd7的三模块overlay。
+来源、九类验收及明确边界见[7.3.1部署](../bringup/2026-11-03-kernel-731-deploy.md)与
+[运行时锁](../../packaging/kernel-edge/sources.toml)。旧 `/edge` 和完整uhd7模块仍保留，未创建备份。
 厂商固定来源仍为 Linux `80a07ad5406d` / common_drivers `4cfb128d36f8`；
 [证据索引](sources.md)中的 E0–E8 保留原审计快照，不将旧行号套在新 HEAD。
 增量取自 [Wave5 尺寸窗口](../bringup/2026-10-23-wave5-parity-window.md)、
