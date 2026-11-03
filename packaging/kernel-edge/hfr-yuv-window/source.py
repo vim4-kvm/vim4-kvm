@@ -2,6 +2,7 @@
 import functools
 from http.server import SimpleHTTPRequestHandler, ThreadingHTTPServer
 import json
+import plistlib
 import re
 import secrets
 import shlex
@@ -77,7 +78,19 @@ class Source:
         if not any(r["label"] == "Terminal" for r in self.labels()):
             raise RuntimeError("MCP screenshot did not identify Terminal")
 
-    def bootstrap(self, sha):
+    def bootstrap(self, sha, gadget_ids):
+        # The cable assignment is M6. Cross-check the receiving Mac's USB
+        # tree before even the first Finder shortcut, while HID is still idle.
+        vendor, product = (int(value, 16) for value in gadget_ids.split())
+        nodes = plistlib.loads(subprocess.check_output(["ioreg", "-a", "-p", "IOUSB", "-l"], timeout=8))
+        devices = []
+        while nodes:
+            node = nodes.pop()
+            nodes.extend(node.get("IORegistryEntryChildren", []))
+            if "idVendor" in node:
+                devices.append((node["idVendor"], node.get("idProduct")))
+        if not devices or (vendor, product) in devices:
+            raise RuntimeError("unable to exclude the receiving Mac as the USB HID target")
         if not self.mcp.idle(self.evidence)["idle"]:
             raise RuntimeError("M6 screen is active, deferring HID")
         self.open_terminal()

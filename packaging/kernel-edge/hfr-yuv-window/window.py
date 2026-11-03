@@ -181,7 +181,9 @@ def run():
         board("original.txt", ["preflight"])
         key = json.loads(ssh("sudo -n cat /var/lib/one-kvm/mcp/credentials.json"))["api_key"]
         source = Source(BW["MCP"](URL + "/api/mcp", key), BUILD, out, ip)
-        source.bootstrap(BW["sha"](BUILD / "source.tar"))
+        gadget = "/sys/kernel/config/usb_gadget/kvm"
+        gadget_ids = ssh(f"sudo -n cat {gadget}/idVendor {gadget}/idProduct")
+        source.bootstrap(BW["sha"](BUILD / "source.tar"), gadget_ids)
         saved = True
         reference = receive("baseline", 10, 55, (3840, 2160))
         activated = True
