@@ -141,7 +141,7 @@ def run():
         board(label + "-caps.txt", ["caps"], 15)
         check(not BW["source_hdr"]("vim4"), "expected SDR")
 
-    files = [APP, *(PLUGINS + "/" + p.name for p in PAYLOAD.glob("*.so")),
+    files = [APP, *(PLUGINS + "/" + p for p in ("libgstvim4wave5.so", "libgstvim4hevc10.so", "libgstvideo4linux2.so")),
              "/boot/extlinux/extlinux.conf", "/etc/vim4-kvm/runtime-build.json",
              "/var/lib/vim4-kvm/edid/active.bin", "/var/lib/vim4-kvm/edid/active.name",
              "/sys/kernel/debug/fe398000.hdmi-receiver/edid",
@@ -167,6 +167,7 @@ def run():
             "grep -Eiq '^default[[:space:]]+FullKvm[[:space:]]*$' /boot/extlinux/extlinux.conf && "
             "test -z \"$(sudo -n cat /sys/kernel/config/usb_gadget/kvm/functions/mass_storage.disk0/lun.0/file)\"")
         oldboot = ssh("cat /proc/sys/kernel/random/boot_id").strip()
+        installed_plugins = ssh("ls -1 " + PLUGINS)
         save("dmesg-before", ssh("sudo -n dmesg"))
         tunnel = connect()
         save("initial-config.json", api("config/video"))
@@ -282,6 +283,7 @@ def run():
                         save("reboot-transport", str(error))
                     BW["ready"]("vim4", expected=RELEASE, old_boot=oldboot, timeout=90)
                     BW["verify_baseline"](baseline, save("restored.json", BW["identity"]("vim4", files)))
+                    check(ssh("ls -1 " + PLUGINS) == installed_plugins, "installed plugin inventory changed")
                     ssh("systemctl is-active one-kvm vim4-kvm-hdmi vim4-manager vim4-kvm-gadget")
                     save("restored-exe", ssh("sha256sum /proc/$(systemctl show -p MainPID --value one-kvm)/exe"))
                     check((out / "restored-exe").read_text().split()[0] == baseline["files"][APP], "restored process mismatch")

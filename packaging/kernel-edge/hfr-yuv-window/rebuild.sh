@@ -17,6 +17,7 @@ orb -m vim4-build bash -eu "$here/kernel.sh" "$kernel" "$stage"
 docker run --rm --network none -v "$stage:/work" -v "$PWD/packaging:/recipe:ro" \
     -v "$b/src/archive.xz:/archive.xz:ro" -w /work vim4-kvm-builder:ubuntu24.04 bash -ec '
     make -C wave5 -j4 libgstvim4wave5.so
+    if test -f wave5/gstvim4rate.c; then make -C wave5 -j4 libgstvim4rate.so; fi
     make -C hdr libgstvim4hevc10.so
     cc -O2 -Wall -Wextra -Werror /recipe/kernel-edge/hfr-yuv-window/raw-pool.c -o raw-pool
     cd /tmp

@@ -11,6 +11,14 @@ export GST_REGISTRY=$PWD/registry.bin
 manager=/usr/libexec/vim4-manager-helper
 active=/var/lib/vim4-kvm/edid/active.bin
 v4l2-ctl() { LD_LIBRARY_PATH="$PWD" ./v4l2-ctl "$@"; }
+private_directory() {
+    local target=$1 upper=$2
+    chown --reference="$target" "$upper"
+    chmod --reference="$target" "$upper"
+    mkdir "$upper.lower" "$upper.work"
+    mount --bind "$target" "$upper.lower"
+    mount -t overlay overlay -o "lowerdir=$PWD/$upper.lower,upperdir=$PWD/$upper,workdir=$PWD/$upper.work" "$target"
+}
 device() {
     local found=()
     for name in /sys/class/video4linux/video*/name; do
@@ -51,9 +59,8 @@ activate)
     systemctl stop "$unit" vim4-kvm-hdmi
     # One-KVM saves output FPS/codec and the GStreamer registry in its data
     # directory. Keep those writes private until the normal recovery boot.
-    mkdir lower upper work
-    mount --bind /var/lib/one-kvm lower
-    mount -t overlay overlay -o "lowerdir=$PWD/lower,upperdir=$PWD/upper,workdir=$PWD/work" /var/lib/one-kvm
+    mkdir data-upper
+    private_directory /var/lib/one-kvm data-upper
     rmmod wave5 t7_vdin_test t7_hdmirx
     for name in t7-hdmirx t7-vdin-test wave5; do
         mapfile -t parameters < "${name//-/_}.params"
@@ -64,7 +71,12 @@ activate)
         test "$(tail -c 20 "$note" | od -An -tx1 | tr -d ' \n')" = "$localid"
     done
     mount --bind "$PWD/one-kvm" "$app"
-    for p in *.so; do mount --bind "$PWD/$p" "$plugins/$p"; done
+    # A new factory (vim4ptsrate) has no installed file to bind over.
+    mkdir plugin-upper
+    install -m 0644 ./*.so plugin-upper/
+    private_directory "$plugins" plugin-upper
+    for p in *.so; do cmp "$p" "$plugins/$p"; done
+    if test -f libgstvim4rate.so; then gst-inspect-1.0 vim4ptsrate; fi
     systemctl start vim4-kvm-hdmi
     "$manager" edid-select RTK-CONTROL
     cmp "$active" "$rx/edid"

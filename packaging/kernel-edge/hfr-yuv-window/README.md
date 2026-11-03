@@ -1,7 +1,7 @@
 # HFR + YUV444 uhd7 临时窗口
 
 阶段一只构建、验证本机文件。阶段二须协调者明确发出「开始上板」。
-当前产物基于第二轮复审输入，第三轮修订完成后须重跑构建并更新 SHA。
+当前产物基于第二轮复审输入，协调者给出简化后的最终提交后重跑构建并核对 SHA。
 
 ## 入口
 
@@ -45,7 +45,8 @@ tools/board-queue run --who hfr-yuv-window --purpose combined --max-min 30 -- \
 
 三个模块从 /tmp insmod，沿用原模块参数，比较实际notes与候选ELF。
 程序覆盖目标由已安装launcher对应的usb-ffc6130路径固定，启动前核对当前进程身份。
-候选三个GStreamer插件bind到r14e私有路径。One-KVM数据目录使用临时overlay，
+候选GStreamer插件作为r14e私有目录的临时overlay，可加入原目录没有的libgstvim4rate.so。
+One-KVM数据目录也使用临时overlay，
 帧率、编码配置、插件缓存的写入随重启消失。所有已安装模块文件与启动文件原样保留。
 结束和异常均安排一次正常重启，逐项比较原文件/notes并验证新boot ID。
 SSH中断后仍检查恢复，不以SSH命令退出码代替实际boot ID。
@@ -68,6 +69,6 @@ HFR码流在板外用ffprobe读取profile/level/像素格式、ffmpeg解码并�
 PTS日志用于逐秒和慢转快第一完整秒输出数统计，网页getStats仅证明接收解码推进。
 YUV444读取的是原始Y/Cb/Cr，编码器输出仍为420。
 
-同一v4l2src持设备打开重新协商的复审回归由插件宿主夹具覆盖，本脚本的caps短采每次
-重新打开。自然同尺寸range变化、未知基准控件−1、PQ、物理拔线、音频和长稳均未承诺覆盖。
+本脚本的普通v4l2src caps短采每次重新打开，按最终驱动和插件实际能力记录。
+自然同尺寸range变化、未知基准控件−1、PQ、物理拔线、音频和长稳均未承诺覆盖。
 源端4K HiDPI、Variable菜单与候选服务恢复均待实际板窗确认。
