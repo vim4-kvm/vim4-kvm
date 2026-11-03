@@ -40,6 +40,7 @@ controls；`ffmpeg-vm.py` 只把显式输入通过 stdin 送到构建 VM 的 FFm
 `register-runtime.py install PACKAGE` 将已登记 Mainline 升级至下一日期 release；
 严格核对包清单/完整模块和boot/根分区空间，不创建额外备份。
 新boot文件写独立release目录，兼容入口原子替换，最后原子切换Mainline LINUX/FDT。
+主线release由`board/vim4boot.py:is_mainline_release`统一判断，shell调用该模块的命令入口；随board组件及统一内核包安装。
 详见[构建与升级合同](kernel-mainline.md#正式构建与整包升级)。
 
 `tools/hdmi-source-mode.swift`：macOS编译，运行在HDMI信源机；list输出显示器与模式ID，

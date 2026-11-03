@@ -2,6 +2,8 @@ import fcntl
 import importlib.util
 import os
 from pathlib import Path
+import subprocess
+import sys
 import tempfile
 import unittest
 from unittest.mock import patch
@@ -202,6 +204,9 @@ class PackagingTest(unittest.TestCase):
 
         with patch.object(package, 'ROOT', root), patch.object(package, 'copy', side_effect=copy):
             package.board(stage)
+        result = subprocess.run([sys.executable, str(stage / 'usr/lib/vim4-kvm/python/vim4boot.py'),
+                                 '7.3.1-vim4-20261103.10'], capture_output=True, text=True)
+        self.assertEqual(result.returncode, 0, result.stderr)
         module = stage / 'usr/lib/vim4-kvm/python/vim4media.py'
         installed = importlib.util.spec_from_file_location('installed_vim4media', module)
         imported = importlib.util.module_from_spec(installed)

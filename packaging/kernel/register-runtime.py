@@ -22,6 +22,9 @@ import sys
 import tarfile
 import tempfile
 
+sys.path[:0] = ['/usr/lib/vim4-kvm/python', str(Path(__file__).resolve().parents[2] / 'board')]
+from vim4boot import is_mainline_release
+
 BOOT_FILES = ('Image', 'vim4.dtb', 'panfrost.dtb', 'config', 'Module.symvers', 'vmlinux.btf', 'manifest.json')
 
 
@@ -124,8 +127,6 @@ def boot_profile(source, legacy_services=(), *, version, framebuffer_console=Fal
 def update_boot_entry(text, existing, previous, full):
     if existing == full:
         return text
-    if existing is None:
-        return text + '\nLABEL Mainline\n' + ''.join(f'  {key} {value}\n' for key, value in full.items())
     # Upgrade the earlier exact profile without factory-MAC handoff. Other
     # administrator changes still require an explicit deployment review.
     before_mac = {**full, 'APPEND':' '.join(w for w in full['APPEND'].split()
@@ -162,11 +163,10 @@ def inventory(args):
 def register(args):
     if os.geteuid() != 0:
         raise ValueError('Registration requires root')
-    sys.path.insert(0, '/usr/lib/vim4-kvm/python')
     import vim4boot as boot
     proof = json.loads(args.proof.read_text())
     version = proof['release']
-    if version != '7.3.1-vim4kvm-uhd7+' and not re.fullmatch(r'\d+\.\d+(?:\.\d+)?-vim4-\d{8}(?:\.(?:[2-9]|[1-9]\d+))?', version):
+    if not is_mainline_release(version):
         raise ValueError('No validated application launcher for this kernel release')
     prefix = '/kernels/' + version
     if digest(boot.BOOT / prefix.lstrip('/') / 'Image') != proof['image_sha256']:
@@ -195,10 +195,10 @@ def register(args):
         legacy.append('rc-local.service')
     previous = boot_profile(source, version=version)
     framebuffer_console = getattr(args, 'framebuffer_console', False)
-    if framebuffer_console and entries.get('Mainline') == boot_profile(source, legacy, version=version):
+    if framebuffer_console and source == boot_profile(source, legacy, version=version):
         previous = boot_profile(source, legacy, version=version)
     full = boot_profile(source, legacy, version=version, framebuffer_console=framebuffer_console)
-    text = update_boot_entry(original, entries.get('Mainline'), previous, full)
+    text = update_boot_entry(original, source, previous, full)
     entries = boot.boot_entries(text)
     vendor = release(boot.BOOT / entries['Vendor']['LINUX'].lstrip('/'))
     if not vendor.startswith('5.15.'):
@@ -252,7 +252,6 @@ def install(args):
     """Stage a complete release, then atomically switch Mainline; preserve the default."""
     if os.geteuid() != 0:
         raise ValueError('Installation requires root')
-    sys.path.insert(0, '/usr/lib/vim4-kvm/python')
     import vim4boot as boot
     original = boot.CONFIG.read_bytes()
     entries = boot.boot_entries(original.decode())
@@ -280,7 +279,7 @@ def install(args):
                 raise ValueError('Package hash mismatch: ' + name)
         report = json.loads((root/'manifest.json').read_text())
         version = report['release']
-        if not re.fullmatch(r'\d+\.\d+(?:\.\d+)?-vim4-\d{8}(?:\.(?:[2-9]|[1-9]\d+))?', version) or release(root/'Image') != version:
+        if not is_mainline_release(version) or release(root/'Image') != version:
             raise ValueError('Unexpected unified kernel Image')
         with tarfile.open(root/'modules.tar.gz') as archive:
             actual = {}

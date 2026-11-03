@@ -125,6 +125,9 @@ def main():
     launcher.write_text(text.replace('|)', ')'))
     shutil.copyfile(recipe.parents[1]/'board/vim4-board-runtime',
                     output/'runtime/usr/libexec/vim4-board-runtime')
+    boot_module = output/'runtime/usr/lib/vim4-kvm/python/vim4boot.py'
+    boot_module.parent.mkdir(parents=True, exist_ok=True)
+    shutil.copyfile(recipe.parents[1]/'board/vim4boot.py', boot_module)
     for source, target in (('one-kvm-edge-prepare', 'vim4-mainline-prepare'),
                            ('one-kvm-edge-usb-prepare', 'vim4-mainline-gadget-prepare')):
         shutil.copyfile(recipe/source, output/'runtime/usr/libexec'/target)

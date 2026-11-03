@@ -134,7 +134,12 @@ test.run_install(root,test.board(root),root/'package.tar.gz',die=sys.argv[2])
         (root / 'lib').symlink_to(usr / 'lib', target_is_directory=True)
         helper = usr / 'libexec/vim4-board-runtime'
         helper.parent.mkdir(parents=True)
-        helper.write_text((Path(runtime.__file__).parents[2]/'board/vim4-board-runtime').read_text())
+        source = Path(runtime.__file__).parents[2] / 'board'
+        helper.write_text((source / 'vim4-board-runtime').read_text().replace(
+            '/usr/lib/vim4-kvm/python/vim4boot.py', str(usr / 'lib/vim4-kvm/python/vim4boot.py')))
+        module = usr / 'lib/vim4-kvm/python/vim4boot.py'
+        module.parent.mkdir(parents=True)
+        module.write_bytes((source / 'vim4boot.py').read_bytes())
         helper.chmod(0o755)
         firmware = usr / 'lib/firmware/updates' / CURRENT / 'brcm/brcmfmac43752-sdio.khadas,vim4.bin'
         firmware.parent.mkdir(parents=True)
@@ -158,6 +163,9 @@ test.run_install(root,test.board(root),root/'package.tar.gz',die=sys.argv[2])
         new_helper.parent.mkdir(parents=True)
         new_helper.write_text(helper.read_text() + '\n# candidate copy\n')
         new_helper.chmod(0o755)
+        new_module = payload / 'runtime/usr/lib/vim4-kvm/python/vim4boot.py'
+        new_module.parent.mkdir(parents=True)
+        new_module.write_bytes(module.read_bytes())
         inventory = {str(p.relative_to(payload)): runtime.digest(p) for p in payload.rglob('*') if p.is_file()}
         if bad_hash:
             inventory['Image'] = '0'*64

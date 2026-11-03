@@ -126,6 +126,14 @@ class TrialTest(unittest.TestCase):
             with self.assertRaises(ValueError):
                 once.validate_release(release)
 
+    def test_date_candidates_use_the_runtime_release_contract(self):
+        for suffix in ('', '.2', '.10'):
+            once.validate_release('7.3.1-vim4-20261103' + suffix)
+        for release in ('7.3.1-vim4-20261103.1', '7.3.1-vim4-20261103.02',
+                        '7.3.1-vim4-2026110', '7.3.1-vim4-202611030'):
+            with self.subTest(release=release), self.assertRaises(ValueError):
+                once.validate_release(release)
+
     def test_filesystem_uuid_needs_verified_partition_for_no_initramfs_boot(self):
         state = dict(cmdline='root=UUID=filesystem rw rootflags=data=ordered')
         with self.assertRaisesRegex(ValueError, 'root_partuuid proof'):
