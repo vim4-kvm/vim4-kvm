@@ -97,9 +97,28 @@ M6 已切回原 mode 88 并读回物理 3840×2160、60 Hz。两档 Variable 变
 PTS/Vtotal、source-change、网页解码及未知基准的本地 60 fps 预算均无本轮实测数据。
 菜单截图、OCR 和源端回执在 `logs/hfr-yuv-vrr-followup/` 的 `1080-menu.jpg`、`4k-menu.jpg` 及配套文件。
 
+## VRR 补测 2
+
+本次以板上安装的 RTK-CONTROL 为基线，从 hfr120 工作树运行 `tools/vrr-edid.py`，
+参数为 `--protocol hdmi-forum --mode remote --receiver 48 120 --request 48 120`。
+安装表已含 HDMI Forum 48–120 Hz，HF-VSDB 载荷为 `d8 5d c4 01 78 88 01 00 30 78`。
+生成表与安装表 **384 字节完全一致**，见上文 SHA-256。三个 128 字节块的校验和均为 0（模 256），
+1080p120/4K60 时序和音频块逐字节相同。AMD FreeSync 40–61 Hz 来自历史 256 字节物理表
+（SHA-256 前缀 `32c6a608`）。当前预设与历史表的对应关系见 [EDID 文件说明](../../board/edid/README.md)。
+
+**HDMI Forum VRR EDID 下 M6 仍不提供 Variable。** 票 648 经 manager 的 `edid-select RTK-CONTROL`
+重新发布，核对生成表、安装预设、保存表及 RX 读回的全部 384 字节。经 One-KVM MCP 切至原生 1080p、
+回读 mode 86，RTK 菜单勾选 120 Hz，另有 100、60、50、30、25、24 Hz。截图为
+`logs/hfr-yuv-vrr2/1080-menu.jpg`。此票止于源端准入，未加载候选，未测 VRR 变频或 4K。
+
+随即由 manager 写回 RTK-CONTROL，再次逐字节读回通过。M6 确认恢复 mode 88、物理 4K60。
+原 uhd7 身份及保护文件前后一致，boot ID 未变，四个服务逐个 active，UDC configured。
+票 648 持板 **87.216 秒**（含恢复），全部 13 张票累计 **1442.816 秒（24 分 2.816 秒）**。
+离线比对、发布与恢复读回、M6 回执、前后身份及队列时间在 `logs/hfr-yuv-vrr2/`。
+
 ## 板时与恢复
 
-共享队列 634–645 共 **12 张板票，1355.600 秒（22 分 35.600 秒）**，含所有失败尝试及恢复；最长 340.312 秒。
+首轮共享队列 634–645 共 **12 张板票，1355.600 秒（22 分 35.600 秒）**，含所有失败尝试及恢复；最长 340.312 秒。
 未按原设想一次完成。每次重排扣除已用秒数，并为恢复保留 5 分钟。
 
 | 票号 | 实际秒数（按票号顺序） | 发生的事 |

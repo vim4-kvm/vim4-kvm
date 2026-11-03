@@ -19,7 +19,7 @@
 
 ## 2026-11-02
 
-- [uhd7 固定高刷与原生 YUV444 窗口](2026-11-02-hfr-yuv-window.md) — kernel video board；高刷吞吐、QHD AVC 限额、444 单像素色度通过，接收无丢帧，图样跳号强推断来自信号源呈现；QHD HEVC SPS 低报，M6 两档均无 Variable，VRR 未测
+- [uhd7 固定高刷与原生 YUV444 窗口](2026-11-02-hfr-yuv-window.md) — kernel video board；高刷吞吐、QHD AVC 限额、444 色度通过，接收无丢帧，图样跳号强推断来自信号源；QHD HEVC SPS 低报，重发 HDMI Forum 48–120 Hz EDID 后 M6 仍无 Variable
 
 - [uhd7 正式构建与 BCM43752 SDIO 部署](2026-11-02-wifi-sdio-formal.md) — kernel network board deployment；同次完整模块、eMMC、独立中断、FullKvm 重启及安装后反向 TCP
 
