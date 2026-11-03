@@ -37,10 +37,9 @@ controls；`ffmpeg-vm.py` 只把显式输入通过 stdin 送到构建 VM 的 FFm
 `--uhd7-launcher` 读取已安装的 USB overlay 启动器并为新 release 保留 r14e 应用选择，
 校验外部模块ABI/产物与r13用户态来源，生成完整清单；不访问板子、不部署、不含vendor blob。
 
-`register-runtime.py install --backup NEW_DIRECTORY` 支持FullKvm/uhd7到7.3.1完整迁移；
-严格核对包清单/完整模块和boot/根分区空间，再备份启动/登记/edge/完整旧模块（含overlay）及入口。
+`register-runtime.py install PACKAGE` 支持FullKvm/uhd7到7.3.1完整迁移；
+严格核对包清单/完整模块和boot/根分区空间，不创建额外备份。
 新boot文件写独立release目录，兼容入口原子替换，最后原子切换FullKvm LINUX/FDT。
-`rollback BACKUP_DIRECTORY` 只恢复实际修改的启动配置/登记/入口，保留旧模块树并sync，不重启。
 详见[迁移合同](kernel-edge.md#uhd7-到新整包候选)。
 
 `tools/hdmi-source-mode.swift`：macOS编译，运行在HDMI信源机；list输出显示器与模式ID，

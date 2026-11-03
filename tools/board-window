@@ -73,14 +73,12 @@ def require_board():
     return queue, item['ticket']
 
 
-def identity(host, files, *, include_runtime=True, dt_properties=()):
+def identity(host, files, *, dt_properties=()):
     script = """import hashlib,json,pathlib,platform,struct,subprocess
 files=FILES
-include_runtime=INCLUDE_RUNTIME
 properties=PROPERTIES
 if platform.release()=='7.3.0-vim4kvm-uhd7+' and files:
  files=sorted(set(files)|{str(p) for root in ('/boot/edge','/lib/modules/'+platform.release()) for p in pathlib.Path(root).rglob('*') if p.is_file() and not p.is_symlink()}|{'/boot/extlinux/extlinux.conf','/etc/vim4-kvm/kernels.json','/etc/vim4-kvm/runtime-build.json'}|{'/usr/libexec/'+n for n in ('vim4-board-runtime','vim4-kvm-run','vim4-mainline-prepare','vim4-mainline-gadget-prepare')})
-if not include_runtime: files=[p for p in files if not p.startswith(('/usr/','/opt/'))]
 data=pathlib.Path('/sys/kernel/notes').read_bytes(); offset=0; ids=[]
 while offset+12<=len(data):
  n,d,k=struct.unpack_from('<III',data,offset); offset+=12
@@ -102,14 +100,21 @@ if platform.release()=='7.3.0-vim4kvm-uhd7+' and files:
  result['applications']=[n for n in ('one-kvm','nanokvm','vim4-kvm','vim4-pikvm') if subprocess.run(['systemctl','is-active','--quiet',n]).returncode==0]
  result['dt_properties']={n:pathlib.Path('/sys/firmware/devicetree/base',n).read_bytes().hex() for n in set(('model','compatible','soc/bus@fe000000/gpu@400000/compatible'))|set(properties)}
 print(json.dumps(result))
-""".replace('FILES', repr(files)).replace('INCLUDE_RUNTIME', repr(include_runtime)).replace('PROPERTIES', repr(list(dt_properties)))
+""".replace('FILES', repr(files)).replace('PROPERTIES', repr(list(dt_properties)))
     return json.loads(ssh_python(host, script))
 
 
 def verify_persistent_files(host, proof):
+    """Recovery depends on saved files, not the candidate's loaded hardware drivers."""
     once = load('persistent_once', ROOT / 'packaging/kernel-edge/display-once.py')
     expected = once.persistent_baseline_files(proof['files'])
-    actual = identity(host, list(proof['files']), include_runtime=False)['files']
+    script = """import hashlib,json
+files=FILES
+def file_hash(path):
+ with open(path,'rb') as source: return hashlib.file_digest(source,'sha256').hexdigest()
+print(json.dumps({p:file_hash(p) for p in files}))
+""".replace('FILES', repr(list(expected)))
+    actual = json.loads(ssh_python(host, script))
     if actual != expected:
         raise ValueError('default persistent files changed; refuse automatic boot')
 

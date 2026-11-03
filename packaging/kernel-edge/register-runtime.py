@@ -7,8 +7,7 @@ register build.json [--source-label OneKvmTest] [--framebuffer-console]
 Registration requires root on the board after installing the matching Image,
 DTB and complete module set. It preserves the current default and data. It does
 not install files, enable applications, reboot or promise automatic fallback.
-install accepts a sealed complete package; uhd7 -> 7.3.1 requires --backup.
-rollback restores that complete snapshot and syncs without rebooting.
+install stages a sealed complete package before atomically switching FullKvm.
 """
 import argparse
 import gzip
@@ -40,49 +39,6 @@ def check_space(edge, payload, *, separate_directory=False):
     return required
 
 
-def save_rollback(destination, targets, *, preserved=()):
-    """Snapshot whole module trees, including overlays and depmod metadata."""
-    destination.mkdir(parents=True, exist_ok=False)
-    records = []
-    for index, target in enumerate(targets):
-        target = Path(target)
-        stored = destination / str(index)
-        present = target.exists()
-        hashes = {}
-        if present:
-            if target.is_dir():
-                shutil.copytree(target, stored, symlinks=True)
-                hashes = {str(p.relative_to(stored)): digest(p) for p in stored.rglob('*')
-                          if p.is_file() and not p.is_symlink()}
-            else:
-                shutil.copy2(target, stored)
-                hashes = {'.': digest(stored)}
-        records.append(dict(target=str(target), stored=str(index), present=present,
-                            directory=target.is_dir(), hashes=hashes,
-                            restore=target not in preserved))
-    (destination / 'rollback.json').write_text(json.dumps(records, indent=2) + '\n')
-    os.sync()
-
-
-def restore_rollback(destination):
-    records = json.loads((destination / 'rollback.json').read_text())
-    # Check all backup bytes before changing any installed file.
-    for record in records:
-        stored = destination / record['stored']
-        for name, expected in record['hashes'].items():
-            if digest(stored if name == '.' else stored / name) != expected:
-                raise ValueError('Rollback backup hash mismatch: ' + record['target'])
-    for record in records:
-        if not record['restore']:
-            continue
-        target, stored = Path(record['target']), destination / record['stored']
-        if record['present']:
-            atomic_copy(stored, target)
-        else:
-            target.unlink(missing_ok=True)
-    os.sync()
-
-
 def atomic_copy(source, destination):
     """Keep the previous executable intact until its complete replacement is durable."""
     with tempfile.NamedTemporaryFile(prefix='.' + destination.name + '-',
@@ -103,25 +59,13 @@ def atomic_copy(source, destination):
         staging.unlink(missing_ok=True)
 
 
-def preflight_root_space(backup, boot_root, targets, module_bytes, runtime_files, registry_bytes, firmware, boot_bytes):
-    if backup is None:
-        raise ValueError('Complete upgrade requires --backup NEW_DIRECTORY')
-    if backup.exists():
-        raise ValueError('Backup directory must be new')
-    location = backup.resolve()
-    parent = next(p for p in location.parents if p.exists())
-    if location.is_relative_to(boot_root.resolve()) or parent.stat().st_dev != Path('/').stat().st_dev:
-        raise ValueError('Backup must be on the root filesystem and outside /boot')
-    backup_bytes = 0
-    for target in targets:
-        paths = target.rglob('*') if target.is_dir() else [target]
-        backup_bytes += sum(p.stat().st_size + 4096 for p in paths if p.is_file())
+def preflight_root_space(boot_root, module_bytes, runtime_files, firmware, boot_bytes):
     runtime_bytes = sum(p.stat().st_size + 4096 for p in runtime_files)
-    required = backup_bytes + module_bytes + runtime_bytes + registry_bytes + firmware.stat().st_size + 16384
+    required = module_bytes + runtime_bytes + firmware.stat().st_size + 16384
     if boot_root.stat().st_dev == Path('/').stat().st_dev:
         required += boot_bytes
-    if shutil.disk_usage(parent).free < required:
-        raise ValueError('Insufficient root space for backup, complete modules and runtime')
+    if shutil.disk_usage(Path('/')).free < required:
+        raise ValueError('Insufficient root space for complete modules, runtime and firmware')
 
 
 def upgrade_registration(boot, original, report, payload, kernel_dir):
@@ -147,12 +91,6 @@ def upgrade_registration(boot, original, report, payload, kernel_dir):
                       for name, value in report['modules'].items()})
     current.update(release=report['release'], boot=full, artifacts=artifacts)
     return text, records
-
-
-def rollback(args):
-    if os.geteuid() != 0:
-        raise ValueError('Rollback requires root')
-    restore_rollback(args.backup)
 
 
 def digest(path):
@@ -386,20 +324,12 @@ def install(args):
             if digest(firmware) != '3ff292ab216c13ce3019f6b4cc4234a15a81c8b553014b122f748efd9465676d':
                 raise ValueError('Expected the qualified BCM43752 .217 firmware')
         if version == CANDIDATE:
-            backup = getattr(args, 'backup', None)
             kernel_dir = boot.BOOT / 'kernels' / version
             if kernel_dir.exists():
                 raise ValueError('Use a new candidate boot directory; previous staging is retained')
             text, records = upgrade_registration(boot, original, report, root, kernel_dir)
             registration = (json.dumps(records, indent=2) + '\n').encode()
-            targets = [boot.CONFIG, boot.MANIFEST, *(edge / name for name in boot_files),
-                       Path('/lib/modules') / saved]
-            targets += [Path('/usr') / p.relative_to(root / 'runtime/usr')
-                        for p in runtime_files]
-            preflight_root_space(backup, boot.BOOT, targets, module_bytes,
-                                 runtime_files, len(registration), firmware, boot_bytes)
-            preserved = [*(edge / name for name in boot_files), Path('/lib/modules') / saved]
-            save_rollback(backup, targets, preserved=preserved)
+            preflight_root_space(boot.BOOT, module_bytes, runtime_files, firmware, boot_bytes)
         if upgrade:
             destination = updates / version / name
             destination.parent.mkdir(parents=True, exist_ok=True)
@@ -473,12 +403,9 @@ def main():
     package = commands.add_parser('install')
     package.add_argument('archive', type=Path)
     package.add_argument('--source-label', default='OneKvmTest')
-    package.add_argument('--backup', type=Path, help='New directory for complete pre-upgrade rollback')
-    restore = commands.add_parser('rollback')
-    restore.add_argument('backup', type=Path)
     args = parser.parse_args()
     try:
-        {'inventory': inventory, 'register': register, 'install': install, 'rollback': rollback}[args.command](args)
+        {'inventory': inventory, 'register': register, 'install': install}[args.command](args)
     except (ValueError, OSError, KeyError) as failure:
         parser.exit(1, str(failure) + '\n')
 

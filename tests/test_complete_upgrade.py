@@ -1,4 +1,4 @@
-"""Exercise the installed uhd7 -> complete candidate -> uhd7 boundary offline."""
+"""Exercise complete installation and interrupted staging without board access."""
 import io
 import json
 from pathlib import Path
@@ -16,7 +16,7 @@ from test_register_runtime import runtime, boot
 
 class CompleteUpgradeTest(unittest.TestCase):
     def test_process_death_at_each_install_stage_retains_a_bootable_uhd7(self):
-        phases = ['backup', 'firmware', 'modules', *runtime.BOOT_FILES, 'runtime', 'registry', 'boot-commit', 'boot-rename', 'committed']
+        phases = ['firmware', 'modules', *runtime.BOOT_FILES, 'runtime', 'registry', 'boot-commit', 'boot-rename', 'committed']
         for phase in phases:
             with self.subTest(phase=phase), tempfile.TemporaryDirectory() as directory:
                 root = Path(directory).resolve()
@@ -68,45 +68,27 @@ test.run_install(root,test.board(root),root/'package.tar.gz',die=sys.argv[2])
                     archive.add(payload, arcname='.')
                 with self.assertRaisesRegex(ValueError, 'file inventory'):
                     self.run_install(root, board, package)
-                self.assertFalse((root/'backup').exists())
                 self.assertFalse((board.BOOT/'kernels').exists())
                 self.assertNotIn('# candidate copy', helper.read_text())
 
-    def test_root_space_and_backup_location_are_checked_before_persistent_writes(self):
-        for location in ('low-space', 'boot', 'other-filesystem'):
-            with self.subTest(location=location), tempfile.TemporaryDirectory() as directory:
-                root = Path(directory).resolve()
-                board, package, modules, helper = self.fixture(root)
-                backup = board.BOOT/'backup' if location == 'boot' else root/'backup'
-                other = root/'other-device'
-                other.mkdir()
-                if location == 'other-filesystem':
-                    backup = other/'backup'
-                original_stat = Path.stat
-                def device_stat(path, *args, **kwargs):
-                    info = original_stat(path, *args, **kwargs)
-                    if path == other:
-                        fields = list(info)
-                        fields[2] += 1
-                        return os.stat_result(fields)
-                    return info
-                def free(path):
-                    return SimpleNamespace(free=10**9 if Path(path) == board.BOOT/'edge' else 0)
-                with patch.object(runtime.shutil, 'disk_usage', side_effect=free), patch.object(Path, 'stat', device_stat):
-                    with self.assertRaisesRegex(ValueError, 'Insufficient root|root filesystem'):
-                        self.run_install(root, board, package, backup=backup)
-                self.assertFalse(backup.exists())
-                self.assertFalse((board.BOOT/'kernels').exists())
-                self.assertFalse(modules.with_name(runtime.CANDIDATE).exists())
-                self.assertNotIn('# candidate copy', helper.read_text())
+    def test_insufficient_root_space_is_rejected_before_persistent_writes(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory).resolve()
+            board, package, modules, helper = self.fixture(root)
+            def free(path):
+                return SimpleNamespace(free=10**9 if Path(path) == board.BOOT/'edge' else 0)
+            with patch.object(runtime.shutil, 'disk_usage', side_effect=free):
+                with self.assertRaisesRegex(ValueError, 'Insufficient root'):
+                    self.run_install(root, board, package)
+            self.assertFalse((board.BOOT/'kernels').exists())
+            self.assertFalse(modules.with_name(runtime.CANDIDATE).exists())
+            self.assertNotIn('# candidate copy', helper.read_text())
 
     def test_root_and_boot_budgets_are_combined_when_they_share_a_filesystem(self):
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory).resolve()
             boot_root = root/'boot'
             boot_root.mkdir()
-            target = root/'old-config'
-            target.write_bytes(b'x')
             firmware = root/'firmware'
             firmware.write_bytes(b'x')
             def board_path(value):
@@ -115,8 +97,7 @@ test.run_install(root,test.board(root),root/'package.tar.gz',die=sys.argv[2])
             with patch.object(runtime, 'Path', side_effect=board_path), patch.object(
                     runtime.shutil, 'disk_usage', return_value=SimpleNamespace(free=60000)):
                 with self.assertRaisesRegex(ValueError, 'Insufficient root'):
-                    runtime.preflight_root_space(root/'backup', boot_root, [target], 1, [], 1, firmware, 50000)
-            self.assertFalse((root/'backup').exists())
+                    runtime.preflight_root_space(boot_root, 1, [], firmware, 50000)
 
     def board(self, root):
         def validate(entry, text, *, hashes):
@@ -195,8 +176,7 @@ test.run_install(root,test.board(root),root/'package.tar.gz',die=sys.argv[2])
         def copy(source, destination, **kwargs):
             phase = options.get('die')
             destination = Path(destination)
-            die = (phase == 'backup' and destination.parent == root/'backup' or
-                   phase == 'firmware' and destination.suffix == '.bin' or
+            die = (phase == 'firmware' and destination.suffix == '.bin' or
                    phase == 'runtime' and destination.parent == root/'usr/libexec' or
                    phase == destination.name and destination.parent == board.BOOT/'kernels'/runtime.CANDIDATE)
             if die:
@@ -204,7 +184,7 @@ test.run_install(root,test.board(root),root/'package.tar.gz',die=sys.argv[2])
                     stream.write(Path(source).read_bytes()[:1])
                     stream.flush()
                     os.fsync(stream.fileno())
-                os._exit(91)  # Deliberately bypass finally/atexit/rollback.
+                os._exit(91)  # Deliberately bypass finally and atexit.
             return copyfile(source, destination, **kwargs)
         atomic_write = board.atomic_write
         replace = runtime.os.replace
@@ -235,16 +215,14 @@ test.run_install(root,test.board(root),root/'package.tar.gz',die=sys.argv[2])
                 runtime.os, 'geteuid', return_value=0), patch.object(runtime.os, 'sync', create=True), patch.object(
                 runtime.shutil, 'copyfile', side_effect=copy), patch.object(runtime.subprocess, 'run', side_effect=extract), patch.object(
                 board, 'atomic_write', side_effect=write), patch.object(runtime.os, 'replace', side_effect=rename):
-            runtime.install(SimpleNamespace(archive=package, backup=options.get('backup', root/'backup'), source_label='FullKvm'))
+            runtime.install(SimpleNamespace(archive=package, source_label='FullKvm'))
 
-    def test_complete_install_and_explicit_rollback_preserve_original_default_and_overlays(self):
+    def test_complete_install_switches_paths_and_preserves_old_modules_and_boot_files(self):
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)
             board, package, modules, helper = self.fixture(root)
             default = board.CONFIG.read_bytes()
             others = {label: fields for label, fields in boot.boot_entries(default.decode()).items() if label != 'FullKvm'}
-            original_registry = board.MANIFEST.read_bytes()
-            original_helper = helper.read_bytes()
             previous = {p.name: p.read_bytes() for p in modules.iterdir()}
             self.run_install(root, board, package)
             self.assertEqual(boot.default_label(board.CONFIG.read_text()), 'FullKvm')
@@ -255,12 +233,6 @@ test.run_install(root,test.board(root),root/'package.tar.gz',die=sys.argv[2])
             self.assertEqual({p.name: p.read_bytes() for p in modules.iterdir()}, previous)
             self.assertIn('# candidate copy', helper.read_text())
             self.assertEqual(json.loads(board.MANIFEST.read_text())[0]['release'], runtime.CANDIDATE)
-            with patch.object(runtime.os, 'sync', create=True), patch.object(runtime.shutil, 'rmtree', side_effect=AssertionError('must not delete modules')):
-                runtime.restore_rollback(root / 'backup')
-            self.assertEqual(board.CONFIG.read_bytes(), default)
-            self.assertEqual(board.MANIFEST.read_bytes(), original_registry)
-            self.assertEqual(helper.read_bytes(), original_helper)
-            self.assertEqual({p.name: p.read_bytes() for p in modules.iterdir()}, previous)
             self.assertIn(runtime.UHD7, (board.BOOT/'edge/Image').read_text())
 
     def test_bad_package_hash_and_low_space_do_not_change_baseline(self):
@@ -272,7 +244,6 @@ test.run_install(root,test.board(root),root/'package.tar.gz',die=sys.argv[2])
                 with patch.object(runtime.shutil, 'disk_usage', return_value=SimpleNamespace(free=0)):
                     with self.assertRaisesRegex(ValueError, 'hash mismatch|Insufficient /boot'):
                         self.run_install(root, board, package)
-                self.assertFalse((root/'backup').exists())
                 self.assertEqual((board.BOOT/'edge/Image').read_bytes(), before)
                 self.assertNotIn('# candidate copy', helper.read_text())
 

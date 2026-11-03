@@ -24,10 +24,10 @@ loader.exec_module(window)
 
 
 class WindowTests(unittest.TestCase):
-    def test_bind_visible_runtime_is_checked_after_reboot_and_cleanup_upload_is_bounded(self):
+    def test_return_reboots_without_kbase_and_checks_restored_identity(self):
         once = window.load('bind_once', ROOT/'packaging/kernel-edge/display-once.py')
-        for upload_timeout in (False, True):
-            with self.subTest(upload_timeout=upload_timeout), tempfile.TemporaryDirectory() as directory:
+        for upload_timeout, missing_after_reboot in ((False, False), (True, False), (False, True)):
+            with self.subTest(upload_timeout=upload_timeout, missing_after_reboot=missing_after_reboot), tempfile.TemporaryDirectory() as directory:
                 root = Path(directory).resolve()
                 note = struct.pack('<III', 4, 20, 3) + b'GNU\0' + b'\xaa'*20
                 contents = {'/sys/kernel/notes': note, '/proc/cmdline': b'root=test',
@@ -67,6 +67,8 @@ class WindowTests(unittest.TestCase):
                 def reboot(*args, **kwargs):
                     for name in helpers:
                         board_path(name).write_bytes(contents[name])
+                    if not missing_after_reboot:
+                        board_path('/sys/module/mali_kbase/notes/.note.gnu.build-id').write_bytes(note)
                 # The remote script reads real fixture files; changing the
                 # visible helper bytes models the candidate's bind overlay.
                 with patch.object(window, 'ssh_python', side_effect=remote_python), patch.object(
@@ -76,7 +78,12 @@ class WindowTests(unittest.TestCase):
                     for name in helpers:
                         board_path(name).write_bytes(b'candidate bind-visible helper')
                     self.assertNotEqual(window.identity('mock', list(proof['files']))['files'], proof['files'])
+                    # A same-release Panfrost or failed candidate need not load
+                    # kbase. Its absence must not block the normal recovery reboot.
+                    board_path('/sys/module/mali_kbase/notes/.note.gnu.build-id').unlink()
+                    run.reset_mock()
                     window.verify_persistent_files('mock', proof)
+                    run.assert_not_called()  # File verification does not query applications.
                     plan = dict(baseline_release=proof['release'], baseline_id=proof['build_id'],
                                 baseline_cmdline=proof['cmdline'], baseline_files=proof['files'])
                     with patch.object(once.os, 'geteuid', return_value=0), patch.object(
@@ -93,13 +100,21 @@ class WindowTests(unittest.TestCase):
                             window, 'boot', side_effect=reboot) as boot_call, patch.object(window, 'ssh', return_value=''), patch.object(
                             window, 'collect', return_value={'returned': True}), patch.object(
                             sys, 'argv', ['board-window', '--window', 'bind-return', 'return-baseline', '--video-check', 'decode-check']):
-                        if upload_timeout:
+                        if missing_after_reboot:
+                            with self.assertRaises(FileNotFoundError):
+                                window.main()
+                        elif upload_timeout:
                             with self.assertRaises(subprocess.TimeoutExpired):
                                 window.main()
                         else:
                             window.main()
                     self.assertEqual(boot_call.call_count, 1)
                     upload = [call for call in run.call_args_list if call.args[0][0] == 'scp']
+                    if missing_after_reboot:
+                        self.assertFalse(upload)
+                        self.assertFalse(list(work.glob('return-baseline-*.json')))
+                        self.assertFalse((work/'returned-baseline-identity.json').exists())
+                        continue
                     self.assertEqual(len(upload), 1)
                     self.assertEqual(upload[0].kwargs['timeout'], 30)
                     returned = window.identity('mock', list(proof['files']))

@@ -26,36 +26,6 @@ boot = load('profile_boot', 'board/vim4boot.py')
 
 
 class BootProfileTest(unittest.TestCase):
-    def test_complete_rollback_preserves_overlay_modules_and_restores_changed_files(self):
-        with tempfile.TemporaryDirectory() as directory:
-            root = Path(directory)
-            module_root = root / runtime.UHD7
-            module_root.mkdir()
-            for name in ('hdmirx.ko.xz', 'vdin.ko.xz', 'wave5.ko.xz', 'kbase.ko', 'modules.dep'):
-                (module_root / name).write_text('qualified ' + name)
-            boot_files = [root / name for name in ('extlinux.conf', 'kernels.json', *runtime.BOOT_FILES)]
-            for p in boot_files:
-                p.write_text('old ' + p.name)
-            helper = root / 'launcher'
-            helper.write_text('old runtime')
-            absent = root / 'new-helper'
-            targets = [module_root, *boot_files, helper, absent]
-            expected = {str(p): p.read_bytes() for p in root.rglob('*') if p.is_file()}
-            backup = root / 'backup'
-            with patch.object(runtime.os, 'sync', create=True):
-                runtime.save_rollback(backup, targets, preserved=[module_root])
-                for p in [*boot_files, helper, absent]:
-                    p.write_text('replacement')
-                runtime.restore_rollback(backup)
-            self.assertFalse(absent.exists())
-            self.assertEqual({p: Path(p).read_bytes() for p in expected}, expected)
-            # A corrupt backup cannot partially restore boot configuration.
-            (backup / '0/wave5.ko.xz').write_text('corrupt')
-            helper.write_text('still new')
-            with self.assertRaisesRegex(ValueError, 'backup hash mismatch'):
-                runtime.restore_rollback(backup)
-            self.assertEqual(helper.read_text(), 'still new')
-
     def test_insufficient_boot_space_is_rejected_before_copy(self):
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)
