@@ -170,11 +170,23 @@ static void initial_sps_is_separated_from_adjacent_nals(void)
     gst_buffer_unref(buffer);
 }
 
+static void missing_sps_after_teardown(void)
+{
+    Bench bench = {0};
+    GString *json = g_string_new(NULL);
+    g_assert_false(report_initial_sps(json, &bench));
+    g_assert_nonnull(strstr(json->str, "\"sps_nal_hex\": \"\""));
+    g_assert_cmpstr(bench.error, ==, "initial access unit contained no SPS");
+    g_free(bench.error);
+    g_string_free(json, TRUE);
+}
+
 int main(int argc, char **argv)
 {
     gst_init(&argc, &argv);
     g_test_init(&argc, &argv, NULL);
     g_test_add_func("/bench/sps-boundaries", initial_sps_is_separated_from_adjacent_nals);
+    g_test_add_func("/bench/missing-sps-after-teardown", missing_sps_after_teardown);
     g_test_add_func("/bench/timing-warmup-and-matching", timing_matches_frames);
     g_test_add_func("/bench/reject-unmatched-or-dropped", unmatched_and_dropped_frames_fail);
     g_test_add_func("/bench/reject-duplicate-capture-pts", capture_duplicate_pts_fails);

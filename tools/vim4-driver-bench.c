@@ -359,6 +359,15 @@ static void append_file(GString *json, const gchar *key, const gchar *path)
     g_free(text);
 }
 
+static gboolean report_initial_sps(GString *json, Bench *bench)
+{
+    append_string(json, "sps_nal_hex", bench->sps_hex);
+    if (bench->sps_hex) return TRUE;
+    /* Reporting runs after the bus and pipeline have been released. */
+    if (!bench->error) bench->error = g_strdup("initial access unit contained no SPS");
+    return FALSE;
+}
+
 #ifndef VIM4_BENCH_TEST
 static gboolean video_device_is(const gchar *device, const gchar *expected)
 {
@@ -528,7 +537,8 @@ int main(int argc, char **argv)
     append_string(json, "backend", backend); append_string(json, "codec", codec);
     append_string(json, "kernel_release", kernel.release); append_string(json, "kernel_build", kernel.version);
     append_string(json, "gstreamer", gst_version_string()); append_string(json, "pipeline", description);
-    append_string(json, "measurement_kind", save_bitstream ? "bitstream-verification-with-file-io" : "no-payload-read");
+    append_string(json, "measurement_kind", save_bitstream ? "bitstream-verification-with-file-io" :
+                  bench.inspect_sps ? "warmup-sps-read" : "no-payload-read");
     append_string(json, "saved_bitstream", save_bitstream);
     append_file(json, "cpu0_governor", "/sys/devices/system/cpu/cpufreq/policy0/scaling_governor");
     append_file(json, "cpu4_governor", "/sys/devices/system/cpu/cpufreq/policy4/scaling_governor");
@@ -586,11 +596,7 @@ int main(int argc, char **argv)
     gdouble busy = bench.end.total > bench.start.total ?
         100.0 * (1.0 - (gdouble)(bench.end.idle - bench.start.idle) / (bench.end.total - bench.start.total)) : 0;
     if (bench.inspect_sps) {
-        append_string(json, "sps_nal_hex", bench.sps_hex);
-        if (!bench.sps_hex) {
-            fail_locked(&bench, "initial access unit contained no SPS");
-            success = FALSE;
-        }
+        if (!report_initial_sps(json, &bench)) success = FALSE;
         g_free(bench.sps_hex);
     }
     append_string(json, "error", bench.error);
