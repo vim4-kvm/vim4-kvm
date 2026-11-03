@@ -4,7 +4,7 @@
 HDMI、gadget、One-KVM及manager均active。但首个GBM/FBO EGL/GLES设备探针退出2，
 未返回设备信息。按用户门禁立即取证并正常回5.15，**不继续其他API、性能或并行负载**。
 没有现场改驱动、DT或用户态库，不将/dev/mali0存在当作API/性能验收。
-离线修复及准备合同见[r3修复](../gpu-kbase-repair.md)。
+离线修复及准备合同见[r3修复](../archive/gpu-kbase-repair.md)。
 
 ## 独占、产物与助手同步
 

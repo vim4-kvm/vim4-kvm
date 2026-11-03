@@ -1,19 +1,41 @@
 # ADLA 候选与验收
 
-2026-10-30用户已批准NPU六段合入、nodebug正式配置及验证后pin/push。
-最新[uhd3正式回归](bringup/2026-10-30-uhd3-formal-regression.md)：正式分支f71b5c6289cb，
-2338模块，三模型6909输出文件字节一致、60.018fps视频与GPU冒烟通过；pin指向uhd3 RAM构建，
-板上保留uhd1和默认5.15不变。历史统计性能“不确定”结论保留；以下旧轮次按当时状态记录。
+NPU 已按六段序列集成，[正式回归](bringup/2026-10-30-uhd3-formal-regression.md)保留
+三模型 6909 输出文件字节一致、视频与 GPU 冒烟范围；当前内核身份见[主线内核开头](kernel-mainline.md)。
+驱动在内核 `drivers/misc/adla`，提供下游闭源 SDK 字符设备兼容接口，不声明 DRM accel 支持。
+历史统计性能“不确定”和真实复位失败未验的边界保留；下方旧轮次均按当时状态解释。
 
-本轮工作在 VM `~/src/linux-7.3-npu`、分支 `vim4-npu-adla`，基于
-`213f271505411`。正式部署锁不变。驱动在 `drivers/misc/adla`：其接口是
-下游闭源 SDK 字符设备兼容接口，本轮不声明 DRM accel 支持。
+## 运行时与生命周期合同
+
+- 两内核复用同一 SHA 的 libadla/libnnsdk、模型和输入，均用 /dev/adla0；专属 KMD 及依赖按 release 成套安装。
+  7.x 通过 DT modalias/udev 加载 adla_core，缺失即报错，不从别的 release 加载模块或切换 SDK 掩盖失败。
+  普通推理使用 khadas 与已验证环境；root 只用于安装和诊断，不用提权绕过 SDK 建网失败。
+- 资源获取传播 IRQ/时钟/regulator 的错误及 EPROBE_DEFER；电源域用标准 runtime PM，内部 MMU 配合 DMA API 和 34 位 DMA mask。
+  不因存在 RESET_ANAKIN ID 就假定有独立硬复位时序，不添加未知 SMC 或不存在的 AXI 时钟输入。
+- 压缩命令按 common/modify 实际长度校验 fixup；零 count 的未使用区间不访问 offset。
+  INVOKE 地址 fixup 数量为零时复用模型缓存，非空区间仍按有效缓存长度校验；缓存失败清零数量。
+  这些是 SDK 多段模型的兼容语义，不能把零 count 当成禁止后续 task 使用已缓存条目。
+- CANCEL 成功后 WAIT/GET_STAT 返回 ECANCELED；WAIT 超时先取消并确认排空再报 ETIMEDOUT。
+  释放 dev_mutex 后等待 worker，通知须覆盖不可中断的 CANCEL 等待者；取消不冒充完成 IRQ。
+  close 超过有界等待时移交完成事件驱动的迟到清理，先退役共享 task 引用再通知；确认 DMA 停止后才回收。
+  SDK 显式缓冲由 FREEBUF/detach/close 释放，不在取消时抢先回收可复用模型缓冲。
+- 无法确认 DMA 停止时锁定故障、向用户态报错并保留可能仍被访问的页到重启，不能记作全部回收通过。
+  详细故障边界见下方历史实现说明；真实软复位失败仍欠硬件证明。
+
+兼容调用入口见 [UAPI 探针](../tools/npu-uapi-probe.c)与 [SDK 探针](../tools/npu-probe.c)；
+缓存/取消语义的来源为[npu3 修复](archive/npu-adla-npu3.md)、[npu4 修复](archive/npu-adla-npu4.md)及
+[npu4 验收](bringup/2026-10-30-npu4-acceptance.md)。`adla:adla_phase` 的 submit、irq_wait、complete、reset
+记录 elapsed_ns/result/clk_hz；submit 含命令补丁/缓存同步/MMU/parser，complete 含 profiling/状态解析。
+诊断使用独立 tracefs instance，结束关闭事件并删除实例；普通性能组关闭 trace，不把诊断开销混进性能资格。
+SDK 外计时方法见[端到端分段](npu-e2e-timing.md)；旧约 104ms 异常不算已由离线修复根治。
+
+## 历史性能与集成证据
 
 最新[四启动对实测](bringup/2026-10-30-npu-boot-pairs.md)：输出一致，性能总体不确定，暂不pin；
 VGG16/DenseNet/YOLO均值配对差+4.050%/+2.346%/−0.352%，95% CI分别
 [−3.406,+11.505]/[−0.123,+4.815]/[−4.007,+3.303]%。前两模型联合上界超过5%，DDR条件未对齐。
 [波动分析与门禁](npu-performance-gate.md)保留；未改驱动、未生成uhd3。最终回5.15，文件/服务/UDC恢复、锁释放。
-[六段审查序列与uhd2集成草案](npu-adla-integration.md)仍待批准，正式pin/默认启动不变。
+[六段审查序列与uhd2集成草案](archive/npu-adla-integration.md)保留当时的待批准状态，不代表当前部署。
 旧候选保留，保页例外保持“用户已于 2026-10-30 接受”。
 [端到端分段与下一窗口](npu-e2e-timing.md)：旧YOLO进程wall摊销约+9.56%，新增probe --timing，尚无可确认的驱动冗余，未生成uhd3。
 [分段实测](bringup/2026-10-30-npu-e2e-window.md)：YOLO fwrite增加3.463ms、扫描近似相同；扰动<1%及DDR/累计静止计数资格未闭合，仅作定位，未改驱动。
@@ -183,7 +205,7 @@ prepare只读输入并写新目录，不stage、不SSH、不重启。下一轮st
 
 ## 下一轮上板顺序
 
-后续按实际改动决定复验范围，[npu4专项顺序](npu-adla-npu4.md#下一窗口30分钟)及实测记录保留，
+后续按实际改动决定复验范围，[npu4专项顺序](archive/npu-adla-npu4.md#下一窗口30分钟)及实测记录保留，
 每个新窗口刷新stage证明；以下保留原完整流程供查，不能将本轮结果替代未测接口资格。
 
 1. 先在5.15持板锁和媒体锁，记录SDK/模型/输入/内核哈希、实际频率和电压。

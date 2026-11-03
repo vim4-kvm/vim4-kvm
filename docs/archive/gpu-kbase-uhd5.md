@@ -1,6 +1,8 @@
 # uhd5 kbase构建与历史门禁
 
-当前已批准正式来源锁，见[主线集成记录](bringup/2026-10-31-uhd5-main-integration.md)。
+> 归档快照（2026-10-31）：uhd5 初次构建及 r10 历史门禁；不代表当前状态，现行入口见[专题合同](../gpu-kbase-7x.md)。
+
+当前已批准正式来源锁，见[主线集成记录](../bringup/2026-10-31-uhd5-main-integration.md)。
 以下保留初次构建与r10历史过程；后续r11/r12结果及用户批准范围以上述记录为准。
 
 基线为正式uhd4内核8bca939d6bbd3e4d91e9f23b812e920172c99b3d，主仓470da38。
@@ -10,7 +12,7 @@
 ## 构建合同
 
 uhd5相对[uhd4配置](https://github.com/vim4-kvm/vim4-kvm/blob/8dac974/packaging/kernel-edge/uhd4.config)只改
-[配置差分](../packaging/kbase/uhd5.config.patch)：release标识与CONFIG_THERMAL_EMULATION=y。
+[配置差分](../../packaging/kbase/uhd5.config.patch)：release标识与CONFIG_THERMAL_EMULATION=y。
 因此需要一次新的Image与完整匹配模块集；不能复用uhd4模块的BTF或vermagic。
 其他只改外部模块的迭代仍只重编外部模块，不重编Image。
 编译必须持board-queue heavy票据，不持板票据。模块使用同次vmlinux/Module.symvers。
@@ -38,7 +40,7 @@ thermal emulation用于验证GPU zone跨95°C trip后cooling状态与实际频�
 完整stage的`modprobe --show-depends`证明governor先于mali插入。
 这属于新默认策略的加载依赖，不改变Image或DVFS参数；修后只重编外部模块。
 
-5.15复用[r9共享缓存](bringup/2026-10-31-kbase-r9-queue.md)，不得重测。
+5.15复用[r9共享缓存](../bringup/2026-10-31-kbase-r9-queue.md)，不得重测。
 上板前核对缓存的5.15身份、启动/程序/plugin文件哈希；不匹配则停止配对并记录，不伪称缓存命中。
 有效基线中位数/P95：DMA1.692/3.618ms、GLES616.361/617.773FPS、
 CL latency78.32/79.14µs、SP101.69/101.71GFLOPS。
@@ -53,6 +55,6 @@ CL latency78.32/79.14µs、SP101.69/101.71GFLOPS。
 
 每窗结束核对四服务、UDC、原始保护哈希、临时助手及emul_temp恢复，释放票据。
 默认策略性能、温控、mpgpu和并行均通过后，才形成供审阅的产品合入清单；不自行合入正式。
-[r10已执行结果](bringup/2026-10-31-kbase-r10-uhd5.md)：API/内存、mpgpu和温控通过；
+[r10已执行结果](../bringup/2026-10-31-kbase-r10-uhd5.md)：API/内存、mpgpu和温控通过；
 DMA中位数与CL SP未达5.15，服务级并行与dma-coherent二分未完成，不能推广产品。
 第二窗工具cleanup因大参数失败，修正已入独立工具分支，尚待板测；基线状态已独立核验。

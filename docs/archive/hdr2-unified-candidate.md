@@ -1,18 +1,20 @@
 # HDR2 PQ/HLG完整候选与统一验收
 
+> 归档快照（2026-10-30）：HDR2a1 统一候选，transfer13 决定已被后续替代；不代表当前状态，现行入口见[专题合同](../hdr2-dma-contract.md)。
+
 **当前离线修复与下一窗口以[HDR2a3清单](hdr2a3-offline.md)为准**：默认恢复产品709视频合同、增加Wave5 VUI、精确gamut/预偏移及逐buffer退休证明。
 以下设计、完整构建及窗口表保留a1历史；transfer13门禁和等待用户物理切换的前置已被后续决定替代。
 
-最新[a2窗口](bringup/2026-10-30-hdr2a2-window.md)已恢复MCP并完成4K60 DMA编码；SPS无VUI、固定图色差及零告警门禁仍阻断正式合入。
+最新[a2窗口](../bringup/2026-10-30-hdr2a2-window.md)已恢复MCP并完成4K60 DMA编码；SPS无VUI、固定图色差及零告警门禁仍阻断正式合入。
 
 用户已于2026-10-30确认VDIN HDR2硬件主路径。此次仅离线，不访问板子、不push。
-后续[真实PQ窗口](bringup/2026-10-30-hdr2-unified-window.md)：PQ路径与局部像素通过，Wave5 caps协商阻断；
+后续[真实PQ窗口](../bringup/2026-10-30-hdr2-unified-window.md)：PQ路径与局部像素通过，Wave5 caps协商阻断；
 7.3切换及HLG仍未测，不推广候选。用户已另授权MCP准备M6及推送通过验证的特性分支。
 独立VM工作树`~/src/linux-7.3-hdr2-pq`、分支`vim4-hdr2-pq`，基于正式`f71b5c6289cb`；
 HLG原提交`c68407cb052be`已整合为`bbf9ff89b284d`，主仓`15d0eab`已整合为`f7b2f84`。
 保留PQ诊断`eb156b545c8a2`与CRC依赖`11f3239b7c849`，输出合同修正`58b7ecfeb6838`。
 独立release **7.3.0-vim4kvm-uhd3-hdr2a1+**，完整输出`~/build/hdr2-combined`，不覆盖uhd3或hlg1。
-[邮件补丁](../packaging/hdr2-pq/README.md)四份顺序应用；HLG原worktree、NPU文件、正式配置均未修改。
+[邮件补丁](../../packaging/hdr2-pq/README.md)四份顺序应用；HLG原worktree、NPU文件、正式配置均未修改。
 
 ## OETF与标签的明确取舍（a1历史）
 
@@ -26,7 +28,7 @@ RGB24维持sRGB/full；现有准入仍拒绝YUV HDR到RGB24，不新增格式承
   `drivers/media/enhancement/amvecm/set_hdr2_v0.c:336–350`默认`oe_y_lut_sdr`可运行时覆盖；
   `:3295–3312`的PQ和`:3388–3407`普通HLG都选择同一个可变数组，`:2580–2598`在10bit口径右移2打包。
 - 产品`tools/hdr-curve.sh:55–57, 107–113`生成sRGB OETF，apply会写同一个厂商数组。
-  [上轮实际读回](bringup/2026-10-30-hdr2-pq-window.md)配置CRC为539ffb54，右移2的端口样本CRC为47745310，与七系PQ相同。
+  [上轮实际读回](../bringup/2026-10-30-hdr2-pq-window.md)配置CRC为539ffb54，右移2的端口样本CRC为47745310，与七系PQ相同。
   这是**真实配置读回**；源当时是SDR，尚不能证明HDR时已应用，更不能当作PQ像素通过。
 - 原独立HLG候选保留的是厂商源码默认gamma表，其SHA为f6259903…；现在改为引用PQ的`t7_hdr_srgb`，
   LE int32 SHA256=`bcb715148098dffe8c2d1fbf867ae1e80e5dc7f7fb03b401100ee40ca0739099`。
@@ -82,7 +84,7 @@ strict checkpatch为0 error/warning/check（744行，仅忽略FILE_PATH_CHANGES�
 CRC、颜色合同、HLG writer/解析/lease/过渡帧夹具全部通过；四份邮件补丁对干净f71应用后与最终源码一致。
 主仓全量unittest：315项、跳过13项、无失败。
 
-私有归档`~/build/hdr2-combined-stage.tar.gz`由[封装脚本](../packaging/hdr2-pq/package.py)生成，
+私有归档`~/build/hdr2-combined-stage.tar.gz`由[封装脚本](../../packaging/hdr2-pq/package.py)生成，
 带所有文件SHA256 manifest，同次完整模块集strip后保留BTF；vmlinux留在O目录。
 归档内2470个文件逐项重新计算SHA256全部匹配，2338模块；VDIN vermagic与独立release一致。
 这不是自动安装包，下一窗口仍需为独立release准备匹配的私有runtime助手和RAM启动器，禁止默认助手未准入时强行继续采集。
@@ -97,7 +99,7 @@ CRC、颜色合同、HLG writer/解析/lease/过渡帧夹具全部通过；四�
 
 ## 统一上板窗口：总计≤30分钟（a1历史）
 
-前置：用户按[M6操作说明](m6-enable-hdr.md)物理开启HDR并确认；源固定3840×2160/60Hz。
+前置：用户按[M6操作说明](../m6-enable-hdr.md)物理开启HDR并确认；源固定3840×2160/60Hz。
 先准备同一稳定灰阶/饱和色/高光测试画面，记录原始文件SHA、播放器及呈现设置。
 普通桌面只能做功能观察，不能替代受控色块。若用户/素材未就绪，不启动窗口、不发HID补救。
 板锁与heavy锁独占；所有单项timeout≤10分钟，测量不编译、不音频、不ptrace、不PWM/电压。

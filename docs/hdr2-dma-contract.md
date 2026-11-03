@@ -3,6 +3,22 @@
 2026-10-30，承接[a3余项](bringup/2026-10-30-hdr2a3-window.md)。
 用户已确认VDIN HDR2主路径；本轮实现及[a5上板](bringup/2026-10-30-hdr2a5-window.md)不改正式配置或默认启动。
 
+## 颜色、VUI 与编码缓冲合同
+
+现行[主题补丁](../packaging/hdr2-pq/README.md)将 PQ/HLG 映射 NV12 标为 709 原色、
+709 transfer、709 matrix、limited（ISO 1/1/1/0）；RGB24 保持 sRGB/full。
+输出 OETF 保留厂商产品的 sRGB 形状，不声称数学 sRGB 等于 BT.709。
+旧 [a1](archive/hdr2-unified-candidate.md)的默认 transfer13 决定已被替代；显式 sRGB 输入仍应编码为 13。
+HLG 实现存在，真实源色彩/切换未验，不把 PQ 验收扩展到 HLG。
+
+Wave5 按 V4L2 OUTPUT 的原色/transfer/矩阵/range 生成 AVC/HEVC VUI，DEFAULT 按 V4L2 规则解析，
+未知值拒绝；不能靠改 GStreamer 标签掩盖缺失的比特流 VUI。每实例 coherent RBSP 跟随
+DESTROY/reset/quarantine 的 DMA 寿命，失败时不提前释放硬件可能读取的内存。
+私有 GStreamer 对固定尺寸编码按实际分辨率估算编码缓冲（最小 256KiB，尊重驱动增大要求），
+解码器仍按最大尺寸分配；这不改变原始采集池的 lease 预算。
+实现和回归入口为上述主题补丁及[私有插件构建器](../packaging/kernel/build-gstreamer.py)。
+旧 [a3](archive/hdr2a3-offline.md)中的 inode 关联、累计六缓冲限制均已由下方合同修正，不能继续照用。
+
 ## 产品报错属于a3回归
 
 正式uhd3[回归](bringup/2026-10-30-uhd3-formal-regression.md)的One-KVM真实接收3552帧/59.182秒，约60.018fps。

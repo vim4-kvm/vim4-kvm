@@ -1,10 +1,12 @@
 # uhd5 kbase产品路径：正式集成清单
 
-[r12完整包与回退](bringup/2026-10-31-kbase-r12-package.md)已验证正常候选一次回5.15的DHCP/SSH/服务/UDC/哈希。
-用户批准据此最小GPU烟测正式合入，准确锁定产物，未验范围明确保留；
-最终来源与验收范围见[正式合入记录](bringup/2026-10-31-uhd5-main-integration.md)。
+> 归档快照（2026-10-31）：uhd5 集成清单及限定验收范围；不代表当前状态，现行入口见[专题合同](../gpu-kbase-7x.md)。
 
-[r11](bringup/2026-10-31-kbase-r11-policy.md)的默认策略性能、API、六类内存、mpgpu、温控和
+[r12完整包与回退](../bringup/2026-10-31-kbase-r12-package.md)已验证正常候选一次回5.15的DHCP/SSH/服务/UDC/哈希。
+用户批准据此最小GPU烟测正式合入，准确锁定产物，未验范围明确保留；
+最终来源与验收范围见[正式合入记录](../bringup/2026-10-31-uhd5-main-integration.md)。
+
+[r11](../bringup/2026-10-31-kbase-r11-policy.md)的默认策略性能、API、六类内存、mpgpu、温控和
 One-KVM 4K60并行达到本轮门槛。负向dma-coherent DT不可用；5.15回退曾需额外正常重启恢复DHCP。
 正式sources.toml登记uhd5，保留旧uhd4/Panfrost；5.15仍默认，不宣称所有故障回退已修复。
 
@@ -44,7 +46,7 @@ Image与完整基础2338模块来自r10同次构建，加入三个匹配外部�
 
 [历史 sources.toml](https://github.com/vim4-kvm/vim4-kvm/blob/8dac974/packaging/kernel-edge/sources.toml)记录当时完整uhd5.config、Module.symvers/BTF摘要、
 完整模块清单、外部模块源提交与manifest、两套DT及runtime helper清单。
-[runtime登记](../packaging/kbase/uhd5-runtime.json)固定用户态UK/SHA与驱动选择。
+[runtime登记](../../packaging/kbase/uhd5-runtime.json)固定用户态UK/SHA与驱动选择。
 保持现有One-KVM/GStreamer正式pin，不借此改变HDR2、NPU、USB或信源。
 
 ## DT、用户态与分发

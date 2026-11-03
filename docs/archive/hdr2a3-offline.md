@@ -1,8 +1,10 @@
 # HDR2a3：VUI、色差、buffer退休与CMA离线修复
 
-后续[a3完整构建和上板](bringup/2026-10-30-hdr2a3-window.md)：VUI、固定图p99、诊断4K60与无内核WARN通过；inode关联假设错误、One-KVM非DMA恢复仍阻断合入。以下保留此前离线设计快照。
+> 归档快照（2026-10-30）：HDR2a3 离线修复，inode 关联与池上限已被后续修正；不代表当前状态，现行入口见[专题合同](../hdr2-dma-contract.md)。
 
-2026-10-30，承接[a2上板记录](bringup/2026-10-30-hdr2a2-window.md)。本轮未连接板子/MCP，未修改kbase工作树、正式配置或正式内核分支。
+后续[a3完整构建和上板](../bringup/2026-10-30-hdr2a3-window.md)：VUI、固定图p99、诊断4K60与无内核WARN通过；inode关联假设错误、One-KVM非DMA恢复仍阻断合入。以下保留此前离线设计快照。
+
+2026-10-30，承接[a2上板记录](../bringup/2026-10-30-hdr2a2-window.md)。本轮未连接板子/MCP，未修改kbase工作树、正式配置或正式内核分支。
 用户已确认VDIN HDR2主路径。以下为待上板特性候选，**四项硬件门禁尚未复验，不建议并main/正式7.3**。
 
 ## 源码与提交
@@ -17,7 +19,7 @@
 | 450100ce27911 | capture generation/ticket与Wave5 DMA所有权trace |
 | 7614e04a56408 | 修复宿主夹具落后的HLG依赖与函数提取边界 |
 
-[邮件补丁及工具](../packaging/hdr2-pq/README.md)按0006–0010接在0001–0005后；十份补丁从正式f71b5c6289cb重放的tree与候选HEAD逐字相同（fad6d66c2598d5adc1e44701c06ada749d1ea571）。
+[邮件补丁及工具](../../packaging/hdr2-pq/README.md)按0006–0010接在0001–0005后；十份补丁从正式f71b5c6289cb重放的tree与候选HEAD逐字相同（fad6d66c2598d5adc1e44701c06ada749d1ea571）。
 厂商V指`~/src/linux-native-hdr-5.15/common_drivers@8648a716befda5ec2837a7764cd61b8493db8d99`；
 下文V行号相对`drivers/media/enhancement/amvecm/set_hdr2_v0.c`。
 
@@ -86,7 +88,7 @@ a2灰阶Y p99=1、彩区Y p99=5、整帧Y/U/V p99=4/4/3。旧gamut舍入误差�
 前者为每次获得硬件slot的buffer分配单调ticket及stream generation，用实际导出DMA-buf inode关联后者的提交/完成/取消。
 首帧丢弃重装同一buffer不产生新ticket。source-change立即记录切点，之后再提交旧代已完成buffer也判失败。
 
-[check_retirement.py](../packaging/hdr2-pq/check_retirement.py)逐代输出armed/completed/retired/encoded，检查：
+[check_retirement.py](../../packaging/hdr2-pq/check_retirement.py)逐代输出armed/completed/retired/encoded，检查：
 旧代未退休/encoder未完成不得开始新代；编码输入必须来自已完成且未退休的capture ticket；
 编码持有时不得回收；切点后不得新提交旧代；retained fault、丢trace、ring覆盖、缺BEGIN/END、无实际编码均失败。
 CLI还要求source change及至少两代。宿主回归覆盖正常交接、旧帧新提交、提前复用、故障保留和不完整轨迹。
@@ -125,7 +127,7 @@ CMA只余8904/131072页（34.8MiB但不够连续32MiB）；随后`:607–612`VDI
 
 根因中的确定部分：GStreamer 1.24.2 `gstv4l2object.c:3847–3856`使用设备最大width/height给编码buffer估值，
 8192×8192×8/8/2恰好32MiB；`:4103,4123`将其传给S_FMT，Wave5按请求保留sizeimage，pool随后可CREATE_BUFS增长。
-[私有补丁](../packaging/hdr2-pq/gstreamer-encoded-size.patch)仅对固定尺寸编码器按本次分辨率计算，4K8bit变4,147,200字节，约原来1/8；
+[私有补丁](../../packaging/hdr2-pq/gstreamer-encoded-size.patch)仅对固定尺寸编码器按本次分辨率计算，4K8bit变4,147,200字节，约原来1/8；
 最小256KiB和驱动S_FMT增大要求仍有效，解码器保留最大尺寸以允许分辨率变化。不是压低码率、删颜色或屏蔽WARN。
 诊断bridge已有空allocation query处理继续保留；VDIN总池另限制四硬件slot加两个下游lease=6，CREATE_BUFS累计也受限。
 

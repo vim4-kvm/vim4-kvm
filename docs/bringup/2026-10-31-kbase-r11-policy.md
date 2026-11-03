@@ -94,7 +94,7 @@ main版精简cleanup已执行成功，含r10遗留归属marker的空模块挂载
 140份JSON/日志/脚本等证据逐项SHA验证；scp仅遗漏root私有registry.bin缓存，不是测量证据。
 三张票据分别为只读诊断、候选窗口和故障后恢复，均已释放；没有第三次候选试验。
 正常默认路径的API/性能/温控/并行门禁已满足，**回退自动化仍有DHCP恢复边界**，
-必须作为[待审集成清单](../gpu-kbase-uhd5-integration.md)的限制，不自行改变正式默认路径。
+必须作为[待审集成清单](../archive/gpu-kbase-uhd5-integration.md)的限制，不自行改变正式默认路径。
 
 证据：logs/kbase-r11/、logs/kbase-r11-window/，含live DT、原始驻留、manifest、UART、
 负向故障、final-identity.json、final-state.json和evidence-receipt.json。
