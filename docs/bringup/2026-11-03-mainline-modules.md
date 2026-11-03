@@ -121,3 +121,11 @@ modules.tar.gz、构建和测试日志、三个成功网页窗口的 JSON/PNG、
 三份部署收据分别为 [HDMI RX](../../packaging/kernel-edge/uhd7-t7-hdmirx-deployment.json)、
 [VDIN](../../packaging/kernel-edge/uhd7-t7-vdin-test-deployment.json) 和
 [Wave5](../../packaging/kernel-edge/uhd7-wave5-deployment.json)，锁测试联合校验收据及原整包边界。
+
+## 登记 issue
+
+| 位置 | 问题 | 评分 |
+|---|---|---|
+| PiKVM 网页接入 | 首帧 8169 ms，慢于 [统一登录记录](2026-10-18-unified-auth-gateway.md) 的 3.3–6.2 s；本轮未拆分页面就绪、Janus 协商与首个关键帧，原因未查 | 3 × 2 = 6 |
+| tools/vm push | 正式分支保护使协调者无法用该工具快进推送 `vim4-kvm-7.3`，本轮按用户合入主线的要求在 VM 中手动快进推送 | 1 × 2 = 2 |
+| BSBUF_FULL 恢复 | 修复只经代码审查和宿主测试，编码缓冲写满到恢复尚无实板触发与计时 | 1 × 4 = 4 |
