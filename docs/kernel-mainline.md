@@ -187,6 +187,13 @@ RAM窗口只接受5.15或当前正式锁的精确release，恢复目标以新采
 - I3（发生1×严重3）：kernels.json已写而extlinux尚未切换时中断，面板因boot profile不匹配
   暂时报告mainline不可用，选择mainline也会拒绝。U-Boot仍按原extlinux启动上一整包；
   只登记此面板表现，不增加恢复服务或双份登记协议。手工改回上一整包后需重新登记以恢复面板可用。
+- board-window 5.15基线（1×3）：要求release出现在默认项LINUX路径中，新刷镜像的`LINUX /Image`
+  符号链接布局会被拒绝；现板Vendor项为`/vmlinuz-<release>`，不受影响。
+- 日期release glob（1×2）：shell的`7.*-vim4-????????`比USB gadget的Python校验宽松，
+  手工构造的异常release判断可能不一致；正常日期与`.N`不受影响。
+- final-window.py（1×3）：仍组装uhd1，但复制的公共运行入口已拒绝退役release；复现旧窗口请检出历史提交。
+- register-runtime.py（1×1）：追加Mainline启动项的分支不可达；archive/kernel-patch-inventory.md
+  的RECIPE仍指向已删除的packaging/kernel-edge（1×2）。
 
 在 Linux ARM64、GCC 13 环境中运行；需要 make、flex、bison、bc、OpenSSL/ELF
 开发库和 pahole。准备阶段不安装到开发机或板子。
