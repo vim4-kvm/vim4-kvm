@@ -41,23 +41,75 @@ HDR 初期记录的原生输出缺口后来有双路径扩展，当前对照同�
 
 ## 接上 HDMI-OUT 显示器后的验收清单
 
+### 当前基线与候选形态
+
+本节按协调者确认的当前默认 uhd7 修正，替代早版首窗中的 5.15 恢复目标。
+来源锁为 [sources.toml](../packaging/kernel-edge/sources.toml) 的 `tested_build` 与
+`retained_runtime.module_overlays`，实际部署证据见
+[正式三模块更新](bringup/2026-11-03-mainline-modules.md)。恢复目标包含以下完整组合。
+
+- `FullKvm` 默认项，`7.3.0-vim4kvm-uhd7+`，GPU 为 kbase。
+- Image 源码 `52b95c8493264b195fe5fa10ccf07ad28670f16f`，build ID
+  `d6f9c685802759c85cba6bd92bce90396d1cf6ec`，Image SHA256
+  `10e3451d13bca87006bd93faa991c0290d0109df8a21f5bf0b4725f700f52354`。
+- 已装 `t7_hdmirx`、`t7_vdin_test`、`wave5` 来自 `4111568841bd`，以来源锁中的
+  压缩文件 SHA、加载 build ID 和部署收据为准；同时保留 kbase 三个外部模块及其身份。
+
+候选计划采用 **uhd7 之上的临时 DT 与用户态覆盖**。对比 `52b95c8..4111568`，
+运行时代码变化集中在上述三个已部署模块；透传分支另加 DT profile 和测试，
+显示/ASoC 内建代码没有额外差异。因此首窗复用已验证的 uhd7 Image 和当前完整模块集，
+候选改动集中在启用 native VD1/TX/split VCBUS 的 DT、broker 和应用适配。
+以 passthrough DT 为底应用现有 kbase 选择/thermal 片段，关闭 Panfrost，重跑资源与 GPU
+互斥预检；当前离线生成的 passthrough DT 尚未完成该 kbase 组合。
+
+交付载体仍需可审计的独立 RAM payload 目录与 manifest，登记实际复用的 Image、包含
+三模块更新的模块清单、候选完整 DTB、用户态覆盖和 PID1。DT 覆盖在启动时选择完整 DTB。
+本轮 `pt-offline` 模块属于独立 release/新 vmlinux BTF 构建，只作离线编译证据；
+将它们加载进 uhd7 会违反模块/BTF 匹配合同。首窗计划也无需为这组 DT/用户态改动重新构建
+独立内核整包。5.15 保留为后续性能对照的测试对象。
+
+### 窗口工具门禁
+
+当前 [board-window](../tools/board-window) **尚不支持从 uhd7 完整执行本计划**。
+`boot-candidate` 首次 proof 和 `BaselineCache` 要求 release 以 `5.15.` 开头；
+[display-once.py](../packaging/kernel-edge/display-once.py) 的 `retained_preflight` 与
+`cleanup_module_mountpoints` 同样限定 5.15，`prepare` 拒绝候选与 baseline 相同 build ID。
+`return-baseline` 的身份比较可按 proof 检查任意 release，但清理仍被上述条件阻断，
+且 `ready` 对 7.x 未强制检查 manager/HDMI 服务，现有成功退出条件不足以覆盖本次恢复标准。
+
+持板前须完成针对此 uhd7 基线的工具适配与离线回归，范围为以下三项。
+
+1. 首次 proof、保留基线检查和清理支持明确登记的 uhd7 身份，并保护 FullKvm 默认项、
+   启动文件、运行时登记、当前模块文件/依赖清单及用户态覆盖目标。
+2. 允许相同 Image build ID 的 DT 候选，以独立 payload ID、DTB/运行时哈希和新 boot ID
+   区分候选与基线；验证当前运行 DT 的可读属性匹配候选，单看 uname/build ID 无法区分。
+3. 恢复检查覆盖 uhd7 的 manager/HDMI/gadget、实际选定 KVM、kbase、三个更新模块的加载
+   身份与视频推进。离线覆盖 uhd7 往返、同 Image 不同 DT、拒绝错误 proof/哈希、已有模块目录
+   保留与临时覆盖退出恢复，并继续通过原有 5.15 回归。
+
+以上工具适配、组合 DT 和新 payload 均为持板前待办，本次只修正文档。
+
+### 首窗步骤与恢复
+
 以下作为后续另行授权的执行计划。准备在持板前完成，首窗预计 28 分钟，22 分钟时进入恢复，
 硬上限 30 分钟含恢复。完整产品缺项需先实现，再进入对应门禁。
 
 | 时间 | 步骤 | 通过标准 |
 |---|---|---|
-| 持板前 | 完成同次 Image、DT、全模块、运行时与静态 PID1 的 manifest；离线 preflight；准备独立 RAM payload ID、恢复 proof 和测试脚本；源预置 SDR 动态帧号及合法 PCM | SHA/身份齐全，测试模式为 sink 所支持；预计任务可在 22 分钟内停止 |
-| 0–3 分钟 | 记录当前 5.15 release/build ID、启动文件哈希、服务、UDC、OUT HPD/有效 EDID 与音频能力 | sink connected，真实 EDID 与目标模式匹配，默认恢复基线已确认 |
-| 3–7 分钟 | 经 board-window 一次性 RAM 启动，读回 boot ID、候选身份、native KMS/VD1、TX 声卡/ELD | 全部匹配，无新增 oops/taint；失败立即进入恢复 |
+| 持板前 | 完成上述工具适配/离线回归、kbase 组合 DT 与 uhd7 临时覆盖 payload；核对复用 Image/完整模块与候选 DT/运行时 manifest；准备恢复 proof 和脚本；源预置 SDR 动态帧号及合法 PCM | SHA/身份齐全，工具可按 uhd7 proof 完成往返，测试模式为 sink 所支持；预计任务可在 22 分钟内停止 |
+| 0–3 分钟 | 记录当前 uhd7 release/build ID、FullKvm 默认项、启动/运行时文件哈希、三个更新模块与 kbase 身份、当前应用/服务、UDC、OUT HPD/EDID/ELD | 与上述来源锁及现场 proof 一致，sink connected，真实 EDID 与目标模式匹配 |
+| 3–7 分钟 | 经适配并验证后的 board-window 一次性 RAM 启动，读回新 boot ID、候选 DT 属性、native KMS/VD1、kbase、TX 声卡/ELD及模块身份 | Image/模块保持已核定 uhd7 身份，候选 DT/用户态符合 manifest，无新增 oops/taint；失败立即进入恢复 |
 | 7–10 分钟 | 桌面 KMS 图案与独立采集短并发，再有序释放桌面 KMS ownership | 两端内容推进、颜色和时序符合预期，无资源冲突；桌面与直通消费者按顺序占用 KMS |
 | 10–17 分钟 | broker 原尺寸 SDR 1080p60，随后 sink 支持的 4K60，分别验证零远程客户端与 One-KVM H.265 并发 | 三高度动态帧号完整、采集 ERROR 为零、地址锁存随 vblank 推进、退休后 QBUF、CMA 有界；远程 framesDecoded 持续推进 |
 | 17–20 分钟 | 一次受控源时序往返和一次已审阅的软件 connector 事件；记录完整恢复过程 | 相同时序无重复 modeset；新 generation 成功，旧帧不进新池；记录恢复秒数并与厂商同条件比较 |
 | 20–22 分钟 | 若音频控制与分发已补齐，验证 RX/TX RUNNING、PCM 格式/ELD、队列和 XRUN；否则登记音频阻塞 | 静音不算音频通过；真实非零 PCM、远程与本地唯一 RX owner、恢复不重新 prepare TX。听感与 A/V 测量单列 |
-| 22–28 分钟 | 停止本次消费者与临时覆盖，经 `board-window return-baseline` 正常重启恢复 | 5.15 身份、全部保护文件哈希、服务、UDC 和原有视频恢复，记录退出状态 |
+| 22–28 分钟 | 停止本次消费者，退出临时覆盖，经适配后的 `board-window return-baseline` 正常重启回 FullKvm | uhd7 Image/build ID、基线 DT、三个更新模块、kbase、全部保护文件哈希与默认项匹配；原应用设置、manager/HDMI/gadget、UDC configured 和原有视频推进恢复 |
 
 任何 WARN/oops、帧撕裂、失控 modeset、CMA 不回收或 DMA 退休不明都立即停止该项并恢复。
-回退遵循 [候选链与恢复](board-window.md#候选链与恢复)，保留 UART 与原始 proof。
-候选依赖 RAM 启动选择，默认基线保持可直接 autoboot；正常重启失败时依既有看门狗恢复路径，
+回退沿用 [候选链与恢复](board-window.md#候选链与恢复) 的 RAM 一次性选择和 proof 校验机制，
+执行以本节列出的 uhd7 工具门禁通过为前提。保留 UART 与原始 proof。
+候选依赖 RAM 启动选择，正常重启/autoboot 回到持久 FullKvm/uhd7，临时 bind 随重启退出；
+恢复后核对完整模块更新身份，避免仅凭相同 release 判定恢复成功。正常重启失败时依既有看门狗恢复路径，
 若仍无法恢复则保存证据并明确交接现场恢复需求。预留的 6 分钟是操作预算，硬件故障可能阻断完成。
 
 后续每窗单独预计 25–28 分钟、含 6 分钟恢复。按顺序覆盖三应用切换与慢消费者、
