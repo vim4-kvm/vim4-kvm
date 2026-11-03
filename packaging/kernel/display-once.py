@@ -14,13 +14,9 @@ import re
 import shutil
 import struct
 import subprocess
-import sys
 import tarfile
 import tempfile
 import tomllib
-
-sys.path[:0] = ['/usr/lib/vim4-kvm/python', str(Path(__file__).resolve().parents[2] / 'board')]
-from vim4boot import is_mainline_release
 
 SOURCES = Path(__file__).with_name('sources.toml')
 RELEASE = '7.3.0-vim4kvm-uhd1+'
@@ -70,8 +66,7 @@ def candidate_prefix(plan, metadata='manifest.json'):
 
 
 def validate_release(release):
-    # Historical RAM candidates have their own namespace, not runtime qualification.
-    if not is_mainline_release(release) and not re.fullmatch(r'7\.3\.[01]-vim4kvm-[A-Za-z0-9][A-Za-z0-9._-]*\+', release):
+    if not re.fullmatch(r'7\.3\.[01]-vim4kvm-[A-Za-z0-9][A-Za-z0-9._-]*\+|\d+\.\d+(?:\.\d+)?-vim4-\d{8}(?:\.(?:[2-9]|[1-9]\d+))?', release):
         raise ValueError('invalid candidate release')
 
 
