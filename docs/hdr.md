@@ -1,11 +1,12 @@
 # HDR 输入映射
 
-7.3优先补齐既有VDIN HDR2的PQ/HLG和标准色彩合同，GPU仅缩放/后备；
-源码证据、native-hdr关系、离线计划与数值验收见[HDR2可行性研究](hdr2-hardware-plan.md)。
-最新[PQ窗口](bringup/2026-10-30-hdr2-pq-window.md)仅完成SDR基线及shadow诊断；当前M6未输出HDR，PQ颜色门禁仍待真实输入。
+远程画面有 HDR 转 SDR 与保留原生 HDR10 两种模式。7.x 的 HDR2 映射已完成
+[真实 PQ/SDR 烟测](bringup/2026-10-31-uhd4-formal-smoke.md)；原生 HDR10 的实现与验收边界见
+[7.3 原生远程 HDR10](hdr10-remote-73.md)。Panfrost 下 One-KVM 网页最小主路径已验，
+不能据此扩大到 kbase、UU 渲染或全应用通过。
 
-普通HLG的独立离线内核候选、厂商表/定点证据、PQ合并边界与统一上板清单见[HLG候选](hdr2-hlg.md)。
-该候选尚未上板，不改变下文已验证范围或扩大正式EDID能力。
+7.x HLG 映射实现已合入，真实源未验；厂商表与定点证据见 [HLG 研究](hdr2-hlg.md)，
+HDR2 色彩合同与数值验收方法见 [HDR2 可行性研究](hdr2-hardware-plan.md)。不扩大正式 EDID 能力。
 
 5.15 原生双路径的四套 KVM 均可选择保留远程 HDR10，见
 [全应用 HDR 接入](bringup/2026-10-26-all-kvm-hdr.md)。以下默认 SDR 映射仍用于
@@ -15,7 +16,7 @@ H.264、JPEG、截图以及开启「HDR 转 SDR」的 H.265；HDMI OUT 偏好独
 开启时输出 SDR；关闭且输入为 PQ 时，四套应用的 5.15 H.265 可保留 PQ/BT.2020 Main10。
 H.264、JPEG 和截图仍输出 SDR。NanoKVM、JetKVM 与 PiKVM 预先协商 Main10，
 开关切换只重建采集编码，不更换 WebRTC 连接；One-KVM 沿用 profile 重新协商。
-切换不改 EDID、不重启 HDMI；7.x 目前继续使用 SDR。
+切换不改 EDID、不重启 HDMI；7.x 原生模式的条件与边界见 [7.3 原生远程 HDR10](hdr10-remote-73.md)。
 关闭转换不会自动切换编码，观看 HDR 仍需选择 H.265。
 [浏览器兼容性复核](bringup/2026-10-26-hdr-browser-compatibility.md)确认 Chrome 156
 收到真实 Main10 并保留 PQ/BT.2020；Safari 27.0.1 当前 WebRTC 帧变为八位 BT.709。
@@ -27,7 +28,7 @@ H.264、JPEG 和截图仍输出 SDR。NanoKVM、JetKVM 与 PiKVM 预先协商 Ma
 One-KVM 页面不再提供 HDR 开关及白点/峰值控制；保存其输出分辨率、帧率和 JPEG
 质量时保留当前 HDR 默认值。曲线和全局开关统一在管理器「视频输入」调整。
 
-EDID 预设声明 HDR10/HLG，主机开启 HDR 时发送 PQ/HLG 10bit 信号。采集为 8bit，
+以下为 5.15 默认 SDR 映射路径。EDID 预设声明 HDR10/HLG，主机开启 HDR 时发送 PQ/HLG 10bit 信号。采集为 8bit，
 未处理时画面发白。T7 的 vdin0 有独立 HDR2 核，内核在 HDMI 输入为
 HDR10/HDR10+/HLG 时将其映射到 SDR，SDR 输入直通（`dmesg` 中
 `vdin_set_hdr vdin0 fmt:N`，0=SDR、1=HDR10）。切换由驱动的信号变化处理完成，
@@ -60,12 +61,12 @@ HLG 输入仍用厂商 HLG 曲线。
 切换残留和变暗的复现、实际寄存器及误差边界见
 [HDR切换颜色修复](bringup/2026-10-25-native-hdr-color.md)。
 
-7.x 的独立 edge 服务已接通 PQ / BT.2020 / YCbCr420 10bit 4K60，见
-[采集与映射实测](bringup/2026-10-20-edge-hdr-capture.md)；HLG 等其他格式未适配。
+7.x 的独立 edge 服务在 2026-10-20 接通 PQ / BT.2020 / YCbCr420 10bit 4K60，见
+[历史采集与映射实测](bringup/2026-10-20-edge-hdr-capture.md)。HLG 实现已合入，真实源未验。
 `vim4-hdr-curve` 在此内核向平台设备 `hdr_curve` 一次原子提交两行表，由 IRQ 在安全帧边界
 重载；参数文件与 helper 的预览/保存接口相同。
 
-7.x 使用单独的高光曲线：保持 sRGB 编码 90% 以下不变，剩余 10% 码值使用对数肩部
+2026-10-20 的 7.x 映射路径使用单独的高光曲线：保持 sRGB 编码 90% 以下不变，剩余 10% 码值使用对数肩部
 压缩到 PEAK，衔接处斜率连续。默认约 160 尼特开始压缩，暗部、中间调不变；
 HDR 桌面白会略暗，换取 400/600/1000 尼特的可辨层次。`tables-edge WHITE PEAK`
 可离线输出这组表；`apply` 根据可写 edge 接口自动选择，`tables` 与 5.15 写入仍用
@@ -84,7 +85,8 @@ MJPEG 分支使用公共 `vim4vdin1src`；One-KVM 的 H.264/H.265 保留原有 V
 
 ### 7.x 映射的验证边界
 
-以下记录 7.x 路径的验证范围；基础采集格式与映射表提交接口见本文前节。
+以下为 2026-10-20 至 21 日的 7.x 映射路径验证记录；后续真实 PQ/SDR 烟测见
+[2026-10-31 记录](bringup/2026-10-31-uhd4-formal-smoke.md)。HLG 真实源仍未验。
 SDR 420 和 RGB 分别直通、矩阵转换。[高光与连接优化](bringup/2026-10-20-edge-hdr-optimization.md)
 给 8bit 高光留出层次，并避免重复输入通知重建健康连接；HDR 桌面白略暗。
 H.265 八轮、H.264 四轮 HDR 往返保持同一连接；HLG/其他格式及长期稳定性未验收。
@@ -102,7 +104,8 @@ HDR降分辨率见[UU GPU 缩放](bringup/2026-10-27-uu-hdr-scale.md)及
 SDR 超宽屏硬件缩放及 JetKVM/PiKVM 尺寸入口见
 [缩放与尺寸控制](bringup/2026-10-27-sdr-scale-controls.md)；5.15 统一使用连续 V4L2 DMA。
 4K HDR 最初完整网页约34fps；后续[GPU/DMA 链路](bringup/2026-10-26-hdr-gpu-pipeline.md)
-已实测真实 PQ Main10 网页约60fps。HLG、7.x Main10与本地新模式未验收。
+已实测真实 PQ Main10 网页约60fps。当时 HLG、7.x Main10 与本地新模式未验收；
+7.x Main10 的后续范围以 [7.3 原生远程 HDR10](hdr10-remote-73.md) 为准。
 后续[像素复核](bringup/2026-10-26-remote-hdr-pixels.md)修正 AMLY 解包花屏，
 保留 HDR 偏好时 SDR 输入自动走八位 DMA；源端切换的 CMA 分配候选复测失败，已撤回。
 [HDR GPU 前置验证](bringup/2026-10-26-hdr-gpu.md)补齐匹配的私有 Mali Vulkan 驱动；

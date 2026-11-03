@@ -1,7 +1,5 @@
 # 上板记录索引
 
-- [原生HDR10 r3离线候选](2026-10-31-hdr10-remote-candidate.md) — kernel video application offline candidate
-
 每条记录一个文件，位于 `bringup/日期-主题.md`。先按日期或标签在本页找到条目，只打开需要的文件；
 不要通读整个目录。标签：board、kernel、video、audio、usb、application、pikvm、uu、manager、deployment。
 
@@ -80,6 +78,7 @@
 
 ## 2026-10-31
 
+- [原生HDR10 r3离线候选](2026-10-31-hdr10-remote-candidate.md) — kernel video application offline candidate
 - [HDR窗口恢复预算D1修复](2026-10-31-hdr10-recovery-budget.md) — video application offline safety
 - [原生HDR第二阶段窗口补审修复](2026-10-31-hdr10-phase2-window-fixes.md) — video application offline safety
 - [原生HDR第二阶段四项审查修复](2026-10-31-hdr10-phase2-review-fixes.md) — video application offline safety

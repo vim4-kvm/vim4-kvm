@@ -2,6 +2,7 @@
 
 改 PD 协商读 [USB-C 协商](../usb-pd.md)；查接口和接线读 [硬件](../hardware.md)；
 改某个应用的 HID 或介质对接读该应用的 VIM4.md（见 [应用](application.md)）。
+重枚举 panic 或控制端点故障读内核的 [HID 重新绑定](../kernel.md#hid-重新绑定)与 [CRG 重连](../kernel.md#crg-usb-控制端点重连)。
 
 键鼠输入延迟、长按和 Mac 滚轮方向的测试入口见 [输入验证](../input-latency.md)。
 
@@ -11,7 +12,7 @@
 
 One-KVM 的限定助手可暂时修改这个 gadget 的描述符与功能链接，并按需创建
 hidg3 多媒体键、ECM/RNDIS 网络实例；不删除原有 HID 实例。应用停用后由
-ExecStopPost 恢复原始配置，详情见 [One-KVM 适配](../../One-KVM/VIM4.md#hid-功能配置)。
+ExecStopPost 恢复原始配置；若仍挂载介质，保留介质及当前组合，主机弹出后才恢复，详情见 [One-KVM 适配](../../One-KVM/VIM4.md#hid-功能配置)。
 最多 5 个 IN 端点；网卡占两个，其余每个 HID、UAC2、磁盘各占一个。
 
 虚拟磁盘挂载状态属于板级共享 LUN，不随当前 KVM 名称变化。管理面板的虚拟介质页
@@ -24,7 +25,7 @@ ExecStopPost 恢复原始配置，详情见 [One-KVM 适配](../../One-KVM/VIM4.
 [实验 HID 记录](../bringup/2026-10-20-edge-hid-integration.md)。它使用独立准备服务，
 后续 [USB 功能接入](../bringup/2026-10-21-edge-usb-functions.md) 开放消费者键、虚拟介质、
 USB 网卡与 UAC2 配置，使用独立助手、数据目录和运行时日志；USB 串口仍未启用。
-挂载介质时拒绝修改 USB 配置；应用停止保留已挂载介质及当前组合，主机弹出后才恢复。
+挂载介质时拒绝修改 USB 配置。
 NanoKVM 启动不再根据旧 enabled 标记自动重新连接数据盘；镜像文件保留，需用户主动连接。
 
 管理器还汇总各 KVM 现有 ISO/IMG 镜像与共享数据盘，可选择只读或可写挂载。
