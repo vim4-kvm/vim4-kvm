@@ -23,11 +23,11 @@ def commit(path):
     return subprocess.check_output(['git', '-C', str(path), 'rev-parse', 'HEAD'], text=True).strip()
 
 
-def verify_v4l2_plugin(path, profile):
+def verify_v4l2_plugin(digest, profile):
     recipe = Path(__file__).with_name('sources.toml')
     lock = tomllib.loads(recipe.read_text())['gstreamer']
     key = 'candidate_plugin_sha256' if profile == 'yuv444' else 'native_hdr_plugin_sha256'
-    if sha(path) != lock[key]:
+    if digest != lock[key]:
         raise ValueError(f'V4L2 plugin hash mismatch for {profile}')
 
 
@@ -39,7 +39,7 @@ def main():
                  'v4l2_plugin', 'onekvm_binary', 'destination'):
         parser.add_argument(name, type=Path)
     args = parser.parse_args()
-    verify_v4l2_plugin(args.v4l2_plugin, args.v4l2_profile)
+    verify_v4l2_plugin(sha(args.v4l2_plugin), args.v4l2_profile)
     kernel = json.loads((args.kernel_payload / 'manifest.json').read_text())
     proof = json.loads((args.kernel_payload / 'runtime-proof.json').read_text())
     if not re.fullmatch(r'7\.3\.0-vim4kvm-hdr10r[1-9][0-9]*\+', kernel['release']):
@@ -68,7 +68,6 @@ def main():
         shutil.copy2(args.kernel_payload / name, args.destination / name)
     shutil.copy2(args.capture_plugin, plugins / 'libgstvfmcap.so')
     shutil.copy2(args.v4l2_plugin, plugins / 'libgstvideo4linux2.so')
-    verify_v4l2_plugin(plugins / 'libgstvideo4linux2.so', args.v4l2_profile)
     shutil.copy2(args.onekvm_binary, args.destination / 'one-kvm')
     recipe = Path(__file__).resolve().parent
     for name in ('hdr10-prepare', 'hdr10-run'):
@@ -82,6 +81,7 @@ def main():
                                'NanoKVM/JetKVM/PiKVM native Wave5 source not integrated'],
                   sha256={str(p.relative_to(args.destination)): sha(p)
                           for p in sorted(args.destination.rglob('*')) if p.is_file()})
+    verify_v4l2_plugin(result['sha256']['gstreamer-1.0/libgstvideo4linux2.so'], args.v4l2_profile)
     (args.destination / 'candidate.json').write_text(json.dumps(result, indent=2) + '\n')
     with tarfile.open(archive, 'x:gz') as output:
         output.add(args.destination, arcname=args.destination.name)
