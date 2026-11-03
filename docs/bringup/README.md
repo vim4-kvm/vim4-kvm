@@ -1,5 +1,7 @@
 # 上板记录索引
 
+- [原生HDR10 r3离线候选](2026-10-31-hdr10-remote-candidate.md) — kernel video application offline candidate
+
 每条记录一个文件，位于 `bringup/日期-主题.md`。先按日期或标签在本页找到条目，只打开需要的文件；
 不要通读整个目录。标签：board、kernel、video、audio、usb、application、pikvm、uu、manager、deployment。
 
@@ -15,10 +17,84 @@
 
 以下保留完整日期索引。这些里程碑记录的是历史证据；查找当前架构和约束时，仍应先读对应子系统入口。
 
+## 2026-11-03
+
+- [uhd7 三模块安装与四应用会话验收](2026-11-03-mainline-modules.md) — kernel video application deployment；四应用4K60、JetKVM第二浏览器接管关键帧及UU官方客户端接收，修正临时测试就绪门禁。
+
+- [5.15 amlvenc 按需 IDR 离线调研](2026-11-03-amlvenc-on-demand-research.md) — video；H.265 可只改参数，H.264 需 change_qp 转发；登记输出缓冲越界等 3 个 issue，暂不改 5.15。
+
+- [Wave5 AVC 默认按需 IDR](2026-11-03-wave5-avc-default.md) — video board application deployment；共享插件、编码切换重试与生产验证。
+
+- [Wave5 AVC 恢复帧 QP 与编码选择持久化](2026-11-03-wave5-avc-recovery-qp.md) — video board application deployment；逐帧 QP、网页恢复与重启验证。
+
+- [Wave5 单帧 VBV 与 HEVC 帧级码控对照](2026-11-03-wave5-single-frame-vbv.md) — video board deployment；4K60 静态带宽、分带质量、接入、PLI 与延迟。
+
+## 2026-11-02
+
+- [Wave5 静态画面行刷新](2026-11-02-wave5-refresh.md) — video board；4K 细节图、逐行带质量、按需 IDR 与丢包恢复
+
+- [uhd7 固定高刷与原生 YUV444 窗口](2026-11-02-hfr-yuv-window.md) — kernel video board；高刷吞吐、QHD AVC 限额、444 色度通过，接收无丢帧，图样跳号强推断来自信号源；QHD HEVC SPS 低报，重发 HDMI Forum 48–120 Hz EDID 后 M6 仍无 Variable
+
+- [uhd7 正式构建与 BCM43752 SDIO 部署](2026-11-02-wifi-sdio-formal.md) — kernel network board deployment；同次完整模块、eMMC、独立中断、FullKvm 重启及安装后反向 TCP
+
+- [BCM43752 SDIO 主机路径优化与 5.15 同窗对照](2026-11-02-wifi-sdio-host-path.md) — kernel network board；可缓存中转缓冲区、SDIO 中断使能过滤、硬中断完成、GPIOX_7 独立中断，同窗 120 秒 D2 401.6 对 5.15 363.3
+
+- [BCM43752 下载上限与 SDIO 每聚合周期](2026-11-02-wifi-glom-cycle.md) — kernel network board；tracepoint 拆解每聚合周期，7.3 对 5.15 的中转复制与中断路径差额
+
+- [BCM43752 下载余差与 SDIO 接收对齐](2026-11-02-wifi-rx-alignment.md) — kernel network board；同期双内核下载、接收中转复制探针与固件对齐对照
+
+- [BCM43752 下载吞吐与接收处理 CPU](2026-11-02-wifi-rx-cpu.md) — kernel network board；同一连接交替切换 wlan0 RPS，比较 SDIO 与 TCP 接收路径
+
+- [BCM43752 固件版本与 5.15 驱动协议对照](2026-11-02-wifi-fw217.md) — kernel network board；AP6275S 程序、SAE 管理密钥、SDIO 发送窗口和 discovery
+
+- [BCM43752 厂商扫描请求与中断对照](2026-11-02-wifi-vendor-scan.md) — kernel network board；5.15 原厂 24 次激活、运行时地区和驻留、7.3 单变量验证
+
+- [BCM43752 扫描信道与 MPC 交替对照](2026-11-02-wifi-scan-pairs.md) — kernel network board；首次扫描、固件年龄、请求与 BSS 信道
+
+- [BCM43752 连接崩溃的扫描轨迹](2026-11-02-wifi-scan-trace.md) — kernel network board；主机命令时序、PHY 数据端口与扫描 MPC 实验
+
+- [Wi-Fi 激活分组与聚合上限对照](2026-11-02-wifi-pm-glom.md) — kernel network board；11.90分钟、输入同哈希、PM/P2P因果未确立、状态7、32/36负结果、恢复FullKvm
+- [BCM43752 第三轮离线差异与实验草案](2026-11-02-wifi-txstatus-offline.md) — kernel network offline；D11核心表、固件输入缺口、初始化矩阵、≤30分钟实验预算，未占板
+- [Wi-Fi TX status、固件崩溃与厂商对照](2026-11-02-wifi-txstatus.md) — kernel network deployment；日志overlay、AXI trap再现、厂商双向600秒、旧上传比85.68%，已恢复FullKvm
+- [boot 空间清理](2026-11-02-boot-space-cleanup.md) — deployment kernel；四个无引用旧文件，4.09→18.95 MiB，全部登记哈希前后通过，无重启
+- [HDMI-RX COR 锁部署与 Wi-Fi 有界流量](2026-11-02-hdmirx-cor-lock-deploy.md) — kernel deployment video network；三次 EDID、4K60 600秒、Wi-Fi 600秒与恢复
+
+## 2026-11-01
+
+- [HDMI-RX EDID 撤回 SError 审计与 COR 复位竞争修复](2026-11-01-hdmirx-edid-serror-audit.md) — kernel video offline；根因边界、候选分支未上板、登记 issue
+- [vim4-manager HTTPS 部署验收](2026-11-01-manager-https.md) — manager application deployment；443/8443、本机 CA、Tailscale 证书、HTTP 开关
+- [USB 端点合并部署验收](2026-11-01-usb-endpoint-merge.md) — usb application deployment；多媒体键并入绝对鼠标，4/5 端点含麦克风
+- [HDR/r14e、MAC 与音频最终合入](2026-11-01-p0-hdr-final-merge.md) — application audio deployment；用户授权合入并停止，未验边界保留
+- [One-KVM 音频源变化恢复与稳定设备名](2026-11-01-onekvm-audio-source-recovery.md) — audio application deployment；API/现有采集通过，待用户听测
+- [跨内核原厂MAC传递修复与部署](2026-11-01-ethernet-mac-handoff.md) — network kernel deployment
+- [r14e持久安装与用户手测](2026-11-01-hdr10-r14e-installed.md) — deployment kernel application hdr10 kbase
+- [HDR r14e准备与恢复记录](2026-11-01-hdr10-phase2-preparation.md) — board video application source-recovery
+- [HDR 第二阶段 uhd6 短窗](2026-11-01-hdr10-phase2-uhd6.md) — board video application uu
+
 ## 2026-10-31
 
 - [7.3透传r2首窗OUT无HPD/EDID阻塞、独立broker核心](2026-10-31-passthrough73-r2.md) — kernel board video audio deployment
-
+- [HDR窗口恢复预算D1修复](2026-10-31-hdr10-recovery-budget.md) — video application offline safety
+- [原生HDR第二阶段窗口补审修复](2026-10-31-hdr10-phase2-window-fixes.md) — video application offline safety
+- [原生HDR第二阶段四项审查修复](2026-10-31-hdr10-phase2-review-fixes.md) — video application offline safety
+- [原生HDR第二阶段离线接入候选](2026-10-31-hdr10-phase2-offline.md) — video application uu gpu offline
+- [uhd6正式完整构建与验收](2026-10-31-uhd6-formal.md) — kernel video gpu deployment；九类汇总/19模式/600秒运动通过，持久安装，5.15仍默认
+- [uhd6统一来源与过程](2026-10-31-uhd6-unified.md) — kernel gpu video deployment；来源冲突、r3证据与失败历史
+- [uhd6 EDID恢复取证与修复门禁](2026-10-31-uhd6-edid-review.md) — kernel video deployment；自动回5.15，review及撤回/恢复短窗通过
+- [P0-2分窗性能准备与接收预检](2026-10-31-p0-2-performance.md) — board video performance offline
+- [P0-3公开停机协议与合法等待研究](2026-10-31-wave5-stop-research.md) — kernel video offline safety
+- [P0-3真实挂死注入安全审查](2026-10-31-wave5-real-hang-safety.md) — kernel video offline safety
+- [原生HDR最小主路径验收与合入](2026-10-31-hdr10-native-final.md) — kernel board video application hdr
+- [uhd5 GPU正式来源锁与最小烟测合入](2026-10-31-uhd5-main-integration.md) — kernel gpu deployment
+- [uhd5完整封包、正常回退与正式推广阻塞](2026-10-31-kbase-r12-package.md) — kernel gpu board deployment
+- [kbase r11厂商live DVFS策略与配对复测](2026-10-31-kbase-r11-policy.md) — kernel gpu board video
+- [kbase uhd5、payload目录修复与默认性能门禁](2026-10-31-kbase-r10-uhd5.md) — kernel gpu board video
+- [kbase r6 DMA追平、平台二分与thermal绑定](2026-10-31-kbase-r6-window.md) — kernel gpu board video
+- [kbase r9外部模块验证与队列候选目录冲突](2026-10-31-kbase-r9-queue.md) — kernel gpu board audit
+- [kbase r7默认调频离线候选与等锁超时](2026-10-31-kbase-r7-offline.md) — kernel gpu audit
+- [原生HDR修复包复验与同源5.15码流](2026-10-31-hdr10-remote-r7.md) — kernel board video application
+- [原生HDR r6十位DMA、Panfrost与编码caps阻塞](2026-10-31-hdr10-remote-r6.md) — kernel board video application gpu
+- [7.3原生远程HDR离线调查与分阶段门禁](2026-10-31-hdr10-remote-offline.md) — kernel video application uu offline
 - [uhd4正式完整构建、短烟测与队列工具修正](2026-10-31-uhd4-formal-smoke.md) — kernel board video hdr npu gpu deployment
 - [uhd4正式准备与旧heavy锁阻塞，未上板](2026-10-31-uhd4-formal-preparation.md) — kernel deployment
 - [HDR2双向恢复分解、uhd4r3细采样与长尾门禁](2026-10-31-hdr2-recovery.md) — kernel board video hdr application npu gpu
@@ -27,6 +103,11 @@
 
 ## 2026-10-30
 
+- [kbase r5零fault、WC heaps与三栈配对](2026-10-30-kbase-r5-window.md) — kernel gpu board video
+- [kbase GBM缺少DMA heap与Vulkan DEVICE_LOST](2026-10-30-kbase-r4-window.md) — kernel gpu board video
+- [kbase r3零WARN加载、EGL设备失败与助手恢复](2026-10-30-kbase-r3-window.md) — kernel gpu board video
+- [kbase首窗WARN门禁失败与5.15回退](2026-10-30-kbase-window.md) — kernel gpu board video
+- [7.3 kbase外部模块离线候选与ABI检查](2026-10-30-kbase-offline.md) — kernel gpu audit packaging
 - [HDR2a5产品DMA恢复、逐代退休与4K60门禁](2026-10-30-hdr2a5-window.md) — kernel board video hdr application
 - [HDR2a3的VUI、色差、4K60与退休/产品恢复余项](2026-10-30-hdr2a3-window.md) — kernel board video hdr
 - [HDR2a2的MCP、4K60与VUI/色准余项](2026-10-30-hdr2a2-window.md) — kernel board video hdr

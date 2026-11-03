@@ -4,10 +4,10 @@ import importlib.machinery
 import importlib.util
 import json
 import io
-import os
 from pathlib import Path
 import shutil
 import subprocess
+import sys
 import tempfile
 import tarfile
 import threading
@@ -22,6 +22,50 @@ loader.exec_module(window)
 
 
 class WindowTests(unittest.TestCase):
+    def test_baseline_reboot_reason_does_not_relax_other_identity(self):
+        before = dict(release='5.15.test', build_id='a'*40, files={'/boot/Image':'hash'},
+                      cmdline='root=PARTUUID=abcd reboot_mode=watchdog_reboot rw')
+        after = dict(before, cmdline='root=PARTUUID=abcd reboot_mode=normal rw')
+        window.verify_baseline(before, after)
+        unchanged = dict(before, cmdline='root=PARTUUID=abcd reboot_mode=cold_boot rw')
+        window.verify_baseline(unchanged, unchanged)
+        invalid = [dict(after, build_id='b'*40), dict(after, files={}),
+                   dict(after, release='7.3.test'),
+                   dict(after, cmdline=after['cmdline']+' init=/other'),
+                   dict(after, cmdline=after['cmdline']+' reboot_mode=normal'),
+                   dict(after, cmdline=after['cmdline'].replace('normal','unknown'))]
+        for value in invalid:
+            with self.subTest(value=value), self.assertRaises(RuntimeError):
+                window.verify_baseline(before, value)
+
+    def test_large_inventory_cleanup_fits_linux_exec_argument(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            module = root / 'cleanup.py'
+            module.write_text('def cleanup_module_mountpoint(plan):\n    print(plan["release"], plan.get("payload_id", "legacy"))\n')
+            legacy = dict(build_id='1' * 40, release='7.3.0-vim4kvm-uhd4+',
+                          files={str(i): 'a' * 64 for i in range(4000)})
+            current = dict(legacy, namespace='kbase', payload_id='default')
+            script = window.module_cleanup_script([legacy, current], str(module))
+            self.assertLess(len(script.encode()), 128 * 1024)
+            output = subprocess.check_output([sys.executable, '-c', script], text=True)
+            self.assertEqual(output.splitlines(), ['7.3.0-vim4kvm-uhd4+ legacy',
+                                                  '7.3.0-vim4kvm-uhd4+ default'])
+
+    def test_recovery_retains_each_payload_with_same_kernel(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            kernel = '1' * 40
+            first = dict(build_id=kernel, namespace='kbase', payload_id='default')
+            second = dict(first, payload_id='coherent')
+            legacy = dict(build_id=kernel)
+            for plan in (first, second, legacy):
+                window.record_candidate(root, plan, 'a' * 64)
+            recovered = [json.loads(p.read_text()) for p in root.glob('candidate-*.json')]
+            self.assertEqual(len(recovered), 3)
+            self.assertEqual({p.get('payload_id') for p in recovered}, {'default', 'coherent', None})
+            self.assertTrue((root / ('candidate-' + kernel + '.json')).exists())
+
     def test_m6_tolerates_unknown_metadata_during_both_transitions(self):
         client = window.MCP('unused', 'test')
         client.call = Mock()
@@ -59,6 +103,24 @@ class WindowTests(unittest.TestCase):
                          [b' ', b'setenv ethaddr c8:63:14:74:70:0d; sysboot candidate\n'])
         ready.assert_called_once_with('mock', expected='candidate', old_boot='old-boot')
         process.terminate.assert_called_once()
+
+    def test_autoboot_prompt_with_dropped_leading_bytes_is_interrupted(self):
+        uart = Mock()
+        uart.open_port.return_value = 42
+        # Observed on VIM4: only the prompt's tail survived the UART read.
+        chunks = [b'Set reboot_mode to watchdog reboot\r\nautoboot\r\n', b'kvim4#', b'login:']
+        process = Mock()
+        process.poll.return_value = None
+        with tempfile.TemporaryDirectory() as directory, \
+                patch.object(window, 'load', return_value=uart), \
+                patch.object(window, 'ssh', side_effect=['old-boot', 'c8:63:14:74:70:0d']), \
+                patch.object(window.subprocess, 'Popen', return_value=process), \
+                patch.object(window.select, 'select', return_value=([42], [], [])), \
+                patch.object(window.os, 'read', side_effect=chunks), \
+                patch.object(window.os, 'write') as write, \
+                patch.object(window.os, 'close'), patch.object(window, 'ready'):
+            window.boot('mock', 'serial', Path(directory), dict(command='sysboot candidate', release='candidate'))
+        self.assertEqual(write.call_args_list[0].args[1], b' ')
 
     def test_m6_recipe_restores_actual_source_state_on_failure(self):
         client = window.MCP('unused', 'test')
@@ -103,13 +165,18 @@ class WindowTests(unittest.TestCase):
             baseline = root / 'baseline'
             baseline.write_bytes(b'unchanged')
             proof = dict(release='5.15.test', build_id='c'*40, cmdline='baseline', files={str(baseline): once.sha(baseline)})
-            lstat = Path.lstat
-            def owned(path):
-                values = list(lstat(path)); values[4] = 0; values[0] &= ~0o022
-                return os.stat_result(values)
             (root / 'module-mounts').mkdir()
-            with patch.object(once, 'ROOT', root / 'display-m1'), patch.object(once, 'MODULE_ROOT', root / 'module-mounts'), patch.object(once.os, 'geteuid', return_value=0), patch.object(Path, 'lstat', owned):
+            with patch.object(once, 'ROOT', root / 'display-m1'), patch.object(once, 'MODULE_ROOT', root / 'module-mounts'), patch.object(once.os, 'geteuid', return_value=0):
                 once.stage(bundle, retained_baseline=proof)
+                with self.assertRaises(FileExistsError):
+                    once.stage(bundle, retained_baseline=proof)
+                once.stage(bundle, retained_baseline=proof, reuse_staged=True)
+                image = candidate / 'Image'
+                image.chmod(0o644)
+                image.write_bytes(b'changed kernel')
+                image.chmod(0o444)
+                with self.assertRaisesRegex(ValueError, 'hash mismatch'):
+                    once.stage(bundle, retained_baseline=proof, reuse_staged=True)
             self.assertEqual(list((root / 'module-mounts' / manifest['release']).iterdir()), [])
             self.assertTrue((candidate / 'runtime/helper').stat().st_mode & 0o111)
             self.assertEqual(baseline.read_bytes(), b'unchanged')
@@ -162,6 +229,11 @@ class WindowTests(unittest.TestCase):
                 changed = dict(proof, files=dict(proof['files'], **{name: 'changed'}))
                 self.assertFalse(cache.get(changed, measure, '2026-10-31')['reused'])
             self.assertFalse(cache.get(proof, measure, '2026-11-01')['reused'])
+            configured = dict(proof, measurement={'settings': {'codec': 'h264', 'source': 'm6'}})
+            self.assertFalse(cache.get(configured, measure, '2026-10-31')['reused'])
+            self.assertTrue(cache.get(configured, measure, '2026-10-31')['reused'])
+            configured['measurement']['settings']['codec'] = 'h265'
+            self.assertFalse(cache.get(configured, measure, '2026-10-31')['reused'])
             with self.assertRaises(ValueError):
                 cache.get(dict(proof, release='7.3.test'), measure)
 
@@ -239,6 +311,38 @@ clock=0;
 await assert.rejects(measureDecoded(async()=>({framesDecoded:0}),.2,options),/No actual decoded/);
 clock=0;
 await assert.rejects(measureDecoded(async()=>({id:'v',ssrc:clock?2:1,framesDecoded:1}),.2,options),/stream changed/);
+'''
+        subprocess.run(['node', '--input-type=module', '-e', script], cwd=ROOT, check=True, timeout=10)
+
+    @unittest.skipUnless(shutil.which('node'), 'Node is required for receiver transport replay')
+    def test_video_transport_has_no_audio_or_hid_and_closes_session(self):
+        script = r'''
+import assert from 'node:assert/strict';
+import {connectVideo,closeVideo} from './tools/board-window-timing.mjs';
+const requests=[], tracks=[];
+globalThis.window={};
+globalThis.document={querySelector:()=>({})};
+globalThis.MediaStream=class {};
+globalThis.RTCPeerConnection=class {
+  iceGatheringState='complete';
+  localDescription={sdp:'v=0'};
+  addTransceiver(...args){tracks.push(args);}
+  async createOffer(){return {};}
+  async setLocalDescription(){}
+  async setRemoteDescription(answer){assert.equal(answer.sdp,'answer');}
+  close(){this.closed=true;}
+};
+globalThis.fetch=async (url,options)=>{
+  requests.push([url,JSON.parse(options.body)]);
+  return {ok:true,json:async()=>({session_id:'test-session',sdp:'answer'})};
+};
+const page={route:async()=>{},goto:async()=>{},evaluate:async(fn,arg)=>fn(arg)};
+await connectVideo(page,'http://example.test',undefined);
+assert.deepEqual(tracks,[['video',{direction:'recvonly'}]]);
+await closeVideo(page);
+assert.equal(window.boardPeers[0].closed,true);
+assert.deepEqual(requests.map(r=>r[0]),['/api/webrtc/offer','/api/webrtc/close']);
+assert.deepEqual(requests[1][1],{session_id:'test-session'});
 '''
         subprocess.run(['node', '--input-type=module', '-e', script], cwd=ROOT, check=True, timeout=10)
 

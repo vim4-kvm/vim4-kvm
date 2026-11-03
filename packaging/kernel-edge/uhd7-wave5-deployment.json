@@ -1,0 +1,19 @@
+{
+  "schema": 1,
+  "scope": "installed-single-module-overlay",
+  "release": "7.3.0-vim4kvm-uhd7+",
+  "default_boot": "FullKvm",
+  "image_source_revision": "52b95c8493264b195fe5fa10ccf07ad28670f16f",
+  "kernel_build_id": "d6f9c685802759c85cba6bd92bce90396d1cf6ec",
+  "module_source_revision": "4111568841bd83ca33b9b9a044ed9a7077f95004",
+  "module_path": "kernel/drivers/media/platform/chips-media/wave5/wave5.ko.xz",
+  "module_sha256": "baf6ffb03ddbae1a4cbd6767980411a3bdd2f51115909ba81cb4a6aa5d4a9755",
+  "module_build_id": "83e8eb222b68f512e7515f410b8c0497df35cf61",
+  "unstripped_module_sha256": "5b197d412d86cf9326df425ede837a7c3af11711d4f28397a768a6a410e36ce1",
+  "module_btf": true,
+  "boot_id": "ee91f4dc-fcc7-4d22-a14a-a5550d079550",
+  "loaded_module_build_id_verified": true,
+  "all_registered_boot_artifacts_verified": true,
+  "evidence": "docs/bringup/2026-11-03-mainline-modules.md",
+  "formal_archive_manifests_unchanged": true
+}

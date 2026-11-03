@@ -85,7 +85,7 @@ def check_advance(previous, current):
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('frames', type=Path, nargs='+', help='RGB24 files in capture order')
-    parser.add_argument('--size', choices=('1920x1080', '3840x2160'), default='1920x1080')
+    parser.add_argument('--size', choices=('1920x1080', '2560x1440', '3840x2160'), default='1920x1080')
     parser.add_argument('--format', choices=('rgb24', 'nv12'), default='rgb24')
     parser.add_argument('--check-colors', action='store_true')
     args = parser.parse_args()

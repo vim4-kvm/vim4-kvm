@@ -1,0 +1,37 @@
+{
+  "status": "minimal-smoke-passed",
+  "installed": false,
+  "default_boot": "5.15",
+  "native_hdr_default": false,
+  "release": "7.3.0-vim4kvm-hdr10r3+",
+  "build_id": "e1028db19a35ed0ba3edf23a0edf57f32466b2e5",
+  "payload_namespace": "hdr10",
+  "payload_id": "r13-pq",
+  "sources": {
+    "kernel": "dc220366a1222a03423d5b5987fab3f027ec1d7a",
+    "capture": "b43e564595407b0b637a23f49a3cb390d4a6cbfa",
+    "onekvm": "2cf9ef4da71f5572173cabe3c60c58730a1d539f"
+  },
+  "kernel_manifest": "native-manifest.json",
+  "kernel_manifest_sha256": "e30d21eaaa2d3d076cd806f4f33c07d8dadd6f5dd7c1d54b34923875a06424c8",
+  "module_count": 2338,
+  "gstreamer_v4l2_sha256": "b9269d0509d43b8107a8c686415f7f0c7e5a86e17c04a19d685eb3dca736c4f0",
+  "onekvm_binary_sha256": "34e8808e61c9a52eb62a88e2b01440d4ecef0f60bc7253dc0a7d403410b99337",
+  "component_archive": "vim4-hdr10r13-uhd4-pq.tar.gz",
+  "component_archive_sha256": "7ee9314379de21cf8ed900cb2a72369d73b1af795ac06dc0657e233f75e2e9f3",
+  "ram_archive": "hdr10r13-uhd4-pq-ram.tar.gz",
+  "ram_archive_sha256": "988c65275305f01ef893bbdd056fe67b44177c6be4c4c5407ffaacb7dffa85f8",
+  "smoke_summary": "native-smoke.json",
+  "smoke_summary_sha256": "b78be035d180e6b683715a416e0f1f344f64e399859fc33249bf53b4d68c3843",
+  "qualified_gpu": "Panfrost / private PanVK 26.2.6",
+  "qualified_application": "One-KVM WebRTC / Chrome 156",
+  "unverified": [
+    "UU live client",
+    "native HDR on kbase",
+    "NanoKVM / JetKVM / PiKVM native HDR",
+    "SDR snapshot during native capture",
+    "nonzero or changing source metadata",
+    "HLG",
+    "motion precision, long stability and end-to-end latency"
+  ]
+}

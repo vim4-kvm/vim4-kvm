@@ -1,0 +1,19 @@
+{
+  "schema": 1,
+  "scope": "installed-single-module-overlay",
+  "release": "7.3.0-vim4kvm-uhd7+",
+  "default_boot": "FullKvm",
+  "image_source_revision": "52b95c8493264b195fe5fa10ccf07ad28670f16f",
+  "kernel_build_id": "d6f9c685802759c85cba6bd92bce90396d1cf6ec",
+  "module_source_revision": "4111568841bd83ca33b9b9a044ed9a7077f95004",
+  "module_path": "kernel/drivers/media/platform/amlogic/t7-hdmirx/t7-vdin-test.ko.xz",
+  "module_sha256": "8b9bb37cd3aa3416f45bb79dfb8a7ca3ac62fe3295497e155ee6925baa64b775",
+  "module_build_id": "77cb81557f27057cf530217d3f0a693fbd28568f",
+  "unstripped_module_sha256": "cae6dd2dbd8af3ce2d6c4448b1b84cfcff7f3033b0cc2ad5c39a0d843f2a4f7f",
+  "module_btf": true,
+  "boot_id": "ee91f4dc-fcc7-4d22-a14a-a5550d079550",
+  "loaded_module_build_id_verified": true,
+  "all_registered_boot_artifacts_verified": true,
+  "evidence": "docs/bringup/2026-11-03-mainline-modules.md",
+  "formal_archive_manifests_unchanged": true
+}

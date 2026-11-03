@@ -1,9 +1,21 @@
 # 单板 FIFO 与短窗口
 
-编译先完成，持板不超过30分钟；同批候选链式 RAM 启动，最后回5.15。工具本轮只做
-离线验证，尚未用新入口上板。所有会话必须在同一协调主机共享 `/tmp/vim4-board-queue`；
+编译先完成，持板不超过30分钟；同批候选链式 RAM 启动，最后回5.15。工具已在
+kbase uhd5 RAM窗口使用；新payload目录、真实build ID校验及正常候选一次回5.15恢复通过，
+范围见[uhd5正式合入](bringup/2026-10-31-uhd5-main-integration.md)，不代表所有故障回退已修复。
+所有会话必须在同一协调主机共享 `/tmp/vim4-board-queue`；
 不同主机的 `/tmp` 不互通。Python入口无第三方依赖；浏览器接收/像素比较复用项目已有
 Node、Playwright与Chrome，配置见 [工具目录](tools.md)。
+
+## 占板时间最短化
+
+只有一块板，所有任务排同一队列；每分钟占板都会推迟其他任务。
+
+- 取锁前完成全部构建、离线测试和窗口脚本；持锁期间只执行无人值守脚本，不读文档、改代码、编译或现场排查。
+- 常规窗口目标15分钟内，30分钟为硬上限。失败即收集证据、回收并释放，离线分析后再排队。
+- 只跑与改动相关的门禁；九类全量只给正式候选跑一次。稳定性观察默认不超过10分钟，非必要不加。
+- 当天5.15哈希未变就复用基线，不重测；同批候选链式启动，批末回5.15一次。
+- 就绪用状态轮询判断，不写固定长等待；能离线判定的（码流、日志、哈希）拷回本机再分析。
 
 ## 排队、采样与迁移
 
@@ -36,6 +48,16 @@ keeper自身死亡由后继/status剔除。主机睡眠期间不提供准时唤�
 
 ## 候选链与恢复
 
+新候选可在manifest同时指定`namespace`和`payload_id`，各为1–64位小写字母、数字、
+下划线或连字符，首位为字母或数字。目录为
+`/var/lib/vim4-kvm/ram-candidates/<namespace>/<payload_id>/<真实kernel build_id>/`。
+payload_id是独立构建身份，修改DT或模块必须换ID；相同ID已存在也拒绝覆盖。
+Image/build_id不必变化。`display-once.py prepare`可传`--namespace kbase --payload-id trial1`。
+编译静态init时用`-DTRIAL_ROOT='"/var/lib/vim4-kvm/ram-candidates/kbase/trial1/"'`，
+prepare/stage验证ELF中的根目录合同，sysboot/extlinux采用同一路径。
+最后一级仍为真实GNU build ID，PID1继续核对运行内核notes；不能把payload_id当作内核ID。
+省略两字段时，原display-m1/HDR2 build-ID目录、原静态init与cleanup合同保持不变。
+
 使用 `display-once.py prepare` 生成的目录（包含candidate.tar）或candidate.tar归档。
 也接受r18的HDR2 `manifest.json` RAM payload目录或归档（Image/DTB/init/modules/runtime/extlinux），
 首轮需 `--baseline-files` 显式列出5.15恢复文件；普通boot/lib内核安装包不能直接传入。
@@ -62,6 +84,9 @@ HDR2新release只创建空的 `/lib/modules/<release>` bind挂载点，完整模
 不向基线模块目录安装文件。接受任意安全的 `7.3.0-vim4kvm-<tag>+` 候选名；
 release名称不代表能力或验证结果，仍校验manifest全部文件、归档SHA、静态PID1和模块清单。
 stage只记录自己新建空模块目录的设备/inode；return-baseline验证回到原5.15后清理。
+同Image的各payload分别保存恢复记录，避免后一个覆盖首次创建挂载点的归属证明。
+清理SSH命令只携带release和目录身份；完整模块inventory仍在本机证据中，
+不能把数千文件清单放进单个`python3 -c`参数（Linux单参长度上限）。
 已有目录、被替换的目录、非空或仍挂载的目录保留，清理异常报告失败，不递归删除。
 串口在autoboot提示后打断，仅发送原有sysboot RAM命令，不写saveenv或默认配置。
 立即读UART而不阻塞等SSH退出；从基线读取MAC并仅在RAM setenv ethaddr，保持DHCP身份。
@@ -71,10 +96,21 @@ snapshot只读缓存，无查看器时503不代表采集故障；receiver创建o
 SSH使用开发环境免密 `sudo -n`，脚本通过 `python3 -c`，没有密码/heredoc混用。
 
 `return-baseline`重启而不打断autoboot，再验证原5.15身份/所有证明文件、服务、UDC与视频。
+只发起一次正常重启，SSH/服务就绪有界等待；失败保留UART和proof，不自动反复重启或热重绑网卡。
+5.15就绪还要求manager/HDMI active。返回后的release、真实build ID和保护文件逐项严格比较。
+cmdline仅单独审阅`reboot_mode=normal`与`reboot_mode=watchdog_reboot`之间的变化，记录前后值；
+其余token及顺序必须完全一致。未知reason只允许原样不变，重复reason或新增/删除reason均拒绝。
 无原始proof时拒绝恢复。默认启动必须事先确认为5.15；本工具不修改默认项来修正错误配置。
 批次脚本应在EXIT trap中安排恢复，并为恢复预留时间；不能靠finally保证硬锁恢复。
 
 ## 基线与证据
+
+重复性能窗口可显式传 `boot-candidate --reuse-staged`：已存在的同一payload逐文件核对
+原归档哈希并重新检查基线后复用，不覆盖Image/DTB/模块/运行时。默认仍拒绝重复目录；
+任何文件改变均拒绝。返回时已清理的空模块bind目标会重新登记本次inode供安全清理。
+复用还核对首次 staging 的 root 所有者、0555目录及0555/0444文件模式，拒绝内部符号链接目录。
+`perf-quick.py` 每段操作前保留采样/恢复时间；清理失败分别记录 `cleanup-errors.json`，不覆盖原始错误。
+租约失效或恢复预算不足时不越权停启服务/重启，写 `recovery-required.json` 交接，SSH转发仍在本机清理。
 
 `baseline --files /boot/... /opt/...` 必须列出当前5.15 Image、One-KVM程序、插件、
 所有默认启动/DTB/initrd与运行时登记文件（按当前部署清单选，不能只给uname）。
@@ -83,8 +119,10 @@ SSH使用开发环境免密 `sudo -n`，脚本通过 `python3 -c`，没有密码
 缓存键还含host、运行内核GNU build ID、cmdline、接收URL/时长/接收LAN IP；
 当天相同键返回 `reused: true` 和 `source_time`，变化/跨日才测；失败不缓存。
 测量后再次核身份，避免将变化中结果写缓存。缓存位于共享队列目录，不随worktree分裂。
-更换信源、编码设置、浏览器或接收机器时应清理对应缓存，或使用独立 `BOARD_QUEUE_ROOT`，
-后者所有排队会话必须同时迁移，不能创建互不相通的板锁队列。
+性能对照额外传 `baseline --settings public-settings.json`，把信源/运动程序哈希、编码设置、
+浏览器版本和接收机器身份放进公开JSON，内容进入缓存键；不要放凭据。
+更换这些设置须更新JSON。未传settings的旧调用只适合短接收门禁，不证明性能配置相同。
+不要为清缓存切换 `BOARD_QUEUE_ROOT`，否则会创建互不相通的板锁队列。
 
 `collect --readonly`只执行已审阅状态读取：dmesg、服务、UDC、/proc计数与One-KVM info，
 不访问regmap/MMIO/HID/采集节点，不停启服务。其余子命令要求未过期板票据。
@@ -131,3 +169,6 @@ receiver复用r17 `packaging/hdr2-pq/video-recovery.mjs` 的独立视频页面�
 优先发送literal host candidates；仍遇mDNS时才用显式 `--local-ip` 的接收机LAN地址替换，
 不能误用板IP；不修改生产ICE配置。50ms是目标采样间隔，JSON保留实际耗时，不宣称硬实时。
 接收与baseline自动开启/关闭sampling；不测声音，不发键鼠。
+Mac 的本地网络权限可能只拦 Node（`EHOSTUNREACH`，curl 正常）。此时用
+`ssh -L 18081:127.0.0.1:8081 vim4` 转发 One-KVM 回环后端，传 `--url http://127.0.0.1:18081`；
+回环地址按直连后端跳过管理面板登录，不能把隧道接到 8080 网关（offer 会 401）。

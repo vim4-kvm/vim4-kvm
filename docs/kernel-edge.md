@@ -1,23 +1,18 @@
 # VIM4 新内核基线
 
-2026-10-30 默认启动保持5.15；当前7.3源码与保留运行时的
-[功能差距复核](bringup/2026-10-28-kernel73-parity-audit.md)另列近期产品功能、默认开关和验收欠账。
-最新源码/构建pin为[PQ HDR2正式uhd4](bringup/2026-10-31-uhd4-formal-smoke.md)，
-RAM回归通过；板上保留构建仍见[uhd1部署锁](bringup/2026-10-30-kernel73-retained-pin.md)。
-sources.toml分别记录tested_build与retained_runtime，不把RAM验收冒充持久安装。
+2026-11-02：板子默认 FullKvm/kbase，运行正式源码 `52b95c8493264` 的 uhd7。
+本次验证覆盖 BCM43752 独立中断、eMMC 读回及 HID/UDC；信号恢复后补测 4K60 H.265 接收
+30 秒通过（低运动画面）；测量条件和安装身份见 [uhd7 正式部署](bringup/2026-11-02-wifi-sdio-formal.md)。
 
 当前开发分支已接通 HDMI 输入、VDIN 直接 DMA、Wave5 H.264/H.265、硬件 JPEG 与音频，
 并部署完整 manager 和四种 KVM 的双内核运行时；5.15 可保留启动，共用同一应用的数据。
-当前包、匹配内核、安装/回退与实际验收范围见
-[双内核完整系统集成](bringup/2026-10-21-dual-kernel-integration.md)。
+双内核运行时的基础集成见[双内核完整系统集成](bringup/2026-10-21-dual-kernel-integration.md)，
+此前 19 模式、双编码和 600 秒运动结果见 [uhd6 正式验收](bringup/2026-10-31-uhd6-formal.md)。
 本页保留 Armbian 编译基线与专项历史记录；通用 edge.config 不等于已验收的整板配置。
-最近登记的7.3保留运行时为正式 `vim4-kvm-7.3@213f271505411`，release
-`7.3.0-vim4kvm-uhd1+`、build ID `7a473adf9353013fd1ab01908d20bbf503a063fb`；
-使用当时含ACM的uhd1配置、M0 simpledrm/tty0和同次完整2337模块；仓库当前uhd1.config已应用nodebug，不能用于逐字节复现旧产物。
-新源码8bca939d6bbd3的uhd4为2338模块，保留ADLA/nodebug/M0并加入HDR2与恢复主题系列。
-One-KVM为`db848a52`，私有Wave5插件包含已锁定的色彩/VUI依赖；5.15默认未改。
+uhd6在uhd4的ADLA/nodebug/M0、HDR2恢复系列之上纳入已验原生HDR源码与uhd5外部GPU模块；
+用户态、同次完整模块和验收范围以统一记录为准，旧产物不能混装。
 尺寸、QP/无损、ACM板侧及GPU的实际通过/未验证边界见[批量验证](bringup/2026-10-30-kernel73-gap-validation.md)
-和[第三/四轮复验](bringup/2026-10-30-kernel73-gap-r3.md)。GPU真实sudo CPU预算仍未达标，
+和[第三/四轮复验](bringup/2026-10-30-kernel73-gap-r3.md)。该轮GPU sudo CPU预算问题为历史边界，
 不将旧九类回归、音频或HID历史结果算作本轮重测。构建产物尚未发布到Release。
 以下RX/PCM/SARADC叙述为此前b1300eb及更早窗口的历史证据：
 [同链路对照](bringup/2026-10-23-hdmirx-vendor-comparison.md)为7.3十分钟12次冻结、厂商5.15零次；
@@ -76,7 +71,7 @@ H.264/H.265 硬编码已取得实验结果，见
 | 优先级 | 方向 | 当前边界与下一步 |
 |---|---|---|
 | F0，最高 | KVM采集与音频稳定性 | FDET分类、PCM XRUN与资格重开已正式保留；TOP测量空窗误判已有同链路定位并正式修复，更多源及长期连续性待覆盖 |
-| F1，最高 | Wave5恢复与HEVC尺寸正式实现 | [正式隔离](bringup/2026-10-23-wave5-isolation-final.md)已有watchdog/job_abort和保留DMA到重启，但无运行时硬件复位/固件重载、真实挂死未验。继续正式恢复，再退出[尺寸保护](bringup/2026-10-22-edge-wave5-deploy.md)/AVC回退 |
+| F1，最高 | Wave5恢复与HEVC尺寸正式实现 | 正式分支已含[genpd循环与固件冷加载](bringup/2026-10-23-wave5-runtime-window.md)，失败保留DMA；[P0-3审查](bringup/2026-10-31-wave5-real-hang-safety.md)确认真实挂死注入尚无安全证据。保持尺寸保护/AVC回退，先补安全注入再验恢复 |
 | F1→F2 | 本地显示M1+与采集共存 | M0 simpledrm已过，M1由现有任务承接；统一共享VCBUS/MMIO/时钟归属，后续原生DRM modeset/EDID/HPD、多平面及HDMI声音，不以固定handoff当终态 |
 | F2 | 输入格式完整化与硬件解码 | HLG/隔行拒绝需正式色彩/去隔行实现；12bit动态路径已实现但真源未验。解码沿[既有VDEC门禁](bringup/2026-10-22-vdec-mdec-offline.md)，先安全平台层和H.264正确帧，再扩codec/位深/多实例 |
 | F2→F5 | 全部音频路由 | HDMI-TX播放先行，再I²S/PCM/SPDIF/PDM/EXTN/loopback/ASRC/effect/VAD/DSP；当前RX采集不代表输出、eARC或全部厂商路由可用 |
@@ -107,22 +102,20 @@ H.264/H.265 硬编码已取得实验结果，见
 脚本执行 olddefconfig，最终配置写入
 外部构建目录并记录校验和；并非复现 Armbian 镜像构建的所有配置钩子。
 
-当前已验uhd4的准确配置为 `packaging/kernel-edge/uhd4.config`，Linux ARM64 上可用
-`bash packaging/kernel-edge/build.sh SOURCE NEW_OUTPUT packaging/kernel-edge/uhd4.config`
+当前正式配置为 `packaging/kernel-edge/uhd7.config`，Linux ARM64 上可用
+`bash packaging/kernel-edge/build.sh SOURCE NEW_OUTPUT packaging/kernel-edge/uhd7.config`
 重建匹配 release；不传第三参数仍构建通用 edge 基线。该命令不安装、不重启，
 DTB/固件和完整模块的安装与登记按双内核记录执行，保留当前板子的 DTB/MAC 配置。
 
 两份配置均启用 `CONFIG_USB_CONFIGFS_ACM=y`；`olddefconfig` 会选择
 `CONFIG_USB_F_ACM=m` 与 `CONFIG_USB_U_SERIAL=m`。`uhd1.config` 是独立保存的完整配置，
 构建时不会从 `edge.config` 重新派生，修改公共功能须同步两者。
-tested_build 已与正式213f2715及该ACM配置配套更新。ACM板侧已验，M6主机数据传输未验。
+此前 213f2715 已验 ACM 板侧，M6 主机数据传输未验。
 锁定构建入口只接受 sources.toml 中的精确revision和干净源码，输出必须为新的外部目录。
 第四参数 `--validate-only` 执行相同版本/目录检查和olddefconfig后退出，不编译、不部署；
 本轮已在VM实际验证并比对最终配置哈希。完整构建省略该参数。
-`tested_build.image_sha256` 是适应当前启动分区容量的确定性gzip Image，
-`uncompressed_image_sha256` 是build.sh原始Image。当前uhd4使用原始Image，
-image/uncompressed哈希相同；manifest/source_manifest也相同，runtime_proof只证明候选载荷。
-`live_proof_sha256` 对应板上运行快照；retained_runtime单独记录旧uhd1的gzip安装身份。
+uhd7 使用原始 Image，`tested_build.image_sha256` 与 `uncompressed_image_sha256` 相同。
+`retained_runtime.live_proof_sha256` 对应重启后核验收据。
 
 下方是最初 Armbian rc7 导入的历史步骤；当前分支已基于 v7.3 重放并合入板级修复，
 准确复现应检出 sources.toml 的提交，不重新执行这段导入。固定 Armbian 快照为 7.3 选择 rc7，

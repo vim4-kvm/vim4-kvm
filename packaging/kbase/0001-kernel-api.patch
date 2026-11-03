@@ -1,0 +1,613 @@
+diff --git a/drivers/gpu/arm/midgard/Kbuild b/drivers/gpu/arm/midgard/Kbuild
+index c9f311b..399c14b 100644
+--- a/drivers/gpu/arm/midgard/Kbuild
++++ b/drivers/gpu/arm/midgard/Kbuild
+@@ -20,7 +20,11 @@
+ 
+ # make $(src) as absolute path if it is not already, by prefixing $(srctree)
+ # This is to prevent any build issue due to wrong path.
++ifeq ($(KBUILD_EXTMOD),)
+ src:=$(if $(patsubst /%,,$(src)),$(srctree)/$(src),$(src))
++else
++src := $(CURDIR)
++endif
+ 
+ #
+ # Prevent misuse when Kernel configurations are not present by default
+@@ -130,13 +134,13 @@ else
+ endif
+ 
+ ccflags-y += \
++    -I$(src)/../../../../include/linux \
+     -I$(srctree)/include/linux \
+-    -I$(srctree)/drivers/staging/android \
+     -I$(src) \
+     -I$(src)/platform/$(MALI_PLATFORM_DIR) \
+-    -I$(src)/../../../base \
+     -I$(src)/../../../../include
+ 
++ccflags-y += $(EXTRA_CFLAGS)
+ subdir-ccflags-y += $(ccflags-y)
+ 
+ #
+diff --git a/drivers/gpu/arm/midgard/device/mali_kbase_device.c b/drivers/gpu/arm/midgard/device/mali_kbase_device.c
+index dfb829a..9f8712f 100644
+--- a/drivers/gpu/arm/midgard/device/mali_kbase_device.c
++++ b/drivers/gpu/arm/midgard/device/mali_kbase_device.c
+@@ -272,7 +272,7 @@ int kbase_device_misc_init(struct kbase_device * const kbdev)
+ 
+ 	/* There is no limit for Mali, so set to max. */
+ 	if (kbdev->dev->dma_parms)
+-		err = dma_set_max_seg_size(kbdev->dev, UINT_MAX);
++		dma_set_max_seg_size(kbdev->dev, UINT_MAX);
+ 	if (err)
+ 		goto dma_set_mask_failed;
+ 
+diff --git a/drivers/gpu/arm/midgard/mali_kbase_core_linux.c b/drivers/gpu/arm/midgard/mali_kbase_core_linux.c
+--- a/drivers/gpu/arm/midgard/mali_kbase_core_linux.c
++++ b/drivers/gpu/arm/midgard/mali_kbase_core_linux.c
+@@ -789,7 +789,9 @@ static int kbase_open(struct inode *inode, struct file *filp)
+ 	}
+ 
+ 	filp->private_data = kfile;
++#if (KERNEL_VERSION(6, 12, 0) > LINUX_VERSION_CODE)
+ 	filp->f_mode |= FMODE_UNSIGNED_OFFSET;
++#endif
+ 
+ 	return 0;
+ 
+@@ -2537,6 +2539,9 @@ static unsigned long kbase_get_unmapped_area(struct file *const filp,
+ }
+ 
+ static const struct file_operations kbase_fops = {
++#if (KERNEL_VERSION(6, 12, 0) <= LINUX_VERSION_CODE)
++	.fop_flags = FOP_UNSIGNED_OFFSET,
++#endif
+ 	.owner = THIS_MODULE,
+ 	.open = kbase_open,
+ 	.flush = kbase_flush,
+@@ -5885,18 +5890,16 @@ void kbase_sysfs_term(struct kbase_device *kbdev)
+ 	put_device(kbdev->dev);
+ }
+ 
+-static int kbase_platform_device_remove(struct platform_device *pdev)
++static void kbase_platform_device_remove(struct platform_device *pdev)
+ {
+ 	struct kbase_device *kbdev = to_kbase_device(&pdev->dev);
+ 
+ 	if (!kbdev)
+-		return -ENODEV;
++		return;
+ 
+ 	kbase_device_term(kbdev);
+ 	dev_set_drvdata(kbdev->dev, NULL);
+ 	kbase_device_free(kbdev);
+-
+-	return 0;
+ }
+ 
+ void kbase_backend_devfreq_term(struct kbase_device *kbdev)
+diff --git a/drivers/gpu/arm/midgard/mali_kbase_defs.h b/drivers/gpu/arm/midgard/mali_kbase_defs.h
+index 02aa259..8e8b09d 100644
+--- a/drivers/gpu/arm/midgard/mali_kbase_defs.h
++++ b/drivers/gpu/arm/midgard/mali_kbase_defs.h
+@@ -568,7 +568,7 @@ struct kbase_mem_pool {
+ 	u8 group_id;
+ 	spinlock_t pool_lock;
+ 	struct list_head page_list;
+-	struct shrinker reclaim;
++	struct kbase_shrinker reclaim;
+ 	atomic_t isolation_in_progress_cnt;
+ 
+ 	struct kbase_mem_pool *next_pool;
+@@ -1979,7 +1979,7 @@ struct kbase_context {
+ 
+ 	struct kbase_mem_pool_group mem_pools;
+ 
+-	struct shrinker         reclaim;
++	struct kbase_shrinker   reclaim;
+ 	struct list_head        evict_list;
+ 	atomic_t evict_nents;
+ 
+diff --git a/drivers/gpu/arm/midgard/mali_kbase_dummy_job_wa.c b/drivers/gpu/arm/midgard/mali_kbase_dummy_job_wa.c
+index e901f33..1313d2a 100644
+--- a/drivers/gpu/arm/midgard/mali_kbase_dummy_job_wa.c
++++ b/drivers/gpu/arm/midgard/mali_kbase_dummy_job_wa.c
+@@ -53,7 +53,7 @@ struct wa_blob {
+ 	u32 blob_offset;
+ } __packed;
+ 
+-static bool in_range(const u8 *base, const u8 *end, off_t off, size_t sz)
++static bool kbase_fw_in_range(const u8 *base, const u8 *end, off_t off, size_t sz)
+ {
+ 	return !(end - base - off < sz);
+ }
+@@ -315,7 +315,7 @@ int kbase_dummy_job_wa_load(struct kbase_device *kbdev)
+ 	dev_dbg(kbdev->dev, "Loaded firmware of size %zu bytes\n",
+ 		firmware->size);
+ 
+-	if (!in_range(fw, fw_end, 0, sizeof(*header))) {
++	if (!kbase_fw_in_range(fw, fw_end, 0, sizeof(*header))) {
+ 		dev_err(kbdev->dev, "WA too small\n");
+ 		goto bad_fw;
+ 	}
+@@ -334,7 +334,7 @@ int kbase_dummy_job_wa_load(struct kbase_device *kbdev)
+ 		goto bad_fw;
+ 	}
+ 
+-	if (!in_range(fw, fw_end, header->info_offset, sizeof(*v2_info))) {
++	if (!kbase_fw_in_range(fw, fw_end, header->info_offset, sizeof(*v2_info))) {
+ 		dev_err(kbdev->dev, "WA info offset out of bounds\n");
+ 		goto bad_fw;
+ 	}
+@@ -360,14 +360,14 @@ int kbase_dummy_job_wa_load(struct kbase_device *kbdev)
+ 		u64 gpu_va;
+ 		struct kbase_va_region *va_region;
+ 
+-		if (!in_range(fw, fw_end, blob_offset, sizeof(*blob))) {
++		if (!kbase_fw_in_range(fw, fw_end, blob_offset, sizeof(*blob))) {
+ 			dev_err(kbdev->dev, "Blob offset out-of-range: 0x%lx\n",
+ 				(unsigned long)blob_offset);
+ 			goto bad_fw;
+ 		}
+ 
+ 		blob = (const struct wa_blob *)(fw + blob_offset);
+-		if (!in_range(fw, fw_end, blob->payload_offset, blob->size)) {
++		if (!kbase_fw_in_range(fw, fw_end, blob->payload_offset, blob->size)) {
+ 			dev_err(kbdev->dev, "Payload out-of-bounds\n");
+ 			goto bad_fw;
+ 		}
+diff --git a/drivers/gpu/arm/midgard/mali_kbase_fence.h b/drivers/gpu/arm/midgard/mali_kbase_fence.h
+index 7ee609b..117ce49 100644
+--- a/drivers/gpu/arm/midgard/mali_kbase_fence.h
++++ b/drivers/gpu/arm/midgard/mali_kbase_fence.h
+@@ -170,7 +170,12 @@ static inline int kbase_fence_out_signal(struct kbase_jd_atom *katom,
+ 		katom->dma_fence.fence->status = status;
+ #endif
+ 	}
++#if (KERNEL_VERSION(7, 3, 0) <= LINUX_VERSION_CODE)
++	dma_fence_signal(katom->dma_fence.fence);
++	return 0;
++#else
+ 	return dma_fence_signal(katom->dma_fence.fence);
++#endif
+ }
+ 
+ #if IS_ENABLED(CONFIG_SYNC_FILE)
+diff --git a/drivers/gpu/arm/midgard/mali_kbase_fence_ops.c b/drivers/gpu/arm/midgard/mali_kbase_fence_ops.c
+index f14a55e..6bdb48b 100644
+--- a/drivers/gpu/arm/midgard/mali_kbase_fence_ops.c
++++ b/drivers/gpu/arm/midgard/mali_kbase_fence_ops.c
+@@ -60,7 +60,7 @@ kbase_fence_enable_signaling(struct dma_fence *fence)
+ 	return true;
+ }
+ 
+-static void
++static void __maybe_unused
+ #if (KERNEL_VERSION(4, 10, 0) > LINUX_VERSION_CODE)
+ kbase_fence_fence_value_str(struct fence *fence, char *str, int size)
+ #else
+@@ -102,10 +102,14 @@ const struct dma_fence_ops kbase_fence_ops = { .wait = dma_fence_default_wait,
+ 					   .get_timeline_name = kbase_fence_get_timeline_name,
+ 					   .enable_signaling = kbase_fence_enable_signaling,
+ #if MALI_USE_CSF
++#if (KERNEL_VERSION(7, 3, 0) > LINUX_VERSION_CODE)
+ 					   .fence_value_str = kbase_fence_fence_value_str,
++#endif
+ 					   .release = kbase_fence_release
+ #else
++#if (KERNEL_VERSION(7, 3, 0) > LINUX_VERSION_CODE)
+ 					    .fence_value_str = kbase_fence_fence_value_str
+ #endif
++#endif
+ };
+ KBASE_EXPORT_TEST_API(kbase_fence_ops);
+diff --git a/drivers/gpu/arm/midgard/mali_kbase_mem.c b/drivers/gpu/arm/midgard/mali_kbase_mem.c
+index 4277587..995c22c 100644
+--- a/drivers/gpu/arm/midgard/mali_kbase_mem.c
++++ b/drivers/gpu/arm/midgard/mali_kbase_mem.c
+@@ -3145,10 +3145,9 @@ void kbase_mem_kref_free(struct kref *kref)
+ 			WARN_ONCE(alloc->imported.umm.current_mapping_usage_count != 1,
+ 					"WARNING: expected exactly 1 mapping, got %d",
+ 					alloc->imported.umm.current_mapping_usage_count);
+-			dma_buf_unmap_attachment(
+-					alloc->imported.umm.dma_attachment,
+-					alloc->imported.umm.sgt,
+-					DMA_BIDIRECTIONAL);
++			kbase_dma_buf_unmap_attachment(alloc->imported.umm.dma_attachment,
++						       alloc->imported.umm.sgt,
++						      DMA_BIDIRECTIONAL);
+ 			kbase_remove_dma_buf_usage(alloc->imported.umm.kctx,
+ 						   alloc);
+ 		}
+@@ -4940,6 +4939,9 @@ int kbase_jd_user_buf_pin_pages(struct kbase_context *kctx,
+ #elif KERNEL_VERSION(5, 9, 0) > LINUX_VERSION_CODE
+ 	pinned_pages = get_user_pages_remote(NULL, mm, address, alloc->imported.user_buf.nr_pages,
+ 					     write ? FOLL_WRITE : 0, pages, NULL, NULL);
++#elif KERNEL_VERSION(6, 5, 0) <= LINUX_VERSION_CODE
++	pinned_pages = pin_user_pages_remote(mm, address, alloc->imported.user_buf.nr_pages,
++					     write ? FOLL_WRITE : 0, pages, NULL);
+ #else
+ 	pinned_pages = pin_user_pages_remote(mm, address, alloc->imported.user_buf.nr_pages,
+ 					     write ? FOLL_WRITE : 0, pages, NULL, NULL);
+diff --git a/drivers/gpu/arm/midgard/mali_kbase_mem_linux.c b/drivers/gpu/arm/midgard/mali_kbase_mem_linux.c
+index 29bce21..565b54d 100644
+--- a/drivers/gpu/arm/midgard/mali_kbase_mem_linux.c
++++ b/drivers/gpu/arm/midgard/mali_kbase_mem_linux.c
+@@ -671,11 +671,11 @@ static
+ unsigned long kbase_mem_evictable_reclaim_count_objects(struct shrinker *s,
+ 		struct shrink_control *sc)
+ {
+-	struct kbase_context *kctx = container_of(s, struct kbase_context, reclaim);
++	struct kbase_context *kctx = kbase_shrinker_owner(s, struct kbase_context, reclaim);
+ 	int evict_nents = atomic_read(&kctx->evict_nents);
+ 	unsigned long nr_freeable_items;
+ 
+-	WARN((sc->gfp_mask & __GFP_ATOMIC),
++	WARN(!(sc->gfp_mask & __GFP_DIRECT_RECLAIM),
+ 	     "Shrinkers cannot be called for GFP_ATOMIC allocations. Check kernel mm for problems. gfp_mask==%x\n",
+ 	     sc->gfp_mask);
+ 	WARN(in_atomic(),
+@@ -725,7 +725,7 @@ unsigned long kbase_mem_evictable_reclaim_scan_objects(struct shrinker *s,
+ 	struct kbase_mem_phy_alloc *tmp;
+ 	unsigned long freed = 0;
+ 
+-	kctx = container_of(s, struct kbase_context, reclaim);
++	kctx = kbase_shrinker_owner(s, struct kbase_context, reclaim);
+ 
+ 	mutex_lock(&kctx->jit_evict_lock);
+ 
+@@ -787,7 +787,7 @@ int kbase_mem_evictable_init(struct kbase_context *kctx)
+ #if KERNEL_VERSION(6, 0, 0) > LINUX_VERSION_CODE
+ 	register_shrinker(&kctx->reclaim);
+ #else
+-	register_shrinker(&kctx->reclaim, "mali-mem");
++	return register_shrinker(&kctx->reclaim, "mali-mem");
+ #endif
+ 	return 0;
+ }
+@@ -1190,8 +1190,8 @@ static void kbase_mem_umm_unmap_attachment(struct kbase_context *kctx,
+ {
+ 	struct tagged_addr *pa = alloc->pages;
+ 
+-	dma_buf_unmap_attachment(alloc->imported.umm.dma_attachment,
+-				 alloc->imported.umm.sgt, DMA_BIDIRECTIONAL);
++	kbase_dma_buf_unmap_attachment(alloc->imported.umm.dma_attachment,
++				       alloc->imported.umm.sgt, DMA_BIDIRECTIONAL);
+ 	alloc->imported.umm.sgt = NULL;
+ 
+ 	kbase_remove_dma_buf_usage(kctx, alloc);
+@@ -1224,8 +1224,8 @@ static int kbase_mem_umm_map_attachment(struct kbase_context *kctx,
+ 	WARN_ON_ONCE(alloc->type != KBASE_MEM_TYPE_IMPORTED_UMM);
+ 	WARN_ON_ONCE(alloc->imported.umm.sgt);
+ 
+-	sgt = dma_buf_map_attachment(alloc->imported.umm.dma_attachment,
+-			DMA_BIDIRECTIONAL);
++	sgt = kbase_dma_buf_map_attachment(alloc->imported.umm.dma_attachment,
++					   DMA_BIDIRECTIONAL);
+ 	if (IS_ERR_OR_NULL(sgt))
+ 		return -EINVAL;
+ 
+@@ -1697,10 +1697,10 @@ static struct kbase_va_region *kbase_mem_from_user_buffer(
+ 	 */
+ 	if (pages != NULL) {
+ 		faulted_pages =
+-			pin_user_pages(address, *va_pages, write ? FOLL_WRITE : 0, pages, NULL);
++			pin_user_pages(address, *va_pages, write ? FOLL_WRITE : 0, pages);
+ 	} else {
+ 		faulted_pages =
+-			get_user_pages(address, *va_pages, write ? FOLL_WRITE : 0, pages, NULL);
++			get_user_pages(address, *va_pages, write ? FOLL_WRITE : 0, pages);
+ 	}
+ #endif
+ 
+@@ -2604,7 +2604,7 @@ static int kbase_cpu_mmap(struct kbase_context *kctx,
+ 	 * See MIDBASE-1057
+ 	 */
+ 
+-	vma->vm_flags |= VM_DONTCOPY | VM_DONTDUMP | VM_DONTEXPAND | VM_IO;
++	vm_flags_set(vma, VM_DONTCOPY | VM_DONTDUMP | VM_DONTEXPAND | VM_IO);
+ 	vma->vm_ops = &kbase_vm_ops;
+ 	vma->vm_private_data = map;
+ 
+@@ -2633,11 +2633,11 @@ static int kbase_cpu_mmap(struct kbase_context *kctx,
+ 	}
+ 
+ 	if (!kaddr) {
+-		vma->vm_flags |= VM_PFNMAP;
++		vm_flags_set(vma, VM_PFNMAP);
+ 	} else {
+ 		WARN_ON(aligned_offset);
+ 		/* MIXEDMAP so we can vfree the kaddr early and not track it after map time */
+-		vma->vm_flags |= VM_MIXEDMAP;
++		vm_flags_set(vma, VM_MIXEDMAP);
+ 		/* vmalloc remaping is easy... */
+ 		err = remap_vmalloc_range(vma, kaddr, 0);
+ 		WARN_ON(err);
+@@ -2851,9 +2851,9 @@ int kbase_context_mmap(struct kbase_context *const kctx,
+ 	dev_dbg(dev, "kbase_mmap\n");
+ 
+ 	if (!(vma->vm_flags & VM_READ))
+-		vma->vm_flags &= ~VM_MAYREAD;
++		vm_flags_clear(vma, VM_MAYREAD);
+ 	if (!(vma->vm_flags & VM_WRITE))
+-		vma->vm_flags &= ~VM_MAYWRITE;
++		vm_flags_clear(vma, VM_MAYWRITE);
+ 
+ 	if (nr_pages == 0) {
+ 		err = -EINVAL;
+@@ -3426,8 +3426,8 @@ static int kbase_tracking_page_setup(struct kbase_context *kctx, struct vm_area_
+ 		return -EINVAL;
+ 
+ 	/* no real access */
+-	vma->vm_flags &= ~(VM_READ | VM_MAYREAD | VM_WRITE | VM_MAYWRITE | VM_EXEC | VM_MAYEXEC);
+-	vma->vm_flags |= VM_DONTCOPY | VM_DONTEXPAND | VM_DONTDUMP | VM_IO;
++	vm_flags_clear(vma, VM_READ | VM_MAYREAD | VM_WRITE | VM_MAYWRITE | VM_EXEC | VM_MAYEXEC);
++	vm_flags_set(vma, VM_DONTCOPY | VM_DONTEXPAND | VM_DONTDUMP | VM_IO);
+ 	vma->vm_ops = &kbase_vm_special_ops;
+ 	vma->vm_private_data = kctx;
+ 
+diff --git a/drivers/gpu/arm/midgard/mali_kbase_mem_migrate.c b/drivers/gpu/arm/midgard/mali_kbase_mem_migrate.c
+index f246823..89c57c2 100644
+--- a/drivers/gpu/arm/midgard/mali_kbase_mem_migrate.c
++++ b/drivers/gpu/arm/midgard/mali_kbase_mem_migrate.c
+@@ -28,6 +28,18 @@
+ #include <mali_kbase_mem_migrate.h>
+ #include <mmu/mali_kbase_mmu.h>
+ 
++#if (KERNEL_VERSION(7, 3, 0) <= LINUX_VERSION_CODE)
++#if IS_ENABLED(CONFIG_PAGE_MIGRATION_SUPPORT)
++#error "The VIM4 port does not support movable GPU pages on this kernel"
++#endif
++/* These calls are unreachable with page migration compiled out. */
++#define kbase_set_page_movable(page, ops) do { (void)(page); (void)(ops); } while (0)
++#define kbase_clear_page_movable(page) ((void)(page))
++#else
++#define kbase_set_page_movable __SetPageMovable
++#define kbase_clear_page_movable __ClearPageMovable
++#endif
++
+ /* Global integer used to determine if module parameter value has been
+  * provided and if page migration feature is enabled.
+  * Feature is disabled on all platforms by default.
+@@ -88,7 +100,7 @@ bool kbase_alloc_page_metadata(struct kbase_device *kbdev, struct page *p, dma_a
+ 
+ 	lock_page(p);
+ #if (KERNEL_VERSION(6, 0, 0) <= LINUX_VERSION_CODE)
+-	__SetPageMovable(p, &movable_ops);
++	kbase_set_page_movable(p, &movable_ops);
+ 	page_md->status = PAGE_MOVABLE_SET(page_md->status);
+ #else
+ 	/* In some corner cases, the driver may attempt to allocate memory pages
+@@ -109,7 +121,7 @@ bool kbase_alloc_page_metadata(struct kbase_device *kbdev, struct page *p, dma_a
+ 	 * gain the movable property later on in their life cycle.
+ 	 */
+ 	if (kbdev->mem_migrate.inode && kbdev->mem_migrate.inode->i_mapping) {
+-		__SetPageMovable(p, kbdev->mem_migrate.inode->i_mapping);
++		kbase_set_page_movable(p, kbdev->mem_migrate.inode->i_mapping);
+ 		page_md->status = PAGE_MOVABLE_SET(page_md->status);
+ 	}
+ #endif
+@@ -162,7 +174,7 @@ static void kbase_free_pages_worker(struct work_struct *work)
+ 		lock_page(p);
+ 		page_md = kbase_page_private(p);
+ 		if (page_md && IS_PAGE_MOVABLE(page_md->status)) {
+-			__ClearPageMovable(p);
++			kbase_clear_page_movable(p);
+ 			page_md->status = PAGE_MOVABLE_CLEAR(page_md->status);
+ 		}
+ 		unlock_page(p);
+@@ -232,16 +244,16 @@ static int kbasep_migrate_page_pt_mapped(struct page *old_page, struct page *new
+ 
+ 	if (ret == 0) {
+ 		dma_unmap_page(kbdev->dev, old_dma_addr, PAGE_SIZE, DMA_BIDIRECTIONAL);
+-		__ClearPageMovable(old_page);
++		kbase_clear_page_movable(old_page);
+ 		ClearPagePrivate(old_page);
+ 		put_page(old_page);
+ 
+ #if (KERNEL_VERSION(6, 0, 0) <= LINUX_VERSION_CODE)
+-		__SetPageMovable(new_page, &movable_ops);
++		kbase_set_page_movable(new_page, &movable_ops);
+ 		page_md->status = PAGE_MOVABLE_SET(page_md->status);
+ #else
+ 		if (kbdev->mem_migrate.inode->i_mapping) {
+-			__SetPageMovable(new_page, kbdev->mem_migrate.inode->i_mapping);
++			kbase_set_page_movable(new_page, kbdev->mem_migrate.inode->i_mapping);
+ 			page_md->status = PAGE_MOVABLE_SET(page_md->status);
+ 		}
+ #endif
+@@ -309,16 +321,16 @@ static int kbasep_migrate_page_allocated_mapped(struct page *old_page, struct pa
+ 
+ 		/* Clear PG_movable from the old page and release reference. */
+ 		ClearPagePrivate(old_page);
+-		__ClearPageMovable(old_page);
++		kbase_clear_page_movable(old_page);
+ 		put_page(old_page);
+ 
+ 		/* Set PG_movable to the new page. */
+ #if (KERNEL_VERSION(6, 0, 0) <= LINUX_VERSION_CODE)
+-		__SetPageMovable(new_page, &movable_ops);
++		kbase_set_page_movable(new_page, &movable_ops);
+ 		page_md->status = PAGE_MOVABLE_SET(page_md->status);
+ #else
+ 		if (kctx->kbdev->mem_migrate.inode->i_mapping) {
+-			__SetPageMovable(new_page, kctx->kbdev->mem_migrate.inode->i_mapping);
++			kbase_set_page_movable(new_page, kctx->kbdev->mem_migrate.inode->i_mapping);
+ 			page_md->status = PAGE_MOVABLE_SET(page_md->status);
+ 		}
+ #endif
+@@ -390,7 +402,7 @@ static bool kbase_page_isolate(struct page *p, isolate_mode_t mode)
+ 		break;
+ 	case NOT_MOVABLE:
+ 		/* Opportunistically clear the movable property for these pages */
+-		__ClearPageMovable(p);
++		kbase_clear_page_movable(p);
+ 		page_md->status = PAGE_MOVABLE_CLEAR(page_md->status);
+ 		break;
+ 	default:
+@@ -513,7 +525,7 @@ static int kbase_page_migrate(struct page *new_page, struct page *old_page, enum
+ 		struct kbase_mem_migrate *mem_migrate = &kbdev->mem_migrate;
+ 
+ 		kbase_free_page_metadata(kbdev, old_page, NULL);
+-		__ClearPageMovable(old_page);
++		kbase_clear_page_movable(old_page);
+ 		put_page(old_page);
+ 
+ 		/* Just free new page to avoid lock contention. */
+@@ -523,7 +535,7 @@ static int kbase_page_migrate(struct page *new_page, struct page *old_page, enum
+ 		kbase_free_page_later(kbdev, new_page);
+ 		queue_work(mem_migrate->free_pages_workq, &mem_migrate->free_pages_work);
+ 	} else if (status_not_movable) {
+-		__ClearPageMovable(old_page);
++		kbase_clear_page_movable(old_page);
+ 		err = -EINVAL;
+ 	} else if (status_mapped) {
+ 		err = kbasep_migrate_page_allocated_mapped(old_page, new_page);
+@@ -537,7 +549,7 @@ static int kbase_page_migrate(struct page *new_page, struct page *old_page, enum
+ 	 * expect.
+ 	 */
+ 	if (err < 0 && err != -EAGAIN) {
+-		__ClearPageMovable(old_page);
++		kbase_clear_page_movable(old_page);
+ 		page_md->status = PAGE_MOVABLE_CLEAR(page_md->status);
+ 	}
+ 
+@@ -610,7 +622,7 @@ static void kbase_page_putback(struct page *p)
+ 	 */
+ 	if (status_mem_pool || status_free_isolated_in_progress ||
+ 	    status_free_pt_isolated_in_progress) {
+-		__ClearPageMovable(p);
++		kbase_clear_page_movable(p);
+ 		page_md->status = PAGE_MOVABLE_CLEAR(page_md->status);
+ 		if (!WARN_ON_ONCE(!kbdev)) {
+ 			struct kbase_mem_migrate *mem_migrate = &kbdev->mem_migrate;
+diff --git a/drivers/gpu/arm/midgard/mali_kbase_mem_pool.c b/drivers/gpu/arm/midgard/mali_kbase_mem_pool.c
+index 4dbc82c..85bf122 100644
+--- a/drivers/gpu/arm/midgard/mali_kbase_mem_pool.c
++++ b/drivers/gpu/arm/midgard/mali_kbase_mem_pool.c
+@@ -483,7 +483,7 @@ static unsigned long kbase_mem_pool_reclaim_count_objects(struct shrinker *s,
+ 	struct kbase_mem_pool *pool;
+ 	size_t pool_size;
+ 
+-	pool = container_of(s, struct kbase_mem_pool, reclaim);
++	pool = kbase_shrinker_owner(s, struct kbase_mem_pool, reclaim);
+ 
+ 	kbase_mem_pool_lock(pool);
+ 	if (pool->dont_reclaim && !pool->dying) {
+@@ -505,7 +505,7 @@ static unsigned long kbase_mem_pool_reclaim_scan_objects(struct shrinker *s,
+ 	struct kbase_mem_pool *pool;
+ 	unsigned long freed;
+ 
+-	pool = container_of(s, struct kbase_mem_pool, reclaim);
++	pool = kbase_shrinker_owner(s, struct kbase_mem_pool, reclaim);
+ 
+ 	kbase_mem_pool_lock(pool);
+ 	if (pool->dont_reclaim && !pool->dying) {
+@@ -558,7 +558,7 @@ int kbase_mem_pool_init(struct kbase_mem_pool *pool, const struct kbase_mem_pool
+ #if KERNEL_VERSION(6, 0, 0) > LINUX_VERSION_CODE
+ 	register_shrinker(&pool->reclaim);
+ #else
+-	register_shrinker(&pool->reclaim, "mali-mem-pool");
++	return register_shrinker(&pool->reclaim, "mali-mem-pool");
+ #endif
+ 
+ 	pool_dbg(pool, "initialized\n");
+diff --git a/drivers/gpu/arm/midgard/mali_malisw.h b/drivers/gpu/arm/midgard/mali_malisw.h
+index 3ef805a..0b3b5dc 100644
+--- a/drivers/gpu/arm/midgard/mali_malisw.h
++++ b/drivers/gpu/arm/midgard/mali_malisw.h
+@@ -27,6 +27,7 @@
+ #define _MALISW_H_
+ 
+ #include <linux/version.h>
++#include <linux/minmax.h>
+ 
+ /**
+  * MIN - Return the lesser of two values.
+@@ -36,7 +37,9 @@
+  * As a macro it may evaluate its arguments more than once.
+  * Refer to MAX macro for more details
+  */
++#ifndef MIN
+ #define MIN(x, y)	((x) < (y) ? (x) : (y))
++#endif
+ 
+ /**
+  * MAX - Return the greater of two values.
+@@ -50,7 +53,9 @@
+  * to retrieve the min and max of two values, consider using a conditional swap
+  * instead.
+  */
++#ifndef MAX
+ #define MAX(x, y)	((x) < (y) ? (y) : (x))
++#endif
+ 
+ /**
+  * CSTD_UNUSED - Function-like macro for suppressing unused variable warnings.
+diff --git a/include/linux/version_compat_defs.h b/include/linux/version_compat_defs.h
+index 5cbb074..d6b6a5e 100644
+--- a/include/linux/version_compat_defs.h
++++ b/include/linux/version_compat_defs.h
+@@ -25,6 +25,61 @@
+ #include <linux/version.h>
+ #include <linux/highmem.h>
+ #include <linux/timer.h>
++#include <linux/hrtimer.h>
++#include <linux/shrinker.h>
++
++#if (KERNEL_VERSION(7, 3, 0) <= LINUX_VERSION_CODE)
++/* kbase holds its VM lock here, not the exporter's reservation lock. */
++#define kbase_dma_buf_map_attachment dma_buf_map_attachment_unlocked
++#define kbase_dma_buf_unmap_attachment dma_buf_unmap_attachment_unlocked
++#else
++#define kbase_dma_buf_map_attachment dma_buf_map_attachment
++#define kbase_dma_buf_unmap_attachment dma_buf_unmap_attachment
++#endif
++
++#if (KERNEL_VERSION(6, 7, 0) <= LINUX_VERSION_CODE)
++struct kbase_shrinker {
++	struct shrinker *registered;
++	unsigned long (*count_objects)(struct shrinker *shrinker,
++				       struct shrink_control *control);
++	unsigned long (*scan_objects)(struct shrinker *shrinker,
++				      struct shrink_control *control);
++	int seeks;
++	long batch;
++};
++
++static inline int kbase_register_shrinker(struct kbase_shrinker *s, const char *name)
++{
++	struct shrinker *registered = shrinker_alloc(0, "%s", name);
++
++	if (!registered)
++		return -ENOMEM;
++	registered->count_objects = s->count_objects;
++	registered->scan_objects = s->scan_objects;
++	registered->seeks = s->seeks;
++	registered->batch = s->batch;
++	registered->private_data = s;
++	s->registered = registered;
++	shrinker_register(registered);
++	return 0;
++}
++
++#define register_shrinker kbase_register_shrinker
++#define unregister_shrinker(s) shrinker_free((s)->registered)
++#define kbase_shrinker_owner(s, type, member) \
++	container_of((struct kbase_shrinker *)(s)->private_data, type, member)
++#else
++#define kbase_shrinker shrinker
++#define kbase_shrinker_owner(s, type, member) container_of(s, type, member)
++#endif
++
++#if (KERNEL_VERSION(6, 15, 0) <= LINUX_VERSION_CODE)
++#define no_llseek NULL
++#define del_timer timer_delete
++#define del_timer_sync timer_delete_sync
++#define hrtimer_init(timer, clock, mode) hrtimer_setup(timer, NULL, clock, mode)
++#define hrtimer_init_on_stack(timer, clock, mode) hrtimer_setup_on_stack(timer, NULL, clock, mode)
++#endif
+ 
+ #if (KERNEL_VERSION(4, 4, 267) < LINUX_VERSION_CODE)
+ #include <linux/overflow.h>

@@ -5,7 +5,7 @@
 name = "NanoKVM"
 url = "https://github.com/vim4-kvm/NanoKVM.git"
 branch = "vim4"
-revision = "63fa80f6b03d26d7bf0c66abe8fbfb81793b7183"
+revision = "b1e1576a440a02c81454af5f131bf3f87aa4b73c"
 
 [[repos]]
 name = "common_drivers"
@@ -17,46 +17,46 @@ revision = "31619c527655514b4c89516ef609b6db1dd47db6"
 name = "gst-plugin-venc"
 url = "https://github.com/vim4-kvm/gst-plugin-venc.git"
 branch = "vim4"
-# Board-validated Wave5 update; remote vim4 matches this revision.
-revision = "b3b82a98cac16c4e845fad6357189b57cf8b2db4"
+# P0-5 HDR integration, the vim4ptsrate capture pacer and Wave5 on-demand IDRs without cyclic refresh (docs/bringup/2026-11-03-wave5-avc-recovery-qp.md).
+revision = "f6a23c5dd9acdb27664d3bad1bebdba9a585419b"
 
 [[repos]]
 name = "gst-plugin-vfmcap"
 url = "https://github.com/vim4-kvm/gst-plugin-vfmcap.git"
 branch = "main"
-revision = "a4937400370bdac40b50dca59df1ee22fff07df7"
+revision = "6fe6eacac8524b8bfc85ec5b78cfdac5bd4e291c"
 
 [[repos]]
 name = "kvm"
 url = "https://github.com/vim4-kvm/kvm.git"
 branch = "vim4"
-revision = "f2b8122505cacda2762948a91c99c1acdb107ef0"
+revision = "ed9e4b570df642f81823722a51e5e350dde758cf"
 
 [[repos]]
 name = "One-KVM"
 url = "https://github.com/vim4-kvm/One-KVM.git"
 branch = "vim4"
-# HDR2 product DMA contract validated by the uhd4 RAM smoke.
-revision = "db848a5288019f0d651bc429e01d6f727720154b"
+# r14e, USB endpoint merge, fixed 120 Hz budgets, Wave5 on-demand IDRs without cyclic refresh and the saved WebRTC codec (docs/bringup/2026-11-03-wave5-avc-recovery-qp.md).
+revision = "ca2292b1aaf4258963ebdabc929384a68b0c82fa"
 
 [[repos]]
 name = "kvmd"
 url = "https://github.com/vim4-kvm/kvmd.git"
 branch = "vim4"
-revision = "b074481150086146ce0cae4b3c9bca9baade5f10"
+revision = "3c2687fac2158dbfc00a7586f98ade883bfeda17"
 
 [[repos]]
 name = "ustreamer"
 url = "https://github.com/vim4-kvm/ustreamer.git"
 branch = "vim4"
-revision = "8d8a4eec16e774422e67168b221142ec052b46ad"
+revision = "4cc240747f1863439ff9e1263fd3eb1803fee39f"
 
 [[repos]]
 name = "vim4-manager"
 url = "https://github.com/vim4-kvm/vim4-manager.git"
 branch = "main"
-# Board-validated manager; remote main matches this revision.
-revision = "0c89b292eac4fd07c85fdf142dfa18591c04a329"
+# Deployed 2026-11-02 with mainline -thermal zone names trimmed (fbd8933, on top of the HTTPS manager in docs/bringup/2026-11-01-manager-https.md); remote main matches this revision.
+revision = "fbd8933fee7d95c879560aab5abd874acdfc0500"
 
 [kernel]
 url = "https://github.com/vim4-kvm/linux.git"

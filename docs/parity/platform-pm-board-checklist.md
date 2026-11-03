@@ -1,67 +1,29 @@
-# T7 平台电源候选批量上板清单
+# P0-2 性能与常开功耗合并窗口（待执行）
 
-本页仅排队，**本轮未执行**。源码、六个小提交和离线结论见
-[离线审查](../archive/platform-pm-offline.md)。先跑不请求系统睡眠的候选验证；
-整机 sleep 必须等设备恢复和唤醒契约就绪后另开窗口，不以本候选的 EBUSY 保护充当通过。
+默认运行 uhd6/kbase。A 为 5.15，B 为正式 uhd6；主组保留每个启动块预检时各簇实际 governor。上次 5.15 两簇实录均为 performance，见[原始结果](../bringup/p0-2-quick-evidence.json)。
+uhd6 已登记 tested_build，board/vim4-board-runtime、vim4-kvm-run 均匹配完整 release。
+[安装记录](../bringup/2026-11-01-hdr10-r14e-installed.md)有服务 active 和 UDC configured；
+[上次 P0-2](../bringup/2026-10-31-p0-2-performance.md) 的 uhd5 匹配失败已解除。每次启动仍验实际身份与服务。
 
-## 批量窗口 A：CPU idle、GPU cooling、功耗与回归
+| 顺序 | 操作、时长和证据 |
+|---|---|
+| 准备 | 离线在 heavy 票据下按[驱动基准](../driver-benchmark.md)准备 build/p0-2/vim4-driver-bench，核哈希，释放 heavy。准备已验双内核入口及回当前 uhd6 的恢复证明。禁止复用旧 5.15 默认项证明。 |
+| 就绪，10 min/启动 | FIFO board 票据内按[短窗口规程](../board-window.md)切内核、collect 身份、启动项、服务、UDC。固定环境温度、供电、散热、应用版本、码率和信源。保持同一 4K60 SDR 输入，温度回到同一起点。工具预检实际输入、服务 active、流客户端与 WebRTC、UU 桌面会话数。 |
+| A/B 每阶段 | 在独立 board-queue run 票据下运行 python3 tools/perf-quick.py pm-phase PHASE --output BLOCK/PHASE；每个启动块独用一个 BLOCK，同块所有阶段共享父目录中的 boot-policies.json，重试用同父目录的新阶段目录。boot ID 或逐 policy 策略变化即拒绝。idle、signal 分别 5 min（各预留 12 min 票据），h264、h265 分别 10 min（各预留 20 min 票据）。sampling 排斥 heavy；队列等待、冷却、切换不计入采样。跨票据有其他负载时重新冷却，身份/环境变化则该块作废。 |
+| idle / signal | idle 保持 HDMI 锁定，停止 One-KVM 并核实 inactive；signal 保持服务 active，要求 stream/status 的 clients、webrtc/status 的 session_count、UU 桌面 sessions、VNC connection_count 都为零，recording 为 false。RTSP 仅公开 service_status，连接数标「未核实」，只接受 stopped。停服务前复查；未找到公开的管线外部订阅总数，phase.json 单列「未核实」。两者比较常开服务的空闲开销。现有 M6 准备流程可切 HDR 和恢复前台，未找到可独立关闭物理输出并恢复的已验流程；无信号功耗仍缺测。 |
+| h264 / h265 | 同一物理输出全屏 perf-motion.html；沿用 perf-quick.py source，确认运动页未被遮挡。原生阶段独占采集、停 One-KVM 后按原状态启动。3840×2160p60、12 Mbps、GOP60，120帧预热、36000测量帧；管线时限按 57 fps 加 20 秒余量计算（654 秒），外层及恢复另留票时。记录 H.264/H.265 FPS、实际尺寸、缓冲数、CPU、sink→src p50/p95；前 300 s 升温，后 300 s 检查温度是否稳定，仍在爬升则稳态未证实。接收测量另循原 P0-2 receiver 流程，同钟且 ≥1000 有效标记才报端到端延迟。 |
+| 诊断 | 主组完成后单独在 uhd6 重做四阶段，各命令追加 --schedutil。逐 policy 记录原 governor 并恢复；核对 phase.json 与恢复后的 sysfs。诊断样本不计入主组。CPU 85°C vs 厂商 95°C 只记录何时触发及对应吞吐。 |
+| 判定 | 每阶段保留 pm.jsonl；编码阶段取 C 基准实际测量起止（板上 monotonic 微秒），遥测从预热前覆盖到 bench 退出后；按 phase.json 的 common_interval 选取共同区间，再对 time_in_state 和 idle usage/time 做末减首，空闲阶段用完整采样段，重启/计数回退作废。用 type 关联 zone/cdev，观察 GPU 频率、限频、风扇百分比；5.15 私有 DVFS 另读 /sys/class/mpgpu/cur_freq，缺节点则标缺测。uhd6 默认 kbase/governor_vim4，95°C、0–4 档 map 已在正式 DT；无自然触发则只报告观察到的状态。风扇命令百分比不能换算声压。无整板实测读数入口，标缺测；外接功率计可按[基线协议](../performance-baseline.md)提供同时间轴 CSV。PD 合同和单轨 hwmon 均不能代替整板瓦数。 |
+| 失败与恢复，5–10 min | 无 4K 缓冲池、服务失败、异常温度、丢帧或恢复错误，停止该组；取消时先停整个远端负载单元；票内最多两次核实单元 inactive 或已回收。仍活跃或状态未知时保留目录、写交接、禁止重启 One-KVM；失票时结束状态本地记缺测。确认停止后记录结束状态，恢复 governor、服务及状态 API，关 sampling 后取回数据。回传失败按 retained_remote 找回，恢复失败查 recovery-required.json。保留双方原始 JSON、journal、信源与采样票据；不缩为1080p。恢复 governor/服务，核验 HID、LUN、管理面。过期交接下一张票据，按已验路径回本次进入前默认 uhd6，再验身份/画面/服务/UDC。 |
 
-预计 **3–4 小时**，含一次性启动、冷却与失败恢复余量；不含三组厂商性能配对。
-取得 board/heavy 双锁，全程覆盖启动、测量和回基线；板子及对端不并行编译/测量。
-本轮只在此登记，不获取锁、不连接板子。
+主组按同日同 epoch 三组 A/B/A（相邻 A 可共享，共七个启动块），每块含操作、冷却约 45–60 min，另加诊断 45–60 min 和原接收端窗口。预算约 6–8 小时加接收/排队。遵守每票 ≤30 min。按基线门禁比较吞吐 ≥95%、同吞吐功耗 ≤105%、稳态温升差 ≤2°C、错误为零，缺测项保留未验。
 
-| 顺序 | 内容与通过条件 | 预算 |
-|---|---|---:|
-| A0 | 记录当前正式内核/DTB/完整模块/build ID、服务和 USB/LUN 状态；确认串口、一次性入口、Stock 回退及外部复位可用；核对 PID1 watchdog 实际持有和 30s 配置 | 15min |
-| A1 | 离线预备同次 Image/全部模块/五个 DTB 的哈希清单，一次性启动候选；确认未改默认启动，八核与网络/根盘正常，无新增 Oops/taint | 15min |
-| A2 | CPU cpuidle：每核 `state*/name/latency/residency/usage/time`，确认 PSCI 状态出现且有实际驻留；比较空闲前后 `/proc/interrupts`、定时器与时钟漂移，循环单核/全核短负载唤醒，不写 `/sys/power/state` | 20min |
-| A3 | 两簇 CPU 全部可用频点升降频往返，核对 secure bin、time_in_state、PWM/电压及实际负载；生产默认 governor 与共同 schedutil 诊断分别记录；不改 OPP 电压 | 20min |
-| A4 | GPU 五档往返及 simple_ondemand 自动负载/空闲切换，核对 devfreq、runtime 状态、regulator/PWM 保持、渲染像素与错误；禁止写 GPU 电压 | 15min |
-| A5 | GPU 温控：核对 gpu-thermal passive trip 的 cdev 链接；在仪器/温度监护下逐档限制 cdev 再释放，验证真实负载频率上限/吞吐与无错误。自然热试验不触碰 critical；不临时改生产 trip 或用手写频率冒充自动温控 | 15min |
-| A6 | 同环境/原风扇/同供电：空闲稳定5min+采样5min，CPU、GPU、4K60 KVM 各10min，负载串行；整板功率计1Hz、六区温升、风扇、DVFS驻留、吞吐、每任务能耗，冷却另计 | 50–65min |
-| A7 | PM 属全局改动，跑仓库九类全量回归；覆盖运动画面与音频连续性、编码、HID、虚拟介质、管理面、存储/网络基本服务；真实 HID 与声音不能用节点/服务状态代替 | 30min |
-| A8 | 正常重启回原正式基线，确认 build ID、USB/HID、画面/声音和服务；保留全部失败与 pstore/journal/UART，恢复原 governor/cdev/服务/负载设置 | 15min |
+每阶段在 phase.json 保存预检、开始和结束的 HDMI/服务状态。5.15 在读取 info 前后检查 hw_info 锁定位；uhd6 在采集前后只做 QUERY_DV_TIMINGS。要求逐行 3840×2160、60±0.5 Hz。开始不符不启动遥测，结束不符保留数据并判该阶段失败，照常恢复已改设置。这些快照只证明取样时刻的状态。
 
-先比较 CPU idle 唤醒尾延迟，再评估其节能；若 9ms 等级状态影响 KVM/HID 尾延迟，
-记录并回退候选，不能只依据空闲瓦数合入。GPU `runtime suspended` 时 cur_freq 是缓存，
-需要负载中观察 cdev 的限制是否生效。功率计缺失填测量缺失，不用温度推算瓦数。
-手动 cdev 只验限频通路；若自然温度未触发 95°C，自动温控仍待测。须在控温条件或
-另行离线构建的低阈值测试 DT 下验证 trip 自动响应，不把手写 cdev 算自动温控通过。
+## 独立 CPU idle 候选
 
-性能正式门禁按 [性能基线协议](../performance-baseline.md)：三组 A/B/A，至少七启动块，
-同负载/用户空间/环境/风扇/测量端点；吞吐≥95%、同吞吐功率≤105%、稳态温升≤+2°C、
-错误为0，并检查各延迟分位。这些是测量容差，目标仍为不低于厂商5.15。
-PM 子集每块 60–75min，七块加启动/冷却/恢复预计 **8–10 小时**；如并入
-[整夜完整计划](../overnight-performance-plan.md)，复用同一组采样，不另重复占板。
-厂商当前缺匹配硬件 GPU 用户态时，GPU A/B 填测量缺失，不能与 llvmpipe 分数比较。
+正式 DT 的 PSCI power-down disabled。若常开基线显示值得优化，另约 45–60 min 用只改 idle 的 kbase DT 比较每核驻留、中断/定时器、HID 和首帧尾延迟；不混入上述 A/B/A。
 
-## 批量窗口 B：设备 PM 与整机 s2idle/deep（暂不可执行）
+## 窗口 B 不排
 
-预计前置实现齐备后 **4–6 小时**，优先白天、有串口和独立复位的独占窗口。
-本候选的 RX/VDIN/Wave5 prepare、CRG suspend、DRM handoff 仍拒绝 sleep，
-必须有各自正式替代与退出证据；不能临时解绑/改 return 0 来消除阻塞。
-
-| 门禁 / 阶段 | 必须具备的证据 | 预算 |
-|---|---|---:|
-| B0 恢复方案 | 一次性入口已验证；独立外部复位/MCU 或人在场 RESET。Meson watchdog 在 suspend 停计数，PID1 RuntimeWatchdogSec=30 不能独自满足此项 | 20min |
-| B1 驱动前置 | RX/VDIN/Wave5/PCM/DRM/UDC 均有停止提交、DMA/IRQ quiesce、失败回滚与上下文恢复；共享域依赖和 I²C/风扇恢复明确。先保存无负载和活动流测试证据 | 40–60min |
-| B2 唤醒前置 | 外置 HYM8563 INT 线路明确，或 meson-vrtc→AO/BL31 定时唤醒契约已确认；不得假定 rtc0 可唤醒。先只用一个确定的定时源，保留 UART 与外部复位 | 30min |
-| B3 PM 分阶段测试 | 单独候选配置开启 PM_DEBUG；在通过前述恢复门禁后，从 freezer/devices/platform/processors/core 逐级 `pm_test`，每级确认返回、恢复链路及无泄漏，失败停止。pm_test 也调用设备 PM，不能绕过门禁 | 30–45min |
-| B4 s2idle | 定时唤醒10次，每次10–20s，另一次长于30s确认正常睡眠不被误复位；空闲后再活动负载/应用重建，核对唤醒原因、恢复时延、各驱动错误与能耗 | 30–45min |
-| B5 deep | 先单次10–20s再10次循环；确认真实进入 SYSTEM_SUSPEND、DDR/域上下文恢复、功率下降和准时唤醒。预定外部复位上限，不能在无安全恢复时等待 PID1 watchdog | 30–45min |
-| B6 各唤醒源 | 定时源通过后分别 Power/AO GPIO、IR、Ethernet WoL、USB host 与 gadget remote wake；每类10次、去除其他唤醒源，报告不支持与缺线路。Wi-Fi/WOWL 另协调，不占用 P2P 任务状态 | 45–60min |
-| B7 全量与恢复 | 每轮后真正采集/编码/声音/HID/虚拟介质、CPU/GPU/网络/存储正确；最后九类全量和回正式基线，清除试验 alarm/唤醒配置并保留日志 | 45min |
-
-单次超时、硬锁、掉盘、异常温度、DMA/IRQ 错误或恢复后无声/无画面即停止该阶段，
-由独立复位回正式基线后保存证据，不连续试下一个来源。失败定位仍在功能分支做，
-不能降低唤醒次数/负载或永久常开更多域来记通过。
-
-## 取得可信 GPU 电压表后的附加窗口
-
-当前无该表，**本候选不执行调压**。先离线记录电压表来源、板型、bin/温度适用范围，
-对照 PWM 实测标定、schema、升压先于升频/降频先于降压与错误回滚；再准备新候选。
-
-首次电气资格预计 **60–90min**：万用表/示波器观察各频点稳态电压、瞬态、
-负载切换和最低/最高温区边界，五档双向循环，不试表外电压。电气通过后按窗口 A
-的 GPU 600s 热稳态、像素正确性、功率/温升/吞吐与三组配对验收执行；
-时间可并入上述 A/B 块，不能用一次短测宣称全 bin/温度范围调压稳定。
+整机 sleep 中断远程管理、采集与 USB。RX/VDIN/Wave5、CRG/handoff 有明确拒绝路径，厂商恢复/唤醒闭环未证实。本产品不安排整机 sleep。

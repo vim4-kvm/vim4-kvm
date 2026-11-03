@@ -1,0 +1,22 @@
+{
+  "status": "qualified-targeted-module-trial-not-a-formal-build",
+  "image_source": "dc220366a1222a03423d5b5987fab3f027ec1d7a",
+  "module_source": "f951e2d24d32d5df0e701e7c355b3db4c91eaf74",
+  "kernel_branch": "p0-1-unified73",
+  "image_sha256": "9cf35c4485bcc58b88691591ec1d9e1a9e3c85edd5facaf17fc656ba3d0180b5",
+  "kernel_build_id": "0db732dfaf0d7f1fb60e5cd61b1423ef7cb403d4",
+  "vmlinux_btf_sha256": "e6759552ee3e6625a6dac7461745e82d1f96934728609cf7a3abf1c529669540",
+  "module": "kernel/drivers/media/platform/amlogic/t7-hdmirx/t7-hdmirx.ko.xz",
+  "old_sha256": "9bf6371f57603fbc22b604994812e2405bdf7805dbfd6d1c3627096af2d3ced8",
+  "sha256": "abe146d15f47aee2f03443f85f412169769296d001f0534dd682b97e7a9005aa",
+  "build_id": "e16729b7ad79a09cc938b01776bbc05ba6137b17",
+  "ram_payload_id": "uhd6-edid-f951-r3",
+  "ram_archive": "p0-1-uhd6-edid-f951-r3-ram.tar.gz",
+  "ram_sha256": "07328181697fa46e2a6d47009956cc537689bc6539a18f537041ae060a62599b",
+  "module_count": 2341,
+  "unchanged_modules": 2340,
+  "hardware_validated": true,
+  "acceptance_scope": "two-withdraw-hold-repeat-republish-cycles-and-video-recovery",
+  "evidence": "docs/bringup/2026-10-31-uhd6-edid-review.md",
+  "raw_evidence": "logs/p0-1-window-q"
+}

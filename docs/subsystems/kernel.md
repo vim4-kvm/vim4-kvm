@@ -1,15 +1,24 @@
 # 内核与驱动
 
+11月3日已持久替换 uhd7 的 HDMI RX、VDIN、Wave5 三模块，源码为 `4111568841bd`。
+四应用4K60、JetKVM第二浏览器接管关键帧及UU官方客户端接收已补验，范围见
+[安装与会话记录](../bringup/2026-11-03-mainline-modules.md)。
+
+当前正式源码 `4111568841bd`，默认 FullKvm/kbase 运行 uhd7，Image 来自 `52b95c8493264`。BCM43752 主机路径、
+单子系统门禁、HDMI 无信号边界及 Wi-Fi 测量见 [uhd7 构建与安装](../bringup/2026-11-02-wifi-sdio-formal.md)。
+上一版的九类资格与 600 秒运动记录见 [uhd6 验收](../bringup/2026-10-31-uhd6-formal.md)。
+
 VDIN HDR2主题候选uhd4完整构建见[集成门禁](../bringup/2026-10-31-hdr2-uhd4-gate.md)，
 [新PQ窗口](../bringup/2026-10-31-hdr2-mcp-ice-pq.md)已恢复MCP与接收、通过PQ/DMA/VUI/4K60；
 [uhd4r3恢复修复](../bringup/2026-10-31-hdr2-recovery.md)把双向中位数拉到约1.24秒，
-用户已认可两栈长尾不构成三次样本内退步；[正式uhd4短烟测](../bringup/2026-10-31-uhd4-formal-smoke.md)通过并推广源码/构建锁，5.15仍默认。HLG已实现，无真实源未验。
+用户已认可两栈长尾不构成三次样本内退步；[正式uhd4短烟测](../bringup/2026-10-31-uhd4-formal-smoke.md)通过并推广源码/构建锁，当时仍默认 5.15。HLG已实现，无真实源未验。
 
 7.3通用内存/拷贝与锁调试配置差异、离线微基准及下一窗口见[内存拷贝审查](../memory-copy-audit.md)。
 
 实验性 Armbian edge 基线及构建见 [新内核基线](../kernel-edge.md)，不替代现有 5.15 发布流程。
-Wi-Fi 固件崩溃的诊断能力、P2P 兼容问题与转储保存见
-[Wi-Fi 排查](../bringup/2026-10-21-edge-wifi-fps.md)；历史崩溃根因尚未确认。
+FullKvm 的 BCM43752 使用 .217 SDIO 固件和配套 brcmfmac/WCC 模块，构建输入、
+连接验证及回退见[固件对照](../bringup/2026-11-02-wifi-fw217.md)。
+旧版 PHY trap 的固件内部根因尚未确认，转储保存见[Wi-Fi 排查](../bringup/2026-10-21-edge-wifi-fps.md)。
 BCM43752 外部 SAE 的 WCC 协议与 AKM 声明见
 [管理器与 WPA3 适配](../bringup/2026-10-21-manager-mainline-status.md)。
 P2P 已移除能力屏蔽，修正 discovery、扫描版本、ARP/ND 控制和并发发送流控，见

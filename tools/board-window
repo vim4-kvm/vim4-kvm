@@ -52,9 +52,9 @@ def save(path, value):
     temp.replace(path)
 
 
-def ssh(host, command, timeout=30):
+def ssh(host, command, timeout=30, *, isolated=False):
     return subprocess.check_output(['ssh', '-oBatchMode=yes', '-oConnectTimeout=5',
-                                    host, command], timeout=timeout, text=True)
+                                    host, command], timeout=timeout, text=True, start_new_session=isolated)
 
 
 def require_board():
@@ -105,6 +105,7 @@ class MCP:
 
     Current One-KVM is stateless; session headers also support sessionful builds.
     Only safe read calls retry after transport failure, avoiding duplicate HID.
+    An optional monotonic deadline also bounds initialization and read retries.
     """
     def __init__(self, url, key, opener=None):
         self.url, self.key = url, key
@@ -112,7 +113,7 @@ class MCP:
         self.session = None
         self.sequence = 0
 
-    def rpc(self, method, params, notification=False):
+    def rpc(self, method, params, notification=False, *, deadline=None):
         self.sequence += 1
         headers = {'Content-Type': 'application/json', 'Accept': 'application/json',
                    'Authorization': 'Bearer ' + self.key, 'MCP-Protocol-Version': '2025-06-18'}
@@ -122,43 +123,51 @@ class MCP:
         if notification:
             payload.pop('id')
         request = urllib.request.Request(self.url, json.dumps(payload).encode(), headers)
-        with self.opener(request, timeout=30) as response:
-            session = response.headers.get('Mcp-Session-Id')
-            if session:
-                self.session = session
-            if notification:
-                response.read()
-                return {}
-            body = json.load(response)
-        if body.get('error'):
-            raise RuntimeError('MCP RPC error: ' + json.dumps(body['error']))
-        result = body['result']
-        if result.get('isError'):
-            raise RuntimeError('MCP tool error: ' + json.dumps(result))
-        return result
+        timeout=30 if deadline is None else min(30,deadline-time.monotonic())
+        if timeout<=0: raise TimeoutError('MCP operation deadline expired')
+        try:
+            with self.opener(request, timeout=timeout) as response:
+                session = response.headers.get('Mcp-Session-Id')
+                if session:
+                    self.session = session
+                if notification:
+                    response.read()
+                    return {}
+                body = json.load(response)
+            if body.get('error'):
+                raise RuntimeError('MCP RPC error: ' + json.dumps(body['error']))
+            result = body['result']
+            if result.get('isError'):
+                raise RuntimeError('MCP tool error: ' + json.dumps(result))
+            return result
+        except urllib.error.URLError as error:
+            # urlopen wraps a connect/header socket timeout as URLError.
+            if deadline is not None and time.monotonic()>=deadline:
+                raise TimeoutError('MCP total HTTP deadline expired') from error
+            raise
 
-    def initialize(self):
+    def initialize(self, *, deadline=None):
         self.session = None
         self.rpc('initialize', dict(protocolVersion='2025-06-18', capabilities={},
-                                   clientInfo=dict(name='board-window', version='1')))
-        self.rpc('notifications/initialized', {}, notification=True)
+                                   clientInfo=dict(name='board-window', version='1')),deadline=deadline)
+        self.rpc('notifications/initialized', {}, notification=True,deadline=deadline)
 
-    def call(self, name, arguments=None):
+    def call(self, name, arguments=None, *, deadline=None):
         # Current One-KVM is stateless and gives no restart/session signal.
         # Initializing each action also covers a restart between two HDR steps.
-        self.initialize()
+        self.initialize(deadline=deadline)
         try:
-            return self.rpc('tools/call', dict(name=name, arguments=arguments or {}))
+            return self.rpc('tools/call', dict(name=name, arguments=arguments or {}),deadline=deadline)
         except (urllib.error.URLError, TimeoutError) as exc:
             if isinstance(exc, urllib.error.HTTPError):
                 exc.close()
-            self.initialize()
+            self.initialize(deadline=deadline)
             if name not in ('screenshot', 'zoom', 'cursor_position'):
                 raise RuntimeError('MCP restarted; action outcome unknown, initialized again; inspect screenshot')
-            return self.rpc('tools/call', dict(name=name, arguments=arguments or {}))
+            return self.rpc('tools/call', dict(name=name, arguments=arguments or {}),deadline=deadline)
 
-    def screenshot(self, path):
-        result = self.call('screenshot')
+    def screenshot(self, path, *, deadline=None):
+        result = self.call('screenshot',deadline=deadline)
         images = [b for b in result['content'] if b['type'] == 'image']
         if not images:
             raise RuntimeError('MCP did not return an image')
@@ -256,8 +265,8 @@ class UnknownHDRState(RuntimeError):
     """Source metadata is not currently sufficient to decide the HDR switch."""
 
 
-def source_hdr(host):
-    state = json.loads(ssh(host, "curl -fsS --max-time 10 http://127.0.0.1:8081/api/vim4/video"))
+def source_hdr(host, *, timeout=30):
+    state = json.loads(ssh(host, "curl -fsS --max-time 10 http://127.0.0.1:8081/api/vim4/video",timeout=timeout))
     eotf = state['hdr_eotf'].strip().upper()
     if re.search(r'ST2084|PQ|HDR10', eotf):
         return True
@@ -307,7 +316,7 @@ def ready(host, timeout=120, expected=None, old_boot=None):
 assert platform.release()==EXPECTED if EXPECTED else True
 assert pathlib.Path('/proc/sys/kernel/random/boot_id').read_text().strip()!=OLD if OLD else True
 services=['one-kvm','vim4-kvm-gadget']
-if platform.release().startswith('5.15.'):services.append('vim4-kvm-hdmi')
+if platform.release().startswith('5.15.'):services+=['vim4-kvm-hdmi','vim4-manager']
 for service in services:
  subprocess.run(['systemctl','is-active','--quiet',service],check=True)
 assert any(p.read_text().strip()=='configured' for p in pathlib.Path('/sys/class/udc').glob('*/state'))
@@ -323,11 +332,52 @@ print('ready')
     raise TimeoutError('SSH/services/UDC/One-KVM frames not ready: ' + str(last))
 
 
+def verify_baseline(expected, actual):
+    """Only the audited firmware reboot reason may vary across a normal reboot."""
+    if any(actual.get(k) != expected.get(k) for k in ('release', 'build_id', 'files')):
+        raise RuntimeError('baseline release/build ID/protected files differ')
+    def split(command):
+        tokens = command.split()
+        reason = [t for t in tokens if t.startswith('reboot_mode=')]
+        if len(reason) > 1:
+            raise RuntimeError('duplicate reboot_mode')
+        return [t for t in tokens if not t.startswith('reboot_mode=')], reason[0] if reason else None
+    before, reason_before = split(expected['cmdline'])
+    after, reason_after = split(actual['cmdline'])
+    if before != after:
+        raise RuntimeError('baseline command line differs outside reboot_mode')
+    reviewed = ('reboot_mode=normal', 'reboot_mode=watchdog_reboot')
+    if reason_before != reason_after and (reason_before not in reviewed or reason_after not in reviewed):
+        raise RuntimeError('unreviewed reboot_mode transition')
+    return dict(before=reason_before, after=reason_after)
+
+
 def receiver(url, seconds, local_ip=None):
     command = ['node', str(ROOT / 'tools/board-window-receiver.mjs'), url, str(seconds)]
     if local_ip:
         command += ['--local-ip=' + local_ip]
     return json.loads(subprocess.check_output(command, text=True, timeout=seconds + 120))
+
+
+def record_candidate(directory, plan, digest):
+    # Recovery must remember every payload, including the one that created
+    # the module mountpoint when later payloads reuse the same kernel Image.
+    identity = plan['build_id']
+    if 'namespace' in plan:
+        identity = hashlib.sha256('/'.join((plan['namespace'], plan['payload_id'], identity)).encode()).hexdigest()
+    save(directory / ('candidate-' + identity + '.json'),
+         dict(plan, archive_sha256=digest))
+
+
+def module_cleanup_script(plans, script):
+    # A full 2338-module inventory exceeds Linux's per-argument exec limit.
+    # Cleanup needs only the validated directory identity and module release;
+    # keep the full inventory in local recovery evidence, not an SSH argument.
+    identities = [{key: plan[key] for key in ('build_id', 'release', 'namespace', 'payload_id')
+                   if key in plan} for plan in plans]
+    return ("import importlib.util; s=importlib.util.spec_from_file_location('once',"
+            + repr(script) + "); m=importlib.util.module_from_spec(s); s.loader.exec_module(m); "
+            + '[m.cleanup_module_mountpoint(p) for p in ' + repr(identities) + ']')
 
 
 def validate_bundle(bundle):
@@ -339,14 +389,14 @@ def validate_bundle(bundle):
                 raise ValueError('bundle hash mismatch: ' + name)
         if not re.fullmatch('[0-9a-f]{40}', plan['build_id']):
             raise ValueError('invalid build ID')
-        prefix = '/var/lib/vim4-kvm/' + ('display-m1' if metadata == 'trial.json' else 'hdr2-unified') + '/' + plan['build_id']
+        prefix = str(once.candidate_prefix(plan, metadata))
         command = 'sysboot mmc 1:2 any ${pxefile_addr_r} ' + prefix + '/extlinux.conf; reset'
         if plan['command'] != command:
             raise ValueError('only the existing RAM sysboot command is accepted')
         return plan
 
 
-def boot(host, device, directory, plan=None):
+def boot(host, device, directory, plan=None, baseline_release=None):
     uart = load('board_uart', ROOT / 'tools/uart-run.py')
     old_boot = ssh(host, 'cat /proc/sys/kernel/random/boot_id').strip()
     mac = None
@@ -361,6 +411,7 @@ def boot(host, device, directory, plan=None):
     try:
         # Drain UART immediately: waiting for SSH disconnect can overflow the
         # serial buffer and lose the short autoboot prompt. Never repeat reboot.
+        # Match the prompt's tail too: the USB UART can drop its first bytes.
         rebooter = subprocess.Popen(['ssh', '-oBatchMode=yes', '-oConnectTimeout=5', host,
                                     'sudo -n reboot'], stdin=subprocess.DEVNULL,
                                    stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL,
@@ -369,7 +420,7 @@ def boot(host, device, directory, plan=None):
         while time.monotonic() < end:
             if select.select([fd], [], [], .1)[0]:
                 output += os.read(fd, 65536)
-                if plan and not interrupted and (b'Hit SPACE' in output or b'Hit any key to stop autoboot' in output):
+                if plan and not interrupted and (b'Hit SPACE' in output or b'autoboot' in output):
                     os.write(fd, b' ')
                     interrupted = True
                 if interrupted and not selected and (b'kvim4#' in output[-400:] or b'kvim4n#' in output[-400:]):
@@ -391,7 +442,7 @@ def boot(host, device, directory, plan=None):
                 rebooter.wait(timeout=3)
         os.close(fd)
         (directory / ('uart-' + str(time.time_ns()) + '.log')).write_bytes(output)
-    ready(host, expected=plan['release'] if plan else None, old_boot=old_boot)
+    ready(host, expected=plan['release'] if plan else baseline_release, old_boot=old_boot)
 
 
 def main():
@@ -403,10 +454,12 @@ def main():
     p = commands.add_parser('boot-candidate')
     p.add_argument('candidate', type=Path)
     p.add_argument('--sha256', required=True, help='trusted candidate.tar SHA256')
+    p.add_argument('--reuse-staged', action='store_true', help='verify and reuse the exact immutable payload')
     p.add_argument('--baseline-files', nargs='+', help='first HDR2 payload: original 5.15 recovery files')
     commands.add_parser('return-baseline')
     p = commands.add_parser('baseline')
     p.add_argument('--files', nargs='+', required=True, help='kernel, programs and all default boot files')
+    p.add_argument('--settings', type=Path, help='public source/browser/codec/settings JSON included in cache key')
     p.add_argument('--url', default='http://192.168.50.210:8080')
     p.add_argument('--local-ip')
     p.add_argument('--seconds', type=float, default=10)
@@ -437,6 +490,7 @@ def main():
         queue, token = require_board()
         queue.sampling(token, True)
         try:
+            save(directory / ('sampling-' + str(time.time_ns()) + '.json'), queue.read(token))
             result = receiver(args.url, args.seconds, args.local_ip)
         finally:
             queue.sampling(token, False)
@@ -447,6 +501,7 @@ def main():
         def measure():
             queue.sampling(token, True)
             try:
+                save(directory / ('sampling-' + str(time.time_ns()) + '.json'), queue.read(token))
                 metrics = receiver(args.url, args.seconds, args.local_ip)
                 if identity(args.host, args.files) != proof:
                     raise RuntimeError('baseline identity changed during measurement')
@@ -454,8 +509,9 @@ def main():
             finally:
                 queue.sampling(token, False)
         cache = BaselineCache(queue.root / 'baseline-cache.json')
+        settings = json.loads(args.settings.read_text()) if args.settings else None
         result = cache.get(dict(proof, host=args.host, measurement=dict(url=args.url,
-                           seconds=args.seconds, local_ip=args.local_ip)), measure)
+                           seconds=args.seconds, local_ip=args.local_ip, settings=settings)), measure)
     elif args.action == 'mcp':
         key = os.environ.get('ONEKVM_MCP_KEY')
         if not key:
@@ -494,8 +550,8 @@ def main():
             digest = sha(bundle)
         else:
             digest = args.sha256
-        if sha(bundle) != digest:
-            raise ValueError('archive SHA256 mismatch')
+            if sha(bundle) != digest:
+                raise ValueError('archive SHA256 mismatch')
         plan = validate_bundle(bundle)
         proof_path = directory / 'baseline-proof.json'
         if proof_path.exists():
@@ -515,8 +571,7 @@ def main():
             save(proof_path, proof)
         if identity(args.host, list(proof['files']))['files'] != proof['files'] or plan.get('baseline_files', proof['files']) != proof['files']:
             raise ValueError('default boot/runtime files differ from retained baseline')
-        save(directory / ('candidate-' + plan['build_id'] + '.json'),
-             dict(plan, archive_sha256=digest))
+        record_candidate(directory, plan, digest)
         remote = '/tmp/board-window-' + plan['build_id']
         subprocess.run(['scp', str(bundle), args.host + ':' + remote + '.tar'], check=True)
         subprocess.run(['scp', str(ROOT / 'packaging/kernel-edge/display-once.py'),
@@ -525,8 +580,8 @@ def main():
 s=importlib.util.spec_from_file_location('once',SCRIPT)
 m=importlib.util.module_from_spec(s);s.loader.exec_module(m)
 assert m.sha(BUNDLE)==DIGEST
-m.stage(BUNDLE,retained_baseline=PROOF)
-""".replace('SCRIPT', repr(remote + '.py')).replace('BUNDLE', repr(remote + '.tar')).replace('DIGEST', repr(digest)).replace('PROOF', repr(proof))
+m.stage(BUNDLE,retained_baseline=PROOF,reuse_staged=REUSE)
+""".replace('SCRIPT', repr(remote + '.py')).replace('BUNDLE', repr(remote + '.tar')).replace('DIGEST', repr(digest)).replace('PROOF', repr(proof)).replace('REUSE', repr(args.reuse_staged))
         ssh(args.host, 'sudo -n python3 -c ' + shlex.quote(script), timeout=180)
         require_board()
         boot(args.host, args.device, directory, plan)
@@ -538,16 +593,17 @@ m.stage(BUNDLE,retained_baseline=PROOF)
         proof = json.loads((directory / 'baseline-proof.json').read_text())
         if identity(args.host, list(proof['files']))['files'] != proof['files']:
             raise ValueError('default files changed; refuse automatic reboot')
-        boot(args.host, args.device, directory)
-        if identity(args.host, list(proof['files'])) != proof:
-            raise RuntimeError('baseline release or boot-file verification failed')
+        # One normal reboot only. A timeout must retain the proof and fail;
+        # never hide an Ethernet/DHCP failure behind an automatic reboot loop.
+        boot(args.host, args.device, directory, baseline_release=proof['release'])
+        actual = identity(args.host, list(proof['files']))
+        reasons = verify_baseline(proof, actual)
+        save(directory / 'returned-baseline-identity.json', dict(identity=actual, reboot_mode=reasons))
         cleanup = '/tmp/board-window-cleanup.py'
         subprocess.run(['scp', str(ROOT / 'packaging/kernel-edge/display-once.py'),
                         args.host + ':' + cleanup], check=True)
         plans = [json.loads(path.read_text()) for path in directory.glob('candidate-*.json')]
-        script = ("import importlib.util; s=importlib.util.spec_from_file_location('once',"
-                  + repr(cleanup) + "); m=importlib.util.module_from_spec(s); s.loader.exec_module(m); "
-                  + '[m.cleanup_module_mountpoint(p) for p in ' + repr(plans) + ']')
+        script = module_cleanup_script(plans, cleanup)
         ssh(args.host, 'sudo -n python3 -c ' + shlex.quote(script))
         result = collect(args.host, directory)
     save(directory / (args.action + '-' + str(time.time_ns()) + '.json'), result)

@@ -1,0 +1,35 @@
+diff --git a/drivers/gpu/arm/midgard/mmu/backend/mali_kbase_mmu_jm.c b/drivers/gpu/arm/midgard/mmu/backend/mali_kbase_mmu_jm.c
+index 52c3287..d47b421 100644
+--- a/drivers/gpu/arm/midgard/mmu/backend/mali_kbase_mmu_jm.c
++++ b/drivers/gpu/arm/midgard/mmu/backend/mali_kbase_mmu_jm.c
+@@ -114,6 +114,7 @@ void kbase_mmu_report_fault_and_kill(struct kbase_context *kctx,
+ 	int as_no;
+ 	struct kbase_device *kbdev;
+ 	struct kbasep_js_device_data *js_devdata;
++	struct kbase_va_region *region;
+ 
+ 	as_no = as->number;
+ 	kbdev = kctx->kbdev;
+@@ -145,6 +146,22 @@ void kbase_mmu_report_fault_and_kill(struct kbase_context *kctx,
+ 		source_id,
+ 		kctx->pid);
+ 
++	/* The worker holds a context reference; snapshot the region under VM lock. */
++	if (!fault->protected_mode) {
++		kbase_gpu_vm_lock(kctx);
++		region = kbase_region_tracker_find_region_enclosing_address(kctx, fault->addr);
++		if (kbase_is_region_invalid_or_free(region)) {
++			dev_err(kbdev->dev, "Fault region: unmapped/free\n");
++		} else {
++			dev_err(kbdev->dev,
++				"Fault region: start_pfn=%#llx pages=%zu type=%d flags=%#lx jit=%d\n",
++				region->start_pfn, region->nr_pages,
++				region->gpu_alloc ? region->gpu_alloc->type : -1,
++				region->flags, !list_empty(&region->jit_node));
++		}
++		kbase_gpu_vm_unlock(kctx);
++	}
++
+ 	/* hardware counters dump fault handling */
+ 	spin_lock_irqsave(&kbdev->hwcnt.lock, flags);
+ 	if ((kbdev->hwcnt.kctx) && (kbdev->hwcnt.kctx->as_nr == as_no) &&

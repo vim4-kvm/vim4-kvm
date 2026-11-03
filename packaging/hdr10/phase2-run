@@ -1,0 +1,23 @@
+#!/bin/sh
+# Candidate-only application launcher. Filled in by assemble-phase2.py.
+set -eu
+root=@PREFIX@/runtime
+export VIM4_VIDEO_BACKEND=wave5 VIM4_SHARED_DATA=1
+export GST_PLUGIN_PATH="$root/gstreamer-1.0"
+unset VIM4_SECONDARY_HDMI_CAPTURE GST_V4L2_PREFER_CONTIGUOUS LD_PRELOAD LD_LIBRARY_PATH
+app=${1:?application required}
+case "$app" in
+ onekvm) set -- "$root/one-kvm" --data-dir /var/lib/one-kvm --address 127.0.0.1 --port 8081 --auth-mode managed ;;
+ nanokvm) set -- "$root/nanokvm" ;;
+ jetkvm) set -- "$root/jetkvm" ;;
+ pikvm) set -- /usr/libexec/vim4-pikvm-run ;;
+ *) exit 2 ;;
+esac
+export GST_REGISTRY="/tmp/hdr10-phase2-$app-registry.bin"
+rm -f "$GST_REGISTRY"
+if [ @GPU@ = kbase ]; then
+ exec /usr/bin/python3 /usr/lib/vim4-kvm/python/vim4gpu.py --graphics direct -- "$@"
+fi
+export VK_DRIVER_FILES=/opt/vim4-mesa-26.2.6/share/vulkan/icd.d/panfrost_icd.aarch64.json
+export PAN_I_WANT_A_BROKEN_VULKAN_DRIVER=1
+exec "$@"

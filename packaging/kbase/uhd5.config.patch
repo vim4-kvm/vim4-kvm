@@ -1,0 +1,8 @@
+--- uhd4.config
++++ uhd5.config
+@@ -35 +35 @@
+-CONFIG_LOCALVERSION="-vim4kvm-uhd4"
++CONFIG_LOCALVERSION="-vim4kvm-uhd5"
+@@ -4394 +4394 @@
+-# CONFIG_THERMAL_EMULATION is not set
++CONFIG_THERMAL_EMULATION=y

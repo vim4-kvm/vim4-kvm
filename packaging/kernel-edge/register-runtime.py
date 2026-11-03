@@ -15,7 +15,11 @@ import json
 import os
 from pathlib import Path
 import re
+import shutil
+import subprocess
 import sys
+import tarfile
+import tempfile
 
 
 def digest(path):
@@ -42,7 +46,7 @@ def modules(root):
 def boot_profile(source, legacy_services=(), *, framebuffer_console=False):
     words = [word for word in source['APPEND'].split()
              if not word.startswith(('systemd.mask=', 'vim4.one_kvm='))]
-    words += ['vim4.full_kvm=1'] + ['systemd.mask=' + unit for unit in (
+    words += ['vim4.full_kvm=1', 'vim4.eth_mac=${eth_mac}'] + ['systemd.mask=' + unit for unit in (
         'tvserver.service', 'audioserver.service', 'one-kvm-edge.service',
         'one-kvm-edge-gateway.service', 'one-kvm-edge-usb.service', *legacy_services)]
     if framebuffer_console and 'console=tty0' not in words:
@@ -56,7 +60,11 @@ def update_boot_entry(text, existing, previous, full):
         return text
     if existing is None:
         return text + '\nLABEL FullKvm\n' + ''.join(f'  {key} {value}\n' for key, value in full.items())
-    if existing != previous:
+    # Upgrade the earlier exact profile without factory-MAC handoff. Other
+    # administrator changes still require an explicit deployment review.
+    before_mac = {**full, 'APPEND':' '.join(w for w in full['APPEND'].split()
+                                          if w != 'vim4.eth_mac=${eth_mac}')}
+    if existing != previous and existing != before_mac:
         raise ValueError('FullKvm has custom boot arguments; refusing to replace it')
     # Upgrade only our exact earlier profile, leaving every other label intact.
     label = None
@@ -92,7 +100,7 @@ def register(args):
     import vim4boot as boot
     proof = json.loads(args.proof.read_text())
     version = proof['release']
-    if version not in ('7.3.0-rc7-vim4kvm-uhd1+', '7.3.0-vim4kvm-uhd1+'):
+    if version not in ('7.3.0-rc7-vim4kvm-uhd1+', '7.3.0-vim4kvm-uhd1+', '7.3.0-vim4kvm-uhd6+', '7.3.0-vim4kvm-uhd7+'):
         raise ValueError('No validated application launcher for this kernel release')
     if digest(boot.BOOT / 'edge/Image') != proof['image_sha256']:
         raise ValueError('Installed mainline Image differs from the build inventory')
@@ -146,7 +154,7 @@ def register(args):
         boot.validate_entry(record, text, hashes=True)
         records.append(record)
     backup = boot.CONFIG.with_name('extlinux.conf.before-full-runtime')
-    if not backup.exists():
+    if not getattr(args, 'no_backup', False) and not backup.exists():
         boot.atomic_write(backup, original.encode())
     boot.MANIFEST.parent.mkdir(parents=True, exist_ok=True)
     try:
@@ -162,6 +170,113 @@ def register(args):
         {'id': record['id'], 'release': record['release'], 'artifacts': len(record['artifacts'])} for record in records]}))
 
 
+def install_complete_modules(archive, root, expected):
+    """Resume after a boot-file copy failure only with the exact complete set."""
+    if root.exists() and any(root.iterdir()):
+        paths = list(root.rglob('*'))
+        if any(path.is_symlink() for path in paths):
+            raise ValueError('Refusing to overwrite an existing module set')
+        current = {str(path.relative_to(root)): digest(path) for path in paths if path.is_file()}
+        if current != expected:
+            raise ValueError('Refusing to overwrite an existing module set')
+        return
+    subprocess.run(['tar', 'xzf', str(archive), '-C', str(root.parent),
+                    '--no-same-owner', '--keep-directory-symlink'], check=True)
+
+
+def install(args):
+    """Install the sealed kernel and matching modules, preserving the saved default."""
+    if os.geteuid() != 0:
+        raise ValueError('Installation requires root')
+    sys.path.insert(0, '/usr/lib/vim4-kvm/python')
+    import vim4boot as boot
+    original = boot.CONFIG.read_bytes()
+    entries = boot.boot_entries(original.decode())
+    label = boot.default_label(original.decode())
+    saved = release(boot.BOOT / entries[label]['LINUX'].lstrip('/'))
+    if not Path('/lib').is_symlink():
+        raise ValueError('Expected Ubuntu /lib symlink')
+    with tempfile.TemporaryDirectory(prefix='vim4-edge-install-') as temporary:
+        root = Path(temporary)
+        with tarfile.open(args.archive) as archive:
+            for member in archive.getmembers():
+                path = Path(member.name)
+                if path.is_absolute() or '..' in path.parts or not (member.isdir() or member.isfile()):
+                    raise ValueError('Unsafe package member: ' + member.name)
+            archive.extractall(root, filter='data')
+        candidate = json.loads((root / 'candidate.json').read_text())
+        for name, expected in candidate['sha256'].items():
+            if digest(root / name) != expected:
+                raise ValueError('Package hash mismatch: ' + name)
+        report = json.loads((root / 'manifest.json').read_text())
+        version = report['release']
+        upgrade = version == '7.3.0-vim4kvm-uhd7+'
+        if version not in ('7.3.0-vim4kvm-uhd6+', '7.3.0-vim4kvm-uhd7+') or release(root / 'Image') != version:
+            raise ValueError('Unexpected unified kernel Image')
+        if upgrade:
+            if (label != 'FullKvm' or saved != '7.3.0-vim4kvm-uhd6+' or
+                    entries[label].get('LINUX') != '/edge/Image' or entries[label].get('FDT') != '/edge/vim4.dtb'):
+                raise ValueError('The uhd7 upgrade requires the installed uhd6 FullKvm kbase profile')
+        elif not saved.startswith('5.15.'):
+            raise ValueError('Installation requires 5.15 as the saved default')
+        with tarfile.open(root / 'modules.tar.gz') as archive:
+            actual = {}
+            for member in archive:
+                path = Path(member.name)
+                if path.is_absolute() or '..' in path.parts or not path.parts or path.parts[0] != version:
+                    raise ValueError('Unsafe module member: ' + member.name)
+                if member.isdir():
+                    continue
+                if not member.isfile():
+                    raise ValueError('Nonregular module member: ' + member.name)
+                name = str(Path(*path.parts[1:]))
+                if name in actual:
+                    raise ValueError('Duplicate module member: ' + name)
+                actual[name] = hashlib.file_digest(archive.extractfile(member), 'sha256').hexdigest()
+            if actual != report['modules']:
+                raise ValueError('Incomplete or mismatched module archive')
+        edge = boot.BOOT / 'edge'
+        edge.mkdir(exist_ok=True)
+        boot_files = ('Image', 'vim4.dtb', 'panfrost.dtb', 'config', 'Module.symvers', 'vmlinux.btf', 'manifest.json')
+        required = sum(max(0, (root / name).stat().st_size -
+                           ((edge / name).stat().st_size if (edge / name).exists() else 0))
+                       + 4096 for name in boot_files)
+        if shutil.disk_usage(edge).free < required:
+            raise ValueError('Insufficient /boot space for the complete edge runtime')
+        if upgrade:
+            updates = Path('/lib/firmware/updates')
+            name = Path('brcm/brcmfmac43752-sdio.khadas,vim4.bin')
+            firmware = updates / saved / name
+            if digest(firmware) != '3ff292ab216c13ce3019f6b4cc4234a15a81c8b553014b122f748efd9465676d':
+                raise ValueError('Expected the qualified BCM43752 .217 firmware')
+            destination = updates / version / name
+            destination.parent.mkdir(parents=True, exist_ok=True)
+            shutil.copyfile(firmware, destination)
+        install_complete_modules(root / 'modules.tar.gz', Path('/lib/modules') / version,
+                                 report['modules'])
+        for name in boot_files:
+            shutil.copyfile(root / name, edge / name)
+        for path in (root / 'runtime/usr').rglob('*'):
+            if path.is_file():
+                destination = Path('/usr') / path.relative_to(root / 'runtime/usr')
+                destination.parent.mkdir(parents=True, exist_ok=True)
+                shutil.copyfile(path, destination)
+                destination.chmod(0o755)
+        if not upgrade:
+            binary = Path('/opt/vim4-onekvm-edge/one-kvm')
+            binary.parent.mkdir(parents=True, exist_ok=True)
+            shutil.copyfile(root / 'runtime/one-kvm', binary)
+            binary.chmod(0o755)
+            for path in (root / 'runtime/gstreamer-1.0').iterdir():
+                shutil.copyfile(path, Path('/usr/lib/vim4-kvm/mainline-gstreamer-1.0') / path.name)
+        register(argparse.Namespace(proof=root / 'runtime-proof.json', source_label=args.source_label,
+                                    framebuffer_console=True, no_backup=True))
+    if boot.CONFIG.read_bytes() != original:
+        raise ValueError('Boot configuration changed during installation')
+    os.sync()
+    print(f'Installed {version}; saved default remains {label}')
+
+
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     commands = parser.add_subparsers(dest='command', required=True)
@@ -174,9 +289,13 @@ def main():
                            help='Register tty0 output for a qualified simpledrm handoff')
     installed.add_argument('proof', type=Path)
     installed.add_argument('--source-label', default='OneKvmTest')
+    installed.add_argument('--no-backup', action='store_true')
+    package = commands.add_parser('install')
+    package.add_argument('archive', type=Path)
+    package.add_argument('--source-label', default='OneKvmTest')
     args = parser.parse_args()
     try:
-        (inventory if args.command == 'inventory' else register)(args)
+        {'inventory': inventory, 'register': register, 'install': install}[args.command](args)
     except (ValueError, OSError, KeyError) as failure:
         parser.exit(1, str(failure) + '\n')
 

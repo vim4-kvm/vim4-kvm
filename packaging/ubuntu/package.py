@@ -46,7 +46,7 @@ def package(name, version, output, populate, depends):
             script.write('sync\n')
         provides = 'Provides: vim4-media-api-1, vim4-media-transfer-api-1, vim4-runtime-api-1, vim4-dma-capture-api-1\n' if name == 'vim4-kvm-board' else ''
         if name == 'vim4-amlvenc':
-            provides = 'Provides: vim4-wave5-api-1, vim4-hevc-hdr-api-1, vim4-hevc-quality-api-1\n'
+            provides = 'Provides: vim4-wave5-api-1, vim4-pts-rate-api-1, vim4-hevc-hdr-api-1, vim4-hevc-quality-api-1\n'
         if name == 'vim4-vfmcap':
             provides = 'Provides: vim4-vdin1-api-1, vim4-hdr-scale-api-1, vim4-sdr-scale-api-1\n'
         if name == 'vim4-manager':
@@ -86,11 +86,14 @@ if [ "${1:-}" = configure ]; then /usr/libexec/vim4-logging; fi
     copy(ROOT / 'board/vim4media.py', stage, 'usr/lib/vim4-kvm/python/vim4media.py', 0o644)
     copy(ROOT / 'board/vim4video.py', stage, 'usr/lib/vim4-kvm/python/vim4video.py', 0o644)
     copy(ROOT / 'board/vim4boot.py', stage, 'usr/lib/vim4-kvm/python/vim4boot.py', 0o644)
+    copy(ROOT / 'board/vim4-ethernet-generator.py', stage,
+         'usr/lib/systemd/system-generators/vim4-ethernet-generator', 0o755)
     copy(ROOT / 'board/vim4pd.py', stage, 'usr/lib/vim4-kvm/python/vim4pd.py', 0o644)
     copy(ROOT / 'board/vim4-wave5-monitor.py', stage, 'usr/libexec/vim4-wave5-monitor', 0o755)
     copy(ROOT / 'board/vim4-wave5-monitor.conf', stage, 'etc/default/vim4-wave5-monitor', 0o644)
     for name in ('vim4-board-runtime', 'vim4-kvm-run'):
         copy(ROOT / 'board' / name, stage, 'usr/libexec/' + name, 0o755)
+    copy(ROOT / 'packaging/kbase/run.py', stage, 'usr/lib/vim4-kvm/python/vim4gpu.py', 0o755)
     copy(ROOT / 'packaging/kernel-edge/one-kvm-edge-prepare', stage, 'usr/libexec/vim4-mainline-prepare', 0o755)
     copy(ROOT / 'packaging/kernel-edge/one-kvm-edge-usb-prepare', stage, 'usr/libexec/vim4-mainline-gadget-prepare', 0o755)
     copy(ROOT / 'tools/rootfs-policy.py', stage, 'usr/sbin/vim4-rootfs-policy', 0o755)
@@ -103,6 +106,7 @@ if [ "${1:-}" = configure ]; then /usr/libexec/vim4-logging; fi
         write(stage, 'usr/lib/systemd/system/' + file.name,
               file.read_text().replace('/usr/local/sbin/', '/usr/sbin/'))
     copy(ROOT / 'board/99-vfm-cap.rules', stage, 'usr/lib/udev/rules.d/99-vfm-cap.rules')
+    copy(ROOT / 'board/90-vim4-wifi-rps.rules', stage, 'usr/lib/udev/rules.d/90-vim4-wifi-rps.rules')
     copy(ROOT / 'board/90-vim4-encoder.conf', stage, 'etc/modprobe.d/90-vim4-encoder.conf')
     copy(ROOT / 'LICENSE', stage, 'usr/share/doc/vim4-kvm-board/copyright')
 
@@ -124,6 +128,9 @@ def capture(stage):
 
 
 def encoder(stage):
+    # Discover the same PTS limiter in both the vendor and mainline runtimes.
+    copy(ROOT / 'gst-plugin-venc/wave5/libgstvim4rate.so', stage,
+         'usr/lib/aarch64-linux-gnu/gstreamer-1.0/libgstvim4rate.so', 0o644)
     mainline = 'usr/lib/vim4-kvm/mainline-gstreamer-1.0/'
     copy(ROOT / 'gst-plugin-venc/wave5/libgstvim4wave5.so', stage, mainline + 'libgstvim4wave5.so', 0o644)
     copy(ROOT / 'build/mainline-gstreamer/libgstvideo4linux2.so', stage, mainline + 'libgstvideo4linux2.so', 0o644)
@@ -300,6 +307,9 @@ fi
 def manager(stage):
     deploy = ROOT / 'vim4-manager/deploy'
     copy(ROOT / 'build/vim4-manager', stage, 'opt/vim4-manager/vim4-manager', 0o755)
+    command = stage / 'usr/sbin/vim4-manager'
+    command.parent.mkdir(parents=True, exist_ok=True)
+    command.symlink_to('/opt/vim4-manager/vim4-manager')
     copy(deploy / 'vim4-manager-helper', stage, 'usr/libexec/vim4-manager-helper', 0o755)
     copy(deploy / 'vim4-manager-helper.sudoers', stage, 'etc/sudoers.d/vim4-manager-helper', 0o440)
     copy(deploy / 'vim4-manager.service', stage, 'usr/lib/systemd/system/vim4-manager.service')
@@ -334,7 +344,7 @@ PACKAGES = {
         ('vim4-vfmcap', capture, GST + ', vim4-dma-capture-api-1, libvulkan1, libge2d (= 0.4-202406)'),
         ('vim4-amlvenc', encoder, GST + ', vim4-hdr-scale-api-1, vim4-sdr-scale-api-1, libdrm2, libwayland-client0, libwayland-server0, libstdc++6, libamvenc (= 0.2-202406~noble), libge2d (= 0.4-202406), gst-aml-drmbufferpool-plugins (= 0.2-202311)')],
     'nanokvm': [
-        ('vim4-nanokvm', application, GST + ', libopus0, sudo, python3, dosfstools, curl, ca-certificates, picocom, network-manager, avahi-daemon, openssh-server, chrony, alsa-utils, gstreamer1.0-alsa, gstreamer1.0-plugins-base, gstreamer1.0-plugins-good, gstreamer1.0-plugins-bad, gstreamer1.0-libav, ' + PLATFORM)],
+        ('vim4-nanokvm', application, GST + ', vim4-pts-rate-api-1, libopus0, sudo, python3, dosfstools, curl, ca-certificates, picocom, network-manager, avahi-daemon, openssh-server, chrony, alsa-utils, gstreamer1.0-alsa, gstreamer1.0-plugins-base, gstreamer1.0-plugins-good, gstreamer1.0-plugins-bad, gstreamer1.0-libav, ' + PLATFORM)],
     'jetkvm': [
         ('vim4-jetkvm', jetkvm, 'libc6 (>= 2.38), libglib2.0-0t64, libgstreamer1.0-0 (>= 1.24), '
          'libgstreamer-plugins-base1.0-0 (>= 1.24), gstreamer1.0-plugins-bad, ' + PLATFORM + ', '
