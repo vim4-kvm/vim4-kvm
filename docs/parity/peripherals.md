@@ -7,7 +7,7 @@
 2026-10-23 T13 增量：[硬件 watchdog 窗口](../bringup/2026-10-23-wave5-parity-window.md#窗口与看门狗)
 以停止喂狗验证 15.036 秒复位、36.867 秒到登录；PID1 30s/60s 策略已部署。
 MCU 关机切电、睡眠期复位合同和其他重启边界未全验，T13 仍为部分。
-`panic_on_oops=1` 仅在主仓包源码，当前正式回退后实际值为 0，待部署。
+2026-11-03 持久安装后重启实读 `panic_on_oops=1`、`panic=20`，PID1 仍为30s/60s；T13 保持部分。[当前部署](../bringup/2026-11-03-mainline-modules.md)
 
 | ID / 厂商能力及来源 | 7.3 状态 | 差异与证据 | 路线、依赖 / 人日 / 风险 / 验证硬件 |
 |---|---|---|---|
@@ -16,7 +16,7 @@ MCU 关机切电、睡眠期复位合同和其他重启边界未全验，T13 仍
 | T03 Power/Function按键；V1:936–958 | 部分对齐 | E0 polled GPIO/adc-keys已注册，ADC channel2开机曾超时，未验物理按键全行为/唤醒。[按键](../bringup/2026-10-21-edge-ir-keys-spinor.md)、[ADC审计](../bringup/2026-10-22-saradc-timeout-audit.md) | 标准input/gpio-keys/adc-keys，先修SARADC独占/握手、再物理长短按与去抖；T06/P09，2–5 / M / 人在板边按键、示波器/串口 |
 | T04 LED/PWM LED；V1:961，C amlogic_led | 部分对齐 | E0有pwm-leds heartbeat，未证明厂商state-led/AO固件状态、全部亮度/触发与恢复一致 | 标准LED class/triggers/PWM，先查实际板载LED而非模块全集，1–3 / L / VIM4、目视/光电探头 |
 | T05 MCU电源/复位/WoL/USB-PCIe切换；V1:1575，V主内核khadas-mcu.c:838,875–877 | 部分对齐 | 7.x `khadas_mcu_fan`已覆盖风扇；旧驱动额外sysfs控制不等于已被移植，不能由I²C probe推断有安全poweroff/restart | 外围MCU协议先移植后整理MFD/sys-off/reset/供电与mux归属；P09/N01/U01，4–8 / H / 对应MCU固件、双供电、串口/在场RESET；本轮不写命令 |
-| T06 SARADC及通用模拟输入；V1:1668，V2:1230 | 部分对齐 | E0启SARADC；开机Function通道2有超时，离线候选不是已部署修复。[审计](../bringup/2026-10-22-saradc-timeout-audit.md) | 标准IIO/ADC arbiter、T7固件所有权和采样时序；不靠关按键消日志；3–6 / H / 已知电压源/万用表、串口、物理按键 |
+| T06 SARADC及通用模拟输入；V1:1668，V2:1230 | 部分对齐 | E0启SARADC；开机Function通道2有超时，修复已随[正式窗口](../bringup/2026-10-23-kvm-audio-capture-stability-deploy.md)部署，通道2连续2000次读取零错误；实体键和历史偶发根因未验。[审计](../bringup/2026-10-22-saradc-timeout-audit.md) | 标准IIO/ADC arbiter、T7固件所有权和采样时序；不靠关按键消日志；3–6 / H / 已知电压源/万用表、串口、物理按键 |
 | T07 HYM8563 RTC与AO VRTC；V1:1569,2241 | 部分对齐 | E0:674有HYM8563，E1:470有VRTC；厂商VRTC最终disabled。读时间/备电保持/闹钟IRQ/深睡唤醒未全验 | 标准RTC，核对备电/IRQ/AO路由；P09，2–5 / M / RTC电池、可控断电和在场恢复；不主动做系统挂起 |
 | T08 PWM各bank、供电/32k/风扇外用途；V1:2111–2145 | 部分对齐 | E0 PWM/regulator/wifi32k已用，未逐bank验频率、极性、duty与pinctrl；不能用GPU电压负载试错 | 标准PWM/regulator/clock，厂商T7分频特例可先移植；P02/P04，2–5 / H / 示波器、无负载夹具；不动活跃供电PWM |
 | T09 I²C0/1/2/3/5/AO与扩展；V1:1451–1594 | 部分对齐 | 厂商1/2/3/AO enabled，0/5 disabled；E实际用AO等控制器，未完整接通/验外部总线与恢复 | 标准i2c adapter/pinctrl、厂商分频/恢复后端；T05/T07及扩展板，2–4 / M / I²C EEPROM/传感器、逻辑分析仪；不在活跃板做全地址扫描 |
