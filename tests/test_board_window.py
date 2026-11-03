@@ -21,6 +21,7 @@ loader = importlib.machinery.SourceFileLoader('window_tool', str(ROOT / 'tools/b
 spec = importlib.util.spec_from_loader('window_tool', loader)
 window = importlib.util.module_from_spec(spec)
 loader.exec_module(window)
+FORMAL_RELEASE = window.once.formal_baseline()['release']
 
 
 class WindowTests(unittest.TestCase):
@@ -31,11 +32,12 @@ class WindowTests(unittest.TestCase):
                 root = Path(directory).resolve()
                 note = struct.pack('<III', 4, 20, 3) + b'GNU\0' + b'\xaa'*20
                 contents = {'/sys/kernel/notes': note, '/proc/cmdline': b'root=test',
-                            '/boot/edge/Image': b'baseline kernel', '/boot/edge/vim4.dtb': b'baseline dt',
-                            '/boot/extlinux/extlinux.conf': b'DEFAULT FullKvm\n',
+                            '/boot/kernels/'+FORMAL_RELEASE+'/Image': b'baseline kernel',
+                            '/boot/kernels/'+FORMAL_RELEASE+'/vim4.dtb': b'baseline dt',
+                            '/boot/extlinux/extlinux.conf': ('DEFAULT FullKvm\nLABEL FullKvm\n LINUX /kernels/'+FORMAL_RELEASE+'/Image\n FDT /kernels/'+FORMAL_RELEASE+'/vim4.dtb\n').encode(),
                             '/etc/vim4-kvm/kernels.json': b'original registry',
                             '/etc/vim4-kvm/runtime-build.json': b'original runtime',
-                            '/lib/modules/7.3.0-vim4kvm-uhd7+/wave5.ko': b'baseline module'}
+                            '/lib/modules/'+FORMAL_RELEASE+'/wave5.ko': b'baseline module'}
                 helpers = ['/usr/libexec/'+name for name in ('vim4-board-runtime', 'vim4-kvm-run',
                                                             'vim4-mainline-prepare', 'vim4-mainline-gadget-prepare')]
                 contents.update({name: b'baseline helper' for name in helpers})
@@ -43,10 +45,24 @@ class WindowTests(unittest.TestCase):
                                  ('t7_hdmirx', 't7_vdin_test', 'wave5', 'mali_kbase', 'vim4_kbase_heaps', 'governor_vim4')})
                 contents.update({'/sys/firmware/devicetree/base/'+name: b'baseline property' for name in
                                  ('model', 'compatible', 'soc/bus@fe000000/gpu@400000/compatible')})
+                boot = '/boot/kernels/'+FORMAL_RELEASE
+                contents.update({boot+'/'+name: name.encode() for name in ('panfrost.dtb', 'config', 'Module.symvers', 'vmlinux.btf')})
                 for name, data in contents.items():
                     path = root/name.lstrip('/')
                     path.parent.mkdir(parents=True, exist_ok=True)
                     path.write_bytes(data)
+                names = ('t7_hdmirx', 't7_vdin_test', 'wave5', 'mali_kbase', 'vim4_kbase_heaps', 'governor_vim4')
+                manifest = dict(modules={'wave5.ko': once.sha(root/('lib/modules/'+FORMAL_RELEASE+'/wave5.ko'))},
+                                files={name: once.sha(root/(boot+'/'+name).lstrip('/')) for name in
+                                       ('Image', 'vim4.dtb', 'panfrost.dtb', 'config', 'Module.symvers', 'vmlinux.btf')})
+                (root/'manifest.json').write_text(json.dumps(manifest))
+                (root/(boot+'/manifest.json').lstrip('/')).write_bytes((root/'manifest.json').read_bytes())
+                (root/'sources.toml').write_text(
+                    '[tested_build]\nmanifest_path="manifest.json"\nmanifest_sha256='+json.dumps(once.sha(root/'manifest.json'))+'\n[tested_build.module_build_ids]\n'+
+                    ''.join(name+'="'+'a'*40+'"\n' for name in names)+
+                    '[retained_runtime]\nrelease='+json.dumps(FORMAL_RELEASE)+'\nbuild_id="'+'a'*40+'"\n'+
+                    'image_sha256='+json.dumps(once.sha(root/(boot+'/Image').lstrip('/')))+'\n'+
+                    'board_dtb_sha256='+json.dumps(once.sha(root/(boot+'/vim4.dtb').lstrip('/')))+'\n')
                 def board_path(*parts):
                     path = Path(*parts)
                     return root/str(path).lstrip('/') if str(path).startswith(('/sys/', '/proc/', '/boot/', '/etc/', '/lib/', '/usr/')) else path
@@ -57,7 +73,10 @@ class WindowTests(unittest.TestCase):
                     with contextlib.redirect_stdout(output):
                         exec(script.replace('pathlib.Path(', 'board_path('),
                              dict(board_path=board_path, open=board_open))
-                    return output.getvalue()
+                    result = json.loads(output.getvalue())
+                    if 'files' in result:
+                        result['files'] = {name.removeprefix(str(root)): value for name, value in result['files'].items()}
+                    return json.dumps(result)
                 def commands(command, **kwargs):
                     if command[0] == 'systemctl':
                         return subprocess.CompletedProcess(command, 0 if command[-1] == 'one-kvm' else 3)
@@ -73,8 +92,16 @@ class WindowTests(unittest.TestCase):
                 # visible helper bytes models the candidate's bind overlay.
                 with patch.object(window, 'ssh_python', side_effect=remote_python), patch.object(
                         window.subprocess, 'run', side_effect=commands) as run, patch(
-                        'platform.release', return_value=once.UHD7):
-                    proof = window.identity('mock', list(contents.keys())[2:9])
+                        'platform.release', return_value=FORMAL_RELEASE), patch.object(window.once, 'SOURCES', root/'sources.toml'):
+                    files = list(contents.keys())[2:9]
+                    proof = window.identity('mock', files, baseline=True)
+                    for field in ('LINUX', 'FDT'):
+                        config = board_path('/boot/extlinux/extlinux.conf')
+                        original = config.read_bytes()
+                        config.write_bytes(original.replace((' '+field+' /kernels/'+FORMAL_RELEASE).encode(), (' '+field+' /edge').encode()))
+                        with self.assertRaisesRegex(AssertionError, 'default LINUX/FDT'):
+                            window.identity('mock', files, baseline=True)
+                        config.write_bytes(original)
                     for name in helpers:
                         board_path(name).write_bytes(b'candidate bind-visible helper')
                     self.assertNotEqual(window.identity('mock', list(proof['files']))['files'], proof['files'])
@@ -92,11 +119,8 @@ class WindowTests(unittest.TestCase):
                     work = root/'logs/bind-return'
                     work.mkdir(parents=True)
                     (work/'baseline-proof.json').write_text(json.dumps(proof))
-                    load = window.load
-                    def loader(name, path):
-                        return once if name == 'persistent_once' else load(name, path)
-                    with patch.object(window, 'ROOT', root), patch.object(window, 'load', side_effect=loader), patch.object(
-                            window, 'validate_retained_uhd7'), patch.object(window, 'require_board', return_value=(Mock(), 'token')), patch.object(
+                    with patch.object(window, 'ROOT', root), patch.object(
+                            window, 'require_board', return_value=(Mock(), 'token')), patch.object(
                             window, 'boot', side_effect=reboot) as boot_call, patch.object(window, 'ssh', return_value=''), patch.object(
                             window, 'collect', return_value={'returned': True}), patch.object(
                             sys, 'argv', ['board-window', '--window', 'bind-return', 'return-baseline', '--video-check', 'decode-check']):
@@ -120,27 +144,69 @@ class WindowTests(unittest.TestCase):
                     returned = window.identity('mock', list(proof['files']))
                     window.verify_baseline(proof, returned)
 
-    def test_uhd7_proof_must_match_retained_lock_and_three_overlays(self):
+    def test_515_capture_checks_the_actual_default_kernel_and_dt(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            files = ['/boot/vmlinuz-5.15.test', '/boot/dtb-5.15.test/test.dtb', '/boot/extlinux/extlinux.conf']
+            contents = dict.fromkeys(files, b'baseline')
+            contents.update({'/sys/kernel/notes': struct.pack('<III',4,20,3)+b'GNU\0'+b'\xaa'*20,
+                             '/proc/cmdline': b'root=test'})
+            for name,data in contents.items():
+                p=root/name.lstrip('/');p.parent.mkdir(parents=True,exist_ok=True);p.write_bytes(data)
+            def board_path(*parts): return root/str(Path(*parts)).lstrip('/')
+            def remote(host,script):
+                out=io.StringIO()
+                with contextlib.redirect_stdout(out):
+                    exec(script.replace('pathlib.Path(', 'board_path('),
+                         dict(board_path=board_path,open=lambda n,*a,**kw:open(board_path(n),*a,**kw)))
+                return out.getvalue()
+            config=board_path('/boot/extlinux/extlinux.conf')
+            text='DEFAULT Default\nLABEL Default\n LINUX /vmlinuz-5.15.test\n FDT /dtb-5.15.test/test.dtb\n'
+            with patch.object(window,'ssh_python',side_effect=remote), patch('platform.release',return_value='5.15.test'):
+                config.write_text(text)
+                self.assertEqual(window.identity('mock',files,baseline=True)['release'],'5.15.test')
+                config.write_text(text.replace('FDT /dtb-5.15.test/test.dtb','FDTDIR /dtb-5.15.test'))
+                self.assertEqual(window.identity('mock',files,baseline=True)['release'],'5.15.test')
+                for original in ('/vmlinuz-5.15.test','/dtb-5.15.test/test.dtb'):
+                    config.write_text(text.replace(original,'/wrong'))
+                    with self.assertRaisesRegex(AssertionError,'default'):
+                        window.identity('mock',files,baseline=True)
+
+    def test_formal_return_requires_video_check_before_reboot(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root=Path(directory);work=root/'logs/video-required';work.mkdir(parents=True)
+            (work/'baseline-proof.json').write_text(json.dumps(dict(release=FORMAL_RELEASE)))
+            with patch.object(window,'ROOT',root), patch.object(window,'require_board'), \
+                    patch.object(window,'boot') as boot, patch.object(window,'ssh_python') as ssh, \
+                    patch.object(sys,'argv',['board-window','--window','video-required','return-baseline']):
+                with self.assertRaisesRegex(ValueError,'--video-check'):window.main()
+            boot.assert_not_called();ssh.assert_not_called()
+
+    def test_formal_proof_checks_complete_modules_and_loaded_identities(self):
         lock = window.tomllib.loads((ROOT/'packaging/kernel-edge/sources.toml').read_text())
-        retained = lock['uhd7_retained_runtime']
-        inventory = json.loads((ROOT/'packaging/kernel-edge/uhd7-module-inventory.json').read_text())
+        retained = lock['retained_runtime']
+        manifest = json.loads((window.once.SOURCES.parent/lock['tested_build']['manifest_path']).read_text())
         prefix = '/lib/modules/'+retained['release']+'/'
-        files = {prefix+name: value['sha256'] for name, value in inventory.items()}
-        files.update({'/boot/edge/Image': retained['image_sha256'],
-                      '/boot/edge/vim4.dtb': retained['board_dtb_sha256']})
-        ids = dict(lock['uhd7_tested_build']['module_build_ids'])
-        for name, overlay in retained['module_overlays'].items():
-            files[prefix+overlay['path']] = overlay['sha256']
-            ids[name] = overlay['build_id']
+        files = {prefix+name: value for name, value in manifest['modules'].items()}
+        boot = '/boot/kernels/'+retained['release']
+        files.update({boot+'/'+name: manifest['files'][name] for name in
+                      ('Image', 'vim4.dtb', 'panfrost.dtb', 'config', 'Module.symvers', 'vmlinux.btf')})
+        files[boot+'/manifest.json'] = lock['tested_build']['manifest_sha256']
+        ids = {name: lock['tested_build']['module_build_ids'][name] for name in
+               ('t7_hdmirx', 't7_vdin_test', 'wave5', 'mali_kbase', 'vim4_kbase_heaps', 'governor_vim4')}
         proof = dict(release=retained['release'], build_id=retained['build_id'], files=files, loaded_modules=ids)
-        window.validate_retained_uhd7(proof)
-        for name in ('/boot/edge/Image', prefix+retained['module_overlays']['wave5']['path']):
-            with self.subTest(name=name), self.assertRaisesRegex(ValueError, 'uhd7 proof differs'):
-                window.validate_retained_uhd7(dict(proof, files=dict(files, **{name:'bad'})))
-        with self.assertRaises(ValueError):
-            window.validate_retained_uhd7(dict(proof, loaded_modules=dict(ids, wave5='wrong')))
-        with self.assertRaises(ValueError):
-            window.validate_retained_uhd7(dict(proof, files=dict(files, **{prefix+'extra/stray.ko':'bad'})))
+        def check(value):
+            with patch.object(window, 'ssh_python', return_value=json.dumps(value)):
+                return window.identity('mock', list(files), baseline=True)
+        self.assertEqual(check(proof), proof)
+        for name in (boot+'/Image', boot+'/config', prefix+'modules.dep', prefix+next(n for n in manifest['modules'] if n.endswith('.ko.xz'))):
+            with self.subTest(name=name), self.assertRaisesRegex(ValueError, 'formal baseline differs'):
+                check(dict(proof, files=dict(files, **{name:'bad'})))
+        for invalid in (dict(proof, loaded_modules=dict(ids, wave5='wrong')),
+                        dict(proof, loaded_modules={}), dict(proof, build_id='0'*40),
+                        dict(proof, files=dict(files, **{prefix+'extra/stray.ko':'bad'})),
+                        dict(proof, files={n:v for n,v in files.items() if n!=prefix+'modules.dep'})):
+            with self.assertRaises(ValueError): check(invalid)
 
     def test_complete_proof_is_streamed_without_exec_argument_limit(self):
         script = 'proof = ' + repr({'module-'+str(i): 'a'*64 for i in range(2400)})
@@ -149,12 +215,12 @@ class WindowTests(unittest.TestCase):
             self.assertEqual(window.ssh_python('mock', script), 'done')
         self.assertEqual(run.call_args.kwargs['input'], script)
         self.assertLess(sum(map(len, run.call_args.args[0])), 1024)
-        with patch.object(window, 'ssh_python', return_value='{}') as ssh:
-            window.identity('mock', ['/boot/edge/Image'])
+        with patch.object(window, 'ssh_python', return_value='{"release":"candidate"}') as ssh:
+            window.identity('mock', ['/boot/kernels/'+FORMAL_RELEASE+'/Image'])
         compile(ssh.call_args.args[1], '<remote baseline identity>', 'exec')
 
-    def test_uhd7_proof_roundtrip_checks_loaded_overlay_gpu_and_application(self):
-        proof = dict(release='7.3.0-vim4kvm-uhd7+', build_id='a'*40,
+    def test_formal_proof_roundtrip_checks_loaded_modules_gpu_and_application(self):
+        proof = dict(release=FORMAL_RELEASE, build_id='a'*40,
                      cmdline='root=test reboot_mode=normal', files={'Image': 'hash'},
                      loaded_modules={'wave5': 'overlay', 'mali_kbase': 'gpu'},
                      applications=['one-kvm'], dt_properties={'model': '00'})
@@ -166,6 +232,9 @@ class WindowTests(unittest.TestCase):
             cache = window.BaselineCache(Path(directory) / 'cache.json')
             self.assertFalse(cache.get(proof, lambda: {'fps': 60})['reused'])
             self.assertTrue(cache.get(proof, lambda: self.fail('must reuse'))['reused'])
+            for release in ('7.3.0-vim4kvm-uhd7+', FORMAL_RELEASE+'other'):
+                with self.subTest(release=release), self.assertRaises(ValueError):
+                    cache.get(dict(proof, release=release), lambda: self.fail('unsupported baseline'))
 
     def test_same_image_candidate_requires_live_dt_property_identity(self):
         plan = dict(build_id='a'*40, baseline_id='a'*40)
@@ -181,11 +250,11 @@ class WindowTests(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, 'DT identity must differ'):
             window.verify_candidate_dt('unused', plan, plan['dt_properties'])
 
-    def test_uhd7_retained_proof_and_existing_module_tree_are_preserved(self):
-        once = window.load('uhd7_once', ROOT / 'packaging/kernel-edge/display-once.py')
+    def test_formal_retained_proof_and_existing_module_tree_are_preserved(self):
+        once = window.load('formal_once', ROOT / 'packaging/kernel-edge/display-once.py')
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)
-            modules = root / 'modules' / '7.3.0-vim4kvm-uhd7+'
+            modules = root / 'modules' / FORMAL_RELEASE
             modules.mkdir(parents=True)
             (modules / 'wave5.ko.xz').write_bytes(b'qualified overlay')
             proof = dict(release=modules.name, build_id='a'*40, cmdline='root=test',

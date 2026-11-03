@@ -40,7 +40,7 @@ python3 - "$lock" "$output/.config" <<'PY'
 import hashlib, pathlib, sys, tomllib
 lock = tomllib.loads(pathlib.Path(sys.argv[1]).read_text())
 expected = lock['package']['config_sha256'] if 'package' in lock else lock['tested_build']['config_sha256']
-if expected and hashlib.sha256(pathlib.Path(sys.argv[2]).read_bytes()).hexdigest() != expected:
+if hashlib.sha256(pathlib.Path(sys.argv[2]).read_bytes()).hexdigest() != expected:
     raise SystemExit('Generated configuration differs from build lock')
 PY
 if [[ $validate == 1 ]]; then

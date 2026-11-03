@@ -163,8 +163,8 @@ BTF与build ID，封存Image、双GPU DT、config、Module.symvers、vmlinux.btf
 暂存目录不得带modules_install的build/source符号链接；复制到任务私有暂存后只移除这类链接，
 不改原始构建。候选使用已核对的r14e应用启动器，增加精确新release，并带受版本管理的
 平台/HDMI/gadget入口；独立候选可另加 `--candidate-lock LOCK`。
-保留uhd7的旧文件证明单独记在uhd7_tested_build/uhd7_retained_runtime，供既有uhd7基线窗口核验，
-不把旧三overlay计入当前7.3.1运行时。
+RAM窗口只接受5.15或当前正式锁的精确release。旧uhd7锁与无执行消费者的收据已删除，Git历史保留；
+uhd7-module-inventory.json仍供历史hfr-yuv-window使用。板上旧文件保留不代表它是默认恢复目标。
 
 正式安装仍须另行授权的独占板窗。7.3.1使用
 `register-runtime.py install PACKAGE`，要求默认FullKvm/uhd7；
@@ -184,6 +184,8 @@ BTF与build ID，封存Image、双GPU DT、config、Module.symvers、vmlinux.btf
 
 ### 登记 issue
 
+- phase2-window.py（发生1×严重3）：仍读取当前tested_build却要求uhd6，因此当前7.3.1会在拿票前
+  报“main has no tested uhd6”。这是历史专项入口限制，本轮只登记，不修改其执行范围。
 - MCP文本/输入法：同一长命令在uhd7和7.3.1均缺空格/字符，基线截图出现中文候选框。
   One-KVM MCP `type`每字符间隔30ms、按下与释放之间无保持时长；切到US输入源、逐键保持50ms后
   命令正确。未确认输入法与零保持时长各自影响；不算7.3.1回归，详见本次上板记录。

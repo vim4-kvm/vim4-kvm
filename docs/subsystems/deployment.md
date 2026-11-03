@@ -48,8 +48,9 @@ U-Boot 候选必须先从 microSD 验证，见 [现场恢复](../bringup/2026-10
 
 同批候选可以直接链式 RAM 启动；批次结束 `return-baseline`，核对保留基线的
 release/build ID、服务、UDC与启动文件哈希，默认启动项全程保持原值。
-支持5.15或明确的FullKvm/uhd7基线；uhd7额外核对完整模块文件、三overlay/kbase加载身份、
-DT属性及原应用，恢复时必须提供 `--video-check` 视频推进检查命令。
+支持5.15或sources.toml当前正式锁的精确release；首次采集确认默认LINUX/FDT指向捕获的基线。
+正式基线核对release目录、完整模块文件、采集/kbase加载身份、DT属性及原应用，
+恢复时必须提供 `--video-check` 视频推进检查命令。旧uhd7文件保留不等于仍支持它作为窗口基线。
 同Image不同DT的候选必须有独立payload ID、DT属性与完整模块证明，见[窗口合同](../board-window.md)。
 基线按当天、内核/程序/启动文件哈希及测量参数复用并注明原始时间；哈希变化或跨日
 重新测量。只改模块时可只重编匹配模块、沿用同一内核进行针对性迭代，保留模块哈希、

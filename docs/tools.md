@@ -138,7 +138,7 @@ PiKVM smoke 可用 `PIKVM_CDP` 接入专用测试 Chrome；结束时关闭测试
 | tools/mali-dma-probe.c、mali-dma-probe.comp、mali-cl-probe.c | ARM64 容器编译 → 板 | GPU计算与临时内存；不操作采集/编码 | VK原生device-local/host-visible、DMA heap导入和逐字校验；可选16KiB二分；CL单kernel支持同类分配。均须外部timeout | [kbase候选](gpu-kbase-7x.md) |
 | tools/gbm-scanout-probe.c | ARM64容器编译→板 | 独占显示；保持当前mode，恢复原FB，不抢DRM master | GBM线性XR24 BO导出/导入并短时SetCrtc；布局/恢复信息不足则拒绝，需与采集并行验收并带timeout | [kbase候选](gpu-kbase-7x.md) |
 | tools/board-queue | Mac / Linux，同一协调主机 | 仅本机锁与票据；run 的影响由命令决定 | FIFO、≤30分钟租约、旧 lockf 兼容、sampling 与 heavy 协调 | [短窗口](board-window.md) |
-| tools/board-window | Mac → 板 | collect --readonly 读；baseline/receiver/MCP 截图占采集；MCP HDR 发 HID；boot-candidate/return-baseline 重启 | 哈希校验、候选链式 RAM 启动、每日基线缓存、MCP、接收与证据包 | [短窗口](board-window.md) |
+| tools/board-window | Mac → 板 | collect --readonly 读；baseline/receiver/MCP 截图占采集；MCP HDR 发 HID；boot-candidate/return-baseline 重启 | 5.15或当前正式锁基线、默认LINUX/FDT校验、链式RAM与视频恢复证明；stage/cleanup携带sources.toml | [短窗口](board-window.md) |
 | tools/board-window-receiver.mjs、board-window-timing.mjs | Mac / Node | 接收占用编码器；compare 仅本机图片 | board-window 私有浏览器接收/裁图比较入口与50ms计时；沿用 Playwright、manager-login.mjs | [短窗口](board-window.md) |
 | tools/gpu-compare.py | 板 | 独占 | vendor/system/private能力与固定离屏GLES、clpeak；超时、逐进程ICD隔离，不操作服务/HID | [GPU运行时](bringup/2026-10-30-gpu-runtime.md) |
 | tools/board.py check | Mac | 读 | 内核、服务、设备节点、8081 后端与 8080 网关状态 | [板级工具](board-tools.md) |

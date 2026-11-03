@@ -26,8 +26,8 @@ VM `vim4-build`，GCC 13.3.0，独立 `~/build/sdio-formal-52b95c849326/{out,sta
 | uhd7.tar.gz | `de593126c39108d3ed94a3e6ea54adca1173818d7d6615f431343e2603d67851` |
 | uhd7-ram.tar | `b2a820e9c9f59f93de7e69833c28eac8b4541747676f3d32afb89ce39aea9e5e` |
 
-[完整构建清单](../../packaging/kernel-edge/uhd7-manifest.json)、
-[外部模块来源](../../packaging/kernel-edge/uhd7-external-manifest.json)、
+[完整构建清单](https://github.com/vim4-kvm/vim4-kvm/blob/8dac974/packaging/kernel-edge/uhd7-manifest.json)、
+[外部模块来源](https://github.com/vim4-kvm/vim4-kvm/blob/8dac974/packaging/kernel-edge/uhd7-external-manifest.json)、
 [2341 个模块身份](../../packaging/kernel-edge/uhd7-module-inventory.json)。
 
 ## RAM 门禁与 HDMI 边界
@@ -57,7 +57,7 @@ uhd6 上 QUERY_DV_TIMINGS 返回 ENOLINK、0 Hz，一次 Ctrl 唤醒尝试也未
 七个 /boot/edge 文件、2354 个模块目录文件、11 个已加载模块身份和 One-KVM 进程 SHA 均匹配。
 one-kvm、vim4-manager、vim4-kvm-hdmi、vim4-kvm-gadget active，UDC configured。
 第一次安装核验扫描 /proc 时遇到没有 exe 的内核线程，改从服务 cgroup 核验，未重装或再次重启。
-[安装收据](../../packaging/kernel-edge/uhd7-installed-proof.json) 保存逐项 boot 哈希与运行身份。
+[安装收据](https://github.com/vim4-kvm/vim4-kvm/blob/8dac974/packaging/kernel-edge/uhd7-installed-proof.json) 保存逐项 boot 哈希与运行身份。
 
 ## 安装后无线测量
 
@@ -68,7 +68,7 @@ Mac 192.168.50.239:5217，板端使用已保存的 5 GHz 配置，从 wlan0 发�
 接收端实际 600.001 秒、600 个一秒区间。总接收均值 **369.55 Mbit/s**；
 p10 **337.64**、p50 **372.24**、p90 **398.46 Mbit/s**。分位口径沿用 D2 工具，
 排序后 p10/p90 取下标 60/540，p50 取中位数。
-[门禁收据和逐秒速率](../../packaging/kernel-edge/uhd7-validation.json) 固定此次结果与原始 JSON 摘要。
+[门禁收据和逐秒速率](https://github.com/vim4-kvm/vim4-kvm/blob/8dac974/packaging/kernel-edge/uhd7-validation.json) 固定此次结果与原始 JSON 摘要。
 结束时 Wi-Fi disabled，默认路由经 eth0。board-queue 实际持板共 879.49 秒（14 分 39.49 秒），
 含只读预检、唤醒、安装、重启和测量；构建和封包仅持 heavy 票。
 

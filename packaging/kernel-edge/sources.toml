@@ -1,6 +1,6 @@
 # Experimental kernel pins; the private GStreamer recipe below is also used
 # by the 5.15 One-KVM image builder.
-# Current formal source and installed build; retained uhd7/uhd6 receipts follow.
+# Current formal source and installed build; historical uhd6 receipts follow.
 [kernel]
 url = "https://github.com/vim4-kvm/linux.git"
 branch = "vim4-kvm-7.3"
@@ -101,115 +101,6 @@ installed_proof_path = "731-installed-proof.json"
 kernels_manifest_sha256 = "c3a6149c3ca13439d109923c65301d72e174aa302fc272de8821ca0a27321469"
 default_boot = "FullKvm"
 evidence = "docs/bringup/2026-11-03-kernel-731-deploy.md"
-
-# Retained uhd7 files still support explicit baseline recovery/proof.
-[uhd7_tested_build]
-release = "7.3.0-vim4kvm-uhd7+"
-localversion = "-vim4kvm-uhd7"
-image_source_revision = "52b95c8493264b195fe5fa10ccf07ad28670f16f"
-build_id = "d6f9c685802759c85cba6bd92bce90396d1cf6ec"
-config_path = "uhd7.config"
-config_sha256 = "9351001ef14c0b1dc735bcbfafb27eb9d35116cdf86da43c8c1a8cd0438c0d2c"
-image_sha256 = "10e3451d13bca87006bd93faa991c0290d0109df8a21f5bf0b4725f700f52354"
-uncompressed_image_sha256 = "10e3451d13bca87006bd93faa991c0290d0109df8a21f5bf0b4725f700f52354"
-board_dtb_path = "vim4.dtb"
-board_dtb_sha256 = "89c4bcf6b5523cee60a6f222f28675c99b5137767ec484d78d53b14899702071"
-board_dtb_generator = "../kbase/build.py"
-panfrost_dtb_path = "panfrost.dtb"
-panfrost_dtb_sha256 = "9d0d39a316cea5a3f3d8e5a04e085b2a905abf60494aaba565223c29839dff1f"
-module_count = 2341
-base_module_count = 2338
-external_module_count = 3
-module_btf = true
-module_symvers_sha256 = "d2fb843dbd5edd6f9d160e1f6876469b7b4bd1897381811cd1562764ce61f8b3"
-vmlinux_btf_sha256 = "99f681a065c24ce09478be6ad52e728e77e44db32014d5776cec5e79bc2dcddc"
-modules_sha256 = "90830cb223eab449bb5890823bd79c0ba43f3d80deb02845043433e1580253a4"
-gpu_default = "kbase"
-default_boot = "FullKvm"
-package_file = "uhd7.tar.gz"
-package_sha256 = "de593126c39108d3ed94a3e6ea54adca1173818d7d6615f431343e2603d67851"
-ram_payload_id = "uhd7"
-ram_sha256 = "b2a820e9c9f59f93de7e69833c28eac8b4541747676f3d32afb89ce39aea9e5e"
-runtime_descriptor = "uhd7-runtime.json"
-acceptance_scope = "sdio-host-path-with-HDMI-source-exception"
-evidence = "docs/bringup/2026-11-02-wifi-sdio-formal.md"
-manifest_path = "uhd7-manifest.json"
-manifest_sha256 = "8022442004cc6540b3eb3f4fe6408acc1cf1821eedab05d47ed1eb52b85c2136"
-external_manifest_path = "uhd7-external-manifest.json"
-external_manifest_sha256 = "46011639b50f388d3f55f95f5182bf1545c3e1cdbbdd6df3e0866d17326c53b0"
-external_runtime_files_path = "uhd7-external-runtime-files.json"
-external_runtime_files_sha256 = "1666b66eb11c3bfb4ee8851c0b6fe5995a3fb5aee34d79e32e6aff529433167c"
-runtime_files_path = "uhd7-runtime-files.json"
-runtime_files_sha256 = "64a950c3b133adb3efb3baa5fd9a2c47e81fc90431c89c584aa103f2ae5d595d"
-module_inventory_path = "uhd7-module-inventory.json"
-module_inventory_sha256 = "d2d384091bdc3c75fcaa3da2da994cc76d023c6db587b7d2abb2513fe531b467"
-validation_path = "uhd7-validation.json"
-validation_sha256 = "927a1b060a4591f7e4c72c14acf3d9c6d4606e475a3c237db740b123ba5c3afb"
-
-[uhd7_tested_build.external_modules]
-mali_kbase = "f530b1d304679f0ea68b5a75eca040709b208274032056beefc2c3ff43e7cb1d"
-vim4_kbase_heaps = "9f1a6e663a5d5c0793c18eebada4bf9b6232e1d395cfe4b3d025eb1436a138e2"
-governor_vim4 = "fa4f8ca319e7ea38b425536b84cc6cab17ed5de2c212baceb3b4b67ad68d0283"
-
-# Retained uhd7 identities include uhd7_retained_runtime.module_overlays.
-[uhd7_tested_build.module_build_ids]
-mali_kbase = "a3dc2287540ffa3bacb7ba294364ee218c5eda1e"
-vim4_kbase_heaps = "84bddf342701ea8a3d9cc02308762b79c4185de1"
-governor_vim4 = "9fbe83f3e57ea0104d695307c6e85a7dad3a8aa4"
-wave5 = "83e8eb222b68f512e7515f410b8c0497df35cf61"
-t7_hdmirx = "21120d73455c9218820ddaf9fd0a36af19a2a805"
-t7_vdin_test = "77cb81557f27057cf530217d3f0a693fbd28568f"
-t7_jpeg = "08a1c72ed8b3d78784af4a505ccedf100687acfb"
-crg_udc = "46a77e92f7a160fd43a5010664899d66e764322c"
-dwmac_meson8b = "25dcf492b7b749a87542f7bc0cadf37509d492bc"
-brcmfmac = "a3441b9068bf335c91552be4ee9b2e2eb9afc32f"
-brcmfmac_wcc = "0b3466f9c4900895a960d402e2fd9d64c6ff01b6"
-
-[uhd7_tested_build.launcher_overrides]
-"usr/libexec/vim4-kvm-run" = "a322759bafff03d8de79fefce560026ef443d91335baf957e236abdb1468a0ee"
-
-# Original complete uhd7 installation; later module identities are recorded in the overlays below.
-[uhd7_retained_runtime]
-release = "7.3.0-vim4kvm-uhd7+"
-revision = "52b95c8493264b195fe5fa10ccf07ad28670f16f"
-build_id = "d6f9c685802759c85cba6bd92bce90396d1cf6ec"
-image_sha256 = "10e3451d13bca87006bd93faa991c0290d0109df8a21f5bf0b4725f700f52354"
-board_dtb_sha256 = "89c4bcf6b5523cee60a6f222f28675c99b5137767ec484d78d53b14899702071"
-manifest_sha256 = "8022442004cc6540b3eb3f4fe6408acc1cf1821eedab05d47ed1eb52b85c2136"
-package_sha256 = "de593126c39108d3ed94a3e6ea54adca1173818d7d6615f431343e2603d67851"
-module_count = 2341
-live_proof_sha256 = "ce7d384f61a5902c0d583790c7be76a6aba69deed05ba6ebb3e3345f769e6082"
-installed_proof_path = "uhd7-installed-proof.json"
-kernels_manifest_sha256 = "5f2927fbcb36256daaf8299f8d8ff8e8f9407b9e6de54556c309085c74d4e190"
-default_boot = "FullKvm"
-evidence = "docs/bringup/2026-11-02-wifi-sdio-formal.md"
-
-[uhd7_retained_runtime.module_overlays.t7_hdmirx]
-revision = "4111568841bd83ca33b9b9a044ed9a7077f95004"
-path = "kernel/drivers/media/platform/amlogic/t7-hdmirx/t7-hdmirx.ko.xz"
-sha256 = "200607fa7c1e763c01456be7d34f8d98fea0c68b989335b48b7e7c61c44cba9f"
-build_id = "21120d73455c9218820ddaf9fd0a36af19a2a805"
-receipt_path = "uhd7-t7-hdmirx-deployment.json"
-receipt_sha256 = "3ad4a0cd0eabd1e8a15141c726b84f74bdb625e046185a1348b14f3dd6dd4c83"
-evidence = "docs/bringup/2026-11-03-mainline-modules.md"
-
-[uhd7_retained_runtime.module_overlays.t7_vdin_test]
-revision = "4111568841bd83ca33b9b9a044ed9a7077f95004"
-path = "kernel/drivers/media/platform/amlogic/t7-hdmirx/t7-vdin-test.ko.xz"
-sha256 = "8b9bb37cd3aa3416f45bb79dfb8a7ca3ac62fe3295497e155ee6925baa64b775"
-build_id = "77cb81557f27057cf530217d3f0a693fbd28568f"
-receipt_path = "uhd7-t7-vdin-test-deployment.json"
-receipt_sha256 = "8b2ccd85a5054d09359b89b26a966ce42f6823e2a6d49f8426fb449bea9207b3"
-evidence = "docs/bringup/2026-11-03-mainline-modules.md"
-
-[uhd7_retained_runtime.module_overlays.wave5]
-revision = "4111568841bd83ca33b9b9a044ed9a7077f95004"
-path = "kernel/drivers/media/platform/chips-media/wave5/wave5.ko.xz"
-sha256 = "baf6ffb03ddbae1a4cbd6767980411a3bdd2f51115909ba81cb4a6aa5d4a9755"
-build_id = "83e8eb222b68f512e7515f410b8c0497df35cf61"
-receipt_path = "uhd7-wave5-deployment.json"
-receipt_sha256 = "e82719ac1d4bec3f86d3bed39a12de23cbc291b2ce8296e2a15aef1f6e8e5641"
-evidence = "docs/bringup/2026-11-03-mainline-modules.md"
 
 # Historical uhd6 nine-category qualification, explicitly reusing unchanged r3 evidence.
 [uhd6_tested_build]

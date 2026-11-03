@@ -118,9 +118,9 @@ modules.tar.gz、构建和测试日志、三个成功网页窗口的 JSON/PNG、
 正式源码锁已更新至 `4111568841bd`，Image 来源仍为 `52b95c8493264`。
 `tested_build.module_build_ids` 记录当前加载身份，`retained_runtime.module_overlays` 记录安装 SHA、
 来源和收据，原整包 manifest、inventory 及安装证明保留完整构建时的身份。
-三份部署收据分别为 [HDMI RX](../../packaging/kernel-edge/uhd7-t7-hdmirx-deployment.json)、
-[VDIN](../../packaging/kernel-edge/uhd7-t7-vdin-test-deployment.json) 和
-[Wave5](../../packaging/kernel-edge/uhd7-wave5-deployment.json)，锁测试联合校验收据及原整包边界。
+三份部署收据分别为 [HDMI RX](https://github.com/vim4-kvm/vim4-kvm/blob/8dac974/packaging/kernel-edge/uhd7-t7-hdmirx-deployment.json)、
+[VDIN](https://github.com/vim4-kvm/vim4-kvm/blob/8dac974/packaging/kernel-edge/uhd7-t7-vdin-test-deployment.json) 和
+[Wave5](https://github.com/vim4-kvm/vim4-kvm/blob/8dac974/packaging/kernel-edge/uhd7-wave5-deployment.json)，锁测试联合校验收据及原整包边界。
 
 ## 登记 issue
 
