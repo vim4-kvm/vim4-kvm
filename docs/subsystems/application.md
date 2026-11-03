@@ -1,4 +1,6 @@
-# NanoKVM 应用
+# KVM 应用与管理面板
+
+改管理器前端或后端读 [结构](../../vim4-manager/README.md#结构)与[构建与验证](../../vim4-manager/README.md#构建与验证)；改文案读 [i18n](../../vim4-manager/docs/i18n.md)。
 
 三套 VIM4 应用的自定义 H.264/H.265 码率范围统一为 1000–60000 kbps。
 NanoKVM 默认 12000 kbps、JetKVM 原质量档 12/6/1.2 Mbps、One-KVM 快捷档

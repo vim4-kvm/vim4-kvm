@@ -22,7 +22,8 @@ import sys
 import tarfile
 import tempfile
 
-sys.path[:0] = ['/usr/lib/vim4-kvm/python', str(Path(__file__).resolve().parents[2] / 'board')]
+# Runs from a repository checkout; the board may still have an older installed vim4boot.
+sys.path.insert(0, str(Path(__file__).resolve().parents[2] / 'board'))
 from vim4boot import is_mainline_release
 
 BOOT_FILES = ('Image', 'vim4.dtb', 'panfrost.dtb', 'config', 'Module.symvers', 'vmlinux.btf', 'manifest.json')

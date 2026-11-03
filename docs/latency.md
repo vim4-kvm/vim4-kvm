@@ -97,6 +97,11 @@ mkdir -p logs
 /tmp/vim4-latency-source 65 --motion > logs/motion-source.jsonl
 ```
 
+接收前按 [浏览器测试公共前提](board-tools.md#增量开发闭环)完成管理器首次账户设置，
+设置 `MANAGER_PASSWORD`；`MANAGER_USERNAME` 可选，默认 `admin`。
+独立后端经 SSH 转发后可加 `--local-backend`，仅接受 HTTP loopback 地址并跳过管理器登录，
+不改变应用认证；普通 8080 网关仍需管理器密码。
+
 ```sh
 PLAYWRIGHT_MODULE=/absolute/path/to/playwright/index.mjs \
   node tools/latency-receiver.mjs http://192.168.50.210:8080 20 \
@@ -104,16 +109,26 @@ PLAYWRIGHT_MODULE=/absolute/path/to/playwright/index.mjs \
 python3 tools/latency-summary.py logs/motion-source.jsonl logs/motion-receiver.json
 ```
 
-The receiver requires Chrome and Playwright, an accessible video page, and an
-existing authenticated session if authentication is enabled. It samples every
+The receiver requires Chrome and Playwright and an accessible video backend;
+it logs in through the manager in an isolated context. It samples every
 six video callbacks after warming up pixel readback. Record service PID, video
 configuration and encoder version before and after each run; reject runs with
 changes. In PiKVM mode the script rejects changes to the reported streamer
 parameters and codec; service PID and encoder version still require separate checks.
 
-For PiKVM, add `--pikvm` and provide `PIKVM_USERNAME` / `PIKVM_PASSWORD`;
-the receiver opens an isolated authenticated context and enables multimedia.
-It does not change the board's codec or bitrate. `LATENCY_CDP` can point to a
+`--pikvm` selects the PiKVM receiver backend and enables multimedia; it uses
+the same manager login. It does not change the board's codec or bitrate.
+One-KVM 使用 `--one-kvm` 通过现有 WebRTC offer 接口接收当前视频配置；
+不能与 `--pikvm` 同用。管理器已选 One-KVM、当前编码为 H.265 时，例如：
+
+```sh
+PLAYWRIGHT_MODULE=/absolute/path/to/playwright/index.mjs \
+  node tools/latency-receiver.mjs http://192.168.50.210:8080 20 \
+  --one-kvm --expect-codec=h265 > logs/motion-receiver.json
+```
+
+`--expect-codec=h264|h265` 只校验实际协商编码，不切换配置。
+`LATENCY_CDP` can point to a
 dedicated test Chrome debugging endpoint when an externally launched browser is
 needed; the context is closed afterward but the externally owned browser remains
 running. Never use a personal browser profile for this test endpoint.

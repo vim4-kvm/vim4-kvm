@@ -8,7 +8,7 @@ fi
 case "$kernel" in
     5.15.*) mainline=0 ;;
     *)
-        python3 /usr/lib/vim4-kvm/python/vim4boot.py "$kernel" || exit 1
+        python3 /usr/lib/vim4-kvm/python/vim4boot.py "$kernel"
         mainline=1 ;;
 esac
 case "${1:-}" in

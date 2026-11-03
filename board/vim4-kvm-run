@@ -40,7 +40,7 @@ case "$kernel" in
         fi
         ;;
     *)
-        python3 /usr/lib/vim4-kvm/python/vim4boot.py "$kernel" || exit 1
+        python3 /usr/lib/vim4-kvm/python/vim4boot.py "$kernel"
         export VIM4_VIDEO_BACKEND=wave5
         export VIM4_SHARED_DATA=1
         export GST_PLUGIN_PATH=/usr/lib/vim4-kvm/mainline-gstreamer-1.0
