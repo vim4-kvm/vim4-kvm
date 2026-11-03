@@ -138,7 +138,7 @@ RX/VDIN 的旧 1080p/copy-only 帮助已更新为当前实际行为。`COMPILE_T
 （`e35abde9a3661a84746427495ddc0f727bf33dda`）；不是只证明补丁能导出。
 新增整改提交保存在整理分支，未混入这份固定基线审计。
 
-工具在 Linux VM 运行，不自动 fetch。以下 `$RECIPE` 指主仓 `packaging/kernel-edge` 的副本，
+工具在 Linux VM 运行，不自动 fetch。以下 `$RECIPE` 指主仓 `packaging/kernel` 的副本，
 输出目录须不存在；完整构建需预留磁盘。准备独立 Python venv，安装
 [验证依赖](../../packaging/kernel/maintenance-requirements.txt)，并将其 bin 加到 PATH。
 
@@ -156,7 +156,7 @@ python3 "$RECIPE/maintain.py" forward --source ~/src/linux-7.3 \
   --output ~/build/vim4-forward-new
 
 python3 "$RECIPE/maintain.py" verify --source ~/src/linux-7.3-maintenance \
-  --base v7.3 --config "$RECIPE/uhd1.config" \
+  --base v7.3 --config "$RECIPE/kernel.config" \
   --output ~/build/vim4-verify-new --build
 ```
 

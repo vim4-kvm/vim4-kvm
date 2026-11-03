@@ -8,6 +8,7 @@
 | 初始化仓库、构建、跨仓库改动 | [工作区](docs/workspace.md) |
 | 找脚本、测试入口及其对板子的影响 | [工具目录](docs/tools.md) |
 | 写代码、审代码、提交 | [代码与协作规范](docs/code-standards.md) |
+| 查已知问题、登记审查中的 file 类发现 | [issue 清单](docs/issues.md) |
 | 内核、驱动、设备树、风扇 | [内核](docs/subsystems/kernel.md) |
 | 采集、编码、音频、WebRTC、测性能 | [音视频](docs/subsystems/video.md) |
 | 键鼠、虚拟介质、USB-C 协商 | [USB](docs/subsystems/usb.md) |
