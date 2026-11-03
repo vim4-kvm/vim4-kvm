@@ -29,12 +29,12 @@ def resources():
 def measure(Gst, device, width, height, quality, frames, directory):
     pipeline = Gst.parse_launch(
         f'v4l2src name=source io-mode=dmabuf ! '
-        f'video/x-raw,format=NV12,width={width},height={height},framerate=60/1 ! '
+        f'video/x-raw,format=NV12,width={width},height={height} ! '
         f'vim4jpegenc quality={quality} ! '
         'appsink name=frames sync=false max-buffers=1 drop=true enable-last-sample=false')
     pipeline.get_by_name('source').set_property('device', str(device))
     sink = pipeline.get_by_name('frames')
-    times, sizes = [], []
+    times, sizes, pts = [], [], []
     before = resources()
     sample = buffer = None
     try:
@@ -50,6 +50,9 @@ def measure(Gst, device, width, height, quality, frames, directory):
             assert jpeg[:2] == b'\xff\xd8' and jpeg[-2:] == b'\xff\xd9', 'Incomplete JPEG'
             caps = sample.get_caps().get_structure(0)
             assert caps.get_value('width') == width and caps.get_value('height') == height
+            if buffer.pts == Gst.CLOCK_TIME_NONE or (pts and buffer.pts <= pts[-1]):
+                raise RuntimeError('Missing or non-monotonic JPEG PTS')
+            pts.append(buffer.pts)
             times.append(time.monotonic())
             sizes.append(len(jpeg))
             if index in (0, frames - 1):
@@ -68,7 +71,8 @@ def measure(Gst, device, width, height, quality, frames, directory):
     assert after['jpeg_irqs'] - before['jpeg_irqs'] >= frames, 'JPEG hardware IRQs did not advance'
     elapsed = times[-1] - times[10]
     row = dict(width=width, height=height, quality=quality, frames=frames,
-               fps=(len(times) - 11) / elapsed,
+               fps=(len(pts) - 11) * Gst.SECOND / (pts[-1] - pts[10]),
+               wall_fps=(len(times) - 11) / elapsed,
                average_jpeg_bytes=sum(sizes[11:]) / len(sizes[11:]),
                max_gap_ms=max(b - a for a, b in zip(times[10:], times[11:])) * 1000,
                before=before, after=after)

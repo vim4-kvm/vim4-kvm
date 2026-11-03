@@ -95,7 +95,7 @@ def capture(args):
         bridge_description = ''
     pipeline_description = (
         'v4l2src name=source io-mode=dmabuf ! '
-        f'video/x-raw,format={raw_format},width={width},height={height},framerate={args.fps}/1 ! '
+        f'video/x-raw,format={raw_format},width={width},height={height} ! '
         f'identity name=inspect ! {bridge_description}{encoder_description} ! '
         f'{args.codec}parse ! video/x-{args.codec},alignment=au ! '
         'identity name=encoded ! matroskamux ! filesink name=output sync=false async=false')
@@ -152,7 +152,14 @@ def capture(args):
                 # colour interpretation belongs to the source and codec.
                 if 'input_color_caps' not in state:
                     state['input_color_caps'] = sample.get_caps().to_string()
-                    encoder_source.set_property('caps', sample.get_caps())
+                    source_caps = sample.get_caps()
+                    layout = source_caps.get_structure(0).copy()
+                    layout.remove_field('framerate')
+                    layout.remove_field('max-framerate')
+                    encoder_caps = Gst.Caps.new_empty()
+                    encoder_caps.append_structure_full(layout, source_caps.get_features(0).copy())
+                    budget = Gst.Caps.from_string(f'video/x-raw(ANY),framerate={args.fps}/1')
+                    encoder_source.set_property('caps', encoder_caps.intersect(budget))
                 original = sample.get_buffer()
                 view = Gst.Buffer.new()
                 memory = original.peek_memory(0)
@@ -288,6 +295,8 @@ def capture(args):
               'io_mode': 'dmabuf', 'latency_endpoint': 'source pad to parsed access unit',
               'system_cpu_busy_percent': system_cpu,
               'cpu_scope': 'whole board during capture, includes startup and kernel workers',
+              'encoder_budget_fps': args.fps if args.encoder == 'wave5' else None,
+              'capture_pts_fps': (args.frames - 1) * Gst.SECOND / (state['pts_ns'][-1] - state['pts_ns'][0]),
               'matched_timings': len(latencies_ms),
               'pad_latency_ms_p50': latencies_ms[len(latencies_ms) // 2] if latencies_ms else None,
               'pad_latency_ms_p99': latencies_ms[min(len(latencies_ms) - 1,
@@ -376,7 +385,8 @@ def main():
     board.add_argument('--colorimetry', choices=('bt709', '2:3:7:1'), default='bt709',
                        help='initial Wave5 bridge caps; actual capture caps remain authoritative')
     board.add_argument('--size', choices=('1920x1080', '2560x1440', '3840x2160'), default='1920x1080')
-    board.add_argument('--fps', type=int, choices=(60, 120), default=60)
+    board.add_argument('--fps', type=int, choices=(60, 120), default=60,
+                       help='Wave5 encoder budget; capture rate is measured from PTS')
     board.add_argument('--bitrate', type=int, default=20000000)
     board.add_argument('--gop', type=int, default=60)
     board.add_argument('--intra-refresh-period', type=int, default=0,
