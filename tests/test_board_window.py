@@ -22,6 +22,87 @@ loader.exec_module(window)
 
 
 class WindowTests(unittest.TestCase):
+    def test_uhd7_proof_must_match_retained_lock_and_three_overlays(self):
+        lock = window.tomllib.loads((ROOT/'packaging/kernel-edge/sources.toml').read_text())
+        retained = lock['retained_runtime']
+        inventory = json.loads((ROOT/'packaging/kernel-edge/uhd7-module-inventory.json').read_text())
+        prefix = '/lib/modules/'+retained['release']+'/'
+        files = {prefix+name: value['sha256'] for name, value in inventory.items()}
+        files.update({'/boot/edge/Image': retained['image_sha256'],
+                      '/boot/edge/vim4.dtb': retained['board_dtb_sha256']})
+        ids = dict(lock['tested_build']['module_build_ids'])
+        for name, overlay in retained['module_overlays'].items():
+            files[prefix+overlay['path']] = overlay['sha256']
+            ids[name] = overlay['build_id']
+        proof = dict(release=retained['release'], build_id=retained['build_id'], files=files, loaded_modules=ids)
+        window.validate_retained_uhd7(proof)
+        for name in ('/boot/edge/Image', prefix+retained['module_overlays']['wave5']['path']):
+            with self.subTest(name=name), self.assertRaisesRegex(ValueError, 'uhd7 proof differs'):
+                window.validate_retained_uhd7(dict(proof, files=dict(files, **{name:'bad'})))
+        with self.assertRaises(ValueError):
+            window.validate_retained_uhd7(dict(proof, loaded_modules=dict(ids, wave5='wrong')))
+        with self.assertRaises(ValueError):
+            window.validate_retained_uhd7(dict(proof, files=dict(files, **{prefix+'extra/stray.ko':'bad'})))
+
+    def test_complete_proof_is_streamed_without_exec_argument_limit(self):
+        script = 'proof = ' + repr({'module-'+str(i): 'a'*64 for i in range(2400)})
+        self.assertGreater(len(script), 128*1024)
+        with patch.object(window.subprocess, 'check_output', return_value='done') as run:
+            self.assertEqual(window.ssh_python('mock', script), 'done')
+        self.assertEqual(run.call_args.kwargs['input'], script)
+        self.assertLess(sum(map(len, run.call_args.args[0])), 1024)
+        with patch.object(window, 'ssh_python', return_value='{}') as ssh:
+            window.identity('mock', ['/boot/edge/Image'])
+        compile(ssh.call_args.args[1], '<remote baseline identity>', 'exec')
+
+    def test_uhd7_proof_roundtrip_checks_loaded_overlay_gpu_and_application(self):
+        proof = dict(release='7.3.0-vim4kvm-uhd7+', build_id='a'*40,
+                     cmdline='root=test reboot_mode=normal', files={'Image': 'hash'},
+                     loaded_modules={'wave5': 'overlay', 'mali_kbase': 'gpu'},
+                     applications=['one-kvm'], dt_properties={'model': '00'})
+        self.assertIsInstance(window.verify_baseline(proof, dict(proof)), dict)
+        for key in ('build_id', 'files', 'loaded_modules', 'applications', 'dt_properties'):
+            with self.subTest(key=key), self.assertRaises(RuntimeError):
+                window.verify_baseline(proof, dict(proof, **{key: 'wrong'}))
+        with tempfile.TemporaryDirectory() as directory:
+            cache = window.BaselineCache(Path(directory) / 'cache.json')
+            self.assertFalse(cache.get(proof, lambda: {'fps': 60})['reused'])
+            self.assertTrue(cache.get(proof, lambda: self.fail('must reuse'))['reused'])
+
+    def test_same_image_candidate_requires_live_dt_property_identity(self):
+        plan = dict(build_id='a'*40, baseline_id='a'*40)
+        with self.assertRaisesRegex(ValueError, 'readable DT'):
+            window.verify_candidate_dt('unused', plan)
+        plan['dt_properties'] = {'soc/display/status': '6f6b617900'}
+        with patch.object(window, 'ssh', return_value='6f6b617900\n'):
+            window.verify_candidate_dt('unused', plan)
+        with patch.object(window, 'ssh', return_value='64697361626c656400\n'):
+            with self.assertRaisesRegex(RuntimeError, 'DT property differs'):
+                window.verify_candidate_dt('unused', plan)
+
+    def test_uhd7_retained_proof_and_existing_module_tree_are_preserved(self):
+        once = window.load('uhd7_once', ROOT / 'packaging/kernel-edge/display-once.py')
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            modules = root / 'modules' / '7.3.0-vim4kvm-uhd7+'
+            modules.mkdir(parents=True)
+            (modules / 'wave5.ko.xz').write_bytes(b'qualified overlay')
+            proof = dict(release=modules.name, build_id='a'*40, cmdline='root=test',
+                         files={str(modules/'wave5.ko.xz'): once.sha(modules/'wave5.ko.xz')})
+            plan = dict(release=modules.name, build_id='b'*40, baseline_id=proof['build_id'],
+                        baseline_release=proof['release'], baseline_cmdline=proof['cmdline'],
+                        baseline_files=proof['files'])
+            with patch.object(once.os, 'geteuid', return_value=0), patch.object(
+                    once.os, 'uname', return_value=type('Kernel', (), {'release': modules.name})()), patch.object(
+                    once, 'MODULE_ROOT', modules.parent), patch.object(once, 'ROOT', root / 'display-m1'):
+                once.retained_preflight(plan, proof)
+                once.cleanup_module_mountpoint(plan)
+                with self.assertRaises(RuntimeError):
+                    once.retained_preflight(dict(plan, baseline_id='c'*40), proof)
+                (modules / 'wave5.ko.xz').write_bytes(b'wrong')
+                with self.assertRaisesRegex(RuntimeError, 'file changed'):
+                    once.retained_preflight(plan, proof)
+
     def test_baseline_reboot_reason_does_not_relax_other_identity(self):
         before = dict(release='5.15.test', build_id='a'*40, files={'/boot/Image':'hash'},
                       cmdline='root=PARTUUID=abcd reboot_mode=watchdog_reboot rw')

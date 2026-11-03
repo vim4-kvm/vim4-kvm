@@ -30,6 +30,52 @@ def static_elf(kind=1):
 
 
 class TrialTest(unittest.TestCase):
+    def test_same_uhd7_image_distinct_dt_stages_and_keeps_installed_modules(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory).resolve()
+            self.fixture(root, release=once.UHD7, baseline_release=once.UHD7)
+            payload = root / 'payload'
+            report = json.loads((payload/'manifest.json').read_text())
+            state = json.loads((root/'baseline.json').read_text())
+            state.update(release=once.UHD7, build_id=report['kernel_build_id'])
+            state['files']['/boot/edge/Image'] = once.sha(payload/'Image')
+            state['files']['/boot/edge/vim4.dtb'] = '0'*64
+            state['files'].update({'/lib/modules/'+once.UHD7+'/'+name: digest
+                                   for name, digest in report['modules'].items()})
+            (root/'baseline.json').write_text(json.dumps(state))
+            report['dt_properties'] = {'soc/display/status': '6f6b617900'}
+            (payload/'manifest.json').write_text(json.dumps(report))
+            modules = root/'installed-modules'/once.UHD7
+            modules.mkdir(parents=True)
+            (modules/'overlay.ko').write_bytes(b'keep this installed overlay')
+            with patch.object(once, 'ROOT', root/'display-m1'), patch.object(
+                    once, 'MODULE_ROOT', modules.parent), patch.object(once.os, 'geteuid', return_value=0):
+                parent = once.candidate_parent(dict(namespace='passthrough', payload_id='dt-v1'))
+                (root/'init').write_bytes(static_elf() + (str(parent)+'/').encode() + b'\0')
+                with patch.object(once.subprocess, 'check_output', return_value='6f 6b 61 79 00'):
+                    once.prepare(payload, root/'init', root/'baseline.json', root/'same-image',
+                                 release=once.UHD7, baseline_release=once.UHD7,
+                                 baseline_id=state['build_id'], namespace='passthrough', payload_id='dt-v1')
+                sha = once.sha
+                def protected_hash(path):
+                    return state['files'][str(path)] if str(path) in state['files'] else sha(path)
+                with patch.object(once, 'sha', side_effect=protected_hash):
+                    once.stage(root/'same-image/candidate.tar', retained_baseline=state)
+                plan = json.loads((root/'same-image/trial.json').read_text())
+                self.assertEqual(plan['dt_properties'], report['dt_properties'])
+                self.assertEqual(plan['build_id'], plan['baseline_id'])
+                with patch.object(once.os, 'uname', return_value=SimpleNamespace(release=once.UHD7)):
+                    once.cleanup_module_mountpoint(plan)
+                self.assertEqual((modules/'overlay.ko').read_bytes(), b'keep this installed overlay')
+                with patch.object(once.subprocess, 'check_output', return_value='00'):
+                    with self.assertRaisesRegex(ValueError, 'DT property mismatch'):
+                        once.prepare(payload, root/'init', root/'baseline.json', root/'bad-dt',
+                                     release=once.UHD7, baseline_release=once.UHD7,
+                                     baseline_id=state['build_id'], namespace='passthrough', payload_id='dt-v1')
+            for p in root.rglob('*'):
+                if p.is_dir():
+                    p.chmod(0o755)
+
     def test_release_tags_are_generic_but_remain_single_safe_path_components(self):
         for tag in ('hdr10r3', 'future_codec.42', 'uhd4-debug'):
             with tempfile.TemporaryDirectory() as directory:
