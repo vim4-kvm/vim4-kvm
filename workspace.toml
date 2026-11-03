@@ -5,7 +5,7 @@
 name = "NanoKVM"
 url = "https://github.com/vim4-kvm/NanoKVM.git"
 branch = "vim4"
-revision = "0525dea7d5d2417b3b5c5eee754f026d9ca4c671"
+revision = "5b96718f42903f1970f0fc2419d4603cafe89e10"
 
 [[repos]]
 name = "common_drivers"
@@ -17,14 +17,14 @@ revision = "31619c527655514b4c89516ef609b6db1dd47db6"
 name = "gst-plugin-venc"
 url = "https://github.com/vim4-kvm/gst-plugin-venc.git"
 branch = "vim4"
-# Approved P0-5 HDR integration; evidence boundaries are recorded in docs/bringup/.
-revision = "3a74cc9c0f074ff8bf980440e426438bba65d1db"
+# P0-5 HDR integration plus the vim4ptsrate capture pacer (docs/bringup/2026-11-02-hfr-yuv-window.md).
+revision = "87c7052955763de834d9da26828540c76a6c43ad"
 
 [[repos]]
 name = "gst-plugin-vfmcap"
 url = "https://github.com/vim4-kvm/gst-plugin-vfmcap.git"
 branch = "main"
-revision = "5de382e36350fc37b43d9ff11f693fa3f2bb0323"
+revision = "6fe6eacac8524b8bfc85ec5b78cfdac5bd4e291c"
 
 [[repos]]
 name = "kvm"
@@ -36,20 +36,20 @@ revision = "166719c5b8acdfb1ab995c440aabc8a0e39ae08d"
 name = "One-KVM"
 url = "https://github.com/vim4-kvm/One-KVM.git"
 branch = "vim4"
-# r14e, reviewed audio fix, and board-accepted USB endpoint merge (docs/bringup/2026-11-01-usb-endpoint-merge.md).
-revision = "ffc613064165f1afb6685019565c12e90864fe26"
+# r14e, USB endpoint merge, and Wave5 capture-rate budgets for fixed 120 Hz (docs/bringup/2026-11-02-hfr-yuv-window.md).
+revision = "1e477dafb22301f9a5038664c4e24f21061dc7e6"
 
 [[repos]]
 name = "kvmd"
 url = "https://github.com/vim4-kvm/kvmd.git"
 branch = "vim4"
-revision = "b074481150086146ce0cae4b3c9bca9baade5f10"
+revision = "196bdfde04a2ffff5e9a48d7be42ba4f0e0ffe04"
 
 [[repos]]
 name = "ustreamer"
 url = "https://github.com/vim4-kvm/ustreamer.git"
 branch = "vim4"
-revision = "97eb951d10a0ccebd312d6951acc91624f5f0876"
+revision = "6134a33fff8e37452e5bf8fcb701eb05638be95a"
 
 [[repos]]
 name = "vim4-manager"
