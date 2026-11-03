@@ -23,6 +23,7 @@ int ioctl(int fd, unsigned long request, ...)
         return syscall(SYS_ioctl, fd, request, arg);
 
     unsigned int fourcc = getenv("TEST_V308") ? YUV24 : V4L2_PIX_FMT_NV12;
+    unsigned int clock_hz = getenv("TEST_CLOCK_HZ") ? atoi(getenv("TEST_CLOCK_HZ")) : 60000;
     switch (request) {
     case VIDIOC_QUERYCAP: {
         struct v4l2_capability *cap = arg;
@@ -55,7 +56,7 @@ int ioctl(int fd, unsigned long request, ...)
             ival->stepwise.step = (struct v4l2_fract){1, 1};
         } else {
             ival->type = V4L2_FRMIVAL_TYPE_DISCRETE;
-            ival->discrete = (struct v4l2_fract){atoi(getenv("TEST_TICKS")), 60000};
+            ival->discrete = (struct v4l2_fract){atoi(getenv("TEST_TICKS")), clock_hz};
         }
         return 0;
     }
@@ -84,7 +85,7 @@ int ioctl(int fd, unsigned long request, ...)
     }
     case VIDIOC_G_PARM:
         ((struct v4l2_streamparm *)arg)->parm.capture.timeperframe =
-            (struct v4l2_fract){atoi(getenv("TEST_TICKS")), 60000};
+            (struct v4l2_fract){atoi(getenv("TEST_TICKS")), clock_hz};
         return 0;
     }
     errno = EINVAL;

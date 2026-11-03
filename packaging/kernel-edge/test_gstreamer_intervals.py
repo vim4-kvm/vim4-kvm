@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 """Check actual downstream pad caps with the pinned v4l2src and ioctl fixtures."""
 import os
+import shlex
 from pathlib import Path
 import subprocess
 import sys
@@ -17,6 +18,11 @@ def main():
                    LD_PRELOAD=str(shim), LC_ALL="C")
         inspect = subprocess.check_output(["gst-inspect-1.0", "v4l2src"], env=env, text=True)
         assert str(plugin) in inspect and "1.24.2" in inspect, inspect
+        restart = Path(tmp) / "restart"
+        flags = shlex.split(subprocess.check_output(
+            ["pkg-config", "--cflags", "--libs", "gstreamer-app-1.0"], text=True))
+        subprocess.run(["cc", "-Wall", "-Wextra", "-Werror", Path(__file__).with_name("test-vdin-restart.c"),
+                        "-o", restart, *flags], check=True)
         formats = ["NV12"]
         if "v308" in inspect or "--v308" in sys.argv[2:]:
             formats.append("v308")
@@ -24,9 +30,11 @@ def main():
             if fmt == "v308":
                 env["TEST_V308"] = "1"
             for ticks, base, fps, maximum in [(1000, 0, "60/1", 0), (1001, 0, "60000/1001", 0),
+                                              (1001, 0, "120000/1001", 0),
                                               (1224, 120, "0/1", 120), (1224, 60, "0/1", 60),
                                               (1224, -1, "0/1", 120)]:
-                env.update(TEST_TICKS=str(ticks), TEST_VRR_BASE=str(base))
+                env.update(TEST_TICKS=str(ticks), TEST_VRR_BASE=str(base),
+                           TEST_CLOCK_HZ="120000" if fps == "120000/1001" else "60000")
                 output = subprocess.check_output(
                     ["gst-launch-1.0", "-v", "v4l2src", "device=/dev/zero", "io-mode=rw",
                      "num-buffers=2", "!", f"video/x-raw,format={fmt}", "!", "fakesink"],
@@ -39,6 +47,7 @@ def main():
                 else:
                     assert "max-framerate=" not in caps, caps
                 print(fmt, ticks, base, caps.split("caps = ")[1])
+            subprocess.run([restart, fmt], env=dict(env, TEST_TICKS="1000"), check=True, timeout=10)
 
 
 if __name__ == "__main__":

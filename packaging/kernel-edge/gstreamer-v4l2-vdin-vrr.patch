@@ -18,3 +18,14 @@
      gst_v4l2src_value_simplify (&rates);
      /* only change the framerate on the template when we have a valid probed new
       * value */
+--- a/sys/v4l2/gstv4l2src.c
++++ b/sys/v4l2/gstv4l2src.c
+@@ -785,2 +785,8 @@ gst_v4l2src_negotiate (GstBaseSrc * basesrc)
++  /* VDIN enumerates the live HDMI mode. Reprobe when starting after
++   * STREAMOFF, even if another query populated the cache in READY. */
++  if (!GST_V4L2_IS_ACTIVE (v4l2src->v4l2object) &&
++      !strcmp ((const char *) v4l2src->v4l2object->vcap.driver, "t7-vdin-test"))
++    gst_caps_replace (&v4l2src->v4l2object->probed_caps, NULL);
++
+   /* first see what is possible on our source pad */
+   thiscaps = gst_pad_query_caps (GST_BASE_SRC_PAD (basesrc), NULL);
