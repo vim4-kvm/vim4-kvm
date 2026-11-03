@@ -20,7 +20,7 @@ class KVMRunTests(unittest.TestCase):
             launcher = root / 'run'
             launcher.write_text(script)
             binaries = ('opt/vim4-nanokvm/NanoKVM-Server', 'opt/vim4-jetkvm/jetkvm',
-                        'opt/vim4-onekvm/one-kvm', 'usr/libexec/vim4-pikvm-run')
+                        'opt/vim4-onekvm/one-kvm', 'opt/vim4-onekvm-edge/one-kvm', 'usr/libexec/vim4-pikvm-run')
             for binary in binaries:
                 path = root / binary
                 path.parent.mkdir(parents=True, exist_ok=True)
@@ -43,15 +43,9 @@ class KVMRunTests(unittest.TestCase):
             for kernel, enabled, secondary in (
                 ('5.15.137-vim4kvm-hdrdual6', 'Y', True),
                 ('5.15.137-vim4kvm', 'N', False),
-                ('7.3.0-vim4kvm-uhd1+', 'Y', False),
-                ('7.3.0-vim4kvm-uhd2+', 'Y', False),
-                ('7.3.0-vim4kvm-uhd2-nodebug+', 'Y', False),
-                ('7.3.0-vim4kvm-uhd3+', 'Y', False),
-                ('7.3.0-vim4kvm-uhd4+', 'Y', False),
-                ('7.3.0-vim4kvm-uhd5+', 'Y', False),
-                ('7.3.0-vim4kvm-npu1+', 'Y', False),
-                ('7.3.0-vim4kvm-npu2+', 'Y', False),
-                ('7.3.0-rc7-vim4kvm-uhd1+', 'Y', False),
+                ('7.3.1-vim4kvm-uhd7+', 'Y', False),
+                ('7.3.1-vim4-20261103', 'Y', False),
+                ('7.3.1-vim4-20261103.2', 'Y', False),
             ):
                 native.write_text(enabled)
                 for app in ('nanokvm', 'jetkvm', 'pikvm', 'onekvm'):

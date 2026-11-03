@@ -120,8 +120,9 @@ def main():
     # The runtime is installed before the boot switch, so it must also serve
     # the current formal kernel if installation stops before that switch.
     current_release = tomllib.loads((recipe/'sources.toml').read_text())['tested_build']['release']
-    launcher.write_text(launcher.read_text().replace(
-        '7.3.0-vim4kvm-uhd[67]+', '7.3.0-vim4kvm-uhd[67]+|' + current_release + '|' + release))
+    text = launcher.read_text().replace('7.3.0-vim4kvm-uhd[67]+', current_release + '|' + release)
+    text = re.sub(r'7\.3\.0-(?:rc7-)?vim4kvm-(?:uhd(?:\d+(?:-nodebug)?|\[67\])|npu\d+)\+\|?', '', text)
+    launcher.write_text(text.replace('|)', ')'))
     shutil.copyfile(recipe.parents[1]/'board/vim4-board-runtime',
                     output/'runtime/usr/libexec/vim4-board-runtime')
     for source, target in (('one-kvm-edge-prepare', 'vim4-mainline-prepare'),

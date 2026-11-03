@@ -8,7 +8,6 @@ fi
 case "$kernel" in
     7.3.1-vim4kvm-uhd7+|7.*-vim4-????????|7.*-vim4-????????.[0-9]*) mainline=1 ;;
     5.15.*) mainline=0 ;;
-    7.3.0-rc7-vim4kvm-uhd1+|7.3.0-vim4kvm-uhd1+|7.3.0-vim4kvm-uhd2+|7.3.0-vim4kvm-uhd2-nodebug+|7.3.0-vim4kvm-uhd3+|7.3.0-vim4kvm-uhd4+|7.3.0-vim4kvm-uhd5+|7.3.0-vim4kvm-uhd[67]+|7.3.0-vim4kvm-npu1+|7.3.0-vim4kvm-npu2+|7.3.0-vim4kvm-npu3+|7.3.0-vim4kvm-npu4+) mainline=1 ;;
     *) echo 'No validated VIM4 platform for this kernel' >&2; exit 1 ;;
 esac
 case "${1:-}" in

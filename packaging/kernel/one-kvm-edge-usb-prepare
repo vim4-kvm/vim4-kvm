@@ -68,11 +68,8 @@ def prepare_optional_functions(gadget):
 
 def prepare():
     kernel = platform.release()
-    if (os.geteuid() != 0 or (not re.fullmatch(r'7\.\d+(?:\.\d+)?-vim4-\d{8}(?:\.(?:[2-9]|[1-9]\d+))?', kernel) and kernel not in (
-            '7.3.0-rc7-vim4kvm-uhd1+', '7.3.0-vim4kvm-uhd1+', '7.3.0-vim4kvm-npu1+',
-            '7.3.0-vim4kvm-npu2+', '7.3.0-vim4kvm-npu3+', '7.3.0-vim4kvm-npu4+',
-            '7.3.0-vim4kvm-uhd2+', '7.3.0-vim4kvm-uhd2-nodebug+', '7.3.0-vim4kvm-uhd3+', '7.3.0-vim4kvm-uhd4+', '7.3.0-vim4kvm-uhd5+',
-            '7.3.0-vim4kvm-uhd6+', '7.3.0-vim4kvm-uhd7+', '7.3.1-vim4kvm-uhd7+'))):
+    if (os.geteuid() != 0 or (kernel != '7.3.1-vim4kvm-uhd7+' and
+            not re.fullmatch(r'7\.\d+(?:\.\d+)?-vim4-\d{8}(?:\.(?:[2-9]|[1-9]\d+))?', kernel))):
         raise ValueError('Requires root on the matched 7.3 One-KVM experimental kernel')
     if check_existing():
         prepare_optional_functions(ROOT / 'kvm')
