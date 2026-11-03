@@ -163,15 +163,31 @@ BTF与build ID，封存Image、双GPU DT、config、Module.symvers、vmlinux.btf
 
 正式安装仍须另行授权的独占板窗。7.3.1使用
 `register-runtime.py install PACKAGE --backup NEW_DIRECTORY`，要求默认FullKvm/uhd7；
-保留默认项、5.15/Stock入口和旧模块目录，先校验包与完整模块，再预检/boot空间。
-备份目录放根分区私有目录，必须是新目录，预留完整旧模块和启动文件空间。
+保留默认标签、5.15/Stock入口和旧模块目录。外层清单必须与包内文件集合完全一致；先校验包与
+完整模块，再预检/boot和根分区空间。备份必须是根分区上的新目录，拒绝/boot及其他文件系统。
+预算包括完整旧模块/启动文件备份、新模块解包、原子更新运行时/登记，以及候选启动文件的全部
+空间；/boot与根目录同设备时合并预算，不能只计算新旧Image的大小差额。
 备份包含extlinux、kernels.json、七个edge文件、完整uhd7模块树（含三个overlay）及被替换的
 /usr入口。BCM43752 .217固件从旧release的updates目录校验后复制到新release。
+新启动文件完整写入 `/boot/kernels/7.3.1-vim4kvm-uhd7+`，逐项核验后保留在独立目录；
+不覆盖 `/boot/edge`。双内核兼容的/usr入口逐文件先写临时文件、fsync，再原子替换，
+任何中途退出时可见的完整新/旧入口都仍支持uhd7。模块、固件、启动文件和入口核验并sync后，
+先原子写kernels.json，最后单次原子替换extlinux中的FullKvm LINUX/FDT；DEFAULT标签不变。
+启动提交之前即使进程直接死亡、未执行finally，正常重启仍选择原uhd7 Image/DT/模块。
+中断遗留的候选目录不自动删除；复用非空新模块目录仍须与完整清单完全一致。
 
 失败或验收回退时执行 `register-runtime.py rollback BACKUP_DIRECTORY`，逐文件校验备份后
-整套恢复并sync；随后正常重启回保存的FullKvm/uhd7，按proof核对服务、加载模块与视频。
+恢复安装实际改过的extlinux、kernels.json和/usr入口并sync；随后正常重启回保存的
+FullKvm/uhd7，按proof核对服务、加载模块与视频。旧edge文件和旧模块树仅作备份，安装与回退
+均不删除、不重写这些保留文件；完整旧模块备份仍供现场恢复和取证。
 安装中断仍保留备份供该命令使用；命令不自行重启，不代表自动硬件恢复。
 新release独立模块目录保留供调查，回退不删除。
+
+### 登记 issue
+
+- R7：备份目录属于受信的本地恢复材料，当前只核验记录中的文件字节，不证明目录没有人为加入
+  的额外文件或被更改的符号链接。保留目录的备份不会在自动rollback中整树复制回系统；
+  人工利用备份恢复前仍需核对目录/链接。按本轮审查范围仅登记，未增加备份防篡改代码。
 
 在 Linux ARM64、GCC 13 环境中运行；需要 make、flex、bison、bc、OpenSSL/ELF
 开发库和 pahole。准备阶段不安装到开发机或板子。

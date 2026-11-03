@@ -4,6 +4,9 @@ import json
 from pathlib import Path
 import tarfile
 import tempfile
+import os
+import subprocess
+import sys
 from types import SimpleNamespace
 import unittest
 from unittest.mock import patch
@@ -12,6 +15,120 @@ from test_register_runtime import runtime, boot
 
 
 class CompleteUpgradeTest(unittest.TestCase):
+    def test_process_death_at_each_install_stage_retains_a_bootable_uhd7(self):
+        phases = ['backup', 'firmware', 'modules', *runtime.BOOT_FILES, 'runtime', 'registry', 'boot-commit', 'boot-rename', 'committed']
+        for phase in phases:
+            with self.subTest(phase=phase), tempfile.TemporaryDirectory() as directory:
+                root = Path(directory).resolve()
+                board, package, old_modules, helper = self.fixture(root)
+                other_entries = {label: fields for label, fields in boot.boot_entries(board.CONFIG.read_text()).items()
+                                 if label != 'FullKvm'}
+                previous = {str(p.relative_to(board.BOOT/'edge')): p.read_bytes()
+                            for p in (board.BOOT/'edge').rglob('*') if p.is_file()}
+                module_state = {p.name: p.read_bytes() for p in old_modules.iterdir()}
+                script = '''import sys
+from pathlib import Path
+from test_complete_upgrade import CompleteUpgradeTest
+test=CompleteUpgradeTest()
+root=Path(sys.argv[1])
+test.run_install(root,test.board(root),root/'package.tar.gz',die=sys.argv[2])
+'''
+                result = subprocess.run([sys.executable, '-c', script, str(root), phase],
+                                        env=dict(os.environ, PYTHONPATH=str(Path(__file__).parent)), timeout=30)
+                self.assertEqual(result.returncode, 92 if phase == 'committed' else 91)
+                fields = boot.boot_entries(board.CONFIG.read_text())['FullKvm']
+                self.assertEqual(other_entries, {label: values for label, values in boot.boot_entries(board.CONFIG.read_text()).items()
+                                                if label != 'FullKvm'})
+                selected = board.BOOT / fields['LINUX'].lstrip('/')
+                self.assertEqual(runtime.release(selected), runtime.CANDIDATE if phase == 'committed' else runtime.UHD7)
+                self.assertEqual(previous, {str(p.relative_to(board.BOOT/'edge')): p.read_bytes()
+                                           for p in (board.BOOT/'edge').rglob('*') if p.is_file()})
+                self.assertEqual(module_state, {p.name: p.read_bytes() for p in old_modules.iterdir()})
+                # Every visible launcher remains whole, executable and accepts
+                # the old kernel, including a death halfway through its copy.
+                check = subprocess.run(['sh', str(helper), 'check-kernel', runtime.UHD7], text=True, capture_output=True)
+                self.assertEqual(check.returncode, 0, check.stderr)
+                self.assertEqual(check.stdout.strip(), '1')
+                self.assertTrue(helper.stat().st_mode & 0o111)
+
+    def test_missing_inventory_entry_and_extra_runtime_file_are_rejected(self):
+        for alteration in ('missing', 'extra'):
+            with self.subTest(alteration=alteration), tempfile.TemporaryDirectory() as directory:
+                root = Path(directory)
+                board, package, modules, helper = self.fixture(root)
+                payload = root/'payload'
+                if alteration == 'missing':
+                    path = payload/'candidate.json'
+                    descriptor = json.loads(path.read_text())
+                    descriptor['sha256'].pop('runtime/usr/libexec/vim4-board-runtime')
+                    path.write_text(json.dumps(descriptor))
+                else:
+                    (payload/'runtime/usr/libexec/extra-helper').write_text('unchecked')
+                with tarfile.open(package, 'w:gz') as archive:
+                    archive.add(payload, arcname='.')
+                with self.assertRaisesRegex(ValueError, 'file inventory'):
+                    self.run_install(root, board, package)
+                self.assertFalse((root/'backup').exists())
+                self.assertFalse((board.BOOT/'kernels').exists())
+                self.assertNotIn('# candidate copy', helper.read_text())
+
+    def test_root_space_and_backup_location_are_checked_before_persistent_writes(self):
+        for location in ('low-space', 'boot', 'other-filesystem'):
+            with self.subTest(location=location), tempfile.TemporaryDirectory() as directory:
+                root = Path(directory).resolve()
+                board, package, modules, helper = self.fixture(root)
+                backup = board.BOOT/'backup' if location == 'boot' else root/'backup'
+                other = root/'other-device'
+                other.mkdir()
+                if location == 'other-filesystem':
+                    backup = other/'backup'
+                original_stat = Path.stat
+                def device_stat(path, *args, **kwargs):
+                    info = original_stat(path, *args, **kwargs)
+                    if path == other:
+                        fields = list(info)
+                        fields[2] += 1
+                        return os.stat_result(fields)
+                    return info
+                def free(path):
+                    return SimpleNamespace(free=10**9 if Path(path) == board.BOOT/'edge' else 0)
+                with patch.object(runtime.shutil, 'disk_usage', side_effect=free), patch.object(Path, 'stat', device_stat):
+                    with self.assertRaisesRegex(ValueError, 'Insufficient root|root filesystem'):
+                        self.run_install(root, board, package, backup=backup)
+                self.assertFalse(backup.exists())
+                self.assertFalse((board.BOOT/'kernels').exists())
+                self.assertFalse(modules.with_name(runtime.CANDIDATE).exists())
+                self.assertNotIn('# candidate copy', helper.read_text())
+
+    def test_root_and_boot_budgets_are_combined_when_they_share_a_filesystem(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory).resolve()
+            boot_root = root/'boot'
+            boot_root.mkdir()
+            target = root/'old-config'
+            target.write_bytes(b'x')
+            firmware = root/'firmware'
+            firmware.write_bytes(b'x')
+            def board_path(value):
+                return root if str(value) == '/' else Path(value)
+            # Either allocation alone fits; the combined installation does not.
+            with patch.object(runtime, 'Path', side_effect=board_path), patch.object(
+                    runtime.shutil, 'disk_usage', return_value=SimpleNamespace(free=60000)):
+                with self.assertRaisesRegex(ValueError, 'Insufficient root'):
+                    runtime.preflight_root_space(root/'backup', boot_root, [target], 1, [], 1, firmware, 50000)
+            self.assertFalse((root/'backup').exists())
+
+    def board(self, root):
+        def validate(entry, text, *, hashes):
+            if boot.boot_entries(text)[entry['label']] != entry['boot']:
+                raise ValueError('registry boot mismatch')
+            for name, value in entry['artifacts'].items():
+                if runtime.digest(Path(name)) != value:
+                    raise ValueError('installed artifact mismatch: ' + name)
+        return SimpleNamespace(BOOT=root/'boot', CONFIG=root/'boot/extlinux.conf', MANIFEST=root/'kernels.json',
+                               boot_entries=boot.boot_entries, default_label=boot.default_label,
+                               atomic_write=boot.atomic_write, validate_entry=validate)
+
     def fixture(self, root, bad_hash=False):
         boot_root = root / 'boot'
         edge = boot_root / 'edge'
@@ -20,9 +137,12 @@ class CompleteUpgradeTest(unittest.TestCase):
             (edge / name).write_text('qualified ' + name)
         (edge / 'Image').write_text('Linux version ' + runtime.UHD7 + ' (builder)')
         config = boot_root / 'extlinux.conf'
-        config.write_text('DEFAULT FullKvm\nLABEL FullKvm\n LINUX /edge/Image\n FDT /edge/vim4.dtb\n')
+        config.write_text('DEFAULT FullKvm\nLABEL Default\n LINUX /vendor/Image\n APPEND root=vendor\n'
+                          'LABEL Stock\n LINUX /stock/Image\n APPEND root=stock\n'
+                          'LABEL FullKvm\n LINUX /edge/Image\n FDT /edge/vim4.dtb\n APPEND root=mainline\n')
         manifest = root / 'kernels.json'
-        manifest.write_text('original registry')
+        manifest.write_text(json.dumps([dict(id='mainline', label='FullKvm', release=runtime.UHD7,
+                                            boot=boot.boot_entries(config.read_text())['FullKvm'], artifacts={})]))
         usr = root / 'usr'
         old_modules = usr / 'lib/modules' / runtime.UHD7
         old_modules.mkdir(parents=True)
@@ -31,7 +151,8 @@ class CompleteUpgradeTest(unittest.TestCase):
         (root / 'lib').symlink_to(usr / 'lib', target_is_directory=True)
         helper = usr / 'libexec/vim4-board-runtime'
         helper.parent.mkdir(parents=True)
-        helper.write_text('old launcher')
+        helper.write_text((Path(runtime.__file__).parents[2]/'board/vim4-board-runtime').read_text())
+        helper.chmod(0o755)
         firmware = usr / 'lib/firmware/updates' / runtime.UHD7 / 'brcm/brcmfmac43752-sdio.khadas,vim4.bin'
         firmware.parent.mkdir(parents=True)
         firmware.write_text('qualified firmware')
@@ -40,7 +161,8 @@ class CompleteUpgradeTest(unittest.TestCase):
         for name in runtime.BOOT_FILES:
             (payload / name).write_text('candidate ' + name)
         (payload / 'Image').write_text('Linux version ' + runtime.CANDIDATE + ' (builder)')
-        files = {'kernel/wave5.ko': b'new matched module', 'modules.dep': b'kernel/wave5.ko:\n'}
+        files = {'kernel/wave5.ko': b'new matched module', 'modules.dep': b'kernel/wave5.ko:\n',
+                 'modules.dep.bin': b'depmod binary metadata'}
         hashes = {name: runtime.hashlib.sha256(data).hexdigest() for name, data in files.items()}
         with tarfile.open(payload / 'modules.tar.gz', 'w:gz') as archive:
             for name, data in files.items():
@@ -51,7 +173,8 @@ class CompleteUpgradeTest(unittest.TestCase):
         (payload / 'runtime-proof.json').write_text('{}')
         new_helper = payload / 'runtime/usr/libexec/vim4-board-runtime'
         new_helper.parent.mkdir(parents=True)
-        new_helper.write_text('candidate launcher')
+        new_helper.write_text(helper.read_text() + '\n# candidate copy\n')
+        new_helper.chmod(0o755)
         inventory = {str(p.relative_to(payload)): runtime.digest(p) for p in payload.rglob('*') if p.is_file()}
         if bad_hash:
             inventory['Image'] = '0'*64
@@ -59,48 +182,84 @@ class CompleteUpgradeTest(unittest.TestCase):
         package = root / 'package.tar.gz'
         with tarfile.open(package, 'w:gz') as archive:
             archive.add(payload, arcname='.')
-        board = SimpleNamespace(BOOT=boot_root, CONFIG=config, MANIFEST=manifest,
-                                boot_entries=boot.boot_entries, default_label=boot.default_label)
-        return board, package, old_modules, helper
+        return self.board(root), package, old_modules, helper
 
     def run_install(self, root, board, package, **options):
         def board_path(*parts):
             value = str(Path(*parts))
-            return root / value.lstrip('/') if value == '/lib' or value.startswith(('/lib/', '/usr')) else Path(value)
+            return root / value.lstrip('/') if value in ('/', '/lib') or value.startswith(('/lib/', '/usr')) else Path(value)
         digest = runtime.digest
         def firmware_digest(path):
-            return '3ff292ab216c13ce3019f6b4cc4234a15a81c8b553014b122f748efd9465676d' if str(path).endswith('.bin') else digest(path)
-        def register(args):
-            board.MANIFEST.write_text('new registry')
+            return '3ff292ab216c13ce3019f6b4cc4234a15a81c8b553014b122f748efd9465676d' if path.name == 'brcmfmac43752-sdio.khadas,vim4.bin' else digest(path)
+        copyfile = runtime.shutil.copyfile
+        def copy(source, destination, **kwargs):
+            phase = options.get('die')
+            destination = Path(destination)
+            die = (phase == 'backup' and destination.parent == root/'backup' or
+                   phase == 'firmware' and destination.suffix == '.bin' or
+                   phase == 'runtime' and destination.parent == root/'usr/libexec' or
+                   phase == destination.name and destination.parent == board.BOOT/'kernels'/runtime.CANDIDATE)
+            if die:
+                with destination.open('wb') as stream:
+                    stream.write(Path(source).read_bytes()[:1])
+                    stream.flush()
+                    os.fsync(stream.fileno())
+                os._exit(91)  # Deliberately bypass finally/atexit/rollback.
+            return copyfile(source, destination, **kwargs)
+        atomic_write = board.atomic_write
+        replace = runtime.os.replace
+        def rename(source, destination):
+            if options.get('die') == 'boot-rename' and destination == board.CONFIG:
+                os._exit(91)
+            return replace(source, destination)
+        def write(path, content):
+            if options.get('die') == 'registry' and path == board.MANIFEST:
+                os._exit(91)
+            if options.get('die') == 'boot-commit' and path == board.CONFIG:
+                os._exit(91)
+            atomic_write(path, content)
+            if options.get('die') == 'committed' and path == board.CONFIG:
+                os._exit(92)
         run = runtime.subprocess.run
         def extract(command, **kwargs):
             # BSD tar lacks the GNU option; this fixture archives only RELEASE,
             # so extraction still exercises the Ubuntu-style /lib symlink.
             if runtime.sys.platform == 'darwin':
                 command = [part for part in command if part != '--keep-directory-symlink']
-            return run(command, **kwargs)
+            result = run(command, **kwargs)
+            if options.get('die') == 'modules':
+                os._exit(91)
+            return result
         with patch.dict(runtime.sys.modules, {'vim4boot': board}), patch.object(
                 runtime, 'Path', side_effect=board_path), patch.object(runtime, 'digest', side_effect=firmware_digest), patch.object(
                 runtime.os, 'geteuid', return_value=0), patch.object(runtime.os, 'sync', create=True), patch.object(
-                runtime, 'register', side_effect=register), patch.object(runtime.subprocess, 'run', side_effect=extract):
-            runtime.install(SimpleNamespace(archive=package, backup=root/'backup', source_label='FullKvm'))
+                runtime.shutil, 'copyfile', side_effect=copy), patch.object(runtime.subprocess, 'run', side_effect=extract), patch.object(
+                board, 'atomic_write', side_effect=write), patch.object(runtime.os, 'replace', side_effect=rename):
+            runtime.install(SimpleNamespace(archive=package, backup=options.get('backup', root/'backup'), source_label='FullKvm'))
 
     def test_complete_install_and_explicit_rollback_preserve_original_default_and_overlays(self):
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)
             board, package, modules, helper = self.fixture(root)
             default = board.CONFIG.read_bytes()
+            others = {label: fields for label, fields in boot.boot_entries(default.decode()).items() if label != 'FullKvm'}
+            original_registry = board.MANIFEST.read_bytes()
+            original_helper = helper.read_bytes()
             previous = {p.name: p.read_bytes() for p in modules.iterdir()}
             self.run_install(root, board, package)
-            self.assertEqual(board.CONFIG.read_bytes(), default)
+            self.assertEqual(boot.default_label(board.CONFIG.read_text()), 'FullKvm')
+            fields = boot.boot_entries(board.CONFIG.read_text())['FullKvm']
+            self.assertEqual(others, {label: values for label, values in boot.boot_entries(board.CONFIG.read_text()).items()
+                                     if label != 'FullKvm'})
+            self.assertEqual(runtime.release(board.BOOT/fields['LINUX'].lstrip('/')), runtime.CANDIDATE)
             self.assertEqual({p.name: p.read_bytes() for p in modules.iterdir()}, previous)
-            self.assertEqual(helper.read_text(), 'candidate launcher')
-            self.assertEqual(board.MANIFEST.read_text(), 'new registry')
-            with patch.object(runtime.os, 'sync', create=True):
+            self.assertIn('# candidate copy', helper.read_text())
+            self.assertEqual(json.loads(board.MANIFEST.read_text())[0]['release'], runtime.CANDIDATE)
+            with patch.object(runtime.os, 'sync', create=True), patch.object(runtime.shutil, 'rmtree', side_effect=AssertionError('must not delete modules')):
                 runtime.restore_rollback(root / 'backup')
             self.assertEqual(board.CONFIG.read_bytes(), default)
-            self.assertEqual(board.MANIFEST.read_text(), 'original registry')
-            self.assertEqual(helper.read_text(), 'old launcher')
+            self.assertEqual(board.MANIFEST.read_bytes(), original_registry)
+            self.assertEqual(helper.read_bytes(), original_helper)
             self.assertEqual({p.name: p.read_bytes() for p in modules.iterdir()}, previous)
             self.assertIn(runtime.UHD7, (board.BOOT/'edge/Image').read_text())
 
@@ -115,7 +274,7 @@ class CompleteUpgradeTest(unittest.TestCase):
                         self.run_install(root, board, package)
                 self.assertFalse((root/'backup').exists())
                 self.assertEqual((board.BOOT/'edge/Image').read_bytes(), before)
-                self.assertEqual(helper.read_text(), 'old launcher')
+                self.assertNotIn('# candidate copy', helper.read_text())
 
     def test_preexisting_candidate_modules_are_never_overwritten(self):
         with tempfile.TemporaryDirectory() as directory:
@@ -127,4 +286,4 @@ class CompleteUpgradeTest(unittest.TestCase):
             with self.assertRaisesRegex(ValueError, 'existing module set'):
                 self.run_install(root, board, package)
             self.assertEqual((existing/'other.ko').read_text(), 'owned by previous task')
-            self.assertEqual(helper.read_text(), 'old launcher')
+            self.assertNotIn('# candidate copy', helper.read_text())

@@ -28,15 +28,19 @@ CANDIDATE = '7.3.1-vim4kvm-uhd7+'
 BOOT_FILES = ('Image', 'vim4.dtb', 'panfrost.dtb', 'config', 'Module.symvers', 'vmlinux.btf', 'manifest.json')
 
 
-def check_space(edge, payload):
-    required = sum(max(0, (payload / name).stat().st_size -
-                       ((edge / name).stat().st_size if (edge / name).exists() else 0))
+def check_space(edge, payload, *, separate_directory=False):
+    required = sum(((payload / name).stat().st_size if separate_directory else
+                    max(0, (payload / name).stat().st_size -
+                        ((edge / name).stat().st_size if (edge / name).exists() else 0)))
                    + 4096 for name in BOOT_FILES)
+    if separate_directory:
+        required += 16384  # Candidate directories and the atomic extlinux replacement.
     if shutil.disk_usage(edge).free < required:
         raise ValueError('Insufficient /boot space for the complete edge runtime')
+    return required
 
 
-def save_rollback(destination, targets):
+def save_rollback(destination, targets, *, preserved=()):
     """Snapshot whole module trees, including overlays and depmod metadata."""
     destination.mkdir(parents=True, exist_ok=False)
     records = []
@@ -54,7 +58,8 @@ def save_rollback(destination, targets):
                 shutil.copy2(target, stored)
                 hashes = {'.': digest(stored)}
         records.append(dict(target=str(target), stored=str(index), present=present,
-                            directory=target.is_dir(), hashes=hashes))
+                            directory=target.is_dir(), hashes=hashes,
+                            restore=target not in preserved))
     (destination / 'rollback.json').write_text(json.dumps(records, indent=2) + '\n')
     os.sync()
 
@@ -68,16 +73,80 @@ def restore_rollback(destination):
             if digest(stored if name == '.' else stored / name) != expected:
                 raise ValueError('Rollback backup hash mismatch: ' + record['target'])
     for record in records:
+        if not record['restore']:
+            continue
         target, stored = Path(record['target']), destination / record['stored']
-        if record['directory']:
-            if target.exists():
-                shutil.rmtree(target)
-            shutil.copytree(stored, target, symlinks=True)
-        elif record['present']:
-            shutil.copy2(stored, target)
+        if record['present']:
+            atomic_copy(stored, target)
         else:
             target.unlink(missing_ok=True)
     os.sync()
+
+
+def atomic_copy(source, destination):
+    """Keep the previous executable intact until its complete replacement is durable."""
+    with tempfile.NamedTemporaryFile(prefix='.' + destination.name + '-',
+                                     dir=destination.parent, delete=False) as temporary:
+        staging = Path(temporary.name)
+    try:
+        shutil.copyfile(source, staging)
+        staging.chmod(source.stat().st_mode & 0o777)
+        with staging.open('rb') as stream:
+            os.fsync(stream.fileno())
+        os.replace(staging, destination)
+        descriptor = os.open(destination.parent, os.O_RDONLY | os.O_DIRECTORY)
+        try:
+            os.fsync(descriptor)
+        finally:
+            os.close(descriptor)
+    finally:
+        staging.unlink(missing_ok=True)
+
+
+def preflight_root_space(backup, boot_root, targets, module_bytes, runtime_files, registry_bytes, firmware, boot_bytes):
+    if backup is None:
+        raise ValueError('Complete upgrade requires --backup NEW_DIRECTORY')
+    if backup.exists():
+        raise ValueError('Backup directory must be new')
+    location = backup.resolve()
+    parent = next(p for p in location.parents if p.exists())
+    if location.is_relative_to(boot_root.resolve()) or parent.stat().st_dev != Path('/').stat().st_dev:
+        raise ValueError('Backup must be on the root filesystem and outside /boot')
+    backup_bytes = 0
+    for target in targets:
+        paths = target.rglob('*') if target.is_dir() else [target]
+        backup_bytes += sum(p.stat().st_size + 4096 for p in paths if p.is_file())
+    runtime_bytes = sum(p.stat().st_size + 4096 for p in runtime_files)
+    required = backup_bytes + module_bytes + runtime_bytes + registry_bytes + firmware.stat().st_size + 16384
+    if boot_root.stat().st_dev == Path('/').stat().st_dev:
+        required += boot_bytes
+    if shutil.disk_usage(parent).free < required:
+        raise ValueError('Insufficient root space for backup, complete modules and runtime')
+
+
+def upgrade_registration(boot, original, report, payload, kernel_dir):
+    """Prepare the existing FullKvm record without changing its arguments or other labels."""
+    fields = boot.boot_entries(original.decode())['FullKvm']
+    prefix = '/' + str(kernel_dir.relative_to(boot.BOOT))
+    full = dict(fields, LINUX=prefix + '/Image', FDT=prefix + '/vim4.dtb')
+    label, lines = None, []
+    for line in original.decode().splitlines(keepends=True):
+        words = line.split(None, 1)
+        if len(words) == 2 and words[0].upper() == 'LABEL':
+            label = words[1].strip()
+        if label == 'FullKvm' and words and words[0].upper() in ('LINUX', 'FDT'):
+            line = '  ' + words[0].upper() + ' ' + full[words[0].upper()] + '\n'
+        lines.append(line)
+    text = ''.join(lines)
+    records = json.loads(boot.MANIFEST.read_text())
+    current = next(record for record in records if record['label'] == 'FullKvm')
+    if current['release'] != UHD7 or current['boot'] != fields:
+        raise ValueError('Installed FullKvm registry differs from the uhd7 boot profile')
+    artifacts = {str(kernel_dir / name): digest(payload / name) for name in ('Image', 'vim4.dtb')}
+    artifacts.update({str(Path('/lib/modules') / report['release'] / name): value
+                      for name, value in report['modules'].items()})
+    current.update(release=report['release'], boot=full, artifacts=artifacts)
+    return text, records
 
 
 def rollback(args):
@@ -269,6 +338,9 @@ def install(args):
                     raise ValueError('Unsafe package member: ' + member.name)
             archive.extractall(root, filter='data')
         candidate = json.loads((root / 'candidate.json').read_text())
+        actual_files = {str(p.relative_to(root)) for p in root.rglob('*') if p.is_file()}
+        if actual_files - {'candidate.json'} != set(candidate['sha256']):
+            raise ValueError('Package file inventory differs from candidate.sha256')
         for name, expected in candidate['sha256'].items():
             if digest(root / name) != expected:
                 raise ValueError('Package hash mismatch: ' + name)
@@ -286,11 +358,13 @@ def install(args):
             raise ValueError('Installation requires 5.15 as the saved default')
         with tarfile.open(root / 'modules.tar.gz') as archive:
             actual = {}
+            module_bytes = 0
             for member in archive:
                 path = Path(member.name)
                 if path.is_absolute() or '..' in path.parts or not path.parts or path.parts[0] != version:
                     raise ValueError('Unsafe module member: ' + member.name)
                 if member.isdir():
+                    module_bytes += 4096
                     continue
                 if not member.isfile():
                     raise ValueError('Nonregular module member: ' + member.name)
@@ -298,32 +372,68 @@ def install(args):
                 if name in actual:
                     raise ValueError('Duplicate module member: ' + name)
                 actual[name] = hashlib.file_digest(archive.extractfile(member), 'sha256').hexdigest()
+                module_bytes += member.size + 4096
             if actual != report['modules']:
                 raise ValueError('Incomplete or mismatched module archive')
         edge = boot.BOOT / 'edge'
-        edge.mkdir(exist_ok=True)
         boot_files = BOOT_FILES
-        check_space(edge, root)
-        if version == CANDIDATE:
-            backup = getattr(args, 'backup', None)
-            if backup is None:
-                raise ValueError('Complete upgrade requires --backup NEW_DIRECTORY')
-            targets = [boot.CONFIG, boot.MANIFEST, *(edge / name for name in boot_files),
-                       Path('/lib/modules') / saved]
-            targets += [Path('/usr') / p.relative_to(root / 'runtime/usr')
-                        for p in (root / 'runtime/usr').rglob('*') if p.is_file()]
-            save_rollback(backup, targets)
+        boot_bytes = check_space(edge, root, separate_directory=version == CANDIDATE)
+        runtime_files = sorted(p for p in (root / 'runtime/usr').rglob('*') if p.is_file())
         if upgrade:
             updates = Path('/lib/firmware/updates')
             name = Path('brcm/brcmfmac43752-sdio.khadas,vim4.bin')
             firmware = updates / saved / name
             if digest(firmware) != '3ff292ab216c13ce3019f6b4cc4234a15a81c8b553014b122f748efd9465676d':
                 raise ValueError('Expected the qualified BCM43752 .217 firmware')
+        if version == CANDIDATE:
+            backup = getattr(args, 'backup', None)
+            kernel_dir = boot.BOOT / 'kernels' / version
+            if kernel_dir.exists():
+                raise ValueError('Use a new candidate boot directory; previous staging is retained')
+            text, records = upgrade_registration(boot, original, report, root, kernel_dir)
+            registration = (json.dumps(records, indent=2) + '\n').encode()
+            targets = [boot.CONFIG, boot.MANIFEST, *(edge / name for name in boot_files),
+                       Path('/lib/modules') / saved]
+            targets += [Path('/usr') / p.relative_to(root / 'runtime/usr')
+                        for p in runtime_files]
+            preflight_root_space(backup, boot.BOOT, targets, module_bytes,
+                                 runtime_files, len(registration), firmware, boot_bytes)
+            preserved = [*(edge / name for name in boot_files), Path('/lib/modules') / saved]
+            save_rollback(backup, targets, preserved=preserved)
+        if upgrade:
             destination = updates / version / name
             destination.parent.mkdir(parents=True, exist_ok=True)
             shutil.copyfile(firmware, destination)
+            if digest(destination) != digest(firmware):
+                raise ValueError('Installed BCM43752 firmware hash mismatch')
         install_complete_modules(root / 'modules.tar.gz', Path('/lib/modules') / version,
                                  report['modules'])
+        if version == CANDIDATE:
+            kernel_dir.mkdir(parents=True)
+            for name in boot_files:
+                shutil.copyfile(root / name, kernel_dir / name)
+                if digest(kernel_dir / name) != candidate['sha256'][name]:
+                    raise ValueError('Staged boot file hash mismatch: ' + name)
+            for source in runtime_files:
+                destination = Path('/usr') / source.relative_to(root / 'runtime/usr')
+                destination.parent.mkdir(parents=True, exist_ok=True)
+                # These qualified helpers support both uhd7 and the candidate;
+                # every partial installation must still run the retained kernel.
+                source.chmod(0o755)
+                atomic_copy(source, destination)
+                if digest(destination) != candidate['sha256'][str(source.relative_to(root))]:
+                    raise ValueError('Installed runtime hash mismatch: ' + str(destination))
+            for record in records:
+                boot.validate_entry(record, text, hashes=True)
+            os.sync()
+            boot.atomic_write(boot.MANIFEST, registration)
+            os.sync()
+            # The sole boot commit: old Image/DT/modules remain usable until here.
+            boot.atomic_write(boot.CONFIG, text.encode())
+            os.sync()
+            print(f'Installed {version}; saved default remains {label}')
+            return
+        edge.mkdir(exist_ok=True)
         for name in boot_files:
             shutil.copyfile(root / name, edge / name)
         for path in (root / 'runtime/usr').rglob('*'):

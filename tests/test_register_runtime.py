@@ -26,7 +26,7 @@ boot = load('profile_boot', 'board/vim4boot.py')
 
 
 class BootProfileTest(unittest.TestCase):
-    def test_complete_rollback_restores_overlay_modules_boot_and_runtime(self):
+    def test_complete_rollback_preserves_overlay_modules_and_restores_changed_files(self):
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)
             module_root = root / runtime.UHD7
@@ -43,13 +43,11 @@ class BootProfileTest(unittest.TestCase):
             expected = {str(p): p.read_bytes() for p in root.rglob('*') if p.is_file()}
             backup = root / 'backup'
             with patch.object(runtime.os, 'sync', create=True):
-                runtime.save_rollback(backup, targets)
-                for p in [*module_root.iterdir(), *boot_files, helper, absent]:
+                runtime.save_rollback(backup, targets, preserved=[module_root])
+                for p in [*boot_files, helper, absent]:
                     p.write_text('replacement')
-                (module_root / 'stray.ko').touch()
                 runtime.restore_rollback(backup)
             self.assertFalse(absent.exists())
-            self.assertFalse((module_root / 'stray.ko').exists())
             self.assertEqual({p: Path(p).read_bytes() for p in expected}, expected)
             # A corrupt backup cannot partially restore boot configuration.
             (backup / '0/wave5.ko.xz').write_text('corrupt')
@@ -71,6 +69,10 @@ class BootProfileTest(unittest.TestCase):
                 with self.assertRaisesRegex(ValueError, 'Insufficient /boot'):
                     runtime.check_space(edge, payload)
             self.assertEqual((edge / 'Image').read_bytes(), b'baseline')
+            with patch.object(runtime.shutil, 'disk_usage', return_value=SimpleNamespace(free=len(runtime.BOOT_FILES)*4096+100)):
+                runtime.check_space(edge, payload)
+                with self.assertRaisesRegex(ValueError, 'Insufficient /boot'):
+                    runtime.check_space(edge, payload, separate_directory=True)
 
     def test_install_resumes_only_with_the_complete_identical_module_set(self):
         with tempfile.TemporaryDirectory() as directory:

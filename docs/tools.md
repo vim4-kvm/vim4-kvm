@@ -38,8 +38,10 @@ controls；`ffmpeg-vm.py` 只把显式输入通过 stdin 送到构建 VM 的 FFm
 校验外部模块ABI/产物与r13用户态来源，生成完整清单；不访问板子、不部署、不含vendor blob。
 
 `register-runtime.py install --backup NEW_DIRECTORY` 支持FullKvm/uhd7到7.3.1完整迁移；
-先校验完整模块和空间，再备份启动/登记/edge/完整旧模块（含overlay）及运行时入口。
-`rollback BACKUP_DIRECTORY` 校验备份后整套恢复并sync，不重启。详见[迁移合同](kernel-edge.md#uhd7-到新整包候选)。
+严格核对包清单/完整模块和boot/根分区空间，再备份启动/登记/edge/完整旧模块（含overlay）及入口。
+新boot文件写独立release目录，兼容入口原子替换，最后原子切换FullKvm LINUX/FDT。
+`rollback BACKUP_DIRECTORY` 只恢复实际修改的启动配置/登记/入口，保留旧模块树并sync，不重启。
+详见[迁移合同](kernel-edge.md#uhd7-到新整包候选)。
 
 `tools/hdmi-source-mode.swift`：macOS编译，运行在HDMI信源机；list输出显示器与模式ID，
 set只选择backing raster，不能证明HDMI线上的时序，调用者保存/恢复原ID。

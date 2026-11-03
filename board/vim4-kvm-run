@@ -9,11 +9,8 @@ case "$app" in
     pikvm) state=/var/lib/kvmd ;;
     *) echo 'Unknown VIM4 KVM application' >&2; exit 2 ;;
 esac
-case "$(uname -r)" in
-    7.3.1-vim4kvm-uhd7+) kernel_uhd7=1 ;;
-    *) kernel_uhd7=0 ;;
-esac
-case "$(uname -r)" in
+kernel=$(uname -r)
+case "$kernel" in
     5.15.*)
         export VIM4_VIDEO_BACKEND=vendor
         export GST_PLUGIN_PATH=/usr/lib/vim4-kvm/gstreamer-1.0
@@ -70,7 +67,8 @@ run_app() {
         if [ "${driver##*/}" = mali ]; then
             exec /usr/bin/python3 /usr/lib/vim4-kvm/python/vim4gpu.py --graphics direct -- "$@"
         fi
-        if [ "${driver##*/}" = panfrost ] && { [ "$kernel_uhd7" = 1 ] || [ "$(uname -r)" = '7.3.0-vim4kvm-uhd6+' ] || [ "$(uname -r)" = '7.3.0-vim4kvm-uhd7+' ]; }; then
+        case "$kernel:${driver##*/}" in
+            7.3.0-vim4kvm-uhd[67]+:panfrost|7.3.1-vim4kvm-uhd7+:panfrost)
             # Native AMLY conversion was accepted with this private PanVK.
             for icd in /opt/vim4-mesa-26.2.6/share/vulkan/icd.d/*panfrost*.json; do
                 if [ -r "$icd" ]; then
@@ -83,7 +81,8 @@ run_app() {
                 echo 'Qualified private PanVK ICD is missing' >&2
                 exit 1
             }
-        fi
+            ;;
+        esac
     fi
     exec "$@"
 }
@@ -92,9 +91,9 @@ case "$app" in
     jetkvm) run_app /opt/vim4-jetkvm/jetkvm ;;
     onekvm)
         binary=/opt/vim4-onekvm/one-kvm
-        if { [ "$kernel_uhd7" = 1 ] || [ "$(uname -r)" = '7.3.0-vim4kvm-uhd6+' ] || [ "$(uname -r)" = '7.3.0-vim4kvm-uhd7+' ]; }; then
-            binary=/opt/vim4-onekvm-edge/one-kvm
-        fi
+        case "$kernel" in
+            7.3.0-vim4kvm-uhd[67]+|7.3.1-vim4kvm-uhd7+) binary=/opt/vim4-onekvm-edge/one-kvm ;;
+        esac
         run_app "$binary" --data-dir "$state" --address 127.0.0.1 --port 8081 --auth-mode managed
         ;;
     pikvm) run_app /usr/libexec/vim4-pikvm-run ;;
