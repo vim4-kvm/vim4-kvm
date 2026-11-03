@@ -76,7 +76,7 @@ activate)
     install -m 0644 ./*.so plugin-upper/
     private_directory "$plugins" plugin-upper
     for p in *.so; do cmp "$p" "$plugins/$p"; done
-    if test -f libgstvim4rate.so; then gst-inspect-1.0 vim4ptsrate; fi
+    gst-inspect-1.0 vim4ptsrate
     systemctl start vim4-kvm-hdmi
     "$manager" edid-select RTK-CONTROL
     cmp "$active" "$rx/edid"
@@ -87,14 +87,14 @@ sample)
     cat "$rx/status"
     grep Cma /proc/meminfo
     cat /proc/sys/kernel/tainted
-    v4l2-ctl -d "$dev" --query-dv-timings --get-parm --get-ctrl=gaming_vrr_base_rate --list-formats-ext ;;
+    v4l2-ctl -d "$dev" --query-dv-timings --get-parm --get-ctrl=gaming_vrr_base_rate --list-formats ;;
 bench|raw444|rgb|caps|pts|loss)
     device
     systemctl stop "$unit"
     trap 'systemctl start "$unit"' EXIT
     case "$1" in
     caps)
-        timeout 8 gst-launch-1.0 -v v4l2src device="$dev" num-buffers=12 ! video/x-raw,format=NV12 ! fakesink ;;
+        timeout 8 gst-launch-1.0 -v vim4v4l2src num-buffers=12 ! fakesink ;;
     rgb)
         result=0
         timeout 8 gst-launch-1.0 -v v4l2src device="$dev" num-buffers=4 ! video/x-raw,format=v308 ! fakesink || result=$?

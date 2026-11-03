@@ -1,7 +1,9 @@
 # HFR + YUV444 uhd7 临时窗口
 
 阶段一只构建、验证本机文件。阶段二须协调者明确发出「开始上板」。
-当前产物基于第二轮复审输入，协调者给出简化后的最终提交后重跑构建并核对 SHA。
+内核输入为 `9256eb60444c7`，主仓配方为 `b0810a4`，gst-plugin-venc 和 One-KVM
+分别为 `87c70529` 和 `1e477daf`。私有 v4l2 插件沿用 YUV24 配方，
+公共源与编码插件配套加载 `libgstvim4rate.so` 中的 `vim4ptsrate`。
 
 ## 入口
 
@@ -34,7 +36,8 @@ tools/board-queue run --who hfr-yuv-window --purpose combined --max-min 30 -- \
 | 25–30 | M6模式/测试源恢复，正常重启一次，核验原模块/程序/EDID/配置/服务/UDC及4K60解码 |
 
 25分钟触发恢复。后两项还单独检查剩余预算，时间不足直接裁掉。
-不存在原生模式或Variable菜单时记录跳过。选择Variable但基准未确认时失败收尾。
+不存在原生模式或Variable菜单时记录跳过。选择Variable却未收到有效Gaming VTEM时保存状态并收尾。
+已启用VRR且包内基准为零时，保存控件 −1、公共源 caps 和本地60fps预算下的接收证据。
 脚本的失锁操作是EDID撤回，物理拔插另记未验。运行中不编译、不做码流解码分析。
 
 ## 临时加载与恢复
@@ -69,6 +72,7 @@ HFR码流在板外用ffprobe读取profile/level/像素格式、ffmpeg解码并�
 PTS日志用于逐秒和慢转快第一完整秒输出数统计，网页getStats仅证明接收解码推进。
 YUV444读取的是原始Y/Cb/Cr，编码器输出仍为420。
 
-本脚本的普通v4l2src caps短采每次重新打开，按最终驱动和插件实际能力记录。
+固定分数率和VFR caps取自生产公共源 `vim4v4l2src`，同时记录 G_PARM、PTS 和网页交付率。
+原始444的 capture-integrity 统计 appsink 交付墙钟和最大间隔。
 自然同尺寸range变化、未知基准控件−1、PQ、物理拔线、音频和长稳均未承诺覆盖。
 源端4K HiDPI、Variable菜单与候选服务恢复均待实际板窗确认。

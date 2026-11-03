@@ -1,5 +1,5 @@
 #!/bin/bash
-# Rebuild the review-sensitive subset. All compiler writes stay in our task dirs.
+# Rebuild the board payload. All compiler writes stay in our task dirs.
 set -eu -o pipefail
 here=$(cd "$(dirname "$0")" && pwd)
 cd "$here/../../.."
@@ -13,14 +13,22 @@ b=$PWD/build/hfr-yuv-window
 stage=$(mktemp -d "$b/rebuild.XXXXXX")
 repo=../vim4-kvm-hfr120/gst-plugin-venc
 git -C "$repo" archive "$encoder" | tar -xf - -C "$stage"
+mkdir "$stage/vfmcap"
+git -C ../vim4-kvm-yuv444/gst-plugin-vfmcap archive 6fe6eacac8524b8bfc85ec5b78cfdac5bd4e291c | tar -xf - -C "$stage/vfmcap"
 orb -m vim4-build bash -eu "$here/kernel.sh" "$kernel" "$stage"
 docker run --rm --network none -v "$stage:/work" -v "$PWD/packaging:/recipe:ro" \
+    -v "$PWD/tools/vim4-driver-bench.c:/bench.c:ro" \
     -v "$b/src/archive.xz:/archive.xz:ro" -w /work vim4-kvm-builder:ubuntu24.04 bash -ec '
-    make -C wave5 -j4 libgstvim4wave5.so
-    if test -f wave5/gstvim4rate.c; then make -C wave5 -j4 libgstvim4rate.so; fi
+    make -C wave5 -j4 libgstvim4wave5.so libgstvim4rate.so
     make -C hdr libgstvim4hevc10.so
     cc -O2 -Wall -Wextra -Werror /recipe/kernel-edge/hfr-yuv-window/raw-pool.c -o raw-pool
-    cd /tmp
+    cc -std=c11 -O2 -Wall -Wextra -Werror /bench.c -o vim4-driver-bench $(pkg-config --cflags --libs gstreamer-app-1.0 gstreamer-allocators-1.0 gstreamer-video-1.0)
+    meson setup /tmp/cap vfmcap && meson compile -C /tmp/cap capture-integrity
+    cp /tmp/cap/capture-integrity .
+    # GCC embeds the qualified build directory in DWARF. Recreate it only
+    # inside this ephemeral container, independent of the VM worktree.
+    mkdir -p /home/deepdream/build/yuv444
+    cd /home/deepdream/build/yuv444
     echo "6e347c72d4b8b2886d890ffe9f6767a9edb02f201588e8c3a572dcd08d9852bd  /archive.xz" | sha256sum -c -
     tar -xf /archive.xz
     cd gst-plugins-good-1.24.2
@@ -46,6 +54,6 @@ if [ -n "$onekvm" ]; then
         cp /target/release/one-kvm /out/onekvm-candidate'
     cp "$stage/onekvm-candidate" "$b/payload/one-kvm"
 fi
-cp "$stage"/*.ko "$stage"/{hdr,wave5}/*.so "$stage"/libgstvideo4linux2.so "$stage/raw-pool" \
+cp "$stage"/*.ko "$stage"/{hdr,wave5}/*.so "$stage"/{libgstvideo4linux2.so,raw-pool,capture-integrity,vim4-driver-bench} \
     tools/{hdmirx-encode-check,edge-jpeg-check}.py "$b/payload/"
 (cd "$b/payload"; shasum -a 256 *.ko *.so *.py *.so.0 v4l2-ctl capture-integrity raw-pool vim4-driver-bench one-kvm > SHA256SUMS)

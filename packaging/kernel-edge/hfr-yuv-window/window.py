@@ -38,8 +38,8 @@ def validate():
     recipe = tomllib.loads((HERE.parent / "sources.toml").read_text())["gstreamer"]
     check(BW["sha"](PAYLOAD / "libgstvideo4linux2.so") == recipe["candidate_plugin_sha256"], "v4l2 plugin lock mismatch")
     subprocess.run(["shasum", "-a", "256", "-c", "SHA256SUMS"], cwd=PAYLOAD, check=True)
-    for name in ("labels", "source.tar"):
-        check((BUILD / name).is_file(), f"missing {name}")
+    check((PAYLOAD / "libgstvim4rate.so").is_file(), "missing vim4ptsrate plugin")
+    subprocess.run(["shasum", "-a", "256", "-c", "SOURCE-SHA256SUMS"], cwd=BUILD, check=True)
     playwright = ROOT / "kvm/ui/node_modules/playwright/index.mjs"
     if not playwright.exists():
         playwright = ROOT.parent / "vim4-kvm/kvm/ui/node_modules/playwright/index.mjs"
@@ -133,10 +133,18 @@ def run():
             scale = 2 if len(avi) > 4 and avi[4] >> 5 == 3 else 1
             ticks = int(s.get("frame_ticks", "0"))
             expected = 60 if height == 2160 else 120
-            return (int(s.get("width", 0)) * scale, s.get("height"), s.get("link_ready"),
-                    s.get("vrr_base_hz")) == (width, str(height), "1", str(base)) and (
-                        base or (ticks and abs(166666664 / ticks - expected) < 1))
-        poll(ready, 15)
+            if (int(s.get("width", 0)) * scale, s.get("height"), s.get("link_ready")) != (width, str(height), "1"):
+                return False
+            if base:
+                # Active Gaming VTEM may omit its base. The control then reads
+                # -1 and the production source supplies a local 60 fps budget.
+                return s.get("vrr_enabled") == "1" and s.get("vrr_base_hz") in ("0", str(base))
+            return s.get("vrr_enabled") == "0" and ticks and abs(166666664 / ticks - expected) < 1
+        try:
+            poll(ready, 15)
+        except TimeoutError:
+            save(label + "-unqualified.json", status())
+            raise
         board(label + "-input.txt", ["sample"])
         board(label + "-caps.txt", ["caps"], 15)
         check(not BW["source_hdr"]("vim4"), "expected SDR")
