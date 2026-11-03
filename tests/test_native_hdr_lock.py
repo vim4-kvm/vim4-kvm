@@ -1,9 +1,12 @@
 """Keep the accepted native candidate separate from the uhd5 binary locks."""
 import hashlib
+import importlib.util
 import json
 from pathlib import Path
 import tomllib
 import unittest
+import tempfile
+from unittest import mock
 
 ROOT = Path(__file__).resolve().parents[1]
 
@@ -31,7 +34,8 @@ class NativeHdrLockTest(unittest.TestCase):
         self.assertEqual(manifest['module_count'], runtime['module_count'])
         for component in ('kernel', 'capture', 'onekvm'):
             self.assertEqual(runtime['sources'][component], lock[component + '_revision'])
-        self.assertEqual(runtime['gstreamer_v4l2_sha256'], sources['gstreamer']['candidate_plugin_sha256'])
+        self.assertEqual(runtime['gstreamer_v4l2_sha256'], sources['gstreamer']['native_hdr_plugin_sha256'])
+        self.assertNotEqual(runtime['gstreamer_v4l2_sha256'], sources['gstreamer']['candidate_plugin_sha256'])
         # uhd5 retains its own Image, DTs and BTF-matched module inventory.
         self.assertNotEqual(runtime['build_id'], sources['tested_build']['build_id'])
         self.assertFalse(runtime['installed'])
@@ -44,3 +48,22 @@ class NativeHdrLockTest(unittest.TestCase):
         self.assertEqual(smoke['cma']['taint'], 0)
         self.assertEqual(smoke['cma']['faults'], [])
         self.assertTrue(smoke['sei_matches_hdmi'])
+
+    def test_packager_rejects_substituted_v4l2_plugin(self):
+        path = ROOT / 'packaging/kernel-edge/package-hdr10.py'
+        spec = importlib.util.spec_from_file_location('package_hdr10', path)
+        module = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(module)
+        with tempfile.TemporaryDirectory() as directory:
+            plugin = Path(directory) / 'plugin.so'
+            plugin.write_bytes(b'candidate')
+            lock = {'candidate_plugin_sha256': hashlib.sha256(b'candidate').hexdigest(),
+                    'native_hdr_plugin_sha256': hashlib.sha256(b'historical').hexdigest()}
+            with mock.patch.object(module.tomllib, 'loads', return_value={'gstreamer': lock}):
+                module.verify_v4l2_plugin(plugin, 'yuv444')
+                with self.assertRaisesRegex(ValueError, 'hash mismatch'):
+                    module.verify_v4l2_plugin(plugin, 'native-hdr')
+                plugin.write_bytes(b'historical')
+                module.verify_v4l2_plugin(plugin, 'native-hdr')
+                with self.assertRaisesRegex(ValueError, 'hash mismatch'):
+                    module.verify_v4l2_plugin(plugin, 'yuv444')

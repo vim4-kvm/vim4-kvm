@@ -14,6 +14,78 @@ import tempfile
 from test_gstreamer_orphan import function
 
 
+def check_capture_fallback(source, flags):
+    text = source.with_name('gstv4l2src.c').read_text()
+    fixture = r'''
+#include <gst/video/video.h>
+#undef GST_DEBUG_OBJECT
+#define GST_DEBUG_OBJECT(...) ((void)0)
+typedef struct { int unused; } GstV4l2Object;
+typedef struct {
+  GstV4l2Object *v4l2object;
+  unsigned offset, renegotiation_adjust;
+  gboolean pending_set_fmt;
+} GstV4l2Src;
+typedef GstV4l2Src GstBaseSrc;
+#define GST_V4L2SRC(x) (x)
+typedef struct { GError *error; } GstV4l2Error;
+#define GST_V4L2_ERROR_INIT {NULL}
+struct PreferredCapsInfo { int width, height; };
+static int attempts, error_code;
+static void gst_v4l2_clear_error(GstV4l2Error *e) {g_clear_error(&e->error);}
+static void gst_v4l2_error(GstV4l2Src *s, GstV4l2Error *e)
+{(void)s; gst_v4l2_clear_error(e);}
+static void gst_v4l2_src_fixate_struct_with_preference(GstStructure *s,
+    struct PreferredCapsInfo *p) {(void)s; (void)p;}
+static int gst_v4l2src_fixed_caps_compare(GstCaps *a, GstCaps *b, void *p) {
+  (void)p;
+  const char *left=gst_structure_get_string(gst_caps_get_structure(a,0),"format");
+  const char *right=gst_structure_get_string(gst_caps_get_structure(b,0),"format");
+  return g_str_equal(right,"v308")-g_str_equal(left,"v308");
+}
+static gboolean gst_v4l2_object_caps_is_subset(GstV4l2Object *o,GstCaps *c)
+{(void)o; (void)c; return FALSE;}
+static gboolean gst_v4l2_object_caps_equal(GstV4l2Object *o,GstCaps *c)
+{(void)o; (void)c; return FALSE;}
+static GstCaps *gst_v4l2_object_get_current_caps(GstV4l2Object *o)
+{(void)o; return NULL;}
+static gboolean gst_v4l2_object_try_format(GstV4l2Object *o,GstCaps *c,GstV4l2Error *e) {
+  (void)o; attempts++;
+  if(g_str_equal(gst_structure_get_string(gst_caps_get_structure(c,0),"format"),"RGB"))
+    return TRUE;
+  e->error=g_error_new_literal(GST_RESOURCE_ERROR,error_code,"TRY_FMT rejected");
+  return FALSE;
+}
+'''
+    fixture += '\nstatic GstCaps *\n' + function(text, 'gst_v4l2src_fixate')
+    fixture += r'''
+int main(void) {
+  gst_init(NULL,NULL);
+  GstV4l2Src source={0}; struct PreferredCapsInfo pref={1920,1080};
+  const char *mixed="video/x-raw,format=v308,width=1920,height=1080,framerate=60/1;"
+                    "video/x-raw,format=RGB,width=1920,height=1080,framerate=60/1";
+  error_code=GST_RESOURCE_ERROR_SETTINGS; /* V4L2 EINVAL mapping */
+  GstCaps *chosen=gst_v4l2src_fixate(&source,gst_caps_from_string(mixed),&pref);
+  g_assert_nonnull(chosen); g_assert_cmpint(attempts,==,2);
+  g_assert_cmpstr(gst_structure_get_string(gst_caps_get_structure(chosen,0),"format"),==,"RGB");
+  gst_caps_unref(chosen); attempts=0;
+  chosen=gst_v4l2src_fixate(&source,gst_caps_from_string(
+      "video/x-raw,format=v308,width=1920,height=1080,framerate=60/1"),&pref);
+  g_assert_null(chosen); g_assert_cmpint(attempts,==,1);
+  attempts=0; error_code=GST_RESOURCE_ERROR_FAILED;
+  chosen=gst_v4l2src_fixate(&source,gst_caps_from_string(mixed),&pref);
+  g_assert_null(chosen); g_assert_cmpint(attempts,==,1);
+}
+'''
+    with tempfile.TemporaryDirectory() as temporary:
+        cfile, binary = Path(temporary) / 'fallback.c', Path(temporary) / 'fallback'
+        cfile.write_text(fixture)
+        # The unchanged upstream fixate loop compares gint with guint.
+        subprocess.run(['cc', '-Wall', '-Wextra', '-Werror', '-Wno-sign-compare', str(cfile),
+                        *flags, '-o', str(binary)], check=True)
+        subprocess.run([str(binary)], check=True)
+
+
 def main():
     source = Path(sys.argv[1]).resolve()
     text = source.read_text()
@@ -96,6 +168,8 @@ int main(void) {
                         str(cfile), *flags, '-o', str(binary)], check=True)
         subprocess.run([str(binary)], check=True)
     print('P010 caps and bidirectional YUV24/v308 negotiation: PASS')
+    check_capture_fallback(source, flags)
+    print('Actual v4l2src fixate: RGB fallback, fixed v308 and fatal link error: PASS')
 
 
 if __name__ == '__main__':
