@@ -3,7 +3,7 @@
 三个模块已持久安装并正常重启，实际加载身份匹配。One-KVM AVC/HEVC 和 NanoKVM
 网页均通过 4K60 短窗。首窗 JetKVM 未出首帧，后续补测通过 JetKVM 两浏览器接入、
 PiKVM 和恢复后的 One-KVM；UU 官方客户端接收报告通过。发现并修正临时测试编排的
-HTTP 就绪门禁，产品代码未改。两个窗口累计持板 659.573 秒，板上保留本次模块，正式远端待协调者推进。
+HTTP 就绪门禁，产品代码未改。两个窗口累计持板 659.573 秒，板上保留本次模块，正式远端已由协调者推进至 `4111568841bd`。
 
 ## 离线来源与构建
 
@@ -115,4 +115,9 @@ modules.tar.gz、构建和测试日志、三个成功网页窗口的 JSON/PNG、
 旧工作树及分支由协调者处理，passthrough-73 和 gpu-kbase-7x 保留。
 
 首窗 JetKVM 失败的原始根因受当时证据缺失限制；补测已完成要求的网页接入、关键帧和UU接收项。
-正式源码锁仍记录上一完整内核包，本次模块安装来源和身份以本文为准。协调者负责正式分支推送。
+正式源码锁已更新至 `4111568841bd`，Image 来源仍为 `52b95c8493264`。
+`tested_build.module_build_ids` 记录当前加载身份，`retained_runtime.module_overlays` 记录安装 SHA、
+来源和收据，原整包 manifest、inventory 及安装证明保留完整构建时的身份。
+三份部署收据分别为 [HDMI RX](../../packaging/kernel-edge/uhd7-t7-hdmirx-deployment.json)、
+[VDIN](../../packaging/kernel-edge/uhd7-t7-vdin-test-deployment.json) 和
+[Wave5](../../packaging/kernel-edge/uhd7-wave5-deployment.json)，锁测试联合校验收据及原整包边界。

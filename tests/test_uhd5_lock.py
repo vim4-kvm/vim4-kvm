@@ -19,25 +19,28 @@ class TestedRuntimeLockTest(unittest.TestCase):
             self.assertIn(lock['kernel']['revision'], overlay_revisions)
         else:
             self.assertEqual(lock['kernel']['revision'], built['image_source_revision'])
-        self.check_build(built, installed=True)
+        self.check_build(built, installed=True, overlays=overlays)
 
     def test_module_overlay_receipts_match_source_and_artifact_identity(self):
         recipe = ROOT / 'packaging/kernel-edge'
         lock = tomllib.loads((recipe / 'sources.toml').read_text())
-        built = lock['uhd6_tested_build']
-        for name, overlay in lock['uhd6_retained_runtime']['module_overlays'].items():
-            with self.subTest(module=name):
-                path = recipe / overlay['receipt_path']
-                self.assertEqual(hashlib.sha256(path.read_bytes()).hexdigest(),
-                                 overlay['receipt_sha256'])
-                receipt = json.loads(path.read_text())
-                for field, built_field in [('image_source_revision', 'image_source_revision'),
-                                           ('kernel_build_id', 'build_id'), ('release', 'release')]:
-                    self.assertEqual(receipt[field], built[built_field])
-                for field, overlay_field in [('module_source_revision', 'revision'),
-                                             ('module_sha256', 'sha256'),
-                                             ('module_build_id', 'build_id'), ('module_path', 'path')]:
-                    self.assertEqual(receipt[field], overlay[overlay_field])
+        for build_key, runtime_key in [('tested_build', 'retained_runtime'),
+                                       ('uhd6_tested_build', 'uhd6_retained_runtime')]:
+            built = lock[build_key]
+            for name, overlay in lock[runtime_key]['module_overlays'].items():
+                with self.subTest(runtime=runtime_key, module=name):
+                    path = recipe / overlay['receipt_path']
+                    self.assertEqual(hashlib.sha256(path.read_bytes()).hexdigest(),
+                                     overlay['receipt_sha256'])
+                    receipt = json.loads(path.read_text())
+                    for field, built_field in [('image_source_revision', 'image_source_revision'),
+                                               ('kernel_build_id', 'build_id'), ('release', 'release')]:
+                        self.assertEqual(receipt[field], built[built_field])
+                    for field, overlay_field in [('module_source_revision', 'revision'),
+                                                 ('module_sha256', 'sha256'),
+                                                 ('module_build_id', 'build_id'), ('module_path', 'path'),
+                                                 ('evidence', 'evidence')]:
+                        self.assertEqual(receipt[field], overlay[overlay_field])
 
     def test_previous_gpu_build_keeps_its_complete_historical_lock(self):
         lock = tomllib.loads((ROOT / 'packaging/kernel-edge/sources.toml').read_text())
@@ -88,7 +91,7 @@ class TestedRuntimeLockTest(unittest.TestCase):
         self.assertEqual({(row['mode'], row['codec']) for row in qualified['matrix']},
                          {(mode['id'], codec) for mode in modes for codec in ('h264', 'h265')})
 
-    def check_build(self, built, *, installed):
+    def check_build(self, built, *, installed, overlays=None):
         recipe = ROOT / 'packaging/kernel-edge'
         def checked(relative, digest):
             path = recipe / relative
@@ -123,8 +126,14 @@ class TestedRuntimeLockTest(unittest.TestCase):
             self.assertEqual(manifest['files']['runtime/' + name], digest)
         for name, digest in built['external_modules'].items():
             self.assertEqual(manifest['modules']['extra/' + name + '.ko'], digest)
+        identities = dict(manifest['module_build_ids'])
+        for name, overlay in (overlays or {}).items():
+            self.assertIn(overlay['path'], identities)
+            self.assertEqual(Path(overlay['path']).name.split('.ko')[0].replace('-', '_'), name)
+            self.assertEqual(built['module_build_ids'][name], overlay['build_id'])
+            identities[overlay['path']] = overlay['build_id']
         for name, identity in built['module_build_ids'].items():
-            matches = [value for path, value in manifest['module_build_ids'].items()
+            matches = [value for path, value in identities.items()
                        if Path(path).name.split('.ko')[0].replace('-', '_') == name]
             self.assertEqual(matches, [identity])
         package = ROOT / 'packaging/kbase'

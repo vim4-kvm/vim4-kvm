@@ -4,7 +4,7 @@
 四应用4K60、JetKVM第二浏览器接管关键帧及UU官方客户端接收已补验，范围见
 [安装与会话记录](../bringup/2026-11-03-mainline-modules.md)。
 
-当前正式源码 `52b95c8493264`，默认 FullKvm/kbase 运行 uhd7。BCM43752 主机路径、
+当前正式源码 `4111568841bd`，默认 FullKvm/kbase 运行 uhd7，Image 来自 `52b95c8493264`。BCM43752 主机路径、
 单子系统门禁、HDMI 无信号边界及 Wi-Fi 测量见 [uhd7 构建与安装](../bringup/2026-11-02-wifi-sdio-formal.md)。
 上一版的九类资格与 600 秒运动记录见 [uhd6 验收](../bringup/2026-10-31-uhd6-formal.md)。
 
