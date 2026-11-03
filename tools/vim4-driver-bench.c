@@ -9,13 +9,9 @@
 #include <gst/video/video.h>
 #include <errno.h>
 #include <fcntl.h>
-#ifdef __linux__
-#include <linux/videodev2.h>
-#endif
 #include <stdio.h>
 #include <string.h>
 #include <sys/file.h>
-#include <sys/ioctl.h>
 #include <sys/resource.h>
 #include <sys/stat.h>
 #include <sys/utsname.h>
@@ -404,7 +400,7 @@ int main(int argc, char **argv)
         {"gop", 0, 0, G_OPTION_ARG_INT, &gop, "GOP length; intra refresh disabled", "N"},
         {"width", 0, 0, G_OPTION_ARG_INT, &width, "1920, 2560 or 3840", "PIXELS"},
         {"height", 0, 0, G_OPTION_ARG_INT, &height, "1080, 1440 or 2160", "PIXELS"},
-        {"fps", 0, 0, G_OPTION_ARG_INT, &fps, "Negotiated capture and encoder rate", "FPS"},
+        {"fps", 0, 0, G_OPTION_ARG_INT, &fps, "Encoder budget (edge capture rate is measured from PTS)", "FPS"},
         {"secondary", 0, 0, G_OPTION_ARG_NONE, &secondary, "Stock native-HDR VDIN1 HDMI capture", NULL},
         {"timeout", 0, 0, G_OPTION_ARG_INT, &timeout, "Pipeline deadline in seconds", "SECONDS"},
         {"exclusive", 0, 0, G_OPTION_ARG_NONE, &exclusive, "Caller has exclusive use of capture/encoder", NULL},
@@ -472,18 +468,7 @@ int main(int argc, char **argv)
     bench.gaps_ms = g_array_new(FALSE, FALSE, sizeof(gdouble));
     gchar *source = edge ? g_strdup("v4l2src name=source io-mode=dmabuf") :
         g_strdup(secondary ? "vim4vdin1src name=source" : "vfmcapsrc name=source");
-    /* With standard interval enumeration, v4l2src must use the measured
-     * fraction. The encoder appsrc below still requests the test budget. */
-    gboolean enumerated = FALSE;
-#ifdef __linux__
-    struct v4l2_frmivalenum interval = {
-        .pixel_format = V4L2_PIX_FMT_NV12, .width = width, .height = height,
-    };
-    int capture_fd = edge ? open(device, O_RDWR | O_NONBLOCK | O_CLOEXEC) : -1;
-    enumerated = capture_fd >= 0 && ioctl(capture_fd, VIDIOC_ENUM_FRAMEINTERVALS, &interval) == 0;
-    if (capture_fd >= 0) close(capture_fd);
-#endif
-    g_autofree gchar *rate_filter = enumerated ? g_strdup("") : g_strdup_printf(",framerate=%d/1", fps);
+    g_autofree gchar *rate_filter = edge ? g_strdup("") : g_strdup_printf(",framerate=%d/1", fps);
     gchar *raw_caps = g_strdup_printf("video/x-raw,format=%s,width=%d,height=%d%s",
                                       edge ? "NV12" : "NV21", width, height, rate_filter);
     gchar *encoding = NULL;
