@@ -76,5 +76,4 @@ capture-integrity --v4l2 "$DEVICE" 3600 /tmp/yuv444-last.raw
 
 无法获得YCbCr444/8就保留未验状态。HLG、隔行、像素重复、真12bit、444编码、
 JPEG444和应用UI均不属于此候选。
-已登记issue为debugfs frame入口尚未统一YUV3源资格，以及新鲜DRM与普通AVI不一致时
-可能误判SDR；本候选验收只用V4L2队列和实际AVI/DRM记录。
+本候选验收只用V4L2队列和实际AVI/DRM记录。

@@ -175,26 +175,6 @@ RAM窗口只接受5.15或当前正式锁的精确release，恢复目标以新采
 需要回到仍保留的上一整包时，将 Mainline 的 LINUX/FDT 指回其 `/kernels/<release>/Image`、
 `/kernels/<release>/vim4.dtb` 并重新登记；清理旧内核须另行核对引用并获授权。
 
-### 登记 issue
-
-- phase2-window.py（发生1×严重3）：仍读取当前tested_build却要求uhd6，因此当前7.3.1会在拿票前
-  报“main has no tested uhd6”。这是历史专项入口限制，本轮只登记，不修改其执行范围。
-- MCP文本/输入法：同一长命令在uhd7和7.3.1均缺空格/字符，基线截图出现中文候选框。
-  One-KVM MCP `type`每字符间隔30ms、按下与释放之间无保持时长；切到US输入源、逐键保持50ms后
-  命令正确。未确认输入法与零保持时长各自影响；不算7.3.1回归，详见本次上板记录。
-- USB同配置恢复：PATCH完整原配置会重建gadget，但One-KVM因HID配置值不变跳过backend重载，
-  之后写入报endpoint shutdown。切换USB profile再恢复会走重载并恢复M6输入；本次只登记应用生命周期问题。
-- I3（发生1×严重3）：kernels.json已写而extlinux尚未切换时中断，面板因boot profile不匹配
-  暂时报告mainline不可用，选择mainline也会拒绝。U-Boot仍按原extlinux启动上一整包；
-  只登记此面板表现，不增加恢复服务或双份登记协议。手工改回上一整包后需重新登记以恢复面板可用。
-- board-window 5.15基线（1×3）：要求release出现在默认项LINUX路径中，新刷镜像的`LINUX /Image`
-  符号链接布局会被拒绝；现板Vendor项为`/vmlinuz-<release>`，不受影响。
-- 日期release glob（1×2）：shell的`7.*-vim4-????????`比USB gadget的Python校验宽松，
-  手工构造的异常release判断可能不一致；正常日期与`.N`不受影响。
-- final-window.py（1×3）：仍组装uhd1，但复制的公共运行入口已拒绝退役release；复现旧窗口请检出历史提交。
-- register-runtime.py（1×1）：追加Mainline启动项的分支不可达；archive/kernel-patch-inventory.md
-  的RECIPE仍指向已删除的packaging/kernel-edge（1×2）。
-
 在 Linux ARM64、GCC 13 环境中运行；需要 make、flex、bison、bc、OpenSSL/ELF
 开发库和 pahole。准备阶段不安装到开发机或板子。
 

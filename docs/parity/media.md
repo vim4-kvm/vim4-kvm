@@ -13,7 +13,7 @@ LTR、分层 GOP 与多实例恢复已有[实际码流证据](../bringup/2026-10
 像素重复和真 12bit。R03 真 HLG、R04、R05 真 12bit 验收暂缓，状态不变，不排上板；
 5.15 对这几项也只有代码、无 KVM 上板验收。R06 的 8bit 原生 444 采集可用 M6 验证，照常推进。
 
-2026-11-02 固定高刷与 VRR：当时的候选 `hfr-yuv-73`（现已随[三模块持久部署](../bringup/2026-11-03-mainline-modules.md)进入正式 `4111568841bd`）上 1080p120 AVC/HEVC、1440p120 HEVC 吞吐约 119.9–120fps，网页解码无丢帧，QHD 生产 AVC 限 60；1440p HEVC 的 SPS level 低报 5.0 已登记。M6 经 HDMI 不提供 Variable 刷新率，即便 EDID 声明 HDMI Forum VRR 48–120 Hz；Gaming VRR 只有宿主回归，上板验收同样暂缓。[窗口](../bringup/2026-11-02-hfr-yuv-window.md)
+2026-11-02 固定高刷与 VRR：当时的候选 `hfr-yuv-73`（现已随[三模块持久部署](../bringup/2026-11-03-mainline-modules.md)进入正式 `4111568841bd`）上 1080p120 AVC/HEVC、1440p120 HEVC 吞吐约 119.9–120fps，网页解码无丢帧，QHD 生产 AVC 限 60。M6 经 HDMI 不提供 Variable 刷新率，即便 EDID 声明 HDMI Forum VRR 48–120 Hz；Gaming VRR 只有宿主回归，上板验收同样暂缓。[窗口](../bringup/2026-11-02-hfr-yuv-window.md)
 
 | ID / 厂商能力及来源 | 7.3 状态 | 差异、现有证据 | 路线、依赖 / 人日 / 风险 / 验证硬件 |
 |---|---|---|---|
