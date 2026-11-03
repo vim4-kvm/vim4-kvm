@@ -232,9 +232,9 @@ def run():
             board("444-integrity.log", ["raw444"], 100)
             subprocess.run(["scp", f"vim4:{remote}/last.raw", out], timeout=25, check=True)
         else:
-            save("skip-444", "source did not supply YCbCr444/8")
             if bytes.fromhex(state["avi_packet"])[4] >> 5 == 0:
                 board("rgb-fallback.txt", ["rgb"])
+            save("skip-444", "source did not supply YCbCr444/8")
 
         for mode, width, height, base in [("1080", 1920, 1080, 120), ("4k", 3840, 2160, 60)]:
             if end - time.time() < 480:
@@ -284,17 +284,25 @@ def run():
                         save("dmesg-candidate", ssh("sudo -n dmesg"))
                     except subprocess.SubprocessError as error:
                         save("candidate-log-unavailable", str(error))
-                    try:
-                        if ssh("cat /proc/sys/kernel/random/boot_id").strip() == oldboot:
+                    # Retry the read within the recovery alarm. Once reboot
+                    # has been requested, a lost reply must not resend it.
+                    while True:
+                        try:
+                            current_boot = ssh("cat /proc/sys/kernel/random/boot_id", timeout=5).strip()
+                            break
+                        except subprocess.SubprocessError as error:
+                            save("boot-id-transport", str(error))
+                            time.sleep(1)
+                    if current_boot == oldboot:
+                        try:
                             ssh("sudo -n systemctl reboot --no-block")
-                    except subprocess.SubprocessError as error:
-                        # SSH can drop after systemd has accepted the reboot.
-                        # The new boot ID below decides whether recovery succeeded.
-                        save("reboot-transport", str(error))
+                        except subprocess.SubprocessError as error:
+                            save("reboot-transport", str(error))
                     BW["ready"]("vim4", expected=RELEASE, old_boot=oldboot, timeout=90)
                     BW["verify_baseline"](baseline, save("restored.json", BW["identity"]("vim4", files)))
                     check(ssh("ls -1 " + PLUGINS) == installed_plugins, "installed plugin inventory changed")
-                    ssh("systemctl is-active one-kvm vim4-kvm-hdmi vim4-manager vim4-kvm-gadget")
+                    for unit in ("one-kvm", "vim4-kvm-hdmi", "vim4-manager", "vim4-kvm-gadget"):
+                        ssh("systemctl is-active --quiet " + unit)
                     save("restored-exe", ssh("sha256sum /proc/$(systemctl show -p MainPID --value one-kvm)/exe"))
                     check((out / "restored-exe").read_text().split()[0] == baseline["files"][APP], "restored process mismatch")
                     save("dmesg-restored", ssh("sudo -n dmesg"))

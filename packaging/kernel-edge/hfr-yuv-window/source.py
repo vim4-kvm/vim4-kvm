@@ -106,7 +106,7 @@ class Source:
                  f'curl -fs --max-time 2 {self.url}{self.fallback_path} && break; sleep 2; done; '
                  'test -e done || python3 m6.py restore')
         cmd = f'nohup sh -c {shlex.quote(guard)} </dev/null >{r}/guard.log 2>&1 &'
-        if self.shell(cmd + " waitpid=$!"):
+        if self.shell(cmd):
             raise RuntimeError("M6 fallback did not start")
 
     def action(self, action):

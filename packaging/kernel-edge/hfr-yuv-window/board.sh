@@ -96,10 +96,20 @@ bench|raw444|rgb|caps|pts|loss)
     caps)
         timeout 8 gst-launch-1.0 -v vim4v4l2src num-buffers=12 ! fakesink ;;
     rgb)
+        formats=$(v4l2-ctl -d "$dev" --list-formats)
+        printf '%s\n' "$formats"
+        case "$formats" in
+            *"'NV12'"*) fallback=NV12 ;;
+            *"'RGB3'"*) fallback=RGB ;;
+            *) echo 'VDIN enumerated no supported RGB-input fallback' >&2; exit 1 ;;
+        esac
         result=0
         timeout 8 gst-launch-1.0 -v v4l2src device="$dev" num-buffers=4 ! video/x-raw,format=v308 ! fakesink || result=$?
         test "$result" = 1
-        timeout 8 gst-launch-1.0 -v v4l2src device="$dev" num-buffers=4 ! 'video/x-raw,format=(string){v308,RGB}' ! fakesink ;;
+        timeout 8 gst-launch-1.0 -v v4l2src device="$dev" num-buffers=4 ! \
+            "video/x-raw,format=(string){v308,$fallback}" ! fakesink silent=false | tee rgb-mixed.log
+        grep -F 'GstPad:sink: caps =' rgb-mixed.log | grep -F "format=(string)$fallback,"
+        grep -F 'last-message = chain' rgb-mixed.log ;;
     pts)
         # The source runs 120/80/60/48/120 at seven seconds per phase.
         # Keep the buffer PTS through the final slow-to-fast transition.
