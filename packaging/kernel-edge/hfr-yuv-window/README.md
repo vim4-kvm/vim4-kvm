@@ -1,7 +1,7 @@
 # HFR + YUV444 uhd7 临时窗口
 
 阶段一只构建、验证本机文件。阶段二须协调者明确发出「开始上板」。
-内核输入为 `9256eb60444c7`，主仓配方为 `b0810a4`，gst-plugin-venc 和 One-KVM
+本次上板内核为 `13e4a364967c`，主仓输入为 `621531066c94`，gst-plugin-venc 和 One-KVM
 分别为 `87c70529` 和 `1e477daf`。私有 v4l2 插件沿用 YUV24 配方，
 公共源与编码插件配套加载 `libgstvim4rate.so` 中的 `vim4ptsrate`。
 
@@ -47,7 +47,8 @@ tools/board-queue run --who hfr-yuv-window --purpose combined --max-min 30 -- \
 由协调者另行安排源准入。本窗口不尝试猜测或覆盖自定义EDID。
 
 三个模块从 /tmp insmod，沿用原模块参数，比较实际notes与候选ELF。
-程序覆盖目标由已安装launcher对应的usb-ffc6130路径固定，启动前核对当前进程身份。
+临时解绑 VIM4HDMIRX 的 simple-card 以释放 RX 模块引用，加载后重新绑定。
+程序覆盖目标由已安装launcher对应的usb-ffc6130路径固定，在服务 cgroup 内核对实际 One-KVM ELF。
 候选GStreamer插件作为r14e私有目录的临时overlay，可加入原目录没有的libgstvim4rate.so。
 One-KVM数据目录也使用临时overlay，
 帧率、编码配置、插件缓存的写入随重启消失。所有已安装模块文件与启动文件原样保留。
@@ -56,7 +57,8 @@ SSH中断后仍检查恢复，不以SSH命令退出码代替实际boot ID。
 
 M6切模式、启动图样、Variable菜单均通过One-KVM MCP。源端命令先核验Apple M6及
 单一RTK显示器，只在M6运行Swift图样；本机只编译，不运行显示/HID工具。
-Variable菜单由当前截图OCR定位，识别不确定就退出。初始键盘布局须为英文。
+Variable菜单由当前截图OCR定位，识别不确定就退出。Terminal 用一次性文本确认英文输入，
+若切换了输入法，收尾时切回。M6 通过会话级显示配置维持测试模式并回读，结束时恢复原模式 ID。
 源端看门脚本在超时或接收恢复请求时恢复原模式，候选MCP失效也能触发。
 MCP隧道为本机18081→板子127.0.0.1:8081。receiver复用tools/board-window，
 当前工作树缺kvm子目录时使用同级vim4-kvm/kvm/ui/node_modules/playwright/index.mjs。

@@ -52,7 +52,7 @@ class OverlayRecoveryTest(unittest.TestCase):
                 return '{"api_key":"mock"}'
             if "mktemp" in cmd:
                 return "/tmp/hfr-yuv.12345678"
-            if cmd.startswith("sha256sum"):
+            if cmd.endswith(" bash app-hash"):
                 return "installed  /proc/123/exe"
             return "unchanged"
 

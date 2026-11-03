@@ -172,7 +172,7 @@ def run():
             path = "/sys/module/" + mod.replace("-", "_") + "/notes/.note.gnu.build-id"
             check(baseline["files"][path] == hashlib.sha256(note).hexdigest(), f"unexpected baseline {mod}")
         ssh("systemctl is-active --quiet one-kvm && systemctl is-active --quiet vim4-kvm-hdmi && "
-            "grep -Eiq '^default[[:space:]]+FullKvm[[:space:]]*$' /boot/extlinux/extlinux.conf && "
+            "sudo -n grep -Eiq '^default[[:space:]]+FullKvm[[:space:]]*$' /boot/extlinux/extlinux.conf && "
             "test -z \"$(sudo -n cat /sys/kernel/config/usb_gadget/kvm/functions/mass_storage.disk0/lun.0/file)\"")
         oldboot = ssh("cat /proc/sys/kernel/random/boot_id").strip()
         installed_plugins = ssh("ls -1 " + PLUGINS)
@@ -187,12 +187,6 @@ def run():
         check(re.fullmatch(r"/tmp/hfr-yuv\.[A-Za-z0-9]{8}", remote), "unexpected staging directory")
         subprocess.run(["scp", *PAYLOAD.glob("*"), HERE / "board.sh", "vim4:" + remote + "/"], timeout=60, check=True)
         board("original.txt", ["preflight"])
-        key = json.loads(ssh("sudo -n cat /var/lib/one-kvm/mcp/credentials.json"))["api_key"]
-        source = Source(BW["MCP"](URL + "/api/mcp", key), BUILD, out, ip)
-        gadget = "/sys/kernel/config/usb_gadget/kvm"
-        gadget_ids = ssh(f"sudo -n cat {gadget}/idVendor {gadget}/idProduct")
-        source.bootstrap(BW["sha"](BUILD / "source.tar"), gadget_ids)
-        saved = True
         reference = receive("baseline", 10, 55, (3840, 2160))
         activated = True
         board("candidate.txt", ["activate"], 65)
@@ -205,6 +199,14 @@ def run():
                 return sample["samples"][-1][counter] - sample["samples"][0][counter]
             check(delta(metrics) <= delta(reference), "4K60 regression in " + counter)
 
+        # Both 4K60 measurements use the unchanged desktop. Acquire M6 control
+        # and save its mode before the first source-side change.
+        key = json.loads(ssh("sudo -n cat /var/lib/one-kvm/mcp/credentials.json"))["api_key"]
+        source = Source(BW["MCP"](URL + "/api/mcp", key), BUILD, out, ip)
+        gadget = "/sys/kernel/config/usb_gadget/kvm"
+        gadget_ids = ssh(f"sudo -n cat {gadget}/idVendor {gadget}/idProduct")
+        source.bootstrap(BW["sha"](BUILD / "source.tar"), gadget_ids)
+        saved = True
         for height, width, codec in [(1080, 1920, "h264"), (1440, 2560, "h265")]:
             if not source.action(str(height)):
                 save(f"skip-{height}", "M6 lacks native 119.88/120 mode")
@@ -270,8 +272,12 @@ def run():
     finally:
         signal.alarm(max(1, int(end - time.time() - 5)))
         try:
-            if saved:
-                source.restore()
+            try:
+                if saved:
+                    source.restore()
+            finally:
+                if source and source.input_switched:
+                    source.call("key", text="ctrl+space")
         finally:
             if source:
                 source.server.shutdown()
@@ -303,7 +309,8 @@ def run():
                     check(ssh("ls -1 " + PLUGINS) == installed_plugins, "installed plugin inventory changed")
                     for unit in ("one-kvm", "vim4-kvm-hdmi", "vim4-manager", "vim4-kvm-gadget"):
                         ssh("systemctl is-active --quiet " + unit)
-                    save("restored-exe", ssh("sha256sum /proc/$(systemctl show -p MainPID --value one-kvm)/exe"))
+                    proof_script = shlex.quote((HERE / "board.sh").read_text())
+                    save("restored-exe", ssh(f"sudo -n bash -c {proof_script} bash app-hash"))
                     check((out / "restored-exe").read_text().split()[0] == baseline["files"][APP], "restored process mismatch")
                     save("dmesg-restored", ssh("sudo -n dmesg"))
                     ssh(f"sudo -n rm -rf -- {remote}")

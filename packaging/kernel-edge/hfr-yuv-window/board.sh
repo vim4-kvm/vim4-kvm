@@ -30,14 +30,30 @@ device() {
     test "${#found[@]}" = 1
     dev=${found[0]}
 }
-proof() {
+app_hash() {
     systemctl is-active --quiet "$unit"
-    timeout 12 bash -c 'until [[ /proc/$(systemctl show -p MainPID --value one-kvm)/exe -ef "$1" ]]; do sleep .2; done' _ "$app"
+    local group=$(systemctl show -p ControlGroup --value "$unit") pid
+    for pid in $(cat "/sys/fs/cgroup$group/cgroup.procs"); do
+        if [[ /proc/$pid/exe -ef "$app" ]]; then
+            sha256sum "/proc/$pid/exe"
+            return
+        fi
+    done
+    return 1
+}
+proof() {
+    local deadline=$((SECONDS + 12))
+    until app_hash; do ((SECONDS < deadline)) || return 1; sleep .2; done
     sha256sum "$app" "$plugins"/{libgstvideo4linux2,libgstvim4wave5,libgstvim4hevc10}.so \
         /sys/module/{wave5,t7_hdmirx,t7_vdin_test}/notes/.note.gnu.build-id "$active" "$rx/edid"
     "$manager" edid-status
 }
+start_app() {
+    systemctl start "$unit" &&
+        timeout 15 bash -c 'until curl -fs --max-time 2 http://127.0.0.1:8081/api/stream/status >/dev/null; do sleep .2; done'
+}
 case "$1" in
+app-hash) app_hash ;;
 preflight)
     proof
     sha256sum -c SHA256SUMS
@@ -61,6 +77,10 @@ activate)
     # directory. Keep those writes private until the normal recovery boot.
     mkdir data-upper
     private_directory /var/lib/one-kvm data-upper
+    # The bound ASoC card pins the RX codec module even with no PCM open.
+    card_driver=/sys/bus/platform/drivers/asoc-simple-card
+    test "$(tr -d '\0' < "$card_driver/sound/of_node/simple-audio-card,name")" = VIM4HDMIRX
+    printf 'sound\n' > "$card_driver/unbind"
     rmmod wave5 t7_vdin_test t7_hdmirx
     for name in t7-hdmirx t7-vdin-test wave5; do
         mapfile -t parameters < "${name//-/_}.params"
@@ -70,6 +90,7 @@ activate)
         note=/sys/module/${name//-/_}/notes/.note.gnu.build-id
         test "$(tail -c 20 "$note" | od -An -tx1 | tr -d ' \n')" = "$localid"
     done
+    if ! test -L "$card_driver/sound"; then printf 'sound\n' > "$card_driver/bind"; fi
     mount --bind "$PWD/one-kvm" "$app"
     # A new factory (vim4ptsrate) has no installed file to bind over.
     mkdir plugin-upper
@@ -80,7 +101,7 @@ activate)
     systemctl start vim4-kvm-hdmi
     "$manager" edid-select RTK-CONTROL
     cmp "$active" "$rx/edid"
-    systemctl start "$unit"
+    start_app
     proof ;;
 sample)
     device
@@ -91,7 +112,7 @@ sample)
 bench|raw444|rgb|caps|pts|loss)
     device
     systemctl stop "$unit"
-    trap 'systemctl start "$unit"' EXIT
+    trap 'rc=$?; start_app || exit 1; exit "$rc"' EXIT
     case "$1" in
     caps)
         timeout 8 gst-launch-1.0 -v vim4v4l2src num-buffers=12 ! fakesink ;;
@@ -143,7 +164,7 @@ bench|raw444|rgb|caps|pts|loss)
         grep Cma /proc/meminfo
         gst-launch-1.0 -v v4l2src device="$dev" num-buffers=12 ! video/x-raw,format=NV12 ! fakesink ;;
     loss)
-        trap '/usr/libexec/vim4-edid restore; systemctl start "$unit"' EXIT
+        trap 'rc=$?; /usr/libexec/vim4-edid restore || rc=1; start_app || exit 1; exit "$rc"' EXIT
         v4l2-ctl -d "$dev" --get-fmt-video > before-loss.fmt
         v4l2-ctl -d "$dev" --clear-edid 0
         timeout 10 bash -c 'until grep -qx "link_ready: 0" "$1/status"; do sleep .2; done' _ "$rx"

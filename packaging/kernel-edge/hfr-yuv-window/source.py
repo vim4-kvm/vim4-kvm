@@ -18,6 +18,7 @@ class Source:
         self.evidence = evidence
         self.root = "/tmp/hfr-" + secrets.token_hex(8)
         self.acks = {}
+        self.input_switched = False
         self.fallback = threading.Event()
         fallback = self.fallback
         self.fallback_path = "/restore-" + secrets.token_hex(8)
@@ -50,14 +51,14 @@ class Source:
         threading.Thread(target=self.server.serve_forever, daemon=True).start()
 
     def call(self, name, **args):
-        self.mcp.call(name, args, deadline=time.monotonic() + 12)
+        self.mcp.call(name, args, deadline=time.monotonic() + (45 if name == "type" else 12))
 
     def shell(self, command, timeout=25):
         ticket = secrets.token_hex(8)
         self.acks[ticket] = None
         log = "/tmp/hfr-receipt-" + ticket
         command = (f' ({command}) >{log} 2>&1; r=$?; curl -fsS --max-time 8 '
-                   f'--data-binary @{log} {self.url}/done/{ticket}/$r; rm -f {log}')
+                   f'--data-binary @{log} "{self.url}/done/{ticket}/$r" ; rm -f {log}')
         self.call("type", text=command)
         self.call("key", text="Return")
         end = time.monotonic() + timeout
@@ -68,21 +69,41 @@ class Source:
         return self.acks.pop(ticket)
 
     def open_terminal(self):
-        for name, text in [("key", "Escape"), ("key", "super+alt+space"),
-                           ("key", "super+shift+g"), ("type", "/System/Applications/Utilities/Terminal.app"),
-                           ("key", "Return"), ("key", "super+o")]:
-            self.call(name, text=text)
-            time.sleep(.6)
+        # M6 fixed 4K60: MCP's 1920x1080 image shows Terminal in the Dock.
+        # Confirm the hover label before clicking and the menu before typing.
+        icon = [1205, 1044]
+        self.call("mouse_move", coordinate=icon)
+        time.sleep(1)
+        if not any("Terminal" in r["label"] and abs(r["x"] - icon[0]) < 90 and
+                   930 < r["y"] < icon[1] for r in self.labels()):
+            raise RuntimeError("M6 Terminal Dock tooltip not identified")
+        self.call("left_click", coordinate=icon)
+        time.sleep(.7)
+        if not any("Terminal" in r["label"] and r["y"] < 25 and r["x"] < 160 for r in self.labels()):
+            raise RuntimeError("MCP screenshot did not identify Terminal")
         self.call("key", text="super+n")
         time.sleep(.7)
-        if not any(r["label"] == "Terminal" for r in self.labels()):
-            raise RuntimeError("MCP screenshot did not identify Terminal")
+
+    def english_input(self):
+        # Probe in our own blank Terminal without submitting a shell command.
+        # A prior Terminal may still be visible behind ours. Its prompt or
+        # shell-history suggestions are not evidence for the active input.
+        marker = "vanilla keyboard " + str(100000 + secrets.randbelow(900000))
+        self.call("type", text=marker + " ")
+        time.sleep(.4)
+        try:
+            return any(marker in r["label"].lower() for r in self.labels())
+        finally:
+            # Cancel the entire unsubmitted line, including any composed text
+            # left by the M6 input method before switching to English.
+            self.call("key", text="ctrl+c")
 
     def bootstrap(self, sha, gadget_ids):
         # The cable assignment is M6. Cross-check the receiving Mac's USB
         # tree before even the first Finder shortcut, while HID is still idle.
         vendor, product = (int(value, 16) for value in gadget_ids.split())
-        nodes = plistlib.loads(subprocess.check_output(["ioreg", "-a", "-p", "IOUSB", "-l"], timeout=8))
+        tree = plistlib.loads(subprocess.check_output(["ioreg", "-a", "-p", "IOUSB", "-l"], timeout=8))
+        nodes = [tree] if isinstance(tree, dict) else tree
         devices = []
         while nodes:
             node = nodes.pop()
@@ -94,6 +115,12 @@ class Source:
         if not self.mcp.idle(self.evidence)["idle"]:
             raise RuntimeError("M6 screen is active, deferring HID")
         self.open_terminal()
+        if not self.english_input():
+            self.call("key", text="ctrl+space")
+            self.input_switched = True
+            time.sleep(.7)
+            if not self.english_input():
+                raise RuntimeError("M6 English input could not be verified")
         r = self.root
         command = (f'test "$(sysctl -n machdep.cpu.brand_string)" = "Apple M6" && '
                    f'umask 077 && mkdir {r} && cd {r} && curl -fsS {self.url}/source.tar -o s.tar && '
@@ -120,7 +147,7 @@ class Source:
     def labels(self):
         path = self.evidence / f"mcp-{time.time_ns()}.jpg"
         self.mcp.screenshot(path, deadline=time.monotonic() + 12)
-        return json.loads(subprocess.check_output([self.build / "labels", path], timeout=8))
+        return json.loads(subprocess.check_output([self.build / "labels", path], timeout=30))
 
     def variable(self):
         self.action("settings")
