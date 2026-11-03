@@ -7,6 +7,7 @@ register build.json [--source-label OneKvmTest] [--framebuffer-console]
 Registration requires root on the board after installing the matching Image,
 DTB and complete module set. It preserves the current default and data. It does
 not install files, enable applications, reboot or promise automatic fallback.
+install stages a sealed complete package before atomically switching FullKvm.
 """
 import argparse
 import gzip
@@ -20,6 +21,76 @@ import subprocess
 import sys
 import tarfile
 import tempfile
+
+UHD7 = '7.3.0-vim4kvm-uhd7+'
+CANDIDATE = '7.3.1-vim4kvm-uhd7+'
+BOOT_FILES = ('Image', 'vim4.dtb', 'panfrost.dtb', 'config', 'Module.symvers', 'vmlinux.btf', 'manifest.json')
+
+
+def check_space(edge, payload, *, separate_directory=False):
+    required = sum(((payload / name).stat().st_size if separate_directory else
+                    max(0, (payload / name).stat().st_size -
+                        ((edge / name).stat().st_size if (edge / name).exists() else 0)))
+                   + 4096 for name in BOOT_FILES)
+    if separate_directory:
+        required += 16384  # Candidate directories and the atomic extlinux replacement.
+    if shutil.disk_usage(edge).free < required:
+        raise ValueError('Insufficient /boot space for the complete edge runtime')
+    return required
+
+
+def atomic_copy(source, destination):
+    """Keep the previous executable intact until its complete replacement is durable."""
+    with tempfile.NamedTemporaryFile(prefix='.' + destination.name + '-',
+                                     dir=destination.parent, delete=False) as temporary:
+        staging = Path(temporary.name)
+    try:
+        shutil.copyfile(source, staging)
+        staging.chmod(source.stat().st_mode & 0o777)
+        with staging.open('rb') as stream:
+            os.fsync(stream.fileno())
+        os.replace(staging, destination)
+        descriptor = os.open(destination.parent, os.O_RDONLY | os.O_DIRECTORY)
+        try:
+            os.fsync(descriptor)
+        finally:
+            os.close(descriptor)
+    finally:
+        staging.unlink(missing_ok=True)
+
+
+def preflight_root_space(boot_root, module_bytes, runtime_files, firmware, boot_bytes):
+    runtime_bytes = sum(p.stat().st_size + 4096 for p in runtime_files)
+    required = module_bytes + runtime_bytes + firmware.stat().st_size + 16384
+    if boot_root.stat().st_dev == Path('/').stat().st_dev:
+        required += boot_bytes
+    if shutil.disk_usage(Path('/')).free < required:
+        raise ValueError('Insufficient root space for complete modules, runtime and firmware')
+
+
+def upgrade_registration(boot, original, report, payload, kernel_dir):
+    """Prepare the existing FullKvm record without changing its arguments or other labels."""
+    fields = boot.boot_entries(original.decode())['FullKvm']
+    prefix = '/' + str(kernel_dir.relative_to(boot.BOOT))
+    full = dict(fields, LINUX=prefix + '/Image', FDT=prefix + '/vim4.dtb')
+    label, lines = None, []
+    for line in original.decode().splitlines(keepends=True):
+        words = line.split(None, 1)
+        if len(words) == 2 and words[0].upper() == 'LABEL':
+            label = words[1].strip()
+        if label == 'FullKvm' and words and words[0].upper() in ('LINUX', 'FDT'):
+            line = '  ' + words[0].upper() + ' ' + full[words[0].upper()] + '\n'
+        lines.append(line)
+    text = ''.join(lines)
+    records = json.loads(boot.MANIFEST.read_text())
+    current = next(record for record in records if record['label'] == 'FullKvm')
+    if current['release'] != UHD7 or current['boot'] != fields:
+        raise ValueError('Installed FullKvm registry differs from the uhd7 boot profile')
+    artifacts = {str(kernel_dir / name): digest(payload / name) for name in ('Image', 'vim4.dtb')}
+    artifacts.update({str(Path('/lib/modules') / report['release'] / name): value
+                      for name, value in report['modules'].items()})
+    current.update(release=report['release'], boot=full, artifacts=artifacts)
+    return text, records
 
 
 def digest(path):
@@ -100,7 +171,7 @@ def register(args):
     import vim4boot as boot
     proof = json.loads(args.proof.read_text())
     version = proof['release']
-    if version not in ('7.3.0-rc7-vim4kvm-uhd1+', '7.3.0-vim4kvm-uhd1+', '7.3.0-vim4kvm-uhd6+', '7.3.0-vim4kvm-uhd7+'):
+    if version not in ('7.3.0-rc7-vim4kvm-uhd1+', '7.3.0-vim4kvm-uhd1+', '7.3.0-vim4kvm-uhd6+', UHD7, CANDIDATE):
         raise ValueError('No validated application launcher for this kernel release')
     if digest(boot.BOOT / 'edge/Image') != proof['image_sha256']:
         raise ValueError('Installed mainline Image differs from the build inventory')
@@ -205,27 +276,33 @@ def install(args):
                     raise ValueError('Unsafe package member: ' + member.name)
             archive.extractall(root, filter='data')
         candidate = json.loads((root / 'candidate.json').read_text())
+        actual_files = {str(p.relative_to(root)) for p in root.rglob('*') if p.is_file()}
+        if actual_files - {'candidate.json'} != set(candidate['sha256']):
+            raise ValueError('Package file inventory differs from candidate.sha256')
         for name, expected in candidate['sha256'].items():
             if digest(root / name) != expected:
                 raise ValueError('Package hash mismatch: ' + name)
         report = json.loads((root / 'manifest.json').read_text())
         version = report['release']
-        upgrade = version == '7.3.0-vim4kvm-uhd7+'
-        if version not in ('7.3.0-vim4kvm-uhd6+', '7.3.0-vim4kvm-uhd7+') or release(root / 'Image') != version:
+        upgrade = version in (UHD7, CANDIDATE)
+        if version not in ('7.3.0-vim4kvm-uhd6+', UHD7, CANDIDATE) or release(root / 'Image') != version:
             raise ValueError('Unexpected unified kernel Image')
         if upgrade:
-            if (label != 'FullKvm' or saved != '7.3.0-vim4kvm-uhd6+' or
+            previous = UHD7 if version == CANDIDATE else '7.3.0-vim4kvm-uhd6+'
+            if (label != 'FullKvm' or saved != previous or
                     entries[label].get('LINUX') != '/edge/Image' or entries[label].get('FDT') != '/edge/vim4.dtb'):
-                raise ValueError('The uhd7 upgrade requires the installed uhd6 FullKvm kbase profile')
+                raise ValueError('Upgrade requires the installed ' + previous + ' FullKvm kbase profile')
         elif not saved.startswith('5.15.'):
             raise ValueError('Installation requires 5.15 as the saved default')
         with tarfile.open(root / 'modules.tar.gz') as archive:
             actual = {}
+            module_bytes = 0
             for member in archive:
                 path = Path(member.name)
                 if path.is_absolute() or '..' in path.parts or not path.parts or path.parts[0] != version:
                     raise ValueError('Unsafe module member: ' + member.name)
                 if member.isdir():
+                    module_bytes += 4096
                     continue
                 if not member.isfile():
                     raise ValueError('Nonregular module member: ' + member.name)
@@ -233,27 +310,60 @@ def install(args):
                 if name in actual:
                     raise ValueError('Duplicate module member: ' + name)
                 actual[name] = hashlib.file_digest(archive.extractfile(member), 'sha256').hexdigest()
+                module_bytes += member.size + 4096
             if actual != report['modules']:
                 raise ValueError('Incomplete or mismatched module archive')
         edge = boot.BOOT / 'edge'
-        edge.mkdir(exist_ok=True)
-        boot_files = ('Image', 'vim4.dtb', 'panfrost.dtb', 'config', 'Module.symvers', 'vmlinux.btf', 'manifest.json')
-        required = sum(max(0, (root / name).stat().st_size -
-                           ((edge / name).stat().st_size if (edge / name).exists() else 0))
-                       + 4096 for name in boot_files)
-        if shutil.disk_usage(edge).free < required:
-            raise ValueError('Insufficient /boot space for the complete edge runtime')
+        boot_files = BOOT_FILES
+        boot_bytes = check_space(edge, root, separate_directory=version == CANDIDATE)
+        runtime_files = sorted(p for p in (root / 'runtime/usr').rglob('*') if p.is_file())
         if upgrade:
             updates = Path('/lib/firmware/updates')
             name = Path('brcm/brcmfmac43752-sdio.khadas,vim4.bin')
             firmware = updates / saved / name
             if digest(firmware) != '3ff292ab216c13ce3019f6b4cc4234a15a81c8b553014b122f748efd9465676d':
                 raise ValueError('Expected the qualified BCM43752 .217 firmware')
+        if version == CANDIDATE:
+            kernel_dir = boot.BOOT / 'kernels' / version
+            if kernel_dir.exists():
+                raise ValueError('Use a new candidate boot directory; previous staging is retained')
+            text, records = upgrade_registration(boot, original, report, root, kernel_dir)
+            registration = (json.dumps(records, indent=2) + '\n').encode()
+            preflight_root_space(boot.BOOT, module_bytes, runtime_files, firmware, boot_bytes)
+        if upgrade:
             destination = updates / version / name
             destination.parent.mkdir(parents=True, exist_ok=True)
             shutil.copyfile(firmware, destination)
+            if digest(destination) != digest(firmware):
+                raise ValueError('Installed BCM43752 firmware hash mismatch')
         install_complete_modules(root / 'modules.tar.gz', Path('/lib/modules') / version,
                                  report['modules'])
+        if version == CANDIDATE:
+            kernel_dir.mkdir(parents=True)
+            for name in boot_files:
+                shutil.copyfile(root / name, kernel_dir / name)
+                if digest(kernel_dir / name) != candidate['sha256'][name]:
+                    raise ValueError('Staged boot file hash mismatch: ' + name)
+            for source in runtime_files:
+                destination = Path('/usr') / source.relative_to(root / 'runtime/usr')
+                destination.parent.mkdir(parents=True, exist_ok=True)
+                # These qualified helpers support both uhd7 and the candidate;
+                # every partial installation must still run the retained kernel.
+                source.chmod(0o755)
+                atomic_copy(source, destination)
+                if digest(destination) != candidate['sha256'][str(source.relative_to(root))]:
+                    raise ValueError('Installed runtime hash mismatch: ' + str(destination))
+            for record in records:
+                boot.validate_entry(record, text, hashes=True)
+            os.sync()
+            boot.atomic_write(boot.MANIFEST, registration)
+            os.sync()
+            # The sole boot commit: old Image/DT/modules remain usable until here.
+            boot.atomic_write(boot.CONFIG, text.encode())
+            os.sync()
+            print(f'Installed {version}; saved default remains {label}')
+            return
+        edge.mkdir(exist_ok=True)
         for name in boot_files:
             shutil.copyfile(root / name, edge / name)
         for path in (root / 'runtime/usr').rglob('*'):

@@ -147,6 +147,43 @@ git -C linux-7.3 am ../armbian-build-7.3/patch/kernel/archive/meson-s4t7-7.3/*.p
 
 ## 构建
 
+### uhd7 到新整包候选
+
+`candidate-731.toml` 独立固定7.3.1源码、release、最终配置与模块数量，不代表上板验收；
+正式 `sources.toml` 的 tested_build/retained_runtime 验收前保持不变。
+在 `build.sh SOURCE OUTPUT CONFIG` 后加 `--candidate-lock packaging/kernel-edge/candidate-731.toml`，
+可同时加 `--validate-only` 验证干净源码与olddefconfig最终配置哈希。OUTPUT必须为空。
+
+`package-unified.py --candidate-lock LOCK --uhd7-launcher LAUNCHER` 沿用已有 kernel/stage/
+candidate/native/wave5-plugin 输入，核对同次完整基础模块、三个外部模块的SHA、vermagic、
+BTF与build ID，封存Image、双GPU DT、config、Module.symvers、vmlinux.btf、运行时和模块。
+暂存目录不得带modules_install的build/source符号链接；复制到任务私有暂存后只移除这类链接，
+不改原始构建。候选使用已核对的r14e应用启动器，增加精确新release，并带受版本管理的
+平台/HDMI/gadget入口；不推广正式来源锁。
+
+正式安装仍须另行授权的独占板窗。7.3.1使用
+`register-runtime.py install PACKAGE`，要求默认FullKvm/uhd7；
+保留默认标签、5.15/Stock入口和旧模块目录。外层清单必须与包内文件集合完全一致；先校验包与
+完整模块，再预检/boot和根分区空间。根分区只预算新模块解包、运行时和固件；候选启动文件
+按全量预算，/boot与根目录同设备时合并，不能只计算新旧Image的大小差额。
+安装不创建额外备份。BCM43752 .217固件从旧release的updates目录校验后复制到新release。
+新启动文件完整写入 `/boot/kernels/7.3.1-vim4kvm-uhd7+`，逐项核验后保留在独立目录；
+不覆盖 `/boot/edge`。双内核兼容的/usr入口逐文件先写临时文件、fsync，再原子替换，
+任何中途退出时可见的完整新/旧入口都仍支持uhd7。模块、固件、启动文件和入口核验并sync后，
+先原子写kernels.json，最后单次原子替换extlinux中的FullKvm LINUX/FDT；DEFAULT标签不变。
+启动提交之前即使进程直接死亡、未执行finally，正常重启仍选择原uhd7 Image/DT/模块。
+中断遗留的候选目录不自动删除；复用非空新模块目录仍须与完整清单完全一致。
+
+需要回到uhd7时，把extlinux中FullKvm的LINUX/FDT改回 `/edge/Image`、`/edge/vim4.dtb`；
+这些旧文件及 `/lib/modules/7.3.0-vim4kvm-uhd7+` 在安装中均未修改。
+
+### 登记 issue
+
+- I3（发生1×严重3）：kernels.json已写而extlinux尚未切换时中断，面板因boot profile不匹配
+  暂时报告mainline不可用，选择mainline也会拒绝。U-Boot仍按原extlinux启动uhd7；
+  只登记此面板表现，不增加恢复服务或双份登记协议。按上文手工改回 /edge 后也会出现同样的
+  登记不匹配（kernels.json 仍是7.3.1）；需要面板可用时重新登记uhd7。
+
 在 Linux ARM64、GCC 13 环境中运行；需要 make、flex、bison、bc、OpenSSL/ELF
 开发库和 pahole。准备阶段不安装到开发机或板子。
 

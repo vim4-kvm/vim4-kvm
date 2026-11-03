@@ -35,6 +35,12 @@ class KbaseRuntimeTest(unittest.TestCase):
                                       env=env, text=True, capture_output=True)
             self.assertNotEqual(rejected.returncode, 0)
             self.assertNotIn('prepare', rejected.stdout)
+            uname.write_text('#!/bin/sh\necho 7.3.1-vim4kvm-uhd7+\n')
+            for action, expected in (('gadget-start', 'vim4-mainline-gadget-prepare'),
+                                     ('hdmi', 'vim4-mainline-prepare')):
+                result = subprocess.run(['sh', str(launcher), action], env=env, text=True, capture_output=True)
+                self.assertEqual(result.returncode, 0, result.stderr)
+                self.assertIn(expected, result.stdout)
 
     def test_gpu_binding_selects_blob_without_changing_wave5(self):
         with tempfile.TemporaryDirectory() as directory:

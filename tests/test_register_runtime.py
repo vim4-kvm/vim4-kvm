@@ -26,6 +26,24 @@ boot = load('profile_boot', 'board/vim4boot.py')
 
 
 class BootProfileTest(unittest.TestCase):
+    def test_insufficient_boot_space_is_rejected_before_copy(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            edge, payload = root / 'edge', root / 'payload'
+            edge.mkdir()
+            payload.mkdir()
+            for name in runtime.BOOT_FILES:
+                (payload / name).write_bytes(b'candidate')
+                (edge / name).write_bytes(b'baseline')
+            with patch.object(runtime.shutil, 'disk_usage', return_value=SimpleNamespace(free=1)):
+                with self.assertRaisesRegex(ValueError, 'Insufficient /boot'):
+                    runtime.check_space(edge, payload)
+            self.assertEqual((edge / 'Image').read_bytes(), b'baseline')
+            with patch.object(runtime.shutil, 'disk_usage', return_value=SimpleNamespace(free=len(runtime.BOOT_FILES)*4096+100)):
+                runtime.check_space(edge, payload)
+                with self.assertRaisesRegex(ValueError, 'Insufficient /boot'):
+                    runtime.check_space(edge, payload, separate_directory=True)
+
     def test_install_resumes_only_with_the_complete_identical_module_set(self):
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory) / 'release'

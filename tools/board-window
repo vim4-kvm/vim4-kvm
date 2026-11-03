@@ -23,6 +23,7 @@ import sys
 import tarfile
 import tempfile
 import time
+import tomllib
 import urllib.error
 import urllib.request
 
@@ -57,6 +58,13 @@ def ssh(host, command, timeout=30, *, isolated=False):
                                     host, command], timeout=timeout, text=True, start_new_session=isolated)
 
 
+def ssh_python(host, script, timeout=180):
+    """Full module proofs exceed Linux's per-argument limit; send via stdin."""
+    return subprocess.check_output(['ssh', '-oBatchMode=yes', '-oConnectTimeout=5',
+                                    host, 'sudo -n python3 -'], input=script,
+                                   timeout=timeout, text=True)
+
+
 def require_board():
     queue = queue_module.Queue(os.environ.get('BOARD_QUEUE_ROOT', '/tmp/vim4-board-queue'))
     item = queue.read(os.environ.get('BOARD_TICKET'))
@@ -65,9 +73,12 @@ def require_board():
     return queue, item['ticket']
 
 
-def identity(host, files):
-    script = """import hashlib,json,pathlib,platform,struct
+def identity(host, files, *, dt_properties=()):
+    script = """import hashlib,json,pathlib,platform,struct,subprocess
 files=FILES
+properties=PROPERTIES
+if platform.release()=='7.3.0-vim4kvm-uhd7+' and files:
+ files=sorted(set(files)|{str(p) for root in ('/boot/edge','/lib/modules/'+platform.release()) for p in pathlib.Path(root).rglob('*') if p.is_file() and not p.is_symlink()}|{'/boot/extlinux/extlinux.conf','/etc/vim4-kvm/kernels.json','/etc/vim4-kvm/runtime-build.json'}|{'/usr/libexec/'+n for n in ('vim4-board-runtime','vim4-kvm-run','vim4-mainline-prepare','vim4-mainline-gadget-prepare')})
 data=pathlib.Path('/sys/kernel/notes').read_bytes(); offset=0; ids=[]
 while offset+12<=len(data):
  n,d,k=struct.unpack_from('<III',data,offset); offset+=12
@@ -75,9 +86,62 @@ while offset+12<=len(data):
  if data[offset:offset+n]==b'GNU\\0' and k==3: ids.append(data[start:start+d].hex())
  offset=start+((d+3)&~3)
 assert len(ids)==1, 'expected one GNU kernel build ID'
-print(json.dumps(dict(release=platform.release(),build_id=ids[0],cmdline=pathlib.Path('/proc/cmdline').read_text().strip(),files={p:hashlib.file_digest(open(p,'rb'),'sha256').hexdigest() for p in files})))
-""".replace('FILES', repr(files))
-    return json.loads(ssh(host, 'sudo -n python3 -c ' + shlex.quote(script)))
+def file_hash(path):
+ with open(path,'rb') as source: return hashlib.file_digest(source,'sha256').hexdigest()
+result=dict(release=platform.release(),build_id=ids[0],cmdline=pathlib.Path('/proc/cmdline').read_text().strip(),files={p:file_hash(p) for p in files})
+if platform.release()=='7.3.0-vim4kvm-uhd7+' and files:
+ def module_id(n):
+  data=pathlib.Path('/sys/module',n,'notes/.note.gnu.build-id').read_bytes()
+  assert struct.unpack_from('<III',data)==(4,20,3) and data[12:16]==b'GNU\\0'
+  return data[16:36].hex()
+ result['loaded_modules']={n:module_id(n) for n in ('t7_hdmirx','t7_vdin_test','wave5','mali_kbase','vim4_kbase_heaps','governor_vim4')}
+ defaults=[line.split()[1] for line in pathlib.Path('/boot/extlinux/extlinux.conf').read_text().splitlines() if line.split() and line.split()[0].lower()=='default']
+ assert defaults==['FullKvm'], 'uhd7 baseline must retain FullKvm default'
+ result['applications']=[n for n in ('one-kvm','nanokvm','vim4-kvm','vim4-pikvm') if subprocess.run(['systemctl','is-active','--quiet',n]).returncode==0]
+ result['dt_properties']={n:pathlib.Path('/sys/firmware/devicetree/base',n).read_bytes().hex() for n in set(('model','compatible','soc/bus@fe000000/gpu@400000/compatible'))|set(properties)}
+print(json.dumps(result))
+""".replace('FILES', repr(files)).replace('PROPERTIES', repr(list(dt_properties)))
+    return json.loads(ssh_python(host, script))
+
+
+def verify_persistent_files(host, proof):
+    """Recovery depends on saved files, not the candidate's loaded hardware drivers."""
+    once = load('persistent_once', ROOT / 'packaging/kernel-edge/display-once.py')
+    expected = once.persistent_baseline_files(proof['files'])
+    script = """import hashlib,json
+files=FILES
+def file_hash(path):
+ with open(path,'rb') as source: return hashlib.file_digest(source,'sha256').hexdigest()
+print(json.dumps({p:file_hash(p) for p in files}))
+""".replace('FILES', repr(list(expected)))
+    actual = json.loads(ssh_python(host, script))
+    if actual != expected:
+        raise ValueError('default persistent files changed; refuse automatic boot')
+
+
+def validate_retained_uhd7(proof):
+    if proof['release'] != '7.3.0-vim4kvm-uhd7+':
+        return
+    recipe = ROOT / 'packaging/kernel-edge'
+    lock = tomllib.loads((recipe/'sources.toml').read_text())
+    retained = lock['retained_runtime']
+    expected = {'/boot/edge/Image': retained['image_sha256'],
+                '/boot/edge/vim4.dtb': retained['board_dtb_sha256']}
+    inventory = json.loads((recipe/'uhd7-module-inventory.json').read_text())
+    module_prefix = '/lib/modules/' + proof['release'] + '/'
+    expected.update({module_prefix + name: item['sha256'] for name, item in inventory.items()})
+    ids = dict(lock['tested_build']['module_build_ids'])
+    for name, overlay in retained['module_overlays'].items():
+        expected[module_prefix + overlay['path']] = overlay['sha256']
+        ids[name] = overlay['build_id']
+    installed_modules = {name for name in proof['files'] if name.startswith(module_prefix)
+                         and name.endswith(('.ko', '.ko.xz', '.ko.zst'))}
+    if (proof['build_id'] != retained['build_id'] or
+            installed_modules != {name for name in expected if name.startswith(module_prefix)} or
+            any(proof['files'].get(name) != value for name, value in expected.items()) or
+            any(proof.get('loaded_modules', {}).get(name) != ids[name] for name in
+                ('t7_hdmirx', 't7_vdin_test', 'wave5', 'mali_kbase', 'vim4_kbase_heaps', 'governor_vim4'))):
+        raise ValueError('uhd7 proof differs from retained Image/DT/complete modules or loaded identities')
 
 
 class BaselineCache:
@@ -85,8 +149,8 @@ class BaselineCache:
         self.path = Path(path)
 
     def get(self, proof, measure, day=None):
-        if not proof['release'].startswith('5.15.'):
-            raise ValueError('baseline measurements require running 5.15')
+        if not (proof['release'].startswith('5.15.') or proof['release'] == '7.3.0-vim4kvm-uhd7+'):
+            raise ValueError('baseline measurements require running 5.15 or retained uhd7')
         day = day or datetime.date.today().isoformat()
         key = hashlib.sha256(json.dumps(proof, sort_keys=True).encode()).hexdigest()
         entries = json.loads(self.path.read_text()) if self.path.exists() else {}
@@ -315,13 +379,16 @@ def ready(host, timeout=120, expected=None, old_boot=None):
             script = r'''import pathlib,platform,subprocess,urllib.request
 assert platform.release()==EXPECTED if EXPECTED else True
 assert pathlib.Path('/proc/sys/kernel/random/boot_id').read_text().strip()!=OLD if OLD else True
-services=['one-kvm','vim4-kvm-gadget']
-if platform.release().startswith('5.15.'):services+=['vim4-kvm-hdmi','vim4-manager']
+services=['vim4-kvm-gadget']
+services+=['vim4-kvm-hdmi','vim4-manager']
 for service in services:
  subprocess.run(['systemctl','is-active','--quiet',service],check=True)
 assert any(p.read_text().strip()=='configured' for p in pathlib.Path('/sys/class/udc').glob('*/state'))
-stats=__import__('json').load(urllib.request.urlopen('http://127.0.0.1:8081/api/stream/status',timeout=10))
-assert 'state' in stats and 'fps' in stats
+apps=[n for n in ('one-kvm','nanokvm','vim4-kvm','vim4-pikvm') if subprocess.run(['systemctl','is-active','--quiet',n]).returncode==0]
+assert len(apps)==1, 'expected exactly one active KVM application'
+if apps==['one-kvm']:
+ stats=__import__('json').load(urllib.request.urlopen('http://127.0.0.1:8081/api/stream/status',timeout=10))
+ assert 'state' in stats and 'fps' in stats
 print('ready')
 '''.replace('EXPECTED', repr(expected)).replace('OLD', repr(old_boot))
             ssh(host, 'sudo -n python3 -c ' + shlex.quote(script), timeout=30)
@@ -336,6 +403,9 @@ def verify_baseline(expected, actual):
     """Only the audited firmware reboot reason may vary across a normal reboot."""
     if any(actual.get(k) != expected.get(k) for k in ('release', 'build_id', 'files')):
         raise RuntimeError('baseline release/build ID/protected files differ')
+    for key in ('loaded_modules', 'applications', 'dt_properties'):
+        if key in expected and actual.get(key) != expected[key]:
+            raise RuntimeError('baseline ' + key + ' differs')
     def split(command):
         tokens = command.split()
         reason = [t for t in tokens if t.startswith('reboot_mode=')]
@@ -394,6 +464,22 @@ def validate_bundle(bundle):
         if plan['command'] != command:
             raise ValueError('only the existing RAM sysboot command is accepted')
         return plan
+
+
+def verify_candidate_dt(host, plan, baseline_properties=None):
+    if plan.get('baseline_id') == plan['build_id'] and not plan.get('dt_properties'):
+        raise ValueError('Same Image candidate requires readable DT identity')
+    if plan.get('baseline_id') == plan['build_id']:
+        once = load('identity_once', ROOT / 'packaging/kernel-edge/display-once.py')
+        once.validate_distinct_dt(plan['dt_properties'], baseline_properties or plan.get('baseline_dt_properties', {}))
+    for name, expected in plan.get('dt_properties', {}).items():
+        path = Path(name)
+        if path.is_absolute() or '..' in path.parts:
+            raise ValueError('Unsafe DT property path')
+        script = ('from pathlib import Path; print(Path(' +
+                  repr('/sys/firmware/devicetree/base/' + name) + ').read_bytes().hex())')
+        if ssh(host, 'sudo -n python3 -c ' + shlex.quote(script)).strip() != expected:
+            raise RuntimeError('Running candidate DT property differs: ' + name)
 
 
 def boot(host, device, directory, plan=None, baseline_release=None):
@@ -456,9 +542,13 @@ def main():
     p.add_argument('--sha256', required=True, help='trusted candidate.tar SHA256')
     p.add_argument('--reuse-staged', action='store_true', help='verify and reuse the exact immutable payload')
     p.add_argument('--baseline-files', nargs='+', help='first HDR2 payload: original 5.15 recovery files')
-    commands.add_parser('return-baseline')
+    p = commands.add_parser('return-baseline')
+    p.add_argument('--video-check', nargs=argparse.REMAINDER,
+                   help='Decoded-frame check command for the retained application (required for uhd7)')
     p = commands.add_parser('baseline')
     p.add_argument('--files', nargs='+', required=True, help='kernel, programs and all default boot files')
+    p.add_argument('--dt-properties', nargs='+', default=[],
+                   help='DT identity property paths to capture on the original baseline')
     p.add_argument('--settings', type=Path, help='public source/browser/codec/settings JSON included in cache key')
     p.add_argument('--url', default='http://192.168.50.210:8080')
     p.add_argument('--local-ip')
@@ -496,14 +586,15 @@ def main():
             queue.sampling(token, False)
     elif args.action == 'baseline':
         ready(args.host)
-        proof = identity(args.host, args.files)
+        proof = identity(args.host, args.files, dt_properties=args.dt_properties)
+        validate_retained_uhd7(proof)
         queue, token = require_board()
         def measure():
             queue.sampling(token, True)
             try:
                 save(directory / ('sampling-' + str(time.time_ns()) + '.json'), queue.read(token))
                 metrics = receiver(args.url, args.seconds, args.local_ip)
-                if identity(args.host, args.files) != proof:
+                if identity(args.host, args.files, dt_properties=args.dt_properties) != proof:
                     raise RuntimeError('baseline identity changed during measurement')
                 return metrics
             finally:
@@ -559,17 +650,19 @@ def main():
         else:
             files = plan.get('baseline_files') or args.baseline_files
             if not files:
-                raise ValueError('first HDR2 payload needs --baseline-files from the 5.15 deployment inventory')
-            proof = identity(args.host, list(files))
-            if not proof['release'].startswith('5.15.'):
-                raise ValueError('first candidate requires a running 5.15 baseline')
+                raise ValueError('first HDR2 payload needs --baseline-files from the retained deployment inventory')
+            proof = identity(args.host, list(files), dt_properties=plan.get('dt_properties', {}))
+            validate_retained_uhd7(proof)
+            if not (proof['release'].startswith('5.15.') or proof['release'] == '7.3.0-vim4kvm-uhd7+'):
+                raise ValueError('first candidate requires a running 5.15 or retained uhd7 baseline')
             # The retained proof must cover the same original running baseline
             # as prepare; a stale bundle cannot silently change the recovery target.
             if 'baseline_files' in plan and (proof['release'] != plan['baseline_release'] or
                     proof['build_id'] != plan['baseline_id'] or proof['cmdline'] != plan['baseline_cmdline']):
                 raise ValueError('candidate was prepared for a different running baseline')
             save(proof_path, proof)
-        if identity(args.host, list(proof['files']))['files'] != proof['files'] or plan.get('baseline_files', proof['files']) != proof['files']:
+        verify_persistent_files(args.host, proof)
+        if plan.get('baseline_files', proof['files']) != proof['files']:
             raise ValueError('default boot/runtime files differ from retained baseline')
         record_candidate(directory, plan, digest)
         remote = '/tmp/board-window-' + plan['build_id']
@@ -582,29 +675,41 @@ m=importlib.util.module_from_spec(s);s.loader.exec_module(m)
 assert m.sha(BUNDLE)==DIGEST
 m.stage(BUNDLE,retained_baseline=PROOF,reuse_staged=REUSE)
 """.replace('SCRIPT', repr(remote + '.py')).replace('BUNDLE', repr(remote + '.tar')).replace('DIGEST', repr(digest)).replace('PROOF', repr(proof)).replace('REUSE', repr(args.reuse_staged))
-        ssh(args.host, 'sudo -n python3 -c ' + shlex.quote(script), timeout=180)
+        ssh_python(args.host, script)
         require_board()
         boot(args.host, args.device, directory, plan)
         running = identity(args.host, [])
         if running['build_id'] != plan['build_id']:
             raise RuntimeError('running kernel build ID differs from candidate')
+        verify_candidate_dt(args.host, dict(plan, baseline_id=proof['build_id']), proof.get('dt_properties', {}))
         result = collect(args.host, directory)
     else:
         proof = json.loads((directory / 'baseline-proof.json').read_text())
-        if identity(args.host, list(proof['files']))['files'] != proof['files']:
-            raise ValueError('default files changed; refuse automatic reboot')
+        validate_retained_uhd7(proof)
+        if proof['release'] == '7.3.0-vim4kvm-uhd7+' and not args.video_check:
+            raise ValueError('uhd7 return requires --video-check for the retained application')
+        verify_persistent_files(args.host, proof)
         # One normal reboot only. A timeout must retain the proof and fail;
         # never hide an Ethernet/DHCP failure behind an automatic reboot loop.
         boot(args.host, args.device, directory, baseline_release=proof['release'])
-        actual = identity(args.host, list(proof['files']))
+        actual = identity(args.host, list(proof['files']), dt_properties=proof.get('dt_properties', {}))
         reasons = verify_baseline(proof, actual)
         save(directory / 'returned-baseline-identity.json', dict(identity=actual, reboot_mode=reasons))
         cleanup = '/tmp/board-window-cleanup.py'
         subprocess.run(['scp', str(ROOT / 'packaging/kernel-edge/display-once.py'),
-                        args.host + ':' + cleanup], check=True)
+                        args.host + ':' + cleanup], check=True, timeout=30)
         plans = [json.loads(path.read_text()) for path in directory.glob('candidate-*.json')]
         script = module_cleanup_script(plans, cleanup)
         ssh(args.host, 'sudo -n python3 -c ' + shlex.quote(script))
+        if args.video_check:
+            queue, token = require_board()
+            queue.sampling(token, True)
+            try:
+                with (directory / 'returned-video.log').open('w') as log:
+                    subprocess.run(args.video_check, check=True, timeout=120,
+                                   stdout=log, stderr=subprocess.STDOUT)
+            finally:
+                queue.sampling(token, False)
         result = collect(args.host, directory)
     save(directory / (args.action + '-' + str(time.time_ns()) + '.json'), result)
     print(json.dumps(result, indent=2))

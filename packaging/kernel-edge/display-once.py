@@ -13,13 +13,35 @@ from pathlib import Path, PurePosixPath
 import re
 import shutil
 import struct
+import subprocess
 import tarfile
 import tempfile
 
+UHD7 = '7.3.0-vim4kvm-uhd7+'
 RELEASE = '7.3.0-vim4kvm-uhd1+'
 BASE_ID = '7b8372b894c98ffae12e636a325c86f2b6c85e00'
 ROOT = Path('/var/lib/vim4-kvm/display-m1')
 MODULE_ROOT = Path('/lib/modules')
+
+
+def supported_baseline(release):
+    return release.startswith('5.15.') or release == UHD7
+
+
+def persistent_baseline_files(files):
+    """RAM bind targets are verified in full after reboot removes the mounts."""
+    return {name: value for name, value in files.items() if not name.startswith(('/usr/', '/opt/'))}
+
+
+def validate_distinct_dt(properties, baseline_properties):
+    if not properties or not all(name in baseline_properties for name in properties):
+        raise ValueError('DT identity properties must first be captured on the baseline')
+    for name, value in properties.items():
+        path = PurePosixPath(name)
+        if path.is_absolute() or '..' in path.parts or not re.fullmatch(r'(?:[0-9a-f]{2})*', value):
+            raise ValueError('invalid DT identity property: ' + name)
+    if not any(value != baseline_properties[name] for name, value in properties.items()):
+        raise ValueError('DT identity must differ from the baseline in at least one property')
 
 
 def candidate_parent(plan, metadata='manifest.json'):
@@ -40,7 +62,7 @@ def candidate_prefix(plan, metadata='manifest.json'):
 
 
 def validate_release(release):
-    if not re.fullmatch(r'7\.3\.0-vim4kvm-[A-Za-z0-9][A-Za-z0-9._-]*\+', release):
+    if not re.fullmatch(r'7\.3\.[01]-vim4kvm-[A-Za-z0-9][A-Za-z0-9._-]*\+', release):
         raise ValueError('invalid candidate release')
 
 
@@ -102,7 +124,8 @@ def prepare(payload, init, baseline, output, release=RELEASE,
         raise ValueError('baseline build ID must be explicit and complete')
     report = json.loads((payload / 'manifest.json').read_text())
     build_id = report['kernel_build_id']
-    if not re.fullmatch('[0-9a-f]{40}', build_id) or build_id == baseline_id:
+    same_image = build_id == baseline_id
+    if not re.fullmatch('[0-9a-f]{40}', build_id):
         raise ValueError('expected a separate candidate build ID')
     if report['release'] != release:
         raise ValueError('candidate release differs from the tested launcher contract')
@@ -111,6 +134,22 @@ def prepare(payload, init, baseline, output, release=RELEASE,
         if sha(payload / name) != report['artifacts'][name]:
             raise ValueError('candidate artifact hash mismatch: ' + name)
     state = json.loads(baseline.read_text())
+    if (state.get('release', baseline_release) != baseline_release or
+            state.get('build_id', baseline_id) != baseline_id):
+        raise ValueError('baseline proof release/build ID mismatch')
+    if same_image:
+        if (baseline_release != UHD7 or not namespace or not payload_id or
+                report['artifacts']['Image'] != state['files'].get('/boot/edge/Image') or
+                report['artifacts']['vim4.dtb'] == state['files'].get('/boot/edge/vim4.dtb') or
+                not report.get('dt_properties')):
+            raise ValueError('same Image trial requires uhd7 proof, distinct DT, payload ID and DT properties')
+        validate_distinct_dt(report['dt_properties'], state.get('dt_properties', {}))
+        for path, expected in report['dt_properties'].items():
+            node, _, prop = path.rpartition('/')
+            actual = subprocess.check_output(['fdtget', '-t', 'bx', str(payload / 'vim4.dtb'),
+                                              '/' + node.lstrip('/'), prop], text=True)
+            if bytes.fromhex(actual).hex() != expected:
+                raise ValueError('candidate DT property mismatch: ' + path)
     if '-npu' in release or release in ('7.3.0-vim4kvm-uhd2+', '7.3.0-vim4kvm-uhd2-nodebug+', '7.3.0-vim4kvm-uhd3+', '7.3.0-vim4kvm-uhd4+'):
         runtime = json.loads((payload / 'runtime-files.json').read_text())
         required = {'/usr/libexec/vim4-board-runtime', '/usr/libexec/vim4-kvm-run',
@@ -171,6 +210,10 @@ def prepare(payload, init, baseline, output, release=RELEASE,
                     baseline_files=state['files'], baseline_cmdline=cmdline,
                     files=files, command=command, source=report['source'])
         plan.update(layout)
+        if same_image:
+            plan['dt_properties'] = report['dt_properties']
+            plan['baseline_dt_properties'] = {name: state['dt_properties'][name]
+                                               for name in report['dt_properties']}
         if any(token.startswith('root=UUID=') for token in cmdline.split()):
             plan['root_partuuid'] = state['root_partuuid']
         with tarfile.open(payload / 'modules.tar.gz') as modules, \
@@ -229,7 +272,7 @@ def preflight(plan):
             or running_build_id() != plan['baseline_id']):
         raise RuntimeError('stage only as root on the approved running baseline')
     if (not re.fullmatch(r'[0-9a-f]{40}', plan['baseline_id']) or
-            not re.fullmatch(r'7\.3\.0-vim4kvm-[A-Za-z0-9][A-Za-z0-9._-]*\+', plan['release'])):
+            not re.fullmatch(r'7\.3\.[01]-vim4kvm-[A-Za-z0-9][A-Za-z0-9._-]*\+', plan['release'])):
         raise ValueError('bundle baseline mismatch')
     if Path('/proc/cmdline').read_text().strip() != plan['baseline_cmdline']:
         raise RuntimeError('baseline command line changed')
@@ -252,18 +295,18 @@ def fsync_directory(path):
 
 
 def retained_preflight(plan, state):
-    """A chained trial retains the original 5.15 recovery target on disk.
+    """A chained trial retains the original recovery target on disk.
 
-    The first window records this proof while running 5.15. Later candidates
+    The first window records this proof while running the baseline. Later candidates
     cannot match its running release/cmdline, but must preserve its exact files.
     """
-    if (os.geteuid() or not state['release'].startswith('5.15.') or
+    if (os.geteuid() or not supported_baseline(state['release']) or
             state['release'] != plan['baseline_release'] or
             state['build_id'] != plan['baseline_id'] or
             state['cmdline'] != plan['baseline_cmdline'] or
             state['files'] != plan['baseline_files']):
         raise RuntimeError('retained baseline differs from the approved trial proof')
-    for name, expected in state['files'].items():
+    for name, expected in persistent_baseline_files(state['files']).items():
         if sha(name) != expected:
             raise RuntimeError('retained baseline file changed: ' + name)
 
@@ -291,6 +334,10 @@ def read_trial(archive, baseline=None):
         for key in ('namespace', 'payload_id'):
             if key in report:
                 plan[key] = report[key]
+        if 'dt_properties' in report:
+            plan['dt_properties'] = report['dt_properties']
+        if 'baseline_dt_properties' in report:
+            plan['baseline_dt_properties'] = report['baseline_dt_properties']
         if baseline is not None:
             plan.update(baseline_release=baseline['release'], baseline_id=baseline['build_id'],
                         baseline_cmdline=baseline['cmdline'], baseline_files=baseline['files'])
@@ -301,6 +348,24 @@ def read_trial(archive, baseline=None):
             if directive not in config:
                 raise ValueError('HDR2 config does not use the private RAM payload: ' + directive)
     validate_release(plan['release'])
+    if baseline is not None and plan['build_id'] == baseline['build_id']:
+        if (baseline['release'] != UHD7 or not plan.get('namespace') or
+                not plan.get('payload_id') or not plan.get('dt_properties') or
+                plan['files']['Image'] != baseline['files'].get('/boot/edge/Image') or
+                plan['files']['vim4.dtb'] == baseline['files'].get('/boot/edge/vim4.dtb')):
+            raise ValueError('same Image payload requires uhd7 proof and distinct DT identity')
+        validate_distinct_dt(plan['dt_properties'], baseline.get('dt_properties', {}))
+        if 'baseline_dt_properties' in plan and any(
+                baseline['dt_properties'].get(name) != value
+                for name, value in plan['baseline_dt_properties'].items()):
+            raise ValueError('DT identity was prepared for different baseline properties')
+        prefix = '/lib/modules/' + plan['release'] + '/'
+        expected = {name.removeprefix(prefix): value for name, value in baseline['files'].items()
+                    if name.startswith(prefix)}
+        candidate = {name.removeprefix('modules/' + plan['release'] + '/'): value
+                     for name, value in plan['files'].items() if name.startswith('modules/' + plan['release'] + '/')}
+        if not expected or candidate != expected:
+            raise ValueError('same Image payload must preserve the complete baseline module set')
     prefix = str(candidate_prefix(plan, metadata))
     if 'namespace' in plan:
         config = archive.extractfile(entries['extlinux.conf']).read().decode()
@@ -340,7 +405,7 @@ def stage(bundle, retained_baseline=None, reuse_staged=False):
     with tarfile.open(bundle) as archive:
         plan, metadata, entries = read_trial(archive, retained_baseline)
         if metadata == 'manifest.json' and retained_baseline is None:
-            raise ValueError('HDR2 payload requires original retained 5.15 proof')
+            raise ValueError('HDR2 payload requires original retained baseline proof')
         check(plan)
         stage_root = candidate_parent(plan, metadata)
         # An interrupted extraction is inert: no boot path points at this directory.
@@ -390,10 +455,10 @@ def stage(bundle, retained_baseline=None, reuse_staged=False):
 
 
 def cleanup_module_mountpoint(plan):
-    """Remove only our still-empty original bind destination after returning to 5.15."""
+    """Remove only our still-empty original bind destination after baseline return."""
     validate_release(plan['release'])
-    if os.geteuid() or not os.uname().release.startswith('5.15.'):
-        raise RuntimeError('module mountpoint cleanup requires root on the retained 5.15')
+    if os.geteuid() or not supported_baseline(os.uname().release):
+        raise RuntimeError('module mountpoint cleanup requires root on retained 5.15 or uhd7')
     if not re.fullmatch('[0-9a-f]{40}', plan['build_id']):
         raise ValueError('invalid destination build ID')
     marker = candidate_prefix(plan) / '.created-module-mountpoint.json'
@@ -419,7 +484,7 @@ def main():
     stage_parser = commands.add_parser('stage')
     stage_parser.add_argument('bundle', type=Path)
     stage_parser.add_argument('--retained-baseline', type=lambda p: json.loads(Path(p).read_text()),
-                              help='original 5.15 proof for chained RAM trials')
+                              help='original baseline proof for chained RAM trials')
     args = vars(parser.parse_args())
     action = args.pop('action')
     (prepare if action == 'prepare' else stage)(**args)

@@ -14,6 +14,7 @@ import shutil
 import subprocess
 import tempfile
 import tarfile
+import tomllib
 
 KERNEL = 'f951e2d24d32d5df0e701e7c355b3db4c91eaf74'
 RELEASE = '7.3.0-vim4kvm-uhd6+'
@@ -30,6 +31,8 @@ def run(*args):
 
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument('--candidate-lock', type=Path,
+                        help='Independent source/release/module-count lock; requires the qualified launcher')
     parser.add_argument('--uhd7-launcher', type=Path,
                         help='Build the uhd7 package using the installed uhd6 USB-overlay application launcher')
     for name in ('kernel', 'stage', 'candidate', 'native', 'wave5-plugin', 'output'):
@@ -38,6 +41,14 @@ def main():
     k, stage, candidate, output = args.kernel, args.stage, args.candidate, args.output
     revision, release = (('52b95c8493264b195fe5fa10ccf07ad28670f16f', '7.3.0-vim4kvm-uhd7+')
                          if args.uhd7_launcher else (KERNEL, RELEASE))
+    contract = dict(base_modules=2338, external_modules=3)
+    if args.candidate_lock:
+        if not args.uhd7_launcher:
+            raise ValueError('Candidate package requires the qualified application launcher')
+        lock = tomllib.loads(args.candidate_lock.read_text())
+        revision, contract = lock['kernel']['revision'], lock['package']
+        release = contract['release']
+        assert sha(k/'.config') == contract['config_sha256']
     assert run('git', '-C', (k/'source').resolve(), 'rev-parse', 'HEAD') == revision
     assert (k/'include/config/kernel.release').read_text().strip() == release
     external = json.loads((candidate/'manifest.json').read_text())
@@ -60,10 +71,11 @@ def main():
     expected = {str(Path(n).with_suffix('.ko')) for n in (k/'modules.order').read_text().splitlines()}
     installed = {str(p.relative_to(modules/'kernel')).removesuffix('.xz')
                  for p in (modules/'kernel').rglob('*.ko*')}
-    assert expected == installed and len(expected) == 2338
+    assert expected == installed and len(expected) == contract['base_modules']
     extras = {'mali_kbase.ko': 'moduleSha256', 'vim4_kbase_heaps.ko': 'heapModuleSha256',
               'governor_vim4.ko': 'governorModuleSha256'}
     assert {p.name for p in (modules/'extra').iterdir()} == set(extras)
+    assert len(extras) == contract['external_modules']
     for name, key in extras.items():
         assert sha(modules/'extra'/name) == external[key]
     assert not any(p.is_symlink() for p in modules.rglob('*'))
@@ -105,6 +117,15 @@ def main():
         shutil.copyfile(args.uhd7_launcher, launcher)
         run('patch', '--batch', launcher, recipe/'uhd7-r14e-launcher.patch')
         assert sha(launcher) == 'a322759bafff03d8de79fefce560026ef443d91335baf957e236abdb1468a0ee'
+        if args.candidate_lock:
+            launcher.write_text(launcher.read_text().replace(
+                '7.3.0-vim4kvm-uhd[67]+', '7.3.0-vim4kvm-uhd[67]+|' + release))
+            # Use the reviewed platform entry, rather than a private build-recipe exception.
+            shutil.copyfile(recipe.parents[1]/'board/vim4-board-runtime',
+                            output/'runtime/usr/libexec/vim4-board-runtime')
+            for source, target in (('one-kvm-edge-prepare', 'vim4-mainline-prepare'),
+                                   ('one-kvm-edge-usb-prepare', 'vim4-mainline-gadget-prepare')):
+                shutil.copyfile(recipe/source, output/'runtime/usr/libexec'/target)
         (output/'module-inventory.json').write_text(json.dumps(inventory, indent=2)+'\n')
     runtime_files = {str(p.relative_to(output/'runtime')): sha(p)
                      for p in (output/'runtime').rglob('*') if p.is_file()}
@@ -113,7 +134,7 @@ def main():
                  module_sha256={str(p.relative_to(modules)): sha(p)
                                 for p in modules.rglob('*.ko*')})
     (output/'runtime-proof.json').write_text(json.dumps(proof, indent=2)+'\n')
-    result = dict(source=revision, release=release, base_modules=2338, external_modules=3,
+    result = dict(source=revision, **dict(contract, release=release),
                   module_count=len(ids), sources=native['sources'], hardware_validated=False,
                   kernel_build_id=re.search(r'Build ID: ([0-9a-f]+)', run('readelf', '-n', k/'vmlinux'))[1],
                   modules={str(p.relative_to(modules)): sha(p) for p in modules.rglob('*') if p.is_file()},

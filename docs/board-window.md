@@ -9,6 +9,37 @@ Node、Playwright与Chrome，配置见 [工具目录](tools.md)。
 
 ## 占板时间最短化
 
+### uhd7 保留基线
+
+离线工具现支持明确的 `7.3.0-vim4kvm-uhd7+`，无需先改默认到5.15。
+首次 proof 在真实基线上采集；uhd7 的非空文件清单自动扩展至全部 edge 文件、完整模块树、
+extlinux、kernels.json、runtime-build.json 和四个启动入口，并记录三个 overlay 与三个 kbase
+模块的加载 build ID、原应用及稳定的 DT 属性；与sources.toml和完整模块inventory逐项比对。
+传入文件清单还应包含本次用户态覆盖目标。候选期间只比较持久启动/登记/模块文件；
+/usr和/opt文件可能被RAM bind覆盖，其完整哈希延后到正常重启退出覆盖后逐项核对。
+链式stage同样延后这些运行时路径的字节检查，仍严格核对原proof与其他持久文件。
+返回前和链式启动前只读取所需文件哈希，不要求候选具备基线模块notes、DT或应用状态；
+首次基线采集和正常重启后的完整identity仍严格核验这些身份，缺失模块会失败。
+完整proof经SSH stdin传输，避免Linux单参长度限制。
+缓存继续按日期、全部身份/文件哈希和测量参数失效；恢复逐项比较原 proof。
+
+同 Image 的 DT 候选须用独立 namespace/payload_id，manifest 的 `dt_properties` 是
+相对 `/sys/firmware/devicetree/base` 的属性路径到原始字节 hex 的映射，例如
+`{"soc/display/status":"6f6b617900"}`。prepare 用 fdtget 校验候选属性；启动后读实时 DT
+逐项比较，并要求新 boot ID。使用 `baseline --dt-properties soc/display/status ...` 在原基线上
+先采集所选属性；至少一项候选属性必须与实际基线不同，prepare、stage和启动核验都拒绝
+未采集或全部未变的属性。只用未变化的model/compatible不能区分候选。候选 Image 必须等于基线、DTB 必须不同、完整模块清单须与
+基线一致（含三 overlay 与依赖数据）。不同 DT/runtime 使用不同 payload_id；归档 SHA
+覆盖其全部内容，不能只凭 uname/build ID 区分。
+
+7.x ready 同样强制 manager/HDMI/gadget、唯一活动 KVM 和 UDC configured；
+One-KVM 另检查 API。uhd7 的 `return-baseline --video-check COMMAND ...` 必须提供
+原应用的实际解码推进检查，例如现有 `node tools/board-window-receiver.mjs URL 3`，
+在 sampling 锁下运行并保存 returned-video.log，失败不记成功。其他应用使用各自已审阅的
+接收检查命令。正常重启退出RAM bind覆盖；恢复上传cleanup脚本的scp限时30秒，无重试。
+清理只删除本次创建且仍为空的模块挂载点，
+已有uhd7模块目录始终保留。这些是离线合同，实际往返仍待独占板窗验证。
+
 只有一块板，所有任务排同一队列；每分钟占板都会推迟其他任务。
 
 - 取锁前完成全部构建、离线测试和窗口脚本；持锁期间只执行无人值守脚本，不读文档、改代码、编译或现场排查。
@@ -60,7 +91,7 @@ prepare/stage验证ELF中的根目录合同，sysboot/extlinux采用同一路径
 
 使用 `display-once.py prepare` 生成的目录（包含candidate.tar）或candidate.tar归档。
 也接受r18的HDR2 `manifest.json` RAM payload目录或归档（Image/DTB/init/modules/runtime/extlinux），
-首轮需 `--baseline-files` 显式列出5.15恢复文件；普通boot/lib内核安装包不能直接传入。
+首轮需 `--baseline-files` 显式列出保留基线的恢复文件；普通boot/lib内核安装包不能直接传入。
 目录内有candidate.tar时SHA指归档；松散payload目录的SHA指manifest.json，逐文件再验证。
 原有prepare的release/静态ARM64 PID1/完整模块清单门禁继续有效。
 归档外部SHA必须来自构建记录，不能以传输后重算的哈希代替来源证明。
@@ -73,17 +104,17 @@ tools/board-window --window hdr-batch --device /dev/cu.usbserial-1100 boot-candi
 tools/board-window --window hdr-batch --device /dev/cu.usbserial-1100 return-baseline
 ```
 
-首候选前必须运行5.15；记录release、GNU build ID、cmdline与trial.json全部baseline_files。
-HDR2的 `--baseline-files` 是持久恢复证明，只列原5.15启动文件和运行时登记配置；
+首候选前必须运行5.15或上述uhd7；记录release、GNU build ID、cmdline与全部baseline_files。
+历史HDR2/5.15的 `--baseline-files` 是持久恢复证明，只列原启动文件和运行时登记配置；
 不要把候选PID1临时bind覆盖的runtime程序路径放进该证明，否则候选期间读到的是私有版本，
 链式校验会拒绝。后文baseline测量的 `--files` 则须包括程序/插件，用于性能缓存失效。
 归档逐文件核哈希，stage复用display-once.py的安全解包/静态ELF/fsync/原子发布。
-新增显式 `stage --retained-baseline proof.json` 在链式窗口核对原5.15证明与归档一致，
+显式 `stage --retained-baseline proof.json` 在链式窗口核对原基线证明与归档一致，
 两次验证磁盘文件不变；不要求当前候选的release/cmdline等于原基线。原stage默认门禁不变。
 HDR2新release只创建空的 `/lib/modules/<release>` bind挂载点，完整模块仍留在私有payload，
-不向基线模块目录安装文件。接受任意安全的 `7.3.0-vim4kvm-<tag>+` 候选名；
+不向基线模块目录安装文件。接受安全的 `7.3.0/7.3.1-vim4kvm-<tag>+` 候选名；
 release名称不代表能力或验证结果，仍校验manifest全部文件、归档SHA、静态PID1和模块清单。
-stage只记录自己新建空模块目录的设备/inode；return-baseline验证回到原5.15后清理。
+stage记录自己创建空模块目录的marker；return-baseline验证回到原基线后清理。
 同Image的各payload分别保存恢复记录，避免后一个覆盖首次创建挂载点的归属证明。
 清理SSH命令只携带release和目录身份；完整模块inventory仍在本机证据中，
 不能把数千文件清单放进单个`python3 -c`参数（Linux单参长度上限）。
@@ -93,14 +124,14 @@ stage只记录自己新建空模块目录的设备/inode；return-baseline验证
 等待新的boot ID、预期release/build ID、SSH、逐服务active、UDC configured与API响应。
 snapshot只读缓存，无查看器时503不代表采集故障；receiver创建offer后另验真实解码推进。
 任一步失败停止，不自动重试或选择另一个候选；查看UART证据再决定恢复。
-SSH使用开发环境免密 `sudo -n`，脚本通过 `python3 -c`，没有密码/heredoc混用。
+SSH使用开发环境免密 `sudo -n`，完整proof脚本通过stdin发送，没有密码/heredoc混用。
 
-`return-baseline`重启而不打断autoboot，再验证原5.15身份/所有证明文件、服务、UDC与视频。
+`return-baseline`重启而不打断autoboot，再验证原基线身份/所有证明文件、服务、UDC与视频。
 只发起一次正常重启，SSH/服务就绪有界等待；失败保留UART和proof，不自动反复重启或热重绑网卡。
-5.15就绪还要求manager/HDMI active。返回后的release、真实build ID和保护文件逐项严格比较。
+两种基线就绪均要求manager/HDMI active。返回后的release、真实build ID和保护文件逐项严格比较。
 cmdline仅单独审阅`reboot_mode=normal`与`reboot_mode=watchdog_reboot`之间的变化，记录前后值；
 其余token及顺序必须完全一致。未知reason只允许原样不变，重复reason或新增/删除reason均拒绝。
-无原始proof时拒绝恢复。默认启动必须事先确认为5.15；本工具不修改默认项来修正错误配置。
+无原始proof时拒绝恢复。默认启动必须事先确认为保留基线；本工具不修改默认项。
 批次脚本应在EXIT trap中安排恢复，并为恢复预留时间；不能靠finally保证硬锁恢复。
 
 ## 基线与证据

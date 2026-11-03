@@ -1,0 +1,10 @@
+# Offline candidate only. Does not promote tested_build or retained_runtime.
+[kernel]
+revision = "25110086de2ef6aa9564a31a7c694eca893fd423"
+
+[package]
+release = "7.3.1-vim4kvm-uhd7+"
+base_modules = 2338
+external_modules = 3
+upgrade_from = "7.3.0-vim4kvm-uhd7+"
+config_sha256 = "a1821eb66defe9079d8be0beda7cf85067fd56e6c6f51cb8881bcdd9950c95f6"
