@@ -55,8 +55,8 @@ revision = "6134a33fff8e37452e5bf8fcb701eb05638be95a"
 name = "vim4-manager"
 url = "https://github.com/vim4-kvm/vim4-manager.git"
 branch = "main"
-# Board-validated HTTPS manager (docs/bringup/2026-11-01-manager-https.md); remote main matches this revision.
-revision = "70aa76da270bb15ab4dc130edbcb9741c1f0fbc5"
+# Deployed 2026-11-02 with mainline -thermal zone names trimmed (fbd8933, on top of the HTTPS manager in docs/bringup/2026-11-01-manager-https.md); remote main matches this revision.
+revision = "fbd8933fee7d95c879560aab5abd874acdfc0500"
 
 [kernel]
 url = "https://github.com/vim4-kvm/linux.git"
