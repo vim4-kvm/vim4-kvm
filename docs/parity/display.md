@@ -18,7 +18,7 @@
 | D08 DI 去隔行、cadence/后处理 | 缺失 | E3 明确拒绝隔行，未接 DI。不能把拒绝危险输入作为厂商能力对齐 | 重写 V4L2 M2M 去隔行，先 weave/bob 再运动自适应；R04、DI 固件/时钟和共享 VPU；真 480i/576i/1080i 源、场序图案 |
 | D09 HDR/色彩增强与 LUT | 部分对齐 | [uhd4](../bringup/2026-10-31-uhd4-formal-smoke.md) RX HDR2 PQ色准/4K60/VUI已验，HLG实现未真源验证；LUT CRC是软件shadow，不冒充RAM读回。VECM、输出色彩管理和其它LUT仍缺 | 完善V4L2 colorimetry＋DRM color pipeline，避免私有sysfs成为终态；R03/D03，PQ/HLG源、校色仪/HDR sink |
 | D10 Dolby Vision 算法/授权播放 | 无法做到 | 当前缺授权算法、有效证书/安全世界闭源服务的完整交付条件。节点 okay/CONFIG_DOLBYVISION=y 不代表可合法复现完整处理 | 当前不做算法重写；先取得授权及可用固件/用户态合同，再评估 DRM/V4L2 集成。资料确认 2–5，实施无法估计 / H / 授权 DV 源、sink、合规测试设备 |
-| D11 HDCP/安全视频端到端 | 无法做到 | E7 无 HDCP；现有 OP-TEE/JPEG 不证明密钥、受保护显示链与 DRM 内容授权可用。缺 provisioned keys/TA 文档，不能生成或导出厂商密钥 | 当前不做密钥/TA 替代；取得厂商支持后经 DRM content protection＋安全 DMA 路线，依赖 Q01/Q04。确认 3–5，实施有授权源/sink、专用测试机 |
+| D11 HDCP/安全视频端到端 | 无法做到 | 官方HDCP/Provision TA及库已取得，TA会话可用；TX对象加载/查询及5.15旧unifykey对照仍无可用对象，见[实测](../bringup/2026-11-04-security-media-port.md#第四段515旧存储对照及恢复)。7.3认证状态机与受保护显示链尚未完成 | 当前不做密钥替代；需厂商匹配本板的设备密钥配置材料及流程，随后接DRM content protection＋安全DMA，依赖Q01/Q04；授权源/sink、专用测试机 |
 | D12 旧 amvideo/VFM/ION/UVM/videotunnel/私有显示 ABI | 缺失 | E2/E3 用 V4L2 dma-buf；E7 用 DRM。旧闭源用户态的 ABI/时序行为不能视为已有兼容能力；KVM 应用已走独立后端 | 不做旧 ABI 兼容，保留功能目标：DRM GEM/PRIME、dma-heap/dma-buf、V4L2、显式同步。消费者梳理 真实旧应用和标准替代程序；闭源仅认旧 ABI 时需厂商改用户态 |
 | D13 GDC/dewarp/CVE 图像处理 | 缺失 | 两板型节点不同，E1 无对应启用链，不能把 C3 ISP 或 GE2D 当 T7 GDC | 重写标准 V4L2 M2M controls；先取厂商畸变网格/系数协议、确认 CVE 消费者，D07/ISP 内存生命周期；标定网格、对应摄像头/镜头 |
 

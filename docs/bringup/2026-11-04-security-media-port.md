@@ -110,3 +110,33 @@ mmc_key→auto_attach→BL31 unifykey初始化链，当前尚未证明该链与�
 日志位于`build/security-media-port/ta-key-load-provision.log`、`provision-query.log`
 和`provision-storage-trace.log`。当前可补的软件配套已取得；认证交付仍缺可用TX对象
 及其厂商配置来源，未生成测试密钥、烧写、导出或迁移密钥。
+
+## 第四段：5.15旧存储对照及恢复
+
+通过内核管理器正常切到已安装Vendor/hdrdual6，再恢复Mainline。
+入场校验两套登记启动文件哈希；原/最终运行均为7.3.1-vim4-20261104，
+extlinux.conf恢复后SHA256与入场一致。未安装候选内核。
+
+5.15.137-vim4kvm-hdrdual6上，已审阅的unifykeys查询结果：
+
+- attach为yes，证明旧驱动已经初始化；不把DT中的条目数量当作实际密钥数量。
+- 只写name选择器并读取exist：hdcp为none，hdcp2_tx为none；随后恢复原选择器。
+- amhdmitx的hdcp_lstore输出为空，未报告1.4或2.2密钥就绪。
+- 同一Provision TA及库查询两种TX对象，仍均返回0xffff0008；
+  5.15的tee-supplicant同样成功打开/tee/dirf.db。
+
+因此不能再以“7.3未实现旧unifykey初始化”单独解释当前缺失；5.15初始化后，
+对应旧条目和当前Provision对象仍不可用。这不证明板上其他命名空间或熔丝绝无
+密钥，但现有两条已知路径均没有可供迁移/加载的TX对象。后续需要厂商提供
+与本板/固件匹配的设备密钥配置材料及流程，不能从驱动源码生成设备密钥。
+
+视频只用私有recvonly页面，不发送HID/音频：切换前H.265解码帧9→188，
+恢复后6→186，各约3秒，仅证明视频恢复推进，不作性能或长时稳定结论。
+原始记录为vendor-roundtrip.log、vendor-key-status.log、vendor-provision-query.log，
+以及before-vendor-video.log、after-vendor-video.log，均在本任务build目录。
+
+串口采集进程启动时tcsetattr返回EINVAL，所以此次往返没有有效串口启动日志，
+不能声称串口门禁通过。窗口后对照发现，原样写回tcgetattr结果也失败，直接
+IOSSIOSPEED返回Device error；设标准速率的尝试未解决，因此撤销该候选工具修改，
+串口原因仍待确认，不将其归因于波特率代码。
+首次预检也因普通用户不能读extlinux.conf而退出，尚未切换内核；改为sudo只读核验后执行。
