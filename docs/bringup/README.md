@@ -18,6 +18,7 @@
 ## 2026-11-04
 
 - [UU 自动码率与 Wave5 在线更新](2026-11-04-uu-adaptive-bitrate.md) — uu video application；在线切目标码率持续解码、无采集重建，Mac 接入与弱网验收待完成。
+- [UU TWCC 发送端带宽估算](2026-11-04-uu-twcc.md) — uu video application；发送编号、反馈还原、被动带宽估算与在线码率闭环，含重传和拥塞回放测试。
 
 - [安全媒体移植首段与运行时清点](2026-11-04-security-media-port.md) — kernel board；HDCP只读密钥状态候选、固定CA/TA输入，认证/DV/安全启动尚未完成，未部署候选。
 
