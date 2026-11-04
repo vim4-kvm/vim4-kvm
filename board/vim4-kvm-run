@@ -89,7 +89,6 @@ case "$app" in
         run_app /opt/vim4-jetkvm/jetkvm ;;
     onekvm)
         binary=/opt/vim4-onekvm/one-kvm
-        if [ "$VIM4_VIDEO_BACKEND" = wave5 ]; then binary=/opt/vim4-kvm/one-kvm-usb-ffc6130/one-kvm; fi
         run_app "$binary" --data-dir "$state" --address 127.0.0.1 --port 8081 --auth-mode managed
         ;;
     pikvm)

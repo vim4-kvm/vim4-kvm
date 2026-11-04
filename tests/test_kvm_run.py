@@ -66,10 +66,13 @@ class KVMRunTests(unittest.TestCase):
                                          None if kernel.startswith('7.') else '1')
                         if kernel.startswith('7.'):
                             self.assertNotIn('VK_ICD_FILENAMES', actual)
-                            self.assertIn('/opt/vim4-kvm/', actual['test_binary'])
+                            if app != 'onekvm':
+                                self.assertIn('/opt/vim4-kvm/', actual['test_binary'])
                             self.assertEqual(actual['GST_PLUGIN_PATH'], str(root / 'opt/vim4-kvm/hdr10-r14e/gstreamer-1.0'))
                         elif app == 'onekvm':
                             self.assertEqual(actual['VK_ICD_FILENAMES'], str(root / 'usr/lib/vim4-kvm/gpu/mali.json'))
+                        if app == 'onekvm':
+                            self.assertEqual(actual['test_binary'], str(root / 'opt/vim4-onekvm/one-kvm'))
                         if secondary:
                             self.assertIn('/vendor-gstreamer-1.0:', actual['GST_PLUGIN_PATH'])
 
