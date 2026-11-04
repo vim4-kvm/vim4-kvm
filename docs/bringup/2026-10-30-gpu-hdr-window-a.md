@@ -1,6 +1,6 @@
 # 2026-10-30：uhd3 GPU候选与HDR离屏窗口A
 
-执行[HDR规格](../gpu-hdr-pipeline.md)。用户已于2026-10-30确认上游Panfrost＋Mesa为准，libmali仅临时后备。
+执行[HDR规格](../archive/gpu-hdr-pipeline.md)。用户已于2026-10-30确认上游Panfrost＋Mesa为准，libmali仅临时后备。
 本轮未push、未测试窗口B，不发HID、不测声音、不ptrace视频进程，不写PWM/电压、不盲读寄存器。
 
 ## 分支、构建与入场

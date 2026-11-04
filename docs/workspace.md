@@ -76,7 +76,7 @@ VM 工作树为 `~/src/u-boot`，版本记在 workspace.toml 的 `uboot` 表。
 7.x 内核工作树存放在 OrbStack `vim4-build` 的 Linux 文件系统中：
 仓库入口为 `/home/deepdream/src/linux-7.3`，配套 U-Boot 为
 `/home/deepdream/src/u-boot-edge`；它们不是当前目录下的子仓库，bootstrap 不创建它们。
-当前目录的 [packaging/kernel](../packaging/kernel/) 保存配置和源码版本锁，
+当前目录的 [packaging/kernel](../packaging/kernel) 保存配置和源码版本锁，
 `build/kernel/` 只保存部分构建产物与备份，不是源码工作树。
 构建方法和分支信息见 [新内核基线](kernel-mainline.md)。
 

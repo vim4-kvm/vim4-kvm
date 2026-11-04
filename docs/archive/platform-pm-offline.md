@@ -39,7 +39,7 @@ CPU power-down idle 在公共 DT 中为 disabled，GPU passive cooling map 仅�
 
 ## GPU 电压结论
 
-来源相对路径沿用 [固定证据索引](../parity/sources.md)。本轮在固定 V/C/B 下核对：
+来源相对路径沿用 [固定证据索引](parity-sources.md)。本轮在固定 V/C/B 下核对：
 
 | 追查路径 | 结果 |
 |---|---|

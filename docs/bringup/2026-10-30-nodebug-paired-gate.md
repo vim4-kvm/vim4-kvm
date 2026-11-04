@@ -1,6 +1,6 @@
 # 2026-10-30：nodebug 两启动对门禁不确定，大核 memcpy 未复现退化
 
-完成[预登记两对门禁](../nodebug-performance-gate.md)：A1/B1/A2/B2各独立启动，最后回默认A。
+完成[预登记两对门禁](../archive/nodebug-performance-gate.md)：A1/B1/A2/B2各独立启动，最后回默认A。
 **大核64MiB memcpy没有复现变慢；tmpfs、三模型SDK和YOLO端到端点估计均更快，
 但性能门禁仍不确定。** 建议批准纯调试关闭配置草案，不据本轮单独pin或宣称全局追平。
 按用户本轮判定，memcpy为辅助待查项，不阻塞tmpfs/端到端；其余保持原统计口径。

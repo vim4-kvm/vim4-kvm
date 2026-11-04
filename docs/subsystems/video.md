@@ -13,7 +13,7 @@ HDMI独立于浏览器，无观看者仍保留EDID和连接；HPD仅表示接收
 
 用户主动隐藏显示器是JetKVM的例外；应用间EDID不同可重协商，网页连接不触发。
 恢复时分别查HDMI锁定、采集推进和浏览器解码，不凭像素不变热插拔。
-输入变化只重建采集和编码，保留WebRTC且跳过故障退避；VDIN1池须限额防CMA不足，见[HDR](../hdr.md#相关记录)。
+输入变化只重建采集和编码，保留WebRTC且跳过故障退避；VDIN1池须限额防CMA不足，见[HDR](../hdr.md#验证边界)。
 验收记录服务实例、EDID和HPD日志、输入锁定及解码，覆盖无人观看、刷新、重连、应用重启，以及休眠和虚拟显示器退出后的恢复。
 物理桌面运动标记须推进，帧率不证明内容更新；EDID切换恢复不能定位主机或VIM4故障，各场景尚未全验。
 
@@ -25,8 +25,8 @@ HDMI独立于浏览器，无观看者仍保留EDID和连接；HPD仅表示接收
 
 - [内核证据](../kernel-mainline.md#相关记录)。
 - [延迟](../latency.md#相关记录)；[播放差异/未决项](../kvm-delay-causes.md)。
-- [RTP](../rtp-send-optimization-audit.md)、[编码库](../encoder-fast-packing-audit.md)：后端、ABI及硬件边界。
-- [高刷](../1080p120-audit.md)、[VRR](../vrr-preparation.md)：输入/本地输出。
+- [RTP](../archive/rtp-send-optimization-audit.md)、[编码库](../archive/encoder-fast-packing-audit.md)：后端、ABI及硬件边界。
+- [高刷](../archive/1080p120-audit.md)、[VRR](../vrr-preparation.md)：输入/本地输出。
 - [驱动](../driver-benchmark.md)、[本地视频](../local-video-benchmark.md)：按端点选工具。
 - [采集插件](../../gst-plugin-vfmcap/README.md)：格式/DMA-buf；[编码插件](../../gst-plugin-venc/VIM4.md)：预算、安装与测试。
 - [应用/音频](../../NanoKVM/VIM4.md)；[视频参数](../../NanoKVM/deploy/vim4/VIDEO.md)：RTP、码率及GOP。
@@ -71,6 +71,6 @@ HDMI独立于浏览器，无观看者仍保留EDID和连接；HPD仅表示接收
 | PiKVM周期爆音，网络和arecord正常 | 周期/缓冲不整除产生回绕旧数据；显式设编码帧对齐周期/有限缓冲，按应用协商参数复现，arecord不代表应用 | [爆音](../bringup/2026-10-16-pikvm-hdmi-audio-pops.md) |
 | 重采样环跳变，客户缓冲五周期 | ALSA rate插值破坏整周期；查原生 hw_params，T7限整数周期，应用原生采集后重采样 | [LPCM](../bringup/2026-10-22-edge-hdmi-audio.md) |
 | HDR切换后CMA失败或GPU回落CPU | 池共享CMA，优先留编码器预算、限池/释放旧管线，测真实PQ↔SDR及期间截图，首开非可重复 | [源切换](../bringup/2026-10-26-hdr-global.md) |
-| strace跟踪One-KVM使UU掉帧 | ptrace干扰多线程，过滤fd仍高开销；用程序内有界计数/低频汇总或独立接收窗口 | [滚轮](../uu-scroll.md) |
+| strace跟踪One-KVM使UU掉帧 | ptrace干扰多线程，过滤fd仍高开销；用程序内有界计数/低频汇总或独立接收窗口 | [滚轮](../archive/uu-scroll.md) |
 | 像素回读时间误作网络延迟 | 4K回读/JS调度扰动，低频采样、分报回读成本，并行测量作废 | [测量](../latency.md) |
 | 采样时编译致丢包/停解码 | 先构建后独占采样，重叠不归因播放策略；保留失败数据，查全窗口推进 | [对照](../kvm-delay-causes.md#pikvm-正式启用低缓冲策略与限制) |

@@ -104,4 +104,4 @@ One-KVM、vim4-kvm-hdmi、manager均active，UDC configured。首次SSH早于One
 
 原始JSON、首尾频率/CPU/softirq/温度和恢复哈希：`logs/gpu-candidate-window/`。
 window.py/post.py留在同目录；registry.bin无读取权限未复制，不影响所有JSON/负载日志的保留。
-离线循环与语料审查见[循环代码生成](../gpu-loop-codegen.md)，后续不默认推广展开候选。
+离线循环与语料审查见[循环代码生成](../archive/gpu-loop-codegen.md)，后续不默认推广展开候选。

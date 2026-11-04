@@ -1,12 +1,16 @@
 # G52 编译与短负载调频：离线候选
 
-2026-10-30，承接[06df4d3 上板结果](bringup/2026-10-30-gpu-diagnosis-window.md)。
+> 归档快照（2026-11-03）：已结束的调查与候选记录，不代表当前状态，现行入口见 [维护合同](../gpu-maintenance.md)。
+
+导航：[循环上限和后端证据](#循环上限和后端证据)、[Mesa候选与离线对照](#mesa候选与离线对照)、[Panfrost冷启动升频](#panfrost冷启动升频)、[下一独占窗口：测量预算20分钟](#下一独占窗口测量预算20分钟)、[HDR转换/缩放4K60最小产品方案（未实施）](#hdr转换缩放4k60最小产品方案未实施)、[产物](#产物)。
+
+2026-10-30，承接[06df4d3 上板结果](../bringup/2026-10-30-gpu-diagnosis-window.md)。
 本轮未访问板子；未读取或修改 NPU 工作树、分支和配置。未 push，未改部署锁。
 方针**用户已于 2026-10-30 确认**：优先上游 Panfrost/Mesa，必要时保留 kbase/libmali 临时后备。
 结论：通用展开候选已将原循环编译到显式展开版的相同统计；实际 FPS、功耗和广泛正确性待上板。
 10ms 轮询是可回退的调频实验，不能承诺解决首个约2ms提交。
 
-后续[上板窗口](bringup/2026-10-30-gpu-candidate-window.md)：候选原循环587.8fps，
+后续[上板窗口](../bringup/2026-10-30-gpu-candidate-window.md)：候选原循环587.8fps，
 10ms暖Vulkan约2.03ms但冷首发仍8.1ms；active空闲CPU约+0.107个百分点。
 [循环/语料审查](gpu-loop-codegen.md)发现局部代码最多膨胀9.5倍，展开保留为绕过实验，暂不默认推广。
 
@@ -40,14 +44,14 @@ GitLab git/history访问返回403，cgit及镜像history也未取得；**未完�
 
 ## Mesa候选与离线对照
 
-[0001补丁](../packaging/gpu/patches/0001-nir-bounded-bifrost-unroll.patch)新增内部编译选项
+[0001补丁](../../packaging/gpu/patches/0001-nir-bounded-bifrost-unroll.patch)新增内部编译选项
 `max_unroll_cost`：0保持现有行为，非零独立限制普通自动展开后的NIR估算成本。
 仅Bifrost v6/v7设最大256次、成本1024，避免单纯把32升256而连带将预算放大8倍。
 1024仍比旧832提高约23%，是待语料调优的候选值，非已证明的通用最优值。
 无shader文本、程序名、128次或产品探针特判；未知次数循环仍沿用NIR分析和原安全条件。
 Valhall及其余驱动选项保持原值。
 
-[0002测试](../packaging/gpu/patches/0002-nir-test-unroll-cost.patch)在Mesa自身nir_tests构造96次、有运行期输入和输出store的循环：
+[0002测试](../../packaging/gpu/patches/0002-nir-test-unroll-cost.patch)在Mesa自身nir_tests构造96次、有运行期输入和输出store的循环：
 足够成本预算允许展开；相同迭代上限但小预算拒绝展开；验证NIR结构。
 初始空循环用例会被视作展开后全常量、成本为0，不能检验成本边界，已改为有运行期操作的用例。
 原作者和许可证保留。
@@ -57,7 +61,7 @@ Valhall及其余驱动选项保持原值。
 Mesa `meson test --print-errorlogs`：**51组通过、0失败、6组跳过**（生成的Rust绑定无测试）；新增两例通过。
 干净builder源副本也验证两补丁按顺序`git apply`成功。
 
-[compiler-compare.sh](../packaging/gpu/compiler-compare.sh)对基线/候选各编译原循环和显式展开，
+[compiler-compare.sh](../../packaging/gpu/compiler-compare.sh)对基线/候选各编译原循环和显式展开，
 使用drm-shim、`PAN_GPU_ID=0x7402`、禁用shader cache；分别保存ISA/verbose和shaderdb统计。
 下表为**首个用户片段变体**；另一blend变体也记录，不能把后续内部blit shader混入。
 
@@ -151,7 +155,7 @@ K为VM `~/src/linux-7.3-gpu`，分支`vim4-gpu-panfrost`；旧基线d2cd4c6。
 复用现有`gst-plugin-vfmcap/src/amly-gpu.c`、`amly-gpu-scale.c`及像素对照工具，避免另造GPU框架。
 先区分两条验收链：HDR保真AMLY→P010及缩放；HDR→SDR还需PQ/BT.2020到SDR的tone-map与色彩矩阵，
 不能用数据布局转换宣称完成tone mapping。
-已有5.15 Main10链见[产品记录](bringup/2026-10-26-hdr-gpu-pipeline.md)，不能直接算7.3通过。
+已有5.15 Main10链见[产品记录](../bringup/2026-10-26-hdr-gpu-pipeline.md)，不能直接算7.3通过。
 
 当前阻挡：`amly-gpu.c:100–102`要求Vulkan≥1.1，而G52 PanVK已测设备仅1.0；
 必须逐项审查实际所需API/扩展，确认可用core1.0＋KHR扩展替代后才放宽门槛，不能只改版本字符串。

@@ -25,7 +25,7 @@ uhd1/uhd2/edge采用已审阅nodebug集合，ADLA_COMPAT=m；新`uhd3.config`使
 DEBUG_WW_MUTEX_SLOWPATH、DEBUG_RWSEMS、DEBUG_LOCK_ALLOC、LOCKDEP、FUNCTION_TRACER、
 FUNCTION_GRAPH_TRACER、FTRACE_SYSCALLS及其自动退出的依赖。保留BTF、KVM/SCHED_INFO、
 事件tracepoint、栈清零、PAN/MTE/PAC、栈保护等安全基线。失去的诊断能力及临时调试构建方法
-见[nodebug审计](../archive/uhd2-nodebug.md)和[草案说明](../nodebug-performance-gate.md)。
+见[nodebug审计](../archive/uhd2-nodebug.md)和[草案说明](../archive/nodebug-performance-gate.md)。
 
 完整Image/dtbs/modules成功，**2338模块**，名称集合与nodebug相同；网口、Wi-Fi、
 Panfrost、HDMI/VDIN/Wave5/JPEG、CRG/ACM、IR、ADLA均齐全。

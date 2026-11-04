@@ -1,16 +1,20 @@
 # 7.3 VDIN HDR2硬件映射：可行性与实现计划
 
+> 归档快照（2026-11-03）：已结束的调查与候选记录，不代表当前状态，现行入口见 [维护合同](../hdr.md)。
+
+导航：[固定源码与证据记法](#固定源码与证据记法)、[5.15：谁决定输出，谁写HDR2](#515谁决定输出谁写hdr2)、[正式7.3：已有能力与真实欠账](#正式73已有能力与真实欠账)、[上游框架与实现边界](#上游框架与实现边界)、[下一步离线计划、工期与验收](#下一步离线计划工期与验收)。
+
 用户已于2026-10-30确认采用VDIN HDR2→SDR NV12→Wave5主路径。
 **正式7.3已经启用受限PQ硬件映射，应做补齐和规范化，不是从零打开HDR2。**
 GPU tone-map shader、DMA适配和编译器优化全部暂停，保留既有提交；GPU仅作必要缩放/后备。
 路线选择依据是已有硬件路径、厂商分工及窗口A原型的实际成本。
 
-最新[uhd4集成门禁](bringup/2026-10-31-hdr2-uhd4-gate.md)：六主题与a5同tree，SDR/NPU/GPU通过；MCP及接收端阻断，未推广。HLG已实现，无真实源未验。
-此前[a5上板](bringup/2026-10-30-hdr2a5-window.md)通过PQ产品DMA恢复、双向退休、VUI、固定图p99、4K60及零内核WARN门禁；
-[DMA合同与集成方案](hdr2-dma-contract.md)说明六缓冲回归、稳定allocator关联及vb2布局修复。正式合并仍待用户审阅。
-此前[统一候选](archive/hdr2-unified-candidate.md)保留a1构建证据；[M6操作说明](m6-enable-hdr.md)也适用于已授权的MCP操作。
+最新[uhd4集成门禁](../bringup/2026-10-31-hdr2-uhd4-gate.md)：六主题与a5同tree，SDR/NPU/GPU通过；MCP及接收端阻断，未推广。HLG已实现，无真实源未验。
+此前[a5上板](../bringup/2026-10-30-hdr2a5-window.md)通过PQ产品DMA恢复、双向退休、VUI、固定图p99、4K60及零内核WARN门禁；
+[DMA合同与集成方案](../hdr2-dma-contract.md)说明六缓冲回归、稳定allocator关联及vb2布局修复。正式合并仍待用户审阅。
+此前[统一候选](hdr2-unified-candidate.md)保留a1构建证据；[M6操作说明](../m6-enable-hdr.md)也适用于已授权的MCP操作。
 
-此前[PQ独占窗口](bringup/2026-10-30-hdr2-pq-window.md)：M6仍为SDR/444/8bit，EDID已经宣告PQ；
+此前[PQ独占窗口](../bringup/2026-10-30-hdr2-pq-window.md)：M6仍为SDR/444/8bit，EDID已经宣告PQ；
 完成5.15/uhd3同源SDR旁路、编码前帧和受限寄存器基线，并补齐配置/已写PQ shadow CRC诊断。
 后续经授权MCP开启M6 HDR，PQ已实际复验；HLG仍无真实源，颜色/切换未测。
 独立[HLG候选](hdr2-hlg.md)已合入特性内核分支，正式配置未改。
@@ -44,7 +48,7 @@ V `vin/vdin/vdin_ctl.c:1890–1922`定义`vdin0_native_hdr`：为1时VDIN0明确
 让本地显示路径保留高位深；共享主HDMI frontend的VDIN1则按**输入RX**分类映射SDR，不依赖TX当前格式。
 VDIN1默认VIU回写分支仍存在，不能把任意video71都当HDMI输入。
 `vdin1_set_hdr_bypass`只是提前return，不等于主动清除旧HDR2配置；需要显式bypass序列和状态证明。
-产品路径为RX→VDIN0原生HDR→VPP/TX，以及同源RX→VDIN1 HDR2→SDR KVM；见[既有双路径交付](bringup/2026-10-25-native-hdr-dual-path.md)。
+产品路径为RX→VDIN0原生HDR→VPP/TX，以及同源RX→VDIN1 HDR2→SDR KVM；见[既有双路径交付](../bringup/2026-10-25-native-hdr-dual-path.md)。
 七系这次目标是**捕获SDR**，不复制native-hdr参数，也不要求先做原始十位DMA导出/GPU tone map。
 V `vecm/set_hdr2_v0.c:810–812`的cuva_static_hlg_en源码默认零，但可运行时修改；对照需记录该参数，不能仅凭默认值断言板上实际HLG分支。
 若未来同时做原生HDR显示，必须单独设计显示与捕获消费者的所有权及HDR metadata，不能把已映射NV12标成PQ再发TX。

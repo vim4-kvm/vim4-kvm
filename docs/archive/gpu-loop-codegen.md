@@ -1,13 +1,17 @@
 # Bifrost循环代码生成与展开语料代价
 
-2026-10-30，配套[候选上板窗口](bringup/2026-10-30-gpu-candidate-window.md)。
+> 归档快照（2026-10-30）：已结束的调查与候选记录，不代表当前状态，现行入口见 [维护合同](../gpu-maintenance.md)。
+
+导航：[27条静态指令为何不能与402条直接比较](#27条静态指令为何不能与402条直接比较)、[已定位的改进点及正确性门槛](#已定位的改进点及正确性门槛)、[shader-db更大语料对照](#shader-db更大语料对照)、[可复现检查](#可复现检查)。
+
+2026-10-30，配套[候选上板窗口](../bringup/2026-10-30-gpu-candidate-window.md)。
 结论：展开是有效绕过，**不是已经修复循环代码生成**。保留实验候选，不建议直接默认推广或以当前阈值提交上游。
 方针**用户已于 2026-10-30 确认**。编译器工作暂停在当前候选，后续优先[产品HDR路径](gpu-hdr-pipeline.md)。
 
 后续[保留循环候选](gpu-loop-candidates.md)已分开实现NIR GCM、JUMP前向清理、受保护的一致控制流回边优化，
 并在GPU分支实现冷恢复QoS boost。展开默认关闭；这些仍是离线候选，不覆盖本页已有硬件测量边界。
 
-[后续硬件窗口](bringup/2026-10-30-gpu-loop-window.md)已否决完整控制流系列：中心像素错误与GPU timeout；
+[后续硬件窗口](../bringup/2026-10-30-gpu-loop-window.md)已否决完整控制流系列：中心像素错误与GPU timeout；
 仅GCM带来约16.4%收益但未追平。主机MIR/语料通过不足以证明Bifrost硬件收敛/scoreboard语义。
 
 [离线故障隔离](gpu-loop-repair.md)进一步定位：一致回边产生同块分支后，layout错误扣除了前置块，
@@ -71,7 +75,7 @@ SHA256 `651208a606fa0af28c970f287762bfc57b6991cf9f88cc86d4f782187306d5c2`；
 同窗读取main为`6ec450899fb1cb9d6d4829bbf864288c4e7a5dbb`。
 随后取得固定commit归档SHA `c32024f380407a9aec409cabfbd52bfc97f33d8952fa264a525f464d5c486f99`，
 逐文件比较4263个shader及run.c/Makefile/COPYING共4266项，内容与实测输入完全相同。
-复现脚本已改用该固定commit与SHA，[输入锁](../packaging/gpu/corpus.lock.json)记录语料及deb下载URL，避免依赖移动的main。
+复现脚本已改用该固定commit与SHA，[输入锁](../../packaging/gpu/corpus.lock.json)记录语料及deb下载URL，避免依赖移动的main。
 首个下载因20秒限制截断，已舍弃；最终完整归档通过tar遍历与解包，保留于`build/gpu-candidates/`。
 不是以自造探针代替语料，也没有将库内所有shader都宣称为GLES CTS。
 
@@ -100,7 +104,7 @@ Skia/2047寄存器使用数31→33，但shaderdb的threads原本就是1、之后
 
 ## 可复现检查
 
-[corpus-check.sh](../packaging/gpu/corpus-check.sh)校验语料及libepoxy两包SHA，
+[corpus-check.sh](../../packaging/gpu/corpus-check.sh)校验语料及libepoxy两包SHA，
 将额外依赖解到私有目录，不修改sealed builder或运行时包；`--network none`编译run并对照。
 libepoxy-dev/libepoxy0版本1.5.10-1build1，取自builder既有Ubuntu20261012 snapshot；
 SHA分别为`976557dd0a474f859db69f092c15ae83c366c7a42400be45ccf7921b314c257f`和

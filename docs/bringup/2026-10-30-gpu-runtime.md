@@ -73,7 +73,7 @@ GPU与NPU性能测试顺序执行，不能并发占用DDR后仍当作配对基�
 | 5.15 vendor能力/固定负载 | 4–7分钟 | API版本、扩展、renderer、像素、吞吐，失败项单列 |
 | 一次性7.3启动及核对 | 2分钟 | Image/模块build ID、GPU四核/温区、NPU候选版本 |
 | 7.3 system、private两套 | 各4–7分钟 | 相同工具/负载/尺寸，API差距与吞吐原始值 |
-| GPU五档、thermal/runtime PM | 各3–5分钟 | 复用[首轮清单](../gpu-parity-plan.md)，固定电压只读核对 |
+| GPU五档、thermal/runtime PM | 各3–5分钟 | 复用[首轮清单](../archive/gpu-parity-plan.md)，固定电压只读核对 |
 | HDMI/Wave5并行GPU | 8分钟 | 帧序、像素、丢帧、CMA/fence/内核错误；不发HID、不测声音 |
 | NPU项目、恢复5.15 | 按NPU清单＋2分钟 | 先结束GPU负载再执行NPU单项；正常重启回默认 |
 

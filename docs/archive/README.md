@@ -29,3 +29,22 @@
 
 [内核审计附件](kernel-audit/)随补丁快照保存，其中包含整理前的 host-tests-initial.json。
 音频结果 JSON 和验证日志由对应音频快照链接。
+
+- [1080p120 完整链路审查](1080p120-audit.md)：2026-11-03 快照；现行入口见[维护合同](../video-modes.md)。
+- [厂商编码库 fast packing 审计（2026-10-25）](encoder-fast-packing-audit.md)：2026-10-28 快照；现行入口见[维护合同](../performance-baseline.md)。
+- [7.3 GPU HDR→SDR／缩放规格与第一阶段原型](gpu-hdr-pipeline.md)：2026-10-30 快照；现行入口见[维护合同](../hdr.md)。
+- [保留循环的Mesa候选与冷恢复boost](gpu-loop-candidates.md)：2026-11-03 快照；现行入口见[维护合同](../gpu-maintenance.md)。
+- [Bifrost循环代码生成与展开语料代价](gpu-loop-codegen.md)：2026-10-30 快照；现行入口见[维护合同](../gpu-maintenance.md)。
+- [Bifrost同块回跳修复与GPU上电轮询候选](gpu-loop-repair.md)：2026-11-03 快照；现行入口见[维护合同](../gpu-maintenance.md)。
+- [VIM4 GPU 离线候选与验收方案](gpu-parity-plan.md)：2026-11-03 快照；现行入口见[维护合同](../gpu-maintenance.md)。
+- [G52 编译与短负载调频：离线候选](gpu-performance-candidates.md)：2026-11-03 快照；现行入口见[维护合同](../gpu-maintenance.md)。
+- [GPU 性能差距：离线测量复核与下一窗口](gpu-performance-diagnosis.md)：2026-10-30 快照；现行入口见[维护合同](../gpu-maintenance.md)。
+- [7.3 VDIN HDR2硬件映射：可行性与实现计划](hdr2-hardware-plan.md)：2026-11-03 快照；现行入口见[维护合同](../hdr.md)。
+- [T7 HDR2普通HLG离线候选](hdr2-hlg.md)：2026-11-03 快照；现行入口见[维护合同](../hdr.md)。
+- [nodebug：绑核证据、DDR边界与两启动对门禁](nodebug-performance-gate.md)：2026-11-03 快照；现行入口见[维护合同](../performance-baseline.md)。
+- [NPU 端到端分段：离线分析与下一窗口](npu-e2e-timing.md)：2026-10-30 快照；现行入口见[维护合同](../npu-adla.md)。
+- [NPU性能：历史波动分析与多启动门禁](npu-performance-gate.md)：2026-10-30 快照；现行入口见[维护合同](../performance-baseline.md)。
+- [RTP 逐包发送优化审查](rtp-send-optimization-audit.md)：2026-10-28 快照；现行入口见[维护合同](../performance-baseline.md)。
+- [UU 经 KVM 的滚轮速度对照](uu-scroll.md)：2026-10-15 快照；现行入口见[维护合同](../input-latency.md)。
+- [本地 VRR／帧锁定透传审查](vrr-passthrough-audit.md)：2026-10-26 快照；现行入口见[维护合同](../vrr-preparation.md)。
+- [对照依据与复核方法](parity-sources.md)：2026-11-03 快照；现行入口见[维护合同](../parity/README.md)。

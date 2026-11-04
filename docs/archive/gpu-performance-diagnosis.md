@@ -1,5 +1,9 @@
 # GPU 性能差距：离线测量复核与下一窗口
 
+> 归档快照（2026-10-30）：已结束的调查与候选记录，不代表当前状态，现行入口见 [维护合同](../gpu-maintenance.md)。
+
+导航：[测量是否同条件](#测量是否同条件)、[原因排序与源码证据](#原因排序与源码证据)、[本轮实施](#本轮实施)、[clpeak map超时的源码解释](#clpeak-map超时的源码解释)、[下一独占窗口（每项不超过10分钟）](#下一独占窗口每项不超过10分钟)。
+
 结论：旧GLES结果是可复现的串行离屏负载差距，但尚不能归因为纯GPU执行慢2.7倍；
 旧Vulkan4.25倍是一次冷提交的主机等待时间之比，不是稳态compute吞吐之比。
 本轮修正测量边界、预热及分段计时，增加G52循环展开A/B和受控频率/PM/fdinfo诊断。
@@ -7,7 +11,7 @@
 本轮没有连接板子，NPU独占会话未受干扰，未读取/修改VM的NPU工作树。
 方针**用户已于 2026-10-30 确认**；上板操作需要另一个独占窗口。
 
-后续[实测分解窗口](bringup/2026-10-30-gpu-diagnosis-window.md)：显式展开使私有Mesa由约232升至567fps，
+后续[实测分解窗口](../bringup/2026-10-30-gpu-diagnosis-window.md)：显式展开使私有Mesa由约232升至567fps，
 厂商同展开版约573fps；有效GPU区间由4.133降至1.584ms，厂商同展开版1.515ms。
 连续GLES锁频/PM无显著收益，原循环fdinfo忙碌估计约94%；短Vulkan锁800MHz由3.30降至2.00ms，
 PM on未改善稳态。最小CL map与独立transfer均通过，旧全程序120秒预算不能证明map死锁。
@@ -19,7 +23,7 @@ GPU timer通过`GPU_TIMER_QUERY=1`或`gpu-compare.py --gpu-timer`单独启用，
 原循环已得到与显式展开相同的G52统计且无spill；内核4e239aec051a4将devfreq轮询改为10ms。
 均未上板，不能把编译统计或构建通过当作FPS、功耗与产品HDR性能验收；下一窗口测量预算20分钟。
 
-该窗口后已完成[候选配对实测](bringup/2026-10-30-gpu-candidate-window.md)：
+该窗口后已完成[候选配对实测](../bringup/2026-10-30-gpu-candidate-window.md)：
 展开绕过生效，10ms改善暖提交但不解决冷首发；[后端循环分析](gpu-loop-codegen.md)定位不变量重复计算及reconvergence保护下的额外回跳。
 
 ## 测量是否同条件
@@ -59,13 +63,13 @@ M=VM `~/build/gpu-runtime-26/mesa-26.2.6/`（tarball b9436b3e…31a92）。
 
 ## 本轮实施
 
-- [GLES探针](../packaging/gpu/gpu-probe.c)：两秒预热；稳态计时在最后一次glFinish之后、glReadPixels之前截止，回读单独统计；输出draw/finish/进程CPU时间及RGBA位数。
+- [GLES探针](../../packaging/gpu/gpu-probe.c)：两秒预热；稳态计时在最后一次glFinish之后、glReadPixels之前截止，回读单独统计；输出draw/finish/进程CPU时间及RGBA位数。
   清理GL对象改在解绑context之前。`GPU_UNROLL128=1`为显式展开诊断，默认仍是原循环；不是已证明的驱动性能补丁。
-- [DMA探针](../tools/mali-dma-probe.c)：可选第四个参数1–100次测量，先打印三个预热样本（首个为冷样本），再输出每次submit/wait/total和稳态均值；一次分配/pipeline复用，最后完整回读。每次fence仍有10秒超时，外层需90秒超时。
-- [gpu-diagnose.py](../tools/gpu-diagnose.py)：只采自己的GPU子进程，不ptrace、不扫视频进程。保存trans_stat、200ms频率/PM、fdinfo周期/引擎ns、/proc/PID/stat和主机输出。
+- [DMA探针](../../tools/mali-dma-probe.c)：可选第四个参数1–100次测量，先打印三个预热样本（首个为冷样本），再输出每次submit/wait/total和稳态均值；一次分配/pipeline复用，最后完整回读。每次fence仍有10秒超时，外层需90秒超时。
+- [gpu-diagnose.py](../../tools/gpu-diagnose.py)：只采自己的GPU子进程，不ptrace、不扫视频进程。保存trans_stat、200ms频率/PM、fdinfo周期/引擎ns、/proc/PID/stat和主机输出。
   可临时固定频率、power/control或profiling，结束/失败/TERM恢复；超时保留已有输出并终止整个子进程组。
   忙闲估计取两个引擎增量的最大值，不相加重叠时间；不是精确硬件busy并集。profiling另跑，避免把其开销混入普通FPS。
-- [gpu-cl-map.c](../tools/gpu-cl-map.c)：4KB/1MB/64MB、普通/ALLOC_HOST_PTR、每组3次map→finish→unmap→finish；逐阶段flush日志及map event时间，60秒外层超时定位究竟停在哪一步。
+- [gpu-cl-map.c](../../tools/gpu-cl-map.c)：4KB/1MB/64MB、普通/ALLOC_HOST_PTR、每组3次map→finish→unmap→finish；逐阶段flush日志及map event时间，60秒外层超时定位究竟停在哪一步。
 
 没有板端运行结果，不能宣称展开版已缩小差距。没有内核改动，因此不重建Image/模块、不运行针对新增内核代码的checkpatch；
 保留原分支d2cd4c6。三份C工具ARM64 `-Wall -Wextra -Werror`编译；loop/展开版均通过drm-shim着色器编译，

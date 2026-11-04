@@ -1,177 +1,96 @@
-# 5.15 / 7.3 性能基线协议
+# 性能基线协议
 
-摘要：目标为同一 VIM4、同一根文件系统下，7.3 全能力且性能不低于厂商
-5.15.137-vim4kvm。完整配对性能项仍**待测**；已完成
-[5.15启动往返与GPU栈短测](bringup/2026-10-23-vendor-boot-gpu.md)，其余方法尚待执行。
-分窗采样见 [执行矩阵](overnight-performance-plan.md)。P0-2不测声音，稳定性上限10分钟；
-音频、光学端点、30分钟增长及其他扩展项保留为后续协议，不计本轮预算。启动步骤和风险见
-[厂商一次性对照启动](vendor-boot-baseline.md)。
+本页管同板同用户态的功能与性能判定，完整配对仍未完成；不能据短测宣布全面追平。
+导航：[准备](#入口与证据)、[配对](#配对互斥与判定)、[视频](#kvm-主链路)、[GPU](#解码与-gpu)、[通用项](#通用性能启动供电与-dvfs)、[NPU](#npu-与编码诊断)。
+命令、负载、阈值及报告格式以[计划器](../tools/perf-baseline.py)的 `plan`、`matrix`、`compare` 和源码为准。
 
 ## 入口与证据
 
-```sh
-python3 tools/perf-baseline.py plan --backend=stock > /tmp/perf-stock.json
-python3 tools/perf-baseline.py plan --backend=edge > /tmp/perf-edge.json
-python3 tools/perf-baseline.py compare /path/to/metric.json
-```
+plan 只输出模板，不执行或 SSH；逐项代入环境，不把整个计划交给 shell。
+每轮新建输出，保存 stdout、stderr、退出码和超时。构建先完成，采样用[驱动基准](driver-benchmark.md)。
+保存内核及完整模块身份、固件、根文件系统、应用和工具摘要、实际进程亲和、
+源与输出格式、编码质量、EDID、网络、频率策略、散热及供电；配置另存摘要，不收凭据。
+同一用户态包括相同安装包、应用和数据；内核 ABI 必需的后端差异单列，不在 A/B 中升级。
+生产默认 DVFS 与固定频率诊断分组，亲和也须配平。安装制品的清单比文档旧版本更可靠。
 
-plan 只输出命令模板，不执行、不 SSH、不安装工具。执行者逐项代入环境变量，
-不要直接把整个计划交给 shell。每项一个新的 `$OUT`，stdout/stderr、退出码和
-超时均保存。`perf-sensors.py` 是供未来板上窗口运行的只读 1Hz 记录器，输出独占创建。
-原生采集/编码沿用 [驱动基准](driver-benchmark.md)，构建在采样前完成。
+## 配对互斥与判定
 
-每个运行保存：内核 release/build ID/Image/DTB/完整模块清单哈希、cmdline、固件、
-根文件系统与包版本、应用/manager/插件和基准二进制 SHA256、进程 PID/affinity、
-浏览器实际版本、源刷新率、输入/输出尺寸/格式、实际编码器、码率/GOP/QP/质量、
-EDID、音频采样率/周期/缓冲、网卡路径/MTU、CPU/GPU/编码器/DDR频率、governor、
-风扇曲线/环境温度/供电方式。应用配置与媒体文件另作 SHA256 清单，不收凭据。
-同一用户空间指相同安装包/应用/数据；内核对应插件及 Mali/Mesa ABI 是明确记录的
-必要差异，不能在 A/B 之间 apt upgrade。诊断固定频率和生产默认 DVFS 分开成两组。
-保持相同 CPU affinity；当前运行器只在 7.x 固定 0–3，需显式记录并为诊断配平。
+按[板窗口](board-window.md)取票，构建释放板票；采样标记排斥 heavy。
+板子、信源、接收端和网络对端均不并行编译、部署、性能测试、抓栈或交互，
+只允许协议规定的低频遥测。录像、调试和 trace 另轮。
+原生测试停采集应用，端到端恢复同一服务并只留一个观看者，退出恢复原状态。
 
-## 配对、互斥与判定
+按计划器要求做多组 A/B/A，保留启动块级样本，不能复制或把同 boot 重复当独立启动。
+跨窗口仅在同一配置和测量 epoch 配对；跨日、升级、源或设置变化即作废。
+起始温区相同，预热后测；两侧 A 波动超容差标受干扰，不能放宽到通过。
+比较器的命名策略分别判吞吐、尾延迟、错误、启动、功耗和温升，不让总分抵消单项退化。
+容差是测量资格，不是允许永久降低性能；高噪声应改善测量而不改门槛。
 
-所有占板通过 `tools/board-queue run --max-min 30`，启动、采样及恢复均在租约内。
-构建先在独立 `run --heavy` 完成，不持板票据；采样前 `sampling on`、结束 `sampling off`。
-禁止手动嵌套旧lockf。候选链式RAM启动、每日5.15缓存和return-baseline沿用
-[共享窗口工具](board-window.md)。板端flock不能替代队列。板子、HDMI 源、接收 Mac、网络对端均不得并行编译、部署、
-性能测试、抓栈或交互操作；各负载串行。只允许本轮规定的低频传感器采样伴随负载。
-调试器、perf/strace、录像校验另开轮次。原生基准停实际采集应用；端到端测试恢复
-同一 One-KVM 服务、只留一个观看者。停启前记原状态，结束恢复，超时停止整轮。
-
-每个配置至少三组 A/B/A（A=5.15，B=7.3）；按启动分块批量跑各项，再重复三组，
-相邻组可共享末/首 A，至少七个逻辑样本。允许跨≤30分钟窗口配对；窗口间有构建/
-升级、跨日或源/用户态/设置变化则该组作废，详见执行矩阵。冷却至同一温区（起点相差 ≤2°C），
-无升级/后台备份；源先稳定，至少预热15秒。CPU/内存另先跑15秒预热，启动不预热。
-两端 A 波动超过该项容差，标受干扰并保留，不能放大容差直到通过。
-
-| 指标策略 | 7.3 相对相邻 A 均值的门槛（每组均通过） |
-|---|---|
-| throughput | 帧率、events/s、MiB/s、Mbps、GPU场景分数 ≥95%；I/O另比较p95/p99延迟 |
-| latency-ms | 视频/音频/HID及分段P50/P95/P99不得增加超过 max(5%, 2ms)；每个分位单独门禁 |
-| errors | 丢帧/丢包/冻结/不一致标记/音频断续/内核错误必须为0；没有5%错误预算 |
-| boot-s | 启动各端点不得增加超过 max(5%, 1s) |
-| power-w | 同吞吐同画质时平均与P95功率 ≤105%，另报每帧/每任务能耗 |
-| temperature-c | 同环境同风扇下稳态温升不得增加 >2°C；触发节流单列，不能靠降吞吐过关 |
-
-这些是预先固定的测量容差，并非允许永久降低产品性能。高噪声项需提高测量精度，
-不改门槛。频点/驻留时间是解释变量，不能单独宣称快慢；必须同时通过性能及功耗门禁。
-功能缺失填“能力缺失”，工具/传感器/测量端点缺少填“测量缺失”，均无数值且不算通过。
-程序崩溃、超时或已支持路径启动失败填“失败”，不能降格成能力缺失。没有全覆盖不宣布追平。
-
-compare 每次接受一个配置的一项指标，格式如下（groups 至少三组，不能复制样本凑数）：
-
-```json
-{"status":"ok","direction":"higher","policy":"throughput","groups":[
-  {"before":{"value":60,"valid":true,"config_sha256":"64位实际SHA256","evidence":"A1/raw.json"},
-   "candidate":{"value":59.8,"valid":true,"config_sha256":"同上","evidence":"B1/raw.json"},
-   "after":{"value":60,"valid":true,"config_sha256":"同上","evidence":"A2/raw.json"}}
-]}
-```
-
-config_sha256 是两边相同的负载/公共用户态/测量设置清单哈希，内核与必要后端差异
-放每轮独立 manifest。`valid` 必须由原始记录审查后填写；工具不自动证明配置、画质、
-样本数或日志真实存在，不解析所有第三方输出。任何一项非通过都返回非零。
-缺失项可直接输入 `{"status":"能力缺失"}`。该工具是单指标门禁，不能替代整套验收。
+能力缺失与测量缺失均无数值且不通过；已支持路径启动失败、崩溃或超时必须记失败。
+配置摘要相同只证明声明一致，valid 须由原始证据审查后填写；
+工具不证明画质、样本或日志真实存在。缺覆盖不能宣布追平。
 
 ## KVM 主链路
 
-主矩阵：1080p60、2160p60；capture、Wave5/厂商 MultiEnc H.264、H.265、硬件 JPEG
-分别测；软件编码器若产品启用也独立列行，禁止静默回退。H.264/H.265 分别12/60Mbps，
-GOP60/相同刷新策略，JPEG质量80；缩放、HDR/高位深另扩展，不能混入同一统计。
-设置 `$WIDTH/$HEIGHT/$BITRATE` 后执行 plan 对应命令，以 khadas 运行厂商后端，
-不删除 `/tmp/vpu_mutex.map`。900帧预热、7200帧测量（60Hz至少120秒），低帧率会延长，
-240秒超时为失败；报告实际wall时间、输出/输入计数、PTS间隙、CPU、pad分位数与CMA。
-实时源限制吞吐上限，60fps只证明达到输入速率，不代表离线编码峰值。
+采集、各硬件编码和已启用的软件编码分别测，禁止静默回退；缩放、HDR 和深色单列。
+输入预先稳定，用实际生产用户和分配器，不删除厂商共享互斥文件。
+实时源封顶只证明达到输入速率，不是离线编码峰值。
+核对计数、PTS、实际 wall 时间、CPU、尾延迟和 CMA，超时不能作为一个低分样本。
 
-运动源在 Mac：
+视频端点、时钟资格和完整帧判定按[延迟协议](latency.md)；
+源绘制到浏览器合成提交不是光学端到端，独立无像素回读轮测呈现节奏。
+发送、解码和呈现分别证明，无更新尾段、漏回调、停顿及源帧率一并报告。
+同 PTS 分段不能相加；相对基线通过仍须满足实际播放流畅性。
+每种保留编码另做同连接长期增长测试，处理帧号回绕；
+本轮稳定性窗口限制见[执行矩阵](overnight-performance-plan.md)，不能擅自扩成长测。
 
-```sh
-/tmp/vim4-latency-source 180 --motion --verify-coherence > "$OUT/source.jsonl"
-# 源稳定后，在同一Mac另一终端启动plan中的接收命令
-python3 tools/latency-summary.py "$OUT/source.jsonl" "$OUT/receiver.json"
-node tools/one-kvm-smoke.mjs "$URL" --exclusive --seconds=120 --warmup=15
-```
-
-codec/码率在测试前设置并核实实际输出；smoke 会逐编码测试，必须按其轮次拆结果。
-视频延迟是源开始绘制→浏览器提交合成器，另跑无像素回读轮次测呈现FPS/间隔；
-不能叫光学端到端。按 [延迟协议](latency.md) 时钟误差≤2ms、每窗口≥1000有效标记，
-P50/P95/P99/max、无更新尾段、漏回调、实际源帧率全报；同PTS分段不能相加。
-60Hz呈现/解码均≥59fps且间隔无>250ms停顿，不能仅凭相对5.15通过。
-每种保留编码另跑30分钟同连接，首尾120秒窗口，处理16位帧号回绕；延迟增长≤16.7ms。
-单独录像解码核验三处ID、SPS/profile、码率、细线及颜色，不能在计时轮次写码流。
-物理HDMI光子→接收屏光子用≥240fps相机同时拍源/接收屏同一帧标记，120秒、
-至少1000匹配事件；相机量化误差>2ms时该容差不可判，换光电设备或填测量缺失。
-
-音频：固定48kHz立体声，并扩展44.1/96kHz独立项。同步源加
-`--sync-audio=实际HDMI设备名`，plan的AV命令每轮180秒；先用
-`node tools/one-kvm-av-sync-check.mjs --calibrate=known-offset.mp4 --expected-ms=120`
-校准同浏览器回环。报告音画偏移P50/P95及漂移、非静音/连续性。**AV偏移不是音频单向延迟**。
-单向绝对音频另用同一多通道声卡同时采集源参考电输出和接收播放输出：
-`arecord -D "$LOOPBACK_DEVICE" -f S32_LE -r 48000 -c 2 -d 180 "$OUT/audio-loop.wav"`，
-每2秒一脉冲，逐脉冲互相关，以录音采样数差/48000计算延迟；先直连校准两通道差。
-每轮约90脉冲，报告P50/P95/max，P99至少1000脉冲（≥34分钟）再判；无接线/设备填测量缺失。
-光学视频、音频绝对延迟不能从分段均值或AV偏移推算。
+录像校验另轮解析实际 profile、SPS、码率、细线和颜色，不在性能计时轮写码流。
+光学端点需同时观察源与接收屏；量化误差大于容差则缺测，不能从软件分段推算。
+音频默认只确认服务状态；额外音频测试须按实际授权。
+AV 偏移先校准观察器，它不是单向音频延迟。绝对音频需共同采样时基、源参考与播放输出，
+先校准通道差；尾分位样本不足就待测。缺接线或仪器填测量缺失。
 
 ## 解码与 GPU
 
-解码逐 H.264、HEVC、VP9、AV1、AVS2、MPEG1/2、MPEG4/Xvid、MJPEG、VC1、AVS，
-按 [媒体能力表](parity/media.md) 的位深/分辨率子集建行。Wave521C 不因名称含Wave5就
-假定能解码；当前7.3对应项标能力缺失，禁止在性能窗口尝试未过安全门禁的vdec驱动。
-准备≥120秒、哈希固定的1080p与4K I/P/B片源放tmpfs（空间不足固定本地文件并记I/O），
-先离线参考解码验证帧数/CRC，再执行plan管线，显式填入经 `gst-inspect-1.0` 确认的
-硬件元素/解析器/封装解复用器，如 `qtdemux` / `h264parse`；不用decodebin自动软解。
-厂商若仅有私有播放器，须补能导出完成帧数与wall时间的适配器；当前命令是待发现的
-模板，不能声称厂商解码基准已可直接运行。sync=false跑到EOS，以正确输出帧/总wall时间
-计吞吐；素材重复拼成≥120秒实际测量量，另设180秒看门狗，排除启动15秒；逐codec三组。
-缺少硬件消费程序填测量缺失，已知缺驱动才填能力缺失。
+解码按[媒体子表](parity/media.md)逐 codec、位深和尺寸建行。
+准备固定摘要的足量片源，先离线参考核对帧数与 CRC；显式选择实际硬件元素，
+不用自动软解回退。私有播放器须能导出正确完成帧与 wall 时间，未知模板不能冒充可执行基准。
+Wave 产品名不证明解码能力；缺驱动与缺消费工具分别报告。
+未过安全退出门禁的解码器不在性能窗口尝试。
 
-GPU已知证据：厂商源码是Mali midgard/bifrost私有内核接口；[7.3实测](bringup/2026-10-21-edge-gpu-devfreq.md)
-为 Mali-G52 r1 / Panfrost、Mesa 25.2.8。离线旧包清单
-`logs/preflash-backup-20261013-123403/home-and-packages.txt` 只有Mesa EGL/GLVND/GLES包，
-没有libMali包证据；不能由内核驱动推断当前5.15具有匹配闭源用户态。
-后续[短窗口](bringup/2026-10-23-vendor-boot-gpu.md)确认5.15只有Mesa EGL vendor，
-实际渲染为llvmpipe，未找到专有libMali；不能拿其19分与M1/Panfrost925分作硬件比较，
-实际surface尺寸也不同。硬件对照仍缺匹配用户态。下列只读发现命令每轮各存一份：
+GPU 每轮确认实际加载库、renderer、模块和输出像素，不能把 llvmpipe 与硬件分数比较。
+双方共用负载、API、尺寸与 surface；接口不可比就分开报告。
+私有库逐进程隔离，不替换系统 Mesa。离屏各场景独立判，scanout 的 vsync 封顶不是峰值。
+独占显示前保存并恢复 compositor，不能覆盖其他显示任务。
+冷主机等待、暖 GPU 执行和 steady throughput 分开，详见[GPU 判读](gpu-maintenance.md)。
+不写未经标定的电压；功能烟测不等于性能或功耗全面通过。
 
-```sh
-dpkg-query -W '*mali*' '*mesa*' '*egl*' '*gles*'
-ldconfig -p
-ls -l /usr/share/glvnd/egl_vendor.d /usr/lib/aarch64-linux-gnu/libEGL* /usr/lib/aarch64-linux-gnu/libGLES*
-eglinfo
-LD_DEBUG=libs glmark2-es2-drm --off-screen --size 1920x1080 --benchmark 'shading:duration=15'
-```
+## 通用性能启动供电与 DVFS
 
-发现轮次不计分；记录实际加载库真实路径/哈希、EGL vendor、GL renderer/version、
-内核模块。私有libMali若需隔离前缀，预先安装到独立路径，用进程LD_LIBRARY_PATH选择，
-不替换系统Mesa链接。两边固定同一glmark2源码/场景/分辨率/GLES API；无法共用GBM时
-选择双方支持的同一pbuffer GLES负载，保留源码和输出像素校验；接口不可比则分别报告。
-plan的离屏/DRM场景120秒，各另预热15秒；完整glmark2套件也跑三组，各场景独立比较，
-不能让总分抵消单项回退。kmscube跑120秒只验scanout/错误/帧节奏，vsync封顶不代表GPU峰值；
-timeout预期SIGINT退出需确认程序结束。DRM测试独占显示，停compositor，M1不支持的项
-标能力缺失；不能为跑分覆盖显示任务的候选。不得写未经校准的GPU电压表。
-
-## 通用性能、启动、供电与 DVFS
-
-| 项目 | 命令、采样与补充规则（均三组A/B/A） |
+| 项目 | 解释与操作约束 |
 |---|---|
-| CPU | plan cpu-single分别选每个capacity簇的代表CPU，cpu-all=8线程，120秒；sysbench events/s，另报P95 latency，affinity固定 |
-| 内存 | plan memory读及另轮`--memory-oper=write`，各120秒；256MiB大于缓存，单线程及8线程各跑，报告sysbench传输口径，不能称DRAM物理总线峰值 |
-| 存储 | plan顺序读写，另各轮改`--rw=randread/randwrite --bs=4k --iodepth=1/16`；15秒预热+120秒，BW/IOPS与clat P95/P99。SCRATCH仅专用挂载点中新建2GiB普通文件，先顺序写准备并sync，禁止原始块设备/现有用户文件。至少留4GiB空间；eMMC/SD/USB各列，不刷缓存掩盖差异，写入有磨损预算 |
-| 网络 | 有线、Wi-Fi各固定接口/IP/信道/位置，对端`iperf3 -s -B "$PEER"`；plan正向及另轮`-R`，各120秒+15秒omit；单流主项，4流另列，TCP重传另报。UDP另用`-u -b 已固定目标码率`记丢包/jitter；Wi-Fi不得与P2P任务并行 |
-| HID | plan input每次原生窗口≤40秒，20轮积累每种事件样本，主指标浏览器send→同Mac原生收到，视频开/关分组；同钟校准≤2ms、匹配事件数。按[input验证](input-latency.md)汇总；P99不足1000样本则待测，勿将此结果称USB总线独立延迟；纯gadget写→USB报告需逻辑分析仪/共同触发，缺仪器填测量缺失 |
-| 启动 | 每内核至少5次；保存plan的systemd-analyze、`journalctl -b -o short-monotonic`和外部UART时间戳；分别计RESET→内核首字、PID1→manager可用/首个有效视频/首个实际HID，轮询`curl --fail --max-time 1 "$URL"`只证明HTTP。冷启动/热复位分开，人工串口停留排除，pstore不算启动计时 |
-| 空闲 | 无观看者、无benchmark，服务组合固定，稳定5分钟后plan idle采300秒；温度/功率P50/P95、CPU/GPU/DDR驻留，外接显示/USB状态一致 |
-| 满载 | plan load 600秒，预热前300秒、后300秒稳态；同时运行1Hz sensors记录器。另开GPU专用满载和4K60 KVM生产负载600秒，禁止同时跑CPU/GPU基准凑一个不可比数字；持续节流可延长但两边相同 |
-| 频率 | sensors每秒读CPU/devfreq/governor/runtime状态；前后另存`cat /sys/kernel/debug/clk/clk_summary`和cpufreq time_in_state；厂商Mali/DDR私有节点先从当前驱动找实际只读路径，不写猜测地址。runtime suspended时cur_freq是缓存，不能当实频 |
+| CPU/内存 | 各 capacity 簇与全核分开，固定亲和；逻辑传输量不是物理 DRAM 带宽，细则见[内存](memory-copy-audit.md) |
+| 存储 | 各介质、顺序/随机与队深分别测；仅专用挂载点新建普通文件，先准备并同步，禁止原块设备和用户文件；预留空间和磨损预算，不能刷缓存掩盖差异 |
+| 网络 | 固定接口、位置、信道和对端，双方向与多流单列，另报重传、丢包和 jitter；Wi-Fi 与 P2P 不并行 |
+| HID | 按[输入](input-latency.md)区分视频开关，同 Mac 原生端点不等于纯 USB；尾分位样本不足待测，总线端点须分析仪或共同触发 |
+| 启动 | 冷热复位分开，保留 UART 和单调日志，分别计内核、管理面、首个有效视频和真实 HID；HTTP 成功与 pstore 均不是完整可用时间 |
+| 空闲/满载 | 无观看者且服务组合固定；CPU、GPU 和 KVM 生产负载分轮，不能混成不可比总负载。温度未稳定就不能叫稳态 |
+| 频率 | 保存前后驻留及实际只读频率；runtime suspended 的缓存频率不是实频，不写猜测地址 |
 
-传感器 `hwmon power*_input` 通常为µW、energy为µJ，须按具体驱动确认单位与测量域；
-没有传感器不记0W。整板功率优先用同一USB-C/直流功率计1Hz导出CSV（W、时间戳、
-PD电压/电流），扣除仪器通道偏差但不扣除系统背景功耗；功率路径/回供相同。
-温度改用相对环境温升，不拿CPU百分比或温度估算瓦数；自动风扇转速及噪声策略一起保存。
+功率确认驱动单位与测量域，缺传感器不记零。整板优先同一功率计、同一供电拓扑及时间轴；
+PD 合同、单轨读数、CPU 百分比和温度均不能代替整板瓦数。
+可扣仪器通道偏差，不能扣系统背景功耗。温升相对环境，风扇与噪声策略一并保存。
+启动准备和硬挂死边界见[一次性对照](vendor-boot-baseline.md)；预算唯一维护在[分窗矩阵](overnight-performance-plan.md)。
 
-## 排队预算
+## NPU 与编码诊断
 
-P0-2完整范围56窗、21小时19分15秒，首组关键指标3窗、64分30秒；每窗≤30分钟，
-含启动和恢复，不含FIFO等待和失败重测。逐项预算与剩余计划唯一维护在
-[分窗执行矩阵](overnight-performance-plan.md)。不再申请连续整夜租约。
+NPU 以启动对为统计单位，保留联合区间和三态结论；同模型输出一致是前置，
+历史单组退化与多启动不确定并存，不能删离群值直到通过。
+DDR 条件和扰动资格不闭合时仅定位，不把 SDK 外残差算作驱动开销。
+输出、取消、保页和 profiling 细则见[NPU](npu-adla.md)。
+
+厂商编码延迟须区分插件、硬件等待和输出处理，单 bit 候选的收益与画质尚未证明，
+见[审计快照](archive/encoder-fast-packing-audit.md)；不能以源码开关存在宣称 fast packing 生效。
+RTP 加密、interceptor 与 UDP 交付分别测，离线复现正式 features、架构和包形状；
+单 HMAC 或冷加密数字不能推断屏幕延迟。已采用后端与未改的批量发送、协商限制见
+[正式接入](bringup/2026-10-25-srtp-openssl-hmac.md)及[审计快照](archive/rtp-send-optimization-audit.md)。

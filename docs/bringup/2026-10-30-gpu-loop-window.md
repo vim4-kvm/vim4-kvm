@@ -26,7 +26,7 @@ Mac按board→heavy持有两把lockf锁覆盖所有板端操作。VM进程快照
 kernel暂存归档SHA `4f2e410ef46796b6567f8e7dbd16d33c20753615e1deafcda8240d7758e0a9db`，传输前后相同。
 
 Mesa26.2.6原版、仅GCM(loop2)、完整系列(layout2)私有前缀并存，后两者逐文件manifest零不匹配，
-归档哈希与[离线候选](../gpu-loop-candidates.md)一致。未替换系统库或全局ICD，实验PanVK仅注入测试进程。
+归档哈希与[离线候选](../archive/gpu-loop-candidates.md)一致。未替换系统库或全局ICD，实验PanVK仅注入测试进程。
 新探针SHA `72caf198683a9cd45966af64a07fa4674727ce747a31b4bee3fda7aee0c391e4`，三栈和厂商均用同一二进制。
 
 ## GLES配对与完整系列失败

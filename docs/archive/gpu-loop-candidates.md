@@ -1,10 +1,14 @@
 # 保留循环的Mesa候选与冷恢复boost
 
-2026-10-30，承接[循环分析](gpu-loop-codegen.md)与[板测975d8ae](bringup/2026-10-30-gpu-candidate-window.md)。
+> 归档快照（2026-11-03）：已结束的调查与候选记录，不代表当前状态，现行入口见 [维护合同](../gpu-maintenance.md)。
+
+导航：[Mesa三个独立补丁](#mesa三个独立补丁)、[离线验证与统计](#离线验证与统计)、[冷首发：已知路径与未能离线计时的部分](#冷首发已知路径与未能离线计时的部分)、[内核候选](#内核候选)、[下一独占窗口：测量不超过20分钟](#下一独占窗口测量不超过20分钟)。
+
+2026-10-30，承接[循环分析](gpu-loop-codegen.md)与[板测975d8ae](../bringup/2026-10-30-gpu-candidate-window.md)。
 本轮离线，未访问板子，未动NPU/uhd2文件或工作树，未push。
 方针**用户已于 2026-10-30 确认**。候选没有硬件性能/正确性验收，默认部署锁不变。
 
-后续[上板结果](bringup/2026-10-30-gpu-loop-window.md)：**完整系列被硬件否决**，中心像素错误且反复GPU timeout，
+后续[上板结果](../bringup/2026-10-30-gpu-loop-window.md)：**完整系列被硬件否决**，中心像素错误且反复GPU timeout，
 不得部署或引用其FPS，0004/0005尚未分别归因。仅GCM约273.2fps、全帧与原版相同，仍未追平厂商612.7fps。
 QoS候选冷首发约4.90ms、暖2.01ms，夹限通过；power_on约2.42ms在boost之前，仍有优化空间。
 以下保留离线统计，不能解释成该失败系列的实际运行收益。
@@ -22,9 +26,9 @@ QoS候选冷首发约4.90ms、暖2.01ms，夹限通过；power_on约2.42ms在boo
 
 | 补丁 | 内容与边界 |
 |---|---|
-| [0003](../packaging/gpu/patches/0003-bifrost-loop-invariants.patch) | Bifrost v6/v7在late algebraic后、局部移动和指令选择前调用现有`nir_opt_gcm(false,false)`。不做value numbering、不启用texture跨循环hoist，沿用GCM的内存/推测执行限制 |
-| [0004](../packaging/gpu/patches/0004-bifrost-jump-cleanup.patch) | 控制流清理识别`BI_OPCODE_JUMP`，不只识别`bi_is_branch`；清理不改变条件目标的空前向fallthrough。处理空前驱指令列表，避免读取list哨兵；仍保留原后向reconvergence保护 |
-| [0005](../packaging/gpu/patches/0005-bifrost-uniform-backedges.patch) | NIR divergence分析后，仅v6/v7、无discard、无divergent loop且所有if条件一致的整个shader允许后向线程化；其余保持保护。新增MIR用例覆盖含空块的回边、允许/禁止两种条件。此项是实验，未声称完成硬件reconvergence证明或上游审阅 |
+| [0003](../../packaging/gpu/patches/0003-bifrost-loop-invariants.patch) | Bifrost v6/v7在late algebraic后、局部移动和指令选择前调用现有`nir_opt_gcm(false,false)`。不做value numbering、不启用texture跨循环hoist，沿用GCM的内存/推测执行限制 |
+| [0004](../../packaging/gpu/patches/0004-bifrost-jump-cleanup.patch) | 控制流清理识别`BI_OPCODE_JUMP`，不只识别`bi_is_branch`；清理不改变条件目标的空前向fallthrough。处理空前驱指令列表，避免读取list哨兵；仍保留原后向reconvergence保护 |
+| [0005](../../packaging/gpu/patches/0005-bifrost-uniform-backedges.patch) | NIR divergence分析后，仅v6/v7、无discard、无divergent loop且所有if条件一致的整个shader允许后向线程化；其余保持保护。新增MIR用例覆盖含空块的回边、允许/禁止两种条件。此项是实验，未声称完成硬件reconvergence证明或上游审阅 |
 
 定位结果：原版进入指令选择前NIR的`fmul p.y,0.01`就在loop内；0003后在loop前，
 后端也只在前置块生成一次FMA，因此本例是NIR放置问题，而非后端把已外提的乘法重新物化。

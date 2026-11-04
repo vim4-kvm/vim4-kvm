@@ -17,7 +17,7 @@ IR/按键及NOR与eMMC引脚限制见[设备树记录](../bringup/2026-10-21-edg
 - [内存、拷贝与锁调试](../memory-copy-audit.md)。
 - [下游补丁快照](../archive/kernel-patch-inventory.md)。
 - [电压、温控、空闲与挂起审查](../archive/platform-pm-offline.md)、[板测清单](../parity/platform-pm-board-checklist.md)。
-- [GPU差距、散热与验收](../gpu-parity-plan.md)。
+- [GPU差距、散热与验收](../archive/gpu-parity-plan.md)。
 
 ## 错题
 
@@ -26,7 +26,7 @@ IR/按键及NOR与eMMC引脚限制见[设备树记录](../bringup/2026-10-21-edg
 | debugfs audiobus读触发abort/重启 | 只读也访问未上电MMIO，dump不受head限制；诊断持板锁，只读已审阅具名状态，不盲扫 | [事故](../bringup/2026-10-25-audiobus-read-abort.md) |
 | 板NFS loopback挂自己卡死、RESET后无日志 | 服务端放Mac/VM，冻结用docker pause或VM内nft丢包 | [NAS/USB](../bringup/2026-10-18-nas-storage-usb-disk.md) |
 | make C=2成功但未跑sparse | 旧版被警告跳过；固定工具、查实际CHECK行，拒绝不可用日志，不只看退出码 | [门禁](../bringup/2026-10-31-hdr2-uhd4-gate.md) |
-| Bifrost回边补丁主机通过、G52挂起 | 分支偏移误算前块而重置计数，须加layout回归；CFG和静态统计不能替代最终编码与硬件验证，短负载全帧正确且无新增timeout才测FPS，出错即否决并正常重启 | [修复](../gpu-loop-repair.md) |
+| Bifrost回边补丁主机通过、G52挂起 | 分支偏移误算前块而重置计数，须加layout回归；CFG和静态统计不能替代最终编码与硬件验证，短负载全帧正确且无新增timeout才测FPS，出错即否决并正常重启 | [修复](../archive/gpu-loop-repair.md) |
 | 根目录解包破坏/lib，动态程序失效 | 安装保目录符号链接、留stock启动项，按工具参数 | tools/kernel-install.sh、[内核](../kernel.md) |
 | 换Image后模块BTF错、SSH失联 | 分离BTF依赖原vmlinux类型ID，release/vermagic不足；同次构建完整模块、核实际加载，不关BTF掩混装 | [DDC](../bringup/2026-10-19-hdmirx-ddc.md) |
 | 回5.15网口carrier正常却不收包 | 热解绑/重绑实测Oops，保留串口、优先正常重启，不作通用恢复 | [恢复限制](../bringup/2026-10-19-hdmirx-ddc.md#恢复与限制) |

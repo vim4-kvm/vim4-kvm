@@ -5,7 +5,7 @@
 
 RTP 分包、默认 interceptor、真实 SRTP 和 UDP 批量发送另见
 [发送基准](bringup/2026-10-25-rtp-send-benchmark.md)。编码器的
-[fast packing 审查](encoder-fast-packing-audit.md) 区分离线可验证行为与硬件 A/B。
+[fast packing 审查](archive/encoder-fast-packing-audit.md) 区分离线可验证行为与硬件 A/B。
 
 ## 软件路径
 

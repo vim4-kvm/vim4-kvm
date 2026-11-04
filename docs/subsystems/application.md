@@ -19,7 +19,7 @@ VIM4适配保留上游目标；共享代码检查两种构建，前端按锁文�
 One-KVM视频菜单和设置页的输入状态、尺寸、帧率、码率、MJPEG及EDID以集成为准。
 HDR→SDR及白点/峰值统一在管理器视频输入；模式/内核验收见[HDR](../hdr.md)。
 H.264/JPEG保留SDR，Safari真HDR未支持。HDR缩放走Mali/P010 DMA，One-KVM SDR通常GE2D；
-超宽SDR分开处理可见宽/stride，[尺寸证据](../hdr.md#相关记录)。
+超宽SDR分开处理可见宽/stride，[尺寸证据](../hdr.md#验证边界)。
 EDID/显示器恢复合同统一见[音视频](video.md#hdmi-显示器行为)。
 服务隔离GStreamer注册缓存；[DMA fd错题](video.md#错题)。
 
@@ -30,11 +30,11 @@ EDID/显示器恢复合同统一见[音视频](video.md#hdmi-显示器行为)。
 - UU官方客户端经云控制被控机，网页扫码，凭据存数据目录私有文件，共享编码/HID；自动编码按客户端/共享服务能力回退。
 - UU终端可进板shell、被控机串口或经板SSH，默认关闭，新会话在终端选目标；USB ACM占端点预算。
 - 工具连接可保留终端同时取桌面，统一HID接管；文件传输仅板子文件区/未挂载镜像区，不能读被控盘，上传与所有虚拟介质挂载互斥。
-- UU HDR见[证据](../hdr.md#相关记录)，持续显示/屏幕光度另验。
+- UU HDR见[证据](../hdr.md#验证边界)，持续显示/屏幕光度另验。
 - 第三方SRT/RTMP输出默认关，共享编码/HDMI音频，队列独立并可重连；编码支持/AAC转换按集成。
 - 外部MCP截图/键鼠沿用computer use命名、截图像素坐标，手动随时接管并冷却；鉴权、截图管线、输入法和滚动限制按集成。被控机是开发Mac时，实测须用户停手、限定窗口；本项目M4禁发HID见[规范](../code-standards.md)。
 - transport失败后，先重新发送只读initialize、tools/list和screenshot请求，区分HTTP错误、无信号或进程网络差异，不直接判板端失败。
-- LAN接收仅默认mDNS candidate失败时，用接收器显式选项A/B；不直接改个人VPN/TUN。[实证边界](../hdr.md#相关记录)。
+- LAN接收仅默认mDNS candidate失败时，用接收器显式选项A/B；不直接改个人VPN/TUN。[实证边界](../hdr.md#验证边界)。
 
 ## PiKVM VIM4 集成
 

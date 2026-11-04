@@ -4,7 +4,7 @@
 达到厂商 5.15 的全部功能和性能。尤其 GLES 3.2、可用于产品的 G52 Vulkan、OpenCL、
 HDR DMA 互操作和配对性能仍有缺口。不能把“能渲染”写成“厂商能力全部追平”。
 本轮仅板上只读文件检查，无 GPU 负载、服务操作、重启、HID 或声音测试。
-用户态打包和后续验收见 [GPU 候选方案](../gpu-parity-plan.md)。
+用户态打包和后续验收见 [GPU 候选方案](../archive/gpu-parity-plan.md)。
 
 ## 固定比较对象及行号约定
 
@@ -75,4 +75,4 @@ Vulkan1.3和OpenCL3.0，但Vulkan实验支持默认拒载；这些是驱动项�
 
 本轮实施仅DT默认cooling；OPP频率、supply和autosuspend原本已有。
 不新增电压、不改主仓packaging/kernel-edge配置，不动NPU工作树，不推送。
-离线检查和产物最终状态见[候选方案](../gpu-parity-plan.md)。
+离线检查和产物最终状态见[候选方案](../archive/gpu-parity-plan.md)。
