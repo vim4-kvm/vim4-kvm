@@ -1,0 +1,28 @@
+{
+  "release": "7.3.1-vim4-20261104",
+  "source": "25110086de2ef6aa9564a31a7c694eca893fd423",
+  "kernel_build_id": "ce4183fa5734d4111c93d9854b473e944aff12df",
+  "package_sha256": "2b7d9fd7c0473f5f9ab4cdc68e592e6651d2a67d6eb9875db3394ac364b5fded",
+  "status": "accepted-after-registration-only-continuation",
+  "initial_attempt_status": "acceptance-aborted-restored-previous",
+  "installed": true,
+  "accepted": true,
+  "default_boot": "Mainline",
+  "evidence": "docs/bringup/2026-11-04-kernel-731-vim4-20261104.md",
+  "reason": "Initial attempt lost tools across reboot; the same installed build 1 was verified and registered again without rebuilding or reinstalling, then passed the requested minimum smoke.",
+  "initial_restored_release": "7.3.1-vim4kvm-uhd7+",
+  "offline_validation": {
+    "module_count": 2341,
+    "vermagic": true,
+    "BTF": true,
+    "build_ids": true
+  },
+  "installed_proof": "installed-proof.json",
+  "limitations": [
+    "Minimum smoke only; no browser panel, stability observation, audio, HID, virtual media or complete regression."
+  ],
+  "install_output": "Installed 7.3.1-vim4-20261104; saved default remains Mainline",
+  "observed_candidate_boot_id": "b79f5f42-99ab-4fa5-8193-b3e1d5ad89b7",
+  "candidate_files_retained": true,
+  "old_files_retained": false
+}

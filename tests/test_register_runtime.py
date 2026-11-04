@@ -23,7 +23,7 @@ def load(name, path):
 
 runtime = load('register_runtime', 'packaging/kernel/register-runtime.py')
 boot = load('profile_boot', 'board/vim4boot.py')
-CURRENT = '7.3.1-vim4kvm-uhd7+'
+CURRENT = '7.3.1-vim4-20261103'
 
 
 class BootProfileTest(unittest.TestCase):
@@ -84,7 +84,7 @@ class BootProfileTest(unittest.TestCase):
             retained = root/'kernels'/CURRENT
             retained.mkdir(parents=True)
             (retained/'Image').write_text('Linux version '+CURRENT+' (builder)')
-            version = '7.3.1-vim4-20261103'
+            version = '7.3.1-vim4-20261104'
             payload = root / 'payload'
             payload.mkdir()
             (payload / 'Image').write_bytes(b'Linux version ' + version.encode() + b' (builder)')
@@ -129,7 +129,7 @@ class BootProfileTest(unittest.TestCase):
                     sys.modules, {'vim4boot': SimpleNamespace(BOOT=root)}):
                 for release, error in (
                     (CURRENT, 'Image differs'),
-                    ('7.3.1-vim4-20261103', 'Image differs'),
+                    ('7.3.1-vim4-20261104', 'Image differs'),
                     ('7.3.0-unmatched', 'No validated application'),
                 ):
                     with self.subTest(release=release):

@@ -15,8 +15,8 @@ MANIFEST = Path('/etc/vim4-kvm/kernels.json')
 
 
 def is_mainline_release(release):
-    """Recognize date releases and the single retained legacy runtime."""
-    return release == '7.3.1-vim4kvm-uhd7+' or re.fullmatch(
+    """Recognize dated mainline releases."""
+    return re.fullmatch(
         r'[0-9]+\.[0-9]+(?:\.[0-9]+)?-vim4-[0-9]{8}(?:\.(?:[2-9]|[1-9][0-9]+))?', release) is not None
 
 

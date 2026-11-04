@@ -1,0 +1,33 @@
+{
+  "source": "25110086de2ef6aa9564a31a7c694eca893fd423",
+  "release": "7.3.1-vim4-20261104",
+  "kernel_build_id": "ce4183fa5734d4111c93d9854b473e944aff12df",
+  "package_sha256": "2b7d9fd7c0473f5f9ab4cdc68e592e6651d2a67d6eb9875db3394ac364b5fded",
+  "status": "qualified",
+  "evidence": "docs/bringup/2026-11-04-kernel-731-vim4-20261104.md",
+  "scope": "dated-rebuild-deployment-smoke",
+  "prior_source_evidence": "docs/bringup/2026-11-03-kernel-731-deploy.md",
+  "installed_proof": "installed-proof.json",
+  "regression": [
+    {
+      "category": "boot identity and complete modules",
+      "status": "passed"
+    },
+    {
+      "category": "four services and UDC",
+      "status": "passed"
+    },
+    {
+      "category": "4K H265 reception before and after cleanup",
+      "status": "passed"
+    },
+    {
+      "category": "no kernel BUG/Oops/WARNING",
+      "status": "passed"
+    }
+  ],
+  "limitations": [
+    "No new audio, HID, virtual media, GPU or full HDMI matrix tests.",
+    "Previous broader source acceptance remains historical evidence, not new-build acceptance."
+  ]
+}

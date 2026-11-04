@@ -21,11 +21,13 @@ class KVMRunTests(unittest.TestCase):
             launcher = root / 'run'
             launcher.write_text(script)
             binaries = ('opt/vim4-nanokvm/NanoKVM-Server', 'opt/vim4-jetkvm/jetkvm',
-                        'opt/vim4-onekvm/one-kvm', 'opt/vim4-onekvm-edge/one-kvm', 'usr/libexec/vim4-pikvm-run')
+                        'opt/vim4-onekvm/one-kvm', 'usr/libexec/vim4-pikvm-run',
+                        'opt/vim4-kvm/hdr10-r14e/nanokvm', 'opt/vim4-kvm/hdr10-r14e/jetkvm',
+                        'opt/vim4-kvm/hdr10-r14e/pikvm-run', 'opt/vim4-kvm/one-kvm-usb-ffc6130/one-kvm')
             for binary in binaries:
                 path = root / binary
                 path.parent.mkdir(parents=True, exist_ok=True)
-                path.write_text(f'#!{sys.executable}\nimport json, os\nprint(json.dumps(dict(os.environ)))\n')
+                path.write_text(f'#!{sys.executable}\nimport json, os\nprint(json.dumps(dict(os.environ, test_binary=__file__)))\n')
                 path.chmod(0o755)
             for plugin in ('usr/lib/vim4-kvm/vendor-gstreamer-1.0/libgstvideo4linux2.so',
                            'opt/vim4-onekvm/lib/gstreamer-1.0/libgstvideo4linux2.so',
@@ -44,7 +46,7 @@ class KVMRunTests(unittest.TestCase):
             for kernel, enabled, secondary in (
                 ('5.15.137-vim4kvm-hdrdual6', 'Y', True),
                 ('5.15.137-vim4kvm', 'N', False),
-                ('7.3.1-vim4kvm-uhd7+', 'Y', False),
+                ('7.3.1-vim4-20261104', 'Y', False),
                 ('7.3.1-vim4-20261103', 'Y', False),
                 ('7.3.1-vim4-20261103.2', 'Y', False),
             ):
@@ -64,6 +66,8 @@ class KVMRunTests(unittest.TestCase):
                                          None if kernel.startswith('7.') else '1')
                         if kernel.startswith('7.'):
                             self.assertNotIn('VK_ICD_FILENAMES', actual)
+                            self.assertIn('/opt/vim4-kvm/', actual['test_binary'])
+                            self.assertEqual(actual['GST_PLUGIN_PATH'], str(root / 'opt/vim4-kvm/hdr10-r14e/gstreamer-1.0'))
                         elif app == 'onekvm':
                             self.assertEqual(actual['VK_ICD_FILENAMES'], str(root / 'usr/lib/vim4-kvm/gpu/mali.json'))
                         if secondary:

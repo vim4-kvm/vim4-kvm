@@ -13,9 +13,9 @@ upstream_revision = "79a907609d53d5cd645b42c11550d295d43abf99"
 
 # Next build/package input. Create this source tag only after deployment acceptance.
 [package]
-date = "20261103"
-build = 1
-tag = "v7.3.1-vim4-20261103"
+date = "20261104"
+build = 2
+tag = "v7.3.1-vim4-20261104.2"
 config_path = "kernel.config"
 config_sha256 = "7be7563e089ff628a320cd82ed163d88c576e4c7612f6bf849b230d2b9719b1c"
 base_modules = 2338
@@ -30,15 +30,15 @@ features = ["vim4"]
 tested_binary_sha256 = "34e8808e61c9a52eb62a88e2b01440d4ecef0f60bc7253dc0a7d403410b99337"
 
 [tested_build]
-release = "7.3.1-vim4kvm-uhd7+"
-upgrade_from = "7.3.0-vim4kvm-uhd7+"
-localversion = "-vim4kvm-uhd7"
+release = "7.3.1-vim4-20261104"
+upgrade_from = "7.3.1-vim4kvm-uhd7+"
+localversion = "-vim4-20261104"
 image_source_revision = "25110086de2ef6aa9564a31a7c694eca893fd423"
-build_id = "58d9b0f4148da5c2275fac40f4e177a0d0cb301b"
-config_path = "releases/7.3.1-vim4kvm-uhd7+/config"
-config_sha256 = "a1821eb66defe9079d8be0beda7cf85067fd56e6c6f51cb8881bcdd9950c95f6"
-image_sha256 = "b2a0b2ae8ffe1ebc1ebbf309b5c8cf7ab506a71e0f70ab5cd4e0922f120b0321"
-uncompressed_image_sha256 = "b2a0b2ae8ffe1ebc1ebbf309b5c8cf7ab506a71e0f70ab5cd4e0922f120b0321"
+build_id = "ce4183fa5734d4111c93d9854b473e944aff12df"
+config_path = "releases/7.3.1-vim4-20261104/config"
+config_sha256 = "7be7563e089ff628a320cd82ed163d88c576e4c7612f6bf849b230d2b9719b1c"
+image_sha256 = "7663a716f6f189166831289bfce4cfae20b600d01674fddde6152106c5451bb2"
+uncompressed_image_sha256 = "7663a716f6f189166831289bfce4cfae20b600d01674fddde6152106c5451bb2"
 board_dtb_path = "vim4.dtb"
 board_dtb_sha256 = "89c4bcf6b5523cee60a6f222f28675c99b5137767ec484d78d53b14899702071"
 board_dtb_generator = "../kbase/build.py"
@@ -49,74 +49,66 @@ base_module_count = 2338
 external_module_count = 3
 module_btf = true
 module_symvers_sha256 = "9e54cbe2d161279b9e818a18515e924ad9c3a9ba1f87ce9cf0f8b55c3feff78d"
-vmlinux_btf_sha256 = "e8e6ea7cbe9368ebc810b633bbfecbc8fe3d873926f53b34ef6fce5242880b82"
-modules_sha256 = "695a48b6b38cdc801aa37cca8f846a8488f8362e18188c102b8f511f00f673aa"
+vmlinux_btf_sha256 = "db3efce7917aa2feb8a43a01140aca8e549744cd31311366560bb6a771715f09"
+modules_sha256 = "0085fccb76fec0360496c8a890e1d81312efe7fb7c548b4676d09630bd20ffae"
 gpu_default = "kbase"
 default_boot = "Mainline"
-package_file = "deploy-tools-731-final.tar.gz"
-package_sha256 = "59a8343225da61a1cf81ec70a60603d451cb2d2611ce493f25f260bd83e869cc"
-runtime_descriptor = "releases/7.3.1-vim4kvm-uhd7+/runtime.json"
-acceptance_scope = "nine-category-deployment-with-explicit-limits"
-evidence = "docs/bringup/2026-11-03-kernel-731-deploy.md"
-manifest_path = "releases/7.3.1-vim4kvm-uhd7+/manifest.json"
-manifest_sha256 = "59103050ef4e0fc0105728a2f55053604ebdbfda9533a711abc2728923fa3a02"
-external_manifest_path = "releases/7.3.1-vim4kvm-uhd7+/external-manifest.json"
-external_manifest_sha256 = "674207ce9957bba6524ed2364fb45786c485db7187440059914af43fde0a62fb"
-external_runtime_files_path = "releases/7.3.1-vim4kvm-uhd7+/external-runtime-files.json"
-external_runtime_files_sha256 = "0cf60ccd5592b7daaaf522071f3db426fc9c7af92db09e66928f1e70da27879d"
-runtime_files_path = "releases/7.3.1-vim4kvm-uhd7+/runtime-files.json"
-runtime_files_sha256 = "ecaad6ec42785bc47bace9510e228ef2ca10be28e9d95cbaa523e2e5cee56537"
-module_inventory_path = "releases/7.3.1-vim4kvm-uhd7+/module-inventory.json"
-module_inventory_sha256 = "d9eb28d7c2d1b61face3722a2bf264af531b1e59774fd65fe791f6961658d770"
-validation_path = "releases/7.3.1-vim4kvm-uhd7+/validation.json"
-validation_sha256 = "dc395033bf0c39d126ad9a6d0fff4b4eecec5c3b833a83d1eebc5a107a6fe681"
+package_file = "vim4-kernel-7.3.1-vim4-20261104.tar.gz"
+package_sha256 = "2b7d9fd7c0473f5f9ab4cdc68e592e6651d2a67d6eb9875db3394ac364b5fded"
+runtime_descriptor = "releases/7.3.1-vim4-20261104/runtime.json"
+acceptance_scope = "dated-rebuild-deployment-smoke"
+evidence = "docs/bringup/2026-11-04-kernel-731-vim4-20261104.md"
+manifest_path = "releases/7.3.1-vim4-20261104/manifest.json"
+manifest_sha256 = "b470f63cb5c64eab0f44c6eb33290bcab2cf768578a0e43a8a21439ff64d3b0c"
+external_manifest_path = "releases/7.3.1-vim4-20261104/external-manifest.json"
+external_manifest_sha256 = "85f0edeaa977654435cd698dd96631b07eac7dd5382d13579a0e52650a55868f"
+external_runtime_files_path = "releases/7.3.1-vim4-20261104/external-runtime-files.json"
+external_runtime_files_sha256 = "6d8f04b23544727f438b2fc256ec545c1cfd1be22ba26eb956d99c812dc08e10"
+runtime_files_path = "releases/7.3.1-vim4-20261104/runtime-files.json"
+runtime_files_sha256 = "d6dd3bcbbe4a3c262d60aee29895d26f67144b0f3307b211af86b0fa67496ee9"
+module_inventory_path = "releases/7.3.1-vim4-20261104/module-inventory.json"
+module_inventory_sha256 = "c440e28170310eb4fe3f19c20b3d1ab2146f69292845d012227137b0f56d2a8f"
+validation_path = "releases/7.3.1-vim4-20261104/validation.json"
+validation_sha256 = "d3f0ef204b4fadf59946f63e6a22903615e4831899091c19974873e23d74ff5a"
 
 [tested_build.external_modules]
-mali_kbase = "c7576ad4705d4a0fc8e90368cbe75481fab0e4fe4118438f9a5034ee3e7cb5d4"
-vim4_kbase_heaps = "30f3a549690da9b45c23622cd8c2399ff2754bdcebb86e8df81d22db833d783e"
-governor_vim4 = "65e4bb60a6613ec5ee2034e4a9838c2496bd6aee611303013ed9e100b39fe1a4"
-
+mali_kbase = "e488e7f98204d6101d0ea9045e6802743f7cdae6b8f1943d91f654b40f474caa"
+vim4_kbase_heaps = "4eb2dd4dc1281ccaf4323f4fd4e3129c8a69da5697efde954b3e609087af04ea"
+governor_vim4 = "79d8475b178bbc1b87187b32e6385cf1fa5b8a2ae2473f78203a65c45deca362"
 
 [tested_build.module_build_ids]
-mali_kbase = "ecdf45b16509c090ad56cbe4eab2df3acfbd0a03"
-vim4_kbase_heaps = "560bcc5339c3636f7258c0d96815ca9fc942c456"
-governor_vim4 = "f13fe0a20b23c8351fc7052156c43c0faa1e93bd"
-wave5 = "9cc5bca35769e6fce7eb271cba0b2c0207f1c2f2"
-t7_hdmirx = "ef0fcf99fd2e8415680065f08b4d643a2ee6d117"
-t7_vdin_test = "52b9c8deeda8af166d1061fbb89ffdd0efea87ac"
-t7_jpeg = "adba52396fa8e577063ca05f0eab20a500b392b2"
-crg_udc = "51c09e111ddda011d8fbbeea6621492ac21303dd"
-dwmac_meson8b = "93facd2fbc0508125b3d5478ab44b3e796c0babb"
-brcmfmac = "c89933b544ba2d9978b75960e68395140ac0c71a"
-brcmfmac_wcc = "f299ba76299f29cd1f06766ae0e5e4cd02496a9a"
-
-
-[tested_build.launcher_overrides]
-"usr/libexec/vim4-mainline-prepare" = "a9cab6ec9a0c151ec3dd74a866aac05056830511ebf7e3633aac694f57f95955"
-"usr/libexec/vim4-mainline-gadget-prepare" = "972de4a9e86855474d31c70a1526796d89aa29e984a6b9f26259246e65465ddd"
-"usr/libexec/vim4-kvm-run" = "5270e2ae4e90f5243577ba758921aca6fe64318aa0abd0ea2e4b920659ca813d"
-
+mali_kbase = "9959e9242c66ef396ba64f65ab365d2db3aabe94"
+vim4_kbase_heaps = "a841135a59c784aa68440e092af8da76ced0a586"
+governor_vim4 = "fe9c6d50b1eeb9f49ca3945b2de3c206217621ab"
+wave5 = "38b1debdcaeec5c81bc00584649d39dcddaa6037"
+t7_hdmirx = "8ce0467aba0fd0c60fdf4d4601f02a7d4849b2c3"
+t7_vdin_test = "62e404d6b012a38bb1df272ac930ef0f5dd805c0"
+t7_jpeg = "02b3e57a147b8deabd2e8e0cb13a502dcae0375b"
+crg_udc = "6dae86dfffbc941d6321aba1dde5f62b8e9f88d1"
+dwmac_meson8b = "c9a0f6f518b46864907abe0d48d39291a36099b3"
+brcmfmac = "1e768e64f46465a2a7751d8749c82ffc109a01f0"
+brcmfmac_wcc = "72124860be60f6808f7331aea5d623a537d41527"
 
 [retained_runtime]
-release = "7.3.1-vim4kvm-uhd7+"
+release = "7.3.1-vim4-20261104"
 revision = "25110086de2ef6aa9564a31a7c694eca893fd423"
-build_id = "58d9b0f4148da5c2275fac40f4e177a0d0cb301b"
-image_sha256 = "b2a0b2ae8ffe1ebc1ebbf309b5c8cf7ab506a71e0f70ab5cd4e0922f120b0321"
+build_id = "ce4183fa5734d4111c93d9854b473e944aff12df"
+image_sha256 = "7663a716f6f189166831289bfce4cfae20b600d01674fddde6152106c5451bb2"
 board_dtb_sha256 = "89c4bcf6b5523cee60a6f222f28675c99b5137767ec484d78d53b14899702071"
-manifest_sha256 = "59103050ef4e0fc0105728a2f55053604ebdbfda9533a711abc2728923fa3a02"
-package_sha256 = "59a8343225da61a1cf81ec70a60603d451cb2d2611ce493f25f260bd83e869cc"
+manifest_sha256 = "b470f63cb5c64eab0f44c6eb33290bcab2cf768578a0e43a8a21439ff64d3b0c"
+package_sha256 = "2b7d9fd7c0473f5f9ab4cdc68e592e6651d2a67d6eb9875db3394ac364b5fded"
 module_count = 2341
-live_proof_sha256 = "e1e98bbd64f38bfeb57a3950efb049a6f2372b9165e70521454d595d6075ea0d"
-installed_proof_path = "releases/7.3.1-vim4kvm-uhd7+/installed-proof.json"
-kernels_manifest_sha256 = "071fa4eb2955ccaf36a87f9cc6a850a5f5a787390282ab453ecd9b8df61e2c47"
+live_proof_sha256 = "6a3996b28c29e05e52a5aa9bfaece0dfb589297d2a242a4bdedaaf97d6d81d2b"
+installed_proof_path = "releases/7.3.1-vim4-20261104/installed-proof.json"
+kernels_manifest_sha256 = "f8b29bc583a032f5d56eb80cd3bc228de81f3473eb9565296618644fa5b180ac"
 default_boot = "Mainline"
-evidence = "docs/bringup/2026-11-03-kernel-naming-cleanup.md"
+evidence = "docs/bringup/2026-11-04-kernel-731-vim4-20261104.md"
 
 [wifi_diagnostics]
 firmware_fwid = "01-e47f9a86"
 firmware_sha256 = "3ff292ab216c13ce3019f6b4cc4234a15a81c8b553014b122f748efd9465676d"
 firmware_url = "https://raw.githubusercontent.com/CoreELEC/brcmfmac_sdio-firmware-aml/6470abe10f2f1f2623914ee19dde5f22201b2231/firmware/brcm/fw_bcm43752a2_ag.bin"
-firmware_path = "/lib/firmware/updates/7.3.1-vim4kvm-uhd7+/brcm/brcmfmac43752-sdio.khadas,vim4.bin"
+firmware_path = "/lib/firmware/updates/7.3.1-vim4-20261104/brcm/brcmfmac43752-sdio.khadas,vim4.bin"
 external_sae = true
 p2p_discovery = true
 p2p_discovery_no_if_event_fwid = "01-e47f9a86"
@@ -140,7 +132,7 @@ firmware_path = "/lib/firmware/video/video_ucode.bin"
 firmware_sha256 = "59e242bd63d6372d6462d2a2d6815e7bdea1a2cd12cd29fac093f38e73294e4b"
 hcodec_clock_hz = 666666656
 hcodec_clock_parent = "hcodec_0"
-tested_module_sha256 = "14334de2f4c8c5cac5009467e53e2e3212c68b6a03912a22e8ed931107ad99b0"
+tested_module_sha256 = "12b433e80baa9599ecae724ba497338f623261d32db57101144fe7246d6971b3"
 
 # Historical shared SDR V4L2 binary; the accepted native binary is in its runtime inventory.
 [gstreamer]
