@@ -55,7 +55,7 @@ python3 tools/memory-bench.py --binary ./memory-bench --cpu 6 --repeats 9 --outp
 ## DDR：严格使用可核实的安全接口
 
 允许5.15现有只读`/sys/class/aml_ddr/freq`；允许已审阅DDR/DMC devfreq设备的cur_freq及来源说明。
-不写该厂商debug freq覆盖值，不碰PWM/电压，不盲读寄存器/重放地址；遵循LESSONS的audiobus事故教训。
+不写厂商debug freq覆盖值，不碰PWM/电压，不盲读寄存器/重放地址；见[内核错题](subsystems/kernel.md#错题)的audiobus事故。
 本轮不新增板上debugfs读取：K7 drivers/clk/clk.c:3370–3394的clk_summary会调用
 recalc_rate/phase/is_enabled等provider，不能仅因名字含debugfs就视为无硬件访问。
 只有已审查相应provider、确认电源/时钟访问合同安全的clk_summary/具名clk_rate才可采；

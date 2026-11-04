@@ -2,7 +2,7 @@
 
 当前目录就是 vim4-kvm/vim4-kvm 主仓库。其他仓库克隆到其直接子目录，
 由根 .gitignore 精确忽略；各自保留 .git 和提交历史，不使用 submodule。
-AGENTS.md、CLAUDE.md、LESSONS.md 直接随主仓库版本管理，不再生成外层入口。
+AGENTS.md、CLAUDE.md 随主仓库管理，不生成外层入口。
 
 | 目录 | 分支 | 归属 |
 |---|---|---|
@@ -97,7 +97,7 @@ worker 不 push，任务中不得设置 `VM_PUSH_COORDINATOR`；协调者显式�
 
 文档按以下层次按需加载：
 
-- L0：CLAUDE.md、AGENTS.md 和 LESSONS.md 是自动加载入口。
+- L0：CLAUDE.md 仅引用 AGENTS.md，自动加载任务路由。
 - L1：docs/subsystems/ 只维护当前架构、约束、精选链接和错题，每篇不超过 14000 字节。
 - L2：docs/ 下仍有效的专题说明承载详细方法和接口合同。
 - L3：docs/bringup/ 保存实验记录，docs/archive/ 保存固定版本快照。
@@ -110,8 +110,7 @@ AGENTS.md 可指向证据索引，不直接路由到 L3 的具体条目。每个
 
 固定上下文约定：
 
-- 自动加载：CLAUDE.md 只引用 AGENTS.md 与 LESSONS.md。AGENTS.md 只做路由；
-  LESSONS.md 只收跨子系统教训。tests/test_docs.py 限制两者体积。
+- 自动加载仅含路由，tests/test_docs.py 限制入口体积；跨子系统错题放代码规范末尾，随路由读取。
 - 子系统文档（docs/subsystems/）描述当前架构，末尾「错题」收该子系统的教训。
 - 上板记录每条一个文件（docs/bringup/），新条目同时在索引登记一行；单条超出
   测试上限时拆分，或把结论提炼进子系统文档。

@@ -1,97 +1,76 @@
 # 音视频
 
-5.15：RX port1→VDIN0→vfm_cap DMA→amlvenc→WebRTC。
-7.x：HDR2 PQ→709 NV12→DMA→Wave5；当前内核身份见[主线内核开头](../kernel-mainline.md)。
-
 ## HDMI 显示器行为
 
-HDMI 接收服务独立于浏览器会话，无观看者仍保留 EDID 和显示器连接。
-HPD 只表示接收端存在，不保证信源输出，也不能强制主机退出休眠或虚拟显示器模式。
+HDMI独立于浏览器，无观看者仍保留EDID和连接；HPD仅表示接收端存在，不保证输出，也不能强制主机退出休眠或虚拟显示器。
 
-| 事件 | 预期行为 |
+| 事件 | 行为 |
 |---|---|
-| 网页刷新/连接/断开、更换编码/码率/缩放 | 只调整推流或采集/编码，不改 EDID、不脉冲 HPD、不重启 HDMI 服务 |
-| 应用以相同 EDID 重启 | 幂等恢复，保持显示器连接 |
-| 用户更换 EDID 或明确要求重连显示器 | 允许重新协商或热插拔，可能短暂黑屏、重排显示器 |
-| 主机停止输出、休眠或切虚拟显示器 | 保留连接，区分无信号与采集故障，不周期性重写 EDID |
+| 刷新、连接、断开网页，改编码、码率或缩放 | 只调整推流、采集或编码，不改EDID、不脉冲HPD、不重启HDMI |
+| 相同 EDID 的应用重启 | 幂等恢复、保持连接 |
+| 用户改 EDID/明确重连 | 可重新协商/热插拔，可能黑屏、重排显示器 |
+| 源停止输出、休眠或切虚拟显示器 | 保留连接，区分无信号与采集故障，不周期重写 EDID |
 
-JetKVM“空闲时隐藏显示器”默认关闭，是用户主动选择的例外。
-应用切换时 EDID 不同可重新协商；不能把该恢复放进每次网页连接路径。
-
-恢复时分别检查 HDMI 锁定、采集帧推进与浏览器解码，优先恢复故障环节；
-不能根据像素不变自动热插拔。输入变化只重建采集/编码并保留 WebRTC，正常重建
-跳过故障退避；约束 VDIN1 池预算，防止连续内存不足。详细方法见[HDR 相关记录](../hdr.md#相关记录)。
-
-验收时分别记录 HDMI 服务运行实例、EDID/HPD 变更日志、输入锁定和浏览器解码状态：
-覆盖无观看者、刷新、重连、应用重启、休眠及虚拟显示器退出后的恢复。
-用物理 HDMI 桌面运动标记验证内容推进；60fps 不证明内容更新，EDID 切换恢复也不能
-确定故障在主机还是 VIM4。这些行为约束不代表所有场景已通过硬件验收。
+用户主动隐藏显示器是JetKVM的例外；应用间EDID不同可重协商，网页连接不触发。
+恢复时分别查HDMI锁定、采集推进和浏览器解码，不凭像素不变热插拔。
+输入变化只重建采集和编码，保留WebRTC且跳过故障退避；VDIN1池须限额防CMA不足，见[HDR](../hdr.md#相关记录)。
+验收记录服务实例、EDID和HPD日志、输入锁定及解码，覆盖无人观看、刷新、重连、应用重启，以及休眠和虚拟显示器退出后的恢复。
+物理桌面运动标记须推进，帧率不证明内容更新；EDID切换恢复不能定位主机或VIM4故障，各场景尚未全验。
 
 ## HDR 输入
 
-HDR 的全局默认、原生双路径、插件部署顺序及验证边界见 [HDR 输入映射](../hdr.md)。
-5.15远程HDR与7.x的HDR→SDR映射须分别验收。
-[7.3原生HDR门禁](../hdr10-remote-73.md)。
+[HDR](../hdr.md)规定默认、双路径、部署顺序和边界；5.15远程HDR与7.x的HDR→SDR映射分别验收，见[原生门禁](../hdr10-remote-73.md)。
 
 ## 按改动范围读取
 
-- [新内核基线](../kernel-mainline.md#相关记录)：7.x 采集、编码、HDMI、音频及故障恢复的历史证据。
-- [延迟测量](../latency.md#相关记录)：软件端点、VBV、发送候选与当前延迟复测。
-- [播放差异调查](../kvm-delay-causes.md)：同步组、队列、媒体时钟及未决问题。
-- [RTP 发送审查](../rtp-send-optimization-audit.md)、[编码库审查](../encoder-fast-packing-audit.md)：发送后端、编码 ABI 与硬件验证边界。
-- [高刷审查](../1080p120-audit.md)、[VRR 准备](../vrr-preparation.md)：分别核对远程输入与本地输出能力。
-- [驱动基准](../driver-benchmark.md)、[本地视频基准](../local-video-benchmark.md)：按测量端点选择工具。
+- [内核证据](../kernel-mainline.md#相关记录)。
+- [延迟](../latency.md#相关记录)；[播放差异/未决项](../kvm-delay-causes.md)。
+- [RTP](../rtp-send-optimization-audit.md)、[编码库](../encoder-fast-packing-audit.md)：后端、ABI及硬件边界。
+- [高刷](../1080p120-audit.md)、[VRR](../vrr-preparation.md)：输入/本地输出。
+- [驱动](../driver-benchmark.md)、[本地视频](../local-video-benchmark.md)：按端点选工具。
+- [采集插件](../../gst-plugin-vfmcap/README.md)：格式/DMA-buf；[编码插件](../../gst-plugin-venc/VIM4.md)：预算、安装与测试。
+- [应用/音频](../../NanoKVM/VIM4.md)；[视频参数](../../NanoKVM/deploy/vim4/VIDEO.md)：RTP、码率及GOP。
 
-- [采集插件](../../gst-plugin-vfmcap/README.md)：格式和 DMA-buf 生命周期。
-- [编码插件](../../gst-plugin-venc/VIM4.md)：帧率预算、安装和测试。
-- [应用与音频](../../NanoKVM/VIM4.md)：功能覆盖和构建。
-- [视频配置](../../NanoKVM/deploy/vim4/VIDEO.md)：RTP、码率、GOP。
-
-HDMI 启动脚本默认使用完整帧低延迟模式（VDIN mask 0x3）；
-模式对照、自动策略与帧一致性检查见[测量文档](../latency.md#board-side-isolation-and-completed-frame-mode)及下方错题。
-
-编码器测试不能与应用或其他任务并发占用硬件。
-验证区分静止/运动、分辨率/帧率切换、热插拔、重连和丢包恢复。
-记录版本、配置、负载；帧率、吞吐量和端到端延迟分别报告。
+完整帧低延迟、自动策略和帧一致性见下方错题。
+编码器须[独占](application.md#架构与约束)；验证静止和运动、分辨率和帧率切换，以及热插拔、重连和丢包恢复，分别报告帧率、吞吐和端到端延迟，字段按[规范](../code-standards.md)。
 
 ## 4:4:4 采集
 
-`HDMI_CAPTURE_FORMAT=YUV444` 是共享 HDMI 服务的可选格式，原始采集与 CPU 重排可达
-4K60，但现有硬件编码只输出 4:2:0，应用仍用 NV21。改采集格式、vfm_cap 映射或
-真彩编码前读 [4:4:4 采集](../capture444.md)。
+硬编不保留4:4:4；改采集格式、vfm_cap映射或真彩编码先读[4:4:4](../capture444.md)。
 
 ## Wave5 隔离告警
 
-复位失败后必须保留 DMA 内存与映射，直到重启清除隔离。监控服务默认只记录告警；
-自动重启必须确认全部 KVM 应用停用且虚拟介质为空，不能把 One-KVM 空闲视为没有消费者。
-状态接口、计时条件、部署与回退合同见[隔离告警说明](../kernel-mainline.md#wave5-隔离告警)。
+复位失败须保留DMA内存和映射至重启；自动重启须全部KVM停用且无介质，One-KVM空闲不代表无消费者。[接口、计时、部署与回退](../kernel-mainline.md#wave5-隔离告警)。
 
 ## 错题
 
-| 触发条件 / 错误 | 原因与正确做法 | 验证入口 |
+| 触发条件 | 正确做法 | 验证入口 |
 |---|---|---|
-| vb2前置元数据使跨回调代号错位 | 保持vb2首成员并加编译断言；独立export不能用inode关联，cleanup不等于编码完成 | [HDR2回归](../hdr2-dma-contract.md) |
-| 见到 `last_wr_vfe` 就认为已完成图像多等一帧 | 当前 VDIN1 RDMA 提前一拍提交地址、下一拍执行、再下一拍交付。匹配实际缓冲与 pending/已执行表；寄存器 DMA 完成不能当图像写完 | [逐缓冲核实](../bringup/2026-10-25-vdin1-frame-handoff.md) |
-| 7.x JPEG DMA 导入触发 reservation-lock WARN | 新内核 map/unmap_attachment 要求调用者持锁；使用对应 unlocked helpers 管理锁，不忽略 taint 后继续验收 | t7-jpeg/test_import.py、[MJPEG 记录](../bringup/2026-10-21-edge-scaling-jpeg.md) |
-| 切分辨率后没有视频 fd，仍残留一组 CMA 分配 | GStreamer 先停用池，STREAMOFF 后另一个线程归还缓冲仍可 QBUF，随后 orphan 已无流可冲刷。先停止获取，在 QBUF 锁内停流并完成 orphan，再停用池；仅关闭 last-sample 缓存不足以修复 | packaging/kernel/test_gstreamer_orphan.py、[动态模式记录](../bringup/2026-10-20-edge-dynamic-modes.md) |
-| 7.x 无周期 IDR，仍每约 250ms 短顿 | ENUMINPUT 误用双次稳定检查，持有采集 ioctl 锁等待 20ms。实时状态使用即时读取并清除旧状态，STREAMON 保留稳定性资格检查；仅将应用查询移到另一线程仍会争用队列锁 | t7-hdmirx/test_core.py、[状态查询实测](../bringup/2026-10-20-edge-status-latency.md) |
-| 7.3 网页反复重配后 CMA 耗尽，分配失败又触发 Oops | GStreamer 1.24.2 每帧遗漏输入池 unref，空 LAST 缓冲也未归还；另有 Wave5 辅助 DMA 局部副本和实例重复释放。插件和驱动分别修复，SET_FB 后保留 DMA 直到固件停止；每轮检查 fd/CMA，不能只看进程退出后的空闲内存 | tools/wave5-lifecycle-check.py、[应用接入](../bringup/2026-10-20-onekvm-wave5.md) |
-| 原始 720×400 正常，Wave5 DMA 导入 QBUF 返回 EINVAL | VDIN 的 16 字节行对齐不足以满足 Wave5 协商得到的 32 字节 RAW 行宽。NV12 采集按 32 字节补行、保留可见宽度，UV 偏移和两平面导入使用实际 stride；同时检查高度补齐后的容量 | [输入模式覆盖](../bringup/2026-10-22-edge-hdmi-modes.md) |
-| H.264 第一次强制 IDR 有效，后续请求不再产生 IDR | Wave5 用 HEVC NAL 19/20 判定所有格式，AVC NAL 5 未标为 V4L2 KEYFRAME，GStreamer 保留未完成请求。按编码格式报告帧型；用长于整段测试的 GOP 连续请求并核对输出 | tools/hdmirx-encode-check.py --keyframe-at、[应用接入](../bringup/2026-10-20-onekvm-wave5.md) |
-| 原始 DMA 采集 60fps，但全帧 CPU 处理只有约 13fps | write-combine 映射下读一帧 4K 需约 55.6ms，SIMD 无法弥补。改为只读可缓存映射并实现 DMA-BUF CPU 访问同步，融合复制与重排，复用输出缓冲；必须逐帧验证动态标记与单像素色度，不能只测重复读取同一帧 | common_drivers/drivers/media/vfm_cap/test_lifecycle.c、gst-plugin-vfmcap/tests/capture-integrity.c |
-| 给 cached DMA 环只做每轮复制同步，遗漏首次交给设备的同步 | dma_alloc_noncoherent 的分配器会通过 CPU 映射清零；首次 DMA 前也必须 sync_for_device，每轮复制保持 CPU／设备所有权交接 | [7.3 私有 DMA 环](../bringup/2026-10-19-hdmirx-dma-ring.md) |
-| 30fps 编码预算配 60fps 输入 | 旧 amlvenc 造成实际码率偏大。修正插件并传入输入帧率；预算不是采集节奏 | gst-plugin-venc/VIM4.md |
-| 用 game_mode 0 当作关闭低延迟的实验对照 | 0 恢复自动策略，实际模式可能是 0xb。核对驱动 state 中的当前模式，不能仅看全局参数；完整帧模式使用 0x3 | [采集延迟对照](../latency.md#board-side-isolation-and-completed-frame-mode) |
-| 把 stock video71 当 HDMI 输入 | 原厂 vdin1 默认输出回写；新增原生 HDR 双路径显式共享主 RX 才是例外，普通采集仍用 vdin0 → vfm_cap | [硬件](../hardware.md)、[双路径交付](../bringup/2026-10-25-native-hdr-dual-path.md) |
-| HDMI 有音频包、WebRTC 已连接但始终静音 | TDM-B 默认读外部引脚。HDMI 服务 ExecStartPre 在 ALSA restore 后选 hdmirx，再允许 NanoKVM 启动；零峰值录音不能证明声音正常 | [功能与音频状态](../archive/feature-status.md)、packaging/ubuntu/check-audio-startup.py |
-| GE2D 缩放单次成功，切编码后进程报 safe_close EBADF | 厂商 DMA 分配器把同一个 fd 同时交给 GstDmaBufMemory 和附属 qdata 释放。One-KVM 使用私有兼容分配器，fd 只由标准 GStreamer memory 关闭；需验证重复切换与缓冲区持有周期 | One-KVM/deploy/vim4/test-dma-allocator.c、tools/one-kvm-settings-check.mjs |
-| 厂商 JPEG 插件直接输入 DMA 后只出 4 帧 | JPEG NEW_CMD 的直接 DMA 路径未释放导入，耗尽 VDIN 的 4 个采集缓冲。vim4jpegenc 使用 CONFIG_DMA_INPUT / RELEASE_DMA_INPUT 管理每帧生命周期，异常时先关闭编码器再归还输入；验证连续帧和重复启停 | gst-plugin-venc/tests/jpeg-hardware.py、logs/mjpeg-hardware/ |
-| 编码器超频后帧率提升，就以为可用 | 750/800 MHz 下同一输入的码流已不再一致，但不报错、帧数正常。超频必须重复编码同一段录制输入并比较码流哈希，同时用低频对照排除时钟源问题 | [编码实验记录](../bringup/2026-10-14-wave521-clock-encode-time.md#wave521-时钟与-4k-编码耗时2026-10-14) |
-| HDMI 输入稳定，编码器却不断重建 | sysfs 的 centi-Hz 测量可在 5987–5999 间抖动，原 0.1Hz 容差仍会误重启。改为超过 1Hz 且连续两次稳定读数才重建，并保留无帧看门狗；MJPEG 测试必须匹配真实输入尺寸，不能把离线占位图判为成功 | ustreamer/src/ustreamer/vim4.c、tools/pikvm-smoke.mjs |
-| 网页走有线、WebRTC 报告 IPv4，却仍周期停顿 | Janus aggressive nomination 实测将视频发往客户端 Wi-Fi IPv6，selected candidate pair 统计不足以证明媒体路径。按 SSRC 对照两端网卡收发时间，使用 regular nomination；不通过关掉所有 IPv6 或一味缩短 GOP 掩盖路径问题 | kvmd/deploy/vim4/janus.jcfg、logs/pikvm/h264-client-wire.log、logs/pikvm/h264-regular-soak.log |
-| PiKVM 短测 60fps，隔夜降到约 30fps 并卡顿 | 现场 JPEG 线程与网卡/JPEG IRQ 同在 CPU0；不重启做亲和性对照才能保留证据。uStreamer 避开 CPU0 后恢复 60fps；仍须同时检查浏览器 freeze 与 UDP 发送错误，平均帧率恢复不等于所有停顿消失 | kvmd/deploy/vim4/main.yaml、logs/pikvm/overnight/、tools/pikvm-smoke.mjs |
-| Direct H.264/H.265 平均 60fps，却每个关键帧都停顿 | aiohttp 默认 permessage-deflate 对已压缩视频再次压缩，大关键帧拖慢发送。对照 memsink、无压缩/有压缩 WebSocket 的帧间隔后，仅禁用媒体 WebSocket 压缩；平均帧率与零 freeze 不能替代尾部间隔测量 | kvmd/kvmd/apps/media/server.py、kvmd/deploy/vim4/test_video_stream.py、logs/pikvm/cadence-* |
-| One-KVM AVC 每秒短顿，统计仍是 60fps | 一秒 GOP 的大 IDR 使浏览器先停后追。Wave5 GOP 0 时两种编码均关闭循环刷新，在新订阅或 PLI/FIR 时出 IDR。AVC 的后续 P 帧 QP 下限从 12 逐帧减到 0。 | [恢复帧实测](../bringup/2026-11-03-wave5-avc-recovery-qp.md) |
-| PiKVM HDMI 声音约每 1.37 秒啪一声，网络零丢包，arecord 录音正常 | 采集未设置周期/缓冲，TDM 驱动默认 241 帧周期配 65536 帧缓冲，每次回绕前 16 帧是上一圈旧数据。ALSA 采集显式设置与编码帧对齐的周期和有限缓冲；用应用实际协商的参数复现，arecord 的默认参数不同，不能代表应用路径 | ustreamer/janus/src/acap.c、[上板记录](../bringup/2026-10-16-pikvm-hdmi-audio-pops.md) |
-| HDMI 重采样仍每圈跳变，客户缓冲明明是五周期 | ALSA rate 可给原生环增加插值帧，96kHz 实际为 9602/1920。核对原生 hw_params，T7 约束整数周期；应用原生采集后另做重采样 | [动态 LPCM](../bringup/2026-10-22-edge-hdmi-audio.md) |
-| 原生HDR初次60fps，源端往返后编码器CMA失败或GPU回落CPU | 主采集池、VDIN1、GPU与编码器共用连续内存；先保留编码器200MiB，约束各池并完整释放旧管线。必须测真实PQ/SDR双向切换及期间截图；首次打开成功不能代表可重复 | [全局HDR与源端切换](../bringup/2026-10-26-hdr-global.md) |
+| vb2 前置元数据使回调代号错位 | vb2 保持首成员、加编译断言；独立 export 不凭 inode 关联，cleanup 不等于编码完成 | [HDR2](../hdr2-dma-contract.md) |
+| 误读last_wr_vfe时序 | 匹配实际缓冲和pending/已执行表；地址提交、执行和交付分拍，寄存器DMA完成不等于图像写完 | [逐缓冲](../bringup/2026-10-25-vdin1-frame-handoff.md) |
+| 7.x JPEG DMA 导入 reservation-lock WARN | map/unmap_attachment 用 unlocked helpers 管锁，不带 taint 继续验收 | [MJPEG](../bringup/2026-10-21-edge-scaling-jpeg.md) |
+| 分辨率切换后无 fd 仍留 CMA | STREAMOFF 后归还仍可 QBUF、orphan 无流可冲刷；先停获取，QBUF 锁内停流/完成 orphan，再停池，关 last-sample 不够 | [动态模式](../bringup/2026-10-20-edge-dynamic-modes.md) |
+| 无周期IDR仍短顿 | ENUMINPUT双稳检查持锁等待；实时读/清旧状态，STREAMON保留稳定检查，移查询线程仍争锁 | [实测](../bringup/2026-10-20-edge-status-latency.md) |
+| 7.3 重配耗 CMA、失败 Oops | 补每帧池 unref/空 LAST 归还、DMA副本/实例重复释放；SET_FB 后保留 DMA 至固件停止，每轮查 fd/CMA，不只查退出后 | tools/wave5-lifecycle-check.py、[应用接入](../bringup/2026-10-20-onekvm-wave5.md) |
+| Wave5导入720×400报EINVAL | VDIN行对齐须满足Wave5协商RAW stride；保留可见宽，两平面/UV按实际stride，查高度补齐容量 | [模式覆盖](../bringup/2026-10-22-edge-hdmi-modes.md) |
+| 强制 IDR 仅首次有效 | 按编码标KEYFRAME，否则请求不完成；GOP长于测试，连续请求核输出 | [接入](../bringup/2026-10-20-onekvm-wave5.md) |
+| DMA快、CPU全帧慢 | WC读慢，SIMD无济；只读cached映射+DMA-BUF CPU同步，融合复制/重排、复用输出；逐帧验动态标记/单像素色度，不重复读同帧 | gst-plugin-vfmcap/tests/capture-integrity.c |
+| cached DMA 环遗漏首次设备同步 | dma_alloc_noncoherent 由 CPU 清零，首次 DMA 前也须 sync_for_device；每轮交接 CPU/设备所有权 | [私有环](../bringup/2026-10-19-hdmirx-dma-ring.md) |
+| 30fps预算配60fps输入导致旧 amlvenc 超码率 | 修插件并传输入帧率，预算不等于采集节奏 | gst-plugin-venc/VIM4.md |
+| game_mode 0 被当低延迟关闭 | 0是自动；查驱动state，不只看全局参数，完整帧模式按测量文档 | [模式对照](../latency.md#board-side-isolation-and-completed-frame-mode) |
+| stock video71误作HDMI | 原厂vdin1是输出回写，原生HDR双路径显式共享主RX才是例外；普通走vdin0→vfm_cap | [双路径](../bringup/2026-10-25-native-hdr-dual-path.md) |
+| 有音频包/WebRTC却静音 | ALSA restore后选HDMI输入再启应用；TDM-B外部引脚不是HDMI，零峰值不算正常 | packaging/ubuntu/check-audio-startup.py |
+| GE2D切编码报EBADF | 同 fd 被 GstDmaBufMemory/qdata 双关；One-KVM 私有分配器仅由标准 memory 关，测重复切换/持有周期 | tools/one-kvm-settings-check.mjs |
+| JPEG直接DMA仅出4帧 | NEW_CMD 不释放导入耗尽4缓冲；vim4jpegenc 每帧 CONFIG_DMA_INPUT/RELEASE_DMA_INPUT，异常先关编码器再归还输入 | gst-plugin-venc/tests/jpeg-hardware.py、logs/mjpeg-hardware/（连续帧/重复启停） |
+| 超频增帧却码流无声损坏 | 重复编码同录制输入比哈希，低频对照排除时钟源，帧数正常不算通过 | [时钟实验](../bringup/2026-10-14-wave521-clock-encode-time.md#wave521-时钟与-4k-编码耗时2026-10-14) |
+| 稳定HDMI仍重建编码器 | centi-Hz抖动误重启；按 ustreamer/src/ustreamer/vim4.c 的稳定性判据，保留无帧看门狗；MJPEG匹配真尺寸，不认占位图 | tools/pikvm-smoke.mjs |
+| IPv4统计/有线网页仍周期顿 | Janus aggressive nomination 实际走Wi-Fi IPv6；按SSRC对照两端网卡收发，改 regular nomination，不靠禁IPv6/缩GOP掩盖 | kvmd/deploy/vim4/janus.jcfg、logs/pikvm/h264-regular-soak.log |
+| PiKVM短测60、隔夜约30fps | JPEG线程、网卡和JPEG IRQ挤在CPU0；不重启做亲和对照保留证据，uStreamer避CPU0；同时查浏览器freeze/UDP错误，均帧恢复非全停顿消失 | logs/pikvm/overnight/、tools/pikvm-smoke.mjs |
+| Direct视频均帧正常、关键帧顿 | aiohttp permessage-deflate 重压视频；比较memsink、压缩与无压缩WebSocket的帧间隔，仅禁媒体压缩，均帧/零freeze不替代尾间隔 | kvmd/deploy/vim4/test_video_stream.py、logs/pikvm/cadence-* |
+| One-KVM AVC每秒顿、统计60fps | 大IDR致先停后追；恢复帧/渐降QP按[补丁](../../packaging/kernel/gstreamer-v4l2-avc-recovery-qp.patch)，验证订阅、PLI和FIR恢复 | [恢复帧](../bringup/2026-11-03-wave5-avc-recovery-qp.md) |
+| PiKVM周期爆音，网络和arecord正常 | 周期/缓冲不整除产生回绕旧数据；显式设编码帧对齐周期/有限缓冲，按应用协商参数复现，arecord不代表应用 | [爆音](../bringup/2026-10-16-pikvm-hdmi-audio-pops.md) |
+| 重采样环跳变，客户缓冲五周期 | ALSA rate插值破坏整周期；查原生 hw_params，T7限整数周期，应用原生采集后重采样 | [LPCM](../bringup/2026-10-22-edge-hdmi-audio.md) |
+| HDR切换后CMA失败或GPU回落CPU | 池共享CMA，优先留编码器预算、限池/释放旧管线，测真实PQ↔SDR及期间截图，首开非可重复 | [源切换](../bringup/2026-10-26-hdr-global.md) |
+| strace跟踪One-KVM使UU掉帧 | ptrace干扰多线程，过滤fd仍高开销；用程序内有界计数/低频汇总或独立接收窗口 | [滚轮](../uu-scroll.md) |
+| 像素回读时间误作网络延迟 | 4K回读/JS调度扰动，低频采样、分报回读成本，并行测量作废 | [测量](../latency.md) |
+| 采样时编译致丢包/停解码 | 先构建后独占采样，重叠不归因播放策略；保留失败数据，查全窗口推进 | [对照](../kvm-delay-causes.md#pikvm-正式启用低缓冲策略与限制) |
