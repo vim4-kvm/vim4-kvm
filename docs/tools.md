@@ -14,7 +14,7 @@
 | 入口（同族文件） | 影响 | 用途 |
 |---|---|---|
 | [workspace.py](../tools/workspace.py) | 无 | 工作区管理与构建。 |
-| [vm](../tools/vm) | 无；写远端 | Mac 管理 VM 工作树。 |
+| [vm](../tools/vm) | 无；写远端 | Mac 管理 VM 工作树；推送预览列出 origin 尚未包含的提交，来源分支未发布时也可推新任务分支，仍禁止推受保护分支。 |
 | [ubuntu-build.py](../tools/ubuntu-build.py)、ubuntu-image.py、[packaging/ubuntu/](../packaging/ubuntu)、[packaging/image/](../packaging/image) | 无 | 组件打包与镜像组装；开发包可指定目标已安装版本下限。 |
 | [packaging/kernel/](../packaging/kernel) | 独占 | 内核构建及板端准备。 |
 | [package-unified.py](../packaging/kernel/package-unified.py)（同目录 package-hdr10.py、package-final.py、package-vdec.py） | 无 | 封存已构建候选包。 |

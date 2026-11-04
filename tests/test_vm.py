@@ -249,6 +249,20 @@ class RealGitTests(unittest.TestCase):
         self.assertTrue(any('upstream reference missing: origin/review' in w for w in status['warnings']))
         self.assertEqual(len(status['worktrees']), 2)
 
+    def test_publish_review_branch_without_remote_source_pin(self):
+        item = self.new()
+        sha = self.private_commit(item)
+        self.git('update-ref', '-d', 'refs/heads/vim4-kvm-7.3', cwd=self.origin)
+        self.tool.config['coordinator'] = True
+        self.tool.base['url'] = str(self.origin)
+        output = io.StringIO()
+        with redirect_stdout(output):
+            self.tool.push('task', 'review')
+        self.assertEqual(self.git('rev-parse', 'refs/heads/review', cwd=self.origin), sha)
+        self.assertIn('private change', output.getvalue())
+        with self.assertRaisesRegex(ValueError, 'protected'):
+            self.tool.push('task', 'vim4-kvm-7.3')
+
     def test_status_checks_both_pins_and_prunes_deleted_formal_ref(self):
         self.git('commit', '--allow-empty', '-m', 'changed 5.15')
         self.git('push', 'origin', 'HEAD:refs/heads/vim4-kvm-5.15')

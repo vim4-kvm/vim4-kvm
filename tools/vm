@@ -200,7 +200,8 @@ class VM:
         self.fetch()
         sha = self.git('rev-parse', 'HEAD', path=item['path'])
         print(f'push {sha} -> origin/{target}', flush=True)
-        print(self.git('log', '--oneline', f'origin/{self.base["branch"]}..{sha}', path=item['path']),
+        # A deployed source pin can name a task that has not been published yet.
+        print(self.git('log', '--oneline', sha, '--not', '--remotes=origin', path=item['path']),
               flush=True)
         # Reset inherited helpers. Token goes only to https://github.com via helper
         # stdout; store/erase do nothing, and neither is saved to disk.
