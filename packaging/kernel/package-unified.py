@@ -34,9 +34,7 @@ def run(*args):
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--candidate-lock', type=Path,
-                        help='Independent source/release/module-count lock; requires the qualified launcher')
-    parser.add_argument('--launcher', type=Path, required=True,
-                        help='Repository application launcher with the qualified r14e/USB paths')
+                        help='Independent source/release/module-count lock')
     for name in ('kernel', 'stage', 'candidate', 'native', 'wave5-plugin', 'output'):
         parser.add_argument('--' + name, required=True, type=Path)
     args = parser.parse_args()
@@ -112,9 +110,8 @@ def main():
     shutil.copyfile(args.native/'one-kvm', output/'runtime/one-kvm')
     # The Wave5 plugin is a shared dependency; preserve the accepted binary.
     shutil.copyfile(args.native/'candidate.json', output/'native-candidate.json')
-    assert args.launcher.read_bytes() == (recipe.parents[1]/'board/vim4-kvm-run').read_bytes()
     launcher = output/'runtime/usr/libexec/vim4-kvm-run'
-    shutil.copyfile(args.launcher, launcher)
+    shutil.copyfile(recipe.parents[1]/'board/vim4-kvm-run', launcher)
     shutil.copyfile(recipe.parents[1]/'board/vim4-board-runtime',
                     output/'runtime/usr/libexec/vim4-board-runtime')
     boot_module = output/'runtime/usr/lib/vim4-kvm/python/vim4boot.py'
