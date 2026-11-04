@@ -1,8 +1,12 @@
 # nodebug：绑核证据、DDR边界与两启动对门禁
 
-后续[两对实测](bringup/2026-10-30-nodebug-paired-gate.md)已完成：大核memcpy未复现退化，
+> 归档快照（2026-11-03）：已结束的调查与候选记录，不代表当前状态，现行入口见 [维护合同](../performance-baseline.md)。
+
+导航：[旧记录究竟证明了什么](#旧记录究竟证明了什么)、[工具更新：按大/小核分别测，记录实际核与分布](#工具更新按大小核分别测记录实际核与分布)、[DDR：严格使用可核实的安全接口](#ddr严格使用可核实的安全接口)、[预登记精简门禁：≤30分钟，至少两对](#预登记精简门禁30分钟至少两对)、[正式配置最小diff草案（未应用）](#正式配置最小diff草案未应用)。
+
+后续[两对实测](../bringup/2026-10-30-nodebug-paired-gate.md)已完成：大核memcpy未复现退化，
 tmpfs/端到端均值更快但联合区间和条件缺口令门禁不确定。以下保留预登记方案；正式配置/push/pin不变。
-[三方记录](bringup/2026-10-30-nodebug-memory-window.md)的tmpfs恢复结论保留；memcpy慢尚未定因。
+[三方记录](../bringup/2026-10-30-nodebug-memory-window.md)的tmpfs恢复结论保留；memcpy慢尚未定因。
 
 ## 旧记录究竟证明了什么
 
@@ -55,7 +59,7 @@ python3 tools/memory-bench.py --binary ./memory-bench --cpu 6 --repeats 9 --outp
 ## DDR：严格使用可核实的安全接口
 
 允许5.15现有只读`/sys/class/aml_ddr/freq`；允许已审阅DDR/DMC devfreq设备的cur_freq及来源说明。
-不写厂商debug freq覆盖值，不碰PWM/电压，不盲读寄存器/重放地址；见[内核错题](subsystems/kernel.md#错题)的audiobus事故。
+不写厂商debug freq覆盖值，不碰PWM/电压，不盲读寄存器/重放地址；见[内核错题](../subsystems/kernel.md#错题)的audiobus事故。
 本轮不新增板上debugfs读取：K7 drivers/clk/clk.c:3370–3394的clk_summary会调用
 recalc_rate/phase/is_enabled等provider，不能仅因名字含debugfs就视为无硬件访问。
 只有已审查相应provider、确认电源/时钟访问合同安全的clk_summary/具名clk_rate才可采；

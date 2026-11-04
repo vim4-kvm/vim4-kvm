@@ -22,10 +22,10 @@
 | [packaging/kernel/test_gstreamer_p010.py、test_gstreamer_pq.py](../packaging/kernel/test_gstreamer_p010.py) | Linux 宿主 | 无 | 构建工具 | [HDR10](hdr10-remote-73.md) |
 | [packaging/kernel/hdmi-mode-fixture.py、hdmi-modes.json](../packaging/kernel/hdmi-mode-fixture.py) | 宿主 / 板 | prepare/verify 无；measure/read-edid 需板票，只读 | 输入模式验证 | [主线内核](kernel-mainline.md) |
 | [vm](../tools/vm) | Mac → OrbStack VM | 无板子访问；new/rm 改任务工作树，push 写远端 | status 核对 origin/SHA | [工作区](workspace.md#构建) |
-| [memory-bench.c、memory-bench.py](../tools/memory-bench.c) | C：Linux ARM64编译；runner：Linux/板 | 独占CPU/内存/tmpfs；无频率写入、部署、HID | 内存吞吐基准 | [内存拷贝审查](memory-copy-audit.md)、[绑核门禁与配置草案](nodebug-performance-gate.md) |
-| [gpu-diagnose.py、gpu-cl-map.c](../tools/gpu-diagnose.py) | 板；CL工具先ARM64编译 | 独占GPU；诊断器可临时锁频/PM/profiling并恢复；不写电压、不ptrace | GPU性能诊断 | [GPU性能复核](gpu-performance-diagnosis.md) |
-| [packaging/gpu/](../packaging/gpu/) | Docker ARM64；probe：板 | 构建无；probe占GPU | 构建工具 | [GPU运行时](bringup/2026-10-30-gpu-runtime.md)、[HDR规格](gpu-hdr-pipeline.md) |
-| [npu-probe.c、npu-validate.py、npu-models.json](../tools/npu-probe.c) | 编译：ARM64；run：板；compare：Mac/VM | run 占用 NPU，写新结果目录；无部署、HID、声音 | NPU推理验证 | [ADLA离线候选](npu-adla.md)、[端到端分段](npu-e2e-timing.md) |
+| [memory-bench.c、memory-bench.py](../tools/memory-bench.c) | C：Linux ARM64编译；runner：Linux/板 | 独占CPU/内存/tmpfs；无频率写入、部署、HID | 内存吞吐基准 | [内存拷贝审查](memory-copy-audit.md)、[绑核门禁与配置草案](archive/nodebug-performance-gate.md) |
+| [gpu-diagnose.py、gpu-cl-map.c](../tools/gpu-diagnose.py) | 板；CL工具先ARM64编译 | 独占GPU；诊断器可临时锁频/PM/profiling并恢复；不写电压、不ptrace | GPU性能诊断 | [GPU性能复核](archive/gpu-performance-diagnosis.md) |
+| [packaging/gpu/](../packaging/gpu) | Docker ARM64；probe：板 | 构建无；probe占GPU | 构建工具 | [GPU运行时](bringup/2026-10-30-gpu-runtime.md)、[HDR规格](archive/gpu-hdr-pipeline.md) |
+| [npu-probe.c、npu-validate.py、npu-models.json](../tools/npu-probe.c) | 编译：ARM64；run：板；compare：Mac/VM | run 占用 NPU，写新结果目录；无部署、HID、声音 | NPU推理验证 | [ADLA离线候选](npu-adla.md)、[端到端分段](archive/npu-e2e-timing.md) |
 | [npu-uapi-probe.c](../tools/npu-uapi-probe.c) | ARM64编译→板 | 占用NPU兼容接口；无推理、HID或声音 | 初始化MMU上下文后测试ATTACH别名 | [ADLA候选与验收](npu-adla.md) |
 | [packaging/kernel/build-gstreamer.py](../packaging/kernel/build-gstreamer.py) | 容器/VM | 无 | 私有视频插件构建 | [音视频](subsystems/video.md) |
 | [packaging/kernel/test_gstreamer_visible_crop.py](../packaging/kernel/test_gstreamer_visible_crop.py) | 容器/VM | 无 | 可见尺寸协商回放 | [音视频](subsystems/video.md) |
@@ -44,11 +44,11 @@
 | [vrr-edid.py](../tools/vrr-edid.py) | Mac / Linux | 只写指定的新文件，不访问板子 | 显式实验范围生成远程VRR EDID | [VRR准备](vrr-preparation.md) |
 | [ubuntu-build.py](../tools/ubuntu-build.py) | Mac / CI → Docker | 无 | package/verify 七组件 | [Ubuntu 构建](ubuntu-build.md) |
 | [ubuntu-image.py](../tools/ubuntu-image.py) | Mac → OrbStack | 无 | 候选镜像组装 | [候选镜像](ubuntu-image.md) |
-| [packaging/ubuntu/](../packaging/ubuntu/) | 容器 | 无 | 用户态组件打包 | [Ubuntu 构建](ubuntu-build.md) |
-| [packaging/kernel/](../packaging/kernel/) | VM | 构建无；准备工具改固件目录；Wi-Fi 转储保存后释放其内核副本 | 构建工具 | [内核](kernel.md) |
-| [packaging/kernel/](../packaging/kernel/) | Linux ARM64 VM / 板 | 构建无；准备工具改固件目录；Wi-Fi 转储保存后释放其内核副本 | 构建工具 | [新内核基线](kernel-mainline.md)、[Wi-Fi 排查](bringup/2026-10-21-edge-wifi-fps.md) |
+| [packaging/ubuntu/](../packaging/ubuntu) | 容器 | 无 | 用户态组件打包 | [Ubuntu 构建](ubuntu-build.md) |
+| [packaging/kernel/](../packaging/kernel) | VM | 构建无；准备工具改固件目录；Wi-Fi 转储保存后释放其内核副本 | 构建工具 | [内核](kernel.md) |
+| [packaging/kernel/](../packaging/kernel) | Linux ARM64 VM / 板 | 构建无；准备工具改固件目录；Wi-Fi 转储保存后释放其内核副本 | 构建工具 | [新内核基线](kernel-mainline.md)、[Wi-Fi 排查](bringup/2026-10-21-edge-wifi-fps.md) |
 | [packaging/kernel/one-kvm-edge、one-kvm-edge-prepare、one-kvm-edge.service](../packaging/kernel/one-kvm-edge) | 板 | 独占 | 构建工具 | [新内核基线](kernel-mainline.md) |
-| [packaging/image/](../packaging/image/) | VM（root） | 无 | 构建工具 | [候选镜像](ubuntu-image.md) |
+| [packaging/image/](../packaging/image) | VM（root） | 无 | 构建工具 | [候选镜像](ubuntu-image.md) |
 | tests/ | Mac | 无 | 离线回归 | 本页 |
 
 ## 板级操作
@@ -157,7 +157,7 @@
 | [input-target.swift](../tools/input-target.swift) | Mac | 覆盖显示器 | input-check临时接收窗口 | [输入验证](input-latency.md) |
 | [input-summary.py](../tools/input-summary.py) | Mac | 无 | 汇总 input-check 日志 | [输入验证](input-latency.md) |
 | [key-repeat.html](../tools/key-repeat.html) | 被控电脑浏览器 | 只接收本页面手动输入，不注入键鼠 | 长按与释放对照 | [输入验证](input-latency.md#手动对照-backspace-长按) |
-| [uu-scroll-probe.swift](../tools/uu-scroll-probe.swift) | Mac | 无 | 只测本窗口收到的滚轮事件 | [UU 滚轮](uu-scroll.md) |
+| [uu-scroll-probe.swift](../tools/uu-scroll-probe.swift) | Mac | 无 | 只测本窗口收到的滚轮事件 | [UU 滚轮](archive/uu-scroll.md) |
 | [hdmi-audio-tone.c](../tools/hdmi-audio-tone.c) | Mac | 无 | 只向 HDMI 设备播放 440Hz | [功能状态](archive/feature-status.md) |
 | [uac-record-level.swift](../tools/uac-record-level.swift) | Mac | 无（需麦克风权限） | 录 UAC2 电平与主频 | [板级工具](board-tools.md) |
 | [hdmi-capture.sh](../tools/hdmi-capture.sh) | 板（root） | 独占采集 | 经 vfm_cap 抓一帧 PNG | [内核](kernel.md) |

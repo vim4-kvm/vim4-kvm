@@ -1,11 +1,13 @@
 # P0-2 性能与常开功耗合并窗口（完整配对未执行）
 
+本页管后续窗口的操作与停止条件，未执行项不记通过。导航：[独立 CPU idle 候选](#独立-cpu-idle-候选)、[窗口 B 不排](#窗口-b-不排)。
+
 [本轮记录](../bringup/2026-11-02-p0-2-pm-window.md)：按总板时30分钟及停止指令结束，实际896.195秒。
 仅5.15 A1 idle完成；signal中途取消；编码、B、后续A及schedutil诊断均未启动，四项门禁未验。
 已恢复Mainline、两个overlay身份/服务/UDC/画面通过，全部板票释放。下述6–8小时为完整方案估算，不是本次授权。
 B 身份按当前安装 uhd6 及已登记模块 overlay 收据核对；不得用原整包模块 ID 拒绝已登记 overlay，也不得跳过身份检查。
 
-默认运行 uhd6/kbase。A 为 5.15，B 为正式 uhd6；主组保留每个启动块预检时各簇实际 governor。上次 5.15 两簇实录均为 performance，见[原始结果](../bringup/p0-2-quick-evidence.json)。
+当前默认身份见[主线入口](../kernel-mainline.md)，不得沿用历史候选名。A 为厂商对照，B 为本次正式构建；主组保留每个启动块预检时各簇实际 governor。上次 5.15 两簇实录均为 performance，见[原始结果](../bringup/p0-2-quick-evidence.json)。
 uhd6 已登记 tested_build，board/vim4-board-runtime、vim4-kvm-run 均匹配完整 release。
 [安装记录](../bringup/2026-11-01-hdr10-r14e-installed.md)有服务 active 和 UDC configured；
 [上次 P0-2](../bringup/2026-10-31-p0-2-performance.md) 的 uhd5 匹配失败已解除。每次启动仍验实际身份与服务。
@@ -21,9 +23,13 @@ uhd6 已登记 tested_build，board/vim4-board-runtime、vim4-kvm-run 均匹配�
 | 判定 | 每阶段保留 pm.jsonl；编码阶段取 C 基准实际测量起止（板上 monotonic 微秒），遥测从预热前覆盖到 bench 退出后；按 phase.json 的 common_interval 选取共同区间，再对 time_in_state 和 idle usage/time 做末减首，空闲阶段用完整采样段，重启/计数回退作废。用 type 关联 zone/cdev，观察 GPU 频率、限频、风扇百分比；5.15 私有 DVFS 另读 /sys/class/mpgpu/cur_freq，缺节点则标缺测。uhd6 默认 kbase/governor_vim4，95°C、0–4 档 map 已在正式 DT；无自然触发则只报告观察到的状态。风扇命令百分比不能换算声压。无整板实测读数入口，标缺测；外接功率计可按[基线协议](../performance-baseline.md)提供同时间轴 CSV。PD 合同和单轨 hwmon 均不能代替整板瓦数。 |
 | 失败与恢复，5–10 min | 无 4K 缓冲池、服务失败、异常温度、丢帧或恢复错误，停止该组；取消时先停整个远端负载单元；票内最多两次核实单元 inactive 或已回收。仍活跃或状态未知时保留目录、写交接、禁止重启 One-KVM；失票时结束状态本地记缺测。确认停止后记录结束状态，恢复 governor、服务及状态 API，关 sampling 后取回数据。回传失败按 retained_remote 找回，恢复失败查 recovery-required.json。保留双方原始 JSON、journal、信源与采样票据；不缩为1080p。恢复 governor/服务，核验 HID、LUN、管理面。过期交接下一张票据，按已验路径回本次进入前默认 uhd6，再验身份/画面/服务/UDC。 |
 
-主组按同日同 epoch 三组 A/B/A（相邻 A 可共享，共七个启动块），每块含操作、冷却约 45–60 min，另加诊断 45–60 min 和原接收端窗口。预算约 6–8 小时加接收/排队。遵守每票 ≤30 min。按基线门禁比较吞吐 ≥95%、同吞吐功耗 ≤105%、稳态温升差 ≤2°C、错误为零，缺测项保留未验。
+主组按同日同 epoch 三组 A/B/A（相邻 A 可共享，共七个启动块），每块含操作、冷却约 45–60 min，另加诊断 45–60 min 和原接收端窗口。预算约 6–8 小时加接收/排队。遵守每票 ≤30 min。按[基线协议](../performance-baseline.md)及其比较器判定，缺测项保留未验。
 
 每阶段在 phase.json 保存预检、开始和结束的 HDMI/服务状态。5.15 在读取 info 前后检查 hw_info 锁定位；uhd6 在采集前后只做 QUERY_DV_TIMINGS。要求逐行 3840×2160、60±0.5 Hz。开始不符不启动遥测，结束不符保留数据并判该阶段失败，照常恢复已改设置。这些快照只证明取样时刻的状态。
+
+## 执行协议
+
+参数、采样配置和报告字段以[运行器](../../tools/perf-quick.py)及其帮助为准，以下保留环境与恢复约束。
 
 ## 独立 CPU idle 候选
 

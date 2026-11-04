@@ -1,122 +1,66 @@
-# HDR 输入映射
+# HDR 输入与输出合同
 
-远程画面有 HDR 转 SDR 与保留原生 HDR10 两种模式。7.x 的 HDR2 映射已完成
-[真实 PQ/SDR 烟测](bringup/2026-10-31-uhd4-formal-smoke.md)；原生 HDR10 的实现与验收边界见
-[7.3 原生远程 HDR10](hdr10-remote-73.md)。Panfrost 下 One-KVM 网页最小主路径已验，
-不能据此扩大到 kbase、UU 渲染或全应用通过。
+本页管映射模式、原生模式、色彩和部署约束；当前身份以[主线入口](kernel-mainline.md)为准。
+PQ 映射已验；真实 HLG 未验。原生模式的应用与 GPU 覆盖见[HDR10](hdr10-remote-73.md)。
+导航：[模式](#模式与用户设置)、[色彩](#映射与色彩合同)、[部署](#双路径采集与部署约束)、[验证](#验证边界)。
 
-7.x HLG 映射实现已合入，真实源未验；厂商表与定点证据见 [HLG 研究](hdr2-hlg.md)，
-HDR2 色彩合同与数值验收方法见 [HDR2 可行性研究](hdr2-hardware-plan.md)。不扩大正式 EDID 能力。
+## 模式与用户设置
 
-5.15 原生双路径的四套 KVM 均可选择保留远程 HDR10，见
-[全应用 HDR 接入](bringup/2026-10-26-all-kvm-hdr.md)。以下默认 SDR 映射仍用于
-H.264、JPEG、截图以及开启「HDR 转 SDR」的 H.265；HDMI OUT 偏好独立。
+管理器的视频输入页统一保存全局 HDR 转 SDR 偏好与曲线，参数和界限以[曲线工具](../tools/hdr-curve.sh)为准。
+关闭转换不会自动把编码切成 H.265；H.264、JPEG 和截图仍需 SDR。
+切换只重建必要的采集编码，不改 EDID 或重启 HDMI。
+UU 偏好只覆盖当前会话，断开恢复最新全局设置；会话期间改全局设置不能打断临时选择。
+仅八位客户端自动映射 SDR。One-KVM 输出尺寸和质量保存不得覆盖全局 HDR 偏好。
 
-管理器「视频输入 → HDR 转 SDR → 启用 HDR 转 SDR」保存全局远程画面默认值。
-开启时输出 SDR；关闭且输入为 PQ 时，四套应用的 5.15 H.265 可保留 PQ/BT.2020 Main10。
-H.264、JPEG 和截图仍输出 SDR。NanoKVM、JetKVM 与 PiKVM 预先协商 Main10，
-开关切换只重建采集编码，不更换 WebRTC 连接；One-KVM 沿用 profile 重新协商。
-切换不改 EDID、不重启 HDMI；7.x 原生模式的条件与边界见 [7.3 原生远程 HDR10](hdr10-remote-73.md)。
-关闭转换不会自动切换编码，观看 HDR 仍需选择 H.265。
-[浏览器兼容性复核](bringup/2026-10-26-hdr-browser-compatibility.md)确认 Chrome 156
-收到真实 Main10 并保留 PQ/BT.2020；Safari 27.0.1 当前 WebRTC 帧变为八位 BT.709。
-这不能视作 Safari 远程 HDR 已支持。
-参数 `HDR_SDR_ENABLED=1|0` 与曲线共存于 `/etc/default/vim4-kvm-hdr`；
-旧安装未保存此项时沿用原应用偏好。UU 的 HDR 设置只覆盖当前会话，
-断开后恢复最新全局默认值，期间修改全局开关不会打断 UU 的临时设置。
-仅支持八位的 UU 客户端在会话内自动使用 SDR。
-One-KVM 页面不再提供 HDR 开关及白点/峰值控制；保存其输出分辨率、帧率和 JPEG
-质量时保留当前 HDR 默认值。曲线和全局开关统一在管理器「视频输入」调整。
+原生请求还须满足真实输入、编码与接收能力，不能仅依据开关或 EDID。
+Main10 协商、码流元数据、浏览器解码与屏幕光度分开验收。
+[浏览器对照](bringup/2026-10-26-hdr-browser-compatibility.md)曾发现 Safari 把 WebRTC 帧变为八位 SDR；
+不能据 Chrome 通过宣称 Safari 支持，也不能把历史浏览器版本当当前结论。
 
-以下为 5.15 默认 SDR 映射路径。EDID 预设声明 HDR10/HLG，主机开启 HDR 时发送 PQ/HLG 10bit 信号。采集为 8bit，
-未处理时画面发白。T7 的 vdin0 有独立 HDR2 核，内核在 HDMI 输入为
-HDR10/HDR10+/HLG 时将其映射到 SDR，SDR 输入直通（`dmesg` 中
-`vdin_set_hdr vdin0 fmt:N`，0=SDR、1=HDR10）。切换由驱动的信号变化处理完成，
-不重启服务。显示与 KVM 共享的 NV21 帧已经是 8-bit SDR，不能只保留源 HDR 标签再向 TX
-发送 HDR infoframe，否则会重复色调映射或把 SDR 冒充 HDR。HDR 修复候选同步清除映射后
-帧的 HDR 元数据，输出 BT.709 SDR，并通过 `vdin0/hdr_sdr` 只读状态提供映射资格。
-输入状态仍通过 RX 报告 HDR10/HLG，与实际输出域分开。原生 HDR 显示需要拆分 HDR 显示
-与 SDR KVM 捕获；仅设置 `vdin1_bypass_hdr 1` 只会跳过后续配置，不证明已有 HDR 核已旁路，
-VDIN1 回写又会把 KVM 绑定输出时钟/热插拔，不能直接当作已验证替代方案。
-Dolby Vision 未支持，EDID 也不声明。
+## 映射与色彩合同
 
-映射表由 `vim4-hdr-curve`（tools/hdr-curve.sh）生成：增益曲线 `oo_y_lut_hdr_sdr`
-和 SDR 编码曲线 `oe_y_lut_sdr`。厂商增益曲线相当于 400 尼特映射为 SDR 白，
-厂商编码为 gamma 2.2，macOS HDR 桌面会整体偏暗、暗部偏亮。
-参数 `HDR_SDR_WHITE`（主机 SDR 白，默认 203 尼特，即 BT.2408 参考白；macOS HDR
-灰阶实测 199）和 `HDR_SDR_PEAK`（高光保留到的亮度，默认 1000）保存在
-`/etc/default/vim4-kvm-hdr`，与 NanoKVM 改写的 `/etc/default/vim4-kvm-hdmi` 分开。
-5.15 在 SDR 白以下 95% 线性，其上用扩展 Reinhard 曲线压入顶部 5%；编码为 sRGB。
-增益寄存器为 12 位（上限 4095），SDR 白低于 157 尼特会溢出反而变暗，故下限 160。
+主路径由 VDIN HDR2 完成映射后交付 SDR，GPU 只用于必要缩放或后备；
+选择依据是已有硬件及产品链，见[可行性快照](archive/hdr2-hardware-plan.md)。
+输入域与输出域分开记录，RX 报告 HDR 不等于捕获 buffer 仍是 HDR。
+映射后的帧必须清理源 HDR 元数据，不能把 SDR 标成 PQ 发给 TX 造成二次映射。
+格式转换或十位截断不等于 tone mapping；完整 profile 包含矩阵、范围、gamut、LUT、位宽和启停顺序。
 
-hdmi-setup.sh 在打开输入前写入；运行中由 vdin0 attr 的 `reload_hdr` 请求采集中断在帧边界重载，
-不重启采集。vim4-manager 的“HDR 转 SDR”滑动条拖动时实时预览，松开后保存。
-`oe_y_lut_sdr` 与 VPP/OSD 的 HDR→SDR 共用，将来接 HDMI 输出时同样生效。
-HLG 输入仍用厂商 HLG 曲线。
+曲线分支以[生成器](../tools/hdr-curve.sh)为准，厂商与 edge 肩部不同，不能拿不同曲线做逐码比较。
+用户增益独立于全局 VPP 策略，避免被动态映射覆盖。HLG 必须选择 T7 普通 HLG profile，
+不能复用 PQ 或 CUVA 表。静态对照须固定或记录动态 clip、hist 和 VPP 实际策略。
+sRGB 与 BT.709 OETF 不等价；像素域、V4L2 colorimetry、GStreamer caps 与编码 VUI 必须一致，
+不能只改标签宣称颜色正确，也不静默换 gamma 掩盖固件限制。
 
-原生显示双路径的新版5.15另有 `vdin_oo_y_lut_hdr_sdr`：完整149点写入后只供VDIN0/1
-使用，避免VPP的动态映射/回落覆盖用户设定的增益曲线。`vim4-hdr-curve apply` 同时写入
-此独立增益；原生模式还请求VDIN1在帧边界重载。VDIN1直接借用HDMI RX时由自己的V4L2
-中断跟随颜色格式、范围、位深和HDR EOTF，而不是依赖仅为VDIN0运行的接收状态机。
-切换残留和变暗的复现、实际寄存器及误差边界见
-[HDR切换颜色修复](bringup/2026-10-25-native-hdr-color.md)。
-
-7.x 的独立 edge 服务在 2026-10-20 接通 PQ / BT.2020 / YCbCr420 10bit 4K60，见
-[历史采集与映射实测](bringup/2026-10-20-edge-hdr-capture.md)。HLG 实现已合入，真实源未验。
-`vim4-hdr-curve` 在此内核向平台设备 `hdr_curve` 一次原子提交两行表，由 IRQ 在安全帧边界
-重载；参数文件与 helper 的预览/保存接口相同。
-
-2026-10-20 的 7.x 映射路径使用单独的高光曲线：保持 sRGB 编码 90% 以下不变，剩余 10% 码值使用对数肩部
-压缩到 PEAK，衔接处斜率连续。默认约 160 尼特开始压缩，暗部、中间调不变；
-HDR 桌面白会略暗，换取 400/600/1000 尼特的可辨层次。`tables-edge WHITE PEAK`
-可离线输出这组表；`apply` 根据可写 edge 接口自动选择，`tables` 与 5.15 写入仍用
-原曲线。验证与亮度限制见 [高光与连接优化](bringup/2026-10-20-edge-hdr-optimization.md)。
+profile 在进程上下文验证，停流或安全帧边界完整提交，先准备全部矩阵和表再启用；
+明确清理 SDR 与 bypass 旧态，丢弃过渡帧。
+使用标准源变化、格式协商和有界 drain；不能将无效或过期 infoframe 猜成 SDR 继续写帧。
+管理器调参不能因固定 profile 静默删除；兼容接口退场须连同应用迁移验证。
+不添加裸寄存器或任意 LUT UAPI，不滥用 HDR10 元数据、WDR 或 DRM 输出控件表达捕获映射。
 
 ## 双路径采集与部署约束
 
-5.15 原生显示模式 `aml_media.vdin0_native_hdr=1` 例外：VDIN0 保留10-bit HDR，
-VDIN1 同源独立映射 SDR，四套应用由启动器选 `/dev/video71` 和私有标准 V4L2 插件。
-该模式不是普通 vfm_cap NV21 采集：NanoKVM、JetKVM、PiKVM 及 One-KVM 的独立
-MJPEG 分支使用公共 `vim4vdin1src`；One-KVM 的 H.264/H.265 保留原有 VDIN1 接入。
-采集包提供 `vim4-vdin1-api-1` 和标准插件，须先于依赖它的应用部署；
-`GST_V4L2_PREFER_CONTIGUOUS` 仅保留在厂商后端，7.3 启动器必须清除它：
-否则 Wave5 选择单平面输入，拒绝应用提供的两个 DMA 平面视图，第一帧即失败。
-实际 HDR10 4K60、元数据与默认部署见 [双路径交付](bringup/2026-10-25-native-hdr-dual-path.md)。
+厂商原生显示与 SDR KVM 使用不同 VDIN 消费者，不能把任意第二采集节点都当 HDMI 输入。
+简单提前跳过配置不证明旧 HDR 核已经旁路；回写路径绑定输出时钟和热插拔，也不是已验替代。
+显示与采集须明确共享资源和元数据所有权，见[双路径交付](bringup/2026-10-25-native-hdr-dual-path.md)。
 
-### 7.x 映射的验证边界
+公共采集/编码能力包先于依赖它的应用部署，能力以插件与启动器实际探测为准。
+厂商连续单平面偏好不能泄漏到 Wave5 两平面 DMA 路径，会导致首帧拒绝。
+旧 buffer 直到编码器或 GPU 退休才复用；池预算、导出及退休细则见[DMA 合同](hdr2-dma-contract.md)。
+不故障热解绑，不以重复通知重建健康连接。
 
-以下为 2026-10-20 至 21 日的 7.x 映射路径验证记录；后续真实 PQ/SDR 烟测见
-[2026-10-31 记录](bringup/2026-10-31-uhd4-formal-smoke.md)。HLG 真实源仍未验。
-SDR 420 和 RGB 分别直通、矩阵转换。[高光与连接优化](bringup/2026-10-20-edge-hdr-optimization.md)
-给 8bit 高光留出层次，并避免重复输入通知重建健康连接；HDR 桌面白略暗。
-H.265 八轮、H.264 四轮 HDR 往返保持同一连接；HLG/其他格式及长期稳定性未验收。
-后续 [切换与稳定性验收](bringup/2026-10-21-edge-hdr-stability.md) 补齐启动状态查询、
-后台切换和界面遮罩的事件顺序回归；显示休眠与真实 HDMI 拔插能自动恢复。
-整机休眠由用户暂缓，不能与显示休眠混为已通过。
-音画偏差复核使用 [播放输出回环校准](bringup/2026-10-21-edge-av-calibration.md)，
-先测已知偏移与观察器偏置；旧独立音轨探针的首尾差不能直接判作内核漂移。
+## 验证边界
 
-## 相关记录
+映射的真实 PQ、VUI、同源颜色、视频与恢复证据见[正式烟测](bringup/2026-10-31-uhd4-formal-smoke.md)；
+该记录不代表当前身份，也不扩大到所有格式、长期稳定或原生 HDR。
+HLG 实现已合入，真实源仍未验，定点证据见[HLG 快照](archive/hdr2-hlg.md)。
+Dolby Vision 未支持，不能扩大正式 EDID；RGB、全范围、动态 HDR、真深色等须逐项验收。
 
-- [HDR2 集成门禁](bringup/2026-10-31-hdr2-uhd4-gate.md)、[PQ 与 MCP/ICE 窗口](bringup/2026-10-31-hdr2-mcp-ice-pq.md)、[恢复细采样](bringup/2026-10-31-hdr2-recovery.md)、[uhd4 正式烟测](bringup/2026-10-31-uhd4-formal-smoke.md)：旧候选的构建、PQ/DMA/VUI/4K60 与恢复证据；HLG 真源未验，不作为当前内核身份。
-- [5.15 信号变化恢复](bringup/2026-10-27-signal-recovery.md)：RX 锁定位、保留 WebRTC 的管线重建及 VDIN1 预算。
-- [UU HDR 验证](bringup/2026-10-27-uu-hdr.md)：十位解码声明与非对齐缩放恢复；持续显示与屏幕光度另验。
-5.15 One-KVM 的远程 Main10 HDR 与扩展尺寸验收范围见[原始记录](bringup/2026-10-26-remote-hdr-modes.md)。
-HDR降分辨率见[UU GPU 缩放](bringup/2026-10-27-uu-hdr-scale.md)及
-[四应用公共路径](bringup/2026-10-27-all-kvm-hdr-scale.md)，不能套用原尺寸性能。
-SDR 超宽屏硬件缩放及 JetKVM/PiKVM 尺寸入口见
-[缩放与尺寸控制](bringup/2026-10-27-sdr-scale-controls.md)；5.15 统一使用连续 V4L2 DMA。
-4K HDR 最初完整网页约34fps；后续[GPU/DMA 链路](bringup/2026-10-26-hdr-gpu-pipeline.md)
-已实测真实 PQ Main10 网页约60fps。当时 HLG、7.x Main10 与本地新模式未验收；
-7.x Main10 的后续范围以 [7.3 原生远程 HDR10](hdr10-remote-73.md) 为准。
-后续[像素复核](bringup/2026-10-26-remote-hdr-pixels.md)修正 AMLY 解包花屏，
-保留 HDR 偏好时 SDR 输入自动走八位 DMA；源端切换的 CMA 分配候选复测失败，已撤回。
-[HDR GPU 前置验证](bringup/2026-10-26-hdr-gpu.md)补齐匹配的私有 Mali Vulkan 驱动；
-现已接通小端 AMLY→P010 compute 与 Wave521 DMA_TYPE，固定双缓冲，保持输入退休后归还。
-HDR 专用 SDR 快照通道单独缩减下游缓冲预算，保留原分辨率，避免挤占编码器连续内存。
-后续[全局 HDR 默认与源端切换](bringup/2026-10-26-hdr-global.md)增加视频输入页开关，
-结合主采集池预算、编码器优先预留及完整释放，修复5.15 PQ/SDR往返的CMA问题。
-关闭全局转换不会自动把 H.264 切换为 H.265；码流、解码 HDR 与屏幕光度分别验收。
-[全应用 HDR 接入](bringup/2026-10-26-all-kvm-hdr.md)将 NanoKVM、JetKVM 和 PiKVM
-接入公共 `vim4h265src`，跟随同一全局开关；WebRTC 明确协商 Main10，Direct 原生视频
-轨道保留 PQ，H.264/JPEG 继续 SDR。编码包新增 `vim4-hevc-hdr-api-1`，须先于应用部署。
+颜色先比编码前帧，再看码流和浏览器；固定源色块与同曲线厂商对照，容差预登记。
+LUT shadow CRC 不是寄存器读回；自增 data port 不能盲扫，资料未闭合不能宣称 bit-exact 模拟。
+普通性能轮不混入大量寄存器读取或全帧 CPU oracle。颜色不通过不推广性能。
+输出采集卡会压缩颜色，只能作相对粗错检查，无光度仪器不宣称亮度准确。
+
+切换须覆盖同尺寸 EOTF/range 变化、过期 metadata、失锁与恢复并检查 generation；
+显示休眠不等于整机挂起，后者暂缓。[切换记录](bringup/2026-10-21-edge-hdr-stability.md)只证明所列范围。
+音画偏移先做[回环校准](bringup/2026-10-21-edge-av-calibration.md)，旧独立探针首尾差不能直接判漂移。
+原生和缩放性能、UU 持续显示、各应用往返均按[原生门禁](hdr10-remote-73.md)分别判定。

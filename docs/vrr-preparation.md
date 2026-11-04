@@ -1,131 +1,45 @@
-# VRR 输入与本地输出：离线准备
+# VRR 输入与本地输出
 
-2026-10-26，目标同时覆盖无 HDMI OUT 的远程 KVM 和 HDMI OUT 跟随输入 VRR。
-目前没有可供测试的 VRR 显示器，OUT 未连接。本轮只改源码、运行离线回归和构建，
-未加载新模块、修改板上 EDID、停启应用或重启。两种功能均未完成真实 VRR 验收。
-后续部署候选复用已有 `RTK-1080P120` 实验表，加入HDMI Forum声明并移除
-原AMD 40–61Hz声明，不增加预设项。首版错误使用保留值VRRmax=60，现已修正为120；
-4K60模式的实际VRR上限仍为60，不能把全局120当成4K120能力。原始RTK表不变；
-下文的原范围描述与哈希为首次离线准备时的记录，当前候选与备份见
-[部署与KVM回归](bringup/2026-10-26-vrr-input.md)。
-后续[真实VRR输入验证](bringup/2026-10-26-vrr-live.md)已覆盖5.15 One-KVM的
-1080p SDR8、约49–120Hz变频与H.264/H.265网页连续画面，本地输出仍未验收。
-随后[纠正范围声明并验证4K SDR8约49–60Hz](bringup/2026-10-26-vrr-range-4k.md)。
+本页管可变刷新率的输入判读、EDID 和输出资格；固定高刷见[高刷资格](video-modes.md)。
+厂商链路有真实输入短测，本地输出未验，未实现主线 DRM VRR。
+导航：[输入](#输入与帧预算)、[EDID](#edid-策略)、[本地输出](#本地输出门禁)、[证据](#证据与边界)。
 
-## 已实现的基础修复
+## 输入与帧预算
 
-- RX Gaming VTEM 的 Base_Refresh_Rate 原来把低字节左移8位，与 QMS 分支的
-  10-bit 字段布局不一致；现在两种 VTEM 使用同一个解码函数。
-- `info` 保留原 `Frame Rate`（实测 centi-Hz），新增 `VRR enabled`、
-  `FreeSync enabled`、`FreeSync active`、`Base Frame Rate`、`Capture Frame Rate`。
-  固定输入的 capture rate 等于实测值；VRR 使用基准时序，避免周期变化被当成模式变化。
-  FreeSync 支持位单独置位不算开启，enabled 与 active 分开报告。
-- VRR 基准来自有效 VTEM，或已识别的 AVI VIC：1080p100/120、720p50/60、
-  1080p50/60 和16:9 4K50/60。没有可识别基准时 capture rate 为0；没有从变化中的
-  实测帧率猜上限。FVA、非 CTA 自定义 VRR 时序不在本轮支持范围。
-- RX 格式分类、公共 VDIN1 插件、NanoKVM、JetKVM、One-KVM 和 PiKVM
-  都使用 capture rate 配置采集/编码预算；旧驱动仍回退到原字段。
-  One-KVM 输入状态继续显示实测刷新率，几何尺寸或真正的固定帧率变化仍会重建。
-- TX 注册使用传入设备的 vinfo，修正 min/max 对调、无能力时除零和整数提前截断。
-  最大垂直行数根据当前基准时序计算，不能用显示器最高刷新率代替当前模式；
-  超过硬件16位行数范围不得启用。**原来的启用门槛仍保留**，没有借修复自动开启本地 VRR。
-- T7 延迟寄存器读地址不再重复加 ENC offset；crop 不变时修改 line_dly 也会更新，
-  增加延迟立即写，减小延迟保留 VSYNC 写入。
+实测帧率与稳定的采集基准分开，不能把周期变化当模式变化反复重建。
+基准取有效 VTEM 或已识别的时序；未知基准不能从变化中的帧率猜上限。
+FreeSync 支持、启用和 active 分别表示；VTEM 各分支须使用一致字段布局。
+格式分类、采集插件与应用编码预算使用同一 capture rate，旧驱动保留能力探测回退，
+真正几何或固定帧率改变仍需重建。
+字段、支持时序及回退以 common_drivers 的 HDMI RX 实现和 `board/vim4vrr.py` 为准。
+FVA、自定义非 CTA 时序不在已验范围；没有改变完整帧、RDMA 和缓冲策略，不引入单缓冲。
 
-VDIN1 的完整帧交付、RDMA 和缓冲地址策略没有改变，没有引入 one-buffer。
-上述代码属于5.15厂商链路；没有实现7.3 DRM VRR。
+## EDID 策略
 
-## EDID 策略与离线工具
+[离线生成器](../tools/vrr-edid.py)与[板级模块](../board/vim4vrr.py)不访问板子或触发 HPD。
+调用者提供的范围不是已验能力。远程模式取接收和请求交集；
+本地还取同协议 OUT EDID 交集，不能用 AMD FreeSync 代替 HDMI Forum 支持。
+声明值和预设以[EDID 资产](../board/edid/)及生成器校验为准，
+不能把全局最大范围当成每种分辨率的能力，也不能用协议保留值表达“保守上限”。
+生成、解析和范围一致性测试不证明真实 VRR。
+保留原预设和关闭的本地输出；候选部署需独立授权。
 
-`board/vim4vrr.py` 与 `tools/vrr-edid.py` 不访问板子，不安装预设，也不脉冲 HPD。
-调用者必须显式提供候选接收范围和请求范围；工具不能把参数当成已验证硬件能力。
+## 本地输出门禁
 
-- 远程模式取接收范围与请求范围的交集，不依赖 HDMI OUT。
-- 本地模式还必须提供 OUT 原始 EDID，并取同协议的显示器范围交集。
-  当前 TX 只具备 HDMI Forum VTEM 路径，工具拒绝将 AMD FreeSync 当成本地 Forum 支持。
-- 原 RTK EDID 只有 AMD FreeSync 40–61Hz，没有 HDMI Forum VRR 范围。
-  1080p120 固定刷新率派生表也没有扩展该 FreeSync 范围。
-- 只修改 VRR 声明，保留基表、SVD 顺序、音频、HDR 和详细时序；移除或清除另一协议的
-  VRR 声明，避免源按旧的更宽范围协商。CTA 空间不足、错误校验和或畸形块直接报错。
-  固定模式保留不代表这些模式的 VRR 组合均已通过，基表的模式/颜色资格需另行确认。
-- 不覆盖已有输出文件。远程模式不接受 `--sink`；本地模式缺少 `--sink` 直接失败，
-  不能在无显示器时生成声称已匹配本地显示器的候选。
+输入跟随与真正可变刷新率是不同功能，先固定模式行时序锁定，再做 VRR，不同时引入高刷变量。
+由透传控制器独占策略，不能两个逻辑争写垂直行数；模式设置后刷新 ENC 注册。
+范围取当前基准时序，不能用显示器最高刷新率代替；超出硬件容量不能启用。
+注册计算和延迟更新修复不等于启停控制已实现，减小延迟仍须安全帧边界。
 
-HDMI Forum的最小值须为1–48；非零最大值须至少100，1–99为保留值。
-最大值0表示上限取决于所选视频模式，不代表0Hz；本工具只生成显式范围，因此拒绝
-模式相关上限，也拒绝把48–60之类的交集静默扩大到100或120。
+须验证 ENCP 和 TX GAME EMP 的开启、关闭包实际发送、无残留，
+以及非 VRR sink、失锁、换屏、拔插、HDR 与尺寸变化。
+缓冲所有权和完整帧先成立，Game Mode 标签本身不证明低延迟或无撕裂。
+无合适显示器不能验输出跟随、关闭、撕裂或延迟收益，不拿离线构建代替。
 
-例如，生成 **48–120Hz 实验候选**，不应用到板子：
+## 证据与边界
 
-```sh
-python3 tools/vrr-edid.py board/edid/1080p60-sdr8.bin \
-  --mode remote --protocol hdmi-forum --receiver 48 120 --request 48 120 \
-  --output /tmp/vim4-vrr-48-120.bin
-```
-
-该示例基表仍声明其他固定模式；首次硬件实验应主动选择1080p60 SDR 8-bit，
-不能只凭文件校验正确宣称 VRR、HDR 或所有时序已支持。
-本地生成改用 `--mode local --sink /path/to/monitor-edid.bin`，其余范围仍显式指定。
-
-## 离线验证与候选
-
-构建产物与日志在忽略目录 `build/vrr/`。候选基于已部署1080p120修复继续增加本轮修改，
-匹配主 Image SHA256 `6123de38fa741667b1f6c906d5a06ae7a4aa7ba4a16d7fc29e13ca406afaa780`。
-模块 build ID `6e6eb9fe356d1aee355c83b4c145fc67436e0da7`，strip 后 SHA256
-`7d0599faec01f5858d542d75dc86909bc7e98c03da146325596f73e99d8ca38d`。
-构建后 VM 源码和模块输出均恢复原始基线，候选单独保存在 `build/vrr/aml_media.ko`。
-One-KVM release 候选 `build/vrr/one-kvm` SHA256 为
-`adbea7281e4633478f72e9f375189ba0e6a7dbb118cbd3c26d8784265958f6d0`。
-
-已通过：主仓271项测试（7项跳过）、驱动4项实际C函数回归、采集插件全部2组Meson测试、
-NanoKVM与JetKVM完整VIM4 Go测试、One-KVM完整Rust测试（776通过、2项忽略）及release构建、
-uStreamer的VIM4核心构建（WITH_JANUS=0）与实际C解析函数回归。
-One-KVM release 构建有21条编译警告；全仓 `cargo fmt --check` 在未修改文件上仍有格式差异，
-没有为本轮任务批量格式化无关代码。Janus模块及前端未改，本轮未重建它们。
-
-复现入口（各仓库命令分别在对应目录执行）：
-
-```sh
-python3 -m unittest discover -s tests -p 'test_*.py'
-python3 common_drivers/drivers/media/vin/tvin/hdmirx/test_high_refresh.py
-python3 common_drivers/drivers/media/vrr/test_vrr_bounds.py
-# Linux ARM64 构建环境
-meson test -C gst-plugin-vfmcap/build --print-errorlogs
-# NanoKVM/server
-go test -tags vim4 ./...
-# kvm
-go test -tags vim4 ./internal/native
-# One-KVM
-cargo test --locked --features vim4 --lib
-# ustreamer
-python3 tests/test_vim4_rate.py
-```
-
-驱动测试编译实际 C 函数，覆盖变动的48–120Hz帧周期、FreeSync enabled/active、
-VTEM10位字段、空/反向范围、非整数频率、当前ENC选择、常量crop时延迟双向更新。
-EDID测试覆盖同协议交集、不相交、原RTK协议区别、10位最大值、保留能力/DTD、
-CTA越界与空间耗尽，以及CLI无显示器拒绝本地模式。
-GStreamer 1.24.2 的离线 appsrc→videorate(drop-only)→appsink 实验中，
-120fps预算、8.33–25ms不等间隔的7个输入帧全部保留原 PTS；没有据此删除 videorate。
-软件实验不验证 HDMI DMA、编码器或浏览器的真实 VRR 行为。
-
-## 尚未完成的链路
-
-1. 远程：真实 HDMI VRR 源的 VTEM/SPD、RX锁定、变化的 Vtotal、VDIN1完整帧和时间戳；
-   同时验证四套应用不反复重建、H.264/H.265内容更新及浏览器/UU播放。
-2. 本地：由现有 passthrough 控制器独占策略；模式设置后刷新当前ENC注册；
-   明确启停 ENCP VRR 与 TX GAME EMP，验证 OFF 包实际发出且不遗留，防止两个逻辑争写行数。
-   本轮修正注册计算不等于这些控制已实现，也没有新增网页 VRR 开关。
-3. 本地实测需 HDMI Forum VRR 源与显示器：范围上下界、非整数基准、输入失锁、
-   OUT拔插/换屏、关闭/重开、HDR和分辨率变化，以及同步KVM时完整帧与音画关系。
-
-保留原 EDID 和关闭的本地 VRR。没有显示器时不能验收输出跟随、关闭包、
-撕裂、失锁或延迟收益；离线构建通过不能替代这些结果。
-完整资格与缓冲约束见[本地VRR审查](vrr-passthrough-audit.md)。
-
-## 相关记录
-
-- [VRR准备](#已实现的基础修复)含EDID策略与基准帧率修复；5.15 One-KVM的
-  [1080p真实输入](bringup/2026-10-26-vrr-live.md)与[4K变频、范围纠正](bringup/2026-10-26-vrr-range-4k.md)
-  已短测H.264/H.265 SDR8。Forum最大值1–99为保留值，不能用60声明保守上限；
-  本地输出仍未验收，[本地VRR审查](vrr-passthrough-audit.md)保留资格约束。
+[输入窗口](bringup/2026-10-26-vrr-live.md)及[范围修正与高分辨率窗口](bringup/2026-10-26-vrr-range-4k.md)
+只覆盖厂商 One-KVM 指定 SDR 输入与网页编码短测，不能外推全部应用、UU、HDR 或长期稳定。
+后续仍须核对真实 VTEM/SPD、锁定、Vtotal、完整帧及时间戳，
+各应用不反复重建并持续更新；本地还需同时确认 KVM 完整帧和音画关系。
+原始源码调查、缓冲及 EMP 限制见[审查快照](archive/vrr-passthrough-audit.md)。

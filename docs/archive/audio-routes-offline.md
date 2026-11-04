@@ -13,7 +13,7 @@
 
 ## 固定版本与交付
 
-厂商依据沿用[来源表](../parity/sources.md)：Linux `80a07ad5406d`、common_drivers
+厂商依据沿用[来源表](parity-sources.md)：Linux `80a07ad5406d`、common_drivers
 `4cfb128d36f8`。本次重新核对该版本 `kvim4n.dts` 595–778、977–1386，
 以及 `sound/soc/amlogic/auge/{tdm_hw,ddr_mngr,spdif_hw,resample_hw,pdm_hw}.c`、
 `audio_top.h`、`regs.h`、`clks/`。没有修改厂商树。

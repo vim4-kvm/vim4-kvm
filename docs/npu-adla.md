@@ -1,224 +1,56 @@
-# ADLA 候选与验收
+# ADLA 兼容与验收
 
-NPU 已按六段序列集成，[正式回归](bringup/2026-10-30-uhd3-formal-regression.md)保留
-三模型 6909 输出文件字节一致、视频与 GPU 冒烟范围；当前内核身份见[主线内核开头](kernel-mainline.md)。
-驱动在内核 `drivers/misc/adla`，提供下游闭源 SDK 字符设备兼容接口，不声明 DRM accel 支持。
-历史统计性能“不确定”和真实复位失败未验的边界保留；下方旧轮次均按当时状态解释。
+本页管 SDK 兼容、任务生命周期及验收；内核身份见[主线入口](kernel-mainline.md)。
+[正式回归](bringup/2026-10-30-uhd3-formal-regression.md)通过模型输出核验，性能总体仍不确定，真实复位失败未验。
+导航：[运行时](#运行时与生命周期合同)、[兼容](#兼容合同)、[复测](#复测与边界)。
 
 ## 运行时与生命周期合同
 
-- 两内核复用同一 SHA 的 libadla/libnnsdk、模型和输入，均用 /dev/adla0；专属 KMD 及依赖按 release 成套安装。
-  7.x 通过 DT modalias/udev 加载 adla_core，缺失即报错，不从别的 release 加载模块或切换 SDK 掩盖失败。
-  普通推理使用 khadas 与已验证环境；root 只用于安装和诊断，不用提权绕过 SDK 建网失败。
-- 资源获取传播 IRQ/时钟/regulator 的错误及 EPROBE_DEFER；电源域用标准 runtime PM，内部 MMU 配合 DMA API 和 34 位 DMA mask。
-  不因存在 RESET_ANAKIN ID 就假定有独立硬复位时序，不添加未知 SMC 或不存在的 AXI 时钟输入。
-- 压缩命令按 common/modify 实际长度校验 fixup；零 count 的未使用区间不访问 offset。
-  INVOKE 地址 fixup 数量为零时复用模型缓存，非空区间仍按有效缓存长度校验；缓存失败清零数量。
-  这些是 SDK 多段模型的兼容语义，不能把零 count 当成禁止后续 task 使用已缓存条目。
-- CANCEL 成功后 WAIT/GET_STAT 返回 ECANCELED；WAIT 超时先取消并确认排空再报 ETIMEDOUT。
-  释放 dev_mutex 后等待 worker，通知须覆盖不可中断的 CANCEL 等待者；取消不冒充完成 IRQ。
-  close 超过有界等待时移交完成事件驱动的迟到清理，先退役共享 task 引用再通知；确认 DMA 停止后才回收。
-  SDK 显式缓冲由 FREEBUF/detach/close 释放，不在取消时抢先回收可复用模型缓冲。
-- 无法确认 DMA 停止时锁定故障、向用户态报错并保留可能仍被访问的页到重启，不能记作全部回收通过。
-  详细故障边界见下方历史实现说明；真实软复位失败仍欠硬件证明。
+两内核复用同一 SDK、模型和输入，以哈希证明；KMD 与依赖按内核构建成套安装。
+模块自动加载缺失即报错，不从别的 release 借模块或切 SDK 掩盖失败。
+普通推理用已验证普通用户环境，root 仅用于安装诊断，不用提权绕过建网失败。
 
-兼容调用入口见 [UAPI 探针](../tools/npu-uapi-probe.c)与 [SDK 探针](../tools/npu-probe.c)；
-缓存/取消语义的来源为[npu3 修复](archive/npu-adla-npu3.md)、[npu4 修复](archive/npu-adla-npu4.md)及
-[npu4 验收](bringup/2026-10-30-npu4-acceptance.md)。`adla:adla_phase` 的 submit、irq_wait、complete、reset
-记录 elapsed_ns/result/clk_hz；submit 含命令补丁/缓存同步/MMU/parser，complete 含 profiling/状态解析。
-诊断使用独立 tracefs instance，结束关闭事件并删除实例；普通性能组关闭 trace，不把诊断开销混进性能资格。
-SDK 外计时方法见[端到端分段](npu-e2e-timing.md)；旧约 104ms 异常不算已由离线修复根治。
+驱动在主内核 `drivers/misc/adla`，保留下游 SDK 字符接口，不声明 DRM accel 支持。
+资源获取传播 IRQ、时钟和 regulator 错误与延迟 probe，PM 使用标准引用和 DMA API。
+不因存在 reset ID 就假定有独立硬复位，不添加未知 SMC 或不存在的时钟。
+PM/时钟失败逐步回滚；IRQ 注册和定时器分配先于 worker，不能持 worker 所需锁等待它退出。
 
-## 历史性能与集成证据
+压缩命令按实际长度验证 fixup，未使用的零 count 区间不访问 offset。
+零地址 fixup 可复用模型缓存，非空区间仍按缓存有效长度检查；缓存失败清零数量，
+不能把零 count 误解成禁止后续 task 使用缓存。
 
-最新[四启动对实测](bringup/2026-10-30-npu-boot-pairs.md)：输出一致，性能总体不确定，暂不pin；
-VGG16/DenseNet/YOLO均值配对差+4.050%/+2.346%/−0.352%，95% CI分别
-[−3.406,+11.505]/[−0.123,+4.815]/[−4.007,+3.303]%。前两模型联合上界超过5%，DDR条件未对齐。
-[波动分析与门禁](npu-performance-gate.md)保留；未改驱动、未生成uhd3。最终回5.15，文件/服务/UDC恢复、锁释放。
-[六段审查序列与uhd2集成草案](archive/npu-adla-integration.md)保留当时的待批准状态，不代表当前部署。
-旧候选保留，保页例外保持“用户已于 2026-10-30 接受”。
-[端到端分段与下一窗口](npu-e2e-timing.md)：旧YOLO进程wall摊销约+9.56%，新增probe --timing，尚无可确认的驱动冗余，未生成uhd3。
-[分段实测](bringup/2026-10-30-npu-e2e-window.md)：YOLO fwrite增加3.463ms、扫描近似相同；扰动<1%及DDR/累计静止计数资格未闭合，仅作定位，未改驱动。
+取消成功后等待和统计报告取消；超时先取消并确认排空，再返回超时。
+释放设备互斥锁后等待 worker，通知覆盖不可中断的取消等待者，不能伪造完成 IRQ。
+先软复位，再发布失败完成；close 有界等待后移交事件驱动迟到清理，退役共享 task 引用再通知。
+SDK 显式缓冲由对应释放、detach 或 close 回收，取消不抢收可复用模型缓冲。
 
-## 2026-10-30 上板结论：多启动后仍不确定，不pin
-
-此前[uhd2集成窗口](bringup/2026-10-30-npu-uhd2-acceptance.md)三模型101轮完整输出与新5.15参考及旧基线一致，task create=0。
-VGG16/DenseNet/YOLO对前置5.15均值退化+2.043%/+6.445%/-3.863%；DenseNet失败。
-DenseNet后置5.15为1.9403ms，候选仍慢6.296%；对旧基线也慢5.674%，不更换参考放宽门槛。
-VGG16独立501轮对前/后参考分别-1.363%/-0.332%，原+4.72%未稳定复现，不能唯一归为噪声。
-六分钟142000轮并行完整完成且输出核验一致；暖均值2.0042ms，P99为2.1918ms，无超时。
-视频NPU关/开60.010/59.998fps，观察期间丢帧/丢包/冻结增量0，无编码错误。
-manager登录/页面/主资源/认证API和One-KVM页面资源均200，视频计数持续推进，未发HID。
-npu4取消/超时/close及ATTACH/profiling资格保留；本轮不测真实复位失败；保页政策用户已于2026-10-30接受。
-集成树与npu4相同，但独立组差距根因未定；并行组更快不能抵消独立性能失败。
-历史单组过线/超线保留；本次四对未获得≤5%资格，计时外残差在7.3更大，但未证明输出处理造成计时内差距。
-交接时已回5.15，12文件哈希/权限一致，四服务active、UDC configured，全部锁释放。
-历史[npu3失败](bringup/2026-10-30-npu3-acceptance.md)、[npu2](bringup/2026-10-30-npu2-acceptance.md)及[npu1/5.15基线](bringup/2026-10-30-npu-adla-acceptance.md)保留。
-
-## 第三轮离线状态
-
-内核分支为 `vim4-npu-adla`，第三轮提交：
-`efd8fb22f425d`（恢复顺序、错误传播、PM回滚、范围检查与宿主测试），
-`ec52a0f711cd7`（取消计数与供电失败测试），
-`40c653d43f711`（移除端口适配引入的未使用探测函数）。
-输出目录为VM `~/build/npu-adla1`，独立release为
-`7.3.0-vim4kvm-npu1+`，不修改正式源码锁或uhd1模块目录。
-最终完整构建与打包通过，载荷有2338个模块，内核build ID为
-`5f66186d0cc2e53b89c4bbf91226ec7b0b70d6ce`；M0 DTB的ADLA状态为okay。
-主仓配套提交为`306c744`，303项unittest通过、7项跳过。
-
-恢复先完成软复位，再发布失败完成事件，避免close提前释放DMA页。
-WAIT改用可中断等待，按invoke查询完成状态；超时返回ETIMEDOUT，
-硬件/恢复失败返回EIO，信号中断保留内核等待错误。GET_STAT同样报告失败。
-正常取消/close释放资源；close等待DMA静止有界，不能在等待失败后继续释放。
-
-**无法确认DMA停止时不允许释放可能仍被硬件访问的页。** 当前实现锁定故障状态、
-拒绝后续请求、保留模块与相关DMA/IOVA资源直到重启，并禁止sysfs解绑。
-按DRM wedged语义保留此例外（用户已于 2026-10-30 接受），不能计作“全部资源回收”。
-故障必须对用户态可见：后续open/ioctl返回EIO，WAIT/GET_STAT报告失败；
-`adlak_device.c:44`用一次性故障转换，`:59`打印
-`recovery failed: <error>; reboot required`。这些为源码合同，
-截至npu4仍未验证真实软复位失败及DMA停止效果。
-
-标准PM路径处理resume-and-get、父时钟、设频和启钟失败；引用失败回滚，
-regulator由devres行动成对释放。IRQ注册先于worker启动，避免probe失败时
-在持有dev_mutex期间等待需要该锁的worker退出。
-worker所需定时器在启动前分配，创建失败不再被解锁的返回值覆盖。
-
-宿主测试运行实际C函数或实际错误状态分支，以控制事件替代硬件：
-`test_iova.py`覆盖分配失败、排除区、碎片复用、耗尽和回收；
-`test_platform.py`覆盖PM/时钟及regulator各步失败回滚；
-`test_lifecycle.py`覆盖复位与完成顺序、WAIT错误、信号和close；
-`test_cancel.py`覆盖pending/finished计数及scheduled取消时保留任务。
-IOVA、生命周期和取消测试启用ASan/UBSan；边界与ABI测试继续保留。
-这些测试不证明真实页表、缓存、中断、电源域或DMA停止。
-
-构建/验证日志位于上述输出目录：
-`r3-delivery-build.log`、`r3-delivery-package.log`、`r3-w1-all.log`、`r3-sparse-real.log`、
-`r3-schema.log`、`r3-dtb.log`。
-系统sparse 0.6.4曾被内核跳过，旧C=2成功退出不能算sparse通过；
-实际检查使用私有sparse 84ec0658c81d，安装在 `~/build/sparse-npu`。
-新增核心适配strict checkpatch清零；取消测试提交的MAINTAINERS提醒由已有
-`F: drivers/misc/adla/test*.py`覆盖，单独记录该元数据提示，不隐藏代码诊断。
-
-W=1存量诊断分类：未使用赋值变量13、缺失原型11、旧式inline声明5、
-printf属性建议4、fallthrough 1、格式符1；另有旧模板kernel-doc警告。
-按相对上一轮的新增行范围比对，W=1诊断没有命中新改代码。
-这些是存量清单，不代表整个驱动无告警；sparse另按实际日志记录。
-实际sparse执行了24个CHECK；新增行未命中诊断。存量包括类型/地址空间不匹配49、
-gfp_t退化6、整数NULL 3、符号未声明13（其中1个来自内核vDSO），以及上述编译器告警。
-这些诊断没有通过关闭W=1、sparse或全文件格式化规避。
-T7C固定启用内部MMU后产生的未使用属性探测函数已删除，不归入厂商存量免责项。
+无法确认 DMA 停止时必须锁定故障、拒绝后续请求并向用户态报告，保留模块和可能被访问的页至重启，
+禁止 sysfs 解绑；不能记成“全部资源回收”。这是用户接受的保页例外，真实软复位失败仍欠硬件证明。
+实现与审查依据见[npu3](archive/npu-adla-npu3.md)、[npu4](archive/npu-adla-npu4.md)及[专项验收](bringup/2026-10-30-npu4-acceptance.md)。
 
 ## 兼容合同
 
-保持 `/dev/adla0`、magic X 的 ioctl、packed 外层结构、嵌套 task/fixup、
-QUERYCAP 的 NULL 查询长度、ioctl 内映射和 UID mmap。
-`/sys/class/adla/adla0/device/debug/{hw_info,clk_core,dpm_period}` 的路径及
-hw_info 文本标签属于兼容合同，不以 debugfs 取代。
-保留 KMD 1.4.0.3 标识不意味着已完成硬件验收。
+设备、ioctl 布局、标识与 debug 文本标签以主内核 UAPI 和 SDK 消费者为准；
+保留 packed 外层、嵌套 task/fixup、空查询长度、ioctl 内映射及 UID mmap 语义。
+已有 sysfs 兼容接口不能直接换成 debugfs；保留 KMD 标识不意味着通过硬件验收。
+调用顺序见[UAPI 探针](../tools/npu-uapi-probe.c)与[SDK 探针](../tools/npu-probe.c)。
 
-5.15 本板只读启动日志确认 `nn_adj_vol=0, package=1, efuse=2`，设置
-890000 µV；原日志的 `mv` 标签错误，代码单位是 µV。候选不引入多频 OPP。
-证据来自第二轮只读 `dmesg`：`ADLA KMD nn_adj_vol = 0, nn_package_id = 1,
-nn_efuse_type = 2`，随后打印 `regulator_set_voltage 890000mv OK`。
-厂商实现见 `common_drivers/drivers/adla/kmd/drv/port/platform/linux/adlak_regulator.c:159`
-（890000常量）、`:198`（nn_adj_vol=0分支）、`:231`（regulator_set_voltage）。
-本次5.15另读`/sys/class/regulator/regulator.4/{name,microvolts}`得到
-`vddnpu`、890000，这是regulator框架读回，仍不是物理电压测量。
-5.15设定核心频率800 MHz；活动/空闲读回见上板记录。
-npu2活动时钟已读回799999987 Hz，但候选电压框架读回仍缺失，不以请求值代替实测。
+ATTACH 必须先建立 MMU 上下文，再申请、导入同一物理页，先 detach 后 free。
+初版漏握手曾使厂商内核 panic，不能导入猜测地址。
+负向 profiling 在厂商实现会漏解锁，探针主动拒绝该内核；正向 profiling 与普通性能分轮。
 
-## 模型和工具
+## 复测与边界
 
-固定 Khadas 提交与六个文件的 SHA256 在 `tools/npu-models.json`。
-不提交模型二进制。检测模型选YOLOv8n；npu4三张量完整字节比较已通过。
+按[性能协议](performance-baseline.md)和[NPU 比较器](../tools/npu-validate.py)执行，
+模型输出逐字节一致是前置，单模型退化不能由别的模型或并行组抵消。
+[四启动对](bringup/2026-10-30-npu-boot-pairs.md)仍为不确定；历史单组超线保留，
+不能据多启动区间宣称差距不存在，也不能据离线修复声称旧异常已根治。
+分段 trace 使用独立实例，结束删除；普通性能关闭 trace。
+提交阶段包含补丁、同步、MMU 与 parser，完成阶段含 profiling 和状态解析；
+进程外残差不能直接归因驱动，见[分段窗口](bringup/2026-10-30-npu-e2e-window.md)。
 
-```sh
-python3 tools/npu-validate.py prepare build/npu-models
-cc -O2 -Wall -Wextra tools/npu-probe.c -lnnsdk -lm -o build/npu-probe-bin
-python3 tools/npu-validate.py run --help
-python3 tools/npu-validate.py compare baseline/result.json candidate/result.json
-```
-
-prepare 在开发机执行，需要 Pillow；生成 BGR HWC 或灰度 float32，记录 Pillow
-版本与输入哈希。两内核必须使用同一份输入文件，不能各自重新生成。
-run 要求显式模型/输入 SHA，输出目录必须不存在。101轮包含一次预热；逐轮保存
-全部张量，比较时每个文件大小和 SHA 必须一致，再检查平均退化不超过5%，
-同时报告 P50/P99/最大值。输出差异直接失败；分析差异不自动放宽标准。
-本工具不证明采样环境可比，需窗口负责人控制频率、温度、视频负载并重复配对。
-
-超时先 TERM 后 KILL，均有界；D态进程不能靠用户态清理保证消失，必须报告，
-不能继续复用硬件。工具不删除旧目录，不发 HID、不测声音、不 ptrace 视频进程。
-
-独立UAPI程序在VM编译，须使用候选内核UAPI头：
-
-```sh
-cc -Wall -Wextra -Werror \
-  -I ~/src/linux-7.3-npu/drivers/misc/adla/drv/uapi \
-  -I ~/src/linux-7.3-npu/drivers/misc/adla/drv/uapi/linux \
-  tools/npu-uapi-probe.c -o npu-uapi-probe
-timeout 30 ./npu-uapi-probe attach
-timeout 30 ./npu-uapi-probe profile
-```
-
-attach从REQBUF取得连续页后再导入同一物理页，验证映射别名并先detach再free；
-不会导入任意猜测的物理地址。必须先SET_CONTEXT_ATTRIBUTE建立MMU上下文；
-初版探针漏掉此握手，曾在5.15的REQBUF触发空指针panic，已修正并通过ATTACH。
-profile连续两次测试无network错误路径，覆盖互斥锁释放；厂商5.15该路径会漏解锁，
-工具主动拒绝在5.15运行该负向测试；npu2两次错误调用已通过，无死锁。
-正向profiling另用同一C probe追加第五参数 `--profile`，执行SDK的enable/get/disable，
-须与普通性能测量分开运行。本次5.15正向profiling得到371 µs、3298400 bytes。
-
-## 独立候选产物与一次性启动准备
-
-完整构建、DTB和匹配模块来自VM `~/build/npu-adla1`；载荷目录为
-`~/build/npu1-candidate`，manifest记录源码、build ID、配置和全模块哈希。
-不向正式sources.toml登记，不发布、不修改板上启动文件。
-打包器新增显式 `--release 7.3.0-vim4kvm-npu1+`，默认uhd1合同保持。
-静态PID 1由display-once-init.c以 `-DADLA_TRIAL` 和独立RELEASE构建；
-校验运行build ID后创建独立模块挂载点，失败重启回默认。
-现有启动器按release白名单分派，npu1须配套更新vim4-board-runtime、vim4-kvm-run、
-one-kvm-edge、mainline-prepare和mainline-gadget-prepare，才能沿用Wave5运行时。
-这些候选文件另放载荷的runtime目录并记录哈希；第三轮未安装。上板先备份并核对
-5.15路径行为，再安装这些仅增加npu1分派的文件，不重启服务，随后采集baseline证明。
-baseline证明还须包含这五份运行时文件的哈希，避免一次性启动使用不同路由。
-本次上板已完成临时安装及恢复，备份、原始/最终证明保留在板上验收工作目录。
-
-最终一次性bundle须使用下一轮刚读出的5.15证明，不能拿历史启动文件哈希冒充当前状态：
-
-```sh
-python3 packaging/kernel/display-once.py prepare \
-  --payload ~/build/npu1-candidate --init ~/build/npu-adla1/npu-once-init \
-  --baseline baseline-515.json --output ~/build/npu1-once \
-  --release 7.3.0-vim4kvm-npu1+ \
-  --baseline-release 5.15.137-vim4kvm-hdrdual6 --baseline-id BASELINE_BUILD_ID
-```
-
-BASELINE_BUILD_ID必须替换为实际40位GNU build ID；proof须含cmdline、启动文件与运行时登记哈希。
-若基线是`root=UUID=`，proof另需`root_partuuid`（由当前根挂载对应块设备的blkid读取）；
-候选APPEND转换为PARTUUID并加rootwait，stage核对该分区的设备号与当前根挂载一致。
-原始baseline_cmdline不改，仍用于stage身份核验。
-prepare只读输入并写新目录，不stage、不SSH、不重启。下一轮stage仍须root、板锁/媒体锁、
-当前release/build ID、cmdline和全部文件哈希一致；U-Boot只在RAM执行生成的sysboot命令。
-跨release归档和基线身份保持有离线测试；真实上板结果以上述失败结论为准。
-
-## 下一轮上板顺序
-
-后续按实际改动决定复验范围，[npu4专项顺序](archive/npu-adla-npu4.md#下一窗口30分钟)及实测记录保留，
-每个新窗口刷新stage证明；以下保留原完整流程供查，不能将本轮结果替代未测接口资格。
-
-1. 先在5.15持板锁和媒体锁，记录SDK/模型/输入/内核哈希、实际频率和电压。
-   用同一工具采集三模型逐轮完整输出与计时，外部物理地址导入和profiling另测。
-2. 离线门禁全部完成后才准备7.3一次性启动；保留5.15默认，不覆盖正式源码锁。
-   Image/DTB/modules须来自同次完整构建。
-3. 三模型输出字节一致、配对平均退化≤5%；性能不通过就不登记为追平。
-4. 计数器证明提交/中断推进、空闲门控及再唤醒；区分温度计持域与计算时钟。
-5. 受控超时、取消、进程退出、软复位恢复与失败状态；不盲写寄存器注入。
-6. 与HDMI/Wave5固定运动负载并行，检查帧推进、错误、超时和NPU尾延迟。
-
-每项≤10分钟，只用脚本和计数器；不发HID（被控机为Mac mini M6），不测声音。
-整机挂起另需平台PM资格，不能用设备clock-gating替代。
-预计板上独占约55–75分钟：5.15基线与接口测试10–15分钟，候选准备/启动/回退10–15分钟，
-三模型输出与配对性能10–15分钟，PM/超时/退出10–15分钟，视频并行10分钟，收尾5分钟。
-按多个≤10分钟小项执行；任何oops、DMA错误或输出不一致立即停止本项，不扩大故障注入。
+先离线完成实际函数和错误分支测试，再安排输出、取消、超时、退出、PM 和固定视频负载并发。
+宿主夹具不证明真实页表、缓存、中断、电源域或 DMA 停止。
+同次完整内核模块与刷新后的启动证明必须匹配，不能用旧基线哈希冒充当前状态。
+D 状态任务不能靠用户态清理保证消失，报告并停止复用硬件；输出不一致、oops 或 DMA 错误立即停止。
+整机挂起需独立平台资格，clock gating 不能替代；占板按[窗口规范](board-window.md)。

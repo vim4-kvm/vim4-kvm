@@ -66,7 +66,7 @@ SDR期间保留待用PQ曲线是预期行为；**配置数组、最后写入shad
    合并后源码`drivers/media/platform/amlogic/t7-hdmirx/t7-vdin-test.c:219–241, 484–490, 1389–1432`。
    **不改任何PQ矩阵、LUT、电压或输出标签**；没有HDR证据，不做猜测式色彩修正。
 2. HLG离线交付`c68407cb052be`在本会话合并成`bbf9ff89b284d`：保留HLG writer及PQ-only shadow记账，
-   PQ曲线请求不在HLG期间重载。原HLG worktree/分支未改；[HLG证据](../hdr2-hlg.md)保留。
+   PQ曲线请求不在HLG期间重载。原HLG worktree/分支未改；[HLG证据](../archive/hdr2-hlg.md)保留。
    合并后仅离线验证，**未在本轮上板，也未扩大EDID能力**。
 3. `11f3239b7c849`：VDIN Kconfig显式select CRC32，避免其他配置遗漏诊断依赖；私有olddefconfig通过，uhd3原已启用CRC32。
 

@@ -11,7 +11,7 @@ Agent 入口见 [AGENTS.md](AGENTS.md)；错题随任务路由读取。
 | 路径 | 内容 |
 |---|---|
 | [docs/tools.md](docs/tools.md) | 全部脚本的运行位置、对板子的影响和文档入口 |
-| [docs/subsystems/](docs/subsystems/) | 内核、音视频、USB、应用、部署的当前约定 |
+| [docs/subsystems/](docs/subsystems) | 内核、音视频、USB、应用、部署的当前约定 |
 | [docs/hardware.md](docs/hardware.md) | 硬件接口、串口接线、供电与默认账户 |
 | [docs/bringup/](docs/bringup/README.md) | 上板记录：每条一个文件，先查索引 |
 | `tools/` | 构建、部署、串口、回归与测量脚本 |
@@ -44,7 +44,7 @@ tools/oowow-flash.sh --yes                          # 在 OOWOW 中重装默认 
 管理面板 **http://192.168.50.210**（[vim4-manager](vim4-manager/README.md)）选择开机启用的
 KVM 应用并查看板子状态；NanoKVM、JetKVM（`kvm/`）、One-KVM、PiKVM（`kvmd/`）共用 8080，
 同一时间只运行一个。各应用的功能覆盖与验证边界以其 VIM4.md 为准，
-板级能力见 [docs/subsystems/](docs/subsystems/)，历史证据见上板记录。
+板级能力见 [docs/subsystems/](docs/subsystems)，历史证据见上板记录。
 
 ## 许可证
 

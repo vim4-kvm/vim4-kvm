@@ -7,7 +7,7 @@ over the concurrently edited PQ worktree without reconciling the profile and
 lease interfaces. No source files from that worktree were copied here.
 
 The kernel commit and build/test evidence are recorded in
-[HLG implementation](../../docs/hdr2-hlg.md). Host checks live in the patch as
+[HLG implementation](../../docs/archive/hdr2-hlg.md). Host checks live in the patch as
 `drivers/media/platform/amlogic/t7-hdmirx/test_hlg.py`; run with the optional
 fixed vendor `set_hdr2_v0.c` path to compare all table values, otherwise it
 checks the sealed table hashes and encoded port words.

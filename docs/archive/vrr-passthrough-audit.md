@@ -1,6 +1,10 @@
 # 本地 VRR／帧锁定透传审查
 
-下文是实施前审查。后续[离线准备](vrr-preparation.md)已修正RX基准帧率解析、
+> 归档快照（2026-10-26）：已结束的调查与候选记录，不代表当前状态，现行入口见 [维护合同](../vrr-preparation.md)。
+
+导航：[版本与结论](#版本与结论)、[先分开两种功能](#先分开两种功能)、[最小候选的改动点](#最小候选的改动点)、[Game Mode 与缓冲条件](#game-mode-与缓冲条件)、[EMP与非VRR显示器的具体限制](#emp与非vrr显示器的具体限制)、[分阶段验收](#分阶段验收)、[7.3边界](#73边界)。
+
+下文是实施前审查。后续[离线准备](../vrr-preparation.md)已修正RX基准帧率解析、
 应用预算与部分TX范围/寄存器问题；控制器与本地输出启停仍未完成，尚无真实VRR验收。
 
 本轮只读源码和既有上板证据；未访问板子、改模式、构建或测量新候选。
@@ -13,7 +17,7 @@
 - 对照 StreamBox common_drivers：`9baca1e54f68c1e87b46da807772247f914fdb24`；
   tvserver：`9fc8bf022c2611ea62de930e22f0debbdf3dc2d8`。
 - 当前5.15主链路是 VDIN0 10-bit→amvideo→TX，VDIN1 同源独立 HDR→SDR→KVM。
-  详见[原生双路径](bringup/2026-10-25-native-hdr-dual-path.md)。此隔离使显示侧行级读取有研究价值，
+  详见[原生双路径](../bringup/2026-10-25-native-hdr-dual-path.md)。此隔离使显示侧行级读取有研究价值，
   但 VDIN1 仍必须按完整帧交给编码器。
 - 我们有 VRR/vlock 框架，没有 StreamBox 的 `LL_FRAMELOCK` 扩展；不是只改启动参数即可获得该能力。
 - 给定网页的“禁用 one-buffer”已不能描述他们当前主线。后续
@@ -77,7 +81,7 @@ BIT0|BIT2，即Game Mode2；两者数字相同但意义不同。`vdin_debug.c:41
    TX SDR时清除旧DRM包的修复。
 
 VDIN1实际 `N提交→N+1地址生效→N+2交帧` 已有逐缓冲证据，不能借本项目删掉其等待。
-见[交付时序核实](bringup/2026-10-25-vdin1-frame-handoff.md)。
+见[交付时序核实](../bringup/2026-10-25-vdin1-frame-handoff.md)。
 
 ## EMP与非VRR显示器的具体限制
 
@@ -113,11 +117,11 @@ VSYNC handler还在该字段为0时直接返回。按源码，这不能证明100
 600行@4K60、vtotal2250约4.44ms只是行数换算，不是测得的RX→面板延迟。
 若没有外部光学/视频测量，只能报告板内扫描相位；源绘制→浏览器测量不能代替本地输出。
 本地视频缩短后要复核音画差：当前音频桥有约26.7ms播放队列，视频更快可能暴露音频滞后。
-见[音频桥测量口径](bringup/2026-10-25-vendor-passthrough-audio.md)。
+见[音频桥测量口径](../bringup/2026-10-25-vendor-passthrough-audio.md)。
 
 ## 7.3边界
 
 7.3采用独立VDIN/V4L2采集和实验DRM VD1显示消费者，不能套用厂商VFM/VRR sysfs补丁。
 已有M3-video设计仍要求显示读退休后才能归还采集缓冲；OUT_FENCE只代表锁存。
 先完成固定频率透传及缓冲所有权验收，再设计DRM驱动的可变vblank/VRR能力和原子状态。
-本轮没有验证或改变7.3的显示能力，见[已合入范围与剩余步骤](bringup/2026-10-24-hdmi-integration.md)。
+本轮没有验证或改变7.3的显示能力，见[已合入范围与剩余步骤](../bringup/2026-10-24-hdmi-integration.md)。

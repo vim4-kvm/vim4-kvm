@@ -7,9 +7,9 @@
 
 ## 源码与配置
 
-- 身份、上游/Armbian版本、补丁与验收产物：见[来源锁](../packaging/kernel/sources.toml)、[配置](../packaging/kernel/kernel.config)及[发行收据](../packaging/kernel/releases/)；不要复制历史SHA作为当前版本。
+- 身份、上游/Armbian版本、补丁与验收产物：见[来源锁](../packaging/kernel/sources.toml)、[配置](../packaging/kernel/kernel.config)及[发行收据](../packaging/kernel/releases)；不要复制历史SHA作为当前版本。
 - VM工作树与worker操作见[工作区](workspace.md#构建)。检出锁定revision，必须用独立Linux大小写敏感文件系统；不重做rc7导入、不覆盖已有工作树。
-- 主线与厂商构建入口见[packaging/kernel](../packaging/kernel/)；已验旧release/配置不追改，同次完整模块与用户态不能混装。编译成功不表示补丁已硬件审查。
+- 主线与厂商构建入口见[packaging/kernel](../packaging/kernel)；已验旧release/配置不追改，同次完整模块与用户态不能混装。编译成功不表示补丁已硬件审查。
 
 ## 构建
 

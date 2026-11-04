@@ -1,17 +1,21 @@
 # T7 HDR2普通HLG离线候选
 
-后续[统一候选](archive/hdr2-unified-candidate.md)把HLG输出OETF改为5.15产品运行时的sRGB表，
+> 归档快照（2026-11-03）：已结束的调查与候选记录，不代表当前状态，现行入口见 [维护合同](../hdr.md)。
+
+导航：[实现边界与与PQ合并](#实现边界与与pq合并)、[固定证据与寄存器值来源](#固定证据与寄存器值来源)、[宿主验证与复现](#宿主验证与复现)、[PQ会话统一上板清单（本轮不执行）](#pq会话统一上板清单本轮不执行)。
+
+后续[统一候选](hdr2-unified-candidate.md)把HLG输出OETF改为5.15产品运行时的sRGB表，
 并为映射NV12显式报告sRGB transfer；下文独立候选表hash及709标签描述为原始交付快照。
 
 集成状态：PQ会话已将本候选合并为`vim4-hdr2-pq@bbf9ff89b284d`，保留PQ-only shadow语义，
 合并后宿主夹具及W=1/sparse模块构建通过；未上板、未替换正式模块。
-[PQ窗口记录](bringup/2026-10-30-hdr2-pq-window.md)及[集成邮件补丁](../packaging/hdr2-pq/README.md)说明当前边界。
+[PQ窗口记录](../bringup/2026-10-30-hdr2-pq-window.md)及[集成邮件补丁](../../packaging/hdr2-pq/README.md)说明当前边界。
 以下原始HLG完整构建产物属于独立候选，不能当作合并后的完整构建。
 
 用户已于2026-10-30批准VDIN HDR2硬件路径。本轮仅HLG，不访问板子、不push、不修改PQ会话的worktree。
 主仓分支`hdr2-hlg`从main@14cc2b2建立，持久目录`../vim4-kvm-hdr2-hlg`；
 内核独立`~/src/linux-7.3-hdr2-hlg`、分支`vim4-hdr2-hlg`从f71b5c6289cb建立。
-内核提交`c68407cb052be`；[邮件补丁与应用说明](../packaging/hdr2-hlg/README.md)已保存在主仓，不对外发送。
+内核提交`c68407cb052be`；[邮件补丁与应用说明](../../packaging/hdr2-hlg/README.md)已保存在主仓，不对外发送。
 完整构建使用独立`~/build/hdr2-hlg`与临时uhd3配置副本，release `7.3.0-vim4kvm-uhd3-hlg1+`；未改正式配置。
 
 ## 实现边界与与PQ合并

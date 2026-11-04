@@ -1,17 +1,21 @@
 # Bifrost同块回跳修复与GPU上电轮询候选
 
-2026-10-30，承接[完整系列失败窗口](bringup/2026-10-30-gpu-loop-window.md)。
+> 归档快照（2026-11-03）：已结束的调查与候选记录，不代表当前状态，现行入口见 [维护合同](../gpu-maintenance.md)。
+
+导航：[故障隔离：0005暴露同块分支偏移错误](#故障隔离0005暴露同块分支偏移错误)、[剩余GLES差距：逐tuple热区](#剩余gles差距逐tuple热区)、[Mesa离线结果与复现](#mesa离线结果与复现)、[冷恢复：先验证睡眠轮询，而非提前写电压/频率](#冷恢复先验证睡眠轮询而非提前写电压频率)、[下一独占窗口：测量≤20分钟](#下一独占窗口测量20分钟)、[最终离线产物](#最终离线产物)。
+
+2026-10-30，承接[完整系列失败窗口](../bringup/2026-10-30-gpu-loop-window.md)。
 本轮仅离线：未访问板子，未操作NPU文件/worktree，未push。方针**用户已于 2026-10-30 确认**。
 默认保留仅GCM；修复系列与内核快轮询均须重新过硬件正确性门禁，不能引用失败系列的FPS。
 
-后续[修复系列实测](bringup/2026-10-30-gpu-repair-window.md)：原循环/展开全帧与原版逐字节一致，
+后续[修复系列实测](../bringup/2026-10-30-gpu-repair-window.md)：原循环/展开全帧与原版逐字节一致，
 GPU timeout/fault零增量；完整系列原循环339.7fps，对照GCM272.4、厂商614.1fps，仍未追平。
 快轮询冷首发4.91ms（旧boost核4.68ms），无明确收益；独立trace的shader等待约2.14ms，
 超过10µs快路径预算。该内核候选不推广，不继续延长忙等；下文保留离线设计与产物证据。
 
 ## 故障隔离：0005暴露同块分支偏移错误
 
-M为Mesa26.2.6，固定源码SHA与builder见[运行时记录](bringup/2026-10-30-gpu-runtime.md)。
+M为Mesa26.2.6，固定源码SHA与builder见[运行时记录](../bringup/2026-10-30-gpu-runtime.md)。
 在原版、0003、0003＋0004、0003＋0004＋0005之间编译同一原循环，检查最终ISA而非只看CFG。
 
 | 阶段 | 热循环最终分支 | 离线结论 |
@@ -27,7 +31,7 @@ M为Mesa26.2.6，固定源码SHA与builder见[运行时记录](bringup/2026-10-3
 0005使条件回边与loop header归为同块（`bi_opt_control_flow.c:135–141`），触发这个潜伏的layout错误。
 本次确定的错误是**分支目标编码**；没有据此证明所有reconvergence/scoreboard风险都已排除。
 
-[0006](../packaging/gpu/patches/0006-bifrost-self-branch-offset.patch)在`bi_layout.c:116`同块时立即返回，
+[0006](../../packaging/gpu/patches/0006-bifrost-self-branch-offset.patch)在`bi_layout.c:116`同块时立即返回，
 不修改条件方向、clause终止位、活动线程掩码或现有寄存器编码。
 解码器对零偏移显示“likely an infinite loop”，这是只看偏移的提示；本循环有递增计数和条件退出，不能据此判死循环。
 
@@ -81,7 +85,7 @@ clause头部/常量是打包格式的一部分，不能每遇一个头就硬加�
 ## Mesa离线结果与复现
 
 新卷`vim4-gpu-loop3`，旧卷只读；全部编译/测试/打包容器`--network none`。
-复现用[build.sh](../packaging/gpu/build.sh)的`GPU_VARIANT=loop-repair`，明确应用0003–0006；
+复现用[build.sh](../../packaging/gpu/build.sh)的`GPU_VARIANT=loop-repair`，明确应用0003–0006；
 默认`loop-codegen`仍只应用0003，实验展开默认关闭，失败的`loop-layout`仅供复现。
 
 | 固定shader-db 11,123共同变体 / 3,744文件 | 原26.2.6 | repair3 |
@@ -100,7 +104,7 @@ clause头部/常量是打包格式的一部分，不能每遇一个头就硬加�
 noop仅证明G52编译路径与目标编码；其黑像素退出1是预期，不是硬件像素或性能通过。
 
 最终Meson测试、ELF闭包/ICD/manifest及归档SHA见本页末尾验证表。
-前缀`/opt/vim4-mesa-26.2.6-repair3`，不替换系统Mesa；每进程隔离沿用[gpu-compare.py](../tools/gpu-compare.py)。
+前缀`/opt/vim4-mesa-26.2.6-repair3`，不替换系统Mesa；每进程隔离沿用[gpu-compare.py](../../tools/gpu-compare.py)。
 实验展开的全库+3.74%、局部最高9.5倍代码体积代价仍见[语料分析](gpu-loop-codegen.md)。
 
 ## 冷恢复：先验证睡眠轮询，而非提前写电压/频率

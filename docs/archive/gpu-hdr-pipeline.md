@@ -1,13 +1,17 @@
 # 7.3 GPU HDR→SDR／缩放规格与第一阶段原型
 
+> 归档快照（2026-10-30）：已结束的调查与候选记录，不代表当前状态，现行入口见 [维护合同](../hdr.md)。
+
+导航：[已有实现：不能把保真格式转换当作tone mapping](#已有实现不能把保真格式转换当作tone-mapping)、[数据流与格式合同](#数据流与格式合同)、[API选择与同步](#api选择与同步)、[色彩合同与验证](#色彩合同与验证)、[原型、离线结果与复现](#原型离线结果与复现)、[性能目标与下一≤20分钟窗口](#性能目标与下一20分钟窗口)。
+
 **2026-10-30路线调整：GPU tone-map shader与DMA适配实现暂停，保留现有提交。**
 主路径改为[VDIN HDR2硬件处理](hdr2-hardware-plan.md)，GPU仅缩放/后备；下文保留原型规格与已测边界，不再作为当前实施主线。
 
 GPU方向**用户已于 2026-10-30 确认**：以Panfrost＋Mesa上游方式为准，kbase/libmali仅临时后备。
-编译器工作暂停：GCM默认，完整修复系列显式选项；[可审阅邮件补丁](../packaging/gpu/upstream/README.md)仅本地整理，未对外发送。
+编译器工作暂停：GCM默认，完整修复系列显式选项；[可审阅邮件补丁](../../packaging/gpu/upstream/README.md)仅本地整理，未对外发送。
 本轮离线，不访问板子，不改NPU文件、正式内核配置、视频服务或默认部署锁，不push。
 
-后续[窗口A及接口候选](bringup/2026-10-30-gpu-hdr-window-a.md)：原型已移至持久worktree并rebase main@14cc2b2；
+后续[窗口A及接口候选](../bringup/2026-10-30-gpu-hdr-window-a.md)：原型已移至持久worktree并rebase main@14cc2b2；
 GPU候选基于f71b5c6289cb，独立uhd3-gpu1 release，去掉快轮询。颜色门禁通过，但7.3 4K/1080p分别仅12.74/54.61fps，未达目标。
 新增外部buffer导入/退休助手、唯一shader的Vulkan生成器及内核lease颜色快照；原始十位写出和生产交接仍未实现。
 
@@ -15,7 +19,7 @@ GPU候选基于f71b5c6289cb，独立uhd3-gpu1 release，去掉快轮询。颜色
 
 | 已核实路径 | 实现证据与边界 |
 |---|---|
-| 5.15普通HDR→SDR | [HDR说明](hdr.md)：VDIN HDR2硬件做PQ/HLG→SDR；tools/hdr-curve.sh生成白点203／峰值1000曲线与sRGB编码表。HLG仍沿用厂商专用表；GPU不是这条链的tone mapper |
+| 5.15普通HDR→SDR | [HDR说明](../hdr.md)：VDIN HDR2硬件做PQ/HLG→SDR；tools/hdr-curve.sh生成白点203／峰值1000曲线与sRGB编码表。HLG仍沿用厂商专用表；GPU不是这条链的tone mapper |
 | 5.15 GPU保真HDR | gst-plugin-vfmcap/src/amly-gpu.h:13–32、amly-gpu.c:406–424、547–578：AMLY小端Cb-Y-Cr-Y打包10bit→高位P010，保持PQ/BT.2020，external queue ownership、fence后退休输入；r44还等待idle以释放导入引用 |
 | GPU缩放 | gst-plugin-vfmcap/src/amly-gpu-scale.c及texture-to-p010.comp:16–45：解包、纹理双线性缩放、输出连续P010，UV垂直平均；没有EOTF/tone map。AMLY是私有像素排列，不能冒充DRM modifier |
 | 应用接入 | gst-plugin-vfmcap/src/gstvfmcapsrc.c:279–300、651–673选择GPU及CPU启动回退；gst-plugin-venc/VIM4.md:23–51，vim4h265src给四应用共享私有Main10编码链；启动器隔离libmali/ICD，不全局替换Mesa |
@@ -23,7 +27,7 @@ GPU候选基于f71b5c6289cb，独立uhd3-gpu1 release，去掉快轮询。颜色
 | 7.3编码 | gst-plugin-venc/wave5/gstvim4wave5enc.c:156只公布NV12；nv12-planes.c:9–52导出两平面视图、VideoMeta及输入lease；目前不能声明P010/Main10。GST_V4L2_PREFER_CONTIGUOUS必须在7.3清除 |
 
 这些为本地固定源码证据；不修改GPU worktree或正式集成工作树。产品历史见
-[5.15 GPU链](bringup/2026-10-26-hdr-gpu-pipeline.md)、[7.x映射](hdr.md)。
+[5.15 GPU链](../bringup/2026-10-26-hdr-gpu-pipeline.md)、[7.x映射](../hdr.md)。
 首要阻塞是未映射十位采集输出／元数据合同；缺失时本原型只能验证离线输入，不能接现有NV12声称完成GPU HDR产品链。
 
 ## 数据流与格式合同
@@ -86,8 +90,8 @@ HLG：必须取得厂商HLG LUT/系统gamma、显示峰值及信令证据，独�
 
 ## 原型、离线结果与复现
 
-[hdr-probe.c](../packaging/gpu/hdr-probe.c)、[compute](../packaging/gpu/hdr.comp)、
-[CPU参考/夹具](../packaging/gpu/hdr-check.py)独立于生产插件，不修改服务。
+[hdr-probe.c](../../packaging/gpu/hdr-probe.c)、[compute](../../packaging/gpu/hdr.comp)、
+[CPU参考/夹具](../../packaging/gpu/hdr-check.py)独立于生产插件，不修改服务。
 运行`bash packaging/gpu/hdr-check.sh`：使用builder.lock.json固定ARM64镜像、`--network none`，Werror编译、glslang验证及实际软件GLES执行。
 保存P010/NV12、CPU输出、JSON到`build/gpu-hdr/check`。输入长度错误在GPU访问前拒绝；软件执行只允许显式GPU_HDR_ALLOW_SOFTWARE，正常运行要求Mali-G52。
 

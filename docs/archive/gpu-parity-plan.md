@@ -1,13 +1,17 @@
 # VIM4 GPU 离线候选与验收方案
 
-2026-10-30新增[kbase外部模块后备候选](gpu-kbase-7x.md)：UK11.39离线编译通过，
+> 归档快照（2026-11-03）：已结束的调查与候选记录，不代表当前状态，现行入口见 [维护合同](../gpu-maintenance.md)。
+
+导航：[内核候选](#内核候选)、[首轮用户态方案（由第二轮实现替代）](#首轮用户态方案由第二轮实现替代)、[上板验证清单（本轮未执行）](#上板验证清单本轮未执行)、[风险与需要决策的事项](#风险与需要决策的事项)、[本轮验证结果](#本轮验证结果)。
+
+2026-10-30新增[kbase外部模块后备候选](../gpu-kbase-7x.md)：UK11.39离线编译通过，
 硬件/API/性能待验；现有blob缺少GLVND EGL入口，不改默认GPU或系统Mesa。
 
 本轮差距、固定源码及逐项 file:line 见
-[2026-10-30 GPU 审查](bringup/2026-10-30-gpu-parity.md)。目标仍是7.x功能与性能不低于
+[2026-10-30 GPU 审查](../bringup/2026-10-30-gpu-parity.md)。目标仍是7.x功能与性能不低于
 厂商5.15；下列候选尚未达到这一验收条件，不能据离线构建改正式部署锁。
 
-2026-10-30[三栈上板验收](bringup/2026-10-30-gpu-acceptance.md)：默认GPU cooling绑定、
+2026-10-30[三栈上板验收](../bringup/2026-10-30-gpu-acceptance.md)：默认GPU cooling绑定、
 五档调频、runtime恢复和4K60 Wave5并发窗口已取得限定通过证据；未人为触发过温降频。
 同一GBM/FBO shader三轮平均：厂商622.659fps、系统Mesa231.714fps、私有Mesa233.730fps。
 私有GLES仍3.1、Vulkan设备仅1.0.354；CL设备3.0但OpenCL C1.2，完整clpeak三轮map阶段超时。
@@ -18,11 +22,11 @@
 后续[离线性能复核](gpu-performance-diagnosis.md)修正测量边界：GLES旧值含末次回读且无预热，
 Vulkan4.25倍为冷提交主机等待口径，clpeak120秒是全程序预算；尚不能直接归因GPU执行效率或map死锁。
 
-[诊断实测](bringup/2026-10-30-gpu-diagnosis-window.md)已将该GLES场景的约93% GPU区间差归于循环编译；
+[诊断实测](../bringup/2026-10-30-gpu-diagnosis-window.md)已将该GLES场景的约93% GPU区间差归于循环编译；
 [离线候选](gpu-performance-candidates.md)实现通用成本约束展开和10ms devfreq采样，尚待下一独占窗口确认。
 私有Mesa候选另用`/opt/vim4-mesa-26.2.6-unroll1`，默认部署与原版保持并存。
 
-[候选配对窗口](bringup/2026-10-30-gpu-candidate-window.md)已验证约2.50倍GLES绕过收益与10ms暖提交收益，
+[候选配对窗口](../bringup/2026-10-30-gpu-candidate-window.md)已验证约2.50倍GLES绕过收益与10ms暖提交收益，
 冷首发仍未改善。下一优先级是[循环代码生成本身](gpu-loop-codegen.md)，不将展开作为已完成的后端修复；
 大语料局部代码增长最高9.5倍，暂不默认推广。10ms默认化仍需更长功耗/后台负载回归。
 
@@ -30,7 +34,7 @@ Vulkan4.25倍为冷提交主机等待口径，clpeak120秒是全程序预算；�
 完整系列总代码体积约-0.533%、spill/fill不变；冷恢复内核候选e99220d902834。
 新builder默认关闭实验展开，默认部署锁不变，等待≤20分钟独占窗口。
 
-[保留循环候选实测](bringup/2026-10-30-gpu-loop-window.md)：完整系列错误像素并触发GPU timeout，不可推广；
+[保留循环候选实测](../bringup/2026-10-30-gpu-loop-window.md)：完整系列错误像素并触发GPU timeout，不可推广；
 仅GCM约273.2fps，对照厂商612.7fps，未追平。QoS恢复boost冷首发约8.12→4.90ms，
 thermal/用户频率上限仍有效；后续重点为控制流故障隔离与power_on之前的频率时序。
 
@@ -87,7 +91,7 @@ Ubuntu sparse0.6.4被内核checker-valid拒绝，不能把退出0当已检查；
 ## 首轮用户态方案（由第二轮实现替代）
 
 以下保留首轮25.2.8探测的历史结果；当前私有运行时实现见
-[第二轮构建记录](bringup/2026-10-30-gpu-runtime.md)。系统25.2.8保留作对照。
+[第二轮构建记录](../bringup/2026-10-30-gpu-runtime.md)。系统25.2.8保留作对照。
 
 优先保持安装版本25.2.8进行依赖/行为对照，不凭“升级最新版”许诺GLES3.2。
 本轮已下载并校验官方25.2.8 tarball、检查PanVK v7实验门控和AFRC版本判断；

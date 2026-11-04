@@ -147,7 +147,7 @@ One-KVM、vim4-manager、vim4-kvm-hdmi、vim4-kvm-gadget均active，
 `4906d2eaef73aeb2bc71662a4306630027f10f7b3a157226d3704efb6bf5ec6b`。
 
 下一轮先修IRQ API、HDMI参数加载顺序，完成独立候选离线门禁；
-再按[完整顺序](../npu-adla.md#下一轮上板顺序)重采5.15与7.3配对窗口。
+再按[完整顺序](../npu-adla.md#复测与边界)重采5.15与7.3配对窗口。
 候选正常时仍预留55–75分钟独占；本轮失败数据不能替代PM、恢复或运动视频并行验证。
 
 本轮工具离线验证：主仓unittest 305项，7项跳过，其余通过；
