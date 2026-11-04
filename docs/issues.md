@@ -7,6 +7,7 @@
 
 - 内核升级在写入 kernels.json 后、切换 extlinux 前中断，会使面板报告 Mainline 不可用并拒绝选择；U-Boot 仍启动旧整包，重新登记可恢复面板。[安装器](../packaging/kernel/register-runtime.py)
 - board-window 在新刷 5.15 镜像使用 `LINUX /Image` 符号链接布局时拒绝基线，因为要求路径含 release；当前板的版本化路径不受影响。[预检](../tools/board-window)
+- 厂商内核正式打包只接受 `5.15.137-vim4kvm`，板上实际 Vendor 是 `5.15.137-vim4kvm-hdrdual6`；按现有脚本重建厂商内核会得到不同 release，需要先统一厂商命名再重建。[打包脚本](../packaging/kernel/package.sh)
 - EDID 撤回后重新发布遇 RAM 读回失败，若 previous_size=0 或回滚也失败，ddc_active 被清除，解绑可能遗漏恢复 probe 前快照。[审计](bringup/2026-11-01-hdmirx-edid-serror-audit.md#登记-issue不修)；[后续复核](bringup/2026-10-31-uhd6-edid-review.md)
 
 ## 采集与编码
