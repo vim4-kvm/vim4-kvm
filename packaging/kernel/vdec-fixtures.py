@@ -21,6 +21,12 @@ CASES = (
      "cabac=1:bframes=2:ref=3:8x8dct=1:weightp=2"),
     ("1080p", 1920, 1080, 16, "high", "High",
      "cabac=1:bframes=2:ref=3:8x8dct=1"),
+    ("uhd", 3840, 2160, 16, "high", "High",
+     "cabac=1:bframes=2:ref=3:8x8dct=1"),
+    ("4k-limit", 4096, 2304, 8, "high", "High",
+     "cabac=1:bframes=2:ref=3:8x8dct=1"),
+    ("high-jvt", 640, 368, 16, "high", "High",
+     "cabac=1:bframes=2:ref=3:8x8dct=1:cqm=jvt"),
 )
 
 

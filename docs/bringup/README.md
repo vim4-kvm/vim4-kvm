@@ -17,7 +17,7 @@
 
 ## 2026-11-04
 
-- [硬件解码格式对齐](2026-11-04-hwdecode-parity.md) — kernel video；核实 T7 内部 LUT 与 S4 外部 canvas 的差异，修复 H.264 参数表与参考列表，尚未实板验收。
+- [硬件解码格式对齐](2026-11-04-hwdecode-parity.md) — kernel video；H.264 Baseline/Main/High/1080p 运动样本逐帧像素通过，完整格式与边界尚未对齐。
 - [管理器实时 PD 状态](2026-11-04-manager-tcpm-status.md) — application usb；已部署，中英文实页显示内核5V/3A合同，KVM/USB服务未重启。
 - [开机 PD 接入 Linux TCPM](2026-11-04-boot-pd-tcpm.md) — kernel usb；build 3已部署，5V/3A与十分钟4K冒烟通过；冷启动和全回归待验。
 - [USB 总线挂起修复部署](2026-11-04-pm-typec-parity.md) — kernel usb；build 2 保留为默认，五分钟4K冒烟通过；节能方向取消，真实主机睡眠未测。

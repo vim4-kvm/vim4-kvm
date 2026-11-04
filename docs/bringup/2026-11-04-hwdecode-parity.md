@@ -2,8 +2,9 @@
 
 本任务以厂商 T7 的实际能力表为范围，通过标准 V4L2 接口实现；格式枚举、
 完成中断和返回缓冲均不能代替正确图像验收。当前仍处于驱动修复阶段，
-未完成格式对齐；第二轮已得到完整非零图像，但像素比较失败，已恢复原内核并验证视频。
-没有改变正式启动内核，也没有任何格式通过本轮硬解码验收。
+未完成格式对齐；第五轮 H.264 Baseline、Main、High、1080p High 的运动样本
+全部逐帧像素通过，已恢复原内核并验证视频。没有改变正式启动内核；4K、
+自定义量化矩阵、多 slice、隔行和其他格式仍待实现或验收。
 
 ## 范围与验收
 
@@ -103,3 +104,63 @@ probe、上电、13 步 MDEC 检查通过，V4L2 compliance 47 项通过、零�
 和串口日志均已取得，后续采集显式排除该缓存。正常重启恢复原身份与完整文件
 证明，五秒 H.265 接收约 59.79 fps、丢帧/冻结/丢包增量零，服务、UDC 与
 performance 正常；原身份未变，复用首轮五分钟基线，不把短测称作稳定性验收。
+
+## 第三轮：PPS 修复后定位 T7 revision C 字节序
+
+候选源码 `0fa7572fa352c3392d616aef638063bd8dcc7e4d`，build ID
+`9359e674b0e0ce320e2d19b69f06c66d33c58701`。同样本返回完整 32 帧、正常 EOS，
+仍未通过原始像素比较，立即停止后续格式。原 KVM 身份与文件证明恢复一致，
+五秒 H.265 接收约 59.75 fps，无新增丢帧、冻结或丢包。
+
+离线逐字节分析发现 Y 每八字节反序，UV 合并平面也每八字节反序；对已采集数据
+仅作这项还原后，全部 32 帧与软件参考完全一致。该处理仅用于定位，不能把
+变换后的文件算作原始硬件输出通过。原始失败文件及分析在
+`build/hwdecode-parity/run3/`，串口在 `logs/hwdecode-parity-r3/`。
+
+串口 SoC 信息为 T7 revision C。厂商
+[config_cav_lut_ex](https://github.com/vim4-kvm/common_drivers/blob/31619c527655514b4c89516ef609b6db1dd47db6/drivers/media_modules/frame_provider/decoder/utils/vdec_canvas_utils.c)
+在该修订且 endian=7 时还写 `MDEC_CAV_CFG0` 的 byte-switch remap；第一版内部
+LUT 修复遗漏这一条件。提交 `4befe13e1f628bebe41d2d43d7dbe4a8ad0526af` 通过
+标准 SoC revision 匹配启用该设置，其他修订沿用原配置，待下一候选验证。
+
+## 第四轮：Baseline 正确，Main 参考列表长度错误
+
+候选源码 `4befe13e1f628bebe41d2d43d7dbe4a8ad0526af`，build ID
+`f3f23e980549560d6d69d664e67ecab384f4c968`。Baseline 原始输出的 32 帧全部逐字节
+等于参考，未作事后字节变换。Main 完整输出 64 帧，16 帧正确、48 帧不一致；
+第一个不一致的编码帧是第二个 P 帧，其错误随后传入依赖它的 B/P 帧。
+停止 High 和 1080p。原 KVM 完整恢复，五秒 H.265 约 59.75 fps，零新增丢帧、
+冻结或丢包，performance 未变。
+
+该 P slice 显式覆盖为四个参考项，并让同一图像以两个不同权重出现。
+驱动却因额外读取固件的 override 标志而退回 PPS 默认三项，串口参考列表日志
+与码流解析相符。厂商 `h264_dpb.c` 直接使用固件已解析的当前 slice 数量。
+提交 `0c23450690ed6381a13c7a545f720d8eb8cee554` 复用已解析并校验过的两份数量，
+不再另从 PPS 猜测。实际重排函数回归复现重复参考与四项列表，旧实现失败；
+也覆盖 list 1 和单参考覆盖，24 项测试与 strict checkpatch 通过，待板端复验。
+证据在 `build/hwdecode-parity/run4/`、`logs/hwdecode-parity-r4/`。
+
+## 第五轮：四组 H.264 样本全部匹配
+
+候选源码 `0c23450690ed6381a13c7a545f720d8eb8cee554`，build ID
+`5c11f2e75a28dab691ad951c54361db97bd81609`。同次 Image、DT、完整 2341 模块
+构建及封包通过，配置与正式基线一致。probe、13 步上电/MDEC 检查和 47 项
+V4L2 compliance 通过；24 项驱动主机回归与 strict checkpatch 通过。
+
+| 运动样本 | 帧数 | 原始 I420 与软件参考 |
+|---|---:|---|
+| 640×368 Baseline | 32 | 全部逐字节一致 |
+| 640×368 Main，B 帧、多参考和 weighted P | 64 | 全部逐字节一致 |
+| 640×368 High，B 帧、多参考、8×8 transform | 64 | 全部逐字节一致 |
+| 1920×1080 High，B 帧 | 16 | 全部逐字节一致 |
+
+各进程正常 EOS，测试间重开成功，硬件回到 runtime suspended。没有新增
+timeout、Oops 或 panic；这些短样本证明正确性，不据耗时宣称最大解码帧率。
+High 在当前 T7 固件上可以通过现有参数表协议解码，本轮不引入只在另一块
+S4 固件上报告需要的 in-band SPS/PPS 补丁。
+
+正常重启回原 build 3，完整身份及受保护文件证明一致。原 H.265 KVM 接收约
+59.77 fps，无新增丢帧、冻结或丢包，UDC configured、两簇 performance，
+taint 仍为 4096。证据在 `build/hwdecode-parity/run5/` 和
+`logs/hwdecode-parity-r5/`。完整厂商格式、分辨率和码流边界尚未对齐，不部署
+实验分支为默认内核。
