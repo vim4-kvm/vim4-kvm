@@ -25,7 +25,7 @@
 
 ## 应用与 USB
 
-- 当前官方 Mac UU 的 H.265 会话协商了 transport-cc，却只确认音频包；同客户端 H.264 能返回视频确认，本地 H.265 SRTP 回环也正常。已限制视频确认覆盖并回退 RR，仍需查明官方 H.265 路径缺少反馈的协议条件或实现差异。[TWCC 记录](bringup/2026-11-04-uu-twcc.md#mac-实流暴露的反馈覆盖问题)
+- 官方 Mac UU 的 H.265 会话协商了 transport-cc，但旧估算器只统计到音频确认；H.264 与本地 H.265 SRTP 回环有视频确认。审查发现估算器丢弃补报和乱序确认，尚不能归因于官方客户端缺少反馈。修复后需重新对照原始反馈与接纳计数；无视频确认时仍回退 RR。[TWCC 记录](bringup/2026-11-04-uu-twcc.md#mac-实流暴露的反馈覆盖问题)
 - One-KVM MCP `type` 输入长命令可能丢空格或字符；uhd7 与 7.3.1 均复现，输入法与零按键保持时长的各自影响未分清；US 输入源逐键保持 50ms 可绕过。[复现](bringup/2026-11-03-kernel-731-deploy.md#继续验收与最终状态)
 - PATCH 完整原 USB 配置重建 gadget 时，HID 配置值不变可能跳过 backend 重载，后续写入报 endpoint shutdown；切换 profile 再恢复可绕过。[复现](bringup/2026-11-03-kernel-731-deploy.md#继续验收与最终状态)
 - One-KVM 从 MJPEG 切入 WebRTC 时可能先保存编码偏好，随后模式转换失败，使保存值与实际状态不一致。[审查记录](bringup/2026-11-03-wave5-avc-default.md#登记-issue)
