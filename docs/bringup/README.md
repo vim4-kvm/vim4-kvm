@@ -17,6 +17,7 @@
 
 ## 2026-11-04
 
+- [管理器实时 PD 状态](2026-11-04-manager-tcpm-status.md) — application usb；已部署，中英文实页显示内核5V/3A合同，KVM/USB服务未重启。
 - [开机 PD 接入 Linux TCPM](2026-11-04-boot-pd-tcpm.md) — kernel usb；build 3已部署，5V/3A与十分钟4K冒烟通过；冷启动和全回归待验。
 - [USB 总线挂起修复部署](2026-11-04-pm-typec-parity.md) — kernel usb；build 2 保留为默认，五分钟4K冒烟通过；节能方向取消，真实主机睡眠未测。
 
