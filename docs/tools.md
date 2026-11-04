@@ -1,187 +1,178 @@
 # 工具目录
 
-命令从主仓库根目录运行，用法以脚本头注释或 --help 为准。
-运行位置：Mac = 开发机；板 = 先 scp 到板上 /tmp 再 ssh 运行；容器/VM = 由上层工具调用。
-影响：无 = 不访问硬件；读 = 只读访问板子；独占 = 停启服务、占用编码器/HID/USB 或改设置，
-须先协调板子（见[代码规范](code-standards.md)）；破坏 = 清空 eMMC 或重启，须用户明确授权。
-
-导航：[工作区、构建与打包](#工作区构建与打包) · [板级操作](#板级操作) ·
-[板级服务源码](#板级服务源码由-boardinstallsh-或组件包安装) · [应用回归](#应用回归浏览器) · [诊断与测量](#诊断与测量)。
-
-tests/test_docs.py 检查 Git 清单中的 tools/* 文件名是否在本页出现；
-反向存在性检查只识别本页 tools/ 下的 py、mjs、sh、swift、c 路径。
-它不检查 packaging/ 目录完整性；另检查现行文档中字面 `python3 tools/…`、`python3 packaging/…`
-命令的脚本路径存在性（跳过占位符及归档/上板记录，包含已存在的 One-KVM/VIM4.md）。新增或删除工具时同步本页。
+本页只索引入口、用途和影响；命令从仓库根运行，参数/默认值/清单以入口源码头注释或 `--help` 为准。
+当前操作合同统一见[板级工具](board-tools.md)，登录见[公共前提](board-tools.md#浏览器测试的公共前提)，占板见[短窗口](board-window.md#占板时间最短化)。
+导航：[构建](#工作区构建与打包) · [板操作](#板级操作) · [服务](#板级服务源码由-boardinstallsh-或组件包安装) · [应用回归](#应用回归浏览器) · [诊断](#诊断与测量)。
+“独占”须先协调；“破坏”涉及清盘/重启，依当前授权执行；“无”表示无硬件访问。构建与实测不能混为通过。
+增删工具同步本页；[文档检查](../tests/test_docs.py)检查工具覆盖、链接与字面脚本路径，不验证命令行为或packaging目录完整性。
 
 ## 浏览器测试的公共前提
 
-见 [board-tools.md 的公共前提](board-tools.md#浏览器测试的公共前提)。
+见[唯一公共前提](board-tools.md#浏览器测试的公共前提)。
 
 ## 工作区、构建与打包
 
 | 入口 | 运行位置 | 影响 | 用途 | 文档 |
 |---|---|---|---|---|
-| packaging/kernel/package-unified.py | VM | 无 | 封存同次 Image、互斥 GPU DT、完整模块与 BTF，校验来源；支持候选锁与 USB overlay 启动器 | [主线内核](kernel-mainline.md) |
-| packaging/hdr10/persistent-r14e.py | Mac → 板 | 独占，安装私有运行时；不改默认或重启 | 核对固定内核/双 DT/完整模块；verify 仅验身份与服务 | [HDR10](hdr10-remote-73.md) |
-| packaging/hdr10/assemble-phase2.py、phase2-run | Linux ARM64 / RAM 候选 | 组装无；运行独占 | 校验固定内核与用户态来源，组装双 GPU 私有 payload；仅在 payload 内选择应用 | [第二阶段记录](bringup/2026-10-31-hdr10-phase2-offline.md) |
-| packaging/hdr10/ram-payload.py | VM | 无 | 封装私有 PID1/runtime/完整模块及 SHA；payload ID 与静态 PID1 namespace 须匹配 | [HDR10](hdr10-remote-73.md) |
-| packaging/kernel/package-hdr10.py | VM | 无 | 核验内核/私有插件/One-KVM 来源并封装唯一候选归档，已有目标拒绝覆盖 | [HDR10](hdr10-remote-73.md) |
-| packaging/kernel/test_gstreamer_p010.py、test_gstreamer_pq.py | Linux 宿主 | 无 | 编译实际函数，离线回放 P010 caps 交集及 PQ 接受/拒绝边界 | [HDR10](hdr10-remote-73.md) |
-| packaging/kernel/hdmi-mode-fixture.py、hdmi-modes.json | 宿主 / 板 | prepare/verify 无；measure/read-edid 需板票，只读 | 生成 19 档 EDID、核对真实 V4L2 时序；缩放尺寸不能替代接收器测量 | [主线内核](kernel-mainline.md) |
-| tools/vm | Mac → OrbStack VM | 无板子访问；new/rm 改任务工作树，push 写远端 | status 核对 origin/SHA；登记独立工作树和 build 目录，保护正式分支 | [工作区](workspace.md#构建) |
-| tools/memory-bench.c、memory-bench.py | C：Linux ARM64编译；runner：Linux/板 | 独占CPU/内存/tmpfs；无频率写入、部署、HID | 单核强制绑定、逐段实际CPU/每核频率、多尺寸分布与fault，≤3分钟、采温度并恢复亲和 | [内存拷贝审查](memory-copy-audit.md)、[绑核门禁与配置草案](nodebug-performance-gate.md) |
-| tools/gpu-diagnose.py、gpu-cl-map.c | 板；CL工具先ARM64编译 | 独占GPU；诊断器可临时锁频/PM/profiling并恢复；不写电压、不ptrace | 自有子进程fdinfo/周期/忙闲估计、trans_stat与CPU；小buffer CL map复现 | [GPU性能复核](gpu-performance-diagnosis.md) |
-| packaging/gpu/（含 compiler-compare.sh、corpus-check.sh、corpus-report.py、gpu-probe.c、hdr-check.sh、hdr-check.py、hdr-probe.c、hdr.comp、hdr-vulkan.py、hdr-dmabuf.c/h、hdr-dmabuf-test.c） | Docker ARM64；probe：板 | 构建无；probe占GPU | 固定shader-db、全帧RGBA；HDR参考/GBM负载、候选外部buffer导入与退休，不接生产DMA | [GPU运行时](bringup/2026-10-30-gpu-runtime.md)、[HDR规格](gpu-hdr-pipeline.md) |
-| tools/npu-probe.c、npu-validate.py、npu-models.json | 编译：ARM64；run：板；compare：Mac/VM | run 占用 NPU，写新结果目录；无部署、HID、声音 | 固定下载SHA、逐轮完整张量校验、均值/P50/P99/最大值；probe的--timing分段SDK外开销 | [ADLA离线候选](npu-adla.md)、[端到端分段](npu-e2e-timing.md) |
-| tools/npu-uapi-probe.c | ARM64编译→板 | 占用NPU兼容接口；无推理、HID或声音 | 初始化MMU上下文后测试ATTACH别名；负向PROFILE_CFG拒绝厂商5.15，须有界运行 | [ADLA候选与验收](npu-adla.md) |
-| packaging/kernel/build-gstreamer.py | 容器/VM | 无 | 校验固定源码、应用 V4L2 生命周期补丁并构建私有插件，不改系统库 | [音视频](subsystems/video.md) |
-| packaging/kernel/test_gstreamer_visible_crop.py | 容器/VM | 无 | 提取实际 V4L2 caps／padding／crop 函数，以模拟 ioctl 离线回放 Wave5 非对齐尺寸协商 | [音视频](subsystems/video.md) |
-| packaging/kernel/maintain.py | Linux ARM64 VM | 无 | inventory 导出按主题存放的保序补丁并证明 tree 一致；forward 在新分支 rebase；verify 汇总 host C/KUnit 入口、strict checkpatch、schema/DTB 与可选完整构建，不自动 fetch、部署 | [补丁清单](archive/kernel-patch-inventory.md) |
-| packaging/kernel/register-runtime.py | VM / 板 | inventory 无；register 登记；install 安装 | 核验完整包并登记/升级 Mainline | [正式安装合同](kernel-mainline.md#正式构建与整包升级) |
-| packaging/kernel/package-final.py | VM | 无 | 打包 UHD / hdr10rN 完整构建，生成哈希/build ID 清单；--dtb 显式选择 audio-test/display-m0/display-m1；M1 检查驱动与 DT 互斥；不编译 Image、不上板 | [M1 合入](bringup/2026-10-23-display-m2.md) |
-| packaging/kernel/display-once.py、display-once-init.c | VM / 板 | prepare 无；stage 独占；串口选择后重启 | 私有归档与静态 PID 1 模块 bind；保留默认启动项；一次性启动、预检失败回退及重启回默认已实测，物理 RESET 未测 | [M1 安全网](bringup/2026-10-23-display-m1-safety.md) |
-| packaging/kernel/final-window.py、final-board.py | Mac → 板 | stage/dry-run 无；execute 独占、重启 | 双锁备份、安装与回归；kernel-only 保留用户态；--require-all-checks 任一失败回退，--framebuffer-console 登记 tty0；--ir-keytable 将 ARM64 IR 检查工具保存在 bundle；支持正常重启 pstore 读回，HDMI 恢复最多等 35 秒 | [pstore 部署与回退](bringup/2026-10-22-edge-pstore-deploy.md) |
-| packaging/kernel/final-regression.py、final-manager-check.mjs | Mac → 板 | prepare 无；run 独占、改 HDMI/USB 设置后恢复 | 默认19模式，可用 --sample-modes 抽样；--hevc-visible-sizes 仅用于 E02 内核，增加非8对齐HEVC浏览器验收；--gpu-load 快照 ARM64 GPU 负载；音频等待CoreAudio枚举、直接AudioData检查、恢复48k后停音；仅显式 --wifi-scan 扫描并恢复 radio/autoconnect，不操作P2P；run仅由双锁窗口调用 | [正式版部署准备](bringup/2026-10-22-deploy-7-3-final-prep.md) |
-| packaging/kernel/package-vdec.py | VM | 无 | 打包干净的独立构建、检查 vermagic/BTF/哈希；默认 vdec5，once 模式为同 release 私有模块，不登记运行时 | [MDEC 远程窗口](bringup/2026-10-23-vdec-mdec-window.md) |
-| packaging/kernel/vdec-window.py | Mac → 板 | 默认离线；execute 双锁、加载模块；旧 boot 动作装内核 | snapshot 仅到第八步，保存外部寄存器后下电；解码仍需完整 MDEC 门禁；once 校验看门狗/私有模块/五文件，失败不重试、不强卸载 | [寄存器差分](bringup/2026-10-23-vdec-register-diff.md) |
-| packaging/kernel/vdec-register-dump.c | 板 | 双锁、已上电期间只读 MMIO | 先校验完整地址清单；/dev/mem 只读映射，厂商 debugfs 只缓存单地址；拒绝内部 DOS/GCLK，每次读取前输出地址 | [寄存器差分](bringup/2026-10-23-vdec-register-diff.md) |
-| packaging/kernel/check-wifi-p2p.py | 板 | 独占、临时接管 Wi-Fi 后恢复 | 已保存 SAE 客户端与 P2P 扫描、监听、双频 GO 启停；不代替真实对端传输 | [Wi-Fi Direct](bringup/2026-10-21-edge-wifi-p2p.md) |
-| tools/workspace.py | Mac / CI | 无 | bootstrap/status 子仓库（`--override` 供发布 CI 替换单个仓库提交），build 各目标（kernel 走 OrbStack） | [工作区](workspace.md) |
-| tools/mali-runtime.py | fetch：Mac / Linux；install：板（root） | 下载或写私有 GPU 目录，不重启服务 | 固定来源和 SHA 获取 r44p0 用户态驱动，安装前检查 5.15/Mali ABI 与依赖；不注册全局 ICD | [HDR GPU](bringup/2026-10-26-hdr-gpu.md) |
-| tools/mali-dma-probe.c、mali-dma-probe.comp | ARM64 容器编译 → 板 | GPU 计算、临时约25MB连续CMA，不操作采集/编码 | Vulkan计算、DMA-buf导入与逐字读回；可选第二参数指定已知连续heap路径，默认codecmm；不是视频吞吐基准 | [HDR GPU](bringup/2026-10-26-hdr-gpu.md) |
-| tools/vrr-edid.py | Mac / Linux | 只写指定的新文件，不访问板子 | 显式实验范围生成远程VRR EDID；Forum最小值≤48、显式最大值≥100，拒绝保留值与模式相关上限；本地模式必须提供同协议sink并取交集，不安装预设或触发HPD | [VRR准备](vrr-preparation.md) |
-| tools/ubuntu-build.py | Mac / CI → Docker | 无 | package/verify 七组件；支持 platform、capture、encoder、nanokvm、jetkvm、onekvm、manager、pikvm、pikvm-app | [Ubuntu 构建](ubuntu-build.md) |
-| tools/ubuntu-image.py | Mac → OrbStack | 无 | 内核包、候选镜像 assemble/verify/export | [候选镜像](ubuntu-image.md) |
-| packaging/ubuntu/ | 容器 | 无 | Dockerfile、锁文件、fetch.py、build.sh、package.py、verify.sh；manager-config.py 迁移网关配置；check-audio-startup.py、check-onekvm-update.py 与 pikvm/check-janus.py 为打包门禁 | [Ubuntu 构建](ubuntu-build.md) |
-| packaging/kernel/ | VM | 无 | package.sh 构建内核包，vim4.config 为配置 | [内核](kernel.md) |
-| packaging/kernel/ | Linux ARM64 VM / 板 | 构建无；准备工具改固件目录；Wi-Fi 转储保存后释放其内核副本 | build.sh 构建实验内核；prepare-wave521c-firmware.py 转换匹配固件；prepare-wifi-firmware.py 建立主线名称链接；save-wifi-coredump.py 由配套 udev 规则保存至私有目录，最多两份、每份 16MiB | [新内核基线](kernel-mainline.md)、[Wi-Fi 排查](bringup/2026-10-21-edge-wifi-fps.md) |
-| packaging/kernel/one-kvm-edge、one-kvm-edge-prepare、one-kvm-edge.service | 板 | 独占 | 按匹配内核选择独立视频程序；准备器校验固件后加载固定 UHD60 驱动，实验服务另需启动参数显式启用 | [新内核基线](kernel-mainline.md) |
-| packaging/image/ | VM（root） | 无 | assemble.sh 组装镜像文件，configure.sh 仅由其调用，verify.sh 只读检查 | [候选镜像](ubuntu-image.md) |
-| tests/ | Mac | 无 | 离线单元测试：`python3 -m unittest discover -s tests -p 'test_*.py'` | 本页 |
+| [packaging/kernel/package-unified.py](../packaging/kernel/package-unified.py) | VM | 无 | 主线整包封存 | [主线内核](kernel-mainline.md) |
+| [packaging/hdr10/persistent-r14e.py](../packaging/hdr10/persistent-r14e.py) | Mac → 板 | 独占，安装私有运行时；不改默认或重启 | 构建工具 | [HDR10](hdr10-remote-73.md) |
+| [packaging/hdr10/assemble-phase2.py、phase2-run](../packaging/hdr10/assemble-phase2.py) | Linux ARM64 / RAM 候选 | 组装无；运行独占 | 构建工具 | [第二阶段记录](bringup/2026-10-31-hdr10-phase2-offline.md) |
+| [packaging/hdr10/ram-payload.py](../packaging/hdr10/ram-payload.py) | VM | 无 | RAM载荷封装 | [HDR10](hdr10-remote-73.md) |
+| [packaging/kernel/package-hdr10.py](../packaging/kernel/package-hdr10.py) | VM | 无 | HDR候选封包 | [HDR10](hdr10-remote-73.md) |
+| [packaging/kernel/test_gstreamer_p010.py、test_gstreamer_pq.py](../packaging/kernel/test_gstreamer_p010.py) | Linux 宿主 | 无 | 构建工具 | [HDR10](hdr10-remote-73.md) |
+| [packaging/kernel/hdmi-mode-fixture.py、hdmi-modes.json](../packaging/kernel/hdmi-mode-fixture.py) | 宿主 / 板 | prepare/verify 无；measure/read-edid 需板票，只读 | 输入模式验证 | [主线内核](kernel-mainline.md) |
+| [vm](../tools/vm) | Mac → OrbStack VM | 无板子访问；new/rm 改任务工作树，push 写远端 | status 核对 origin/SHA | [工作区](workspace.md#构建) |
+| [memory-bench.c、memory-bench.py](../tools/memory-bench.c) | C：Linux ARM64编译；runner：Linux/板 | 独占CPU/内存/tmpfs；无频率写入、部署、HID | 内存吞吐基准 | [内存拷贝审查](memory-copy-audit.md)、[绑核门禁与配置草案](nodebug-performance-gate.md) |
+| [gpu-diagnose.py、gpu-cl-map.c](../tools/gpu-diagnose.py) | 板；CL工具先ARM64编译 | 独占GPU；诊断器可临时锁频/PM/profiling并恢复；不写电压、不ptrace | GPU性能诊断 | [GPU性能复核](gpu-performance-diagnosis.md) |
+| [packaging/gpu/](../packaging/gpu/) | Docker ARM64；probe：板 | 构建无；probe占GPU | 构建工具 | [GPU运行时](bringup/2026-10-30-gpu-runtime.md)、[HDR规格](gpu-hdr-pipeline.md) |
+| [npu-probe.c、npu-validate.py、npu-models.json](../tools/npu-probe.c) | 编译：ARM64；run：板；compare：Mac/VM | run 占用 NPU，写新结果目录；无部署、HID、声音 | NPU推理验证 | [ADLA离线候选](npu-adla.md)、[端到端分段](npu-e2e-timing.md) |
+| [npu-uapi-probe.c](../tools/npu-uapi-probe.c) | ARM64编译→板 | 占用NPU兼容接口；无推理、HID或声音 | 初始化MMU上下文后测试ATTACH别名 | [ADLA候选与验收](npu-adla.md) |
+| [packaging/kernel/build-gstreamer.py](../packaging/kernel/build-gstreamer.py) | 容器/VM | 无 | 私有视频插件构建 | [音视频](subsystems/video.md) |
+| [packaging/kernel/test_gstreamer_visible_crop.py](../packaging/kernel/test_gstreamer_visible_crop.py) | 容器/VM | 无 | 可见尺寸协商回放 | [音视频](subsystems/video.md) |
+| [packaging/kernel/maintain.py](../packaging/kernel/maintain.py) | Linux ARM64 VM | 无 | 补丁导出与前移 | [补丁清单](archive/kernel-patch-inventory.md) |
+| [packaging/kernel/register-runtime.py](../packaging/kernel/register-runtime.py) | VM / 板 | inventory 无；register 登记；install 安装 | 构建工具 | [正式安装合同](kernel-mainline.md#正式构建与整包升级) |
+| [packaging/kernel/package-final.py](../packaging/kernel/package-final.py) | VM | 无 | 构建工具 | [M1 合入](bringup/2026-10-23-display-m2.md) |
+| [packaging/kernel/display-once.py、display-once-init.c](../packaging/kernel/display-once.py) | VM / 板 | prepare 无；stage 独占；串口选择后重启 | 构建工具 | [M1 安全网](bringup/2026-10-23-display-m1-safety.md) |
+| [packaging/kernel/final-window.py、final-board.py](../packaging/kernel/final-window.py) | Mac → 板 | stage/dry-run 无；execute 独占、重启 | 构建工具 | [pstore 部署与回退](bringup/2026-10-22-edge-pstore-deploy.md) |
+| [packaging/kernel/final-regression.py、final-manager-check.mjs](../packaging/kernel/final-regression.py) | Mac → 板 | prepare 无；run 独占、改 HDMI/USB 设置后恢复 | 构建工具 | [正式版部署准备](bringup/2026-10-22-deploy-7-3-final-prep.md) |
+| [packaging/kernel/package-vdec.py](../packaging/kernel/package-vdec.py) | VM | 无 | 解码候选封包 | [MDEC 远程窗口](bringup/2026-10-23-vdec-mdec-window.md) |
+| [packaging/kernel/vdec-window.py](../packaging/kernel/vdec-window.py) | Mac → 板 | 默认离线；execute 双锁、加载模块；旧 boot 动作装内核 | 构建工具 | [寄存器差分](bringup/2026-10-23-vdec-register-diff.md) |
+| [packaging/kernel/vdec-register-dump.c](../packaging/kernel/vdec-register-dump.c) | 板 | 双锁、已上电期间只读 MMIO | 构建工具 | [寄存器差分](bringup/2026-10-23-vdec-register-diff.md) |
+| [packaging/kernel/check-wifi-p2p.py](../packaging/kernel/check-wifi-p2p.py) | 板 | 独占、临时接管 Wi-Fi 后恢复 | Wi-Fi与P2P验证 | [Wi-Fi Direct](bringup/2026-10-21-edge-wifi-p2p.md) |
+| [workspace.py](../tools/workspace.py) | Mac / CI | 无 | 工作区管理与构建 | [工作区](workspace.md) |
+| [mali-runtime.py](../tools/mali-runtime.py) | fetch：Mac / Linux；install：板（root） | 下载或写私有 GPU 目录，不重启服务 | 私有GPU运行时安装 | [HDR GPU](bringup/2026-10-26-hdr-gpu.md) |
+| [vrr-edid.py](../tools/vrr-edid.py) | Mac / Linux | 只写指定的新文件，不访问板子 | 显式实验范围生成远程VRR EDID | [VRR准备](vrr-preparation.md) |
+| [ubuntu-build.py](../tools/ubuntu-build.py) | Mac / CI → Docker | 无 | package/verify 七组件 | [Ubuntu 构建](ubuntu-build.md) |
+| [ubuntu-image.py](../tools/ubuntu-image.py) | Mac → OrbStack | 无 | 候选镜像组装 | [候选镜像](ubuntu-image.md) |
+| [packaging/ubuntu/](../packaging/ubuntu/) | 容器 | 无 | 用户态组件打包 | [Ubuntu 构建](ubuntu-build.md) |
+| [packaging/kernel/](../packaging/kernel/) | VM | 构建无；准备工具改固件目录；Wi-Fi 转储保存后释放其内核副本 | 构建工具 | [内核](kernel.md) |
+| [packaging/kernel/](../packaging/kernel/) | Linux ARM64 VM / 板 | 构建无；准备工具改固件目录；Wi-Fi 转储保存后释放其内核副本 | 构建工具 | [新内核基线](kernel-mainline.md)、[Wi-Fi 排查](bringup/2026-10-21-edge-wifi-fps.md) |
+| [packaging/kernel/one-kvm-edge、one-kvm-edge-prepare、one-kvm-edge.service](../packaging/kernel/one-kvm-edge) | 板 | 独占 | 构建工具 | [新内核基线](kernel-mainline.md) |
+| [packaging/image/](../packaging/image/) | VM（root） | 无 | 构建工具 | [候选镜像](ubuntu-image.md) |
+| tests/ | Mac | 无 | 离线回归 | 本页 |
 
 ## 板级操作
 
 | 入口 | 运行位置 | 影响 | 用途 | 文档 |
 |---|---|---|---|---|
-| packaging/kbase/build.py、package.py、run.py、check-style.py、check-semantics.py、check-heaps.py、clpeak-subset.py、dma-profile.py、default-parity.py、resolve-egl.c、heaps/vim4_kbase_heaps.c、dvfs/governor_vim4.c | build/package/check：宿主/ARM64 VM；run/CL/模块：板 | build/package/check/resolve无硬件访问；run/CL占GPU，parity独占GPU并只读温度，profile临时创建具名trace实例/事件，heap占候选CMA，governor调GPU频率 | 外部模块构建与完整包封存（无blob）、ABI/语义/风格门禁；私有ICD/EGL前缀；CL限时及同协议配对 | [kbase后备候选](gpu-kbase-7x.md)、[MMU与heap合同](gpu-kbase-mmu-heaps.md) |
-| tools/mali-dma-probe.c、mali-dma-probe.comp、mali-cl-probe.c | ARM64 容器编译 → 板 | GPU计算与临时内存；不操作采集/编码 | VK原生device-local/host-visible、DMA heap导入和逐字校验；可选16KiB二分；CL单kernel支持同类分配。均须外部timeout | [kbase候选](gpu-kbase-7x.md) |
-| tools/gbm-scanout-probe.c | ARM64容器编译→板 | 独占显示；保持当前mode，恢复原FB，不抢DRM master | GBM线性XR24 BO导出/导入并短时SetCrtc；布局/恢复信息不足则拒绝，需与采集并行验收并带timeout | [kbase候选](gpu-kbase-7x.md) |
-| packaging/hdr10/phase2-window.py、m6-gates.py、phase2-board.py | Mac → 板/M6 | 独占、RAM 重启、切换配置及 M6 HDR 后恢复 | 核验来源后申请 ≤30 分钟板票并 sampling；双 GPU 稳定性/模式/UU 复测，结束回基线 | [第二阶段记录](bringup/2026-10-31-hdr10-phase2-offline.md) |
-| packaging/kernel/hdr10-prepare、hdr10-run | 板，匹配 RAM 候选 | 独占采集/编码及 8081；prepare 加载模块 | 校验固件并运行私有 HDR10/One-KVM；先停共享消费者，不部署固件或改正式服务 | [HDR10](hdr10-remote-73.md) |
-| tools/board-queue | Mac / Linux，同一协调主机 | 仅本机锁与票据；run 的影响由命令决定 | FIFO、≤30分钟租约、旧 lockf 兼容、sampling 与 heavy 协调 | [短窗口](board-window.md) |
-| tools/board-window | Mac → 板 | collect --readonly 读；baseline/receiver/MCP 截图占采集；MCP HDR 发 HID；boot-candidate/return-baseline 重启 | 5.15或当前正式锁基线、默认LINUX/FDT校验、链式RAM与视频恢复证明；stage/cleanup携带sources.toml | [短窗口](board-window.md) |
-| tools/board-window-receiver.mjs、board-window-timing.mjs | Mac / Node | 接收占用编码器；compare 仅本机图片 | board-window 私有浏览器接收/裁图比较入口与50ms计时；沿用 Playwright、manager-login.mjs | [短窗口](board-window.md) |
-| tools/gpu-compare.py | 板 | 独占 | vendor/system/private能力与固定离屏GLES、clpeak；超时、逐进程ICD隔离，不操作服务/HID | [GPU运行时](bringup/2026-10-30-gpu-runtime.md) |
-| tools/board.py check | Mac | 读 | 内核、服务、设备节点、8081 后端与 8080 网关状态 | [板级工具](board-tools.md) |
-| tools/board.py deploy --exclusive | Mac | 独占 | 校验并安装组件包（委托 install-components.sh） | [板级工具](board-tools.md#增量开发闭环) |
-| tools/board.py verify | Mac | 独占 | 部署后 hid/audio/video 实测，写 verify.json | [板级工具](board-tools.md) |
-| tools/board.py provision / enroll | Mac | 改板配置 | 公钥与开发用免密 sudo | [板级工具](board-tools.md#操作前约定) |
-| tools/board.py recover / flash | Mac | 破坏 | 进入 OOWOW；校验刷写本地镜像 | [板级工具](board-tools.md#本地候选镜像一键刷写) |
-| tools/install-components.sh | 板（由 deploy 调用） | 独占 | 板上包校验、APT 模拟、迁移与恢复所选应用 | [板级工具](board-tools.md) |
-| tools/uart-run.py | Mac | 取决于命令 | 串口执行命令；超时后命令可能仍在运行 | [部署](subsystems/deployment.md) |
-| tools/uart-log.py | Mac | 读（`--send` 除外） | 只读抓串口日志 | [部署](subsystems/deployment.md) |
-| tools/oowow-flash.sh | Mac（板在 OOWOW） | 破坏 | 手工 URL 刷写，优先用 board.py flash | [板级工具](board-tools.md) |
-| tools/kernel-install.sh | 板（root） | 安装内核 | 厂商包安装；主线整包升级合同见 register-runtime.py 行 | [内核](kernel.md) |
-| packaging/kernel/promote.py | 板（root，双锁） | 改默认；可删除显式淘汰的未登记旧产物 | 将已运行验证的厂商候选登记至标准 vim4boot 和透传资格清单；可备份回退或显式不备份，不重启 | [原生 HDR 交付](bringup/2026-10-25-native-hdr-dual-path.md) |
-| tools/passthrough-monitor.py | 板（只读硬件，写指定日志） | 不控制硬件 | 默认十分钟观察 TX 重设、RX 失锁与扫描输出停顿；排除无输入/主动关闭，不代替光学黑屏检测 | [HDR 输出开关](bringup/2026-10-25-passthrough-hdr-switch.md) |
-| tools/rootfs-policy.py | 板（root，随包安装） | 改启动项 | 根分区 ordered/commit=5，重启生效 | [Ubuntu 构建](ubuntu-build.md) |
+| [packaging/kbase/build.py、package.py、run.py、check-style.py、check-semantics.py、check-heaps.py、clpeak-subset.py、dma-profile.py、default-parity.py、resolve-egl.c、heaps/vim4_kbase_heaps.c、dvfs/governor_vim4.c](../packaging/kbase/build.py) | build/package/check：宿主/ARM64 VM；run/CL/模块：板 | build/package/check/resolve无硬件访问；run/CL占GPU，parity独占GPU并只读温度，profile临时创建具名trace实例/事件，heap占候选CMA，governor调GPU频率 | 外部GPU模块构建与门禁 | [kbase后备候选](gpu-kbase-7x.md)、[MMU与heap合同](gpu-kbase-mmu-heaps.md) |
+| [mali-dma-probe.c、mali-dma-probe.comp、mali-cl-probe.c](../tools/mali-dma-probe.c) | ARM64 容器编译 → 板 | GPU计算与临时内存；不操作采集/编码 | GPU缓冲导入校验 | [kbase候选](gpu-kbase-7x.md) |
+| [gbm-scanout-probe.c](../tools/gbm-scanout-probe.c) | ARM64容器编译→板 | 独占显示；保持当前mode，恢复原FB，不抢DRM master | GBM扫描输出验证 | [kbase候选](gpu-kbase-7x.md) |
+| [packaging/hdr10/phase2-window.py、m6-gates.py、phase2-board.py](../packaging/hdr10/phase2-window.py) | Mac → 板/M6 | 独占、RAM 重启、切换配置及 M6 HDR 后恢复 | HDR批量窗口 | [第二阶段记录](bringup/2026-10-31-hdr10-phase2-offline.md) |
+| [packaging/kernel/hdr10-prepare、hdr10-run](../packaging/kernel/hdr10-prepare) | 板，匹配 RAM 候选 | 独占采集/编码及 8081；prepare 加载模块 | 构建工具 | [HDR10](hdr10-remote-73.md) |
+| [board-queue](../tools/board-queue) | Mac / Linux，同一协调主机 | 仅本机锁与票据；run 的影响由命令决定 | 板票与采样协调 | [短窗口](board-window.md) |
+| [board-window](../tools/board-window) | Mac → 板 | collect --readonly 读；baseline/receiver/MCP 截图占采集；MCP HDR 发 HID；boot-candidate/return-baseline 重启 | RAM链式启动与恢复 | [短窗口](board-window.md) |
+| [board-window-receiver.mjs、board-window-timing.mjs](../tools/board-window-receiver.mjs) | Mac / Node | 接收占用编码器；compare 仅本机图片 | RAM链式启动与恢复 | [短窗口](board-window.md) |
+| [gpu-compare.py](../tools/gpu-compare.py) | 板 | 独占 | GPU运行时配对 | [GPU运行时](bringup/2026-10-30-gpu-runtime.md) |
+| [board.py check](../tools/board.py) | Mac | 读 | 板状态检查 | [板级工具](board-tools.md) |
+| [board.py deploy --exclusive](../tools/board.py) | Mac | 独占 | 组件升级 | [板级工具](board-tools.md#增量开发闭环) |
+| [board.py verify](../tools/board.py) | Mac | 独占 | 部署后 hid/audio/video 实测 | [板级工具](board-tools.md) |
+| [board.py provision / enroll](../tools/board.py) | Mac | 改板配置 | 公钥与开发用免密 sudo | [板级工具](board-tools.md#操作前约定) |
+| [board.py recover / flash](../tools/board.py) | Mac | 破坏 | 进入 OOWOW | [板级工具](board-tools.md#本地候选镜像一键刷写) |
+| [install-components.sh](../tools/install-components.sh) | 板（由 deploy 调用） | 独占 | 组件安装与迁移 | [板级工具](board-tools.md) |
+| [uart-run.py](../tools/uart-run.py) | Mac | 取决于命令 | 串口执行命令 | [部署](subsystems/deployment.md) |
+| [uart-log.py](../tools/uart-log.py) | Mac | 读（`--send` 除外） | 只读抓串口日志 | [部署](subsystems/deployment.md) |
+| [oowow-flash.sh](../tools/oowow-flash.sh) | Mac（板在 OOWOW） | 破坏 | 手工 URL 刷写 | [板级工具](board-tools.md) |
+| [kernel-install.sh](../tools/kernel-install.sh) | 板（root） | 安装内核 | 厂商包安装 | [内核](kernel.md) |
+| [packaging/kernel/promote.py](../packaging/kernel/promote.py) | 板（root，双锁） | 改默认；可删除显式淘汰的未登记旧产物 | 厂商候选登记 | [原生 HDR 交付](bringup/2026-10-25-native-hdr-dual-path.md) |
+| [passthrough-monitor.py](../tools/passthrough-monitor.py) | 板（只读硬件，写指定日志） | 不控制硬件 | 透传停顿观察 | [HDR 输出开关](bringup/2026-10-25-passthrough-hdr-switch.md) |
+| [rootfs-policy.py](../tools/rootfs-policy.py) | 板（root，随包安装） | 改启动项 | 根分区 ordered/commit=5 | [Ubuntu 构建](ubuntu-build.md) |
 
 ## 板级服务源码（由 board/install.sh 或组件包安装）
 
-`hdmi-setup.sh` 的 `HDMI_CAPTURE_FORMAT=YUV444` 仅供兼容采集管线使用，现有应用保留默认 NV21。
 
 | 入口 | 安装为 | 用途 | 文档 |
 |---|---|---|---|
-| board/vim4-ethernet-generator.py | /usr/lib/systemd/system-generators/（随 board 包） | 读取 U-Boot 每板 eFuse MAC 并在 /run 生成 .link；不改固定 IP/NetworkManager，5.15 不介入 | [主线内核](kernel-mainline.md) |
-| tools/hdmi-setup.sh | /usr/local/sbin/hdmi-setup.sh | vdin0 + vfm_cap 配置并打开 HDMI 源 | [音视频](subsystems/video.md) |
-| tools/hdr-curve.sh | vim4-hdr-curve | HDR10→SDR 映射表生成与写入；`tables` 为 5.15，`tables-edge` 保留高光，`apply` 自动选择接口；新5.15独立保存VDIN增益，原生模式同时请求VDIN1重载 | [音视频](subsystems/video.md#hdr-输入) |
-| tools/kvm-gadget.sh | /usr/local/sbin/kvm-gadget.sh | USB gadget：键盘、绝对/相对鼠标、NCM | [USB](subsystems/usb.md) |
-| tools/usb-pd-init.c | /usr/sbin/usb-pd-init | FUSB302B 5V PD 协商；成功调用板级 Python 模块原子保存合同；`--status` 只读 VBUS 状态 | [USB-PD](usb-pd.md) |
-| board/vim4-wave5-monitor.py | /usr/libexec/vim4-wave5-monitor | 轮询 Wave5 隔离状态并记 journal；自动重启默认关闭，启用后仍要求应用均已停止且虚拟盘为空 | [音视频](subsystems/video.md#wave5-隔离告警) |
-| board/60-vim4-watchdog.conf | /usr/lib/systemd/system.conf.d/60-vim4-watchdog.conf | board/install.sh 与 Ubuntu board 包安装；PID 1 在两种内核共用 30 秒运行、60 秒重启硬件看门狗策略，重启或 daemon-reexec 生效 | [部署](subsystems/deployment.md#一次性启动与硬件看门狗) |
-| board/60-vim4-panic.conf | /usr/lib/sysctl.d/60-vim4-panic.conf | board/install.sh、Ubuntu board 包与正式部署窗口安装；两种内核启动时设置 panic_on_oops=1，与 panic=20 和硬件看门狗配合 | [部署](subsystems/deployment.md#一次性启动与硬件看门狗) |
+| [board/vim4-ethernet-generator.py](../board/vim4-ethernet-generator.py) | /usr/lib/systemd/system-generators/（随 board 包） | 读取 U-Boot 每板 eFuse MAC 并在 /run 生成 .link | [主线内核](kernel-mainline.md) |
+| [hdmi-setup.sh](../tools/hdmi-setup.sh) | /usr/local/sbin/hdmi-setup.sh | vdin0 + vfm_cap 配置并打开 HDMI 源 | [音视频](subsystems/video.md) |
+| [hdr-curve.sh](../tools/hdr-curve.sh) | vim4-hdr-curve | HDR10→SDR 映射表生成与写入 | [音视频](subsystems/video.md#hdr-输入) |
+| [kvm-gadget.sh](../tools/kvm-gadget.sh) | /usr/local/sbin/kvm-gadget.sh | USB gadget：键盘、绝对/相对鼠标、NCM | [USB](subsystems/usb.md) |
+| [usb-pd-init.c](../tools/usb-pd-init.c) | /usr/sbin/usb-pd-init | FUSB302B 5V PD 协商 | [USB-PD](usb-pd.md) |
+| [board/vim4-wave5-monitor.py](../board/vim4-wave5-monitor.py) | /usr/libexec/vim4-wave5-monitor | 轮询 Wave5 隔离状态并记 journal | [音视频](subsystems/video.md#wave5-隔离告警) |
+| [board/60-vim4-watchdog.conf](../board/60-vim4-watchdog.conf) | /usr/lib/systemd/system.conf.d/60-vim4-watchdog.conf | board/install.sh 与 Ubuntu board 包安装 | [部署](subsystems/deployment.md#一次性启动与硬件看门狗) |
+| [board/60-vim4-panic.conf](../board/60-vim4-panic.conf) | /usr/lib/sysctl.d/60-vim4-panic.conf | board/install.sh、Ubuntu board 包与正式部署窗口安装 | [部署](subsystems/deployment.md#一次性启动与硬件看门狗) |
 
 ## 应用回归（浏览器）
 
 | 入口 | 应用 | 影响 | 覆盖 | 文档 |
 |---|---|---|---|---|
-| tools/video-smoke.mjs | NanoKVM | 独占 | WebRTC 实际编码、解码帧数/丢帧/丢包；Direct 首帧尺寸与持续收包（不等于持续呈现） | [板级工具](board-tools.md) |
-| tools/audio-smoke.mjs | NanoKVM | 独占 | 音量控件与解码音频；配 hdmi-audio-tone | [功能状态](archive/feature-status.md) |
-| tools/mic-smoke.mjs | NanoKVM | 独占，重新枚举 USB | Chrome 合成麦克风到 UAC2 播放 | 脚本头注释 |
-| tools/usb-switch-check.mjs | NanoKVM | 独占，断开 USB | 麦克风/镜像组合切换与恢复 | [板级工具](board-tools.md#usb-切换回归) |
-| tools/media-upload-check.mjs | NanoKVM | 独占，留下上传文件 | 镜像上传与网页终端 | [板级工具](board-tools.md#工具验证边界) |
-| tools/input-check.mjs | NanoKVM | 独占，移动光标 | 键鼠延迟、长按、滚轮；配 input-target.swift、input-summary.py | [输入验证](input-latency.md) |
-| tools/jetkvm-smoke.mjs | JetKVM | 独占 | 视频、JSON-RPC、网页终端；`--audio` 要求实际 HDMI 声音波形，测试输出静音 | [JetKVM](../kvm/VIM4.md) |
-| tools/one-kvm-smoke.mjs | One-KVM | 独占 | H.264/H.265/MJPEG 解码、缓冲与呈现间隔尾部；`--seconds`/`--warmup` 控制测量窗口，`--audio` 检查波形 | [板级工具](board-tools.md) |
-| tools/one-kvm-stability-check.mjs | One-KVM edge | 独占，切编码后恢复 | 4K60 持续解码、同帧标记校验、音画脉冲、温度/CPU/内存；须另启动同步运动源，JSONL 保存每 10 秒窗口 | [音视频](subsystems/video.md) |
-| tools/one-kvm-av-sync-check.mjs、tools/av-sync-probe.mjs | Mac / One-KVM edge | 校准无；上板独占、切编码后恢复 | 标签页播放输出回环、逐样本音频脉冲与预计视频显示时间；`--calibrate=FILE --expected-ms=120` 校准已知偏移，板端须同步源 | 脚本头注释 |
-| tools/one-kvm-audio-check.mjs | One-KVM | 独占 | Opus WebSocket 音频，静音判失败 | [板级工具](board-tools.md) |
-| tools/one-kvm-audio-continuity.mjs | Mac / One-KVM | 上板独占；--calibrate 本地对照 | 440Hz 音频逐样本连续性、直接 AudioData 与可选 Worklet/Opus 对照、同步 getStats；--headed 真实 Chrome，调用者持双锁并管理 HDMI 音源 | 脚本头注释 |
-| tools/one-kvm-recording-check.mjs | One-KVM | 独占 | H.264/H.265 带声音录屏、关网页续录、下载、断流与重启；仅清理本次录像 | [板级工具](board-tools.md) |
-| tools/one-kvm-settings-check.mjs | One-KVM | 独占，改 EDID/HDR 后恢复 | 视频设置往返 | [One-KVM](../One-KVM/VIM4.md) |
-| tools/one-kvm-board-check.mjs | One-KVM | 独占，改 EDID/HDR 后恢复 | 原生板级接口、同一网页的 UHD/FHD 切换与 HDR 曲线；不覆盖自定义 EDID | 脚本头注释 |
-| tools/nanokvm-board-check.mjs | NanoKVM | 独占，改 EDID 后恢复 | 原生 EDID 接口与同一网页的 FHD/UHD 恢复；不覆盖自定义 EDID | 脚本头注释 |
-| tools/edge-jpeg-check.py | 板（root），7.x | 独占，应用须停止 | VDIN 硬件缩放、JPEG DMA 连续帧、质量、IRQ 与 CMA 回收；需运动 HDMI 源另验内容 | 脚本头注释 |
-| tools/edge-jpeg-profile.py | 板（root），7.x | 独占 JPEG，应用须停止；不采集或改时钟 | 用一帧 NV12 拆分命令、等待、完成 ioctl 和输出复制；可跳过复制，保存新报告及 JPEG | 脚本头注释 |
-| tools/one-kvm-scaling-check.mjs | One-KVM edge | 独占，改输出尺寸/帧率/质量后恢复；可暂停并恢复空闲 UU | H.264/H.265/MJPEG 往返、完整画面动态标记、输入时序和 DMA 回收；须另启动运动 HDMI 源；--require-hdr 核对 RX，--mjpeg-max-rate 请求 60fps，--mjpeg-only 只测 JPEG，--mjpeg-frames=600 延长每档采样 | 脚本头注释 |
-| tools/one-kvm-features-check.mjs | One-KVM | 独占 | 终端、扩展、看门狗；需本地 FRP 17700 | [板级工具](board-tools.md) |
-| tools/one-kvm-drive-check.mjs | One-KVM | 独占，可能创建虚拟盘 | Ventoy 虚拟盘与文件往返 | [Ubuntu 构建](ubuntu-build.md) |
-| tools/one-kvm-usb-check.mjs | One-KVM | 独占，重新枚举 USB；--hid-only 短暂覆盖桌面并恢复指针 | Mac 主机键鼠、ISO 挂载；--hid-only 使用 input-target 验证实际方向键、两种鼠标、点击和滚轮 | [板级工具](board-tools.md) |
-| tools/one-kvm-usb-profile-check.mjs | One-KVM | 独占，改 USB 组合后恢复；录音只选择 USB 输入 | HID/UAC/网卡组合与超限回滚、拒绝内核告警；--audio 原生录音，--browser-audio 指定 USB 设备波形；--output-prefix 保存独立记录 | [板级工具](board-tools.md) |
-| tools/one-kvm-usb-media-check.mjs | Mac / One-KVM | 独占，上传专用 EDGEUSB21 FAT 镜像；主机弹出后删除本次文件并恢复配置 | 只读/可写、1MiB 哈希、fsck、五端点与挂载保护；`--service=one-kvm` 验正式入口，`--manager-url=URL` 检查内核/应用切换拒绝 | 脚本头注释 |
-| tools/one-kvm-usb-network-host.py | Mac → 板 | 独占，只读当前 USB 网卡配置；临时监听器绑定 USB IP，退出终止，不修改主机网络 | 手动启用一种 USB 网卡后，核对 DHCP ACK 并经指定接口双向传输 1MiB、比较哈希；以 SSH 控制板端 | 脚本头注释 |
-| tools/one-kvm-usb-board-check.py | 板（root） | 独占，应用停止 | 板端 USB 助手枚举与恢复 | [板级工具](board-tools.md) |
-| tools/one-kvm-uu-ui-check.mjs | 一次性容器实例 | 无（禁止对板子账户运行） | UU 远程绑定界面 | [上板记录](bringup/2026-10-15-uu-output-controls-identity.md) |
-| tools/pikvm-smoke.mjs | PiKVM | 独占 | 解码、截图、MJPEG 重连与可选 Mac USB 输入；`--audio --existing-audio` 使用已运行的 HDMI 音源 | [Ubuntu 构建](ubuntu-build.md#pikvm-组件) |
-| tools/kvm-switch-check.mjs | 管理器 | 独占，切换应用 | 四应用互斥与解码，恢复原选择；`VIM4_KVM_URL` 可指定 SSH 转发的网关 | [板级工具](board-tools.md#kvm-应用切换回归) |
-| tools/kernel-switch-check.mjs | Mac → 板 | 独占、重启两次 | `--exclusive --reboot` 验证面板 7→5→7、配置双向保留及临时镜像哈希；`--switch-apps` 在两边跑四应用循环；结束恢复设置并删除本次文件 | 脚本头注释 |
-| tools/manager-login.mjs | 管理器 | 创建登录会话 | 浏览器测试共享统一登录；导出 loginManager(context, managerURL) | [公共前提](board-tools.md#浏览器测试的公共前提) |
+| [video-smoke.mjs](../tools/video-smoke.mjs) | NanoKVM | 独占 | WebRTC 实际编码、解码帧数/丢帧/丢包 | [板级工具](board-tools.md) |
+| [audio-smoke.mjs](../tools/audio-smoke.mjs) | NanoKVM | 独占 | 音量控件与解码音频 | [功能状态](archive/feature-status.md) |
+| [mic-smoke.mjs](../tools/mic-smoke.mjs) | NanoKVM | 独占，重新枚举 USB | Chrome 合成麦克风到 UAC2 播放 | 脚本头注释 |
+| [usb-switch-check.mjs](../tools/usb-switch-check.mjs) | NanoKVM | 独占，断开 USB | 麦克风/镜像组合切换与恢复 | [板级工具](board-tools.md#usb-切换回归) |
+| [media-upload-check.mjs](../tools/media-upload-check.mjs) | NanoKVM | 独占，留下上传文件 | 镜像上传与网页终端 | [板级工具](board-tools.md#工具验证边界) |
+| [input-check.mjs](../tools/input-check.mjs) | NanoKVM | 独占，移动光标 | 键鼠延迟、长按、滚轮 | [输入验证](input-latency.md) |
+| [jetkvm-smoke.mjs](../tools/jetkvm-smoke.mjs) | JetKVM | 独占 | 视频、JSON-RPC、网页终端 | [JetKVM](../kvm/VIM4.md) |
+| [one-kvm-smoke.mjs](../tools/one-kvm-smoke.mjs) | One-KVM | 独占 | 视频解码与播放节奏 | [板级工具](board-tools.md) |
+| [one-kvm-stability-check.mjs](../tools/one-kvm-stability-check.mjs) | One-KVM edge | 独占，切编码后恢复 | 持续视频与标记验证 | [音视频](subsystems/video.md) |
+| [one-kvm-av-sync-check.mjs、tools/av-sync-probe.mjs](../tools/one-kvm-av-sync-check.mjs) | Mac / One-KVM edge | 校准无；上板独占、切编码后恢复 | 音画同步观测 | 脚本头注释 |
+| [one-kvm-audio-check.mjs](../tools/one-kvm-audio-check.mjs) | One-KVM | 独占 | Opus WebSocket 音频 | [板级工具](board-tools.md) |
+| [one-kvm-audio-continuity.mjs](../tools/one-kvm-audio-continuity.mjs) | Mac / One-KVM | 上板独占；--calibrate 本地对照 | 音频连续性验证 | 脚本头注释 |
+| [one-kvm-recording-check.mjs](../tools/one-kvm-recording-check.mjs) | One-KVM | 独占 | 录屏生命周期验证 | [板级工具](board-tools.md) |
+| [one-kvm-settings-check.mjs](../tools/one-kvm-settings-check.mjs) | One-KVM | 独占，改 EDID/HDR 后恢复 | 视频设置往返 | [One-KVM](../One-KVM/VIM4.md) |
+| [one-kvm-board-check.mjs](../tools/one-kvm-board-check.mjs) | One-KVM | 独占，改 EDID/HDR 后恢复 | 板级设置回归 | 脚本头注释 |
+| [nanokvm-board-check.mjs](../tools/nanokvm-board-check.mjs) | NanoKVM | 独占，改 EDID 后恢复 | EDID与模式恢复 | 脚本头注释 |
+| [edge-jpeg-check.py](../tools/edge-jpeg-check.py) | 板（root），7.x | 独占，应用须停止 | JPEG驱动验证 | 脚本头注释 |
+| [edge-jpeg-profile.py](../tools/edge-jpeg-profile.py) | 板（root），7.x | 独占 JPEG，应用须停止；不采集或改时钟 | JPEG分段计时 | 脚本头注释 |
+| [one-kvm-scaling-check.mjs](../tools/one-kvm-scaling-check.mjs) | One-KVM edge | 独占，改输出尺寸/帧率/质量后恢复；可暂停并恢复空闲 UU | 缩放与帧率回归 | 脚本头注释 |
+| [one-kvm-features-check.mjs](../tools/one-kvm-features-check.mjs) | One-KVM | 独占 | 终端、扩展、看门狗 | [板级工具](board-tools.md) |
+| [one-kvm-drive-check.mjs](../tools/one-kvm-drive-check.mjs) | One-KVM | 独占，可能创建虚拟盘 | Ventoy 虚拟盘与文件往返 | [Ubuntu 构建](ubuntu-build.md) |
+| [one-kvm-usb-check.mjs](../tools/one-kvm-usb-check.mjs) | One-KVM | 独占，重新枚举 USB；--hid-only 短暂覆盖桌面并恢复指针 | Mac 主机键鼠、ISO 挂载 | [板级工具](board-tools.md) |
+| [one-kvm-usb-profile-check.mjs](../tools/one-kvm-usb-profile-check.mjs) | One-KVM | 独占，改 USB 组合后恢复；录音只选择 USB 输入 | USB组合与回滚 | [板级工具](board-tools.md) |
+| [one-kvm-usb-media-check.mjs](../tools/one-kvm-usb-media-check.mjs) | Mac / One-KVM | 独占，上传专用 EDGEUSB21 FAT 镜像；主机弹出后删除本次文件并恢复配置 | USB介质完整性 | 脚本头注释 |
+| [one-kvm-usb-network-host.py](../tools/one-kvm-usb-network-host.py) | Mac → 板 | 独占，只读当前 USB 网卡配置；临时监听器绑定 USB IP，退出终止，不修改主机网络 | 手动启用一种 USB 网卡后 | 脚本头注释 |
+| [one-kvm-usb-board-check.py](../tools/one-kvm-usb-board-check.py) | 板（root） | 独占，应用停止 | 板端 USB 助手枚举与恢复 | [板级工具](board-tools.md) |
+| [one-kvm-uu-ui-check.mjs](../tools/one-kvm-uu-ui-check.mjs) | 一次性容器实例 | 无（禁止对板子账户运行） | UU 远程绑定界面 | [上板记录](bringup/2026-10-15-uu-output-controls-identity.md) |
+| [pikvm-smoke.mjs](../tools/pikvm-smoke.mjs) | PiKVM | 独占 | PiKVM功能冒烟 | [Ubuntu 构建](ubuntu-build.md#pikvm-组件) |
+| [kvm-switch-check.mjs](../tools/kvm-switch-check.mjs) | 管理器 | 独占，切换应用 | 四应用互斥与解码 | [板级工具](board-tools.md#kvm-应用切换回归) |
+| [kernel-switch-check.mjs](../tools/kernel-switch-check.mjs) | Mac → 板 | 独占、重启两次 | 双内核切换回归 | 脚本头注释 |
+| [manager-login.mjs](../tools/manager-login.mjs) | 管理器 | 创建登录会话 | 浏览器测试共享统一登录 | [公共前提](board-tools.md#浏览器测试的公共前提) |
 
 ## 诊断与测量
 
 | 入口 | 运行位置 | 影响 | 用途 | 文档 |
 |---|---|---|---|---|
-| tools/hdmi-source-mode.swift | macOS 信源机编译/运行 | set 改信源模式，须独占并保存/恢复原 ID | list/set backing raster；不能证明 HDMI 线上时序 | [主线内核](kernel-mainline.md) |
-| packaging/hdr10/application-receiver.mjs、test-receiver.mjs | Mac / Node | 接收需板票和 sampling；自测无板访问、需 heavy | 四应用 WebRTC 解码/色彩空间/HEVC 关键帧取证；不改源或发 HID | [HDR10](hdr10-remote-73.md) |
-| packaging/hdr10/screen-observe.swift | Mac | 无 | 对已有图片做 OCR/像素采样，不控制桌面 | [第二阶段记录](bringup/2026-10-31-hdr10-phase2-offline.md) |
-| packaging/hdr10/analyze-phase2.py、ffmpeg-vm.py、check-phase2-plugins.py | 宿主 / VM | 离线需 heavy；--device-factories 需候选窗口 | 解析 SPS/VUI/SEI，核对插件路径；UU RR 只证明接收；FFmpeg 输入经 stdin | [第二阶段记录](bringup/2026-10-31-hdr10-phase2-offline.md) |
-| packaging/hdr10/measure-gpu.py | 板 | --execute 独占 GPU/采集；其他消费者须停止 | 有界 AMLY→GPU→P010 fakesink，记录间隔/DRM；不代表编码或网页性能 | [HDR10](hdr10-remote-73.md) |
-| tools/rtp-udp-bench.c | Linux ARM64 容器 / 板 | 无硬件访问；板端占 CPU，须协调测量窗口 | sendto 与 sendmmsg 8/32/64 的逐帧 loopback 对照，完整包校验、失败保留；不含 SRTP/ICE | [发送基准](bringup/2026-10-25-rtp-send-benchmark.md) |
-| tools/encoder-vbv-bench.c、tools/encoder-vbv-probe.c | Linux ARM64 / 板 | bench run 独占编码；fixture/reference 无；probe 仅限私有测试进程 | 固定4K输入、同PTS编码计时、完整AU记录；匹配厂商头文件的VPU_EncOpen探针只改变VBV，0为观察对照，不安装到应用 | [VBV 对照](bringup/2026-10-26-encoder-vbv.md) |
-| tools/encoder-vbv-run.py | 板 | 独占；临时停启One-KVM并恢复原active状态 | 24窗口原库/观察/500ms/100ms固定输入对照，其他KVM须已停止；调用者持双锁，失败保留证据 | [VBV 对照](bringup/2026-10-26-encoder-vbv.md) |
-| tools/encoder-vbv-summary.py、tools/encoder-vbv-quality.py | 离线；quality需ffmpeg | 不访问硬件；解码需避开性能窗口 | 分场景峰值、编码耗时、固定带宽FIFO模型；选定帧与原始输入的PSNR/SSIM，不代表真实网络或全片画质 | [VBV 对照](bringup/2026-10-26-encoder-vbv.md) |
-| tools/display-color.py、tools/display-color.c | 离线 / 板（root） | chart/analyze/diff 无；run 独占显示/采集；snapshot 只读控制和矩阵 | KMS dumb 图案、V4L2 原始 NV12 三帧、≤2 码值色块分析；5.15 同 sink 寄存器对照、TX/RX AVI；调用者持双锁并管理服务/一次性启动 | [颜色校准](display-color-calibration.md) |
-| tools/hdmi-color-check.py | 离线，PNG分析需Pillow | 不接触板子 | 按16色块的RX前矩阵10-bit Y/Cb/Cr探针值，计算SDR709或PQ2020→SDR参考并统计解码帧码值误差；不替代显示器测色 | [HDR切换颜色修复](bringup/2026-10-25-native-hdr-color.md) |
-| tools/perf-baseline.py | 离线 | 无 | plan/matrix预算、跨窗epoch配对门禁与summary逐项汇总；不执行命令、不测声音 | [性能基线](performance-baseline.md) |
-| tools/perf-quick.py、perf-motion.html | Mac / M6浏览器 / 板 | MCP发送目标机HID；native独占采集编码、暂停并恢复One-KVM；window可RAM启动/恢复 | pm-phase 合并 4K60/空闲 PM 采样，诊断组临时写入并恢复 CPU governor；快速1080p实验、HTTP标记源、MCP与三种原生采样；dispatch延迟包含源端HTTP及调度 | [快速实验](bringup/2026-10-31-p0-2-performance.md) |
-| tools/perf-sensors.py | 板 | 读；性能窗口内 | 1Hz温度/功率/频率/runtime状态JSONL，不改时钟；缺传感器不记0 | [性能基线](performance-baseline.md) |
-| tools/vendor-boot-plan.py | 离线 | 无 | 从启动快照和已解析厂商profile生成一次性配置；不stage、不改默认、不重启 | [厂商对照启动](vendor-boot-baseline.md) |
-| tools/latency-source.swift | Mac | 占用 HDMI 画面；可输出 HDMI 音频 | 把帧号画进 HDMI 输出；`--display-link` 可选跟随刷新，默认60Hz Timer；`--motion` 运动网格，`--motion-cycle=运动秒数,周期秒数` 交替滚动/静止背景并记录状态；`--verify-coherence` 三处标记，`--hdr-chart`/`--color-chart` 灰阶/色块，`--no-labels` 禁用字体；仅显式 `--sync-audio=设备名` 输出同步闪块/音调，不改默认音频设备 | [延迟测量](latency.md) |
-| tools/hdmi-resolution-source.swift | Mac | 临时覆盖所选 HDMI 桌面 | 原生 UHD 单像素条纹与参考 PNG；不切模式、不注入输入 | [清晰度复核](bringup/2026-10-20-edge-uhd-detail.md) |
-| tools/hdmi-resolution-check.py | 离线 | 无 | Pillow 检查原生解码帧的亮度空间细节，拒绝 1080p 放大负例 | [清晰度复核](bringup/2026-10-20-edge-uhd-detail.md) |
-| tools/latency-receiver.mjs | Mac | 独占 | 像素帧号、RTP 时间戳、收帧时间与呈现节奏；`--rtp-timeline` 为每次回调保留 RTP 身份与校准墙钟，`--expect-codec` 拒绝非预期编码，`--stats-interval` 记录长测窗口；GPU 裁剪及 `--cpu-readback` 对照 | [延迟测量](latency.md) |
-| tools/latency-summary.py | Mac | 无 | 匹配时间戳与呈现节奏；`--window-start`/`--window-seconds` 比较长测首尾，拒绝错误帧号匹配及失准时钟 | [延迟测量](latency.md) |
-| tools/latency-rtp-summary.py | 离线 | 无 | 用独立解码验证的 AU→RTP 映射关联所有回调，报告缺失关联及像素回读错帧；拒绝重复映射、SSRC 变化和失准时钟，不通过推算帧周期补帧号 | [延迟测量](latency.md) |
-| tools/video-timing-summary.py | Mac | 无 | 汇总 VIM4_VIDEO_TIMING 分段计时 | [延迟测量](latency.md) |
-| tools/input-target.swift | Mac | 覆盖显示器 | input-check临时接收窗口；--normal-level允许HDR设置窗口置前 | [输入验证](input-latency.md) |
-| tools/input-summary.py | Mac | 无 | 汇总 input-check 日志 | [输入验证](input-latency.md) |
-| tools/key-repeat.html | 被控电脑浏览器 | 只接收本页面手动输入，不注入键鼠 | Backspace 直连 / KVM 长按频率、首次重复等待、释放事件对照，导出 JSON | [输入验证](input-latency.md#手动对照-backspace-长按) |
-| tools/uu-scroll-probe.swift | Mac | 无 | 只测本窗口收到的滚轮事件，不注入输入 | [UU 滚轮](uu-scroll.md) |
-| tools/hdmi-audio-tone.c | Mac | 无 | 只向 HDMI 设备播放 440Hz | [功能状态](archive/feature-status.md) |
-| tools/uac-record-level.swift | Mac | 无（需麦克风权限） | 录 UAC2 电平与主频 | [板级工具](board-tools.md) |
-| tools/hdmi-capture.sh | 板（root） | 独占采集 | 经 vfm_cap 抓一帧 PNG | [内核](kernel.md) |
-| tools/hdmi-control-watch.py | 板（root） | 读 | 采样 RX port 1 控制状态 | [HDMI 恢复审查](archive/hdmi-recovery-review.md#控制状态采样工具) |
-| tools/hid-rebind-check.py | 板（root） | 独占，应用停止；旧内核会 panic | HID epoll 跨 UDC 重新绑定 | [内核](kernel.md) |
-| tools/crg-udc-check.py | 板（root） | 独占，仅 7.3 CRG 测试内核 | 最小 HID 重绑定；`--storage-image` 增加三种 HID＋只读盘，等待主机弹出确认；可保留旧 fd/epoll | [CRG 实测](bringup/2026-10-19-crg-udc.md) |
-| tools/crg-composite-host-check.py | Mac → 板 | 独占，移动光标、临时窗口接收按键、枚举测试盘 | 配合 CRG 板端工具，核对键鼠、只读盘文件哈希、安全弹出与重绑定 | [CRG 组合实测](bringup/2026-10-19-crg-composite.md) |
-| tools/hdmirx-resource-check.py | 板（root） | 独占，仅 7.3 HDMI RX 测试内核；PHY 模式改变 EDID／HPD | 资源回收与旧 fd；`--phy-firmware` 验证固定频率 PLL，`--reject-firmware` 在所选模式验证失败 probe | [HDMI PHY 实测](bringup/2026-10-19-hdmirx-phy.md) |
-| tools/hdmirx-ddc-host-check.py | Mac → 板 | 独占，加载接收模块并改变 EDID／HPD，影响 HDMI 显示连接 | 比较接收器 RAM 与 Mac HDMI 端实际读到的不同 EDID；不验证视频帧 | [HDMI DDC 实测](bringup/2026-10-19-hdmirx-ddc.md) |
-| tools/hdmirx-frame-check.py | Mac / Linux | 无 | 离线校验 1080p/4K RGB24、NV12 的三处帧号及推进；--check-colors 增加颜色块，输入来自 coherence source | [4K 与编码](bringup/2026-10-19-wave521-uhd.md) |
-| tools/hdmirx-stream-check.c | 板（root） | 独占，仅 7.3 HDMI 实验内核 | 四缓冲运动检查、耗尽恢复及反复开关流；`--dmabuf` 验证导出、队列重建和重映射，`--hold-exports` 等待控制端释放；需先编译 | [HDMI DMA-buf](bringup/2026-10-19-hdmirx-dmabuf.md) |
-| tools/hdmirx-soak.c | 板（root） | 独占采集，调用者持双锁并停启应用 | 原生 NV12 逐帧 ERROR/sequence/单调时间；`--count-errors` 继续计数有效帧率但仍报失败，`--markers` 检查三处运动帧号；不改 EDID/HPD | 脚本头注释 |
-| tools/hdmirx-encode-check.py | 板（root）/ Linux | capture 独占实验采集；verify 离线 | DMA-buf采集/编码、CPU/pad时间；HDR2退休配check_retirement.py，噪声底配compare_frames.py；packaging/hdr2-pq/video-recovery.mjs仅接收视频，需独占、不发HID/音频；--literal-host-candidates仅改本次Chrome；HDR2_SAMPLE_MS=50细采样，先验4K解码推进 | [4K 与编码](bringup/2026-10-19-wave521-uhd.md)、[恢复门禁](bringup/2026-10-31-hdr2-recovery.md) |
-| packaging/hdr2-pq/mcp-screenshot.py | Mac → 板 | 持板锁，只读截图 | 每次RPC使用新的curl连接；读取既有凭据经stdin传递，不暴露键鼠工具、不输出密钥；--output指定不存在的新图片 | [MCP与接收诊断](bringup/2026-10-31-hdr2-mcp-ice-pq.md) |
-| tools/wave5-lifecycle-check.py | 板 | 独占编码；停视频应用 | 实验 7.3 的 H.264/H.265 图案编码反复 EOS；检查视频句柄与 CMA 回收，首轮泄漏即停止 | [One-KVM 接入](bringup/2026-10-20-onekvm-wave5.md) |
-| tools/onekvm-local-bench.py | Mac → 容器；可选当前内核板子 | 默认无；--board 占 CPU/内存带宽，不停服务 | DMA 平面、压缩缓存与复制基准；可先跑离线所有权、输入状态等待、profile 和逐行刷新回归 | [本地基准](local-video-benchmark.md) |
-| tools/vim4-driver-bench.c | 板；需先编译 | 独占采集/编码；调用者停启应用 | 原生纯采集、H.264/H.265/JPEG 驱动基准；CPU、pad 耗时、CMA；支持 7.x/5.15，`--secondary --fps=120`测1080p独立采集；独立录像验证 | [驱动基准](driver-benchmark.md) |
-| tools/test-fan-policy.sh | VM | 无 | 编译内核风扇插值函数做断言 | [内核](kernel.md) |
+| [hdmi-source-mode.swift](../tools/hdmi-source-mode.swift) | macOS 信源机编译/运行 | set 改信源模式，须独占并保存/恢复原 ID | list/set backing raster | [主线内核](kernel-mainline.md) |
+| [packaging/hdr10/application-receiver.mjs、test-receiver.mjs](../packaging/hdr10/application-receiver.mjs) | Mac / Node | 接收需板票和 sampling；自测无板访问、需 heavy | HDR接收取证 | [HDR10](hdr10-remote-73.md) |
+| [packaging/hdr10/screen-observe.swift](../packaging/hdr10/screen-observe.swift) | Mac | 无 | 构建工具 | [第二阶段记录](bringup/2026-10-31-hdr10-phase2-offline.md) |
+| [packaging/hdr10/analyze-phase2.py、ffmpeg-vm.py、check-phase2-plugins.py](../packaging/hdr10/analyze-phase2.py) | 宿主 / VM | 离线需 heavy；--device-factories 需候选窗口 | 构建工具 | [第二阶段记录](bringup/2026-10-31-hdr10-phase2-offline.md) |
+| [packaging/hdr10/measure-gpu.py](../packaging/hdr10/measure-gpu.py) | 板 | --execute 独占 GPU/采集；其他消费者须停止 | 构建工具 | [HDR10](hdr10-remote-73.md) |
+| [rtp-udp-bench.c](../tools/rtp-udp-bench.c) | Linux ARM64 容器 / 板 | 无硬件访问；板端占 CPU，须协调测量窗口 | UDP发送基准 | [发送基准](bringup/2026-10-25-rtp-send-benchmark.md) |
+| [encoder-vbv-bench.c、tools/encoder-vbv-probe.c](../tools/encoder-vbv-bench.c) | Linux ARM64 / 板 | bench run 独占编码；fixture/reference 无；probe 仅限私有测试进程 | VBV固定输入基准 | [VBV 对照](bringup/2026-10-26-encoder-vbv.md) |
+| [encoder-vbv-run.py](../tools/encoder-vbv-run.py) | 板 | 独占；临时停启One-KVM并恢复原active状态 | VBV配对执行 | [VBV 对照](bringup/2026-10-26-encoder-vbv.md) |
+| [encoder-vbv-summary.py、tools/encoder-vbv-quality.py](../tools/encoder-vbv-summary.py) | 离线；quality需ffmpeg | 不访问硬件；解码需避开性能窗口 | VBV与画质汇总 | [VBV 对照](bringup/2026-10-26-encoder-vbv.md) |
+| [display-color.py、tools/display-color.c](../tools/display-color.py) | 离线 / 板（root） | chart/analyze/diff 无；run 独占显示/采集；snapshot 只读控制和矩阵 | 显示颜色校准 | [颜色校准](display-color-calibration.md) |
+| [hdmi-color-check.py](../tools/hdmi-color-check.py) | 离线，PNG分析需Pillow | 不接触板子 | HDMI颜色分析 | [HDR切换颜色修复](bringup/2026-10-25-native-hdr-color.md) |
+| [perf-baseline.py](../tools/perf-baseline.py) | 离线 | 无 | 性能预算与配对汇总 | [性能基线](performance-baseline.md) |
+| [perf-quick.py、perf-motion.html](../tools/perf-quick.py) | Mac / M6浏览器 / 板 | MCP发送目标机HID；native独占采集编码、暂停并恢复One-KVM；window可RAM启动/恢复 | pm-phase 合并 4K60/空闲 PM 采样 | [快速实验](bringup/2026-10-31-p0-2-performance.md) |
+| [perf-sensors.py](../tools/perf-sensors.py) | 板 | 读；性能窗口内 | 1Hz温度/功率/频率/runtime状态JSONL | [性能基线](performance-baseline.md) |
+| [vendor-boot-plan.py](../tools/vendor-boot-plan.py) | 离线 | 无 | 厂商一次性启动计划 | [厂商对照启动](vendor-boot-baseline.md) |
+| [latency-source.swift](../tools/latency-source.swift) | Mac | 占用 HDMI 画面；可输出 HDMI 音频 | 把帧号画进 HDMI 输出 | [延迟测量](latency.md) |
+| [hdmi-resolution-source.swift](../tools/hdmi-resolution-source.swift) | Mac | 临时覆盖所选 HDMI 桌面 | 原生 UHD 单像素条纹与参考 PNG | [清晰度复核](bringup/2026-10-20-edge-uhd-detail.md) |
+| [hdmi-resolution-check.py](../tools/hdmi-resolution-check.py) | 离线 | 无 | 原生空间细节分析 | [清晰度复核](bringup/2026-10-20-edge-uhd-detail.md) |
+| [latency-receiver.mjs](../tools/latency-receiver.mjs) | Mac | 独占 | 帧标记与呈现接收 | [延迟测量](latency.md) |
+| [latency-summary.py](../tools/latency-summary.py) | Mac | 无 | 匹配时间戳与呈现节奏 | [延迟测量](latency.md) |
+| [latency-rtp-summary.py](../tools/latency-rtp-summary.py) | 离线 | 无 | AU与RTP关联验证 | [延迟测量](latency.md) |
+| [video-timing-summary.py](../tools/video-timing-summary.py) | Mac | 无 | 汇总 VIM4_VIDEO_TIMING 分段计时 | [延迟测量](latency.md) |
+| [input-target.swift](../tools/input-target.swift) | Mac | 覆盖显示器 | input-check临时接收窗口 | [输入验证](input-latency.md) |
+| [input-summary.py](../tools/input-summary.py) | Mac | 无 | 汇总 input-check 日志 | [输入验证](input-latency.md) |
+| [key-repeat.html](../tools/key-repeat.html) | 被控电脑浏览器 | 只接收本页面手动输入，不注入键鼠 | 长按与释放对照 | [输入验证](input-latency.md#手动对照-backspace-长按) |
+| [uu-scroll-probe.swift](../tools/uu-scroll-probe.swift) | Mac | 无 | 只测本窗口收到的滚轮事件 | [UU 滚轮](uu-scroll.md) |
+| [hdmi-audio-tone.c](../tools/hdmi-audio-tone.c) | Mac | 无 | 只向 HDMI 设备播放 440Hz | [功能状态](archive/feature-status.md) |
+| [uac-record-level.swift](../tools/uac-record-level.swift) | Mac | 无（需麦克风权限） | 录 UAC2 电平与主频 | [板级工具](board-tools.md) |
+| [hdmi-capture.sh](../tools/hdmi-capture.sh) | 板（root） | 独占采集 | 经 vfm_cap 抓一帧 PNG | [内核](kernel.md) |
+| [hdmi-control-watch.py](../tools/hdmi-control-watch.py) | 板（root） | 读 | 采样 RX port 1 控制状态 | [HDMI 恢复审查](archive/hdmi-recovery-review.md#控制状态采样工具) |
+| [hid-rebind-check.py](../tools/hid-rebind-check.py) | 板（root） | 独占，应用停止；旧内核会 panic | HID epoll 跨 UDC 重新绑定 | [内核](kernel.md) |
+| [crg-udc-check.py](../tools/crg-udc-check.py) | 板（root） | 独占，仅 7.3 CRG 测试内核 | 最小 HID 重绑定 | [CRG 实测](bringup/2026-10-19-crg-udc.md) |
+| [crg-composite-host-check.py](../tools/crg-composite-host-check.py) | Mac → 板 | 独占，移动光标、临时窗口接收按键、枚举测试盘 | 配合 CRG 板端工具 | [CRG 组合实测](bringup/2026-10-19-crg-composite.md) |
+| [hdmirx-resource-check.py](../tools/hdmirx-resource-check.py) | 板（root） | 独占，仅 7.3 HDMI RX 测试内核；PHY 模式改变 EDID／HPD | 资源回收与旧 fd | [HDMI PHY 实测](bringup/2026-10-19-hdmirx-phy.md) |
+| [hdmirx-ddc-host-check.py](../tools/hdmirx-ddc-host-check.py) | Mac → 板 | 独占，加载接收模块并改变 EDID／HPD，影响 HDMI 显示连接 | DDC读回对照 | [HDMI DDC 实测](bringup/2026-10-19-hdmirx-ddc.md) |
+| [hdmirx-frame-check.py](../tools/hdmirx-frame-check.py) | Mac / Linux | 无 | 原始帧标记校验 | [4K 与编码](bringup/2026-10-19-wave521-uhd.md) |
+| [hdmirx-stream-check.c](../tools/hdmirx-stream-check.c) | 板（root） | 独占，仅 7.3 HDMI 实验内核 | 采集队列生命周期 | [HDMI DMA-buf](bringup/2026-10-19-hdmirx-dmabuf.md) |
+| [hdmirx-soak.c](../tools/hdmirx-soak.c) | 板（root） | 独占采集，调用者持双锁并停启应用 | 逐帧采集稳定性 | 脚本头注释 |
+| [hdmirx-encode-check.py](../tools/hdmirx-encode-check.py) | 板（root）/ Linux | capture 独占实验采集；verify 离线 | DMA-buf采集/编码、CPU/pad时间 | [4K 与编码](bringup/2026-10-19-wave521-uhd.md)、[恢复门禁](bringup/2026-10-31-hdr2-recovery.md) |
+| [packaging/hdr2-pq/mcp-screenshot.py](../packaging/hdr2-pq/mcp-screenshot.py) | Mac → 板 | 持板锁，只读截图 | MCP只读截图 | [MCP与接收诊断](bringup/2026-10-31-hdr2-mcp-ice-pq.md) |
+| [wave5-lifecycle-check.py](../tools/wave5-lifecycle-check.py) | 板 | 独占编码；停视频应用 | 编码器生命周期 | [One-KVM 接入](bringup/2026-10-20-onekvm-wave5.md) |
+| [onekvm-local-bench.py](../tools/onekvm-local-bench.py) | Mac → 容器；可选当前内核板子 | 默认无；--board 占 CPU/内存带宽，不停服务 | DMA 平面、压缩缓存与复制基准 | [本地基准](local-video-benchmark.md) |
+| [vim4-driver-bench.c](../tools/vim4-driver-bench.c) | 板；需先编译 | 独占采集/编码；调用者停启应用 | 采集编码驱动基准 | [驱动基准](driver-benchmark.md) |
+| [test-fan-policy.sh](../tools/test-fan-policy.sh) | VM | 无 | 编译内核风扇插值函数做断言 | [内核](kernel.md) |

@@ -1,76 +1,37 @@
 # VIM4 新内核基线
 
-2026-11-03：板上运行 `25110086de2ef` 完整构建的 kbase 内核
-`7.3.1-vim4kvm-uhd7+`，启动文件位于 `/boot/kernels/7.3.1-vim4kvm-uhd7+`。
-[安装与九类验收](bringup/2026-11-03-kernel-731-deploy.md)含1080p/4K往返、无信号恢复、
-4K60运动、M6键鼠/介质及Wi-Fi；音频只验状态，UU只证明官方客户端RTP接收。
-中途回uhd7对照确认长文本损坏也存在于原基线，随后重新登记并继续验收。
-板上启动项已统一为 Mainline/Vendor，默认 Mainline；旧启动目录和退役模块已删除，
-仅保留当前 7.3.1 与厂商 `5.15.137-vim4kvm-hdrdual6`。
-改名、空间与重启冒烟见[清理记录](bringup/2026-11-03-kernel-naming-cleanup.md)。
+本页管主线源码、整包升级与维护；安装只读[身份](#源码与配置)、[升级合同](#正式构建与整包升级)，占板另读[短窗口](board-window.md#占板时间最短化)。
+当前身份唯一来源：[sources.toml](../packaging/kernel/sources.toml)；tested_build/retained_runtime是验收与保留状态，package是下一包，不能混用。
+[正式部署](bringup/2026-11-03-kernel-731-deploy.md)与[启动项清理](bringup/2026-11-03-kernel-naming-cleanup.md)限定证据；音频只验状态、UU只验官方客户端RTP接收，未发布Release。
+导航：[路线图](#通用内核路线图) · [审查](#审查边界与后续验证) · [补丁维护](#补丁维护方法) · [隔离](#wave5-隔离告警) · [历史](#相关记录)。
 
-当前开发分支已接通 HDMI 输入、VDIN 直接 DMA、Wave5 H.264/H.265、硬件 JPEG 与音频，
-并部署完整 manager 和四种 KVM 的双内核运行时；5.15 可保留启动，共用同一应用的数据。
-双内核运行时的基础集成见[双内核完整系统集成](bringup/2026-10-21-dual-kernel-integration.md)，
-此前 19 模式、双编码和 600 秒运动结果见 [uhd6 正式验收](bringup/2026-10-31-uhd6-formal.md)。
-本页保留 Armbian 导入与专项历史记录；已退役配置和旧锁产物只在 Git 历史中保留。
-uhd6在uhd4的ADLA/nodebug/M0、HDR2恢复系列之上纳入已验原生HDR源码与uhd5外部GPU模块；
-用户态、同次完整模块和验收范围以统一记录为准，旧产物不能混装。
-尺寸、QP/无损、ACM板侧及GPU的实际通过/未验证边界见[批量验证](bringup/2026-10-30-kernel73-gap-validation.md)
-和[第三/四轮复验](bringup/2026-10-30-kernel73-gap-r3.md)。该轮GPU sudo CPU预算问题为历史边界，
-不将旧九类回归、音频或HID历史结果算作本轮重测。构建产物尚未发布到Release。
-以下RX/PCM/SARADC叙述为此前b1300eb及更早窗口的历史证据：
-[同链路对照](bringup/2026-10-23-hdmirx-vendor-comparison.md)为7.3十分钟12次冻结、厂商5.15零次；
-已定位TOP测量VALID空窗被误判ENOLINK，修复一次性候选十分钟零冻结、四次HPD恢复，
-正式五分钟60.00038fps、零冻结/停流，音频/HID/管理面及finalize通过。
-不能将恢复期间状态直接归因为源/线缆物理失锁。
-静态显示布局只匹配当前pd-handoff/HDMI/无MIPI，4K显示器、原生模式切换未验收。
-当前哈希、备份与门禁见 [RX对照与正式修复](bringup/2026-10-23-hdmirx-vendor-comparison.md)；
-前次九类见 [PCM与SARADC正式窗口](bringup/2026-10-23-kvm-audio-capture-stability-deploy.md)；
-M0布局、音频ENOLINK对照与原基线回退见 [M0正式部署](bringup/2026-10-23-display-m0-r4.md)。
-此前[隔离基线](bringup/2026-10-23-wave5-isolation-final.md)保留可能仍被DMA使用的内存到重启；
-新[Wave5受控恢复与失败隔离](bringup/2026-10-23-wave5-runtime-window.md)有独立注入证据，真实固件挂死未证明解决。
-短测不代表长期稳定性；此前 [Wave5正式部署](bringup/2026-10-22-edge-wave5-deploy.md)
-含正常重启pstore标记读回，本轮没有另做该重启检查。
-此前 pstore 启动的 SARADC channel 2 超时见[专项取证与离线候选](bringup/2026-10-22-saradc-timeout-audit.md)，
-此前 e0346697 基线见 [历史保留记录](bringup/2026-10-22-edge-7-3-final-retained.md)。
-第二轮 19 模式通过后即时 EDID 检查触发的回退见
-[历史尝试](bringup/2026-10-22-edge-7-3-final-deploy.md)，脚本入口见
-[部署准备](bringup/2026-10-22-deploy-7-3-final-prep.md)。
-其他会话的临时音频测试可能占用板子；本页的部署基线不代表其测试窗口中的瞬时版本。
+## 源码与配置
 
-CRG USB 设备端早期已完成真实键鼠和
-只读虚拟盘三轮组合测试，仍需扩大 USB 验收，范围见
-[CRG 组合实测](bringup/2026-10-19-crg-composite.md)。
-HDMI RX 已通过 EDID/DDC 源端读回，并在固定 148.5 MHz 实验路径中取得真实的
-1920×1080 RGB24 视频快照，三处帧号一致且重复采集推进，见
-[取帧实测](bringup/2026-10-19-hdmirx-frames.md)。V4L2 MMAP 已通过私有 cached DMA 环
-实现稳定段约 60fps，5400 帧运动校验通过，见
-[1080p60 实测](bringup/2026-10-19-hdmirx-dma-ring.md)。后续 DMA-buf 导出也通过 5400 帧检查，
-并完成 180 帧软件 H.264 编解码校验，见
-[DMA-buf 实测](bringup/2026-10-19-hdmirx-dmabuf.md)。固定 RGB8 4K60 输入与
-H.264/H.265 硬编码已取得实验结果，见
-[Wave521 与 4K60](bringup/2026-10-19-wave521-uhd.md)。独立 One-KVM 已在网页播放
-两种格式的 4K60；重复重配的 DMA 回收修复见
-[应用接入记录](bringup/2026-10-20-onekvm-wave5.md)。直接 DMA 的固定 4K60 实验已将
-整机 CPU 降到约 4.2–4.3%，见 [本地基准与直接 DMA](bringup/2026-10-20-direct-dma-benchmark.md)；
-长期稳定性验收尚未完成。
-当前已部署包含 VDIN/Wave5 修复与安静风扇的完整匹配 Image/模块，见
-[启动风扇与 HDMI 恢复](bringup/2026-10-20-edge-recovery.md)；首次安静曲线的性能短测见
-[安静风扇与整包验证](bringup/2026-10-20-edge-quiet-fan.md)，旧 Image 加 VDIN 覆盖的
-同连接 30 分钟结果见 [持续延迟](bringup/2026-10-20-edge-status-latency.md#同连接-30-分钟)。
-现有 5.15 内核工作树和发布版本保留；workspace.toml 的用户态仓库锁随双内核适配更新。
-受支持的 RGB8 1080p60/4K60 自动重配与应用缓冲回收见
-[动态模式记录](bringup/2026-10-20-edge-dynamic-modes.md)。
-有限的 [HDR10 4K60 采集与 HDR→SDR](bringup/2026-10-20-edge-hdr-capture.md) 已接通，
-独立 edge 服务使用专用 EDID 和显式选项；HLG、其他 HDR 格式与长期验收仍未完成。
+- 身份、上游/Armbian版本、补丁与验收产物：见[来源锁](../packaging/kernel/sources.toml)、[配置](../packaging/kernel/kernel.config)及[发行收据](../packaging/kernel/releases/)；不要复制历史SHA作为当前版本。
+- VM工作树与worker操作见[工作区](workspace.md#构建)。检出锁定revision，必须用独立Linux大小写敏感文件系统；不重做rc7导入、不覆盖已有工作树。
+- 主线与厂商构建入口见[packaging/kernel](../packaging/kernel/)；已验旧release/配置不追改，同次完整模块与用户态不能混装。编译成功不表示补丁已硬件审查。
+
+## 构建
+
+### 正式构建与整包升级
+
+命令/参数、命名与文件清单分别以[build.sh](../packaging/kernel/build.sh)、[package-unified.py](../packaging/kernel/package-unified.py)、[register-runtime.py](../packaging/kernel/register-runtime.py)为准；构建环境见[工作区](workspace.md#构建)，release/tag规则见[代码规范](code-standards.md)。
+
+1. 先核锁定源码干净、输出为空且在源码外；使用打包日对应的来源锁，候选用独立锁，不提前改正式来源。validate-only通过不等于编译或部署。
+2. 构建同次Image、DT与完整模块，保留最终配置、来源、编译器和产物哈希；失败保留日志/现场，手工续建或换新空目录，不自动清理。构建不连接板子或修改启动项。
+3. 封包核同次完整基础/外部模块、vermagic、BTF和build ID。任务私有暂存只移除modules_install的build/source链接，不改原始构建；启动器须包含精确新release和受控平台/HDMI/gadget入口。已有同release包拒绝覆盖，应递增构建序号。
+4. 独占板窗取得当前基线proof后安装；已有Mainline精确登记是前提，不能只看uname。先核外层/包内完整文件集合与模块，再预检启动和根分区空间：按完整候选启动文件及新模块/运行时/固件预算，同设备合并，不能只算Image大小差额。
+5. 保留默认标签、其他启动入口与原release目录，不创建额外备份。固件核来源后复制；新启动文件写独立目录逐项核验，双内核用户态入口临时写入、fsync再原子替换。
+6. 模块、固件、启动文件和入口核验并sync后，先原子写运行时登记，最后单次替换Mainline启动指针，默认标签不变。启动提交前进程即使死亡也应正常启动原Image/DT/模块；遗留候选目录不自动删，非空模块目录复用须完整清单一致。
+7. 按[部署门禁](subsystems/deployment.md#内核开发流程与部署门禁)验收后保留候选，并在对应源码SHA建release tag；本地tag不授权push。失败才指回仍保留的整包并重新登记，清理旧内核另核引用及授权。
+
+RAM候选的基线准入与恢复证明只在[短窗口](board-window.md#当前正式基线)维护，不沿用正式安装步骤。
 
 ## 通用内核路线图
 
 目标是追平厂商5.15全部适用能力，核心进入DRM/KMS、V4L2、ASoC、genpd等主线框架，
 外围可先移植后整理；绕过和保护不能作为终态。完整范围、固定源码/DT行号、缺口依赖、
-工作量与硬件见 [厂商能力对照与总体规划](parity/README.md)。该表固定比较M0 `47878a0c611d`，
-并叠加当时`b1300eb8`正式增量；10月30日保留锁已更新为213f2715，不能把该历史对照表当最新验收。
+工作量与硬件见 [厂商能力对照与总体规划](parity/README.md)，其固定版本对照不能当最新验收。
 以下顺序与F0–F5一致，不代表硬件验收通过。
 
 | 优先级 | 方向 | 当前边界与下一步 |
@@ -78,7 +39,7 @@ H.264/H.265 硬编码已取得实验结果，见
 | F0，最高 | KVM采集与音频稳定性 | FDET分类、PCM XRUN与资格重开已正式保留；TOP测量空窗误判已有同链路定位并正式修复，更多源及长期连续性待覆盖 |
 | F1，最高 | Wave5恢复与HEVC尺寸正式实现 | 正式分支已含[genpd循环与固件冷加载](bringup/2026-10-23-wave5-runtime-window.md)，失败保留DMA；[P0-3审查](bringup/2026-10-31-wave5-real-hang-safety.md)确认真实挂死注入尚无安全证据。保持尺寸保护/AVC回退，先补安全注入再验恢复 |
 | F1→F2 | 本地显示M1+与采集共存 | M0 simpledrm已过，M1由现有任务承接；统一共享VCBUS/MMIO/时钟归属，后续原生DRM modeset/EDID/HPD、多平面及HDMI声音，不以固定handoff当终态 |
-| F2 | 输入格式完整化与硬件解码 | HLG/隔行拒绝需正式色彩/去隔行实现；12bit动态路径已实现但真源未验。解码沿[既有VDEC门禁](bringup/2026-10-22-vdec-mdec-offline.md)，先安全平台层和H.264正确帧，再扩codec/位深/多实例 |
+| F2 | 输入格式完整化与硬件解码 | HLG与12bit动态路径已实现但真源未验；隔行仍需去隔行实现。解码沿[既有VDEC门禁](bringup/2026-10-22-vdec-mdec-offline.md)，先安全平台层和H.264正确帧，再扩codec/位深/多实例 |
 | F2→F5 | 全部音频路由 | HDMI-TX播放先行，再I²S/PCM/SPDIF/PDM/EXTN/loopback/ASRC/effect/VAD/DSP；当前RX采集不代表输出、eARC或全部厂商路由可用 |
 | F3 | 电源、调压、挂起与唤醒 | 按[PM审查](bringup/2026-10-22-p2-suspend-audit.md)先设备quiesce/恢复，再解除临时常开/CRG EBUSY；GPU逐频电压表不足，禁止猜值；本轮不做整机挂起 |
 | F3 | KASLR/启动随机种子 | 晚期hwrng不能补早期KASLR；按[SD安全方案](bringup/2026-10-22-uboot-sd-recovery.md)先可恢复启动验证，不刷共享板引导区 |
@@ -87,153 +48,13 @@ H.264/H.265 硬编码已取得实验结果，见
 | 条件受限 | Dolby Vision、HDCP/安全媒体、密钥/TA与闭源SDK | 缺授权/固件合同的功能明确受限，不以普通文件、软件回退或伪造能力替代；具备条件后仍接标准框架 |
 | 不做接口兼容 | 旧厂商私有ABI | 功能仍在追平范围；以DRM/V4L2/ASoC/dma-buf等标准接口交付，闭源旧消费者另列兼容条件 |
 
-## 源码与配置
-
-- Linux 工作树：OrbStack `vim4-build` 的 `/home/deepdream/src/linux-7.3`。
-- 开发分支：[vim4-kvm-7.3](https://github.com/vim4-kvm/linux/tree/vim4-kvm-7.3)，固定版本见源码锁。
-- 上游：`https://github.com/gregkh/linux.git`，`v7.3.1`，完整历史的过滤克隆。
-- Armbian：`https://github.com/armbian/build.git`，固定提交
-  `ecc676bf89af37788f972db9a7ff3f92844a43eb`，VM 中为 `~/src/armbian-build-7.3`。
-- 补丁：`patch/kernel/archive/meson-s4t7-7.3/*.patch`，按文件名排序，共 164 个。
-  这是 S4/T7 共用集合，保留原作者；逐项应用不等于完成硬件正确性审查。
-- 构建配置与源码锁：[packaging/kernel](../packaging/kernel/)。同目录的 `package.sh`、
-  `promote.py`、`vim4.config` 仍用于厂商 5.15；主线使用 `build.sh`、`kernel.config`。
-
-已验收的配置、完整模块清单和收据位于
-`packaging/kernel/releases/7.3.1-vim4kvm-uhd7+/`，内容按原 release 保留。
-下次构建使用 `kernel.config`，仅将 `CONFIG_LOCALVERSION` 置空，功能配置沿用该验收版本。
-`build.sh` 执行 olddefconfig，将最终配置写入新的外部构建目录并核对哈希。
-它只接受 sources.toml 固定 SHA 的干净源码，不安装、不重启。
-当前整包使用原始 Image，`tested_build.image_sha256` 与 `uncompressed_image_sha256` 相同。
-`retained_runtime.live_proof_sha256` 对应重启后核验收据。
-
-下方是最初 Armbian rc7 导入的历史步骤；当前分支已基于 v7.3 重放并合入板级修复，
-准确复现应检出 sources.toml 的提交，不重新执行这段导入。固定 Armbian 快照为 7.3 选择 rc7，
-不要只凭目录名判断上游版本。源码准备使用独立 Linux 大小写敏感文件系统，
-不要切换 Mac 上已有的 `vim4-linux-7.x` 工作树。
-
-重新准备源码时，在新的 Linux 目录执行以下步骤；已有目录不要覆盖。
-提交者沿用开发者现有 Git 身份，不修改 Git 配置；`git am` 保留补丁作者。
-
-```sh
-git clone --filter=blob:none --no-checkout --single-branch --branch v7.3-rc7 https://github.com/gregkh/linux.git linux-7.3
-git -C linux-7.3 switch -c vim4-kvm-7.3 v7.3-rc7
-git -C linux-7.3 remote rename origin upstream
-git -C linux-7.3 remote add origin https://github.com/vim4-kvm/linux.git
-git clone --filter=blob:none --no-checkout https://github.com/armbian/build.git armbian-build-7.3
-git -C armbian-build-7.3 checkout --detach ecc676bf89af37788f972db9a7ff3f92844a43eb
-git -C linux-7.3 am ../armbian-build-7.3/patch/kernel/archive/meson-s4t7-7.3/*.patch
-```
-
-补丁失败时停止审查，不自动跳过或放宽匹配。
-`patches.sha256` 记录排序后的补丁校验和，可在 Armbian 补丁目录用
-`sha256sum -c /path/to/packaging/kernel/patches.sha256` 核验。
-重新 git am 会产生不同提交者时间，HEAD 不一定相同；需对照锁中的 tree 和补丁清单，
-审查后更新本地源码锁。已经发布的开发分支则应直接检出固定 revision。
-
-本次还在主仓库不入库的 `build/kernel/vim4-kvm-7.3.bundle` 保存了 164 个提交，
-已用 git bundle verify 验证。它需要上游 `v7.3-rc7` 提交，可在已有上游对象的新克隆中
-用 `git fetch /path/to/vim4-kvm-7.3.bundle vim4-kvm-7.3:vim4-kvm-7.3` 恢复精确提交。
-
-## 构建
-
-### 正式构建与整包升级
-
-`sources.toml` 的 tested_build/retained_runtime 记录已验收的 7.3.1；package 节记录下次构建输入。
-新 release 为 `<上游版本>-vim4-<UTC打包日YYYYMMDD>`，同日再构建追加 `.2`、`.3`。
-package.date/build/tag 与 kernel.revision 分别固定日期、构建序号、计划 tag 和源码 SHA。
-`build.sh SOURCE OUTPUT [CONFIG]` 默认使用正式源码锁，CONFIG 默认 `kernel.config`；
-显式传 `LOCALVERSION=-vim4-<日期>[.序号]`，核验最终 release 无 `+`。
-加 `--validate-only` 验证干净源码与olddefconfig最终配置哈希，OUTPUT必须为空。
-另一个尚未验收的候选仍可显式提供独立 `--candidate-lock LOCK`，不能提前改正式来源锁。
-本轮没有重编内核；旧 release、配置与验收结果不追改。
-每次正式部署验收后在对应内核源码 SHA 创建 `v<release>` tag；本地 tag 不代表已授权 push。
-
-`package-unified.py --launcher LAUNCHER` 默认读取同一正式锁，沿用已有 kernel/stage/
-candidate/native/wave5-plugin 输入，核对同次完整基础模块、三个外部模块的SHA、vermagic、
-BTF与build ID，封存Image、双GPU DT、config、Module.symvers、vmlinux.btf、运行时和模块。
-暂存目录不得带modules_install的build/source符号链接；复制到任务私有暂存后只移除这类链接，
-不改原始构建。候选使用已核对的r14e应用启动器，增加精确新release，并带受版本管理的
-平台/HDMI/gadget入口；独立候选可另加 `--candidate-lock LOCK`。封包当天必须与 package.date 一致，
-输出为 `vim4-kernel-<release>.tar.gz`；同 release 的包已存在时拒绝覆盖，下一包应增加构建序号。
-RAM窗口只接受5.15或当前正式锁的精确release，恢复目标以新采集的基线为准。
-5.15 proof 不要求主线启动文件；正式主线基线核对其 `/boot/kernels/<release>` 文件和完整模块。
-
-正式安装仍须另行授权的独占板窗。使用
-`register-runtime.py install vim4-kernel-<release>.tar.gz`，要求已有 Mainline 的精确登记；
-保留默认标签、其余启动入口和旧模块目录。外层清单必须与包内文件集合完全一致；先校验包与
-完整模块，再预检/boot和根分区空间。根分区只预算新模块解包、运行时和固件；候选启动文件
-按全量预算，/boot与根目录同设备时合并，不能只计算新旧Image的大小差额。
-安装不创建额外备份。BCM43752 .217固件从旧release的updates目录校验后复制到新release。
-新启动文件完整写入 `/boot/kernels/<新release>`，逐项核验；原 release 目录不修改。
-双内核兼容的/usr入口逐文件先写临时文件、fsync，再原子替换。
-模块、固件、启动文件和入口核验并sync后，
-先原子写kernels.json，最后单次原子替换extlinux中的Mainline LINUX/FDT；DEFAULT标签不变。
-启动提交之前即使进程直接死亡、未执行finally，正常重启仍选择原 Image/DT/模块。
-中断遗留的候选目录不自动删除；复用非空新模块目录仍须与完整清单完全一致。
-
-需要回到仍保留的上一整包时，将 Mainline 的 LINUX/FDT 指回其 `/kernels/<release>/Image`、
-`/kernels/<release>/vim4.dtb` 并重新登记；清理旧内核须另行核对引用并获授权。
-
-在 Linux ARM64、GCC 13 环境中运行；需要 make、flex、bison、bc、OpenSSL/ELF
-开发库和 pahole。准备阶段不安装到开发机或板子。
-
-```sh
-bash packaging/kernel/build.sh /home/deepdream/src/linux-7.3 /home/deepdream/build/kernel
-```
-
-脚本要求源码 HEAD 与锁一致、工作树干净、输出目录为空且位于源码之外。
-编译 `Image dtbs modules`，成功后生成 `build.json`，记录源码、编译器和产物校验和。
-构建失败时保留日志和输出用于诊断；手工继续 make 或另选新的空目录，不自动清理。
-此入口不生成 deb、不安装模块、不连接板子、不修改启动项。
-
 ## 2026-10-19 首轮构建结果
 
-- Linux 提交：`9c8bb58158d810a38ff37dec7c7d18cb131a3b52`，164 个补丁全部 git am 成功。
-- GCC：Ubuntu `13.3.0-6ubuntu2~24.04.1`，8 个并行任务。
-- 发布名：`7.3.0-rc7-vim4kvm-edge+`；末尾 `+` 表示相对上游标签有额外提交。
-- `Image dtbs modules` 成功，Image 53,639,680 字节，生成 2320 个 `.ko`。
-  日志没有 `warning:` 或 `error:`；未运行 dtbs_check，未进行启动或功能测试。
-- Image SHA-256：`56112d751e3ecadcc4972583c4dbbbed396c353be79f313641fdc001d0875a85`。
-- VIM4 DTB SHA-256：`d6d56472c93b2b073fa2e8e80412d4c8d5c0be8eaa391cfc7e4ef07bc8f0d277`。
-- 最终配置 SHA-256：`57163bd7de1cd169dc4b4514fce631b1280469d765572994dbce46b557c16c93`。
-- 完整输出在 VM 的 `~/build/kernel`；主仓库 `build/kernel/` 保存 Image、
-  VIM4 DTB、最终 `.config`、build.json 与 Git bundle。模块留在 VM，未打包安装。
-- 主仓库 `logs/kernel/` 保存编译、补丁导入、补丁校验和单元测试日志。
-- 主仓库离线测试 83 项通过，4 项跳过；新文档加入索引后又通过 5 项文档检查。
-  构建入口在 VM 验证了错误源码、非空输出目录、源码内输出三种拒绝路径。
-
-这些结果仅证明本次源码与配置可编译，不能作为硬件回归通过证据。
+[rc7 导入与首轮构建快照](archive/kernel-rc7-import.md)保留导入命令、bundle、产物哈希与未验范围。
 
 ## 启动固件预检与模块准备
 
-2026-10-19 检查板子仍运行 `5.15.137-vim4kvm`，`/boot` 剩余约 67 MiB。
-Image 已占约 51 MiB，不能假定加入 initramfs 后仍有足够空间。
-最终配置中 eMMC、ext4、串口为内建，以太网为模块，试启动需要对应模块。
-VM 已执行 modules_install、strip、压缩与 depmod，输出在
-`~/build/kernel-stage`（约 31 MiB，2320 个模块）。主仓库
-`build/kernel/modules-7.3.0-rc7-vim4kvm-edge.tar.xz` 为约 24 MiB 的模块归档。
-这是暂存目录归档，不是可直接向系统根目录解压的安装包；其中含 lib/modules 路径和构建链接。
-
-最初 2026-10-19 上板时的 U-Boot 源码 `b60ff51ece` 启用 CONFIG_CMD_RSVMEM，
-`common/bootm.c` 无条件运行 rsvmem check；检查器读取
-`/reserved-memory/linux,secmon` 的厂商属性，主线 DTB 没有该节点。
-Armbian 使用的 `khadas-vims-v2019.01-mainline` 分支包含三项相关修改：
-
-- `ee17cc6503`：没有 amlogic-dt-id 时跳过厂商 reserved-memory 检查。
-- `ee291cdb50`：FUSB302 PD 协商修复。
-- `a7b06ca049`：更新 T7 BL31；新旧固件对 SCMI/SMC 的兼容性仍需实机验证。
-
-在 VM `~/src/u-boot-edge` 建立 `vim4-kvm-2019.01-edge` 分支，基于现有安静启动
-版本应用这三个提交，保留取消风扇启动测试的修改。版本见 sources.toml。
-该目录为依赖 `~/src/u-boot` 对象库的 shared clone，不可单独删除原对象库。
-GCC 12 构建 BL33 与 bl33z 成功；厂商代码存在编译警告和 CONFIG_OF_EMBED 提示。
-日志在 VM `~/build/u-boot-edge.log`、`~/build/u-boot-edge-stub.log`。
-
-随后扩展 tools/vim4-repack.py，显式 `--update-bl31` 才允许替换 BL31，
-默认模式仍拒绝变化。先重建原厂固件验证 round-trip，再验证新 BL31/BL33 与
-目标载荷一致，保留早期阶段、BL30/BL40/BL32。新工具与候选源码版本已写入锁文件。
-首次上板结果见 [7.3 首次启动](bringup/2026-10-19-edge-firstboot.md)。
+[首次启动记录](bringup/2026-10-19-edge-firstboot.md)；U-Boot shared clone 依赖原对象库，不可单独删除其 `~/src/u-boot`。
 
 ## 审查边界与后续验证
 
@@ -270,27 +91,17 @@ forward 遇冲突须保留现场，解决后对完整结果运行 verify；构�
 
 ## Wave5 隔离告警
 
-内核 sysfs 的 `isolated`、`isolation_reason`、`isolation_time_ns`
-提供状态，触发时发出 `WAVE5_ISOLATED=1` uevent。隔离后保留 DMA 内存与映射，
-只允许重启清除。当前正式内核先尝试 T7 WAVE genpd 循环和固件冷加载，旧实例 EIO、
-新实例重开；复位失败才进入隔离，见[运行时复位窗口](bringup/2026-10-23-wave5-runtime-window.md)。
-隔离的十轮软件注入及九类门禁见[正式窗口](bringup/2026-10-23-wave5-isolation-final.md)。
-非 8 对齐 HEVC crop、B 帧和控件增量的实测边界另见
-[编码器批量窗口](bringup/2026-10-23-wave5-parity-window.md)；内核合入不代表正式安装。
+隔离后保留DMA内存/映射，只能重启清除；先尝试受控genpd循环/固件冷加载，旧实例报错、新实例重开，复位失败才隔离。
+[运行时复位](bringup/2026-10-23-wave5-runtime-window.md)、[软件注入](bringup/2026-10-23-wave5-isolation-final.md)不证明真实固件挂死可恢复；[编码边界](bringup/2026-10-23-wave5-parity-window.md)中的合入也不代表正式安装。
 
-`vim4-wave5-monitor.service` 默认只记录 journal，写 `/run/vim4-wave5/alert.json`。
-`/etc/default/vim4-wave5-monitor` 的 `WAVE5_AUTO_REBOOT=1` 可启用一次受控重启，
-但仅在全部 KVM 应用 inactive、所有虚拟介质为空持续至少 30 秒后请求；默认 60 秒。
-运行中但空闲的 One-KVM 不计为已确认无需求，因为 clients 未覆盖 UU、RTSP、录屏等
-消费者。读取失败会取消空闲计时；同次启动已有 reboot-attempted 标记时不重试。
-manager 的 `GET /api/status` 新增 `encoder`，包含 `known`、`isolated`、
-`needsReboot`、`reason`、字符串 `timeBoottimeNs`；本轮没有前端变更。
-
-常规板级安装或组件安装会启用监控单元；独立候选窗口用 final-window 的
-`stage --wave5-monitor` 纳入脚本、单元和 manager Wants drop-in，随窗口备份和回退，
-不覆盖管理员的自动重启配置。自动重启配置的板端实测范围须看专项记录。
+状态字段、文件位置与默认策略见[监控器](../board/vim4-wave5-monitor.py)、[单元](../board/vim4-wave5-monitor.service)。启用自动重启也须确认所有KVM应用已停止、虚拟介质为空且持续空闲；运行中但空闲的One-KVM不能作“无需求”证明，clients未覆盖UU/RTSP/录屏。
+读取失败取消空闲计时，同启动只尝试一次；不能覆盖管理员的自动重启配置。部署接入见[final-window](../packaging/kernel/final-window.py)，板端实测范围以专项记录为准。
 
 ## 相关记录
+
+- [RX同链路对照与修复](bringup/2026-10-23-hdmirx-vendor-comparison.md)：TOP测量VALID空窗曾误判失锁，恢复状态不能直接归因源/线缆；短测不证明长期稳定。
+- [M0](bringup/2026-10-23-display-m0-r4.md)、[PCM/SARADC](bringup/2026-10-23-kvm-audio-capture-stability-deploy.md)、[SARADC取证](bringup/2026-10-22-saradc-timeout-audit.md)：静态handoff仅当前布局，原生切模式/4K显示器未验；旧音频/重启证据不算本轮重测。
+- [uhd6正式验收](bringup/2026-10-31-uhd6-formal.md)、[尺寸/QP/GPU批量验证](bringup/2026-10-30-kernel73-gap-validation.md)、[复验](bringup/2026-10-30-kernel73-gap-r3.md)：逐轮通过/失败范围，不与现行身份混用。
 
 - [Wi-Fi 整包安装](bringup/2026-11-02-wifi-sdio-formal.md)、[.217 固件对照](bringup/2026-11-02-wifi-fw217.md)：BCM43752 构建输入、连接与回退；[PHY trap 排查](bringup/2026-10-21-edge-wifi-fps.md)保留转储，内部根因未确认。
 - [管理器与 WPA3](bringup/2026-10-21-manager-mainline-status.md)、[Wi-Fi Direct](bringup/2026-10-21-edge-wifi-p2p.md)：WCC/AKM 与 P2P 适配，真实对端传输未验。

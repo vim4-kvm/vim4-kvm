@@ -2,6 +2,10 @@
 
 这里保存固定版本的调查与交付证据。当前架构和约束请从[子系统入口](../subsystems/)按需读取。
 
+- [主线 rc7 导入与首轮构建](kernel-rc7-import.md)：2026-10-22 快照；现行入口见[主线基线](../kernel-mainline.md)。
+- [Chrome/完整帧/LAN 分包实验](latency-20261013.md)：2026-10-13 快照；现行方法见[延迟测量](../latency.md)。
+- [KVM 播放策略逐轮对照](kvm-playout-20261016.md)：2026-10-16 快照；现行约束见[播放差异](../kvm-delay-causes.md)。
+
 - [ADLA npu2 离线修复](npu-adla-npu2.md)：2026-10-30 快照；现行合同见 [NPU](../npu-adla.md)。
 - [ADLA npu3 离线修复](npu-adla-npu3.md)：2026-10-30 快照；现行合同见 [NPU](../npu-adla.md)。
 - [ADLA npu4 离线取证](npu-adla-npu4.md)：2026-10-30 快照；现行合同见 [NPU](../npu-adla.md)。
