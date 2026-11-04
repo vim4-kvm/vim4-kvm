@@ -17,6 +17,8 @@
 
 ## 2026-11-04
 
+- [运行时省电与 USB 总线挂起](2026-11-04-pm-typec-parity.md) — kernel usb；CRG suspend/resume 候选离线通过，真实睡眠与 governor 性能门禁未完成。
+
 - [UU 自动码率与 Wave5 在线更新](2026-11-04-uu-adaptive-bitrate.md) — uu video application；在线切目标码率持续解码、无采集重建，Mac 接入与弱网验收待完成。
 - [UU TWCC 发送端带宽估算](2026-11-04-uu-twcc.md) — uu video application；发送编号、反馈还原、被动带宽估算与在线码率闭环，含重传和拥塞回放测试。
 
