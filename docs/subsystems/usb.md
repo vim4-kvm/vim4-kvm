@@ -3,7 +3,7 @@
 按任务读[PD](../usb-pd.md)、[接线](../hardware.md)、[应用集成](application.md)、[输入延迟、长按和Mac滚轮](../input-latency.md)。
 重枚举panic/控制端点故障直读[HID重绑](../kernel.md#hid-重新绑定)、[CRG](../kernel.md#crg-usb-控制端点重连)。
 
-板级gadget拥有configfs、PD负责有限开机协商；应用用现有HID，不重建gadget或部署上游设备USB脚本。
+板级gadget拥有configfs；主线KVM由内核TCPM管理PD，旧内核保留有限开机协商。应用用现有HID，不重建gadget或部署上游设备USB脚本。
 One-KVM限定助手可临时改描述符/功能链接、增多媒体键/网络实例，不删原HID；停用后恢复原配置，若有介质则保留当前组合至主机弹出。
 端点预算、映射及恢复顺序按[One-KVM HID配置](../../One-KVM/VIM4.md#hid-功能配置)，端点不足先调USB功能，已有自定义组合保持不变。
 早期独立入口边界见[内核证据](../kernel-mainline.md#相关记录)。
@@ -32,7 +32,7 @@ NanoKVM不按旧enabled标记自动重连数据盘，文件保留、用户主动
 先装提供介质API、mtools和dosfstools的板级包，再更新应用和管理器；能力依赖按[打包实现](../../packaging/ubuntu/package.py)，防旧平台版本满足却缺模块。
 网页更新不能代装平台依赖，旧板先更平台。
 
-PD并非完整TCPM，单线拔线即断电；启动枚举通过不证明睡眠唤醒、运行中重置或NCM通信通过。
+TCPM的部署及验证范围见[开机PD](../bringup/2026-11-04-boot-pd-tcpm.md)。单线拔线即断电；启动枚举通过不证明睡眠唤醒、运行中重置或NCM通信通过。
 改描述符/协商先测边界，再验主机枚举/真实输入，不扰他人。
 
 ## 错题

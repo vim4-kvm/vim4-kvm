@@ -1,0 +1,7 @@
+{
+  "source_revision": "f0a31db5f9e518ac4e34f2e13b4111df9ce534d9",
+  "sha256": {
+    "/usr/lib/vim4-kvm/python/vim4pd.py": "473aead0d611901a0d83c3c4fe634e61d202fc485f5ba3d9002adb9071d4ff35",
+    "/usr/sbin/usb-pd-init": "2d893bd1af34aa0d27f29810a00868455ca4c493bca1d39e72b106028750d31c"
+  }
+}

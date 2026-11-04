@@ -1,0 +1,54 @@
+{
+  "schema": 1,
+  "release": "7.3.1-vim4-20261104.3",
+  "image_source_revision": "2662456a1a636f668454ab04a1c63f567206a592",
+  "build_id": "e595ad243d663f6c33b92678a4de6e0b78ec16d5",
+  "package_sha256": "dda222dfc7038485cbf657ad4a4dce2e82f16c0ad4f4befd5b1130eb950202f1",
+  "manifest": "manifest.json",
+  "installed": true,
+  "default_boot": "Mainline",
+  "profiles": {
+    "kbase": {
+      "dtb": "vim4.dtb",
+      "sha256": "63a6f77fe2b8bf800d2b83bb9e32fed1b11a31785fcfea6a6f785742cacbc01e",
+      "compatible": "khadas,vim4-mali-kbase-r44p0",
+      "blacklist": [
+        "panfrost"
+      ],
+      "modules": [
+        "vim4_kbase_heaps",
+        "governor_vim4",
+        "mali_kbase"
+      ],
+      "gpu_driver": "mali",
+      "wrapper": "/usr/libexec/vim4-kvm-run",
+      "gpu_wrapper": "/usr/lib/vim4-kvm/python/vim4gpu.py",
+      "egl": "private-prefix",
+      "vulkan": "private-icd",
+      "opencl": "private-icd"
+    },
+    "panfrost": {
+      "dtb": "panfrost.dtb",
+      "sha256": "23ce23bafbe834ecf7d5d61848e7785b5e24003c342bd2e1c22fe1cf7276d950",
+      "gpu_driver": "panfrost",
+      "userspace": "system-mesa"
+    }
+  },
+  "blob": {
+    "provision_separately": true,
+    "sha256": "536ee80c17dc5c54e7c6ff029ca43270da8efc3fdc5b3aeb263f364419368494",
+    "uk": "11.39",
+    "glvnd_vendor": false
+  },
+  "validation": {
+    "accepted": "TCPM 5V/3A boot contract and ten-minute video deployment smoke passed",
+    "receipt": "validation.json",
+    "limitations": [
+      "User authorized deployment after disclosure that cold boot, other sources, reset recovery and full subsystem regression remain untested.",
+      "Host sleep/resume and remote wake not tested; USB-C is the only supply.",
+      "CPU remains performance; no real HID input or end-to-end latency measurement.",
+      "Manager power card still uses firmware/history fields, not the live TCPM contract."
+    ]
+  },
+  "gpu_default": "kbase"
+}

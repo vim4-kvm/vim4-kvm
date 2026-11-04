@@ -1,0 +1,34 @@
+{
+  "release": "7.3.1-vim4-20261104.3",
+  "typec": {
+    "data_role": "[device]",
+    "power_role": "[sink]",
+    "power_operation_mode": "usb_power_delivery"
+  },
+  "power_supply": {
+    "DEVTYPE": "power_supply",
+    "OF_NAME": "typec-port",
+    "OF_FULLNAME": "/soc/bus@fe000000/i2c@76000/typec-port@22",
+    "OF_COMPATIBLE_0": "fcs,fusb302",
+    "OF_COMPATIBLE_N": "1",
+    "POWER_SUPPLY_NAME": "tcpm-source-psy-1-0022",
+    "POWER_SUPPLY_TYPE": "USB",
+    "POWER_SUPPLY_ONLINE": "1",
+    "POWER_SUPPLY_VOLTAGE_MAX": "5000000",
+    "POWER_SUPPLY_VOLTAGE_MIN": "5000000",
+    "POWER_SUPPLY_VOLTAGE_NOW": "5000000",
+    "POWER_SUPPLY_CURRENT_MAX": "3000000",
+    "POWER_SUPPLY_CURRENT_NOW": "3000000",
+    "POWER_SUPPLY_USB_TYPE": "C [PD] PD_PPS PD_SPR_AVS PD_PPS_SPR_AVS"
+  },
+  "taint": "4096",
+  "module_notes": {
+    "fusb302": "040000001400000003000000474e5500c6e0ec288941d57cfb0ffdd61d7c5a98b3050b48",
+    "tcpm": "040000001400000003000000474e5500c576f225acba6445ec63483ac0f86e316019a68d",
+    "typec": "040000001400000003000000474e5500e8b95a68c0077996d210db752b020601e63fb3e9",
+    "crg_udc": "040000001400000003000000474e5500a2dc5c707819d0f197e0200db76c5b74e99bf89d"
+  },
+  "interrupts": [
+    "  37:         10          0          0          0          0          0          0          0  meson-gpio-irqchip  133 Level     fsc_interrupt_int_n"
+  ]
+}

@@ -1,0 +1,16 @@
+{
+  "removed": {
+    "/boot/kernels/7.3.1-vim4-20261104/Module.symvers": "9e54cbe2d161279b9e818a18515e924ad9c3a9ba1f87ce9cf0f8b55c3feff78d",
+    "/boot/kernels/7.3.1-vim4-20261104/Image": "7663a716f6f189166831289bfce4cfae20b600d01674fddde6152106c5451bb2",
+    "/boot/kernels/7.3.1-vim4-20261104/config": "7be7563e089ff628a320cd82ed163d88c576e4c7612f6bf849b230d2b9719b1c",
+    "/boot/kernels/7.3.1-vim4-20261104/panfrost.dtb": "9d0d39a316cea5a3f3d8e5a04e085b2a905abf60494aaba565223c29839dff1f",
+    "/boot/kernels/7.3.1-vim4-20261104/manifest.json": "b470f63cb5c64eab0f44c6eb33290bcab2cf768578a0e43a8a21439ff64d3b0c",
+    "/boot/kernels/7.3.1-vim4-20261104/vmlinux.btf": "db3efce7917aa2feb8a43a01140aca8e549744cd31311366560bb6a771715f09",
+    "/boot/kernels/7.3.1-vim4-20261104/vim4.dtb": "89c4bcf6b5523cee60a6f222f28675c99b5137767ec484d78d53b14899702071"
+  },
+  "preserved_registration": {
+    "/boot/extlinux/extlinux.conf": "d73a31d97793bdc76520504836dddc15aa3fb020e431be0bfd061ae39a4d16ab",
+    "/etc/vim4-kvm/kernels.json": "c938f6dad6a5a713119eaf1c44a375c6a085038fecf885143c35b5970637b974"
+  },
+  "free_bytes": 104402944
+}

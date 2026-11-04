@@ -1,13 +1,13 @@
 # 2026-11-04：开机 PD 接入 Linux TCPM
 
-候选改用标准 FUSB302 / TCPM 管理开机及后续协议，保持固定 sink、USB device、
-5V 策略，不调整 CPU performance、idle 或电源域。完整构建、一次性热启动及
-五分钟4K H.265冒烟通过，内核实际建立5V/3A合同。验证后已回到默认build 2；
-候选未设为默认，冷启动、异常恢复和电源变更的九类全回归仍未完成。
+build 3 已部署并保留为默认，使用标准 FUSB302 / TCPM 管理开机及后续协议，
+保持固定 sink、USB device、5V 策略，不调整 CPU performance、idle 或电源域。
+完整构建、一次性热启动和正式部署后十分钟4K H.265冒烟通过，内核实际建立5V/3A合同。
+用户知悉验证边界后授权部署；冷启动、异常恢复和电源变更的九类全回归仍未完成。
 
 ## 基线与硬件
 
-当前默认仍是[USB 挂起修复](2026-11-04-pm-typec-parity.md)的 build 2。
+开始本轮时默认是[USB 挂起修复](2026-11-04-pm-typec-parity.md)的 build 2。
 本轮只读核对完整启动/模块身份后，板端日志显示固件超时、Linux 跳过协商，
 没有 `/sys/class/typec`；四服务 active、UDC configured、两簇 performance。
 原始输出和完整 proof 在忽略目录 `build/boot-pd-tcpm/`。
@@ -105,14 +105,34 @@ Request、Accept和PS_RDY；末次约6.32秒，未记录PD硬复位。这与sysf
 新所有权保护保留在板上，已更新runtime-build中对应文件的哈希，兼容未启用TCPM的build 2。
 
 已核对build 1启动目录没有extlinux或内核登记引用，但清理旧内核需要另行授权。
-已向用户提出仅删除该目录、保留build 2整包与厂商5.15的方案；授权前未删除。
+已向用户提出仅删除该目录、保留build 2整包与厂商5.15的方案；首次尝试未删除。
 部署失败、串口和恢复证据在`build/boot-pd-tcpm/deploy-space-failure*`及
 `deploy-recovered-*`，启动空间和引用记录在`boot-space.log`、`boot-refs.log`。
+
+## 清理后正式部署
+
+用户随后明确授权清理并部署。再次核对build 1目录的完整文件集合及哈希、
+启动配置、登记和符号链接引用后，仅删除`/boot/kernels/7.3.1-vim4-20261104`，
+释放约56MiB，启动分区可用104402944字节；build 2整包和厂商5.15保留。
+删除前逐文件哈希在[清理凭据](../../packaging/kernel/releases/7.3.1-vim4-20261104.3/cleanup.json)，
+删除未改启动项或登记，也未删除旧模块与固件。
+
+安装所有权保护后，整包安装器核验并安装2341个模块和配套启动文件，原子更新Mainline。
+正常重启到build 3，服务明确记录`controller reserved for kernel TCPM`，
+不再运行用户态协商。启动与末次采证均为sink/device、5V/3A、UDC configured、
+五项服务active、两簇performance；完整模块、加载notes/BTF和启动身份匹配。
+十分钟3840×2160 H.265平均60.00642fps，解码推进36004帧，丢帧、冻结、丢包增量均0；
+无BUG/Oops/WARNING/Call trace，taint保持4096，中断计数保持10。
+
+本轮成功后保留默认build 3，没有回退；板端runtime-build已记录内核和独立安装的
+PD所有权保护身份。[源码锁](../../packaging/kernel/sources.toml)与
+[验收凭据](../../packaging/kernel/releases/7.3.1-vim4-20261104.3/validation.json)
+记录部署范围，完整本地日志在`build/boot-pd-tcpm/deploy*`。
 
 ## 尚未验收的范围
 
 冷上电、其他供电源、插拔、软/硬复位异常路径、实际键鼠输入和端到端延迟未验。
 本轮热启动和单路视频不能代替[电源改动部署门禁](../subsystems/deployment.md#内核开发流程与部署门禁)
 要求的九类全回归，也不代表管理器已读取内核实时合同。
-板级所有权保护已安装，完整内核部署尚受启动分区空间阻塞；当前仍保留build 2。
-源码与主仓改动只在本地提交，没有推送、发布Release或移动正式来源锁。
+用户在知悉这些缺口后授权并完成部署；不能把本次冒烟记为九类全回归通过。
+源码与主仓改动只在本地提交，部署源码建本地release tag，没有推送或发布Release。

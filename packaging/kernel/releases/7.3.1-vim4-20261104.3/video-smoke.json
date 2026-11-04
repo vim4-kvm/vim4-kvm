@@ -1,0 +1,15 @@
+{
+  "duration_seconds": 600,
+  "width": 3840,
+  "height": 2160,
+  "codec": "video/H265",
+  "fps": 60.006422873971964,
+  "deltas": {
+    "framesDecoded": 36004,
+    "framesDropped": 0,
+    "freezeCount": 0,
+    "packetsLost": 0
+  },
+  "raw_evidence": "build/boot-pd-tcpm/deploy-after-video.json",
+  "raw_sha256": "d43f80b87eac17ee2ed179393c935ca83ae3967280c176c9fa127d1069fdf290"
+}
