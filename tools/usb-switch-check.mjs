@@ -1,3 +1,4 @@
+// Relinking disconnects/re-enumerates USB, including USB networking.
 import { loginManager } from './manager-login.mjs';
 // Exercise the application USB relink paths while its original viewer holds HID.
 // Pre-upload a disposable ISO. Requires an idle gadget with NCM, no microphone/media.

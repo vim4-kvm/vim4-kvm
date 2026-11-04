@@ -1,4 +1,5 @@
 #!/bin/sh
+# Candidate video service occupies capture/encoding; coordinate service ownership.
 # A separate binary/data directory avoids changing the installed 5.15 application.
 set -eu
 case "$(uname -r)" in

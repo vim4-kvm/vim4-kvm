@@ -1,4 +1,6 @@
 #!/usr/bin/env python3
+# Writes boot artifacts and the default vendor entry; --retire-label can delete
+# explicitly retired, unregistered artifacts. Coordinate exclusive board access.
 """Promote a boot-tested vendor staging tree, preserving verified rollback files.
 
 Run with both board locks held. This registers a prepared, already running

@@ -1,4 +1,5 @@
 #!/bin/sh
+# start/stop changes configfs and disconnects/re-enumerates the USB host connection.
 # USB-C OTG gadget for the KVM target:
 #   hidg0 keyboard (boot protocol, LED output)
 #   hidg1 absolute mouse (0..32767)

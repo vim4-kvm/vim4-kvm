@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+# run exclusively occupies the NPU; compare is offline. Coordinate before run.
 """Local NPU qualification runner; no SSH, installation, services, HID or audio.
 
 run invokes a prebuilt probe and writes a new result directory. compare checks

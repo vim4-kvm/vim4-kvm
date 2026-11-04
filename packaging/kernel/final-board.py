@@ -1,4 +1,6 @@
 #!/usr/bin/env python3
+# install/restore write boot and runtime files and stop/restart board services.
+# Called only by the exclusive deployment coordinator; changes persist on disk.
 """Board half of final-window.py. Only run under the coordinator's two locks."""
 import argparse
 import gzip

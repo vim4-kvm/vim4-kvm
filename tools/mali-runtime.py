@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+# install writes the private GPU runtime directory on the board; coordinate it.
 """Fetch/install the private r44p0 GPU runtime for the vendor 5.15 kernel.
 
 The vendor library is CLOSED upstream. Fetch its pinned original artifact;

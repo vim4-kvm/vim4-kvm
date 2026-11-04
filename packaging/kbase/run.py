@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+# The launched graphics command occupies the GPU; coordinate exclusive access.
 """Explicit per-process libmali candidate selection after board acceptance.
 
 No installation, global ICD registration or system library replacement.

@@ -1,3 +1,4 @@
+// Upload writes the image to the board and leaves it there after the check.
 import { loginManager } from './manager-login.mjs';
 // Real browser multipart upload plus a read-only command in the web terminal.
 // Requires a trusted local session with authentication disabled or already set up.

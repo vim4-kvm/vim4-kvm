@@ -1,3 +1,5 @@
+// --usb sends ArrowRight/click HID to the temporary macOS target window.
+// --call and --terminal have the effects of the supplied RPC/command; review first.
 import { loginManager } from './manager-login.mjs';
 import assert from 'node:assert/strict';
 import { execFileSync, spawn } from 'node:child_process';

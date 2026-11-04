@@ -1,3 +1,4 @@
+// Profile changes disconnect/re-enumerate USB; use a separate management link.
 import { loginManager } from './manager-login.mjs';
 // Exclusive One-KVM USB regression. Requires detached media and restores settings.
 import assert from 'node:assert/strict';

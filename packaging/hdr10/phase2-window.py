@@ -1,4 +1,6 @@
 #!/usr/bin/env python3
+# The live window RAM-boots/reboots, occupies GPU/capture/encoding and changes
+# M6 HDR through HID. It restores source/application settings after the trials.
 """One unattended P0-5 command, prepared offline; no ticket before main uhd6.
 
 --plan-only validates both payloads without board access (dry-run uhd5 allowed).

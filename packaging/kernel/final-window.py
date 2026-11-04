@@ -1,4 +1,6 @@
 #!/usr/bin/env python3
+# --execute writes installed artifacts/default boot configuration, reboots, and
+# runs regressions that occupy GPU/capture/encoding, disconnect USB and send HID.
 """Stage a final-release bundle, then deploy in one board/heavy lock window.
 
 stage is offline. window/rollback default to dry-run; --execute takes both Mac

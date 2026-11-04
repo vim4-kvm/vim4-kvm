@@ -1,3 +1,4 @@
+// Temporarily changes the video codec, then restores the saved setting.
 // Exclusive motion/AV soak. Run latency-source.swift with --verify-coherence
 // --sync-audio=HDMI_NAME separately. Input HDR state is owned by the caller.
 import assert from 'node:assert/strict';

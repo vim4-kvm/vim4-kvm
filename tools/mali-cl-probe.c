@@ -1,3 +1,4 @@
+/* Uses the board GPU exclusively, including DMA heap allocations. */
 /* SPDX-License-Identifier: MIT
  * One 16 KiB kernel and checked readback. Always run with an external timeout.
  * cc -std=c11 -Wall -Wextra -Werror mali-cl-probe.c -lOpenCL -o mali-cl-probe

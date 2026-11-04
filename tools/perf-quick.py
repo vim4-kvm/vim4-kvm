@@ -1,4 +1,7 @@
 #!/usr/bin/env python3
+# MCP calls may send HID to the source host. Native sampling occupies capture/
+# encoding and temporarily stops/restores One-KVM. window may RAM-boot/reboot
+# and restore the baseline; coordinate the board and source before running it.
 """Quick video experiment support; dispatch latency includes the source HTTP leg.
 
 MCP and native sampling require a board-queue ticket. The source server uses no HID.

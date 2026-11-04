@@ -1,4 +1,5 @@
 #!/bin/sh
+# Exclusively occupies candidate GPU/capture/encoding and the application port.
 # Candidate-only application launcher. Filled in by assemble-phase2.py.
 set -eu
 root=@PREFIX@/runtime

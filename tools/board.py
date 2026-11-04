@@ -1,4 +1,8 @@
 #!/usr/bin/env python3
+# check is read-only; deploy writes components and restarts services exclusively.
+# provision/enroll write SSH/sudo configuration. verify occupies capture/encoding
+# and sends HID pointer reports to the USB host. recover reboots into OOWOW;
+# flash overwrites eMMC and reboots. Coordinate the board before these actions.
 """Explicit board recovery, verified image flashing, component deployment and smoke checks."""
 import argparse
 import base64

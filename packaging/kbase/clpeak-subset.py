@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+# Occupies the board GPU exclusively; coordinate the measurement window first.
 """Run identical, separately bounded clpeak 1.1.2 subsets on either kbase kernel."""
 import argparse
 import json

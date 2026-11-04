@@ -1,4 +1,6 @@
 #!/bin/sh
+# Exclusive capture: stop other capture owners first; rewrites the VFM path and
+# may restart hdmiin-demo. Writes the requested PNG file on the board.
 # Grab one HDMI-in frame through vfm_cap (standalone, vdin0 -> vfm_cap) as PNG.
 #
 # Usage (on the board): sudo sh hdmi-capture.sh [out.png]

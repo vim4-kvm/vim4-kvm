@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+# Runs candidate video applications exclusively, occupying GPU/capture/encoding.
 """Board half of the P0-5 window. Only called by phase2-window with its ticket.
 
 Saves exact bytes/ownership before temporary video settings. Does not enable

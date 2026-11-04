@@ -1,4 +1,5 @@
 #!/bin/sh
+# Loads capture/encoder modules; reserve the board and stop other video consumers.
 # Run after the matched RAM boot, with exclusive board ownership.
 set -eu
 test "$(uname -r)" = '7.3.0-vim4kvm-hdr10r3+' || {

@@ -1,3 +1,4 @@
+// Exclusive video receiver: occupies the selected application's encoder.
 import { loginManager } from './manager-login.mjs';
 import { connectVideo, closeVideo } from './board-window-timing.mjs';
 // Usage: PLAYWRIGHT_MODULE=/absolute/path/to/playwright/index.mjs node ... URL SECONDS
