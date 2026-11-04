@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Generate H.264 or MPEG-2 motion fixtures and compare captured I420 frames offline.
+"""Generate H.264, MPEG-2 or MJPEG fixtures and compare captured I420 offline.
 
 Requires FFmpeg with libx264 and ffprobe. Neither operation accesses a board.
 References are decoded from the actual compressed files, so encoder versions
@@ -46,6 +46,12 @@ MPEG2_CASES = (
     ("mpeg2-1080p", 1920, 1080, 16, "main", "Main", ["-g", "12", "-bf", "2"]),
 )
 
+MJPEG_CASES = (
+    ("mjpeg-420", 640, 368, 16, "baseline", "Baseline", []),
+    ("mjpeg-no-app", 640, 368, 16, "baseline", "Baseline", []),
+    ("mjpeg-1080p", 1920, 1080, 16, "baseline", "Baseline", []),
+)
+
 FIELD_SOURCE = 'https://samples.ffmpeg.org/MPEG2/mpeg2_field_encoding.ts'
 FIELD_SOURCE_SHA256 = '9688333a145b9e2c2139b9cab6cd4966acd19788fd620b4b31db5c2891547cb8'
 
@@ -57,6 +63,30 @@ def sha256(data):
 def frame_hashes(raw, frame_size):
     return [sha256(raw[i:i + frame_size])
             for i in range(0, len(raw), frame_size)]
+
+
+def jpeg_without_leading_metadata(data):
+    """Remove APP/COM immediately after each SOI in an FFmpeg MJPEG stream."""
+    result = bytearray()
+    start = 0
+    while start < len(data):
+        if data[start:start + 2] != b'\xff\xd8':
+            raise ValueError('expected JPEG SOI')
+        end = data.find(b'\xff\xd8', start + 2)
+        if end < 0:
+            end = len(data)
+        offset = start + 2
+        while offset + 4 <= end and data[offset] == 0xff:
+            marker = data[offset + 1]
+            if marker != 0xfe and not 0xe0 <= marker <= 0xef:
+                break
+            length = int.from_bytes(data[offset + 2:offset + 4], 'big')
+            if length < 2 or offset + length + 2 > end:
+                raise ValueError('truncated JPEG metadata')
+            offset += length + 2
+        result.extend(b'\xff\xd8' + data[offset:end])
+        start = end
+    return bytes(result)
 
 
 def generate_fields(output):
@@ -120,8 +150,9 @@ def generate(output, codec="h264"):
             ["ffmpeg", "-version"], text=True).splitlines()[0],
         "cases": [],
     }
-    cases = CASES if codec == "h264" else MPEG2_CASES
-    extension = ".h264" if codec == "h264" else ".m2v"
+    cases = {"h264": CASES, "mpeg2": MPEG2_CASES, "mjpeg": MJPEG_CASES}[codec]
+    extension = {"h264": ".h264", "mpeg2": ".m2v", "mjpeg": ".mjpg"}[codec]
+    reference_format = "yuvj420p" if codec == "mjpeg" else "yuv420p"
     for name, width, height, count, profile, actual_profile, params in cases:
         clip = output / (name + extension)
         # QP22 exercises negative PPS QP/chroma offsets. QP26 would hide
@@ -131,11 +162,15 @@ def generate(output, codec="h264"):
                     params + ":keyint=16:min-keyint=16:scenecut=0:slices=1", "-f", "h264"]
                    if codec == "h264" else
                    ["-c:v", "mpeg2video", "-q:v", "4", *params, "-f", "mpeg2video"])
+        if codec == "mjpeg":
+            encoder = ["-c:v", "mjpeg", "-q:v", "4", "-pix_fmt", "yuvj420p", "-f", "mjpeg"]
         subprocess.run([
             "ffmpeg", "-hide_banner", "-loglevel", "error", "-f", "lavfi",
             "-i", f"testsrc2=size={width}x{height}:rate=30",
             "-frames:v", str(count), "-an", "-threads", "1", *encoder, str(clip),
         ], check=True)
+        if name == 'mjpeg-no-app':
+            clip.write_bytes(jpeg_without_leading_metadata(clip.read_bytes()))
         streams = json.loads(subprocess.check_output([
             "ffprobe", "-v", "error", "-count_frames", "-show_streams",
             "-of", "json", str(clip),
@@ -145,14 +180,14 @@ def generate(output, codec="h264"):
         stream = streams[0]
         actual = (stream["profile"], stream["width"], stream["height"],
                   stream["pix_fmt"], int(stream["nb_read_frames"]))
-        if actual != (actual_profile, width, height, "yuv420p", count):
+        if actual != (actual_profile, width, height, reference_format, count):
             raise ValueError(f"{name}: unexpected encoded properties {actual}")
         expected_field_order = "tt" if name == "mpeg2-interlaced" else "progressive"
-        if stream.get("field_order") != expected_field_order:
+        if codec != "mjpeg" and stream.get("field_order") != expected_field_order:
             raise ValueError(f"{name}: unexpected field order {stream.get('field_order')}")
         raw = subprocess.check_output([
             "ffmpeg", "-v", "error", "-i", str(clip), "-threads", "1",
-            "-pix_fmt", "yuv420p", "-f", "rawvideo", "pipe:1",
+            "-pix_fmt", reference_format, "-f", "rawvideo", "pipe:1",
         ])
         frame_size = width * height * 3 // 2
         if len(raw) != frame_size * count:
@@ -160,6 +195,7 @@ def generate(output, codec="h264"):
         manifest["cases"].append(dict(
             name=name, width=width, height=height, frames=count,
             codec=codec, filename=clip.name, field_order=stream.get("field_order"),
+            reference_format=reference_format,
             frame_size=frame_size, profile=profile,
             compressed_sha256=sha256(clip.read_bytes()),
             decoded_sha256=sha256(raw), frame_sha256=frame_hashes(raw, frame_size),
@@ -215,7 +251,8 @@ def compare(fixtures, name, captured, measure_error=False):
     if measure_error:
         reference = subprocess.check_output([
             "ffmpeg", "-v", "error", "-i", str(fixtures / case.get("filename", name + ".h264")),
-            "-threads", "1", "-pix_fmt", "yuv420p", "-f", "rawvideo", "pipe:1",
+            "-threads", "1", "-pix_fmt", case.get("reference_format", "yuv420p"),
+            "-f", "rawvideo", "pipe:1",
         ])
         if sha256(reference) != case["decoded_sha256"]:
             raise ValueError("software reference differs from the fixture manifest")
@@ -229,7 +266,7 @@ def main():
     commands = parser.add_subparsers(dest="command", required=True)
     generate_parser = commands.add_parser("generate", help="create a new fixture directory")
     generate_parser.add_argument("output", type=Path)
-    generate_parser.add_argument("--codec", choices=("h264", "mpeg2"), default="h264")
+    generate_parser.add_argument("--codec", choices=("h264", "mpeg2", "mjpeg"), default="h264")
     fields_parser = commands.add_parser("generate-fields", help="download and trim the pinned MPEG-2 field sample")
     fields_parser.add_argument("output", type=Path)
     compare_parser = commands.add_parser("compare", help="compare one captured I420 stream")

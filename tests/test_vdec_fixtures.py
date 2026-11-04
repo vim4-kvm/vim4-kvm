@@ -10,6 +10,14 @@ SPEC.loader.exec_module(FIXTURES)
 
 
 class PixelErrorTests(unittest.TestCase):
+    def test_jpeg_metadata_removal_preserves_tables_and_stuffed_scan_bytes(self):
+        scan = b'\xff\xdb\x00\x04\x01\x02\xff\xda\x00\x02\xff\x00\xd8\xff\xd9'
+        image = b'\xff\xd8\xff\xe0\x00\x04ab\xff\xfe\x00\x04cd' + scan
+        self.assertEqual(FIXTURES.jpeg_without_leading_metadata(image * 2),
+                         (b'\xff\xd8' + scan) * 2)
+        with self.assertRaises(ValueError):
+            FIXTURES.jpeg_without_leading_metadata(b'\xff\xd8\xff\xe0\xff\xffab')
+
     def test_errors_remain_separated_by_frame_and_plane(self):
         reference = bytes([100] * 48)
         captured = bytearray(reference)
