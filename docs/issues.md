@@ -25,6 +25,7 @@
 
 ## 应用与 USB
 
+- 当前官方 Mac UU 的 H.265 会话协商了 transport-cc，却只确认音频包；同客户端 H.264 能返回视频确认，本地 H.265 SRTP 回环也正常。已限制视频确认覆盖并回退 RR，仍需查明官方 H.265 路径缺少反馈的协议条件或实现差异。[TWCC 记录](bringup/2026-11-04-uu-twcc.md#mac-实流暴露的反馈覆盖问题)
 - One-KVM MCP `type` 输入长命令可能丢空格或字符；uhd7 与 7.3.1 均复现，输入法与零按键保持时长的各自影响未分清；US 输入源逐键保持 50ms 可绕过。[复现](bringup/2026-11-03-kernel-731-deploy.md#继续验收与最终状态)
 - PATCH 完整原 USB 配置重建 gadget 时，HID 配置值不变可能跳过 backend 重载，后续写入报 endpoint shutdown；切换 profile 再恢复可绕过。[复现](bringup/2026-11-03-kernel-731-deploy.md#继续验收与最终状态)
 - One-KVM 从 MJPEG 切入 WebRTC 时可能先保存编码偏好，随后模式转换失败，使保存值与实际状态不一致。[审查记录](bringup/2026-11-03-wave5-avc-default.md#登记-issue)
@@ -38,4 +39,5 @@
 
 ## 测试工具
 
+- One-KVM HDMI 重采样有限输入测试在整包全量运行时出现一次输入队列超过半秒音频量的保护失败；独立复核和未改源码的全量库测试重试均通过。需进一步区分并行调度与测试输入生产速度，不能据此判定实板采集停滞。[TWCC 打包记录](bringup/2026-11-04-uu-twcc.md)
 - M6 测试源只记录绘制或 vsync 回调，缺实际呈现回执；重复/跳号无法可靠归因采集端，严格连续性门禁受限，需对照 presentedTime 与采集帧号。[高刷与 444 记录](bringup/2026-11-02-hfr-yuv-window.md)
