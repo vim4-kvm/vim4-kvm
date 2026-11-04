@@ -2,7 +2,7 @@
 
 本页管主线源码、整包升级与维护；安装只读[身份](#源码与配置)、[升级合同](#正式构建与整包升级)，占板另读[短窗口](board-window.md#占板时间最短化)。
 当前身份唯一来源：[sources.toml](../packaging/kernel/sources.toml)；tested_build/retained_runtime是验收与保留状态，package是下一包，不能混用。
-[TCPM部署](bringup/2026-11-04-boot-pd-tcpm.md)：20261104 build 3已保留为默认Mainline，内核建立5V/3A合同，十分钟4K H.265冒烟通过；CPU保持performance，冷启动与九类全回归未测。源码在本地boot-pd-tcpm分支，尚未推送或发布。[build 2](bringup/2026-11-04-pm-typec-parity.md)整包保留用于回退；经用户授权仅清理build 1的旧启动目录。更广范围历史证据见[7.3.1部署](bringup/2026-11-03-kernel-731-deploy.md)，本次不扩大验收范围。
+[TCPM部署](bringup/2026-11-04-boot-pd-tcpm.md)：20261104 build 3已保留为默认Mainline，内核建立5V/3A合同，十分钟4K H.265冒烟通过；CPU保持performance，冷启动与九类全回归未测。源码已推送至boot-pd-tcpm-review任务分支，未发布Release。[build 2](bringup/2026-11-04-pm-typec-parity.md)整包保留用于回退；经用户授权仅清理build 1的旧启动目录。更广范围历史证据见[7.3.1部署](bringup/2026-11-03-kernel-731-deploy.md)，本次不扩大验收范围。
 导航：[路线图](#通用内核路线图) · [审查](#审查边界与后续验证) · [补丁维护](#补丁维护方法) · [隔离](#wave5-隔离告警) · [历史](#相关记录)。
 
 ## 源码与配置

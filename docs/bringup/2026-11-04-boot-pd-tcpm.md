@@ -135,4 +135,5 @@ PD所有权保护身份。[源码锁](../../packaging/kernel/sources.toml)与
 本轮热启动和单路视频不能代替[电源改动部署门禁](../subsystems/deployment.md#内核开发流程与部署门禁)
 要求的九类全回归；管理器实时合同另见上述后续部署记录。
 用户在知悉这些缺口后授权并完成部署；不能把本次冒烟记为九类全回归通过。
-源码与主仓改动只在本地提交，部署源码建本地release tag，没有推送或发布Release。
+部署时仅本地提交并建立release tag；用户随后授权push，内核源码已推送到
+`boot-pd-tcpm-review`任务分支，来源锁同步指向该分支，未推送tag或发布Release。

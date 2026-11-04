@@ -3,7 +3,7 @@
 # Accepted deployed build and post-cleanup Mainline registration.
 [kernel]
 url = "https://github.com/vim4-kvm/linux.git"
-branch = "boot-pd-tcpm"
+branch = "boot-pd-tcpm-review"
 revision = "2662456a1a636f668454ab04a1c63f567206a592"
 tree = "ece5d1fa92b3a7ecc51ad4ea518ab003bfd9cb87"
 upstream_url = "https://github.com/gregkh/linux.git"
