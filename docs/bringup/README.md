@@ -17,7 +17,7 @@
 
 ## 2026-11-04
 
-- [MPEG-2 请求接口](2026-11-04-mpeg2-request.md) — kernel video；修正用户态控制转换后五组 96 帧完成解码，逐像素误差已量化，场编码与长期共存仍待验。
+- [MPEG-2 请求接口](2026-11-04-mpeg2-request.md) — kernel video；修正用户态控制与初始场对参考，六组 112 帧完成解码并量化像素误差，长期共存仍待验。
 - [硬件解码格式对齐](2026-11-04-hwdecode-parity.md) — kernel video；H.264 Baseline/Main/High/1080p 运动样本逐帧像素通过，完整格式与边界尚未对齐。
 - [H.264 分辨率与码流边界](2026-11-04-h264-boundaries.md) — kernel video；包含 JVT 矩阵、UHD 和 4096×2304 的七组 216 帧逐帧像素通过。
 - [管理器实时 PD 状态](2026-11-04-manager-tcpm-status.md) — application usb；已部署，中英文实页显示内核5V/3A合同，KVM/USB服务未重启。
