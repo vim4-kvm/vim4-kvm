@@ -20,7 +20,7 @@
 | [package-unified.py](../packaging/kernel/package-unified.py)（同目录 package-hdr10.py、package-final.py、package-vdec.py） | 无 | 封存已构建候选包。 |
 | [build-gstreamer.py](../packaging/kernel/build-gstreamer.py)（test_gstreamer_p010.py、test_gstreamer_pq.py、test_gstreamer_visible_crop.py） | 无 | 插件构建及离线协商回放。 |
 | [maintain.py](../packaging/kernel/maintain.py) | 无 | 补丁导出与前移。 |
-| [vdec-fixtures.py](../packaging/kernel/vdec-fixtures.py) | 无 | 离线生成 H.264/MPEG-2 运动样本，逐帧比较 I420；可量化各平面误差，非逐字节一致仍返回失败。 |
+| [vdec-fixtures.py](../packaging/kernel/vdec-fixtures.py) | 无 | 生成 H.264/MPEG-2 运动样本；generate-fields 下载并校验固定场编码样本。离线逐帧比较 I420 并量化平面误差，非逐字节一致仍返回失败。 |
 | [build-vdec-gstreamer.py](../packaging/kernel/build-vdec-gstreamer.py)（test_gstreamer_mpeg2.py） | 无 | 按独立源码锁构建私有 stateless 解码插件并回放 MPEG-2 标准控制转换；不覆盖系统插件。 |
 | [hdmi-mode-fixture.py](../packaging/kernel/hdmi-mode-fixture.py)（hdmi-modes.json） | 只读 | 离线准备及板端输入模式验证。 |
 | [register-runtime.py](../packaging/kernel/register-runtime.py) | 独占 | 盘点及板端运行时登记、安装。 |

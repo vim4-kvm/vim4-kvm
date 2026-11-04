@@ -11,7 +11,10 @@ import hashlib
 import json
 import math
 from pathlib import Path
+import re
 import subprocess
+import tempfile
+import urllib.request
 
 
 CASES = (
@@ -43,6 +46,9 @@ MPEG2_CASES = (
     ("mpeg2-1080p", 1920, 1080, 16, "main", "Main", ["-g", "12", "-bf", "2"]),
 )
 
+FIELD_SOURCE = 'https://samples.ffmpeg.org/MPEG2/mpeg2_field_encoding.ts'
+FIELD_SOURCE_SHA256 = '9688333a145b9e2c2139b9cab6cd4966acd19788fd620b4b31db5c2891547cb8'
+
 
 def sha256(data):
     return hashlib.sha256(data).hexdigest()
@@ -51,6 +57,59 @@ def sha256(data):
 def frame_hashes(raw, frame_size):
     return [sha256(raw[i:i + frame_size])
             for i in range(0, len(raw), frame_size)]
+
+
+def generate_fields(output):
+    """Extract a complete field-pair interval from the pinned public sample."""
+    output.mkdir(parents=True, exist_ok=False)
+    with urllib.request.urlopen(FIELD_SOURCE, timeout=60) as response:
+        transport = response.read()
+    if sha256(transport) != FIELD_SOURCE_SHA256:
+        raise ValueError('MPEG-2 field sample checksum mismatch')
+    with tempfile.TemporaryDirectory() as directory:
+        temp = Path(directory)
+        (temp / 'source.ts').write_bytes(transport)
+        demux = subprocess.run([
+            'ffmpeg', '-v', 'error', '-i', str(temp / 'source.ts'),
+            '-map', '0:v:0', '-c', 'copy', '-f', 'mpeg2video', str(temp / 'source.m2v'),
+        ], check=True, capture_output=True)
+        (output / 'demux.log').write_bytes(demux.stderr)
+        data = (temp / 'source.m2v').read_bytes()
+    # The transport sample begins and ends mid-picture. Keep 16 complete pairs
+    # starting at the first sequence header; neither damaged edge is a fixture.
+    data = data[data.index(b'\0\0\1\xb3'):]
+    pictures = list(re.finditer(b'\x00\x00\x01\x00', data))
+    data = data[:pictures[32].start()] + b'\0\0\1\xb7'
+    chunks = data.split(b'\0\0\1')[1:]
+    structures = [c[3] & 3 for c in chunks if c[0] == 0xb5 and c[1] >> 4 == 8]
+    types = [(c[2] >> 3) & 7 for c in chunks if c[0] == 0]
+    if structures != [2, 1] * 16 or types[0] != 1 or len(types) != 32:
+        raise ValueError('expected 16 bottom/top field pairs starting with an I field')
+    clip = output / 'mpeg2-fields.m2v'
+    clip.write_bytes(data)
+    stream = json.loads(subprocess.check_output([
+        'ffprobe', '-v', 'error', '-count_frames', '-show_streams', '-of', 'json', str(clip),
+    ]))['streams'][0]
+    if (stream['width'], stream['height'], stream['profile'], stream['field_order'],
+            int(stream['nb_read_frames'])) != (720, 576, 'Simple', 'bb', 16):
+        raise ValueError('unexpected field fixture properties')
+    reference = subprocess.check_output([
+        'ffmpeg', '-v', 'error', '-xerror', '-i', str(clip), '-threads', '1',
+        '-pix_fmt', 'yuv420p', '-f', 'rawvideo', 'pipe:1',
+    ])
+    frame_size = 720 * 576 * 3 // 2
+    if len(reference) != frame_size * 16:
+        raise ValueError('field-pair reference count mismatch')
+    case = dict(name='mpeg2-fields', codec='mpeg2', filename=clip.name,
+                width=720, height=576, frames=16, frame_size=frame_size,
+                profile='simple', field_order='bb', picture_structures=structures,
+                compressed_sha256=sha256(data), decoded_sha256=sha256(reference),
+                frame_sha256=frame_hashes(reference, frame_size))
+    manifest = dict(codec='mpeg2', source_url=FIELD_SOURCE, source_sha256=FIELD_SOURCE_SHA256,
+                    ffmpeg=subprocess.check_output(['ffmpeg', '-version'], text=True).splitlines()[0],
+                    cases=[case])
+    (output / 'manifest.json').write_text(json.dumps(manifest, indent=2) + '\n')
+    return 0
 
 
 def generate(output, codec="h264"):
@@ -171,6 +230,8 @@ def main():
     generate_parser = commands.add_parser("generate", help="create a new fixture directory")
     generate_parser.add_argument("output", type=Path)
     generate_parser.add_argument("--codec", choices=("h264", "mpeg2"), default="h264")
+    fields_parser = commands.add_parser("generate-fields", help="download and trim the pinned MPEG-2 field sample")
+    fields_parser.add_argument("output", type=Path)
     compare_parser = commands.add_parser("compare", help="compare one captured I420 stream")
     compare_parser.add_argument("fixtures", type=Path)
     compare_parser.add_argument("name")
@@ -180,6 +241,8 @@ def main():
     args = parser.parse_args()
     if args.command == "generate":
         return generate(args.output, args.codec)
+    if args.command == "generate-fields":
+        return generate_fields(args.output)
     return compare(args.fixtures, args.name, args.captured, args.measure_error)
 
 
