@@ -1,264 +1,83 @@
 # Agent 板级操作入口
 
-> 摘要：日常操作先读「日常选择」和「操作前约定」；部署读「增量开发闭环」；
-> 进 OOWOW/刷机读「远程进入恢复环境」「本地候选镜像一键刷写」；其余节只在
-> 对应回归测试时读取。
-
-主机需要 Python 3.11+、OpenSSH 和已接好的串口。默认 SSH 别名 vim4，串口
-/dev/cu.usbserial-100，921600 baud（默认/示例）；Linux 示例为 --device /dev/ttyUSB0。
-设备名以本次环境为准，接线与默认值见[硬件](hardware.md)。
-所有命令从主仓库根目录运行。不要把构建成功、刷写校验成功与硬件回归通过混为一谈。
+本页管组件部署、浏览器前提和刷机；内核安装见[主线升级](kernel-mainline.md#正式构建与整包升级)。
+导航：[部署](#增量开发闭环) · [登录](#浏览器测试的公共前提) · [操作约定](#操作前约定) · [恢复](#远程进入恢复环境) · [刷写](#本地候选镜像一键刷写) · [首启](#首次启动与检查)。
+回归：[应用](#kvm-应用切换回归) · [USB](#usb-切换回归) · [边界](#工具验证边界)；入口只在[目录](tools.md)维护。
+命令从仓库根运行；依赖、主机/串口默认值和参数见[board.py头注释与parser](../tools/board.py)，设备按[硬件](hardware.md)现场核对。
+构建或刷写校验不等于硬件回归；持板规则唯一来源是[短窗口](board-window.md#占板时间最短化)。
 
 ## 日常选择
 
-完整工具清单见[工具目录](tools.md)；下表用于日常板级操作。
-
-| 任务 | 入口 | 是否影响板子 |
-|---|---|---|
-| 只读服务检查 | tools/board.py check | SSH 读取、HTTP GET |
-| 首次接入（公钥 + 免密 sudo） | tools/board.py provision | 默认密码登录一次，写 authorized_keys 与 sudoers |
-| 开发板免密 sudo（单独） | tools/board.py enroll | 安装 sudoers 文件 |
-| 增量安装七组件包 | tools/board.py deploy --exclusive（板上调用 install-components.sh） | 板上安装，恢复管理器所选应用 |
-| 部署后功能验证 | tools/board.py verify | 移动 Mac 光标、录 1 秒音频、打开一个 WebRTC 会话 |
-| 浏览器视频冒烟测试（单独） | tools/video-smoke.mjs | 打开一个 WebRTC 会话 |
-| 从 Ubuntu 进入 OOWOW | tools/board.py recover --exclusive | 重启，中断 KVM |
-| 整机刷写 | tools/board.py flash（见下） | 清空 eMMC，重启 |
-| 原始串口命令/日志 | tools/uart-run.py / uart-log.py | 取决于命令；不要并行使用 |
-
-现有 tools/oowow-flash.sh 保留为手工 URL 刷写入口；新的本地候选镜像测试优先使用
-board.py，以便校验导出清单、限制文件共享范围并记录全过程。
-组件包构建见 [ubuntu-build.md](ubuntu-build.md)，增量部署见下。board.py 不自动
-删除 /etc 下的手工服务，也不把整机刷写用于每次应用迭代。
-
-仅更新管理器时，包清单 `sources.json` 可声明 `component: "manager"`，目录只包含
-对应版本的 vim4-manager deb、sources.json 与 SHA256SUMS，仍使用 `board.py deploy`。
-此路径取得管理器操作锁，仅停止和启动 vim4-manager，不重启 KVM 应用、HDMI、USB
-或修改 EDID，适用于保留显示故障现场。使用 ubuntu-build.py 的 `--component manager`
-构建和验证；开发构建省略 `--version`，自动生成带 `.dev.N` 的版本号。
-
-仅更新 One-KVM 时可声明 `component: "onekvm"`，只打包并安装 vim4-onekvm。
-此模式沿用应用升级流程：暂停 KVM 应用，安装后恢复管理器所选应用并重启管理器，
-不升级其他组件包；并非 manager 模式的无中断路径。需记录单组件构建来源。
+应用迭代用组件部署，完整镜像首次安装才刷写；手工URL刷写保留作备用，本地候选优先board.py以限制共享范围并记录全程。
 
 ## 增量开发闭环
 
-协调板子独占后，构建并使用输出的版本号完成验证和上传：
+按[ubuntu-build.py](../tools/ubuntu-build.py)先package、verify，再用[board.py deploy](../tools/board.py)上传输出版本，最后check与授权范围内的verify。版本取实际构建输出，不复制旧示例；检查预期内核取实际运行身份，安装后仅此检查失败时不要重装同包。
 
-```sh
-python3 tools/ubuntu-build.py package
-# 将下面变量设为 package 输出的实际版本
-version=2.5.1+vim4.20261016.1020.dev.1.g49c45f2.dirty
-python3 tools/ubuntu-build.py verify --version "$version"
-python3 tools/board.py deploy --exclusive --packages "build/packages/$version"
-PLAYWRIGHT_MODULE=/absolute/path/to/playwright/index.mjs python3 tools/board.py verify
-```
+部署先本地核包集合与来源/脏状态，再记录原包版本，上传并委托[install-components.sh](../tools/install-components.sh)安装、检查。
+升级前核哈希/名称/架构/版本及非降级条件，先模拟APT，再停应用、安装并恢复管理器选择；保留配置。
+仅迁移已知旧路径或与受控包相同的文件；sudoers还可按旧包登记校验确认来源。未知覆盖在停服务前拒绝，管理员drop-in保留。
+不重做USB-PD、不重启系统/更新内核；失败应用保持停止，先审包管理状态，不连续重试或启动可能混装的应用。需要回退时用记录的原版本包重新部署。
 
-`deploy` 和 `check` 默认检查7.3内核；在5.15系统上应增加 `--kernel`，值为板上实际
-`uname -r` 输出。它不会自动切内核。若安装后只在内核检查处失败，先核对已安装版本，
-再以正确参数运行 `check`，不要重复安装同一版本。
-
-board.py deploy 先在本地按 SHA256SUMS 校验七个 deb 和 sources.json 并输出脏源码仓库
-（--dry-run 到此为止），记录板上原有版本（Previous 行，回退时用对应目录再次 deploy），
-上传整个包目录与安装脚本到板上临时目录，以 sudo 运行 install-components.sh，
-确认七包版本一致后运行 check。已 enroll 的开发板无需密码。
-安装失败时应用保持停止，先 `dpkg --audit` 检查，不要连续重试。
-
-示例版本已部署，重新构建使用新版本。安装脚本验证七包的 SHA256、名称、架构、
-相同版本和非降级条件，先模拟 APT 安装，随后暂停应用并恢复原选择。保留应用配置。
-只迁移与候选包内容相同或仅已知旧路径不同的服务、udev 和 sudoers 文件；sudoers
-也允许由 dpkg 登记且内容仍与旧包 Conffiles 校验和一致的文件随新版升级。未知覆盖
-会在停服务之前拒绝；RTP 等其他管理员 drop-in 保留。修复启用链接指向包内服务，
-不重新执行 USB-PD 协商、不重启系统、不更新内核。失败不自动启动可能混装的应用。
-这是现有 VIM4 系统的升级入口，不代替完整镜像首次安装。
+单组件模式及包清单见[构建器](../tools/ubuntu-build.py)：manager-only只停启管理器，用于保留显示故障现场；One-KVM-only仍暂停应用并恢复所选应用、重启管理器，不是无中断路径。单组件来源须记录。
+开发便利认证不随包/镜像分发；完整镜像首次安装不能用组件升级代替。
 
 ### 浏览器测试的公共前提
 
-浏览器脚本需要 Node、Playwright 与 Chrome；PLAYWRIGHT_MODULE 指向 playwright/index.mjs 的绝对路径。
-默认网关地址为 http://192.168.50.210:8080（管理器 :80）。同一应用账户的测试依次运行。
-视频 smoke 与 kvm-switch-check.mjs 可用 VIM4_TEST_CHROME 指定浏览器绝对路径，配对测试核对实际版本。
-PiKVM smoke 可用 PIKVM_CDP 接入专用测试 Chrome，结束关闭测试 context 并保留外部浏览器。
-截图检查包含局域网响应时间，拒绝等待 3 秒超时才返回的 JPEG。
+先在管理器完成首次账户设置。浏览器依赖与登录环境变量见[manager-login.mjs:loginManager](../tools/manager-login.mjs)和[接收器头部](../tools/latency-receiver.mjs)，不使用独立应用密码。
+同账户实机测试串行；使用专用测试浏览器，固定可执行文件仍须核实际版本。外部CDP只关闭测试context，保留外部浏览器。
+独立后端只通过SSH转发HTTP loopback测试，按loginManager的localBackend入口绕过管理器登录，不改变应用认证；管理网关不能当后端转发。普通网关必须登录。
 
-video-smoke.mjs 默认采样 15 秒，输出实际解码帧数、
-尺寸、丢帧和丢包；无视频或连接断开返回失败。它使用当前页面配置，默认显示
-WebRTC 视频，不修改账户认证。此测试不测输入响应、音频或端到端延迟。
+### 应用测试行为与前提
 
-所有访问 8080 的浏览器测试通过 MANAGER_PASSWORD 和可选 MANAGER_USERNAME（默认 admin）
-登录管理器，复用 tools/manager-login.mjs；不再需要 ONEKVM_PASSWORD 或 PIKVM_PASSWORD。
-先在管理器完成首次账户设置。One-KVM 使用 `tools/one-kvm-smoke.mjs --exclusive`，
-可加 `--mode=h265` 或 `--mode=mjpeg`，结束恢复原模式。托管模式自动完成应用初始化。音频解码验证使用
-`one-kvm-audio-check.mjs --exclusive`，输入端应播放有声内容；USB 主机为本机 Mac 时，
-`one-kvm-usb-check.mjs --exclusive` 检查键鼠、测试 ISO 和重新枚举后的键鼠，
-ONEKVM_TEST_ISO 指向包含测试标记的 ONEKVM_TEST 卷。三套应用切换使用
-`kvm-switch-check.mjs --exclusive`，结束恢复初始选择。这些实机测试依次运行，
-避免并发占用同一套硬件。
+参数/默认采样长度见[各入口](tools.md#应用回归浏览器)，这里只列人工准备和证据边界：
 
-独立 7.x 视频实验可先用 SSH 将板上 `127.0.0.1:8082` 转发到本机，再给
-one-kvm-smoke.mjs 或 latency-receiver.mjs 加 `--local-backend`。此选项只接受
-HTTP loopback 地址，跳过管理器登录，不改变应用认证；普通网关测试仍需管理器密码。
-
-周期卡顿排查可加 `--seconds=120 --warmup=15`，同时在物理 HDMI 桌面运行
-运动标记。输出包含关键帧/丢包/丢帧/freeze 增量，以及呈现回调间隔的
-P50/P95/P99/max、超过 50/100/250ms 的次数、回调漏采和无回调尾段。
-平均 60fps 与零 freeze 不代表没有短暂停顿；回调跳号也不能直接算成视频丢帧。
-默认无界面运行；`--headed` 使用可见 Chrome，输出浏览器版本、实际 codec、解码器名称
-及浏览器提供的节能解码标志。应在出现问题的客户端、目标屏幕上测量；这些数据仍不是
-光学显示验证。测量中接收流切换会报错，应重新采样，不能跨会话计算增量。
-
-`one-kvm-smoke.mjs --exclusive --audio` 会通过 Web Audio 检查 WebRTC 解码波形，
-需从 HDMI 输入播放非静音测试信号；不以浏览器 totalAudioEnergy 单项统计替代声音证据。
-`one-kvm-features-check.mjs --exclusive` 检查终端、扩展及看门狗，本地 FRP 测试服务
-须监听 127.0.0.1:17700，使用脚本中的测试 token。结束恢复关闭状态和原配置，
-`--restore-drive` 仅用于测试前原本已连接虚拟盘的场景。测试 FRP 服务不得监听公网。
-
-`one-kvm-usb-profile-check.mjs --exclusive` 检查 HID 组合、禁用/重新启用、UAC 枚举、
-三种 USB 网卡、超限回滚及网页保存；保存原配置到日志并在 finally 恢复。
-`--audio` 另要求 macOS 已授予录音终端麦克风权限，以及编译好的
-`/tmp/uac-record-level`。录音器可按名称或厂商选择 USB 输入，不改变系统默认输入。
-VIM4 UAC2 在 macOS 可能显示为 `Capture Inactive`；设备名本身不代表无音频。
-板端 `one-kvm-usb-board-check.py` 只能在应用停止且介质已安全弹出并卸载时运行，
-直接验证助手的枚举与恢复。实际键鼠及 ISO 读取仍用 `one-kvm-usb-check.mjs`。
-
-board.py verify 先运行 check，再逐项输出 PASS/FAIL/SKIP，并写入日志目录的 verify.json：
-
-| 项 | 方法 | SKIP 条件 |
-|---|---|---|
-| hid | 向 /dev/hidg1 写两次绝对坐标，用 osascript 读取 Mac 光标核对（误差 2%），最后恢复原位置 | 本机不是 gadget 的 USB 主机 |
-| audio | arecord 读 hw:AMLAUGESOUND,0 一秒，要求帧数完整；输出峰值，0 表示信源静音 | PCM 被应用音频会话占用 |
-| video | video-smoke.mjs 采样 10 秒，地址取自 ssh -G | 无 node/Playwright |
-
-SKIP 不算通过。hid 假定 Mac 只有一个显示器；会短暂移动光标，不点击。
-不覆盖键盘输入、音频内容、运动画面和端到端延迟（见 [latency.md](latency.md)）。
+- 视频smoke用当前配置核实际解码/尺寸/丢帧/丢包；无视频/断流失败，不证明输入、声音或端到端。截图不能等HTTP超时才算成功。
+- 卡顿需在问题客户端/目标屏幕上用真实HDMI运动测。平均帧率正常或零freeze不排除短暂停顿，回调跳号不等于丢帧；流更换后重新采样，不跨会话算增量。
+- 音频验证先让HDMI源出声，以解码波形为证，不用totalAudioEnergy单项替代；音频测试须符合[代码规范](code-standards.md#上板与测试)授权。
+- USB输入测试须连接真实USB主机，准备含测试标记的ISO并安全弹出；组合测试保存/恢复配置，板端助手只在应用停止、介质已弹出卸载后运行，不能替代实际键鼠/ISO读取。
+- UAC录音先授予终端麦克风权限并编译[录音器](../tools/uac-record-level.swift)；只选USB输入不改系统默认。macOS显示Capture Inactive不等于无声音。
+- 终端/扩展测试的本地FRP服务只监听回环，不暴露公网；恢复原配置，原本连接的虚拟盘须按对应恢复模式处理。
+- board.py verify先check，再分别报告实测与跳过。HID可能短暂移动光标，假定单显示器；音频被占用、主机不匹配或缺浏览器依赖的SKIP不算通过。它不覆盖键盘、音频内容、运动或端到端。
 
 ## 操作前约定
 
-- recover/flash 必须先协调其他 agent 释放板子，并关闭 tio 等串口终端。
-  --exclusive 是调用者对独占状态的声明，不会自动发现其他机器或任务。
-- flash 需要用户明确授权清空 eMMC。--yes-erase-emmc 表示已有授权，不是获取授权的替代。
-- 同一工作区的 board.py 有进程锁；串口工具也有端口锁。外部终端未必遵守这些锁。
-- SSH 使用现有密钥与 known_hosts，日常保持主机身份校验，不更改 SSH 配置。
-  只有 flash 成功后（或显式 provision --replace-host-key）才删除该地址的旧主机密钥并接受新密钥。
-- 开发板先运行一次 `printf 'khadas\n' | python3 tools/board.py enroll --sudo-password-stdin`
-  （默认密码见 [硬件](hardware.md#默认账户开发环境)），安装
-  board/vim4-dev-nopasswd.sudoers，之后 deploy/recover 全自动，不存储任何密码。
-  该文件不进入组件包和整机镜像；新刷的镜像需重新 enroll。撤销：
-  `sudo rm /etc/sudoers.d/vim4-dev-nopasswd`。不修改账户密码。
-- 未 enroll 时交互提示密码；无终端用 --sudo-password-stdin 经 stdin 传入，不放进参数或日志。
+- 先按[板锁合同](board-window.md#占板时间最短化)协调，recover/flash前关闭串口终端。exclusive只是调用者声明，不能发现别台主机或不遵锁的外部终端；工具进程/端口锁不替代协调。
+- flash须用户明确授权清空eMMC；确认参数表示已有授权，不是授权替代。
+- SSH保持现有密钥与known_hosts校验，不改SSH配置；只有刷写成功或明确要求替换主机密钥时接受新密钥。
+- 首次免密sudo/公钥接入按[默认账户](hardware.md#默认账户开发环境)和[board.py provision/enroll](../tools/board.py)。不改密码，密码经stdin/临时askpass而非参数/日志；开发sudoers不进包和镜像，重刷后需重新enroll。
 
 ## 远程进入恢复环境
 
-```sh
-python3 tools/board.py recover --exclusive
-```
-
-先检查串口与板型，SSH 调用板上 /usr/local/bin/reboot2oowow，记录 60 秒串口日志，
-再确认 OOWOW shell 和 eMMC 存在。不会刷盘。超时不自动反复重启。
-此入口已确认存在于当前板子；实际远程切换尚未在本工具中执行验证。
-官方说明：[远程进入 OOWOW](https://forum.khadas.com/t/how-to-switch-to-boot-with-oowow-remotely/21754)。
+用[board.py recover](../tools/board.py)先核串口/板型，经SSH进入OOWOW，记录UART并确认shell与eMMC；此操作不会刷盘，超时不反复重启。
+恢复入口在板上确认存在，工具远程切换尚未实机验证。软件恢复依赖Ubuntu/SSH可用，硬锁/供电故障仍需物理复位或独立硬件。
 
 ## 本地候选镜像一键刷写
 
-把示例 192.168.50.2 替换成 Mac 在板子所在局域网的实际 IPv4 地址。
-先离线预检，--dry-run 不连接 SSH/串口、不启动 HTTP 服务：
+先按[board.py flash的参数与流程](../tools/board.py)做离线dry-run：不连SSH/串口、不开HTTP。授权清盘并独占后才执行；已在OOWOW可跳过SSH重启。保留网线/USB-C供电，TF卡可能改变启动优先级。
 
-```sh
-python3 tools/board.py flash --exclusive --yes-erase-emmc \
-  --image build/images/vim4-kvm-ubuntu-0.1.0-dev2/vim4-kvm-ubuntu-0.1.0-dev2.img.xz \
-  --serve-address 192.168.50.2 --dry-run
-```
-
-取得刷盘授权并完成独占协调后，删除 --dry-run 执行。若已经在 OOWOW，增加
---already-oowow 跳过 SSH 重启步骤。必须保留网线和 USB-C 供电；TF 卡可能改变启动优先级。
-
-流程：本地压缩包和解压内容 SHA256 → 串口预检 → 远程进入 OOWOW → 板型、磁盘容量、
-挂载状态检查 → 临时 HTTP 下载 → 板上 SHA256/xz 校验 → OOWOW API 写盘 → 按原始镜像
-长度读回 SHA256 → 重启并记录 180 秒启动日志。
-HTTP 仅绑定指定地址的临时端口，只开放本次随机 URL，下载结束关闭，不暴露目录。
-Mac 防火墙需允许板子连接该端口。整个镜像在 OOWOW /tmp 中下载，需有足够 RAM。
-
-结果写入 logs/board-时间-随机值/；可用 --log-dir 指定一个尚不存在的目录。
-operations.log 保存步骤输出，recovery-uart.log/firstboot-uart.log 保存启动过程。
-校验失败不会重启。后台下载、写入、读回任务超时会报告板上 .done/.log 路径；
-任务可能仍在运行，必须先检查，不能直接重试刷机或断电。无自动续刷。
+顺序：本地压缩/解压内容哈希 → 串口/板型/容量/挂载预检 → OOWOW → 临时HTTP下载 → 板上哈希与压缩校验 → 写盘 → 按原镜像长度读回哈希 → 重启采UART。
+HTTP仅指定地址、随机URL，不开放目录，下载后关闭；防火墙须允许板连接，OOWOW须有RAM容纳整镜像。
+校验失败禁止重启。后台任务超时可能仍在写入，先按报告路径检查，不能重试刷写或断电；无自动续刷。保留操作日志与恢复/首启UART。
 
 ## 首次启动与检查
 
-```sh
-python3 tools/board.py check
-```
-
-检查预期内核（可用 --kernel 指定）、tvserver/HDMI/gadget/NanoKVM 服务、采集和 HID
-设备节点、本机 8081 后端及 8080 的 /__vim4/api/auth/state，并输出 UDC 状态和失败单元。
-未登录访问网关首页的 302 属正常（curl -f 不将 302 判失败）。UDC 未连接会显示，但不表示
-HID 实测失败；检查成功也不代表实际键鼠、画面、音频或延迟通过。
-
-新镜像没有开发者公钥，SSH 主机密钥也会重新生成。flash 在启动日志采集后自动运行
-provision 和 check：等待 22 端口，删除 known_hosts 中该地址的旧密钥并接受新密钥，
-公钥登录失败时用默认账户密码（见 [硬件](hardware.md#默认账户开发环境)）登录一次，
-把 ssh -G 中 IdentityFile 对应的 .pub 追加到 authorized_keys，再 enroll 免密 sudo。
-密码只经临时 askpass 的环境变量传给 ssh，不进入参数和日志。
-
-已有公钥和免密 sudo 的板子上 provision 不做任何修改，可重复运行。板子曾手工重装时：
-
-```sh
-python3 tools/board.py provision --replace-host-key
-```
-
-首次完整测试还需确认根分区扩容、分辨率切换、H264/MJPEG、音频和 HID 实际输入
-（board.py verify 覆盖其中一部分）。
-
-软件恢复依赖 Ubuntu/SSH 可用；系统死机、供电故障仍需物理复位或独立控制硬件。
+[board.py check](../tools/board.py)只核预期内核、服务、节点和网关状态；未登录首页重定向正常，UDC未连接也不等于HID实测失败，check不证明画面/输入/声音/延迟。
+新镜像重新生成SSH主机密钥且无开发公钥。flash采首启日志后provision/check：等SSH，替换旧主机密钥，必要时默认账户登录一次追加现有公钥、enroll；已接入板重复provision不改配置。
+首次完整验收仍须根分区扩容、模式切换、编码、实际输入与授权音频，verify只覆盖一部分。
 
 ## KVM 应用切换回归
 
-```sh
-MANAGER_PASSWORD=… PLAYWRIGHT_MODULE=/absolute/path/to/playwright/index.mjs \
-  node tools/kvm-switch-check.mjs --exclusive http://192.168.50.210
-```
-
-认证与依赖见[公共前提](#浏览器测试的公共前提)。
-
-保留上一界面的视频连接，通过管理器接口执行两轮 NanoKVM → JetKVM → NanoKVM。
-每次核对服务互斥、开机启用状态，再在 Chrome 采样 10 秒实际解码帧数、丢帧和丢包。
-最终保持 NanoKVM。两个入口使用不同的 `?kvm=` 参数，避免共用 8080 时复用另一应用的首页缓存。
-测试要求两个应用已完成初始化；不会自动创建账户或修改认证。
-`Conflicts=` 不保证退出顺序，管理器必须等旧服务完全停止后再启动新服务。
+按[公共前提](#浏览器测试的公共前提)初始化应用，再运行[kvm-switch-check.mjs](../tools/kvm-switch-check.mjs)。
+保留旧页面连接，核服务互斥、启动状态及实际解码；不要用缓存的另一应用首页当结果。互斥声明不保证退出顺序，管理器须等旧服务完全停止才启动新服务；切换顺序、采样长度和结束选择以脚本为准。
 
 ## USB 切换回归
 
-必须先启动包含两项 HID 生命周期修复的内核，详见 [内核](kernel.md)。
-`tools/hid-rebind-check.py` 在应用停止、板子独占时验证 epoll 描述符跨 UDC
-重新绑定。旧内核不能运行此测试，会触发 panic。
-
-应用层回归先上传可丢弃的 ISO，并确认麦克风关闭、没有挂载其他镜像：
-
-```sh
-PLAYWRIGHT_MODULE=/absolute/path/to/playwright/index.mjs \
-  node tools/usb-switch-check.mjs http://192.168.50.210:8080 \
-  /var/lib/vim4-kvm/images/test.iso --exclusive
-```
-
-脚本保持原查看页面连接，执行三轮麦克风/镜像组合切换，结束时弹出镜像并恢复
-NCM。它会短暂断开 USB，不能与用户输入或其他硬件任务并行。验证的是 API
-切换和恢复，不包含被控机录音、镜像文件读写或音画延迟。
+必须先有两项[HID生命周期修复](kernel.md)。应用停止且独占时才运行[hid-rebind-check.py](../tools/hid-rebind-check.py)，旧内核会panic。
+准备可丢弃ISO，麦克风关闭、无其他挂载镜像，再跑[usb-switch-check.mjs](../tools/usb-switch-check.mjs)。
+此测试会断USB，不与用户输入/其他硬件任务并行；只证明API切换/恢复，不证明被控机录音、镜像读写或音画延迟。
 
 ## 工具验证边界
 
-浏览器镜像上传与 Bash 终端回归（会在板上保留上传的镜像，重名不会覆盖）：
-
-```sh
-PLAYWRIGHT_MODULE=/absolute/path/to/playwright/index.mjs \
-  node tools/media-upload-check.mjs --exclusive /path/to/image.iso
-```
-
-使用原生 File/FormData 验证上传响应，并通过真实终端 WebSocket 回读 Bash 版本。
-此命令不验证镜像可启动、USB 挂载或文件系统写入；这些证据单独记在上板记录中。
-
-```sh
-python3 -m unittest discover -s tests -p 'test_*.py'
-```
-
-离线测试覆盖损坏镜像拒绝、确认开关、dry-run 无硬件访问、HTTP 文件隔离、写入失败
-禁止重启、串口退出码和缺失完成标记；部署覆盖包集合校验、委托板上安装脚本、
-版本不一致时不报告通过、sudo 密码不进入命令行。此工具尚未实际重启或刷写 VIM4，不能仅凭
-离线测试将它标记为已完成实机验证。
+[media-upload-check.mjs](../tools/media-upload-check.mjs)会保留上传镜像，重名不覆盖；核真实上传和终端回读，不证明镜像可启动或USB/文件系统写入。
+离线测试见[tests](../tests/)；刷机工具尚未实际重启/刷写VIM4，离线通过不能算实机验收。SKIP、受干扰与未验项必须单列。

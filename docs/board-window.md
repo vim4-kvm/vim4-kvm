@@ -1,208 +1,73 @@
 # 单板 FIFO 与短窗口
 
-编译先完成，持板不超过30分钟；同批候选链式 RAM 启动，最后回原基线。工具已在
-kbase uhd5 RAM窗口使用；新payload目录、真实build ID校验及正常候选一次回5.15恢复通过，
-范围见[uhd5正式合入](bringup/2026-10-31-uhd5-main-integration.md)，不代表所有故障回退已修复。
-所有会话必须在同一协调主机共享 `/tmp/vim4-board-queue`；
-不同主机的 `/tmp` 不互通。Python入口无第三方依赖；浏览器接收/像素比较复用项目已有
-Node、Playwright与Chrome，配置见 [工具目录](tools.md)。
+本页管板锁、RAM候选链和恢复证明；普通安装只读[占板](#占板时间最短化)和[排队](#排队采样与迁移)。
+RAM测试再读[候选链](#候选链与恢复)、[基线](#当前正式基线)、[证据](#基线与证据)；源操作读[MCP](#mcp-与接收)。
+当前身份与正式安装分别见[主线基线](kernel-mainline.md#源码与配置)、[升级合同](kernel-mainline.md#正式构建与整包升级)。
+命令、参数、路径、阈值以[board-queue](../tools/board-queue)、[board-window](../tools/board-window)的头注释、parser及对应函数为准。
+曾通过[uhd5 RAM往返](bringup/2026-10-31-uhd5-main-integration.md)，不覆盖全部故障恢复；当前正式内核RAM往返尚待独占实测。
 
 ## 占板时间最短化
 
-### 当前正式基线
-
-只支持5.15或sources.toml当前tested_build/retained_runtime的精确release（当前7.3.1）。
-首次proof必须在真实基线上采集，并确认默认启动项的LINUX/FDT对应所捕获的文件；正式基线应指向
-`/kernels/<release>/Image`、`/kernels/<release>/vim4.dtb`，首次捕获时核对默认项确实指向所捕获基线。
-正式基线的非空文件清单自动扩展至 `/boot/kernels/<release>`、完整模块树、extlinux、kernels.json、
-runtime-build.json和四个启动入口，并记录采集/三个kbase模块的加载build ID、原应用及稳定DT属性；
-与当前来源锁、manifest中的完整模块文件哈希逐项比对。
-传入文件清单还应包含本次用户态覆盖目标。候选期间只比较持久启动/登记/模块文件；
-/usr和/opt文件可能被RAM bind覆盖，其完整哈希延后到正常重启退出覆盖后逐项核对。
-链式stage同样延后这些运行时路径的字节检查，仍严格核对原proof与其他持久文件。
-返回前和链式启动前只读取所需文件哈希，不要求候选具备基线模块notes、DT或应用状态；
-首次基线采集和正常重启后的完整identity仍严格核验这些身份，缺失模块会失败。
-完整proof经SSH stdin传输，避免Linux单参长度限制。
-缓存继续按日期、全部身份/文件哈希和测量参数失效；恢复逐项比较原 proof。
-
-同 Image 的 DT 候选须用独立 namespace/payload_id，manifest 的 `dt_properties` 是
-相对 `/sys/firmware/devicetree/base` 的属性路径到原始字节 hex 的映射，例如
-`{"soc/display/status":"6f6b617900"}`。prepare 用 fdtget 校验候选属性；启动后读实时 DT
-逐项比较，并要求新 boot ID。使用 `baseline --dt-properties soc/display/status ...` 在原基线上
-先采集所选属性；至少一项候选属性必须与实际基线不同，prepare、stage和启动核验都拒绝
-未采集或全部未变的属性。只用未变化的model/compatible不能区分候选。候选 Image 必须等于基线、DTB 必须不同、完整模块清单须与
-基线一致（含依赖数据）。不同 DT/runtime 使用不同 payload_id；归档 SHA
-覆盖其全部内容，不能只凭 uname/build ID 区分。
-
-7.x ready 同样强制 manager/HDMI/gadget、唯一活动 KVM 和 UDC configured；
-One-KVM 另检查 API。正式基线的 `return-baseline --video-check COMMAND ...` 必须提供
-原应用的实际解码推进检查，例如现有 `node tools/board-window-receiver.mjs URL 3`，
-在 sampling 锁下运行并保存 returned-video.log，失败不记成功。其他应用使用各自已审阅的
-接收检查命令。正常重启退出RAM bind覆盖；stage/cleanup脚本同目录上传当前sources.toml，
-在板上按同一正式release门禁执行。恢复上传的scp限时30秒，无重试。
-清理只删除本次创建且仍为空的模块挂载点，
-已有正式模块目录始终保留。这些是离线合同，7.3.1实际RAM往返仍待独占板窗验证。
-
-只有一块板，所有任务排同一队列；每分钟占板都会推迟其他任务。
-
-- 取锁前完成全部构建、离线测试和窗口脚本；持锁期间只执行无人值守脚本，不读文档、改代码、编译或现场排查。
-- 常规窗口目标15分钟内，30分钟为硬上限。失败即收集证据、回收并释放，离线分析后再排队。
-- 只跑与改动相关的门禁；九类全量只给正式候选跑一次。稳定性观察默认不超过10分钟，非必要不加。
-- 当天基线哈希未变就复用，不重测；同批候选链式启动，批末回原基线一次。
-- 就绪用状态轮询判断，不写固定长等待；能离线判定的（码流、日志、哈希）拷回本机再分析。
+- 所有会话必须在同一协调主机共享同一队列；不同主机的临时目录不互通，不得换队列根来清缓存或绕锁。
+- 取锁前完成构建、离线验证及无人值守窗口脚本；持锁不读文档、改代码、编译或现场排查。
+- 窗口目标15分钟，硬上限30分钟，一个任务合计不超过30分钟。失败立即采证、回收、释放，离线分析再排队；稳定性默认10分钟。
+- 只测改动相关门禁，正式候选九类全量只跑一次；当天身份/设置未变复用基线，同批候选链式启动，批末回原基线一次。
+- 状态轮询判断就绪；能离线分析的码流、日志与哈希拷回本机。为恢复预留预算，正常恢复不能证明硬锁可恢复。
 
 ## 排队、采样与迁移
 
-```sh
-tools/board-queue status
-tools/board-queue run --heavy --who HDR --purpose build --max-min 30 -- make -j8
-tools/board-queue run --who HDR --purpose r18 --max-min 30 -- sh window.sh
-```
+按[board-queue 的 main/命令帮助](../tools/board-queue)先查状态，再用run包住窗口；直接acquire时必须显式release。板票会传给子命令，run结束或常规信号退出释放。
+heavy用于构建等重负载：采样申请先阻止新heavy，等已有heavy退出再独占；heavy彼此共享。不要在heavy中取板锁、在板窗内等待heavy，先释放再排另一类。
 
-`run`把 `BOARD_TICKET`、`BOARD_QUEUE_ROOT`传给命令，结束（包括失败、SIGINT/SIGTERM）
-释放。直接管理窗口：`export BOARD_TICKET=$(tools/board-queue acquire --who HDR --purpose r18)`，
-然后 `tools/board-queue release`；独立keeper在命令返回后保管内核锁。
-`sampling on/off`仅允许当前板票据，on等现有heavy退出后返回；申请期间已阻塞新的heavy，
-heavy之间共享。板窗口平时持旧heavy共享锁，采样时升级独占锁。
-不要在heavy命令中再取板锁，或在板窗口中等heavy；先释放再排另一类票据。
-
-票据序号在flock下递增，keeper持有旧 `/tmp/vim4-board.lock` 和
-`/tmp/vim4-heavy.lock`（macOS BSD flock，Linux另外兼容POSIX lockf）。票据原子替换，
-历史在 `history.jsonl`，每个票据有keeper日志。释放再申请只能排到尾部；过期票据永不续期。
-超时写 `.notice`、keeper日志、原终端（存在时）；run也向stderr打印。status显示告警。
-超时释放租约和旧锁，后继可接管并记录；**不会终止原命令或远程操作**，原会话应立即收尾，
-不能继续启动新操作。不要据此推断硬件已经空闲。SIGKILL无finally，keeper会检测run父进程消失；
-keeper自身死亡由后继/status剔除。主机睡眠期间不提供准时唤醒保证。
-
-正在运行的旧会话先完成原窗口、原样退出旧lockf，不嵌套新队列、不删活跃锁文件。
-已在旧lockf等待的会话应在下一轮改用新入口；旧waiter不具备新票据FIFO资格。
-仍需短期用旧入口时使用 `lockf -k` 保留锁文件。旧lockf默认退出删除文件，不能保证
-其未修改的旧waiter之间FIFO；迁移完成后仅使用新队列，禁止手工unlink两个锁文件。
-本轮不会打断旧持有者或旧waiter，也未给其他会话发送消息。
+keeper兼容旧锁并保管票据；重新申请只能排尾，过期不续期。超时会告警和释放锁，**不会终止原命令或远端动作**；原会话立即收尾，不得启动新操作，后继也不能据此认为硬件空闲。
+强杀run后keeper检测父进程消失，keeper死亡由后继/status清理；主机睡眠不保证准时唤醒。
+旧会话先按原窗口退出，不嵌套新队列、不删活锁；旧waiter下轮迁移，不享新FIFO资格。临时旧lockf需保留锁文件；未修改旧waiter间不保证FIFO，禁止手工unlink锁文件。
 
 ## 候选链与恢复
 
-新候选可在manifest同时指定`namespace`和`payload_id`，各为1–64位小写字母、数字、
-下划线或连字符，首位为字母或数字。目录为
-`/var/lib/vim4-kvm/ram-candidates/<namespace>/<payload_id>/<真实kernel build_id>/`。
-payload_id是独立构建身份，修改DT或模块必须换ID；相同ID已存在也拒绝覆盖。
-Image/build_id不必变化。`display-once.py prepare`可传`--namespace kbase --payload-id trial1`。
-编译静态init时用`-DTRIAL_ROOT='"/var/lib/vim4-kvm/ram-candidates/kbase/trial1/"'`，
-prepare/stage验证ELF中的根目录合同，sysboot/extlinux采用同一路径。
-最后一级仍为真实GNU build ID，PID1继续核对运行内核notes；不能把payload_id当作内核ID。
-省略两字段时，原display-m1/HDR2 build-ID目录、原静态init与cleanup合同保持不变。
+1. 离线用[display-once.py 的 prepare](../packaging/kernel/display-once.py)生成私有payload；支持的格式、namespace/payload_id及静态PID1根目录合同见其parser/校验函数。普通安装包不能当RAM包。
+2. 构建记录提供外部归档SHA；不能以传输后现算哈希代替来源证明。目录含归档时哈希归档，松散payload核manifest及逐文件。改变DT/模块/runtime必须换payload身份，相同ID拒绝覆盖；payload ID不能代替真实GNU build ID。
+3. 首候选前采集[基线proof](#当前正式基线)。链式stage比较原proof和持久文件，不要求当前候选身份等于原基线；候选之间也不能覆盖首次挂载点所有权记录。
+4. 在同一个run窗口用board-window依次启动、接收、再启动；批末return-baseline。stage沿用安全解包、静态ELF、完整模块、fsync/原子发布校验，不向正式模块树安装候选文件。
+5. 串口仅打断autoboot并发送RAM sysboot，不saveenv、不改默认。读取基线MAC，仅在RAM设置，保持DHCP身份；立即收UART，不阻塞等SSH退出。
+6. 等新boot ID及预期内核身份、SSH、服务、UDC与应用API；snapshot无观看者时的服务错误不等于采集坏，接收需另验真实解码推进。任何一步失败停止，不自动换候选或重试，先看UART再决定恢复。
 
-使用 `display-once.py prepare` 生成的目录（包含candidate.tar）或candidate.tar归档。
-也接受r18的HDR2 `manifest.json` RAM payload目录或归档（Image/DTB/init/modules/runtime/extlinux），
-首轮需 `--baseline-files` 显式列出保留基线的恢复文件；普通boot/lib内核安装包不能直接传入。
-目录内有candidate.tar时SHA指归档；松散payload目录的SHA指manifest.json，逐文件再验证。
-原有prepare的release/静态ARM64 PID1/完整模块清单门禁继续有效。
-归档外部SHA必须来自构建记录，不能以传输后重算的哈希代替来源证明。
+只为候选创建空模块bind目标并记录marker；候选模块留私有payload。清理只删本次创建且仍为空、未挂载、未替换的目录；已有正式目录保留，异常报失败，不递归删。
+完整proof走stdin，不塞进命令单参，避免Linux单参长度限制；完整inventory保留本机证据，清理只传目录身份。
 
-```sh
-# 在同一个run窗口的window.sh里；串口设备按现场指定
-tools/board-window --window hdr-batch --device /dev/cu.usbserial-1100 boot-candidate build/candidate-a --sha256 "$SHA_A"
-tools/board-window --window hdr-batch receiver --local-ip 192.168.50.239 --seconds 10
-tools/board-window --window hdr-batch --device /dev/cu.usbserial-1100 boot-candidate build/candidate-b --sha256 "$SHA_B"
-tools/board-window --window hdr-batch --device /dev/cu.usbserial-1100 return-baseline
-```
+return-baseline只正常重启一次，不打断autoboot；验证原身份、证明文件、服务、UDC和原应用实际解码推进。
+默认启动必须事先指向基线，无proof拒绝恢复。cmdline只允许已审阅的正常/看门狗reason互换，其余token及顺序不变；未知reason只能原样，重复或增删拒绝。
+失败保留UART/proof，不反复重启或热重绑网卡。EXIT trap安排恢复并留时间，但finally不能保证硬锁恢复。
+租约失效或恢复预算不足时不越权停服务/重启，保留恢复交接文件；本机SSH转发仍清理。
 
-首候选前必须运行5.15或上述uhd7；记录release、GNU build ID、cmdline与全部baseline_files。
-历史HDR2/5.15的 `--baseline-files` 是持久恢复证明，只列原启动文件和运行时登记配置；
-不要把候选PID1临时bind覆盖的runtime程序路径放进该证明，否则候选期间读到的是私有版本，
-链式校验会拒绝。后文baseline测量的 `--files` 则须包括程序/插件，用于性能缓存失效。
-归档逐文件核哈希，stage复用display-once.py的安全解包/静态ELF/fsync/原子发布。
-显式 `stage --retained-baseline proof.json` 在链式窗口核对原基线证明与归档一致，
-两次验证磁盘文件不变；不要求当前候选的release/cmdline等于原基线。原stage默认门禁不变。
-HDR2新release只创建空的 `/lib/modules/<release>` bind挂载点，完整模块仍留在私有payload，
-不向基线模块目录安装文件。接受安全的 `7.3.0/7.3.1-vim4kvm-<tag>+` 候选名；
-release名称不代表能力或验证结果，仍校验manifest全部文件、归档SHA、静态PID1和模块清单。
-stage记录自己创建空模块目录的marker；return-baseline验证回到原基线后清理。
-同Image的各payload分别保存恢复记录，避免后一个覆盖首次创建挂载点的归属证明。
-清理SSH命令只携带release和目录身份；完整模块inventory仍在本机证据中，
-不能把数千文件清单放进单个`python3 -c`参数（Linux单参长度上限）。
-已有目录、被替换的目录、非空或仍挂载的目录保留，清理异常报告失败，不递归删除。
-串口在autoboot提示后打断，仅发送原有sysboot RAM命令，不写saveenv或默认配置。
-立即读UART而不阻塞等SSH退出；从基线读取MAC并仅在RAM setenv ethaddr，保持DHCP身份。
-等待新的boot ID、预期release/build ID、SSH、逐服务active、UDC configured与API响应。
-snapshot只读缓存，无查看器时503不代表采集故障；receiver创建offer后另验真实解码推进。
-任一步失败停止，不自动重试或选择另一个候选；查看UART证据再决定恢复。
-SSH使用开发环境免密 `sudo -n`，完整proof脚本通过stdin发送，没有密码/heredoc混用。
+## 当前正式基线
 
-`return-baseline`重启而不打断autoboot，再验证原基线身份/所有证明文件、服务、UDC与视频。
-只发起一次正常重启，SSH/服务就绪有界等待；失败保留UART和proof，不自动反复重启或热重绑网卡。
-两种基线就绪均要求manager/HDMI active。返回后的release、真实build ID和保护文件逐项严格比较。
-cmdline仅单独审阅`reboot_mode=normal`与`reboot_mode=watchdog_reboot`之间的变化，记录前后值；
-其余token及顺序必须完全一致。未知reason只允许原样不变，重复reason或新增/删除reason均拒绝。
-无原始proof时拒绝恢复。默认启动必须事先确认为保留基线；本工具不修改默认项。
-批次脚本应在EXIT trap中安排恢复，并为恢复预留时间；不能靠finally保证硬锁恢复。
+精确release准入来自[来源锁](../packaging/kernel/sources.toml)，运行校验见[board-window 的 identity/ready 与 proof 流程](../tools/board-window)，不凭uname单独判定。
+首次proof须在真实基线上，确认默认LINUX/FDT就是所捕获文件；含完整模块、启动/登记文件、运行模块build ID、原应用、稳定DT属性，并与来源锁和manifest逐项比较。用户态覆盖目标也要采集。
+候选RAM bind会遮住用户态原文件：链式/返回前只比较持久启动、登记及模块文件；正常重启退出覆盖后才比用户态完整哈希和模块notes/DT/应用状态。缺模块不能当通过。
+历史HDR2的持久恢复清单不能包含被bind的程序路径，性能缓存文件清单则必须包括程序/插件，二者用途不同。
+
+同Image的DT候选：先在基线捕获要验证的DT属性，至少一项实际改变，不能只看未变model/compatible；候选Image等于基线、DTB不同、完整模块及依赖数据一致。prepare校候选DT、启动读实时DT并要求新boot ID；不同DT/runtime独立payload身份，SHA覆盖全部内容。
+ready要求管理器/HDMI/gadget、唯一活动KVM、UDC，One-KVM另查API。返回必须提供原应用解码推进命令，在sampling锁下运行；失败不报恢复成功。
+stage/cleanup携带同一正式来源锁；上传超时不重试。此节是离线合同，实测边界见开头。
 
 ## 基线与证据
 
-重复性能窗口可显式传 `boot-candidate --reuse-staged`：已存在的同一payload逐文件核对
-原归档哈希并重新检查基线后复用，不覆盖Image/DTB/模块/运行时。默认仍拒绝重复目录；
-任何文件改变均拒绝。返回时已清理的空模块bind目标会重新登记本次inode供安全清理。
-复用还核对首次 staging 的 root 所有者、0555目录及0555/0444文件模式，拒绝内部符号链接目录。
-`perf-quick.py` 每段操作前保留采样/恢复时间；清理失败分别记录 `cleanup-errors.json`，不覆盖原始错误。
-租约失效或恢复预算不足时不越权停启服务/重启，写 `recovery-required.json` 交接，SSH转发仍在本机清理。
+基线文件按当前部署登记选择，覆盖启动、模块、程序/插件和运行时登记，不能只给uname。缓存身份、参数和失效键见[board-window 的 baseline](../tools/board-window)：当天相同键才复用，变化/跨日重测，失败不缓存；测量后再核身份，缓存须跨worktree共享。
+性能对照另提供公开settings，含源/运动程序哈希、编码配置、浏览器及接收机身份，不放凭据；设置变化更新settings。未带设置的旧调用只证明短接收门禁，不能证明性能条件一致。
 
-`baseline --files /boot/... /opt/...` 必须列出当前5.15 Image、One-KVM程序、插件、
-所有默认启动/DTB/initrd与运行时登记文件（按当前部署清单选，不能只给uname）。
-例如受保护配置含 `/boot/extlinux/extlinux.conf`、`/etc/vim4-kvm/kernels.json`、
-`/etc/vim4-kvm/runtime-build.json`；内核/应用具体路径从当前登记清单读取。
-缓存键还含host、运行内核GNU build ID、cmdline、接收URL/时长/接收LAN IP；
-当天相同键返回 `reused: true` 和 `source_time`，变化/跨日才测；失败不缓存。
-测量后再次核身份，避免将变化中结果写缓存。缓存位于共享队列目录，不随worktree分裂。
-性能对照额外传 `baseline --settings public-settings.json`，把信源/运动程序哈希、编码设置、
-浏览器版本和接收机器身份放进公开JSON，内容进入缓存键；不要放凭据。
-更换这些设置须更新JSON。未传settings的旧调用只适合短接收门禁，不证明性能配置相同。
-不要为清缓存切换 `BOARD_QUEUE_ROOT`，否则会创建互不相通的板锁队列。
-
-`collect --readonly`只执行已审阅状态读取：dmesg、服务、UDC、/proc计数与One-KVM info，
-不访问regmap/MMIO/HID/采集节点，不停启服务。其余子命令要求未过期板票据。
-证据写主工具所在仓库 `logs/<window>/`，含原始dmesg、WARN/BUG/oops/CMA筛选、JSON、
-UART和 `evidence-*.tar.gz`。失败保留已有证据，不删除现场。
+复用stage先逐文件核原归档、基线、所有权和只读模式，拒绝内部符号链接与内容变化；默认拒绝重复目录。已清理空bind目标重新登记本次inode。
+[perf-quick](../tools/perf-quick.py)在每步前留采样/恢复时间，清理错误单列，不覆盖原错误。
+只读collect限已审阅状态文件，不触MMIO、HID或采集，不停服务；其他动作需有效板票。证据输出位置/文件名见工具，失败保留原始日志、UART与proof，不删除现场。
 
 ## MCP 与接收
 
-MCP只在显式调用时创建客户端：先通过SSH转发One-KVM 8081到本机18081，
-从板上凭据安全读取 `ONEKVM_MCP_KEY` 环境变量（不写命令参数/日志）。
-`mcp screenshot`保存JPEG；`mcp idle --menu-pixels 60`相隔2秒比较截图并忽略顶部菜单栏，
-每通道变化>20的像素比例<0.1%认为视觉静止，这不是“无人操作”的证明。
-每次工具动作先initialize并发送initialized通知（当前无状态服务不暴露重启代次），
-因此One-KVM在HDR步骤之间重启也会重新初始化；HTTP会话失效/断线后重建，截图等只读调用重试一次，HID结果
-不明时不自动重放。现有One-KVM是无状态JSON MCP，另支持返回session header的版本。
+先SSH转发One-KVM后端并安全读凭据；密钥不进参数/日志。客户端只在显式调用时创建。
+每动作重新initialize及通知，服务重启/会话失效后重建；截图只读调用可重试一次，HID结果不明不自动重放。视觉静止不证明无人操作，截图不证明显示器光度。
 
-`mcp hdr --profile reviewed.json --exec <测量命令>`封装apply→截图→命令→finally恢复→截图。
-profile使用明确的原状态恢复序列，格式如下；坐标/显示排列必须来自现场已验证记录，
-本工具不提供未经核实的固定坐标，不能只用一次toggle假定恢复成功。
+HDR操作须有窗口内HID授权。自定义profile必须附现场验证来源、完整apply/restore，不能假定toggle一次即恢复；封装执行顺序为应用→截图→测量→finally恢复→截图。
+内置M6序列的坐标、布局、尺寸和等待条件见[board-window 的 MCP 实现](../tools/board-window)；只适用于已验证现场布局，初始EOTF未知、尺寸不符或画面活动立即停止，切换期间未知有界等，不当SDR。恢复依据实际源EOTF，不依赖toggle次数；历史来源见[HDR/MCP记录](bringup/2026-10-31-hdr2-mcp-ice-pq.md)，未重新硬件验收。
 
-```json
-{"verified_source":"已验证操作记录路径及截图尺寸", "apply":[
-  {"name":"left_click","arguments":{"coordinate":[100,100]}}, {"wait":1}
-], "restore":[{"name":"key","arguments":{"text":"Escape"}}]}
-```
-
-上述仅为自定义profile结构示例；restore必须填写实际恢复HDR原状态的完整操作。
-HDR命令涉及HID，只有得到对应窗口的HID授权才调用。本轮仅mock，不发送任何HID。
-内置 `mcp hdr --m6-hdr on --exec <测量命令>` 复用r17/r18已经执行的M6序列：
-Apple菜单(27,13)→Settings(108,83)→Displays(1092,647)→向下滚动7格→HDR(1704,540)。
-强制截图1920×1080、English Settings与RTK UHD HDR布局，先检查视觉空闲；从
-One-KVM `/api/vim4/video` 的源端EOTF记录原状态，每次切换等待实际PQ/SDR，再关闭设置窗口。
-finally按源端原状态恢复并截图；不依赖toggle次数推断。初始未知EOTF、尺寸不符、画面活动均停止；
-切换中暂时UNKNOWN有界等待15秒，恢复前同样等待可判定状态，不把UNKNOWN当SDR。
-来源为gpu-hdr工作树只读的 `build/hdr2-r17-control.py`、`hdr2-r18-*-control.py` 与
-`logs/hdr2-r17/window-1793433768.jpg`、`window-1793435376.jpg`；需保持现场窗口布局，
-本轮未重新进行硬件验收。截图不能证明显示器实际光度。
-
-receiver复用r17 `packaging/hdr2-pq/video-recovery.mjs` 的独立视频页面与offer/close流程，
-另复用manager-login/getStats；不加载产品页面输入脚本，不请求声音或数据通道。
-发offer前由SSH确认服务与管线出帧，
-实际framesDecoded>0才开始计时，每50ms采样，保留原始时间戳与SSRC/codec；流更换、倒退、
-未推进或未解码均失败。按r17结论在自有测试Chrome进程关闭WebRtcHideLocalIpsWithMdns，
-优先发送literal host candidates；仍遇mDNS时才用显式 `--local-ip` 的接收机LAN地址替换，
-不能误用板IP；不修改生产ICE配置。50ms是目标采样间隔，JSON保留实际耗时，不宣称硬实时。
-接收与baseline自动开启/关闭sampling；不测声音，不发键鼠。
-Mac 的本地网络权限可能只拦 Node（`EHOSTUNREACH`，curl 正常）。此时用
-`ssh -L 18081:127.0.0.1:8081 vim4` 转发 One-KVM 回环后端，传 `--url http://127.0.0.1:18081`；
-回环地址按直连后端跳过管理面板登录，不能把隧道接到 8080 网关（offer 会 401）。
+接收只创建独立视频页，不加载产品输入脚本、不开音频/数据通道。先SSH确认服务出帧，再等真实解码推进才计时；流更换、计数倒退、停止推进均失败。
+采样实际耗时保留，不宣称硬实时；接收/baseline自动sampling。ICE优先literal host，仅测试浏览器关闭mDNS隐藏；确需替换时用接收机LAN地址，不能用板IP或改生产ICE。
+Mac本地网络权限可能只拦Node而curl正常，此时转发后端回环；不能转发管理网关当后端，否则offer认证失败。依赖/登录见[公共前提](board-tools.md#浏览器测试的公共前提)。
