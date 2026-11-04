@@ -1,3 +1,4 @@
+// Receiving video occupies the application's encoder; caller coordinates access.
 // Private receive-only page: never load product HID or audio scripts.
 export async function connectVideo(page, url, localIP) {
   await page.route('**/__board_receiver', route => route.fulfill({contentType: 'text/html',

@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+# Profile trials disconnect/re-enumerate USB; use a separate management link.
 """Run on the board as root, with One-KVM stopped and virtual media ejected.
 
 Exercises the candidate helper against configfs; restores the board profile

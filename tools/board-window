@@ -1,4 +1,6 @@
 #!/usr/bin/env python3
+# Boot/return actions reboot; baseline/receiver/screenshots occupy capture/encoding.
+# MCP HDR operations send HID to the source host; coordinate that host as well.
 """Short board windows. See docs/board-window.md for bundle and MCP contracts.
 
 All hardware actions require BOARD_TICKET; collect --readonly only reads reviewed

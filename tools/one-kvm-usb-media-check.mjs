@@ -1,3 +1,5 @@
+// Uploads a dedicated test image, writes written.bin through the host USB volume,
+// then ejects and removes this run's board files before restoring USB settings.
 // macOS host acceptance of a dedicated FAT image, read-only and writable.
 // Requires an unused EDGEUSB21 image containing marker.txt; never use user media.
 // Restores USB settings only after host eject and an empty kernel LUN.

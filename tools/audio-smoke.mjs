@@ -1,3 +1,4 @@
+// Coordinate exclusive capture/encoder access: the page also opens a video viewer.
 import { loginManager } from './manager-login.mjs';
 // Verify the real volume control and received audio without bypassing autoplay.
 // Optional --expect-signal requires a non-silent HDMI source during the sample.

@@ -1,3 +1,4 @@
+// Exclusive receiver: occupies the selected application's video encoder.
 // Reuses the project's browser/login transport. No audio tracks or HID.
 import fs from 'node:fs/promises';
 import { loginManager } from './manager-login.mjs';

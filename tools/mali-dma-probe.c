@@ -1,3 +1,4 @@
+/* Uses the board GPU exclusively, including temporary DMA buffers. */
 /* Headless compute + native memory or DMA-buf import/readback probe.
  * Build on ARM64 Linux: cc -std=c11 -Wall -Wextra -Werror tools/mali-dma-probe.c -lvulkan -o mali-dma-probe
  * glslangValidator -V tools/mali-dma-probe.comp -o mali-dma-probe.spv

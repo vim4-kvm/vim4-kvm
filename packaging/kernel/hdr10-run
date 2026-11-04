@@ -1,4 +1,5 @@
 #!/bin/sh
+# Exclusively occupies GPU/capture/encoding and the application listener.
 # Candidate-only launcher; the bundle is staged beside this file.
 set -eu
 bundle=$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)

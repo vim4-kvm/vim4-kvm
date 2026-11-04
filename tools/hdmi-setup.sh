@@ -1,4 +1,5 @@
 #!/bin/sh
+# Owns the capture path exclusively; reconfigures VDIN/VFM and starts the source.
 # Set up the HDMI-in capture path for the KVM:
 #   HDMI RX port 1 -> vdin0 (8-bit NV21, hw scaled) -> vfm_cap (standalone)
 # then open the source through tvserver (hdmiin-demo) and keep it open.

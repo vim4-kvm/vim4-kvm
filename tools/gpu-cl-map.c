@@ -1,3 +1,4 @@
+/* Uses the board GPU exclusively; coordinate the measurement window first. */
 /* SPDX-License-Identifier: MIT
  * Isolated CL map reproducer; run with an external 60s timeout and private ICD.
  * cc -O2 -Wall -Wextra -Werror gpu-cl-map.c -lOpenCL -o gpu-cl-map

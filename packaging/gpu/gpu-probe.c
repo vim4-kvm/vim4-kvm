@@ -1,4 +1,5 @@
 /* SPDX-License-Identifier: MIT */
+/* Board GPU probe: coordinate exclusive GPU access before running. */
 #define _GNU_SOURCE
 #include <dlfcn.h>
 #include <errno.h>

@@ -1,4 +1,6 @@
 #!/usr/bin/env python3
+# run occupies GPU/capture/encoding, changes HDMI/USB settings and sends HID to
+# the USB host; fixtures restore settings. prepare is offline; coordinate run.
 """Snapshot the qualified board-window fixtures offline, then run them serially.
 
 prepare never uses SSH or locks. run is only for final-window.py's locked child.

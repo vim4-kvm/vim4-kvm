@@ -1,4 +1,5 @@
 /* SPDX-License-Identifier: MIT */
+/* Board HDR compute probe: coordinate exclusive GPU access before running. */
 #define _POSIX_C_SOURCE 200809L
 #include <EGL/egl.h>
 #include <EGL/eglext.h>

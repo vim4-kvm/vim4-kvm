@@ -1,4 +1,5 @@
 #!/usr/bin/env bash
+# Destructive: overwrites eMMC contents; reboot is a separate operator action.
 # Flash an OS image into VIM4 eMMC through the OOWOW serial console.
 #
 # The board must already be booted into OOWOW (hold FUNCTION, tap RESET, release FUNCTION)
