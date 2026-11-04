@@ -121,6 +121,61 @@ class KernelOwnershipTest(unittest.TestCase):
         self.assertFalse(pd.kernel_pd_enabled())
 
 
+class KernelPowerTest(unittest.TestCase):
+    def setUp(self):
+        self.root = Path(self.enterContext(tempfile.TemporaryDirectory()))
+        self.node = self.root / 'dt/controller'
+        self.node.mkdir(parents=True)
+        self.enterContext(patch.object(pd, 'kernel_pd_node', return_value=self.node))
+        self.supply = self.root / 'class/power_supply/tcpm-source-psy-9-0022'
+        self.port = self.root / 'class/typec/port7'
+        self.device = self.root / 'devices/controller'
+        self.device.mkdir(parents=True)
+        self.supply.mkdir(parents=True)
+        self.port.mkdir(parents=True)
+        (self.supply / 'of_node').symlink_to(self.node)
+        for p in (self.supply, self.port):
+            (p / 'device').symlink_to(self.device)
+        (self.port / 'power_operation_mode').write_text('usb_power_delivery\n')
+        (self.port / 'power_role').write_text('[sink]\n')
+        self.values = {'ONLINE':'1', 'USB_TYPE':'C [PD] PD_PPS',
+                       'VOLTAGE_NOW':'5000000', 'CURRENT_NOW':'1500000',
+                       'VOLTAGE_MAX':'20000000', 'CURRENT_MAX':'3000000'}
+
+    def read(self):
+        (self.supply / 'uevent').write_text('\n'.join(
+            'POWER_SUPPLY_'+k+'='+v for k,v in self.values.items()))
+        return pd.kernel_power(self.root)
+
+    def test_current_contract_uses_operating_values_and_matching_device(self):
+        self.assertEqual(self.read(), {'state':'ready', 'contract':{'voltageV':5, 'currentA':1.5}})
+        # A different Type-C port must not supply the completion state.
+        (self.port / 'device').unlink()
+        (self.port / 'device').symlink_to(self.root / 'unrelated')
+        self.assertEqual(self.read(), {'state':'unavailable', 'contract':None})
+
+    def test_offline_typec_fallback_or_incomplete_contract_is_not_confirmed(self):
+        for key,value in [('ONLINE','0'), ('USB_TYPE','[C] PD PD_PPS'),
+                          ('VOLTAGE_NOW','0'), ('CURRENT_NOW','-1')]:
+            with self.subTest(key=key):
+                previous = self.values[key]
+                self.values[key] = value
+                self.assertEqual(self.read(), {'state':'unconfirmed', 'contract':None})
+                self.values[key] = previous
+        (self.port / 'power_operation_mode').write_text('3.0A\n')
+        self.assertIsNone(self.read()['contract'])
+
+    def test_probe_delay_missing_and_malformed_values_keep_kernel_ownership(self):
+        self.values['CURRENT_NOW'] = 'invalid'
+        self.assertEqual(self.read(), {'state':'unavailable', 'contract':None})
+        del self.values['CURRENT_NOW']
+        self.assertEqual(self.read(), {'state':'unavailable', 'contract':None})
+        (self.supply / 'of_node').unlink()
+        self.assertEqual(self.read(), {'state':'unavailable', 'contract':None})
+        with patch.object(pd, 'kernel_pd_node', return_value=None):
+            self.assertIsNone(self.read())
+
+
 class ContractHistoryTest(unittest.TestCase):
     COMPLETE = ('Request rdo 1304b12c: tx 0\n'
                 'PD bootstrap complete; USB-capable 5V contract established\n'

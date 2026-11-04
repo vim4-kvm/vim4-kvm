@@ -3,7 +3,7 @@
 The service selects boot repair; usb-pd-init records its completed contracts.
 Package installation must not
 start/restart that service: an active USB link must survive runtime updates.
-The manager imports the read-only decoders and previous-boot record reader.
+The manager reads kernel TCPM sysfs or the legacy decoders and previous-boot record.
 Firmware snapshots and persisted contracts are history, never live PD state.
 """
 import os
@@ -24,8 +24,8 @@ BOOT_ID = Path('/proc/sys/kernel/random/boot_id')
 DEVICE_TREE = Path('/proc/device-tree')
 
 
-def kernel_pd_enabled(root=None):
-    """Reserve a declared controller for TCPM even while probe is deferred."""
+def kernel_pd_node(root=None):
+    """Locate the enabled physical controller, including before TCPM probes."""
     root = DEVICE_TREE if root is None else root
     for bus in ('soc/bus@fe000000/i2c@76000', 'bus@fe000000/i2c@76000',
                 'apb4@fe000000/i2c@76000'):
@@ -41,8 +41,55 @@ def kernel_pd_enabled(root=None):
             if all(not (item / 'status').exists() or
                    (item / 'status').read_bytes().rstrip(b'\0') in (b'ok', b'okay')
                    for item in (node, *node.parents) if item != root and root in item.parents):
-                return True
-    return False
+                return node
+    return None
+
+
+def kernel_pd_enabled(root=None):
+    """Reserve a declared controller for TCPM even while probe is deferred."""
+    return kernel_pd_node(root) is not None
+
+
+def kernel_power(root=Path('/sys')):
+    """Read TCPM's current contract; its current limit is not measured load.
+
+    None selects the legacy reader. A declared controller always returns a
+    state, so missing or unreadable sysfs cannot revive a historical contract.
+    """
+    node = kernel_pd_node()
+    if node is None:
+        return None
+    result = {'state': 'unavailable', 'contract': None}
+    try:
+        supplies = [p for p in (root / 'class/power_supply').glob('tcpm-source-psy-*')
+                    if (p / 'of_node').resolve() == node.resolve()]
+        if len(supplies) != 1:
+            return result
+        supply = supplies[0]
+        device = (supply / 'device').resolve()
+        ports = [p for p in (root / 'class/typec').glob('port*')
+                 if re.fullmatch(r'port\d+', p.name) and (p / 'device').resolve() == device]
+        if len(ports) != 1:
+            return result
+        port = ports[0]
+        power = dict(line.split('=', 1) for line in (supply / 'uevent').read_text().splitlines())
+        mode = (port / 'power_operation_mode').read_text().strip()
+        role = (port / 'power_role').read_text().strip()
+        result['state'] = 'unconfirmed'
+        # Rp and source capability limits are not completed PD contracts.
+        if (power['POWER_SUPPLY_ONLINE'] != '1' or
+                '[PD]' not in power['POWER_SUPPLY_USB_TYPE'].split() or
+                mode != 'usb_power_delivery' or role not in ('sink', '[sink]')):
+            return result
+        voltage = int(power['POWER_SUPPLY_VOLTAGE_NOW'])
+        current = int(power['POWER_SUPPLY_CURRENT_NOW'])
+        if voltage <= 0 or current <= 0:
+            return result
+        result.update(state='ready', contract={'voltageV': voltage / 1000000,
+                                             'currentA': current / 1000000})
+    except (OSError, ValueError, KeyError):
+        result['state'] = 'unavailable'
+    return result
 
 
 def boot_power_contract(log):
