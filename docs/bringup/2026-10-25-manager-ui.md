@@ -6,7 +6,7 @@
 整合重构、Claude polish 与用户截图验收修正，并保留 main 的 HDR 输出开关及透传音频 xrun 修复。
 真实服务发现登录页默认 favicon 请求 404，补修 `b44a4b8` 后 main 与重构分支均已推送。
 实现和完整本机证据见
-[管理器验收记录](../../vim4-manager/docs/ui-refactor/verification.md)。
+[管理器验收记录](../../vim4-manager/docs/archive/ui-refactor/verification.md)。
 
 - destructive 文字改为 `#ca3135`，白底 5.25:1、10% 浅红底 4.51:1；深色最弱的 15% 底为 4.53:1。亮红圆点与仪表填充保留。
 - 文件大小/日期使用共享固定右对齐列，桌面隐藏操作不占列宽，触屏使用行尾 Radix 菜单；删除确认无自动关闭，取消后恢复菜单焦点。
