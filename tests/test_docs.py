@@ -143,7 +143,7 @@ class DocsTest(unittest.TestCase):
 
     # Loaded into every agent session; subsystem detail belongs in docs/subsystems/.
     def test_always_loaded_docs_stay_small(self):
-        sizes = {name: len((ROOT / name).read_bytes()) for name in ('CLAUDE.md', 'AGENTS.md', 'LESSONS.md')}
+        sizes = {name: len((ROOT / name).read_bytes()) for name in ('CLAUDE.md', 'AGENTS.md')}
         self.assertLessEqual(sum(sizes.values()), 6000, sizes)
 
     def test_subsystem_entries_stay_small(self):

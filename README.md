@@ -4,7 +4,7 @@
 
 ## 目录
 
-Agent 入口见 [AGENTS.md](AGENTS.md)（任务路由），经验记录见 [LESSONS.md](LESSONS.md)。
+Agent 入口见 [AGENTS.md](AGENTS.md)；错题随任务路由读取。
 当前目录即主仓库，运行 `python3 tools/workspace.py bootstrap` 克隆缺失子仓库；
 布局与冲突处理见 [工作区说明](docs/workspace.md)。
 
