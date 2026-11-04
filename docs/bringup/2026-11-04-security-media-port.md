@@ -54,3 +54,34 @@ VM任务`security-media-port`基于正式提交`37483692243f9aff9a9e7737f3fde74e
 主仓unittest共512项、10项跳过，其余通过；候选下载SHA核验通过。
 没有运行内核KUnit或启动新内核，新增SMC诊断入口未上板；TA会话实测不替代这些门禁。
 原始构建和测试日志位于忽略目录`build/security-media-port/`。
+
+## 第二段：TX密钥加载与实际阻塞
+
+对固定CA做IDA静态分析，确认try_load_hdcp_key向HDCP TA发送命令3，
+参数0为VALUE_INPUT，value.a为TX14=1或TX22=2。CA的main仅打印加载失败，
+最终仍返回0，而且忽略tee_comm_hdcp通知失败；因此原CA退出码不能证明密钥就绪。
+分析数据库及注释保存在忽略目录`build/hdcp-candidates/tee_hdcp.i64`。
+
+探针增加显式`--load-tx-keys`，保留默认不调用TA命令；两版本分别报告结果，
+任一失败返回非零，正常关闭会话和上下文。四项宿主测试覆盖默认无加载、任一密钥
+失败不被会话成功覆盖、打开失败不调用无效会话、参数错误不访问TEE。
+目标头文件/运行库的`-Wall -Wextra -Werror`构建通过。
+
+独占窗口临时安装同一TA并执行探针，结果：
+
+| 操作 | result | origin |
+|---|---|---|
+| 打开会话 | 0x00000000 | 4 |
+| 加载TX 2.2密钥 | 0xffff0008 | 4 |
+| 加载TX 1.4密钥 | 0xffff0008 | 4 |
+
+目标头文件定义该错误为TEEC_ERROR_ITEM_NOT_FOUND，origin=TEEC_ORIGIN_TRUSTED_APP。
+只能证明TA未找到所需对象，尚不能区分密钥、配置或安全存储缺失，不能断言熔丝无密钥。
+未调用RX命令、未输入/导出密钥、未烧写熔丝、未触发HDMI认证。
+探针退出1；临时TA与目录删除已复核，tee-supplicant、manager、HDMI服务active。
+原始日志为`build/security-media-port/ta-key-load.log`。
+
+当前TX DDC适配器仅允许EDID事务；SCDC写路径还会清HDCP2X_CTL_0使能位。
+后续认证移植必须统一DDC仲裁和显示生命周期，不能只增加DRM属性或空通知设备。
+本段未改变内核、未新增Content Protection属性：在密钥加载条件未满足时，
+不能取得有效认证回归证据。仍需厂商的对应板型密钥配置/安全存储合同与可用对象。

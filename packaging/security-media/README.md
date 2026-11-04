@@ -20,15 +20,20 @@ RX固件处理还引用厂商HDMIRX sysfs。当前7.3不能直接运行该程序
 不支持返回EOPNOTSUPP，其他异常值返回EIO。此查询不读取密钥、不加载TA、
 不启动认证。它尚未经过本板实测，不能据离线构建认定安全固件支持。
 
-`ta-session-probe.c`只执行TEEC初始化、打开指定HDCP TA会话、关闭会话；
-不调用TEEC_InvokeCommand。用目标系统的头文件和运行库在Linux构建：
+`ta-session-probe.c`默认只执行TEEC初始化、打开指定HDCP TA会话、关闭会话。
+显式指定`--load-tx-keys`时才调用TA的既有TX密钥加载接口，分别报告1.4和2.2的
+结果与错误来源，任一失败返回非零。不会输入或输出密钥材料，不操作RX或发起认证。
+用目标系统的头文件和运行库在Linux构建：
 
 ```sh
 cc -Wall -Wextra -Werror ta-session-probe.c -lteec -o ta-session-probe
 ```
 
 探针需由tee-supplicant找到匹配TA；TA安装与试验须在独占板窗中进行。
-成功仅说明TA加载和会话打开通过，不证明TA的密钥加载、认证命令或HDMI链路通过。
+默认探针成功仅说明TA加载和会话打开通过，不证明密钥加载、认证命令或HDMI链路通过。
+本板TX密钥加载实测均返回TA的ITEM_NOT_FOUND；不能据此区分缺少密钥、配置
+或安全存储对象，更不能自动生成或替换厂商密钥。官方CA会在密钥加载失败后返回0，
+因此不得以其进程退出码作为验收门禁。
 
 NPU的现有ADLA兼容驱动与SDK验收见[ADLA合同](../../docs/npu-adla.md)。
 官方[转换工具](https://github.com/khadas/vim4_npu_sdk)可获得，完整转换链仍需单独验证；
