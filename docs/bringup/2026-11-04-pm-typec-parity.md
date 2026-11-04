@@ -1,8 +1,9 @@
 # 2026-11-04：运行时省电与 USB 总线挂起审查
 
-结论：CRG 将总线 suspend 错报 disconnect，候选改为标准 suspend/resume 通知；
-离线回归和模块构建通过，未部署、未验真实主机睡眠。CPU 两簇运行 performance，
-schedutil 可用；默认策略尚未改变。不扩展完整 TCPM 或整机睡眠。
+最终状态：USB修复已随完整 `7.3.1-vim4-20261104.2` 部署并保留为默认 Mainline，
+五分钟4K H.265冒烟通过。用户取消节能方向，两簇保持performance，不启用深idle、
+不改电源域或PD策略。真实主机睡眠/唤醒仍未测试，不能据正常启动宣称该场景通过。
+下文保留初始审查、短时调频观察和部署工具中止经过。
 
 ## 源码与候选
 
@@ -43,7 +44,7 @@ PLS=3 分支调用 gadget disconnect；Resume/U0 没有相应 resume 通知。
 
 真实主机睡眠验收须确认板子供电条件，再准备同次完整候选及独占窗口，检查
 挂起/恢复回调、HID/介质重用和主机主动复位路径；当前没有硬件通过结论。
-CPU 默认策略应在真实视频吞吐/延迟门禁通过后再调整，CPU 深 idle 另作单变量候选。
+原计划的默认调频与深idle候选已按用户后续决定取消。
 
 ## 部署准备与串口阻断
 
@@ -65,3 +66,32 @@ macOS `/dev/cu.usbserial-1100` 的 tcsetattr 返回 EINVAL，系统Python与stty
 整包已上传 `/var/tmp/usb-suspend-deploy/kernel.tar.gz` 并核对哈希，但未调用安装器、
 未改启动指针、未重启。最后查询仍运行 build 1，四服务active、UDC configured。
 旧内核完整模块和加载身份已核对；正式来源锁不提前更新。离线主仓519项通过、10项跳过。
+
+## 串口恢复后的安装与最终验收
+
+用户重新插拔调试串口后，同一工具能够设置921600并记录启动。首次安装完整包并重启后，
+新内核身份、完整模块、四服务及UDC均通过，但视频脚本仍使用重启前的SSH转发，
+连接失效导致验收中止；脚本恢复旧Mainline并正常重启，核对旧身份和服务恢复。
+这次失败没有证明内核回归。
+
+随后修正为每次重启后重建转发，重新逐文件核对已安装候选的启动文件和完整模块，
+登记Mainline并正常重启，没有覆盖已封存包或重新安装同release。
+
+| 项目 | 最终结果 |
+|---|---|
+| release / 默认 | `7.3.1-vim4-20261104.2` / Mainline |
+| GNU build ID | `7a12c5177a686e955d352d65d9dd90fd17a05bd5` |
+| 已加载CRG build ID | `c2eb5073ffb38e0fb4d7346cb5e8b63791476d47`，与本次完整模块一致 |
+| 模块 | 2341个，完整目录逐文件哈希及已加载notes/BTF通过 |
+| 服务 / USB | 四服务active、UDC configured、三个hidg字符设备存在 |
+| CPU | 两簇均performance，配置和两份DT哈希与build 1一致 |
+| 视频 | 3840×2160 H.265，300秒平均59.989fps，丢帧/冻结增量0 |
+| 日志 | 无BUG/Oops/WARNING/Call trace，taint与原基线相同 |
+
+保持原应用和编码偏好，没有发送HID、挂载虚拟介质、测音频或让被控主机睡眠。
+正常枚举和节点存在不等同于实际键鼠或睡眠恢复验收，也未测端到端延迟。
+旧build 1的启动文件、模块、固件保留，未删除；Vendor不变。
+板端runtime-build记录与主仓来源锁、[收据](../../packaging/kernel/releases/7.3.1-vim4-20261104.2)
+更新为实际保留状态。源码仍在本地 `pm-typec-parity` 分支，未推送、未发布Release。
+`deploy-r3.log`、`attempt3/`保留失败恢复，`deploy-r4.log`和`final-proof.json`保留最终结果。
+收据及来源锁更新后主仓519项检查通过、10项跳过，git diff --check通过；本地已建对应release tag，未推送。

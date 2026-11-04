@@ -2,7 +2,7 @@
 
 本页管主线源码、整包升级与维护；安装只读[身份](#源码与配置)、[升级合同](#正式构建与整包升级)，占板另读[短窗口](board-window.md#占板时间最短化)。
 当前身份唯一来源：[sources.toml](../packaging/kernel/sources.toml)；tested_build/retained_runtime是验收与保留状态，package是下一包，不能混用。
-[最新日期构建与清理验收](bringup/2026-11-04-kernel-731-vim4-20261104.md)：20261104 build 1 已通过用户指定的最小冒烟并保留为 Mainline，旧 uhd7 已退役；首次工具中止与恢复过程保留在同一记录。已验源码的[正式部署](bringup/2026-11-03-kernel-731-deploy.md)限定更广范围证据；本次不重做完整回归；已发布[Release](https://github.com/vim4-kvm/linux/releases/tag/v7.3.1-vim4-20261104)。
+[USB修复部署](bringup/2026-11-04-pm-typec-parity.md)：20261104 build 2 已保留为默认Mainline，五分钟4K H.265冒烟通过；CPU保持performance，真实主机睡眠未测。源码在本地pm-typec-parity分支，尚未推送或发布。[build 1与清理记录](bringup/2026-11-04-kernel-731-vim4-20261104.md)及其[Release](https://github.com/vim4-kvm/linux/releases/tag/v7.3.1-vim4-20261104)作为旧版本保留；更广范围历史证据见[7.3.1部署](bringup/2026-11-03-kernel-731-deploy.md)，本次不扩大验收范围。
 导航：[路线图](#通用内核路线图) · [审查](#审查边界与后续验证) · [补丁维护](#补丁维护方法) · [隔离](#wave5-隔离告警) · [历史](#相关记录)。
 
 ## 源码与配置
