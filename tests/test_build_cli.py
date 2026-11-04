@@ -73,6 +73,17 @@ class VersionTests(unittest.TestCase):
         self.assertTrue(self.build.DEVELOPMENT.fullmatch('2.5.1+vim4.20261016.1020.dev.1.g49c45f2.dirty'))
         self.assertFalse(self.build.DEVELOPMENT.fullmatch('2.5.1+vim4.20261016.1020.dev.1'))
 
+    def test_installed_baseline_advances_development_version_without_local_artifacts(self):
+        choose = self.build.development_version
+        base = '2.5.1+vim4.20261027.2'
+        installed = '2.5.1+vim4.20261027.3.dev.15.g3649a8c'
+        self.assertEqual(choose(base, 'abcdef0123', False, [], installed),
+                         '2.5.1+vim4.20261027.3.dev.16.gabcdef0')
+        self.assertEqual(choose(base, 'abcdef0123', False, [installed.replace('.15.', '.20.')], installed),
+                         '2.5.1+vim4.20261027.3.dev.21.gabcdef0')
+        with self.assertRaises(ValueError):
+            choose(base, 'abcdef0123', False, [], 'invalid')
+
     def test_latest_release_orders_numerically(self):
         tags = '2.5.1+vim4.20261016.998\n2.5.1+vim4.20261016.1020\n2.5.1+vim4.20261015.2000\nv1.0\n'
         with patch.object(self.build.subprocess, 'run', return_value=subprocess.CompletedProcess([], 0)), patch.object(self.build, 'output', return_value=tags):
@@ -98,11 +109,14 @@ class VersionTests(unittest.TestCase):
             choose('20261015', 12, '2.5.1+vim4.20261016.1020')
 
     def test_combined_development_starts_after_all_included_releases(self):
-        tags = {'.': '2.5.1+vim4.20261016.1002', 'vim4-manager': '2.5.1+vim4.20261016.1020'}
+        tags = {'.': '2.5.1+vim4.20261016.1002', 'One-KVM': '2.5.1+vim4.20261016.1018',
+                'vim4-manager': '2.5.1+vim4.20261016.1020'}
         with patch.object(self.build, 'latest_release', side_effect=lambda repo, **kwargs: tags.get(repo, self.build.NO_RELEASE)):
             self.assertEqual(self.build.latest_component_release('all'), tags['vim4-manager'])
             self.assertEqual(self.build.latest_component_release('platform'), tags['vim4-manager'])
             self.assertEqual(self.build.latest_component_release('pikvm'), tags['vim4-manager'])
+            self.assertEqual(self.build.latest_component_release('onekvm-board'),
+                             max((tags['.'], tags['One-KVM']), key=self.build.release_key))
 
     def test_dirty_release_fails_before_docker_and_auto_development_records_its_version(self):
         with tempfile.TemporaryDirectory() as directory:

@@ -94,7 +94,7 @@ def latest_component_release(component, *, allow_cached=True):
         # Images install the shared platform with the combined set's version.
         # A later standalone platform build must sort after that baseline.
         repositories.update(OWNERS.values())
-    if component in ('all', 'platform', 'pikvm'):
+    if component in ('all', 'platform', 'pikvm', 'onekvm-board'):
         # A combined package set must sort after every release it contains.
         repositories.update(set(REPOS[component]) & set(OWNERS.values()))
     return max((latest_release(repo, allow_cached=allow_cached) for repo in sorted(repositories)), key=release_key)
@@ -111,7 +111,14 @@ def release_version(date, sequence, previous=NO_RELEASE, *, pikvm=False):
     return f'2.5.1+vim4.{date}.{number}'
 
 
-def development_version(base, revision, dirty, existing):
+def development_version(base, revision, dirty, existing, after=None):
+    if after:
+        match = DEVELOPMENT.fullmatch(after)
+        after_base = match['base'] if match else after
+        if not RELEASE.fullmatch(after_base):
+            raise ValueError('Installed baseline must be a release or development version')
+        base = max((base, after_base), key=release_key)
+        existing = [*existing, after]
     numbers = [int(match['n']) for name in existing if (match := DEVELOPMENT.fullmatch(name)) and match['base'] == base]
     return f'{base}.dev.{max(numbers, default=0) + 1}.g{revision[:7]}' + ('.dirty' if dirty else '')
 
@@ -123,7 +130,10 @@ def main():
                         'package without it builds a development version. Required for verify')
     parser.add_argument('--component', choices=list(REPOS), default='all',
                         help='Build the established component set, the platform packages or one application')
+    parser.add_argument('--after-version', help='Allocate a development build after this installed baseline')
     args = parser.parse_args()
+    if args.after_version and (args.command != 'package' or args.version):
+        parser.error('--after-version applies only to development package builds')
     image = 'vim4-pikvm-builder:ubuntu24.04' if args.component in ('pikvm', 'pikvm-app') else IMAGE
     recipes = 'packaging/ubuntu/pikvm' if args.component in ('pikvm', 'pikvm-app') else 'packaging/ubuntu'
     if args.command == 'verify' and not args.version:
@@ -189,7 +199,7 @@ def main():
         if not args.version:
             version = development_version(base, sources[owner]['revision'],
                                           any(s['dirty'] for s in sources.values()),
-                                          [p.name for p in packages.iterdir()])
+                                          [p.name for p in packages.iterdir()], args.after_version)
         destination = packages / version
         destination.mkdir(exist_ok=False)
     (destination / 'sources.json').write_text(json.dumps(dict(sources=sources, builder=image_id, component=args.component,
