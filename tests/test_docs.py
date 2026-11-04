@@ -144,11 +144,11 @@ class DocsTest(unittest.TestCase):
     # Loaded into every agent session; subsystem detail belongs in docs/subsystems/.
     def test_always_loaded_docs_stay_small(self):
         sizes = {name: len((ROOT / name).read_bytes()) for name in ('CLAUDE.md', 'AGENTS.md')}
-        self.assertLessEqual(sum(sizes.values()), 6000, sizes)
+        self.assertLessEqual(sum(sizes.values()), 2000, sizes)
 
     def test_subsystem_entries_stay_small(self):
         oversized = {p.name: p.stat().st_size for p in (ROOT / 'docs/subsystems').glob('*.md')
-                     if p.stat().st_size > 14000}
+                     if p.stat().st_size > 10000}
         self.assertEqual(oversized, {})
 
     def test_archive_snapshots_are_labelled_and_indexed(self):
