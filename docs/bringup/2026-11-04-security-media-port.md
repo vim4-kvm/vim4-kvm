@@ -85,3 +85,28 @@ VM任务`security-media-port`基于正式提交`37483692243f9aff9a9e7737f3fde74e
 后续认证移植必须统一DDC仲裁和显示生命周期，不能只增加DRM属性或空通知设备。
 本段未改变内核、未新增Content Protection属性：在密钥加载条件未满足时，
 不能取得有效认证回归证据。仍需厂商的对应板型密钥配置/安全存储合同与可用对象。
+
+## 第三段：补齐Provision依赖并定位存储边界
+
+官方vendor-provision提交`af01ff3520d93955339d2ec33d57bc70d2599fde`提供
+A311D2 Provision TA和ARM64 libprovision，已加入候选输入锁。
+临时安装HDCP＋Provision两个TA后重测，TX14/22仍返回0xffff0008。
+
+静态核对库的key_provision_query：打开Provision TA，发送只读查询命令，返回
+存储类型与长度；无store/delete路径。新增provision-query.c调用该公开API，
+不复制厂商头文件或读取密钥材料。目标环境Werror构建通过。
+独占板窗内两项查询均返回0xffff0008，库未报告会话打开失败。
+
+tee-supplicant实际使用`/tee`；目录模式700、root所有，浅层清点有一个普通文件。
+短时strace只跟踪openat/newfstatat/access，观察到每次查询成功以O_RDWR打开
+`/tee//dirf.db`。未跟踪read/write或转储内容。跟踪器退出后TracerPid为0，
+临时TA、库与探针均删除，未安装为开机服务。
+
+这排除了“仅缺Provision TA”及此次查询中“REE目录不存在/无法打开索引”的简单解释。
+但ITEM_NOT_FOUND不能证明eMMC/熔丝或其他命名空间没有任何密钥。厂商5.15另有
+mmc_key→auto_attach→BL31 unifykey初始化链，当前尚未证明该链与本Provision TA
+对象命名空间的关系，不能盲移原始存储或用新建对象覆盖。
+
+日志位于`build/security-media-port/ta-key-load-provision.log`、`provision-query.log`
+和`provision-storage-trace.log`。当前可补的软件配套已取得；认证交付仍缺可用TX对象
+及其厂商配置来源，未生成测试密钥、烧写、导出或迁移密钥。

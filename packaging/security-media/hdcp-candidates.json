@@ -8,5 +8,15 @@
     "name": "hdcp-a311d2.ta",
     "url": "https://raw.githubusercontent.com/khadas/vendor-hdcp/ac5d1c2ea7c7f81c8712d3b6b46bca1239c03165/ta/v3.8/dev/A311D2/ff2a4bea-ef6d-11e6-89cc-d4ae52a7b3b3.ta",
     "sha256": "108eee6f7749b9ecee88a0679cbe26ce08fabe3328a1334428a089e480439225"
+  },
+  {
+    "name": "libprovision.so",
+    "url": "https://raw.githubusercontent.com/khadas/vendor-provision/af01ff3520d93955339d2ec33d57bc70d2599fde/ca/v3.8.0/lib64/libprovision.so",
+    "sha256": "7f4f7c7540991d246be5ed9375c949f699cd8ca74d415df8c59004269bc2998a"
+  },
+  {
+    "name": "provision-a311d2.ta",
+    "url": "https://raw.githubusercontent.com/khadas/vendor-provision/af01ff3520d93955339d2ec33d57bc70d2599fde/ta/v3.8/dev/A311D2/e92a43ab-b4c8-4450-aa12-b1516259613b.ta",
+    "sha256": "815aa39a11c7e9a8aabaa5b02b41045f3da97c63030d433d05982355e05f67e2"
   }
 ]

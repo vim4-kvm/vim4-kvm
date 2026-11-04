@@ -85,3 +85,49 @@ static void TEEC_FinalizeContext(TEEC_Context *c) { puts("finalize"); }
         result = self.run_probe('--load-keys')
         self.assertEqual(result.returncode, 2)
         self.assertEqual(result.stdout, '')
+
+
+@unittest.skipUnless(shutil.which('cc'), 'C compiler required')
+class ProvisionQueryTests(unittest.TestCase):
+    @classmethod
+    def setUpClass(cls):
+        cls.temp = tempfile.TemporaryDirectory()
+        cls.addClassCleanup(cls.temp.cleanup)
+        directory = Path(cls.temp.name)
+        source = directory / 'service.c'
+        source.write_text(r'''
+#include <stdint.h>
+#include <stdlib.h>
+int32_t key_provision_query(uint8_t *name, uint32_t length, uint32_t type,
+                            uint32_t *storage, uint32_t *size)
+{
+    /* A failed provider can leave output arguments undefined. */
+    *storage = 0x80000000;
+    *size = 317;
+    return getenv("FAIL_QUERY") ? (int32_t)0xffff0008 : 0;
+}
+''')
+        cls.library = directory / 'service.so'
+        cls.binary = directory / 'probe'
+        subprocess.run(['cc', '-shared', '-fPIC', str(source),
+                        '-o', str(cls.library)], check=True)
+        subprocess.run(['cc', str(ROOT / 'packaging/security-media/provision-query.c'),
+                        '-ldl', '-o', str(cls.binary)], check=True)
+
+    def test_missing_objects_fail_without_reporting_stale_metadata(self):
+        result = subprocess.run([str(self.binary), str(self.library)],
+                                env={'FAIL_QUERY': '1'}, capture_output=True, text=True)
+        self.assertEqual(result.returncode, 1)
+        self.assertNotIn('storage=', result.stdout)
+        self.assertNotIn('size=', result.stdout)
+        result = subprocess.run([str(self.binary), str(self.library)],
+                                env={}, capture_output=True, text=True)
+        self.assertEqual(result.returncode, 0)
+        self.assertIn('storage=', result.stdout)
+        self.assertIn('size=', result.stdout)
+
+    def test_missing_library_fails(self):
+        result = subprocess.run([str(self.binary), str(self.library) + '.missing'],
+                                capture_output=True, text=True)
+        self.assertEqual(result.returncode, 1)
+        self.assertEqual(result.stdout, '')

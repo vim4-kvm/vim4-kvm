@@ -35,6 +35,19 @@ cc -Wall -Wextra -Werror ta-session-probe.c -lteec -o ta-session-probe
 或安全存储对象，更不能自动生成或替换厂商密钥。官方CA会在密钥加载失败后返回0，
 因此不得以其进程退出码作为验收门禁。
 
+候选清单还包含独立Provision TA及`libprovision.so`。`provision-query.c`通过
+该库的只读查询API检查HDCP TX对象，只输出结果码及成功时的存储类型/长度，
+不读取密钥材料、不调用store/delete。目标系统需具备libteec及匹配Provision TA：
+
+```sh
+cc -Wall -Wextra -Werror provision-query.c -ldl -o provision-query
+./provision-query /path/to/libprovision.so
+```
+
+本板在临时补齐Provision TA后仍找不到两个TX对象；文件访问跟踪确认
+tee-supplicant能够打开`/tee/dirf.db`。这不是目录缺失的证据，也不能证明
+其他固件/旧unifykey命名空间中绝无密钥。补齐软件依赖不等于完成设备密钥配置。
+
 NPU的现有ADLA兼容驱动与SDK验收见[ADLA合同](../../docs/npu-adla.md)。
 官方[转换工具](https://github.com/khadas/vim4_npu_sdk)可获得，完整转换链仍需单独验证；
 不能把SDK闭源等同于SDK不可获得。
