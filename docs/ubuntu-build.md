@@ -25,6 +25,8 @@
 输出拒绝覆盖，失败保留，新尝试用新目录。输入摘要变化必须重建环境，不能信同名镜像标签。
 verify 复用收据所记保留镜像，package、verify 和 assemble 使用同一实际输出版本，
 不隐式选旧包。APT 索引不完整就停止。
+Cargo 下载缓存在独立 Docker volume 中复用，仍由锁文件及 Cargo 校验摘要；
+应用源码和编译产物继续在每次打包容器中独立构建。
 
 verify 在临时容器核对校验和、架构、动态依赖、sudoers、网页、首次配置及升级保留；
 不把[验证脚本](../packaging/ubuntu/verify.sh)当宿主安装器。

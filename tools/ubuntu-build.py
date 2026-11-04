@@ -207,6 +207,7 @@ def main():
     subprocess.run(['docker', 'run', '--rm', '--platform', 'linux/arm64',
                     '--mount', f'type=bind,src={ROOT},dst=/src,readonly',
                     '--mount', f'type=bind,src={destination},dst=/out',
+                    '--mount', 'type=volume,src=vim4-package-cargo,dst=/root/.cargo',
                     '-e', f'PACKAGE_VERSION={version}', '-e', f'SOURCE_DATE_EPOCH={epoch}',
                     '-e', f'COMPONENT={args.component}',
                     image_id, 'sh', '-c', 'cp "$1" /tmp/vim4-build.sh && exec sh /tmp/vim4-build.sh',
