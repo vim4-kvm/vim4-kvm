@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Generate H.264 motion fixtures and compare captured I420 frames offline.
+"""Generate H.264 or MPEG-2 motion fixtures and compare captured I420 frames offline.
 
 Requires FFmpeg with libx264 and ffprobe. Neither operation accesses a board.
 References are decoded from the actual compressed files, so encoder versions
@@ -29,6 +29,18 @@ CASES = (
      "cabac=1:bframes=2:ref=3:8x8dct=1:cqm=jvt"),
 )
 
+MPEG2_CASES = (
+    ("mpeg2-intra", 640, 368, 16, "main", "Main", ["-g", "1", "-bf", "0"]),
+    ("mpeg2-ipb", 640, 368, 32, "main", "Main", ["-g", "12", "-bf", "2"]),
+    ("mpeg2-matrix", 640, 368, 16, "main", "Main",
+     ["-g", "12", "-bf", "2", "-intra_matrix",
+      ",".join(str(8 + i % 17) for i in range(64)), "-inter_matrix",
+      ",".join(str(16 + i % 13) for i in range(64))]),
+    ("mpeg2-interlaced", 640, 368, 16, "main", "Main",
+     ["-g", "12", "-bf", "2", "-flags", "+ildct+ilme", "-top", "1"]),
+    ("mpeg2-1080p", 1920, 1080, 16, "main", "Main", ["-g", "12", "-bf", "2"]),
+)
+
 
 def sha256(data):
     return hashlib.sha256(data).hexdigest()
@@ -39,24 +51,29 @@ def frame_hashes(raw, frame_size):
             for i in range(0, len(raw), frame_size)]
 
 
-def generate(output):
+def generate(output, codec="h264"):
     output.mkdir(parents=True, exist_ok=False)
     manifest = {
+        "codec": codec,
         "ffmpeg": subprocess.check_output(
             ["ffmpeg", "-version"], text=True).splitlines()[0],
         "cases": [],
     }
-    for name, width, height, count, profile, actual_profile, params in CASES:
-        clip = output / (name + ".h264")
+    cases = CASES if codec == "h264" else MPEG2_CASES
+    extension = ".h264" if codec == "h264" else ".m2v"
+    for name, width, height, count, profile, actual_profile, params in cases:
+        clip = output / (name + extension)
         # QP22 exercises negative PPS QP/chroma offsets. QP26 would hide
         # firmware parameter-table signed-code regressions.
+        encoder = (["-c:v", "libx264", "-preset", "medium", "-qp", "22",
+                    "-profile:v", profile, "-x264-params",
+                    params + ":keyint=16:min-keyint=16:scenecut=0:slices=1", "-f", "h264"]
+                   if codec == "h264" else
+                   ["-c:v", "mpeg2video", "-q:v", "4", *params, "-f", "mpeg2video"])
         subprocess.run([
             "ffmpeg", "-hide_banner", "-loglevel", "error", "-f", "lavfi",
             "-i", f"testsrc2=size={width}x{height}:rate=30",
-            "-frames:v", str(count), "-an", "-c:v", "libx264", "-threads", "1",
-            "-preset", "medium", "-qp", "22", "-profile:v", profile,
-            "-x264-params", params + ":keyint=16:min-keyint=16:scenecut=0:slices=1",
-            "-f", "h264", str(clip),
+            "-frames:v", str(count), "-an", "-threads", "1", *encoder, str(clip),
         ], check=True)
         streams = json.loads(subprocess.check_output([
             "ffprobe", "-v", "error", "-count_frames", "-show_streams",
@@ -69,6 +86,9 @@ def generate(output):
                   stream["pix_fmt"], int(stream["nb_read_frames"]))
         if actual != (actual_profile, width, height, "yuv420p", count):
             raise ValueError(f"{name}: unexpected encoded properties {actual}")
+        expected_field_order = "tt" if name == "mpeg2-interlaced" else "progressive"
+        if stream.get("field_order") != expected_field_order:
+            raise ValueError(f"{name}: unexpected field order {stream.get('field_order')}")
         raw = subprocess.check_output([
             "ffmpeg", "-v", "error", "-i", str(clip), "-threads", "1",
             "-pix_fmt", "yuv420p", "-f", "rawvideo", "pipe:1",
@@ -78,6 +98,7 @@ def generate(output):
             raise ValueError(f"{name}: software reference frame count mismatch")
         manifest["cases"].append(dict(
             name=name, width=width, height=height, frames=count,
+            codec=codec, filename=clip.name, field_order=stream.get("field_order"),
             frame_size=frame_size, profile=profile,
             compressed_sha256=sha256(clip.read_bytes()),
             decoded_sha256=sha256(raw), frame_sha256=frame_hashes(raw, frame_size),
@@ -91,7 +112,7 @@ def compare(fixtures, name, captured):
     case = next((c for c in manifest["cases"] if c["name"] == name), None)
     if case is None:
         raise ValueError(f"unknown fixture: {name}")
-    if sha256((fixtures / (name + ".h264")).read_bytes()) != case["compressed_sha256"]:
+    if sha256((fixtures / case.get("filename", name + ".h264")).read_bytes()) != case["compressed_sha256"]:
         raise ValueError(f"{name}: compressed fixture changed")
     raw = captured.read_bytes()
     hashes = frame_hashes(raw, case["frame_size"])
@@ -113,13 +134,14 @@ def main():
     commands = parser.add_subparsers(dest="command", required=True)
     generate_parser = commands.add_parser("generate", help="create a new fixture directory")
     generate_parser.add_argument("output", type=Path)
+    generate_parser.add_argument("--codec", choices=("h264", "mpeg2"), default="h264")
     compare_parser = commands.add_parser("compare", help="compare one captured I420 stream")
     compare_parser.add_argument("fixtures", type=Path)
     compare_parser.add_argument("name")
     compare_parser.add_argument("captured", type=Path)
     args = parser.parse_args()
     if args.command == "generate":
-        return generate(args.output)
+        return generate(args.output, args.codec)
     return compare(args.fixtures, args.name, args.captured)
 
 

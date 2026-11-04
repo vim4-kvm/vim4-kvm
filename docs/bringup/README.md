@@ -18,7 +18,7 @@
 ## 2026-11-04
 
 - [硬件解码格式对齐](2026-11-04-hwdecode-parity.md) — kernel video；H.264 Baseline/Main/High/1080p 运动样本逐帧像素通过，完整格式与边界尚未对齐。
-- [H.264 分辨率与码流边界](2026-11-04-h264-boundaries.md) — kernel video；UHD 和 4096×2304 逐帧像素通过，非平坦量化矩阵仍失败。
+- [H.264 分辨率与码流边界](2026-11-04-h264-boundaries.md) — kernel video；包含 JVT 矩阵、UHD 和 4096×2304 的七组 216 帧逐帧像素通过。
 - [管理器实时 PD 状态](2026-11-04-manager-tcpm-status.md) — application usb；已部署，中英文实页显示内核5V/3A合同，KVM/USB服务未重启。
 - [开机 PD 接入 Linux TCPM](2026-11-04-boot-pd-tcpm.md) — kernel usb；build 3已部署，5V/3A与十分钟4K冒烟通过；冷启动和全回归待验。
 - [USB 总线挂起修复部署](2026-11-04-pm-typec-parity.md) — kernel usb；build 2 保留为默认，五分钟4K冒烟通过；节能方向取消，真实主机睡眠未测。
