@@ -1,4 +1,5 @@
 import os
+import importlib.util
 import re
 from pathlib import Path
 import subprocess
@@ -10,6 +11,14 @@ ROOT = Path(__file__).resolve().parents[1]
 
 
 class KbaseRuntimeTest(unittest.TestCase):
+    def test_offline_build_checks_release_without_installed_board_runtime(self):
+        spec = importlib.util.spec_from_file_location('kbase_build', ROOT / 'packaging/kbase/build.py')
+        build = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(build)
+        build.validate_runtime_release('7.3.1-vim4-20261104')
+        with self.assertRaises(subprocess.CalledProcessError):
+            build.validate_runtime_release('7.3.1-unqualified')
+
     def test_candidate_platform_uses_mainline_services_and_rejects_unknown_release(self):
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)
@@ -24,7 +33,7 @@ class KbaseRuntimeTest(unittest.TestCase):
                 path.write_text('#!/bin/sh\necho ' + name + '\n')
                 path.chmod(0o755)
             uname = root / 'uname'
-            uname.write_text('#!/bin/sh\necho 7.3.1-vim4kvm-uhd7+\n')
+            uname.write_text('#!/bin/sh\necho 7.3.1-vim4-20261104\n')
             uname.chmod(0o755)
             env = dict(os.environ, PATH=str(root) + os.pathsep + os.environ['PATH'])
             for action, expected in (('gadget-start', 'vim4-mainline-gadget-prepare'),
@@ -43,7 +52,7 @@ class KbaseRuntimeTest(unittest.TestCase):
                 rejected = subprocess.run(['sh', str(launcher), 'check-kernel', retired],
                                           env=env, text=True, capture_output=True)
                 self.assertNotEqual(rejected.returncode, 0, retired)
-            for version in ('7.3.1-vim4kvm-uhd7+', '7.3.1-vim4-20261103',
+            for version in ('7.3.1-vim4-20261104', '7.3.1-vim4-20261103',
                             '7.3.1-vim4-20261103.2', '7.3.1-vim4-20261103.10'):
                 uname.write_text('#!/bin/sh\necho '+version+'\n')
                 for action, expected in (('gadget-start', 'vim4-mainline-gadget-prepare'),
@@ -61,7 +70,7 @@ class KbaseRuntimeTest(unittest.TestCase):
             script = re.sub(r'/(?:sys|usr|opt|var)/', lambda m: str(root) + m[0], script)
             launcher = root / 'launcher'
             launcher.write_text(script)
-            executable = root / 'opt/vim4-nanokvm/NanoKVM-Server'
+            executable = root / 'opt/vim4-kvm/hdr10-r14e/nanokvm'
             executable.parent.mkdir(parents=True)
             executable.write_text('#!' + sys.executable + '\nimport os\nprint(os.environ["VIM4_VIDEO_BACKEND"])\n')
             executable.chmod(0o755)
@@ -76,7 +85,7 @@ class KbaseRuntimeTest(unittest.TestCase):
             icd = root / 'opt/vim4-mesa-26.2.6/share/vulkan/icd.d/panfrost.json'
             icd.parent.mkdir(parents=True)
             icd.write_text('{}')
-            for name, contents in (('uname', 'echo 7.3.1-vim4kvm-uhd7+'), ('taskset', 'exit 0')):
+            for name, contents in (('uname', 'echo 7.3.1-vim4-20261104'), ('taskset', 'exit 0')):
                 path = root / name
                 path.write_text('#!/bin/sh\n' + contents + '\n')
                 path.chmod(0o755)

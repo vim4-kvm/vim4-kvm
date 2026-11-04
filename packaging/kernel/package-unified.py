@@ -34,9 +34,7 @@ def run(*args):
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--candidate-lock', type=Path,
-                        help='Independent source/release/module-count lock; requires the qualified launcher')
-    parser.add_argument('--launcher', type=Path, required=True,
-                        help='Qualified USB-overlay application launcher; preserve r14e app selection')
+                        help='Independent source/release/module-count lock')
     for name in ('kernel', 'stage', 'candidate', 'native', 'wave5-plugin', 'output'):
         parser.add_argument('--' + name, required=True, type=Path)
     args = parser.parse_args()
@@ -112,17 +110,8 @@ def main():
     shutil.copyfile(args.native/'one-kvm', output/'runtime/one-kvm')
     # The Wave5 plugin is a shared dependency; preserve the accepted binary.
     shutil.copyfile(args.native/'candidate.json', output/'native-candidate.json')
-    assert sha(args.launcher) == 'cda5abcbe961ba26a8f24a59ae5568619d2191b190381c4f2f040b17a66ca905'
     launcher = output/'runtime/usr/libexec/vim4-kvm-run'
-    shutil.copyfile(args.launcher, launcher)
-    run('patch', '--batch', launcher, recipe/'native-hdr-launcher.patch')
-    assert sha(launcher) == 'a322759bafff03d8de79fefce560026ef443d91335baf957e236abdb1468a0ee'
-    # The runtime is installed before the boot switch, so it must also serve
-    # the current formal kernel if installation stops before that switch.
-    current_release = tomllib.loads((recipe/'sources.toml').read_text())['tested_build']['release']
-    text = launcher.read_text().replace('7.3.0-vim4kvm-uhd[67]+', current_release + '|' + release)
-    text = re.sub(r'7\.3\.0-(?:rc7-)?vim4kvm-(?:uhd(?:\d+(?:-nodebug)?|\[67\])|npu\d+)\+\|?', '', text)
-    launcher.write_text(text.replace('|)', ')'))
+    shutil.copyfile(recipe.parents[1]/'board/vim4-kvm-run', launcher)
     shutil.copyfile(recipe.parents[1]/'board/vim4-board-runtime',
                     output/'runtime/usr/libexec/vim4-board-runtime')
     boot_module = output/'runtime/usr/lib/vim4-kvm/python/vim4boot.py'

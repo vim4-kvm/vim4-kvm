@@ -26,6 +26,11 @@ def sha(path):
     return hashlib.sha256(path.read_bytes()).hexdigest()
 
 
+def validate_runtime_release(release):
+    # Offline builds cannot depend on the board's installed Python module.
+    run('python3', str(Path(__file__).resolve().parents[2] / 'board/vim4boot.py'), release)
+
+
 def add_gpu_cooling(dtb, gpu, next_phandle):
     """Add a frequency map without invalidating existing GPU/fan consumers."""
     existing = subprocess.run(['fdtget', '-t', 'x', str(dtb), gpu, 'phandle'],
@@ -166,7 +171,7 @@ def main():
         target.parent.mkdir(parents=True, exist_ok=True)
         shutil.copyfile(path, target)
         target.chmod(0o755)
-    run('sh', str(runtime_files['usr/libexec/vim4-board-runtime']), 'check-kernel', release)
+    validate_runtime_release(release)
     (output / 'runtime-files.json').write_text(json.dumps(
         {name: sha(path) for name, path in runtime_files.items()}, indent=2) + '\n')
     probes = output / 'probes'

@@ -1,0 +1,22 @@
+{
+  "release": "7.3.1-vim4-20261104",
+  "source": "25110086de2ef6aa9564a31a7c694eca893fd423",
+  "kernel_build_id": "ce4183fa5734d4111c93d9854b473e944aff12df",
+  "package_sha256": "2b7d9fd7c0473f5f9ab4cdc68e592e6651d2a67d6eb9875db3394ac364b5fded",
+  "status": "acceptance-aborted-restored-previous",
+  "accepted": false,
+  "default_boot": "Mainline",
+  "evidence": "docs/bringup/2026-11-04-kernel-731-vim4-20261104.md",
+  "reason": "Reboot cleared /tmp containing acceptance script and recovery tools; acceptance did not run.",
+  "restored_release": "7.3.1-vim4kvm-uhd7+",
+  "offline_validation": {
+    "module_count": 2341,
+    "vermagic": true,
+    "BTF": true,
+    "build_ids": true
+  },
+  "installed_proof": null,
+  "limitations": [
+    "Candidate runtime was not accepted; do not use recovery proof as candidate acceptance."
+  ]
+}

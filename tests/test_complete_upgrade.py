@@ -13,7 +13,7 @@ from unittest.mock import patch
 
 from test_register_runtime import runtime, boot, CURRENT
 
-CANDIDATE = "7.3.1-vim4-20261103"
+CANDIDATE = "7.3.1-vim4-20261104"
 
 
 class CompleteUpgradeTest(unittest.TestCase):

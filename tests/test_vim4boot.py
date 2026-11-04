@@ -13,7 +13,7 @@ spec.loader.exec_module(boot)
 class BootSelectionTest(unittest.TestCase):
     def test_mainline_release_contract(self):
         for release, accepted in (
-            ('7.3.1-vim4kvm-uhd7+', True), ('7.3.1-vim4-20261103', True),
+            ('7.3.1-vim4kvm-uhd7+', False), ('7.3.1-vim4-20261104', True),
             ('7.3.1-vim4-20261103.2', True), ('7.3.1-vim4-20261103.10', True),
             ('6.18-vim4-20261103', True), ('7.3.1-vim4-20261103.1', False),
             ('7.3.1-vim4-20261103.02', False), ('7.3.1-vim4-2026110', False),

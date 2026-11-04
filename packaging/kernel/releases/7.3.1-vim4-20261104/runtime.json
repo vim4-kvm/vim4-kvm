@@ -1,0 +1,56 @@
+{
+  "schema": 1,
+  "release": "7.3.1-vim4-20261104",
+  "image_source_revision": "25110086de2ef6aa9564a31a7c694eca893fd423",
+  "build_id": "ce4183fa5734d4111c93d9854b473e944aff12df",
+  "package_sha256": "2b7d9fd7c0473f5f9ab4cdc68e592e6651d2a67d6eb9875db3394ac364b5fded",
+  "manifest": "manifest.json",
+  "installed": true,
+  "default_boot": "Mainline",
+  "profiles": {
+    "kbase": {
+      "dtb": "vim4.dtb",
+      "sha256": "89c4bcf6b5523cee60a6f222f28675c99b5137767ec484d78d53b14899702071",
+      "compatible": "khadas,vim4-mali-kbase-r44p0",
+      "blacklist": [
+        "panfrost"
+      ],
+      "modules": [
+        "vim4_kbase_heaps",
+        "governor_vim4",
+        "mali_kbase"
+      ],
+      "gpu_driver": "mali",
+      "wrapper": "/usr/libexec/vim4-kvm-run",
+      "gpu_wrapper": "/usr/lib/vim4-kvm/python/vim4gpu.py",
+      "egl": "private-prefix",
+      "vulkan": "private-icd",
+      "opencl": "private-icd"
+    },
+    "panfrost": {
+      "dtb": "panfrost.dtb",
+      "sha256": "9d0d39a316cea5a3f3d8e5a04e085b2a905abf60494aaba565223c29839dff1f",
+      "gpu_driver": "panfrost",
+      "userspace": "system-mesa"
+    }
+  },
+  "blob": {
+    "provision_separately": true,
+    "sha256": "536ee80c17dc5c54e7c6ff029ca43270da8efc3fdc5b3aeb263f364419368494",
+    "uk": "11.39",
+    "glvnd_vendor": false
+  },
+  "validation": {
+    "accepted": "Dated rebuild of the locked accepted source; scoped deployment smoke passed",
+    "receipt": "validation.json",
+    "limitations": [
+      "No new audio, HID, virtual media, GPU or full HDMI matrix tests.",
+      "Previous broader source acceptance remains historical evidence, not new-build acceptance."
+    ]
+  },
+  "gpu_default": "kbase",
+  "installed_runtime_overrides": {
+    "/usr/lib/vim4-kvm/python/vim4boot.py": "3fd2446b49e8f83401b4de5d5420529d87ad4a12c7cffb856f0e6a7d6d8f87f2"
+  },
+  "installed_runtime_override_reason": "Retired legacy release exception after acceptance and cleanup; sealed build 1 remains immutable."
+}
