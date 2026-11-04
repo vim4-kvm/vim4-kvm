@@ -283,6 +283,12 @@ int main(int argc, char **argv)
 	snprintf(driver, sizeof(driver), "/sys/bus/i2c/devices/%d-0022/driver", bus);
 	if (access(driver, F_OK) == 0)
 		fail("PD controller already owned by a kernel driver");
+	/* An instantiated DT device belongs to the kernel even before probe.
+	 * Raw I2C_RDWR bypasses the I2C core's address ownership check.
+	 */
+	snprintf(driver, sizeof(driver), "/sys/bus/i2c/devices/%d-0022/of_node", bus);
+	if (access(driver, F_OK) == 0)
+		fail("PD controller reserved for kernel TCPM; use Type-C and power_supply sysfs");
 	snprintf(device, sizeof(device), "/dev/i2c-%d", bus);
 	fd = open(device, O_RDWR | O_CLOEXEC);
 	if (fd < 0) { perror("i2c"); return 1; }

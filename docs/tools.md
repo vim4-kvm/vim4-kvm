@@ -54,7 +54,7 @@
 |---|---|---|
 | [hdmi-setup.sh](../tools/hdmi-setup.sh)、hdr-curve.sh | 独占 | 板端采集路径与 HDR 映射。 |
 | [kvm-gadget.sh](../tools/kvm-gadget.sh) | 独占；断开 USB | gadget 生命周期。 |
-| [usb-pd-init.c](../tools/usb-pd-init.c) | 独占 | PD 协商。 |
+| [usb-pd-init.c](../tools/usb-pd-init.c) | 独占 | 旧内核的有限 PD 协商；拒绝访问已声明给内核的控制器，包括尚未绑定驱动的设备。 |
 | [one-kvm-edge](../packaging/kernel/one-kvm-edge)（one-kvm-edge-prepare、one-kvm-edge.service）、[hdr10-prepare](../packaging/kernel/hdr10-prepare)（hdr10-run） | 独占 | 板端候选视频服务准备与启动。 |
 | [vim4-ethernet-generator.py](../board/vim4-ethernet-generator.py) | 只读 | 读取每板 MAC 并生成运行时网络配置。 |
 | [vim4-wave5-monitor.py](../board/vim4-wave5-monitor.py) | 只读 | 监视编码器隔离并记日志。 |

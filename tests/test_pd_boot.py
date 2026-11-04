@@ -25,6 +25,7 @@ class PDBootTest(unittest.TestCase):
         self.attempt = self.root / 'attempt'
         self.run = self.enterContext(patch.object(pd.subprocess, 'run', return_value=SimpleNamespace(returncode=0, stdout='')))
         self.enterContext(patch.object(pd, 'remember_contract'))
+        self.enterContext(patch.object(pd, 'DEVICE_TREE', self.root / 'device-tree'))
 
     def boot(self):
         return pd.bootstrap(self.handoff, self.attempt)
@@ -75,6 +76,51 @@ class PDBootTest(unittest.TestCase):
         self.assertEqual(self.run.call_count, 2)
 
 
+class KernelOwnershipTest(unittest.TestCase):
+    def setUp(self):
+        self.root = Path(self.enterContext(tempfile.TemporaryDirectory()))
+        self.enterContext(patch.object(pd, 'DEVICE_TREE', self.root))
+        self.node = self.root / 'bus@fe000000/i2c@76000/typec-port@22'
+        self.node.mkdir(parents=True)
+        (self.node / 'compatible').write_bytes(b'fcs,fusb302\0')
+        (self.node / 'reg').write_bytes(struct.pack('>I', 0x22))
+        self.run = self.enterContext(patch.object(pd.subprocess, 'run'))
+        self.remember = self.enterContext(patch.object(pd, 'remember_contract'))
+
+    def test_declared_controller_excludes_legacy_even_before_driver_binds(self):
+        handoff = self.root / 'khadas,usb-pd-boot'
+        handoff.write_bytes(snapshot())
+        self.assertTrue(pd.kernel_pd_enabled())
+        self.assertEqual(pd.bootstrap(handoff, self.root / 'attempt'), 0)
+        self.assertEqual(pd.linux_bootstrap(), 0)
+        self.run.assert_not_called()
+        self.remember.assert_not_called()
+
+    def test_disabled_node_or_bus_and_unrelated_controller_are_not_claimed(self):
+        for node in (self.node, self.node.parent, self.node.parent.parent):
+            with self.subTest(node=node):
+                (node / 'status').write_bytes(b'disabled\0')
+                self.assertFalse(pd.kernel_pd_enabled())
+                (node / 'status').unlink()
+        (self.node / 'compatible').write_bytes(b'other,device\0')
+        self.assertFalse(pd.kernel_pd_enabled())
+        (self.node / 'compatible').write_bytes(b'fcs,fusb302\0')
+        (self.node / 'reg').write_bytes(struct.pack('>I', 0x23))
+        self.assertFalse(pd.kernel_pd_enabled())
+
+    def test_vendor_bus_layout_is_also_reserved(self):
+        self.node.parent.parent.rename(self.root / 'apb4@fe000000')
+        self.assertTrue(pd.kernel_pd_enabled())
+
+    def test_mainline_soc_container_and_disabled_ancestor(self):
+        soc = self.root / 'soc'
+        soc.mkdir()
+        self.node.parent.parent.rename(soc / 'bus@fe000000')
+        self.assertTrue(pd.kernel_pd_enabled())
+        (soc / 'status').write_bytes(b'disabled\0')
+        self.assertFalse(pd.kernel_pd_enabled())
+
+
 class ContractHistoryTest(unittest.TestCase):
     COMPLETE = ('Request rdo 1304b12c: tx 0\n'
                 'PD bootstrap complete; USB-capable 5V contract established\n'
@@ -82,6 +128,7 @@ class ContractHistoryTest(unittest.TestCase):
 
     def setUp(self):
         self.root = Path(self.enterContext(tempfile.TemporaryDirectory()))
+        self.enterContext(patch.object(pd, 'DEVICE_TREE', self.root / 'device-tree'))
         self.record = self.root / 'pd-last-contract.json'
         self.boot_id = self.root / 'boot-id'
         self.boot_id.write_text('first-boot\n')

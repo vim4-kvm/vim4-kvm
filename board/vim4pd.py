@@ -21,6 +21,28 @@ HANDOFF = Path('/proc/device-tree/chosen/khadas,usb-pd-boot')
 ATTEMPT = Path('/run/vim4-kvm-pd-boot.done')
 LAST_CONTRACT = Path('/var/lib/vim4-kvm/pd-last-contract.json')
 BOOT_ID = Path('/proc/sys/kernel/random/boot_id')
+DEVICE_TREE = Path('/proc/device-tree')
+
+
+def kernel_pd_enabled(root=None):
+    """Reserve a declared controller for TCPM even while probe is deferred."""
+    root = DEVICE_TREE if root is None else root
+    for bus in ('soc/bus@fe000000/i2c@76000', 'bus@fe000000/i2c@76000',
+                'apb4@fe000000/i2c@76000'):
+        parent = root / bus
+        for node in parent.glob('*'):
+            compatible = node / 'compatible'
+            if not compatible.is_file():
+                continue
+            if b'fcs,fusb302' not in compatible.read_bytes().split(b'\0'):
+                continue
+            if (node / 'reg').read_bytes() != struct.pack('>I', 0x22):
+                continue
+            if all(not (item / 'status').exists() or
+                   (item / 'status').read_bytes().rstrip(b'\0') in (b'ok', b'okay')
+                   for item in (node, *node.parents) if item != root and root in item.parents):
+                return True
+    return False
 
 
 def boot_power_contract(log):
@@ -173,6 +195,9 @@ def remember_contract(contract, rdo, origin, path=LAST_CONTRACT, boot_id=BOOT_ID
 
 
 def linux_bootstrap():
+    if kernel_pd_enabled():
+        print('PD bootstrap skipped: controller reserved for kernel TCPM', flush=True)
+        return 0
     # The protocol tool records success itself, including manual invocations.
     result = subprocess.run(['/usr/sbin/usb-pd-init'], check=False,
                             stdout=subprocess.PIPE, text=True)
@@ -228,6 +253,9 @@ def bootstrap(handoff=HANDOFF, attempt=ATTEMPT):
         print('PD bootstrap skipped: already considered this boot', flush=True)
         return 0
     os.close(fd)
+    if kernel_pd_enabled():
+        print('PD bootstrap skipped: controller reserved for kernel TCPM', flush=True)
+        return 0
     remember_firmware(handoff)
     try:
         negotiate, reason = decision(handoff.read_bytes())
