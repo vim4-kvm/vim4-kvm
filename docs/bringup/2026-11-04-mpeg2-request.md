@@ -56,3 +56,27 @@ build ID `b83261fdc9ee70135364eb9dc7e97e31dd0188df`。新增状态复位后，H.
 
 MPEG-2 的 IDCT 可能与软件参考存在舍入差异，但不能仅凭草案作者的描述放宽
 验收；遇到差异先定位、量化，不把“有输出”当作正确解码。
+
+## 完整复位与用户态参数对照
+
+`run13` 使用 `6402bd45e222bc7e36adc020f76aa15d82ed689f` 的 `.15`，build ID
+`83c131f4698f22a4a5362c55b5dda015ef276004`。MPEG-2 在总线隔离期间完整复位，
+保留 POWER_CTL_VLD，再加载固件。36 项主机检查通过，包括逐个 MMIO 失败后
+不解除隔离。H.264 112 帧仍一致，MPEG-2 仍全零；恢复接收 60.55829 fps。
+完整复位未解决本次全零输出，不能将它记作故障根因。
+
+转查实际用户态后发现 [GStreamer 的控制转换](https://github.com/GStreamer/gstreamer/blob/1.24.2/subprojects/gst-plugins-bad/sys/v4l2codecs/gstv4l2codecmpeg2dec.c)
+把 VBV 值乘以 16384、错误拼接 profile/level 位，并未初始化默认色度矩阵。
+[parser](https://github.com/GStreamer/gstreamer/blob/1.24.2/subprojects/gst-plugins-bad/gst-libs/gst/codecparsers/gstmpegvideoparser.c)
+实际拆出的是 1 位 escape、3 位 profile、4 位 level；这些值需原样还原。
+私有 [构建入口](../../packaging/kernel/build-vdec-gstreamer.py) 固定官方源码与
+校验值，修正标准控制转换，保留完整 18 位 VBV 值及序列矩阵继承。真实 C
+转换回放在原源码上失败、修改后通过；不修改系统插件或 KVM 捕获插件。
+
+`run14` 重用 `.15` 的同一 Image/模块，仅测试进程通过 GST_PLUGIN_PATH 加载
+私有插件，SHA256 `ca9b5d41cd5cb4e1971778e3db99171c66bc78a24a6b9bcd906cfe7de2e8f601`。
+H.264 112 帧仍逐字节一致，MPEG-2 纯 I 帧的 16 帧不再为零。每个像素相对
+FFmpeg 参考均在 ±1 内，合并全部帧后的 Y/U/V PSNR 分别为
+70.38689/69.03053/67.75598 dB。逐字节检查仍正确地报告差异，未自动放宽门禁。
+恢复 `.3` 后接收 59.77082 fps。各窗口完整身份、持久文件、UDC、performance
+与零新增丢帧/冻结/丢包检查均通过。尚需分析其他 MPEG-2 样本的逐帧误差。

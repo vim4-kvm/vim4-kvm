@@ -6,8 +6,10 @@ References are decoded from the actual compressed files, so encoder versions
 may change fixture bytes without weakening the pixel comparison.
 """
 import argparse
+from collections import Counter
 import hashlib
 import json
+import math
 from pathlib import Path
 import subprocess
 
@@ -107,7 +109,32 @@ def generate(output, codec="h264"):
     return 0
 
 
-def compare(fixtures, name, captured):
+def pixel_errors(reference, captured, width, height):
+    frame_size = width * height * 3 // 2
+    if len(reference) != len(captured) or len(reference) % frame_size:
+        raise ValueError("pixel measurement requires equal complete I420 frames")
+    y_size = width * height
+    planes = (("Y", 0, y_size), ("U", y_size, y_size * 5 // 4),
+              ("V", y_size * 5 // 4, frame_size))
+    frames = []
+    for offset in range(0, len(reference), frame_size):
+        result = {}
+        for plane, start, end in planes:
+            errors = Counter(a - b for a, b in zip(
+                reference[offset + start:offset + end], captured[offset + start:offset + end]))
+            count = end - start
+            mse = sum(error * error * n for error, n in errors.items()) / count
+            result[plane] = dict(
+                max_absolute_error=max(abs(error) for error in errors),
+                mean_error=sum(error * n for error, n in errors.items()) / count,
+                exact_fraction=errors[0] / count,
+                psnr_db=10 * math.log10(255 * 255 / mse) if mse else None,
+            )
+        frames.append(result)
+    return frames
+
+
+def compare(fixtures, name, captured, measure_error=False):
     manifest = json.loads((fixtures / "manifest.json").read_text())
     case = next((c for c in manifest["cases"] if c["name"] == name), None)
     if case is None:
@@ -121,11 +148,20 @@ def compare(fixtures, name, captured):
                      if i >= len(hashes) or i >= len(expected)
                      or hashes[i] != expected[i]), None)
     exact = len(raw) == case["frames"] * case["frame_size"] and mismatch is None
-    print(json.dumps(dict(
+    result = dict(
         name=name, bytes=len(raw), complete_frames=len(raw) // case["frame_size"],
         expected_frames=case["frames"], first_mismatch=mismatch,
         exact=exact, all_zero=bool(raw) and not any(raw),
-    ), indent=2))
+    )
+    if measure_error:
+        reference = subprocess.check_output([
+            "ffmpeg", "-v", "error", "-i", str(fixtures / case.get("filename", name + ".h264")),
+            "-threads", "1", "-pix_fmt", "yuv420p", "-f", "rawvideo", "pipe:1",
+        ])
+        if sha256(reference) != case["decoded_sha256"]:
+            raise ValueError("software reference differs from the fixture manifest")
+        result["pixel_errors"] = pixel_errors(reference, raw, case["width"], case["height"])
+    print(json.dumps(result, indent=2))
     return 0 if exact else 1
 
 
@@ -139,10 +175,12 @@ def main():
     compare_parser.add_argument("fixtures", type=Path)
     compare_parser.add_argument("name")
     compare_parser.add_argument("captured", type=Path)
+    compare_parser.add_argument("--measure-error", action="store_true",
+                                help="report per-frame Y/U/V differences; exit still requires exact pixels")
     args = parser.parse_args()
     if args.command == "generate":
         return generate(args.output, args.codec)
-    return compare(args.fixtures, args.name, args.captured)
+    return compare(args.fixtures, args.name, args.captured, args.measure_error)
 
 
 if __name__ == "__main__":

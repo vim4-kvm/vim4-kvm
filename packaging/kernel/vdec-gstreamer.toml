@@ -1,0 +1,5 @@
+# Private stateless decoder plugin; does not replace the KVM capture plugin.
+source_url = "https://gstreamer.freedesktop.org/src/gst-plugins-bad/gst-plugins-bad-1.24.2.tar.xz"
+source_sha256 = "448e32787bc82b586c6cb2f81c9a8ef404fea4f77f25566fe06e597a3f59136b"
+source_directory = "gst-plugins-bad-1.24.2"
+patches = ["gstreamer-v4l2-mpeg2-controls.patch"]

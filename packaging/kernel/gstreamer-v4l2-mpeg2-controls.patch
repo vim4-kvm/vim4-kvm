@@ -1,0 +1,45 @@
+--- a/sys/v4l2codecs/gstv4l2codecmpeg2dec.c
++++ b/sys/v4l2codecs/gstv4l2codecmpeg2dec.c
+@@ -82,7 +82,7 @@
+   guint chroma_format;
+   gboolean interlaced;
+   GstMpegVideoProfile profile;
+-  guint16 vbv_buffer_size;
++  guint32 vbv_buffer_size;
+   gboolean need_sequence;
+   gboolean need_quantiser;
+ 
+@@ -413,7 +413,7 @@
+   gboolean interlaced;
+   guint16 width;
+   guint16 height;
+-  guint16 vbv_buffer_size;
++  guint32 vbv_buffer_size;
+   GstMpegVideoProfile mpeg_profile;
+ 
+   GST_LOG_OBJECT (self, "New sequence");
+@@ -480,15 +480,21 @@
+   memcpy (self->v4l2_quantisation.non_intra_quantiser_matrix,
+       seq->non_intra_quantizer_matrix,
+       sizeof (self->v4l2_quantisation.non_intra_quantiser_matrix));;
++  memcpy (self->v4l2_quantisation.chroma_intra_quantiser_matrix,
++      seq->intra_quantizer_matrix,
++      sizeof (self->v4l2_quantisation.chroma_intra_quantiser_matrix));
++  memcpy (self->v4l2_quantisation.chroma_non_intra_quantiser_matrix,
++      seq->non_intra_quantizer_matrix,
++      sizeof (self->v4l2_quantisation.chroma_non_intra_quantiser_matrix));
+ 
+   /* *INDENT-OFF* */
+   self->v4l2_sequence = (struct v4l2_ctrl_mpeg2_sequence) {
+     .horizontal_size = self->width,
+     .vertical_size = self->height,
+-    .vbv_buffer_size = self->vbv_buffer_size * 16 * 1024,
++    .vbv_buffer_size = self->vbv_buffer_size,
+     .profile_and_level_indication =
+-        seq_ext ? (seq_ext->profile << 4) | (seq_ext->
+-        level << 1) | seq_ext->profile_level_escape_bit : 0,
++        seq_ext ? (seq_ext->profile_level_escape_bit << 7) |
++        (seq_ext->profile << 4) | seq_ext->level : 0,
+     .chroma_format = seq_ext ? seq_ext->chroma_format : 0,
+     .flags = seq_ext->progressive ? V4L2_MPEG2_SEQ_FLAG_PROGRESSIVE : 0,
+   };
