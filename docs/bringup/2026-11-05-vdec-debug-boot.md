@@ -1,8 +1,9 @@
-# 2026-11-05：解码调试候选尚未进入 Linux
+# 2026-11-05：解码调试候选加载地址与启动门禁
 
 首轮调试窗口未运行 compliance 或 Fluster。U-Boot 读取调试 Image 时发生
 Synchronous Abort，自动回到正式内核；随后预写流程正常重启并验证基线与实际视频。
 HEVC 启动握手修正仍未提交、未实板验证，不能把这次失败归为解码器运行失败。
+后续高地址候选已进入调试 Linux，但暴露启动诊断问题及 media 查找失败，见末节。
 
 ## 身份与原始证据
 
@@ -40,3 +41,34 @@ SDIO 固件按哈希核对后删除。持久启动项与生产配置没有改动
 
 本轮标准流、带流 compliance、KASAN/锁/DMA/泄漏运行验收、厂商对照及性能均未运行。
 窗口记录仅证明启动失败路径和此次正常恢复，不证明硬锁情况下总能恢复。
+
+## 高地址启动复验
+
+`display-once.py` 按 ARM64 Image 头的内存范围核对加载布局；大镜像仅在本次
+U-Boot RAM 环境设置 kernel_addr_r，prepare、读包与 board-window 使用同一检查。
+要求头部允许异地加载，范围留在审阅过的普通内存段；不写 saveenv、不关闭调试选项。
+新增一项工具回归覆盖本次跨映射空洞与不允许重定位的失败，主仓库 535 项、11 跳过
+通过，原始输出 `debug-load-layout-full-tests.log`。实际旧危险包被拒绝、新包完整
+校验通过，见 `debug-load-layout-bundles.log`。
+
+新 payload 为 `hwdecode/debug-high`，同一 Image/config/整套模块；RAM 归档 SHA256
+`8413dd49d658ff62b64b67cd644626f3342dce5fc6ca33c6f0a5c19ce6e36cf9`。
+窗口 `hwdecode-parity-r32` 实际进入 `.22`，证明高地址加载修正有效。旧失败私有包及
+重复输入在逐文件/归档核对后清理，宿主原包和日志保留；详见 `run32/cleanup-old.log`。
+
+但启动日志已经出现三项诊断，均早于解码操作：
+
+- PWM regulator 调用 meson PWM 的 clk_set_rate 路径与 clk_pwm_get_duty_cycle
+  的锁顺序形成循环依赖，涉及 prepare_lock 和 PWM nonatomic_lock。
+- ADLA 映射长度 73,728 字节的 SG 段，超过设备报告的 65,536 字节上限，触发 DMA-API WARNING。
+- brcmfmac 的 brcmf_nvram_handle_comment → strchr 在固件 NVRAM 末尾发生
+  KASAN vmalloc-out-of-bounds 读。
+
+原始启动日志 `logs/hwdecode-parity-r32/dmesg-1793857262099786000.log`，完整窗口日志
+在该目录的 `validation-fluster-1793857262223514000/`。当时工具未在解码前检查这些
+启动诊断，仍运行了电源/MDEC/HEVC 固件预检；随后因 media 设备查找失败停止。
+compliance 命令与 Fluster 均未开始，不能把预检通过记为零 splat 或解码通过。
+
+预写恢复完成，完整正式基线身份重新通过；`returned-video.log` 实测五秒新增
+300 帧、59.954 fps，新增丢帧和冻结均为零，板锁释放。后续必须先处理启动诊断和
+工具门禁，不能筛掉这些日志继续宣称调试验收通过。

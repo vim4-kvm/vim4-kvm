@@ -473,7 +473,8 @@ def validate_bundle(bundle):
         if not re.fullmatch('[0-9a-f]{40}', plan['build_id']):
             raise ValueError('invalid build ID')
         prefix = str(once.candidate_prefix(plan, metadata))
-        command = 'sysboot mmc 1:2 any ${pxefile_addr_r} ' + prefix + '/extlinux.conf; reset'
+        with archive.extractfile(entries['Image']) as image:
+            command = once.trial_boot_command(prefix, entries['Image'].size, image.read(64))
         if plan['command'] != command:
             raise ValueError('only the existing RAM sysboot command is accepted')
         return plan

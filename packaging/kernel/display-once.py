@@ -121,6 +121,26 @@ def trial_cmdline(state):
     return ' '.join(tokens)
 
 
+def trial_boot_command(prefix, file_size, header):
+    """Keep large debug Images outside the T7 bootloader's low-memory hole."""
+    command = f'sysboot mmc 1:2 any ${{pxefile_addr_r}} {prefix}/extlinux.conf; reset'
+    arm64 = len(header) >= 64 and header[56:60] == b'ARM\x64'
+    offset, image_size, flags = struct.unpack_from('<QQQ', header, 8) if arm64 else (0, 0, 0)
+    # kvim4.c maps [0, 0x05100000) and [0x09000000, ...). The stock
+    # kernel_addr_r is 0x01080000; booti rounds its base up to 2 MiB.
+    relocated = ((0x01080000 - offset + 0x1fffff) & ~0x1fffff) + offset
+    if max(0x01080000 + file_size, relocated + image_size) <= 0x05100000:
+        return command
+    # ARM64 flag bit 3 permits placement away from the base of RAM. These
+    # candidates have no initramfs; FDT/PXE remain in their stock low regions.
+    if not arm64 or not flags & 8 or not 0 <= offset < 0x200000 or image_size < file_size:
+        raise ValueError('Large trial Image requires a relocatable ARM64 header')
+    address = 0x20000000 + offset
+    if address + image_size > 0x80000000:
+        raise ValueError('Large trial Image exceeds the reviewed T7 load region')
+    return f'setenv kernel_addr_r 0x{address:08x}; ' + command
+
+
 def prepare(payload, init, baseline, output, release=RELEASE,
             baseline_release=None, baseline_id=None, namespace=None, payload_id=None):
     state = json.loads(baseline.read_text())
@@ -207,7 +227,8 @@ def prepare(payload, init, baseline, output, release=RELEASE,
     config = (f'DEFAULT display-once\nTIMEOUT 1\nLABEL display-once\n'
               f'  LINUX {prefix}/Image\n  FDT {prefix}/vim4.dtb\n'
               f'  APPEND {candidate_cmdline} oops=panic panic=20 init={prefix}/init\n')
-    command = f'sysboot mmc 1:2 any ${{pxefile_addr_r}} {prefix}/extlinux.conf; reset'
+    with (payload / 'Image').open('rb') as image:
+        command = trial_boot_command(prefix, (payload / 'Image').stat().st_size, image.read(64))
     output.mkdir()  # Refuse reuse of an earlier build's bundle.
     with tempfile.TemporaryDirectory(dir=output) as directory:
         work = Path(directory)
@@ -354,7 +375,10 @@ def read_trial(archive, baseline=None):
             plan.update(baseline_release=baseline['release'], baseline_id=baseline['build_id'],
                         baseline_cmdline=baseline['cmdline'], baseline_files=baseline['files'])
         prefix = str(candidate_prefix(plan, metadata))
-        plan['command'] = f'sysboot mmc 1:2 any ${{pxefile_addr_r}} {prefix}/extlinux.conf; reset'
+        if 'Image' not in entries:
+            raise ValueError('missing boot Image')
+        with archive.extractfile(entries['Image']) as image:
+            plan['command'] = trial_boot_command(prefix, entries['Image'].size, image.read(64))
         config = archive.extractfile(entries['extlinux.conf']).read().decode()
         for directive in (f'LINUX {prefix}/Image', f'FDT {prefix}/vim4.dtb', f'init={prefix}/init'):
             if directive not in config:
@@ -380,11 +404,14 @@ def read_trial(archive, baseline=None):
         if not expected or candidate != expected:
             raise ValueError('same Image payload must preserve the complete baseline module set')
     prefix = str(candidate_prefix(plan, metadata))
+    if 'Image' not in entries:
+        raise ValueError('missing boot Image')
+    with archive.extractfile(entries['Image']) as image:
+        command = trial_boot_command(prefix, entries['Image'].size, image.read(64))
     if 'namespace' in plan:
-        config = archive.extractfile(entries['extlinux.conf']).read().decode()
-        command = f'sysboot mmc 1:2 any ${{pxefile_addr_r}} {prefix}/extlinux.conf; reset'
         if plan['command'] != command:
-            raise ValueError('candidate command does not match payload namespace')
+            raise ValueError('candidate command does not match payload namespace or Image load layout')
+        config = archive.extractfile(entries['extlinux.conf']).read().decode()
         for directive in (f'LINUX {prefix}/Image', f'FDT {prefix}/vim4.dtb', f'init={prefix}/init'):
             if directive not in config:
                 raise ValueError('config does not match payload namespace')

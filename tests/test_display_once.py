@@ -31,6 +31,20 @@ def static_elf(kind=1):
 
 
 class TrialTest(unittest.TestCase):
+    def test_large_debug_image_cannot_load_across_t7_unmapped_memory(self):
+        header = bytearray(64)
+        header[56:60] = b'ARM\x64'
+        # Header and lengths from the failed debug candidate. The memory extent
+        # also covers BSS, which is larger than the on-disk Image.
+        struct.pack_into('<QQQ', header, 8, 0, 121241600, 0xa)
+        command = once.trial_boot_command('/private', 90765824, header)
+        self.assertTrue(command.startswith('setenv kernel_addr_r 0x20000000; sysboot '))
+        self.assertNotIn('saveenv', command)
+        self.assertTrue(once.trial_boot_command('/private', 48347648, header).startswith('setenv '))
+        struct.pack_into('<Q', header, 24, 2)
+        with self.assertRaisesRegex(ValueError, 'relocatable ARM64'):
+            once.trial_boot_command('/private', 90765824, header)
+
     def test_vendor_baseline_prepares_dated_candidate_without_mainline_boot_files(self):
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)

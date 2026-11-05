@@ -30,6 +30,7 @@ keeper兼容旧锁并保管票据；重新申请只能排尾，过期不续期�
 3. 首候选前采集[基线proof](#当前正式基线)。链式stage比较原proof和持久文件，不要求当前候选身份等于原基线；候选之间也不能覆盖首次挂载点所有权记录。
 4. 在同一个run窗口用board-window依次启动、接收、再启动；批末return-baseline。stage沿用安全解包、静态ELF、完整模块、fsync/原子发布校验，不向正式模块树安装候选文件。
 5. 串口仅打断autoboot并发送RAM sysboot，不saveenv、不改默认。读取基线MAC，仅在RAM设置，保持DHCP身份；立即收UART，不阻塞等SSH退出。
+   大调试 Image 须避开 T7 U-Boot 的低地址映射空洞；prepare/read_trial/启动门禁按 ARM64 头共同核对加载布局，仅在本次环境设置加载地址，见[失败证据](bringup/2026-11-05-vdec-debug-boot.md)。
 6. 等新boot ID及预期内核身份、SSH、服务、UDC与应用API；snapshot无观看者时的服务错误不等于采集坏，接收需另验真实解码推进。任何一步失败停止，不自动换候选或重试，先看UART再决定恢复。
 
 只为候选创建空模块bind目标并记录marker；候选模块留私有payload。清理只删本次创建且仍为空、未挂载、未替换的目录；已有正式目录保留，异常报失败，不递归删。
