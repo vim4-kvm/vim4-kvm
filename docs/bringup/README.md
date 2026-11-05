@@ -17,6 +17,10 @@
 
 ## 2026-11-05
 
+- [manager 首次续窗登录传输与回退](2026-11-05-integration-manager-continuation.md) — kernel deployment manager；历史首错恢复与SSH入口修正；后续正式验收通过见下一条。
+
+- [7.3 集成内核与新 manager 正式部署](2026-11-05-integration-formal-deploy.md) — kernel deployment manager；八类同资产结果及manager续窗门禁通过，新默认保留；fan90trip持久化和面板保存/读回/恢复、实时PD5V3A通过；19档未重跑，音频仅状态，`.3`整包保留。
+
 - [完整 AVC/MPEG-2 一致性与 bit21 实验](2026-11-05-vdec-full-conformance.md) — kernel video；H.264 58/135、MPEG-2 18/43；HEVC bit21 仍超时，5.15 启动 hard lockup，对照未运行；已恢复 `.3` 并归档清理。
 - [标准码流失败特性聚类](2026-11-05-vdec-failure-groups.md) — kernel video；隔行 SPS 52 Fail、多 slice 18 Fail；主机驱动显式限制，修复待验证；附逐流结果与重叠分组。
 - [H.264 隔行支持设计](2026-11-05-vdec-interlaced-design.md) — kernel video；尺寸、场参考、MV 与 HOLD 生命周期的设计及初期离线准备。

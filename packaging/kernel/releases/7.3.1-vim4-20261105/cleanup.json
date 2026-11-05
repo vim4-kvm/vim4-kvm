@@ -1,0 +1,32 @@
+{
+  "authorization": "t48 approved only unreferenced .2 boot directory under user deploy-everything authorization",
+  "operations": [
+    {
+      "action": "remove unreferenced old boot only",
+      "path": "/boot/kernels/7.3.1-vim4-20261104.2",
+      "files": [
+        "Image",
+        "Module.symvers",
+        "config",
+        "manifest.json",
+        "panfrost.dtb",
+        "vim4.dtb",
+        "vmlinux.btf"
+      ],
+      "bytes": 58015776,
+      "before_free": 46362624
+    },
+    {
+      "removed": "/boot/kernels/7.3.1-vim4-20261104.2",
+      "after_free": 104402944,
+      "freed_bytes": 58040320,
+      "registered_kernels_unchanged": true,
+      "df": "Filesystem       1B-blocks        Used  Available Use% Mounted on\n/dev/mmcblk0p1   219004928   104542208  104402944  51% /boot\n/dev/root      30131765248 23360266240 6364676096  79% /\n"
+    }
+  ],
+  "preserved": [
+    ".2 modules and firmware",
+    ".3 complete runtime and archive",
+    "Vendor"
+  ]
+}

@@ -1,0 +1,358 @@
+{
+  "source": "85ef0b1287c2dd428003b609e575ce33cbc4f99a",
+  "version": "2.5.1+vim4.20261029.102.dev.10.g85ef0b1",
+  "package_sha256": "5b7490a8cb6b1e362ae08eb113f818e28e4aa658506538cf5c3688f9f5ec9002",
+  "process": {
+    "pid": "1116",
+    "sha256": {
+      "/opt/vim4-manager/vim4-manager": "061d788f49bb2fafdfca7d27a6ce62dd7cb22eb8bb8af9b4ad2f1a10e0bdb36e",
+      "/usr/libexec/vim4-manager-helper": "86c1babe280577b1bc834ee7ae2b830d6ee3de5ac067294911dcaa38bdf673e6"
+    }
+  },
+  "panel_write_readback": {
+    "phase": "fan-api-write-readback",
+    "target": {
+      "low": 65,
+      "mid": 85,
+      "high": 100
+    },
+    "hardware": {
+      "hostname": "Khadas",
+      "kernel": "7.3.1-vim4-20261105",
+      "uptimeSeconds": 34.82,
+      "load1": 0.53,
+      "cpus": 8,
+      "memTotalKiB": 8053228,
+      "memAvailableKiB": 7408272,
+      "tempC": 53.2,
+      "zones": [
+        {
+          "name": "a73",
+          "tempC": 53.2
+        },
+        {
+          "name": "a53",
+          "tempC": 50.1
+        },
+        {
+          "name": "gpu",
+          "tempC": 50.2
+        },
+        {
+          "name": "nna",
+          "tempC": 50.2
+        },
+        {
+          "name": "vpu",
+          "tempC": 50
+        },
+        {
+          "name": "hevc",
+          "tempC": 49.9
+        }
+      ],
+      "fanAuto": true,
+      "fanPercent": 10,
+      "fanCurve": [
+        {
+          "tempC": 50,
+          "percent": 5
+        },
+        {
+          "tempC": 52.5,
+          "percent": 10
+        },
+        {
+          "tempC": 55,
+          "percent": 15
+        },
+        {
+          "tempC": 57.5,
+          "percent": 20
+        },
+        {
+          "tempC": 60,
+          "percent": 25
+        },
+        {
+          "tempC": 62.5,
+          "percent": 30
+        },
+        {
+          "tempC": 65,
+          "percent": 35
+        },
+        {
+          "tempC": 70,
+          "percent": 43
+        },
+        {
+          "tempC": 75,
+          "percent": 52
+        },
+        {
+          "tempC": 80,
+          "percent": 61
+        },
+        {
+          "tempC": 85,
+          "percent": 70
+        },
+        {
+          "tempC": 88.75,
+          "percent": 77
+        },
+        {
+          "tempC": 92.5,
+          "percent": 85
+        },
+        {
+          "tempC": 96.25,
+          "percent": 92
+        },
+        {
+          "tempC": 100,
+          "percent": 100
+        }
+      ],
+      "fanTriggers": {
+        "low": 65,
+        "mid": 85,
+        "high": 100
+      },
+      "usb": "configured",
+      "hdmi": {
+        "signal": true,
+        "width": 3840,
+        "height": 2160,
+        "refreshHz": 59.99876303030303,
+        "colorSpace": "YUV444",
+        "depth": 8,
+        "audio": true,
+        "captureWidth": 3840,
+        "captureHeight": 2160,
+        "hdr": "SDR"
+      },
+      "hdrCurve": {
+        "white": 203,
+        "peak": 1000
+      },
+      "hdrToSdr": true,
+      "hdrRemoteAvailable": false
+    },
+    "zones": {
+      "gpu-thermal": [
+        50000,
+        52500,
+        55000,
+        57500,
+        60000,
+        62500,
+        65000,
+        70000,
+        75000,
+        80000,
+        85000,
+        88750,
+        92500,
+        96250,
+        100000
+      ],
+      "a73-thermal": [
+        50000,
+        52500,
+        55000,
+        57500,
+        60000,
+        62500,
+        65000,
+        70000,
+        75000,
+        80000,
+        85000,
+        88750,
+        92500,
+        96250,
+        100000
+      ],
+      "hevc-thermal": [
+        50000,
+        52500,
+        55000,
+        57500,
+        60000,
+        62500,
+        65000,
+        70000,
+        75000,
+        80000,
+        85000,
+        88750,
+        92500,
+        96250,
+        100000
+      ],
+      "nna-thermal": [
+        50000,
+        52500,
+        55000,
+        57500,
+        60000,
+        62500,
+        65000,
+        70000,
+        75000,
+        80000,
+        85000,
+        88750,
+        92500,
+        96250,
+        100000
+      ],
+      "a53-thermal": [
+        50000,
+        52500,
+        55000,
+        57500,
+        60000,
+        62500,
+        65000,
+        70000,
+        75000,
+        80000,
+        85000,
+        88750,
+        92500,
+        96250,
+        100000
+      ],
+      "vpu-thermal": [
+        50000,
+        52500,
+        55000,
+        57500,
+        60000,
+        62500,
+        65000,
+        70000,
+        75000,
+        80000,
+        85000,
+        88750,
+        92500,
+        96250,
+        100000
+      ]
+    }
+  },
+  "panel_restored": true,
+  "final_check": {
+    "running": "7.3.1-vim4-20261105",
+    "power": {
+      "vbusPresent": null,
+      "bootContract": null,
+      "firmwarePD": {
+        "psReady": false,
+        "flags": 208,
+        "hardReset": false,
+        "requestFailed": false,
+        "timedOut": true,
+        "ioError": false,
+        "typecFallback": true,
+        "rp": "3A",
+        "sourceRevision": null,
+        "requestRevision": null,
+        "sourceHeader": "0000",
+        "requestHeader": "0000",
+        "rdo": "00000000",
+        "selectedPosition": null,
+        "selectedType": null,
+        "requestedVoltageV": null,
+        "requestedCurrentA": null,
+        "requestedMaxCurrentA": null,
+        "requestedMaxPowerW": null,
+        "requestedPowerW": null,
+        "policyVoltageV": 0,
+        "policyCurrentA": 0,
+        "contract": null,
+        "sourceCapabilities": []
+      },
+      "kernelPD": {
+        "state": "ready",
+        "contract": {
+          "voltageV": 5,
+          "currentA": 3
+        }
+      }
+    },
+    "fanTriggers": {
+      "low": 60,
+      "mid": 80,
+      "high": 100
+    },
+    "fanCurve": [
+      {
+        "tempC": 45,
+        "percent": 5
+      },
+      {
+        "tempC": 47.5,
+        "percent": 10
+      },
+      {
+        "tempC": 50,
+        "percent": 15
+      },
+      {
+        "tempC": 52.5,
+        "percent": 20
+      },
+      {
+        "tempC": 55,
+        "percent": 25
+      },
+      {
+        "tempC": 57.5,
+        "percent": 30
+      },
+      {
+        "tempC": 60,
+        "percent": 35
+      },
+      {
+        "tempC": 65,
+        "percent": 43
+      },
+      {
+        "tempC": 70,
+        "percent": 52
+      },
+      {
+        "tempC": 75,
+        "percent": 61
+      },
+      {
+        "tempC": 80,
+        "percent": 70
+      },
+      {
+        "tempC": 85,
+        "percent": 77
+      },
+      {
+        "tempC": 90,
+        "percent": 85
+      },
+      {
+        "tempC": 95,
+        "percent": 92
+      },
+      {
+        "tempC": 100,
+        "percent": 100
+      }
+    ],
+    "mobileOverflow": false
+  },
+  "raw_log_sha256": "1dbd67de3f59cf4f41ca3a79644bd5b834274542e13e73d0b8c63e16cc9a4e55"
+}

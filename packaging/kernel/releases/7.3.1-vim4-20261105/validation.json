@@ -1,0 +1,24 @@
+{
+  "source": "fd41fb5950b9da1fb336ce00d5137d27ee9755fa",
+  "release": "7.3.1-vim4-20261105",
+  "kernel_build_id": "bdbfa439f298e92b5bad092528d11119a974f262",
+  "package_sha256": "a12069066760768a833803ad11e7e1fc212674e4ff09f40bdf2017cc1d55e204",
+  "status": "qualified",
+  "scope": "integration-formal",
+  "evidence": "docs/bringup/2026-11-05-integration-formal-deploy.md",
+  "limitations": [
+    "19-mode HDMI matrix not rerun; only1080p60/4K60/no-signal recovery qualified.",
+    "Audio service/device state only; no listening or audio content acceptance.",
+    "Continuation reused approved HID/media/GPU/HDMI results on the identical sealed assets; noM6/HID during continuation.",
+    "No end-to-end latency or host sleep/resume qualification."
+  ],
+  "manager_sha256": "998128690a266641339e2d68754b219d43668dac8caeea0258e82d1f395fceb6",
+  "regressions_sha256": "540421bb9bfe48407ab0a159e69d3f3aef3570de501a045a38954c7092c643b5",
+  "fan_persistence_sha256": "6c53ada4a3edcff9d5667b2b2e0b32426163fd2ae9ba29b9bcdd2e5f615aacad",
+  "fan_restored_sha256": "640fd4c408dac23c13c3591375e0e1b6fce94b346f767d27df093348e0b7e6d6",
+  "pd_proof_sha256": "e1a9c692e26bd0afbe4b439e47b9f2bc17fa4066a32a686c9d0d6e1a2ff11e3c",
+  "runtime_metadata_sha256": "6d27f791bdf510354921796daa895bba00629b006b02fb24b2115488a1fc2d52",
+  "build_metadata_sha256": "e3877c181fd6ababdce26234280c2e1eab09db2c10ced498509ec48ab49a81cc",
+  "install_footprint_sha256": "910250a91a81371cb65980bb9a77fc57feb0c79e5fb30f741beefadaedc480eb",
+  "source_tag_sha256": "3351150f54882f2af1865eedb4b06118f8e7c0ccebf27b475483b1d9e18ee2f9"
+}

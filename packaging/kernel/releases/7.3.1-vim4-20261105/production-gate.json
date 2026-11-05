@@ -1,0 +1,9 @@
+{
+  "passed": true,
+  "config_sha256": "7be7563e089ff628a320cd82ed163d88c576e4c7612f6bf849b230d2b9719b1c",
+  "auto_conf_sha256": "b4ed11799dc19569ac36e7e89854f5c7cbd15669084e395643e192b621b67db4",
+  "compared_symbols": 4623,
+  "string_symbols": 27,
+  "differences": {},
+  "kasan_report": false
+}
