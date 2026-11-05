@@ -85,6 +85,7 @@ if [ "${1:-}" = configure ]; then /usr/libexec/vim4-logging; fi
     copy(ROOT / 'board/edid/rtk-uhd-hdr-1080p120.bin', stage, 'usr/share/vim4-kvm/edid/rtk-uhd-hdr-1080p120.bin', 0o644)
     copy(ROOT / 'board/vim4media.py', stage, 'usr/lib/vim4-kvm/python/vim4media.py', 0o644)
     copy(ROOT / 'board/vim4video.py', stage, 'usr/lib/vim4-kvm/python/vim4video.py', 0o644)
+    copy(ROOT / 'board/vim4fan.py', stage, 'usr/lib/vim4-kvm/python/vim4fan.py', 0o644)
     copy(ROOT / 'board/vim4boot.py', stage, 'usr/lib/vim4-kvm/python/vim4boot.py', 0o644)
     copy(ROOT / 'board/vim4-ethernet-generator.py', stage,
          'usr/lib/systemd/system-generators/vim4-ethernet-generator', 0o755)

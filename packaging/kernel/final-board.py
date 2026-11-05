@@ -16,6 +16,9 @@ import struct
 import subprocess
 import tarfile
 import time
+import sys
+
+sys.path.insert(0, '/usr/lib/vim4-kvm/python')
 
 BASE_RELEASE = '7.3.0-rc7-vim4kvm-uhd1+'
 BASE_ID = '52d5e46fb006230785110a1fa5ba0dd1383b732f'
@@ -307,8 +310,8 @@ class Board:
             return self.report['loaded_module_build_ids']
 
         def fan():
-            root = Path('/sys/bus/platform/devices/khadas-mcu-fan-ctrl')
-            values = {name: int((root / name).read_text()) for name in ('sensor_fault', 'speed_percent', 'temperature_millic')}
+            from vim4fan import snapshot as fan_snapshot
+            values = fan_snapshot()
             assert values['sensor_fault'] == 0 and 0 <= values['speed_percent'] <= 100
             assert 0 < values['temperature_millic'] < 85000
             return values

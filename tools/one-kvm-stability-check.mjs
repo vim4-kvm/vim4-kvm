@@ -18,19 +18,21 @@ assert(Number.isInteger(seconds)&&seconds>=10&&seconds<=7200);
 assert(/^[a-zA-Z0-9_.@-]+$/.test(board));
 const boardState=()=>JSON.parse(execFileSync('ssh',[board,'sudo','-n','python3','-'],{
   encoding:'utf8',timeout:10000,input:`
-import json,os,subprocess,time
+import json,os,subprocess,time,sys
 from pathlib import Path
+sys.path.insert(0,'/usr/lib/vim4-kvm/python')
+from vim4fan import snapshot
 pid=int(subprocess.check_output(['systemctl','show','one-kvm-edge','-p','MainPID','--value']))
 proc=Path('/proc')/str(pid)
 stat=(proc/'stat').read_text().split(') ')[1].split()
 memory=dict(line.replace(':','').split()[:2] for line in Path('/proc/meminfo').read_text().splitlines())
-fan=Path('/sys/bus/platform/devices/khadas-mcu-fan-ctrl')
+fan=snapshot()
 print(json.dumps(dict(time=time.monotonic(),pid=pid,ticks=int(stat[11])+int(stat[12]),
  hz=os.sysconf('SC_CLK_TCK'),rss_kib=int(stat[21])*os.sysconf('SC_PAGE_SIZE')//1024,
  fds=len(list((proc/'fd').iterdir())),cma_free_kib=int(memory['CmaFree']),
  cpu=list(map(int,Path('/proc/stat').read_text().splitlines()[0].split()[1:])),
- temperature_millic=int((fan/'temperature_millic').read_text()),
- fan_percent=int((fan/'speed_percent').read_text()),sensor_fault=int((fan/'sensor_fault').read_text()),
+ temperature_millic=fan['temperature_millic'],
+ fan_percent=fan['speed_percent'],sensor_fault=fan['sensor_fault'],sensor_errors=fan.get('sensor_errors',{}),
  taint=int(Path('/proc/sys/kernel/tainted').read_text()),
  vdin=Path('/sys/kernel/debug/ff000000.video-capture/status').read_text())))
 ` }));

@@ -1,5 +1,6 @@
 #!/bin/sh
-# Exercise the actual kernel interpolation and ramp helpers without hardware.
+# Vendor 5.15 only: exercise interpolation and ramp helpers without hardware.
+# Mainline uses DT cooling maps; validate those through thermal emulation.
 set -eu
 source_file=${1:?usage: test-fan-policy.sh /path/to/linux/drivers/misc/khadas-mcu.c}
 test_dir=$(mktemp -d)
