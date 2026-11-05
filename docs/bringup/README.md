@@ -17,6 +17,7 @@
 
 ## 2026-11-05
 
+- [解码测试迁移清单](2026-11-05-vdec-test-migration.md) — kernel video；逐项登记七个文件、49 项测试的风险与 KUnit/compliance/实板替代验证。
 - [HEVC 接口与固件模式](2026-11-05-hevc-interface-review.md) — kernel video；保留 stateful，核对三种 codec 的固件参数方向；未发现 T7 主机完整参数注入模式，结论限于源码接口。
 - [HEVC stateful 与 EOS](2026-11-05-hevc-stateful.md) — kernel video；三个节点 compliance 各 47/47，首条 HEVC 码流超时零帧；已恢复 KVM，标准码流及厂商对照待运行。
 - [HEVC 核心资源](2026-11-05-hevc-core.md) — kernel video；补齐后端时钟后，空闲 AXI 停止、固件加载和 96 帧既有格式回归通过；HEVC 解码尚未验证，保留早期冷复位记录。

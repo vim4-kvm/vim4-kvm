@@ -20,6 +20,15 @@ IR/按键及NOR与eMMC引脚限制见[设备树记录](../bringup/2026-10-21-edg
 - [GPU差距、散热与验收](../archive/gpu-parity-plan.md)。
 - [HEVC 接口与固件参数证据](../bringup/2026-11-05-hevc-interface-review.md)。
 
+## 解码驱动开发与验证
+
+- 按 Linux process/media 规范实现；每个改动先明确验证方法，实际运行并保存原始输出才标记已验证。短期不向上游投稿，不准备投稿材料或对外发送邮件、补丁。
+- vdec 目录不保留或新增 Python/宿主 mock 测试。纯逻辑迁 KUnit；V4L2 语义用带流 compliance 和标准码流；时钟、电源与 DMA 停机用实板。故障注入只用内核标准机制且限调试配置，不能模拟整套 vb2/V4L2。
+- KUnit 用实际生产函数，必要时按 visibility 接口暴露 static 函数；入口为 [maintain.py](../../packaging/kernel/maintain.py) 和内核 vdec 的 `.kunitconfig`，迁移风险逐项记入[清单](../bringup/2026-11-05-vdec-test-migration.md)。
+- 改动范围提交前完成 strict checkpatch、W=1 和有效 sparse、模块/内建构建、改动头文件 kernel-doc；smatch 可用则运行。改 binding 时先 schema 后板 DTB 检查。工具缺失、跳过或失败不得记通过。
+- 提交单一目的且可独立构建；binding 先于其驱动/DTS 使用者。作者、版权及来源按[代码规范](../code-standards.md)保留。
+- H.264/MPEG-2 节点使用 stateless，HEVC 使用 stateful，JPEG 独立。HEVC 内核只消费固件元数据，不解析码流；确需解析先报告，不新增私有用户态 ABI。
+
 ## 错题
 
 | 触发 | 做法 | 验证 |
