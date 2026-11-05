@@ -18,6 +18,7 @@ IR/按键及NOR与eMMC引脚限制见[设备树记录](../bringup/2026-10-21-edg
 - [下游补丁快照](../archive/kernel-patch-inventory.md)。
 - [电压、温控、空闲与挂起审查](../archive/platform-pm-offline.md)、[板测清单](../parity/platform-pm-board-checklist.md)。
 - [GPU差距、散热与验收](../archive/gpu-parity-plan.md)。
+- [HEVC 接口与固件参数证据](../bringup/2026-11-05-hevc-interface-review.md)。
 
 ## 错题
 
