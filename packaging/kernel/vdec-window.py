@@ -199,7 +199,7 @@ def run_fluster(plan, output, deadline, env):
             if time.monotonic() + process_limit > deadline:
                 report['stopped'] = 'window budget reserved for recovery'
                 save()
-                raise TimeoutError(report['stopped'])
+                return False
             name = vector['name']
             raw = output / f'vector-{index:04d}.json'
             log = output / f'vector-{index:04d}.log'
@@ -217,10 +217,15 @@ def run_fluster(plan, output, deadline, env):
                 entry = {'result': 'Error', 'reason': str(error)}
             report['vectors'][name] = dict(entry, raw_result=raw.name, log=log.name)
             save()
-            if entry['result'] != 'Success':
-                raise RuntimeError('First Fluster failure: ' + name + ': ' + entry['result'])
+            print('FLUSTER_VECTOR', index, name, entry['result'], flush=True)
+            if entry['result'] == 'Timeout':
+                raise RuntimeError('Unsafe Fluster result: ' + name + ': Timeout')
             if plan['kernel'] == 'mainline' and faulted():
                 raise RuntimeError('DMA stop not confirmed after ' + name)
+            # A pixel mismatch is evidence to collect, not a DMA safety failure.
+            # Check diagnostics before allowing another stream on either kernel.
+            require_clean_kernel_log(output)
+        return all(report['vectors'][v['name']]['result'] == 'Success' for v in selected)
     except BaseException as error:
         report['stopped'] = str(error)
         save()
@@ -495,6 +500,7 @@ def acceptance_window(args):
     # Changes in kernel diagnostics are captured even when the decoder process
     # fails. No unload/reload after failure: the caller must restore the baseline.
     success = False
+    conformance_passed = None
     try:
         require_clean_kernel_log(output)
         if plan.get('joint_debug'):
@@ -508,14 +514,15 @@ def acceptance_window(args):
                 compliance_output = output / 'compliance'
                 compliance_output.mkdir()
                 run_compliance(plan, compliance_output, deadline, env)
-            run_fluster(plan, output, deadline, env)
+            conformance_passed = run_fluster(plan, output, deadline, env)
             for index, followup in enumerate(plan.get('fluster_followups', [])):
                 require_clean_kernel_log(output)
                 extra_output = output / f'fluster-followup-{index}'
                 extra_output.mkdir()
                 extra_plan = dict(plan, **{key: followup[key] for key in
                     ('bundle', 'bundle_sha256', 'suite', 'start', 'count')})
-                run_fluster(extra_plan, extra_output, deadline, env)
+                passed = run_fluster(extra_plan, extra_output, deadline, env)
+                conformance_passed = conformance_passed and passed
         elif args.action == 'compliance':
             run_compliance(plan, output, deadline, env)
         elif args.action == 'performance':
@@ -545,7 +552,9 @@ def acceptance_window(args):
             (output / 'end-diagnostic-error.txt').write_text(str(error) + '\n')
         if not success:
             Path('/tmp/vim4-vdec-reset-required').write_text('Validation failed; recover baseline, no codec retry.\n')
-        save_result(output / 'window-status.json', {'success': success, 'recovery_required': not success})
+        # success describes safe execution, not pixel conformance.
+        save_result(output / 'window-status.json', {'success': success, 'recovery_required': not success,
+                                                   'conformance_passed': conformance_passed})
         print('VALIDATION_COMPLETE' if success else 'RESET_REQUIRED', str(output), flush=True)
     if not success:
         raise RuntimeError('Final debug diagnostics failed')

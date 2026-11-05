@@ -82,6 +82,44 @@ class DecoderWindowTests(unittest.TestCase):
             self.assertEqual(result['vectors']['second']['result'], 'Not run')
             self.assertEqual(len(calls), 2)
 
+    def test_fluster_pixel_failure_continues_but_kernel_warning_stops(self):
+        for warning in (False, True):
+            with self.subTest(warning=warning), tempfile.TemporaryDirectory() as directory:
+                root = Path(directory)
+                manifest = root / 'bundle-manifest.json'
+                manifest.write_text(json.dumps({'fluster_revision': 'locked', 'files': {}, 'suites': [{
+                    'name': 'suite', 'codec': 'H.264', 'mainline_decoder': 'decoder', 'test_method': 'md5',
+                    'vectors': [{'name': 'first'}, {'name': 'second'}]}]}))
+                plan = {'bundle': str(root), 'bundle_sha256': window.sha(manifest), 'suite': 'suite',
+                        'kernel': 'mainline', 'start': 0, 'count': 2, 'vector_timeout_seconds': 30}
+                visited = []
+
+                def process(command, log, timeout, env):
+                    if 'list' in command:
+                        log.write_text('    decoder: available... OK\n')
+                        return 0
+                    name = command[command.index('-tv') + 1]
+                    visited.append(name)
+                    status = 'Fail' if name == 'first' else 'Success'
+                    Path(command[command.index('-so') + 1]).write_text(json.dumps({
+                        'test_suites': {'suite': {'decoders': {'decoder': {'vectors': {
+                            name: {'result': status, 'time': 1}}}}}}}))
+                    return int(status == 'Fail')
+
+                with patch.object(window, 'bounded_process', side_effect=process), \
+                        patch.object(window, 'faulted', return_value=False), \
+                        patch.object(window, 'require_clean_kernel_log',
+                                     side_effect=RuntimeError('kernel WARNING') if warning else None):
+                    if warning:
+                        with self.assertRaisesRegex(RuntimeError, 'kernel WARNING'):
+                            window.run_fluster(plan, root, window.time.monotonic() + 600, {})
+                    else:
+                        self.assertFalse(window.run_fluster(plan, root, window.time.monotonic() + 600, {}))
+                self.assertEqual(visited, ['first'] if warning else ['first', 'second'])
+                result = json.loads((root / 'results.json').read_text())
+                self.assertEqual(result['vectors']['first']['result'], 'Fail')
+                self.assertEqual(result['vectors']['second']['result'], 'Not run' if warning else 'Success')
+
     def test_bounded_process_terminates_decoder_child(self):
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)
