@@ -18,6 +18,14 @@ SPEC.loader.exec_module(window)
 
 
 class DecoderWindowTests(unittest.TestCase):
+    def test_disabled_lockdep_cannot_pass_joint_debug_gate(self):
+        with tempfile.TemporaryDirectory() as directory:
+            output = Path(directory)
+            with patch.object(window.Path, 'read_text', return_value=' debug_locks: 0\n'), \
+                    self.assertRaisesRegex(RuntimeError, 'no longer checking'):
+                window.require_joint_debug_state(output, 'startup')
+            self.assertEqual((output / 'startup-lockdep.log').read_text(), ' debug_locks: 0\n')
+
     def test_startup_diagnostic_failure_is_preserved_and_blocks_acceptance(self):
         with tempfile.TemporaryDirectory() as directory:
             output = Path(directory)
