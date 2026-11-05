@@ -97,6 +97,7 @@
 | [measure-gpu.py](../packaging/hdr10/measure-gpu.py)、[application-receiver.mjs](../packaging/hdr10/application-receiver.mjs) | 独占 | HDR10 GPU 转换与应用接收取证。 |
 | [rtp-udp-bench.c](../tools/rtp-udp-bench.c) | 独占 | Linux/板端 UDP 发送基准。 |
 | [encoder-vbv-run.py](../tools/encoder-vbv-run.py)、encoder-vbv-bench.c、encoder-vbv-probe.c | 独占 | VBV 固定输入基准。 |
+| [wave5-reproduce-hang.py](../tools/wave5-reproduce-hang.py) | 独占 | Wave5 编码/取消与有界进程取证；默认仅输出计划，执行须独占板窗、停止视频应用并预备恢复。 |
 | [encoder-vbv-summary.py](../tools/encoder-vbv-summary.py)、encoder-vbv-quality.py | 无 | VBV 与画质汇总。 |
 | [display-color.py](../tools/display-color.py)、display-color.c | 独占 | 离线分析或板端显示颜色校准。 |
 | [hdmi-color-check.py](../tools/hdmi-color-check.py)、hdmi-resolution-check.py | 无 | HDMI 颜色与细节分析。 |
