@@ -17,6 +17,7 @@
 
 ## 2026-11-05
 
+- [Wave5 故障注入离线方案](2026-11-05-wave5-fault-injection-plan.md) — kernel video；标准 fail_function 注入点、隔离/DMA 预期与判定；仅准备，全部待实板，内部时序注入缺口单列。
 - [Wave5 KUnit 迁移结果](2026-11-05-wave5-kunit-results.md) — kernel video；13 个 Python 文件迁出/删除，arm64 QEMU 9/9；W=1、有效 sparse、模块/内建及静态检查完成，硬件语义待实板。
 - [内核树测试迁移清单](2026-11-05-kernel-test-migration.md) — kernel；87 个文件初始盘点，含保留的上游生成器与 vdec；未确认项保留。
 - [测试清单 drm-1](2026-11-05-kunit-inventory-drm-1.md) — kernel；逐文件入口、原检查及待确认处置。
