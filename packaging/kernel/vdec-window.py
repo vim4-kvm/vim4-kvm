@@ -7,6 +7,7 @@ Boot actions install the candidate and arm baseline recovery. Reboots and
 functional baseline checks are supervised steps described in the bringup record.
 """
 import argparse
+from contextlib import contextmanager, nullcontext
 import gzip
 import hashlib
 import json
@@ -147,6 +148,32 @@ def verify_files(root, files):
             raise ValueError('Manifest checksum differs: ' + name)
 
 
+@contextmanager
+def v4l2_trace(output, index):
+    """Capture one stream in an isolated tracefs instance, including timeout cleanup."""
+    root = Path('/sys/kernel/tracing')
+    if not (root / 'events').is_dir():
+        root = Path('/sys/kernel/debug/tracing')
+    instance = root / 'instances' / f'vim4-vdec-{os.getpid()}-{index}'
+    instance.mkdir()
+    try:
+        (instance / 'tracing_on').write_text('0')
+        (instance / 'buffer_size_kb').write_text('1024')
+        for name in ('v4l2_qbuf', 'v4l2_dqbuf', 'vb2_v4l2_buf_queue', 'vb2_v4l2_buf_done'):
+            (instance / 'events/v4l2' / name / 'enable').write_text('1')
+        (instance / 'trace').write_text('')
+        (instance / 'tracing_on').write_text('1')
+        yield
+    finally:
+        (instance / 'tracing_on').write_text('0')
+        try:
+            (output / f'vector-{index:04d}-v4l2.trace').write_text((instance / 'trace').read_text())
+            stats = {p.parent.name: p.read_text() for p in (instance / 'per_cpu').glob('cpu*/stats')}
+            save_result(output / f'vector-{index:04d}-trace-stats.json', stats)
+        finally:
+            instance.rmdir()
+
+
 def run_fluster(plan, output, deadline, env):
     bundle = Path(plan['bundle'])
     manifest_path = bundle / 'bundle-manifest.json'
@@ -208,8 +235,13 @@ def run_fluster(plan, output, deadline, env):
                        '-tv', name, '-d', decoder, '-s', '-so', str(raw), '-f', 'json']
             if name in plan.get('keep_output_vectors', []):
                 command.append('--keep')
+            if name in plan.get('trace_vectors', []):
+                command.append('--verbose')
+            vector_env = dict(env, **plan.get('vector_environment', {}).get(name, {}))
             try:
-                code = bounded_process(command, log, process_limit, env)
+                trace = v4l2_trace(output, index) if name in plan.get('trace_vectors', []) else nullcontext()
+                with trace:
+                    code = bounded_process(command, log, process_limit, vector_env)
                 entry = fluster_result(raw, suite['name'], decoder, name)
                 if code and entry['result'] == 'Success':
                     entry = {'result': 'Error', 'reason': f'Fluster exited {code} despite Success'}

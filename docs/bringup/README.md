@@ -17,6 +17,8 @@
 
 ## 2026-11-05
 
+- [r54 Sharp 尾帧与队列跟踪](2026-11-05-vdec-r54-sharp-trace.md) — kernel video；stateless compliance 通过，AVC 53S/10F/72未运行；零丢事件的 trace 证明末 slice 未进 OUTPUT，定位用户态排空，正式恢复通过。
+
 - [r53 冷复位与跨内核启动统计](2026-11-05-vdec-r53-coldboot.md) — kernel video；`.28` 第三次启动再次冷复位，解码未运行；新正式恢复与视频通过，附已覆盖启动数及缺失范围。
 
 - [r52 基线计划保护门禁](2026-11-05-vdec-r52-baseline-guard.md) — kernel video；`.28` 启动成功，旧保护哈希在解码前被拒绝，全部测试未运行；新正式默认与视频恢复通过。
