@@ -17,6 +17,7 @@
 
 ## 2026-11-05
 
+- [ADLA KUnit 迁移结果](2026-11-05-adla-kunit-results.md) — kernel；四个 Python 删除，真实 allocator/取消/边界 arm64 QEMU 4/4，内建/模块编译完成；既有 W=1/sparse 门禁未通过，DMA/复位/生命周期待实板。
 - [其余非暂缓驱动测试迁移结果](2026-11-05-remaining-drivers-kunit-results.md) — kernel usb thermal；9 个 Python 删除，风扇 arm64 QEMU 3/3，范围构建完成；CRG/TCPM 有效 sparse 未通过，V/B 待实板。
 - [Meson ASoC KUnit 迁移结果](2026-11-05-asoc-kunit-results.md) — kernel audio；15 个 Python 删除，arm64 QEMU 3/3，构建及范围静态检查完成，音频/硬件待实板。
 - [Meson DRM KUnit 迁移结果](2026-11-05-drm-kunit-results.md) — kernel video；18 个 Python 删除，QEMU 8/8，内建/可用模块与有效 sparse 等检查完成；显示/DMA 待实板。
