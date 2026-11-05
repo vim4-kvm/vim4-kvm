@@ -17,6 +17,8 @@
 
 ## 2026-11-05
 
+- [集成正式包与入场门禁](2026-11-05-integration-formal-deploy.md) — kernel deployment manager；正式包与manager隔离验证通过，两短窗安装前停止；M6 TestUFO活动，原`.3`视频推进通过，候选未部署。
+
 - [完整 AVC/MPEG-2 一致性与 bit21 实验](2026-11-05-vdec-full-conformance.md) — kernel video；H.264 58/135、MPEG-2 18/43；HEVC bit21 仍超时，5.15 启动 hard lockup，对照未运行；已恢复 `.3` 并归档清理。
 - [标准码流失败特性聚类](2026-11-05-vdec-failure-groups.md) — kernel video；隔行 SPS 52 Fail、多 slice 18 Fail；主机驱动显式限制，修复待验证；附逐流结果与重叠分组。
 - [H.264 隔行支持设计](2026-11-05-vdec-interlaced-design.md) — kernel video；尺寸、场参考、MV 与 HOLD 生命周期的设计及初期离线准备。
