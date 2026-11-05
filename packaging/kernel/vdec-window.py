@@ -206,6 +206,8 @@ def run_fluster(plan, output, deadline, env):
             command = [*base, '-o', str(output / f'decode-{index:04d}'), 'run',
                        '-j', '1', '-t', str(timeout), '-ff', '-ts', suite['name'],
                        '-tv', name, '-d', decoder, '-s', '-so', str(raw), '-f', 'json']
+            if name in plan.get('keep_output_vectors', []):
+                command.append('--keep')
             try:
                 code = bounded_process(command, log, process_limit, env)
                 entry = fluster_result(raw, suite['name'], decoder, name)
