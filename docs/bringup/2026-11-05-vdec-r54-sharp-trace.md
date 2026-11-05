@@ -32,6 +32,8 @@ PAFF 同样少一个 OUTPUT；最后 B slice 没有送入解码器。
 由此可定位用户态 parser 排空限制；不修改内核 PicNum/LTR、colocated、HOLD 或插件。
 此跟踪未记录 decoder command ioctl，不能声称单独验证了 FLUSH 命令的执行；
 缺失输入提交已足以解释尾部不完整，不能要求驱动用 FLUSH 补造缺失 slice。
+若末 slice 是配对第二场，首场 CAPTURE 仍在 HOLD 等待，须由后续 FLUSH 或
+STREAMOFF 路径释放；本次“已接收请求未见像素错误”不证明 HOLD+FLUSH 释放已经实测。
 板端 parser 身份待 r55 采集；私有 v4l2codecs recipe 的版本不能代替系统 h264parse
 身份。宿主原版 parser 的 `draining with no new data` 路径与板端日志不同，之前宿主
 保留所有 slice 的结果仅适用于该宿主插件，不排除板端 parser 的问题。
