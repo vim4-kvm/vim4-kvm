@@ -152,7 +152,9 @@ def generate(output, codec="h264"):
     }
     cases = {"h264": CASES, "mpeg2": MPEG2_CASES, "mjpeg": MJPEG_CASES}[codec]
     extension = {"h264": ".h264", "mpeg2": ".m2v", "mjpeg": ".mjpg"}[codec]
-    reference_format = "yuvj420p" if codec == "mjpeg" else "yuv420p"
+    encoded_format = "yuvj420p" if codec == "mjpeg" else "yuv420p"
+    # The JPEG firmware produces limited-range I420; compare in that range.
+    reference_format = "yuv420p"
     for name, width, height, count, profile, actual_profile, params in cases:
         clip = output / (name + extension)
         # QP22 exercises negative PPS QP/chroma offsets. QP26 would hide
@@ -180,7 +182,7 @@ def generate(output, codec="h264"):
         stream = streams[0]
         actual = (stream["profile"], stream["width"], stream["height"],
                   stream["pix_fmt"], int(stream["nb_read_frames"]))
-        if actual != (actual_profile, width, height, reference_format, count):
+        if actual != (actual_profile, width, height, encoded_format, count):
             raise ValueError(f"{name}: unexpected encoded properties {actual}")
         expected_field_order = "tt" if name == "mpeg2-interlaced" else "progressive"
         if codec != "mjpeg" and stream.get("field_order") != expected_field_order:
