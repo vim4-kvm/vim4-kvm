@@ -16,7 +16,8 @@
 
 ## 采集与编码
 
-- 解码 `.25` 已修复通用缓冲 sequence，stateless/JPEG compliance 各 60/60；HEVC 配置 AMP_A_Samsung_7 后等待 SOURCE_CHANGE 超时，内核报 irq/status 00、pc 00000a1e、shift 00000072。握手/启动路径待定位，不能归类为固件能力限制；Fluster 和 5.15 同板对照未运行。[实板证据](bringup/2026-11-05-vdec-buffer-sequence.md#r36-基线门禁与-r37-有效复验)
+- 解码 `.25` HEVC 等待 SOURCE_CHANGE 超时；草稿无条件设置 NAL_SEARCH_CTL bit21，而厂商只在有效 8K 尺寸启用。模式与启动顺序差异待单变量验证，尚不能归类为固件能力限制。[离线差异表](bringup/2026-11-05-vdec-independent-fluster.md#hevc-离线差异表)
+- 解码 `.25` stateless/JPEG compliance 各 60/60，但标准流像素仍有差异：H.264 BA1_FT_C 摘要不匹配，MPEG-2 att 有 23,959 个超容差位置。AUD_MW_E 通过；驱动/插件/固件原因未区分，5.15 对照未运行。[逐流结果](bringup/2026-11-05-vdec-independent-fluster.md#实际结果)
 - debugfs frame 入口未统一 YUV3 的源资格检查；开发者用该入口采集不合格源时，可能绕过 V4L2 队列的格式限制。[V4L2 采集记录](bringup/2026-11-02-hfr-yuv-window.md#yuv444-和未验项)
 - 新鲜 DRM 与普通 AVI 信息不一致时，YUV3 源资格可能误判为 SDR，影响采集颜色解释；验收需保存两者实际记录。[V4L2 采集记录](bringup/2026-11-02-hfr-yuv-window.md#yuv444-和未验项)
 - 5.15 专用 VDIN1 插件将百分之一 Hz 读数取整，分数帧率输入会得到不准确的 caps；One-KVM 直开设备的路径不受影响。[vim4_vdin1_caps](../gst-plugin-vfmcap/src/gstvim4vdin1src.c)
@@ -29,6 +30,7 @@
 
 ## 应用与 USB
 
+- One-KVM 在 r36 基线检查时曾因 SQLite `disk I/O error` 自动重启；根分区当时约 404 MB 可用。r38 只清理已归档的解码上传后增至约 696 MiB，视频恢复，但未建立低余量与错误的因果关系，未改数据库/WAL。[只读检查与清理证据](bringup/2026-11-05-vdec-independent-fluster.md#本任务旧上传清理与-sqlite)
 - 官方 Mac UU 的 H.265 会话协商了 transport-cc，但只统计到音频确认；修复估算器补报/乱序过滤后，10 分钟复验仍为零视频确认，RR 回退稳定。同期 H.264 实流有视频确认且吞吐正常，本地 H.265 SRTP 回环也通过。仍需对照原始反馈与接纳计数定位 H.265 差异，不能仅凭汇总计数归因于官方客户端。[TWCC 复验](bringup/2026-11-04-uu-twcc.md#审查修复版部署与复验)
 - One-KVM MCP `type` 输入长命令可能丢空格或字符；uhd7 与 7.3.1 均复现，输入法与零按键保持时长的各自影响未分清；US 输入源逐键保持 50ms 可绕过。[复现](bringup/2026-11-03-kernel-731-deploy.md#继续验收与最终状态)
 - PATCH 完整原 USB 配置重建 gadget 时，HID 配置值不变可能跳过 backend 重载，后续写入报 endpoint shutdown；切换 profile 再恢复可绕过。[复现](bringup/2026-11-03-kernel-731-deploy.md#继续验收与最终状态)

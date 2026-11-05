@@ -17,6 +17,7 @@
 
 ## 2026-11-05
 
+- [独立格式 Fluster 与 HEVC 启动顺序](2026-11-05-vdec-independent-fluster.md) — kernel video；H.264 子集 1/2，MPEG-2 0/2（1 未运行），像素失败即停止；清理已归档上传，恢复 `.3`；HEVC bit21 模式差异待验证。
 - [解码缓冲序号修复与复验](2026-11-05-vdec-buffer-sequence.md) — kernel video；独立序号提交与静态检查；`.25` stateless/JPEG 各 60/60，HEVC SOURCE_CHANGE 超时，Fluster 未运行；已恢复 `.3` 与视频。
 - [生产配置解码功能验收](2026-11-05-vdec-production-validation.md) — kernel video；`.24` 正常启动，stateless 带流 compliance 遇输出缓冲序号不递增；后续未运行，已恢复 `.3` 与 4K 视频。
 - [解码与启动修复联合调试](2026-11-05-vdec-joint-debug.md) — kernel video；`.23` 启动遇 MMC IRQ 锁上下文错误和未解释冷复位，未运行解码；已恢复 `.3` 与 4K 视频。
