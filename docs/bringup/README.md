@@ -17,6 +17,7 @@
 
 ## 2026-11-05
 
+- [冷复位 A/B r59 入场失败](2026-11-05-vdec-coldboot-ab-r59.md) — kernel；默认串口路径不存在，零 SSH/上传/启动，20 项未运行，票已释放。
 - [冷复位 A/B 工具与封包](2026-11-05-vdec-coldboot-ab-tools.md) — kernel；UART 审查修正、固定批次、早期采集及两组封包离线核验；未上板。
 - [冷复位同 RAM 封装 A/B 计划](2026-11-05-vdec-coldboot-ab-plan.md) — kernel；正式包/.28 交替各十次，累计50分钟已批准；工具复审前不排板。
 - [解码 v2 内部评审系列](2026-11-05-vdec-review-v2.md) — kernel video；56→16 提交，逐树构建/sparse/QEMU/头文件与 DT 检查；三项原作者 SoB 缺口保留，不宣称 parity、不部署。
