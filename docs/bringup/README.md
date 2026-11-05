@@ -17,6 +17,8 @@
 
 ## 2026-11-05
 
+- [启动修复重放到 KUnit 迁移基线](2026-11-05-debug-splat-integration.md) — kernel；v2保留原分支，MMC/ADLA重放到7e35e3b，合并为一个ADLA KUnit suite，逐提交strict 0/0/0；编译与统一候选验收待集成窗口。
+- [ADLA 锁类修复与 PD 启动时序比较](2026-11-05-adla-mutex-pd-timing.md) — kernel network usb；调用点宏及QEMU KUnit 1/1；`.83` Soft_Reset收到及时Accept后仍cold_boot，A未过，已恢复 `.3` 与4K视频；B改用集成候选。
 - [启动修复实板复验与生产吞吐准备](2026-11-05-debug-splat-board-validation.md) — kernel network usb；`.81` 新暴露 ADLA mutex 类别报告后 cold_boot，PD 同步采证；已恢复 `.3` 与4K视频，生产 `.82` 待清理旧候选容量后测600秒吞吐。
 - [MMC 硬中断锁修复与冷复位分析](2026-11-05-mmc-irq-reset-analysis.md) — kernel usb；DMA 完成恢复到 IRQ 线程、SDIO 短锁改 raw，离线构建完成；两次 cold_boot 原因未明，列出下一窗口同步采证要求，未上板。
 - [解码与启动修复联合调试](2026-11-05-vdec-joint-debug.md) — kernel video；`.23` 启动遇 MMC IRQ 锁上下文错误和未解释冷复位，未运行解码；已恢复 `.3` 与 4K 视频。

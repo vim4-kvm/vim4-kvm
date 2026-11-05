@@ -5,11 +5,11 @@
 
 ## 内核与部署
 
-- MMC `Invalid wait context` 修复 `f911e1d8817fb` 的离线检查完成；`.81` 启动未见原报告，但新的 ADLA lockdep 与冷复位先发生，eMMC/SDIO 完整回归未运行。生产 `.82` 已封存，600秒吞吐因板端容量不足待运行。[实板边界](bringup/2026-11-05-debug-splat-board-validation.md#a-实板结果与新锁报告)；[根因与上游核对](bringup/2026-11-05-mmc-irq-reset-analysis.md#mmc-根因与修复)
-- `.81` 新暴露 ADLA `possible recursive locking detected`：dev_mutex 与 SMMU mutex 地址不同，但 OS 包装函数同一 mutex_init 调用点赋予同类；设备初始化按 dev_mutex→SMMU 嵌套，18.57秒关闭锁检查。独立于 DMA 段长，完整锁图及修复尚未完成。[具体路径](bringup/2026-11-05-debug-splat-board-validation.md#a-实板结果与新锁报告)
-- RAM 调试候选意外 cold_boot 原因未明；`.81` 同步 UART 量出首条 Linux 到ROM23.94秒、最后 printk 到ROM1.08秒，PD 接管后处于等待能力/安排 Soft_Reset，缺实际 Hard_Reset、VBUS/RESET波形及连续 watchdog 计数，未作猜测性修改。[新增时序与采证边界](bringup/2026-11-05-debug-splat-board-validation.md#冷复位同步证据)
+- MMC `Invalid wait context` 修复原分支 `f911e1d8817fb` 已完成离线检查，v2重放为 `5deb393be1501`、patch-id不变；`.83` 未见原报告，但cold_boot使指定eMMC/SDIO门禁未运行。生产600秒吞吐改用统一集成候选，尚未验收。[来源与集成边界](bringup/2026-11-05-debug-splat-integration.md)
+- ADLA mutex错误合类修复原分支 `53d7db5f377e8` 的真实API QEMU+KASAN+lockdep测试1/1、模块/内建检查完成；v2 `e8c40f17b20ea` 合并到已有5-case独立suite，strict 0/0/0，编译/QEMU待集成窗口。`.83` 没有绑定/lockdep快照，不能判硬件门禁通过。[修复](bringup/2026-11-05-adla-mutex-pd-timing.md#adla-修改与来源)；[冲突处理与未验项](bringup/2026-11-05-debug-splat-integration.md#adla-冲突如何解决)
+- 调试候选cold_boot原因未明；`.83` 实际Soft_Reset TX至Accept13.577ms，未超本树60ms，随后等待Source_Capabilities时日志中断。初始标注100ms阶段再次明显提前；无Hard_Reset/VBUS/RESET波形及连续watchdog证据，不把“内核慢”认定为原因，未改PD。[实板与新的PD尾部](bringup/2026-11-05-adla-mutex-pd-timing.md#83-实板与新的-pd-尾部)
 - PWM 跨 chip 的 prepare_lock/nonatomic_lock 建模已按协调者授权在独立分支提交 `0a35577b8de2` 增加独立 key，arm64 QEMU 锁依赖回归 1/1；regulator 与 Wi-Fi 使用不同 chip，但 debugfs/初次 request 的 Wi-Fi 硬件查询仍有同实例真实 ABBA，保留未解决，实板零 splat 待验。[锁链、拓扑与修复边界](bringup/2026-11-05-debug-splat-fixes.md#pwm-锁依赖分析与修复边界)
-- ADLA DMA SG 上限修复 `4c4126df2f8a` 已离线构建；`.81` 未见旧超限特征，但新的 ADLA mutex 类别错误先关闭 lockdep，随后冷复位，未完成绑定/流量/零告警门禁。W=1+sparse 既存 vendor 诊断仍保留。[根因](bringup/2026-11-05-debug-splat-fixes.md#adla-dma-路径)；[实板边界](bringup/2026-11-05-debug-splat-board-validation.md#a-实板结果与新锁报告)
+- ADLA DMA SG 上限修复 `4c4126df2f8a` 已离线构建并在集成基线中；`.81/.83` 未见旧超限特征，但cold_boot前未取得绑定/流量/零告警完整门禁。W=1+sparse既存vendor诊断仍保留。[根因](bringup/2026-11-05-debug-splat-fixes.md#adla-dma-路径)；[最新实板边界](bringup/2026-11-05-adla-mutex-pd-timing.md#83-实板与新的-pd-尾部)
 - 主线应用程序与插件位于整包和组件包都不提供的 `/opt/vim4-kvm` 私有目录（`hdr10-r14e`、`one-kvm-usb-*`），重刷或新板安装主线后须另行安装这些运行时，否则启动器 exec 失败。[启动器](../board/vim4-kvm-run)
 - 内核升级在写入 kernels.json 后、切换 extlinux 前中断，会使面板报告 Mainline 不可用并拒绝选择；U-Boot 仍启动旧整包，重新登记可恢复面板。[安装器](../packaging/kernel/register-runtime.py)
 - board-window 在新刷 5.15 镜像使用 `LINUX /Image` 符号链接布局时拒绝基线，因为要求路径含 release；当前板的版本化路径不受影响。[预检](../tools/board-window)
