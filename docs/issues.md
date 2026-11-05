@@ -5,7 +5,7 @@
 
 ## 内核与部署
 
-- 解码评审系列保留 Kövér-Draxl 的 MPEG-2、MJPEG、HEVC 原作者，但原提交 `b1bdea695746b`、`37b50c957b4b1`、`0204da89aa08d` 缺原作者 Signed-off-by。只加整理者自己的签署；strict checkpatch 的 nominal-author 签署错误按失败保留。上游提交前需原作者补 SoB，或按 DCO (b) 完成来源说明；短期不提交上游、不联系作者，不代签、不改作者。
+- 解码评审系列保留 Kövér-Draxl 的 MPEG-2、MJPEG、HEVC 原作者，但原提交 `b1bdea695746b`、`37b50c957b4b1`、`0204da89aa08d` 缺原作者 Signed-off-by。只加整理者自己的签署；strict checkpatch 的 nominal-author 签署错误按失败保留。上游提交前需原作者补 SoB，或按 DCO (b) 完成来源说明；短期不提交上游、不联系作者，不代签、不改作者。整理者签署身份 `localhost-copilot` 不是真实姓名，上游前也须换成真实身份的 SoB。
 - `fd41fb5950b9` 在arm64 QEMU/KASAN/PROVE_LOCKING下跑额外上游DMA-BUF压力组，单CPU/300秒与双CPU/900秒均在fence-chain的test_wait_forward slow提示后超时，未定位TCG性能或内核等待问题；双CPU竞争用例通过，不能将未完成项记通过。不是实板故障证据，本任务不修改核心实现。[两次配置、原始输出与边界](bringup/2026-11-05-integration-build-results.md#dma-buf-压力复验超时)
 - MMC `Invalid wait context` 修复原分支 `f911e1d8817fb`、v2 `5deb393be1501` 离线通过；集成生产`.90`与正式`.3`同窗各600秒328.88/342.08 Mbit/s，同窗-3.86%，通过不超过10%的性能门槛，未改回硬IRQ。此前`.93`相对历史-11.52%不能归因MMC或PD。A仍cold_boot，debug_locks/eMMC调试门禁未完成。[同窗结果、生产配置与恢复](bringup/2026-11-05-integration-wifi-control.md)；[集成边界](bringup/2026-11-05-debug-splat-integration.md)
 - ADLA mutex错误合类修复原分支 `53d7db5f377e8` 的真实API QEMU+KASAN+lockdep测试1/1、模块/内建检查完成；v2 `e8c40f17b20ea` 合并到已有5-case独立suite，strict 0/0/0，编译/QEMU待集成窗口。`.83` 没有绑定/lockdep快照，不能判硬件门禁通过。[修复](bringup/2026-11-05-adla-mutex-pd-timing.md#adla-修改与来源)；[冲突处理与未验项](bringup/2026-11-05-debug-splat-integration.md#adla-冲突如何解决)

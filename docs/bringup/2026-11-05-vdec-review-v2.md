@@ -8,7 +8,7 @@
 ## 系列与来源
 
 VM 工作树 `/home/deepdream/src/linux-7.3-hwdecode-parity-v2`，分支
-`hwdecode-parity-v2`，HEAD `f604008cda7e5d426311824f9a26683b7c5c57b4`，
+`hwdecode-parity-v2`，HEAD `c99c3eddea02823a6b958d16e35ec7d7fd0ccc0d`，
 tree `e0cfeece4a38ca8b8568993e30b92e2258fcccb5`。
 逐提交 SHA、源码树、实测构建身份与结果见
 [配套清单](data/2026-11-05-vdec-review-v2.csv)。
@@ -87,9 +87,9 @@ compliance、实流和错误恢复记录，不重新引入 mock。
 02/03/05 各有一条路径提醒和一条原作者 SoB 错误。仅排除路径提醒后，
 13 个提交为 0/0/0，以下三个仍各有一个 error：
 
-- 02 MPEG-2：`5952c3b3ab7f3`。
-- 03 JPEG：`a01f357260a89`。
-- 05 HEVC：`f11d9b5771141`。
+- 02 MPEG-2：`ed448537c75a5`。
+- 03 JPEG：`d35a9eaabc105`。
+- 05 HEVC：`bafe82e461f49`。
 
 最终再次执行 targeted `dt_binding_check`，并通过内核 `CHECK_DTBS=y` 的
 同一 schema 校验路径重建/验证普通 VIM4 和 `vim4-vdec-test` 两个 DTB。
@@ -101,6 +101,21 @@ compliance、实流和错误恢复记录，不重新引入 mock。
 补丁与两种 checkpatch 原文为 `review-NN.patch`、
 `review-NN-checkpatch-{raw,paths-audited}.log`。全系列所有 16 个源码树的
 模块/内建构建及 QEMU 执行均已实际完成；最终 suite 为 25/25。
+
+## 合入前仅正文修订
+
+删除 08 的重复验证段与 09–11 的旧测试段，所有提交各保留一段精简验证结论，
+去掉正文中的本地证据路径和流程说明；02/03/05 来源段均置于验证段之前。
+已有实板结果与中间版本未单独上板的边界分别写明。整理者 `localhost-copilot`
+不是真实姓名，上游前需真实身份 SoB，已补入 [签署阻断项](../issues.md)。
+
+与已审 `f604008cda7e5d426311824f9a26683b7c5c57b4` 比较，16/16 对应提交的
+tree、作者、作者日期和标题完全相同，最终 tree 仍为上述 `e0cfeece…`，
+`git diff f604008cda7e5d426311824f9a26683b7c5c57b4 HEAD` 输出为空。
+因此按协调要求不重复构建或 KUnit；CSV 的 built_commit 保留真实执行身份。
+本轮对新 format-patch 重新执行 strict checkpatch，例外数量与上文相同，
+没有新增 style 告警。新补丁、检查原文、旧/新 SHA 映射、range-diff 与空差异证明
+保存在 `build/hwdecode-parity/v2/message-review/`，不覆盖上一轮验证原始输出。
 
 ## 功能证据与未验边界
 
