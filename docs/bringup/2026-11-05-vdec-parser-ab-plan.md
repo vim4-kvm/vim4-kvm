@@ -1,6 +1,8 @@
-# 2026-11-05：H.264 parser A/B 像素采证计划（待批准）
+# 2026-11-05：H.264 parser A/B 像素采证计划
 
-仅方案，不申请板票。依据 [visl 离线结果](2026-11-05-vdec-visl-controls.md)，
+协调者已批准并在 [r61](2026-11-05-vdec-r61-parser-ab.md) 执行；额外入场门禁为
+连续UART/uptime确认至少5分钟无新冷复位。以下保留原计划，执行偏差见r61。
+依据 [visl 离线结果](2026-11-05-vdec-visl-controls.md)，
 用同一个已验 `.28` RAM 候选、同一私有 v4l2codecs、同一输入，单变量切换 Khadas 与
 官方 Ubuntu 1.24.2 h264parse。不改驱动，不部署，不将 visl 请求成功当像素通过。
 

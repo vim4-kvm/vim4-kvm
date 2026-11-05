@@ -17,6 +17,7 @@
 
 ## 2026-11-05
 
+- [r61 parser A/B 像素采证](2026-11-05-vdec-r61-parser-ab.md) — kernel video；官方14S/3F、Khadas17F，14条仅缺显示帧且已有像素正确；LTR首错10/16/16，正式恢复通过。
 - [H.264 visl 离线控制采证](2026-11-05-vdec-visl-controls.md) — kernel video；17条五组QEMU控制采证，14条Khadas漏末slice、官方parser恢复；像素未验，LTR继续定位。
 - [H.264 parser A/B 像素计划](2026-11-05-vdec-parser-ab-plan.md) — kernel video；待批准，私有parser双组保存输出，单次候选启动与r60式恢复。
 - [冷启动采集器空环境修复](2026-11-05-vdec-coldboot-collector-fix.md) — kernel；真实空环境子进程离线通过，固定 Python 路径与独立 ready 参数快照，未上板。
