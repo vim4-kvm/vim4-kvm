@@ -17,6 +17,7 @@
 
 ## 2026-11-04
 
+- [MJPEG 解码接口](2026-11-04-mjpeg-decoder.md) — kernel video；标准 M2M、排空和可见尺寸已离线实现，像素尚待上板。
 - [MPEG-2 请求接口](2026-11-04-mpeg2-request.md) — kernel video；修正用户态控制与初始场对参考，六组 112 帧完成解码并量化像素误差，长期共存仍待验。
 - [硬件解码格式对齐](2026-11-04-hwdecode-parity.md) — kernel video；H.264 Baseline/Main/High/1080p 运动样本逐帧像素通过，完整格式与边界尚未对齐。
 - [H.264 分辨率与码流边界](2026-11-04-h264-boundaries.md) — kernel video；包含 JVT 矩阵、UHD 和 4096×2304 的七组 216 帧逐帧像素通过。
