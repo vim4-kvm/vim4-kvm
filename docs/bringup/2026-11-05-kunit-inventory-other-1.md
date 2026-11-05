@@ -71,33 +71,33 @@ F＝标准样本数据比对；T＝工具迁出。V/B/F 均待实板。
 
 ## `drivers/misc/adla/test_cancel.py`
 
-类型：测试；协调暂缓，保留原文件；待 t48 确认后再审风险和迁移，避免与启动 splat 修复冲突。
+类型：测试；协调暂缓已解除，在合入 debug-splat-fixes 后逐项确认如下。
 
 原自述：Execute actual pending/finished/scheduled cancellation with controlled lists.
 
 | 基线行 | 测试入口 | 原风险/处置 |
 |---|---|---|
-| 39 | `C main` | 待确认：核对内嵌 C 的断言 |
-| 103 | `C main` | 待确认：核对内嵌 C 的断言 |
+| 39 | `C main` | K：真实 pending/finished/scheduled 队列按 net_id/invoke_id 隔离；非活动项移出并减少引用，活动项只标取消且保留队列/引用；不匹配 ID 不回收。KUnit 使用真实驱动结构、内核 list 和 mutex，直接调用原函数 |
+| 103 | `C main` | V/B：同步 CANCEL 等 worker 完成后才报告 terminal/唤醒，reset 失败时保留 DMA、invoke_cnt 且传播 recovery_error；交真实 ioctl 并发取消/完成、标准故障注入与 DMA 调试，待实板 |
 
 ## `drivers/misc/adla/test_iova.py`
 
-类型：测试；协调暂缓，保留原文件；待 t48 确认后再审风险和迁移，避免与启动 splat 修复冲突。
+类型：测试；协调暂缓已解除，在合入 debug-splat-fixes 后逐项确认如下。
 
 原自述：Host tests execute the driver's bitmap IOVA allocator, including rollback.
 
 | 基线行 | 测试入口 | 原风险/处置 |
 |---|---|---|
-| 61 | `C main` | 待确认：核对内嵌 C 的断言 |
+| 61 | `C main` | K：真实 bitmap IOVA 池拒绝零长/对齐溢出、排除区截到池尾、非整页分配向上取整、耗尽不占用、释放后复用与 used_count；直接调用生产初始化/分配/释放。B：vzalloc 失败的无泄漏回收用标准分配故障注入，待实板；旧 mock 的 INVALID_ADDR 与生产值不同，KUnit 使用真实宏，不复制假常量 |
 
 ## `drivers/misc/adla/test_lifecycle.py`
 
-类型：测试；协调暂缓，保留原文件；待 t48 确认后再审风险和迁移，避免与启动 splat 修复冲突。
+类型：测试；协调暂缓已解除，在合入 debug-splat-fixes 后逐项确认如下。
 
 原自述：Execute real error-completion and close paths with controlled DMA/reset events.
 
 | 基线行 | 测试入口 | 原风险/处置 |
 |---|---|---|
-| 141 | `C main` | 待确认：核对内嵌 C 的断言 |
-| 216 | `C main` | 待确认：核对内嵌 C 的断言 |
-| 254 | `C main` | 待确认：核对内嵌 C 的断言 |
+| 141 | `C main` | V/B：reset 停 DMA 后才发布完成/释放；reset 失败锁存错误并隔离；WAIT 成功、超时、信号/硬件超时和非法 timeout；close 超时保留 context/模块引用、迟到完成触发一次 deferred release，先清活动任务再唤醒。真实 ioctl/close 并发、KASAN/lockdep/DMA 与调试故障注入，待实板 |
+| 216 | `C main` | V/B：submit_wait 每轮有限等待、按总预算超时、IRQ 成功及时返回、取消在有限轮询后可见，硬件 timeout=0 仍可取消；真实 IRQ/worker 与标准注入，宿主虚拟时间不证明真实可取消，待实板 |
+| 254 | `C main` | V/B：完成必须唤醒 interruptible WAIT 和 uninterruptible CANCEL 两类等待者，空句柄返回 EINVAL；真实等待队列/并发 ioctl 的标准接口及 lockdep，待实板，不另造 waitqueue |
