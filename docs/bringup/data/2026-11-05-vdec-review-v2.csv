@@ -1,0 +1,17 @@
+index,commit,tree,built_commit,stage,kunit_passed,strict_errors,strict_warnings,strict_checks,subject
+1,a3e01c65878178129a9fbdb7089160a7465d3879,7cb9ce25550ddfaa5a96a5263b3d54fa03d4b1ce,d1a1451b43b12d08a46143cab1bc34e229b65cc8,final01,8,0,1,0,media: amlogic: vdec: initialize T7 H.264 parameters and canvas storage
+2,5952c3b3ab7f3ae70e5e37f8e1526695f511af3c,11feb7c54736636720950af706ee57fec2aaab33,d4b7f20717e932db16434580b2de04d990d6e862,final02,10,1,1,0,media: amlogic: vdec: add T7 stateless MPEG-2 decoding
+3,a01f357260a894f1e370d5e074b456afe1c91624,93d3508e453d4c415b1f2a1a7d452983e6e3f530,bdff15b90b755495c522fbad7e43a2782b27cf6b,final03,12,1,1,0,media: amlogic: vdec: add an independent stateful JPEG node
+4,632f7e6b39f63d105c07b1a4c229d2ddd567714a,c63600d4ae1d665a3a3c8ea2062c57f886c51e87,aaa0f523ea08ced57f292843b8850f81ea7b8087,final04,12,0,0,0,dt-bindings: media: amlogic: describe T7 HEVC resources
+5,f11d9b5771141612dc698ca23bbdbcd2f5e1c3f3,c462be375315d86070114d82b13246837e20fa08,5a6c2afab30d756be4d3bca9aa1036aff57d2f5c,final05,17,1,1,0,media: amlogic: vdec: add a stateful T7 HEVC node
+6,2c9379b055dfc964999f708512fd577a9e8db3dd,6f055d338c50df5f4ba212c16ec9b185e5214bc5,6471071f7df52598a90c334cf592c979b7798c30,final06,17,0,0,0,arm64: dts: amlogic: wire T7 HEVC power clocks and IRQ
+7,ad163dfa5d994c0cc193b5c014bc4a4e390e6422,9882dc1a330935c833edd9943109acf6be3227e3,5459a82f68636187877a53646c5b2fff443e13a6,final07,17,0,0,0,media: amlogic: vdec: track queue sequence and held capture buffers
+8,5a046e99e622106f4d310d48daeb349870a54794,bf25ea798c258319e082262386d31a4398fc0475,d175506e75de5476eb7fe5e5ee59e6a8911e0cf9,final08,17,0,0,0,media: amlogic: vdec: retain T7 picture buffers across H.264 slices
+9,5bbc4f70dee9e98266c7eb3bac7abf494f3995ff,7f41b1a56a4082905c84c94d57dae93d19543f02,3916fedacee477626906ab07384a5e70dd497c03,final09,18,0,0,0,media: amlogic: vdec: expand H.264 map units before frame alignment
+10,c8b95f81f361a52c9923ba3d91b2d14030d253ad,a03e6119fffa1dce654a031f16e82c56713c2d19,6e99743688c62085056e693c2b86d2dd2104c76e,final10,19,0,0,0,media: amlogic: vdec: retain H.264 field reference metadata
+11,d419abc26f94e707020ab327dea8d94f8bf180bc,e9d90213e93811afebf47e72a97c3c5ac0978640,c0946ebf829faa8497747a2e4a0ef0f71a95c9fb,final11,20,0,0,0,media: amlogic: vdec: use the stateless builder for current H.264 POC
+12,a8f6f9db9c90b646c8a9834279052c50e0bcddde,3d01afcfc5acd08f6b4a56ce987f0250c29b8f41,6c3e6ef9940d72c842dbb99550df66778e5e7973,final12,22,0,0,0,media: amlogic: vdec: calculate H.264 colocated MV offsets by picture structure
+13,d1d4991e0b0f74aeffde393f65780fad0bdbffcb,01a62fcad02f6338b5caa731fd6a602621c073c5,768fec91d243e7bf134918b0bfea62ca45b7dae3,final13,23,0,0,0,media: amlogic: vdec: identify H.264 picture storage by capture timestamp
+14,430465593d9eedba6f0b0d50a9b34cba53132300,455d73a12fcda26c9c55da1162cc226624b91f48,f26e28cb07ed0e50b4e55c8e1b65506afbfd34b1,final14,24,0,0,0,media: amlogic: vdec: preserve both H.264 reference field views
+15,de583abbe922204afd817ac44f27f370c3a04147,68a1ac9a88412ab52e59beedfb6a3b6531382f31,9f069791c937dbc8929950505dda30cb162c4615,final15,25,0,0,0,media: amlogic: vdec: use field picture numbers in H.264 list reordering
+16,f604008cda7e5d426311824f9a26683b7c5c57b4,e0cfeece4a38ca8b8568993e30b92e2258fcccb5,e1e1ddb1ce7e648fa1b765a0b863a9702f62e267,final16,25,0,0,0,media: amlogic: vdec: admit H.264 field and MBAFF pictures

@@ -17,6 +17,7 @@
 
 ## 2026-11-05
 
+- [解码 v2 内部评审系列](2026-11-05-vdec-review-v2.md) — kernel video；56→16 提交，逐树构建/sparse/QEMU/头文件与 DT 检查；三项原作者 SoB 缺口保留，不宣称 parity、不部署。
 - [.27 / .28 启动前六秒离线差异](2026-11-05-vdec-boot-diff.md) — kernel；解码源码/公共 DTS 相同，核对 MMC/ADLA/fan 基线差异与 UART 时序，提出未执行的区分实验。
 - [H.264 全集最终汇总与评审边界](2026-11-05-vdec-avc-final.md) — kernel video；110/135套件通过，旧58项零回退；20Fail、5已知不支持，保留原始Error/Timeout；r58恢复通过，可进入代码评审但未达完整5.15验收。
 
