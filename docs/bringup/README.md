@@ -17,6 +17,7 @@
 
 ## 2026-11-05
 
+- [.27 / .28 启动前六秒离线差异](2026-11-05-vdec-boot-diff.md) — kernel；解码源码/公共 DTS 相同，核对 MMC/ADLA/fan 基线差异与 UART 时序，提出未执行的区分实验。
 - [H.264 全集最终汇总与评审边界](2026-11-05-vdec-avc-final.md) — kernel video；110/135套件通过，旧58项零回退；20Fail、5已知不支持，保留原始Error/Timeout；r58恢复通过，可进入代码评审但未达完整5.15验收。
 
 - [r57 Sharp STREAMOFF 与续跑](2026-11-05-vdec-r57-sharp-streamoff.md) — kernel video；累计103S/21F/1Error/2Timeout/8未运行；Sharp两队列STREAMOFF成功、无FLUSH调用，SP1超时后正式恢复通过。
