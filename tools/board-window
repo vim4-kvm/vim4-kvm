@@ -453,6 +453,12 @@ def record_candidate(directory, plan, digest):
          dict(plan, archive_sha256=digest))
 
 
+def recorded_candidates(directory):
+    """Only record_candidate's identity filenames are module cleanup inputs."""
+    return [json.loads(path.read_text()) for path in sorted(directory.glob('candidate-*.json'))
+            if re.fullmatch(r'candidate-(?:[0-9a-f]{40}|[0-9a-f]{64})\.json', path.name)]
+
+
 def module_cleanup_script(plans, script):
     # A full 2338-module inventory exceeds Linux's per-argument exec limit.
     # Cleanup needs only the validated directory identity and module release;
@@ -712,7 +718,7 @@ m.stage(BUNDLE,retained_baseline=PROOF,reuse_staged=REUSE)
         ssh(args.host, 'mkdir -p ' + cleanup)
         subprocess.run(['scp', str(ROOT / 'packaging/kernel/display-once.py'),
                         str(once.SOURCES), args.host + ':' + cleanup + '/'], check=True, timeout=30)
-        plans = [json.loads(path.read_text()) for path in directory.glob('candidate-*.json')]
+        plans = recorded_candidates(directory)
         script = module_cleanup_script(plans, cleanup+'/display-once.py')
         ssh(args.host, 'sudo -n python3 -c ' + shlex.quote(script))
         if args.video_check:
