@@ -17,6 +17,8 @@
 
 ## 2026-11-05
 
+- [r52 基线计划保护门禁](2026-11-05-vdec-r52-baseline-guard.md) — kernel video；`.28` 启动成功，旧保护哈希在解码前被拒绝，全部测试未运行；新正式默认与视频恢复通过。
+
 - [manager 首次续窗登录传输与回退](2026-11-05-integration-manager-continuation.md) — kernel deployment manager；历史首错恢复与SSH入口修正；后续正式验收通过见下一条。
 
 - [7.3 集成内核与新 manager 正式部署](2026-11-05-integration-formal-deploy.md) — kernel deployment manager；八类同资产结果及manager续窗门禁通过，新默认保留；fan90trip持久化和面板保存/读回/恢复、实时PD5V3A通过；19档未重跑，音频仅状态，`.3`整包保留。

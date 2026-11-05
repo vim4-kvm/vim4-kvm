@@ -240,6 +240,11 @@ def run_fluster(plan, output, deadline, env):
         raise
 
 
+def require_plan_baseline(plan, baseline):
+    if not baseline.get('files') or plan.get('protected_files') != baseline['files']:
+        raise ValueError('Validation protected_files must exactly match the current baseline proof')
+
+
 def validate_acceptance_plan(plan, proof):
     if proof.get('source') in FAILED_SOURCES:
         raise ValueError('Known failing candidate')
@@ -604,6 +609,7 @@ def execute_acceptance(args, plan, proof):
     recovery = repo / 'logs' / plan['board_window']
     if not (recovery / 'baseline-proof.json').is_file():
         raise ValueError('Prepare the existing board-window baseline proof before this action')
+    require_plan_baseline(plan, json.loads((recovery / 'baseline-proof.json').read_text()))
     # A prepared batch may already own the queue ticket. Do not nest locks.
     from importlib.machinery import SourceFileLoader
     queue_module = SourceFileLoader('vdec_board_queue', str(repo / 'tools/board-queue')).load_module()
@@ -1212,6 +1218,8 @@ def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('action', choices=ACTIONS)
     parser.add_argument('--manifest', type=Path)
+    parser.add_argument('--baseline-proof', type=Path,
+                        help='Check validation protected_files against this baseline before queueing')
     parser.add_argument('--validation-plan', type=Path,
                         help='Prepared compliance/Fluster window with exact kernel, input and tool identities')
     parser.add_argument('--validation-seconds', type=int, help=argparse.SUPPRESS)
@@ -1225,6 +1233,11 @@ def main():
     parser.add_argument('--remote', action='store_true', help=argparse.SUPPRESS)
     parser.add_argument('--build-id', help=argparse.SUPPRESS)
     args = parser.parse_args()
+    if args.baseline_proof:
+        if not args.validation_plan:
+            parser.error('--baseline-proof requires --validation-plan')
+        require_plan_baseline(json.loads(args.validation_plan.read_text()),
+                              json.loads(args.baseline_proof.read_text()))
     if args.remote:
         if args.validation_plan:
             def interrupted(signum, frame):

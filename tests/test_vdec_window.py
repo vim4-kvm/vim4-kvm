@@ -18,6 +18,16 @@ SPEC.loader.exec_module(window)
 
 
 class DecoderWindowTests(unittest.TestCase):
+    def test_baseline_plan_rejects_stale_missing_or_extra_protected_files(self):
+        files = {'/boot/extlinux/extlinux.conf': 'new', '/boot/Image': 'image'}
+        window.require_plan_baseline({'protected_files': dict(files)}, {'files': files})
+        for invalid in ({**files, '/boot/extlinux/extlinux.conf': 'old'},
+                        {'/boot/Image': 'image'}, {**files, '/old/module': 'old'}, {}):
+            with self.subTest(files=invalid), self.assertRaisesRegex(ValueError, 'exactly match'):
+                window.require_plan_baseline({'protected_files': invalid}, {'files': files})
+        with self.assertRaises(ValueError):
+            window.require_plan_baseline({'protected_files': {}}, {'files': {}})
+
     def test_disabled_lockdep_cannot_pass_joint_debug_gate(self):
         with tempfile.TemporaryDirectory() as directory:
             output = Path(directory)
