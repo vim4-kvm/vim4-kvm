@@ -187,7 +187,9 @@ def build_profile(args, profile, number, day, env):
                     validation='Built offline; hardware regression pending')
     save(payload / 'manifest.json', manifest)
     save(target / 'module-identities.json', identities)
+    trial_root = '/var/lib/vim4-kvm/ram-candidates/integration-7-3/' + profile + '/'
     run('gcc', '-static', '-O2', '-Wall', '-Wextra', '-Werror',
+        '-DRELEASE="' + release + '"', '-DTRIAL_ROOT="' + trial_root + '"',
         RECIPE / 'display-once-init.c', '-o', target / 'init')
     run('python3', RECIPE / 'display-once.py', 'prepare', '--payload', payload,
         '--init', target / 'init', '--baseline', args.baseline, '--release', release,
