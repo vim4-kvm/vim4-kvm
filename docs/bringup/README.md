@@ -17,6 +17,8 @@
 
 ## 2026-11-05
 
+- [manager 续窗登录传输与回退](2026-11-05-integration-manager-continuation.md) — kernel deployment manager；新身份/风扇90trip/新鲜4K通过，manager登录EHOSTUNREACH触发首错回退；离线修正为SSH到正式入口，尚未重测。
+
 - [集成正式包八类检查与预算回退](2026-11-05-integration-formal-deploy.md) — kernel deployment manager；八类检查与风扇90trip持久化通过，管理页因预算未启动；已回退`.3`和原manager并核视频，获批仅清理旧`.2`启动目录；正式锁未推进。
 
 - [完整 AVC/MPEG-2 一致性与 bit21 实验](2026-11-05-vdec-full-conformance.md) — kernel video；H.264 58/135、MPEG-2 18/43；HEVC bit21 仍超时，5.15 启动 hard lockup，对照未运行；已恢复 `.3` 并归档清理。

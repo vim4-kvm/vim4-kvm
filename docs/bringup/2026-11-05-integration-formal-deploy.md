@@ -5,6 +5,7 @@
 时间不足 180 秒而未启动。遵守协调者累计第 38 分钟停止新测试、总计 45 分钟的授权，
 提前进入恢复，没有缩减恢复预留或把未运行项记为通过。
 来源锁、workspace manager revision、正式 release 收据、当前身份文档和 release tag 均未推进。
+后续获批补 manager 的窗口及登录传输失败后的回退，见[续窗记录](2026-11-05-integration-manager-continuation.md)。
 
 ## 最后窗口的结果
 
