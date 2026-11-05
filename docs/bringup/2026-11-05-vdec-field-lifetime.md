@@ -60,8 +60,9 @@ H.264 结论只引用已提交的源码 HEAD
 H.264 的已提交实现。构建、传输和运行身份由 `run48` manifest/哈希记录核对。
 
 按 FIFO 使用一个目标 15 分钟的窗口：三节点 streaming compliance、CVFC1
-完整 coded 帧导出、逐行/多 slice 对照、MBAFF/field/PAFF 子集。按本轮协调要求
-首错即停；未跑项单列，结束恢复 `.3` 并验证原 KVM 视频。输入沿用宿主封存
+完整 coded 帧导出、逐行/多 slice 对照、MBAFF/field/PAFF 子集。普通 Fluster
+像素 Fail 继续收集；Timeout、内核异常、设备不可用或 compliance 进程异常时
+停止收尾，未跑项单列。结束恢复 `.3` 并验证原 KVM 视频。输入沿用宿主封存
 归档，板端不下载；本轮上传归档核对后删除。
 
 ## CVFC1 的一次性证据工具

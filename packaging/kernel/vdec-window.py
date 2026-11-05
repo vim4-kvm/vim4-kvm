@@ -549,8 +549,6 @@ def acceptance_window(args):
                 run_capture_probe(plan, output, deadline, env)
             conformance_passed = run_fluster(plan, output, deadline, env)
             for index, followup in enumerate(plan.get('fluster_followups', [])):
-                if plan.get('stop_on_failure') and not conformance_passed:
-                    break
                 if deadline - time.monotonic() < plan['vector_timeout_seconds'] * 2 + 30:
                     conformance_passed = False
                     break
