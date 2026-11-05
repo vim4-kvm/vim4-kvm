@@ -22,6 +22,7 @@
 - 解码 `.25` HEVC 等待 SOURCE_CHANGE 超时；按厂商尺寸条件限制 bit21 后仍超时，尚不能归类为固件能力限制。下一实验为 ACTION/CPU reset 顺序及读回。[实验记录](bringup/2026-11-05-vdec-full-conformance.md#hevc-bit21-单变量实验)
 - 解码 `.25` stateless/JPEG compliance 各 60/60，完整标准流仅 H.264 58/135、MPEG-2 18/43 通过。`.26` 修复多 slice 生命周期后 11 条转通过，3 条单 slice 对照通过；隔行/cropping/FMO 的 7 Fail 和 FM1_FT_E 内核超时仍在，未重跑全套。[复验结果](bringup/2026-11-05-vdec-multislice.md#r47-实板结果)、[失败聚类](bringup/2026-11-05-vdec-failure-groups.md)
 - `.27` r49 隔行子集四条转通过，Sharp_MP_Field_1_B/Sharp_MP_PAFF_1r2 仍像素 Fail，全集待重跑。CVFC1 驱动输出 50 帧按 `(26,60)` 裁剪后逐字节等于参考，MD5 `9fdb17e17d332b5d9752362c9c7ff9b0`；GStreamer 1.24.2 v4l2codecs 忽略 crop 偏移，从原点裁剪复现套件错值 `d2aeaea0b9da3509442377a849cc2ff1`。登记驱动通过/套件 Fail，不改插件。[原始证据与代码位置](bringup/2026-11-05-vdec-field-lifetime.md#cvfc1-的一次性证据工具)
+- r50 保存原始输出后确认两条 Sharp 各少一帧，其余帧逐字节正确；缺失的是最后解码图像。parser/EOS 与 FLUSH/HOLD 两侧尚待定位，不先改参考预测代码。[尾帧证据](bringup/2026-11-05-vdec-sharp-tail.md)
 - 厂商 `5.15.137-vim4kvm-hdrdual6` 一次性启动在解码前发生 DRM vblank WARNING、CPU 2 hard LOCKUP panic；102 条对照均未运行，已恢复 `.3`。按用户决定暂停对照。[启动与恢复证据](bringup/2026-11-05-vdec-full-conformance.md#515-一次性启动与中止)
 - debugfs frame 入口未统一 YUV3 的源资格检查；开发者用该入口采集不合格源时，可能绕过 V4L2 队列的格式限制。[V4L2 采集记录](bringup/2026-11-02-hfr-yuv-window.md#yuv444-和未验项)
 - 新鲜 DRM 与普通 AVI 信息不一致时，YUV3 源资格可能误判为 SDR，影响采集颜色解释；验收需保存两者实际记录。[V4L2 采集记录](bringup/2026-11-02-hfr-yuv-window.md#yuv444-和未验项)
