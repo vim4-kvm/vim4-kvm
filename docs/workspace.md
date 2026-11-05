@@ -89,6 +89,9 @@ worker 不 push，任务中不得设置 `VM_PUSH_COORDINATOR`；协调者显式�
 `VM_PUSH_COORDINATOR=1 tools/vm push <task> <remote-branch>`，禁止推正式分支。
 该开关防止误用，不是恶意调用者的权限隔离；worker 只可删除自己的任务。
 不修改他人工作树，不遍历 VM 中的 Mac 共享路径。
+VM 与 Mac 共用同一块盘，每个候选的 `O=` 目录约 11–15 GB。同一任务的迭代候选复用
+同一 `O=`，不要每轮新建；候选封包且板窗结束后删除该目录下的 `*.o`，保留 Image、
+`.ko`、包和日志。被取代且结果、哈希已入记录的旧候选包随后删除。
 
 部署仍显式使用 board/install.sh、tools/kernel-install.sh 或 NanoKVM 的安装工具，
 分别遵循对应文档。完成构建不意味着硬件回归或整机镜像验证通过。
