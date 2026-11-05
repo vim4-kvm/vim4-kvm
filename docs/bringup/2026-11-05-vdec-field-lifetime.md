@@ -1,8 +1,9 @@
 # 2026-11-05：H.264 场缓冲生命周期与隔行候选
 
 按[隔行设计](2026-11-05-vdec-interlaced-design.md)完成四个独立准备提交，再单独
-开放隔行入口。各提交均实际运行离线检查；生产配置 `.27` 已构建封包，尚未上板，
-不能据此宣称隔行像素或缓冲释放已经验收。
+开放隔行入口。各提交均实际运行离线检查；生产配置 `.27` 在 r48 完成 stateless
+compliance，HEVC streaming 超时后停止并恢复 `.3`。隔行像素与完整帧导出未运行，
+不能据此宣称隔行已经验收。
 
 ## 提交与验证
 
@@ -86,6 +87,41 @@ H.264 的已提交实现。构建、传输和运行身份由 `run48` manifest/�
 像素 Fail 继续收集；Timeout、内核异常、设备不可用或 compliance 进程异常时
 停止收尾，未跑项单列。结束恢复 `.3` 并验证原 KVM 视频。输入沿用宿主封存
 归档，板端不下载；本轮上传归档核对后删除。
+
+## r48 实板结果
+
+原始结果在 `logs/hwdecode-parity-r48/validation-fluster-1793892700936879000/`，
+完整板端目录在 `build/hwdecode-parity/run48/board-upload.tar`。其中
+`results/compliance/results.json` 与各节点原始日志保留实际退出码。
+
+| 项目 | 结果 | 边界 |
+|---|---|---|
+| stateless media | 8/8，退出 0 | media 接口 |
+| stateless streaming compliance | 60/60，0 warnings，退出 0 | MMAP/no-poll/select/epoll 有 CAPTURE；不证明隔行像素 |
+| JPEG streaming compliance | 汇总 60/60，0 warnings，退出 0 | 日志另有 `Unknown header ID`、`plane size is too large (18144 > 6144)`；输入存在限制，不能按汇总声称有效 JPEG 像素验证 |
+| HEVC streaming compliance | 退出 1，没有总计 | `v4l2-test-buffers.cpp(1738): ret == 0` |
+| CVFC1 完整 CAPTURE | 未运行 | 前面的 HEVC 触发窗口停止 |
+| Fluster JVT-AVC_V1 子集 | 运行 0/10，未运行 10 | 没有像素 Pass/Fail 或逐码流 Timeout 结论 |
+
+HEVC 原始内核日志为 `timeout, irq_status 00 status 00 pc 00000a1d shift 00000072`，
+随后 `VDEC power state uncertain; retain lease until system reset`。这是私有草稿
+的固件超时，按窗口级错误立即收尾，不算 H.264 失败，也不在本轮重试。
+结束诊断另存 `end-diagnostic-error.txt`；没有将诊断不完整写成检查通过。
+
+未运行清单：`AUD_MW_E`、`BA1_Sony_D`、`BA1_FT_C` 三条对照；
+`CAMASL3_Sony_B`、`CVFI1_Sony_D`、`cabac_mot_picaff0_full`、`cama1_vtc_c`、
+`Sharp_MP_Field_1_B`、`Sharp_MP_PAFF_1r2` 六条隔行；`CVFC1_Sony_C`。
+其中 BA1_FT_C 在 `.26` r47 已转为通过，本轮不能用更早 `.25` 的 Fail 作为对照状态。
+
+恢复后 release、build ID 和正式文件哈希均与 `.3` 基线匹配。Mac 实际接收
+3840×2160 H.265，5.004 秒解码 299 帧，59.75 fps；新增丢帧、冻结、丢包均为零。
+原始记录为 `returned-baseline-identity.json`、`returned-video.log`。
+本轮上传共 533 个文件，Mac 归档逐文件 SHA 核对，再复核板端未变后删除
+`/var/tmp/hwdecode-standard-r48`，见 `run48/board-upload-files.json` 和
+`upload-cleanup.log`。未修改正式启动配置。
+
+下一窗口复用 `.27`，先运行 capture_probe，再运行上述十条 Fluster；不重试
+HEVC，不重建内核。普通像素 Fail 继续收集，窗口级错误仍停止并恢复。
 
 ## CVFC1 的一次性证据工具
 
