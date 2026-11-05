@@ -51,7 +51,7 @@
 | [kernel-install.sh](../tools/kernel-install.sh)、rootfs-policy.py、[promote.py](../packaging/kernel/promote.py) | 独占；改默认启动项 | 板端安装内核、根分区策略或登记候选。 |
 | [display-once.py](../packaging/kernel/display-once.py)（display-once-init.c） | 独占 | 准备或暂存 RAM 启动候选。 |
 | [final-window.py](../packaging/kernel/final-window.py)（final-board.py） | 破坏；重启 | 正式包部署、验证与恢复。 |
-| [final-regression.py](../packaging/kernel/final-regression.py)（final-manager-check.mjs） | 独占；断开 USB | 离线快照及部署回归。 |
+| [final-regression.py](../packaging/kernel/final-regression.py)（final-manager-check.mjs） | 独占；断开 USB | 离线快照及部署回归；manager 检查用 `VIM4_EXPECTED_RELEASE` 指定窗口内核，核 TCPM、标准 thermal 风扇及当前管理页。 |
 | [vdec-window.py](../packaging/kernel/vdec-window.py)（vdec-register-dump.c、[vdec-benchmark.c](../packaging/kernel/vdec-benchmark.c)） | 破坏；重启 | 解码候选窗口、compliance、fluster 与性能；默认离线，复用板队列、manifest、watchdog 和基线视频恢复；Fluster 像素失败逐流记录后继续，超时/内核异常停止；计划的 `keep_output_vectors` 可点名保留原始输出供离线分析；见[验收合同](vdec-validation.md)。 |
 | [check-wifi-p2p.py](../packaging/kernel/check-wifi-p2p.py) | 独占 | Wi-Fi/P2P 验证。 |
 | [phase2-window.py](../packaging/hdr10/phase2-window.py)（m6-gates.py、phase2-board.py、phase2-run） | 破坏；重启 | HDR10 批量验收窗口。 |
