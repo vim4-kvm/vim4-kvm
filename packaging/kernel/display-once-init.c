@@ -36,7 +36,7 @@ static int start_coldboot_capture(const char *directory)
 	if (child < 0)
 		return -1;
 	if (!child) {
-		execl("/usr/bin/python3", "python3", "-u", script, "--output", output, (char *)NULL);
+		execl("/usr/bin/python3", "/usr/bin/python3", "-u", script, "--output", output, (char *)NULL);
 		perror("COLDBOOT_CAPTURE_FAILURE");
 		_exit(1);
 	}

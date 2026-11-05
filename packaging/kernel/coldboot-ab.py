@@ -175,6 +175,27 @@ print(hashlib.sha256(output.read_bytes()).hexdigest())
         window.ssh(self.host, 'sudo -n rm -- '+shlex.quote(remote), timeout=5)
         window.save(output.with_suffix('.sha256.json'), dict(sha256=digest))
 
+    def ready_runtime(self, label):
+        """Independent SSH evidence even when the early collector has failed."""
+        script = '''import json,subprocess,time
+from pathlib import Path
+module=Path('/sys/module/aml_vdec_drv')
+result=dict(monotonic_ns=time.monotonic_ns(),module_present=module.exists(),parameters={})
+for path in sorted((module/'parameters').glob('*')):
+ try: result['parameters'][path.name]=dict(value=path.read_text())
+ except OSError as error: result['parameters'][path.name]=dict(error=str(error))
+for name in ('/proc/sys/kernel/random/boot_id','/proc/modules','/proc/uptime'):
+ try: result[name]=dict(value=Path(name).read_text())
+ except OSError as error: result[name]=dict(error=str(error))
+try:
+ p=subprocess.run(['/usr/sbin/lsmod'],capture_output=True,text=True,timeout=2)
+ result['lsmod']=dict(returncode=p.returncode,stdout=p.stdout,stderr=p.stderr)
+except (OSError,subprocess.TimeoutExpired) as error: result['lsmod']=dict(error=str(error))
+print(json.dumps(result))
+'''
+        window.save(self.directory/(label+'-ready-runtime.json'),
+                    json.loads(window.ssh_python(self.host, script, timeout=10)))
+
     def automatic_recovery(self, stream):
         stream.recovery(self.proof['release'])
         end = min(time.monotonic()+60, stream.deadline-360)
@@ -210,6 +231,13 @@ print(hashlib.sha256(output.read_bytes()).hexdigest())
                                        ram_baseline_control=group == 'A')
             if group == 'B':
                 window.verify_ram_baseline_runtime(plan, window.ram_runtime(self.host, plan['release']))
+            try:
+                self.ready_runtime(label)
+            except SlotExpired:
+                raise
+            except (OSError, ValueError, RuntimeError, subprocess.SubprocessError) as error:
+                result['ready_runtime_missing'] = str(error)
+            stream.check()
             end = result['linux_started']/1e9 + 60
             for phase in ('ready', 'end'):
                 if phase == 'end':

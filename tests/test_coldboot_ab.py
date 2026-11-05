@@ -53,6 +53,28 @@ class ColdbootTests(unittest.TestCase):
             self.assertEqual(json.loads((Path(temporary)/'initial.status.json').read_text())['status'], 'timeout')
             self.assertIn('partial', (Path(temporary)/'initial.jsonl').read_text())
 
+    def test_empty_environment_runs_real_snapshot_child(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)/'root'
+            output = Path(temporary)/'output'
+            output.mkdir()
+            boot = root/'proc/sys/kernel/random/boot_id'
+            boot.parent.mkdir(parents=True)
+            boot.write_text('empty-environment-boot\n')
+            source = ROOT/'packaging/kernel/coldboot-collect.py'
+            code = ('import importlib.util,json,sys; from pathlib import Path; '
+                    'print(json.dumps(dict(parent_executable=sys.executable)),flush=True); '
+                    f's=importlib.util.spec_from_file_location("collector",{str(source)!r}); '
+                    'm=importlib.util.module_from_spec(s);s.loader.exec_module(m); '
+                    f'm.capture(Path({str(output)!r}),"initial",Path({str(root)!r}))')
+            # Match the failing PID-1 launch: real interpreter, bare argv[0],
+            # no PATH. No mocked process creation or board access.
+            result = subprocess.run(['python3', '-c', code], executable='/usr/bin/python3',
+                                    env={}, capture_output=True, text=True, timeout=10, check=True)
+            self.assertIn('COLDBOOT_SNAPSHOT', result.stdout)
+            self.assertEqual(json.loads((output/'initial.status.json').read_text())['status'], 'complete')
+            self.assertIn('empty-environment-boot', (output/'initial.jsonl').read_text())
+
     def test_default_cli_only_validates_without_acquiring_ticket(self):
         with tempfile.TemporaryDirectory() as temporary:
             config = Path(temporary)/'config.json'
@@ -113,10 +135,27 @@ class ColdbootTests(unittest.TestCase):
             with patch.object(ab.window, 'boot'), \
                     patch.object(ab.window, 'identity', return_value=dict(release='trial', build_id='id')), \
                     patch.object(ab.window, 'verify_candidate_dt'), \
+                    patch.object(batch, 'ready_runtime'), \
                     patch.object(batch, 'snapshots', side_effect=ab.SlotExpired('slot expired')):
                 with self.assertRaises(ab.SlotExpired):
                     batch.sample('A', '1', stream)
             self.assertEqual(batch.results[0]['status'], 'invalid')
+
+    def test_ready_runtime_failure_is_explicit_and_does_not_skip_archives(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            batch = ab.Batch({}, {}, dict(A=dict(release='trial', build_id='id')),
+                             Path(temporary), 'unused', 'unused')
+            stream = Mock()
+            stream.events = SimpleNamespace(linux_started=1)
+            with patch.object(ab.window, 'boot'), \
+                    patch.object(ab.window, 'identity', return_value=dict(release='trial', build_id='id')), \
+                    patch.object(ab.window, 'verify_candidate_dt'), \
+                    patch.object(batch, 'ready_runtime', side_effect=TimeoutError('SSH snapshot timeout')), \
+                    patch.object(batch, 'snapshots') as archives:
+                batch.sample('A', '1', stream)
+            self.assertEqual(batch.results[0]['status'], 'observed')
+            self.assertIn('SSH snapshot timeout', batch.results[0]['ready_runtime_missing'])
+            self.assertEqual(archives.call_count, 2)
 
     def test_cold_reset_consumes_one_sample_and_recovers_without_retry(self):
         with tempfile.TemporaryDirectory() as temporary:

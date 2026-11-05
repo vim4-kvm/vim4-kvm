@@ -17,6 +17,7 @@
 
 ## 2026-11-05
 
+- [冷启动采集器空环境修复](2026-11-05-vdec-coldboot-collector-fix.md) — kernel；真实空环境子进程离线通过，固定 Python 路径与独立 ready 参数快照，未上板。
 - [冷复位 A/B r60](2026-11-05-vdec-coldboot-ab-r60.md) — kernel；A 2次/1复位、B 1次/0复位，恢复再复位后停；最终正式恢复，17项未运行。
 - [RESET/VBUS/PD 闭环方案](2026-11-05-vdec-reset-measurement-plan.md) — kernel、usb；仅方案，需实物接线与仪器确认，未排板。
 - [冷复位 A/B r59 入场失败](2026-11-05-vdec-coldboot-ab-r59.md) — kernel；默认串口路径不存在，零 SSH/上传/启动，20 项未运行，票已释放。

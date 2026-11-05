@@ -10,7 +10,6 @@ import json
 import os
 from pathlib import Path
 import subprocess
-import sys
 import time
 
 
@@ -64,11 +63,16 @@ def capture(output, label, root=Path('/')):
     with path.open('x') as log:
         os.chmod(path, 0o600)
         try:
-            result = subprocess.run([sys.executable, '-u', __file__, '--snapshot', '--root', str(root)],
+            # PID 1 can launch us without PATH. In that environment Python may
+            # leave sys.executable empty even though its interpreter is running.
+            result = subprocess.run(['/usr/bin/python3', '-u', __file__, '--snapshot', '--root', str(root)],
                                     stdout=log, stderr=subprocess.STDOUT, timeout=1)
             status = 'complete' if result.returncode == 0 else 'error'
         except subprocess.TimeoutExpired:
             status = 'timeout'
+        except OSError as error:
+            log.write(json.dumps(dict(path='snapshot-process', error=str(error)))+'\n')
+            status = 'error'
     summary = dict(label=label, status=status, started_monotonic_ns=started,
                    ended_monotonic_ns=time.monotonic_ns())
     (output/(label+'.status.json')).write_text(json.dumps(summary)+'\n')
