@@ -11,14 +11,27 @@
 | `d85738cf7a151` | 先把 map-unit 高度展开为帧高，再做 canvas 对齐；序列面积使用完整帧宏块数 | arm64 QEMU KUnit 18/18 |
 | `7eca35df43339` | 保留参考项 fields、对应场 POC 和长期参考标志；列表容量覆盖 32 个场参考 | arm64 QEMU KUnit 19/19 |
 | `50378b37858bb` | 当前 POC 使用标准 reflist builder 的结果，frame 取 Min，field 取对应场；寄存器依次写 current/top/bottom | arm64 QEMU KUnit 20/20 |
+| `549b933bc90d2` | 按原始 frame/field/MBAFF 结构计算 colocated MV 读写偏移；分配 MV 槽时保存结构 | arm64 QEMU KUnit 22/22 |
 
-三个提交分别完成 W=1 模块/内建构建、实际 sparse CHECK，以及对 format-patch
+四个提交分别完成 W=1 模块/内建构建、实际 sparse CHECK，以及对 format-patch
 输出运行 strict checkpatch。修改私有头声明的提交也运行 kernel-doc。原始日志位于
 `build/hwdecode-parity/interlaced/`，分别以 `dimensions-`、`references-`、
-`current-poc-` 为前缀；KUnit 原始串口为 `*-qemu.log`，结果为 `*-result.json`。
+`current-poc-`、`mv-` 为前缀；KUnit 原始串口为 `*-qemu.log`，结果为 `*-result.json`。
 内建检查有既有的 arm64 vgetrandom 声明告警，vdec 检查无告警；没有修改 DT binding。
 参考列表首次构建发现初始化循环越界，修正后重跑通过，失败日志保留为
 `references-kunit-initial-build-failure.log`。
+
+MV 偏移使用未做 canvas 对齐的 SPS 宏块宽度，将 field 行与 MBAFF pair 换算为
+MV 槽位，再按普通/compact 布局换算字节。计算用宽整数，读写两侧均要求至少
+一个完整 MB 单元落在缓冲内。KUnit 调用生产 helper，覆盖跨结构的非零行/列、
+compact 最后一个合法单元、越界和大输入；图像结构由标准控制决定，保存到
+已分配的 MV 槽，避免读参考时根据当前 SPS 猜结构。初轮编译发现参数名与内核
+`current` 宏冲突，改名后重跑通过；原日志为 `mv-kunit-initial-build-failure.log`。
+
+本提交只准备 MV 布局，尚未完成配对场视图：vendor `h264_dpb.c` 的
+`dpb_combine_field()` 创建 frame view 时仍置 `coded_frame=0`，复用 top field
+的 MV 槽。后续参考寄存器接线必须结合保存的原始布局与 reflist.fields 选择
+field view，不能把合成帧误标为原生 frame，也不能只用首次分配场的奇偶性。
 
 `50378b37858bb` 修正参考帧取 Min、当前帧仍取 top 的不一致：bottom < top 时
 会影响 colocated POC 距离。测试调用真实参考列表配置函数，覆盖负 bottom POC、
@@ -38,7 +51,13 @@ top/bottom field 与 IDR；IDR 判断改为位标志判断，且在提前返回�
 - 下个窗口仍保留已通过的逐行 B 帧和多 slice 对照；按协调决定，不为交集为空硬凑码流。待 JVT-FR-EXT 子集运行时补负偏移逐行 B 帧；KUnit 不能替代这项实板像素证据。
 
 本阶段没有上板。下一候选先跑三节点带流 compliance，再跑隔行受影响码流和
-逐行/多 slice 对照；MV 地址、timestamp 所有权、HOLD/sequence 尚待实现。
+逐行/多 slice 对照；timestamp 所有权、配对场参考视图和 HOLD/sequence 尚待实现。
+
+当前内核没有 `v4l2_m2m_release_capture_buf()`。HOLD 释放沿用
+`v4l2_m2m_buf_done_and_job_finish()`、核心的 timestamp 不一致处理，以及
+`v4l2_m2m_ioctl_stateless_decoder_cmd()` 的 FLUSH 路径。已审的 sequence 方向是
+首次使用新的 CAPTURE 缓冲时编号，第二场复用 held 缓冲的编号；不能仅在第二场
+完成时递增，否则核心直接释放时会漏计。该改动目前只在 build/ 准备，未入内核提交。
 
 ## 已定位的缺口与拟定边界
 
