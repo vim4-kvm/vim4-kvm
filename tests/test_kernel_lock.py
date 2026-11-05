@@ -105,7 +105,18 @@ class TestedRuntimeLockTest(unittest.TestCase):
             self.assertEqual(hashlib.sha256((package/name).read_bytes()).hexdigest(), digest, name)
         for folder, key in [('dvfs', 'governorSources'), ('heaps', 'heapSources')]:
             for name, digest in external[key].items():
-                self.assertEqual(hashlib.sha256((package/folder/name).read_bytes()).hexdigest(), digest, name)
+                if name.startswith('._'):
+                    # Mac tar can include AppleDouble sidecars absent from Git.
+                    # Preserve their exact build-time bytes beside the receipt;
+                    # executable sources still have to match this working tree.
+                    metadata = (recipe/built['runtime_descriptor']).with_name('build-input-metadata.json')
+                    saved = json.loads(metadata.read_text())['files'][folder+'/'+name]
+                    data = bytes.fromhex(saved['hex'])
+                    self.assertEqual(data[:8], bytes.fromhex('0005160700020000'))
+                    self.assertEqual(saved['sha256'], digest)
+                else:
+                    data = (package/folder/name).read_bytes()
+                self.assertEqual(hashlib.sha256(data).hexdigest(), digest, name)
         runtime = json.loads((recipe/built['runtime_descriptor']).read_text())
         self.assertEqual(runtime['build_id'], built['build_id'])
         self.assertEqual(runtime['image_source_revision'], built['image_source_revision'])
