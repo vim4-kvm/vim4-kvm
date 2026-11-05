@@ -282,10 +282,11 @@ def require_acceptance_kernel(plan, proof):
         if (Path('/proc/sys/kernel/panic').read_text().strip() != '20' or
                 Path('/proc/sys/kernel/panic_on_oops').read_text().strip() != '1'):
             raise ValueError('Candidate requires panic=20 and panic_on_oops=1')
-    if plan.get('debug_kernel'):
+    if plan['kernel'] == 'mainline' or plan.get('debug_kernel'):
         config = gzip.decompress(Path('/proc/config.gz').read_bytes())
         if hashlib.sha256(config).hexdigest() != proof['config_sha256']:
-            raise ValueError('Running debug configuration differs from manifest')
+            raise ValueError('Running configuration differs from manifest')
+    if plan.get('debug_kernel'):
         for name in ('KASAN', 'KASAN_GENERIC', 'DEBUG_KMEMLEAK', 'PROVE_LOCKING',
                      'DEBUG_ATOMIC_SLEEP', 'DMA_API_DEBUG'):
             if ('CONFIG_' + name + '=y').encode() not in config.splitlines():
@@ -500,6 +501,13 @@ def acceptance_window(args):
                 compliance_output.mkdir()
                 run_compliance(plan, compliance_output, deadline, env)
             run_fluster(plan, output, deadline, env)
+            for index, followup in enumerate(plan.get('fluster_followups', [])):
+                require_clean_kernel_log(output)
+                extra_output = output / f'fluster-followup-{index}'
+                extra_output.mkdir()
+                extra_plan = dict(plan, **{key: followup[key] for key in
+                    ('bundle', 'bundle_sha256', 'suite', 'start', 'count')})
+                run_fluster(extra_plan, extra_output, deadline, env)
         elif args.action == 'compliance':
             run_compliance(plan, output, deadline, env)
         elif args.action == 'performance':

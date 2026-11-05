@@ -17,6 +17,7 @@
 
 ## 2026-11-05
 
+- [生产配置解码功能验收](2026-11-05-vdec-production-validation.md) — kernel video；`.24` 正常启动，stateless 带流 compliance 遇输出缓冲序号不递增；后续未运行，已恢复 `.3` 与 4K 视频。
 - [解码与启动修复联合调试](2026-11-05-vdec-joint-debug.md) — kernel video；`.23` 启动遇 MMC IRQ 锁上下文错误和未解释冷复位，未运行解码；已恢复 `.3` 与 4K 视频。
 - [调试启动 splat 离线修复与 PWM 锁拓扑](2026-11-05-debug-splat-fixes.md) — kernel；brcmfmac 上游移植及真实解析 KUnit、ADLA SG 上限修复；PWM 独立 key 修正跨实例建模，同实例 ABBA 明确保留，未上板。
 - [解码调试候选启动与门禁](2026-11-05-vdec-debug-boot.md) — kernel deployment；修正大 Image 加载地址后进入调试 Linux，暴露 PWM 锁、ADLA DMA、brcmfmac 越界及工具 media 查找问题；基线和视频已恢复，标准流未运行。
