@@ -1,7 +1,7 @@
 # 2026-11-05：H.264 场缓冲生命周期与隔行候选
 
 按[隔行设计](2026-11-05-vdec-interlaced-design.md)完成四个独立准备提交，再单独
-开放隔行入口。各提交均实际运行离线检查；正在准备生产配置 `.27`，尚未上板，
+开放隔行入口。各提交均实际运行离线检查；生产配置 `.27` 已构建封包，尚未上板，
 不能据此宣称隔行像素或缓冲释放已经验收。
 
 ## 提交与验证
@@ -25,6 +25,28 @@ arm64 `__kernel_getrandom` sparse 声明告警。没有 DT binding 修改，smat
 `*-builtin.log`、`*-source.sha256` 和 `*-commit-style.log`；入口提交为
 `enable-*`。完整未拆草稿先跑过 25/25，随后逐提交重新运行，未以最终组合的
 结果冒充中间提交可构建。
+
+## 候选身份
+
+复用注册的 `vdec-sequence` 工作树和 O=，快进到已提交的入口 HEAD 后构建。
+`interlaced/candidate-build-resume.log` 保存完整构建、封包及私有模块核验输出；
+`run48/artifact-identity.json` 保存 VM 来源与 Mac 副本的哈希/长度核对。
+私有模块复制后 fsync，再与 VM 原文件比较，不能仅用副本自己的哈希证明来源。
+
+| 产物 | 实际身份 |
+|---|---|
+| release | `7.3.1-vim4-20261105.27` |
+| Image build ID | `4cb47d45df4f5852d76502231f533958837a71db` |
+| 配置 SHA-256（与正式配置一致） | `7be7563e089ff628a320cd82ed163d88c576e4c7612f6bf849b230d2b9719b1c` |
+| Image SHA-256 | `bf67e6a1fe8708f93a961c2fe59c01e6866c466809ce5d04aca5edab784cb302` |
+| 整包 manifest SHA-256 | `017b26d81b42646c6cd199127dcb89e52c20b412df6074f8999812a4fb63e5e7` |
+| RAM archive SHA-256 | `a1701fa1cd87989427dfa9feb1586d4e4e7fa62e6f9c5db41e7230db5dc820cd` |
+| 私有模块 build ID | `5334b469c8b6ad7f2a26f6d7217ee2435efa748d` |
+| 私有模块 SHA-256 | `f3bd823b44c2928c6ea5ab8d6842164331b49d402c57c513a6b4e713741c1a72` |
+
+私有模块的 vermagic、基础 revision、Image build ID 与上述包匹配；差异严格
+限定为下文所述 HEVC 草稿，封包后的候选源码已恢复干净。输入归档、JPEG 流和
+一次性导出工具均核来源 SHA 后写入窗口计划，板上再次逐文件核对。
 
 新增 KUnit 调用真实槽位分配/清理、参考视图选择、场编号和重排函数，覆盖
 held IDR、timestamp 零值与大值、槽耗尽、inactive DPB、原始布局保持和负数 wrap。
