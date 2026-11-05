@@ -14,7 +14,7 @@ IR/按键及NOR与eMMC引脚限制见[设备树记录](../bringup/2026-10-21-edg
 
 - [构建、安装与回退](../kernel.md)、[VM工作树](../workspace.md#构建)、[部署门禁](deployment.md#内核开发流程与部署门禁)。
 - [Wi-Fi、WPA3及P2P证据](../kernel-mainline.md#相关记录)。
-- [内存、拷贝与锁调试](../memory-copy-audit.md)。
+- [内存、拷贝与锁调试](../memory-copy-audit.md)、[PWM/CCF 锁拓扑与修复边界](../pwm-clock-locking.md)。
 - [下游补丁快照](../archive/kernel-patch-inventory.md)。
 - [电压、温控、空闲与挂起审查](../archive/platform-pm-offline.md)、[板测清单](../parity/platform-pm-board-checklist.md)。
 - [GPU差距、散热与验收](../archive/gpu-parity-plan.md)。
