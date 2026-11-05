@@ -74,6 +74,18 @@ def check_config(config, profile):
         raise ValueError('Generated production config differs from kernel.config')
 
 
+def check_generated_config(config, generated):
+    # auto.conf writes Kconfig string values without their outer quotes.
+    expected = {key: value[1:-1] if value.startswith('"') and value.endswith('"') else value
+                for key, value in config_values(config).items()
+                if value != 'n'}
+    actual = config_values(generated)
+    changed = sorted(key for key in expected.keys() | actual.keys()
+                     if expected.get(key) != actual.get(key))
+    if changed:
+        raise ValueError('Generated configuration differs from .config: ' + ', '.join(changed))
+
+
 def module_identity(path):
     raw = path
     if path.suffix == '.xz':
@@ -138,14 +150,22 @@ def build_profile(args, profile, number, day, env):
     if not args.package_only:
         if (build / 'Makefile').exists():
             run('make', *make_args, 'clean', env=env)
-        shutil.copy2(RECIPE / 'kernel.config', build / '.config')
+        # Kbuild uses .config freshness to regenerate the compiler headers.
+        # Preserving an older source mtime can retain the previous profile.
+        shutil.copyfile(RECIPE / 'kernel.config', build / '.config')
         if profile == 'debug':
             run('bash', args.source / 'scripts/kconfig/merge_config.sh', '-m',
                 '-O', build, build / '.config', RECIPE / 'vdec-debug.config', env=env)
         run('make', *make_args, 'olddefconfig', env=env)
+        run('make', *make_args, 'syncconfig', env=env)
     check_config(build / '.config', profile)
+    check_generated_config(build / '.config', build / 'include/config/auto.conf')
     if not args.package_only:
         run('make', *make_args, '-j' + str(args.jobs), 'W=1', 'Image', 'dtbs', 'modules', env=env)
+    check_generated_config(build / '.config', build / 'include/config/auto.conf')
+    for origin, name in ((build / 'include/config/auto.conf', 'auto.conf'),
+                         (build / 'include/generated/autoconf.h', 'autoconf.h')):
+        shutil.copyfile(origin, target / name)
     release = (build / 'include/config/kernel.release').read_text().strip()
     if not release.endswith(localversion):
         raise ValueError('Build release does not match the requested candidate number')
@@ -193,6 +213,8 @@ def build_profile(args, profile, number, day, env):
                     tree=output('git', '-C', args.source, 'rev-parse', 'HEAD^{tree}'),
                     profile=profile, release=release, kernel_build_id=build_id(build / 'vmlinux'),
                     config_sha256=sha(payload / 'config'), ethernet_mac=args.mac,
+                    generated_config_sha256={name: sha(target / name)
+                                             for name in ('auto.conf', 'autoconf.h')},
                     modules={str(p.relative_to(modules)): sha(p)
                              for p in sorted(modules.rglob('*')) if p.is_file()},
                     module_count=len(identities), artifacts=artifacts,

@@ -6,9 +6,11 @@
 ## 内核与部署
 
 - `fd41fb5950b9` 在arm64 QEMU/KASAN/PROVE_LOCKING下跑额外上游DMA-BUF压力组，单CPU/300秒与双CPU/900秒均在fence-chain的test_wait_forward slow提示后超时，未定位TCG性能或内核等待问题；双CPU竞争用例通过，不能将未完成项记通过。不是实板故障证据，本任务不修改核心实现。[两次配置、原始输出与边界](bringup/2026-11-05-integration-build-results.md#dma-buf-压力复验超时)
-- 联合调试 `.23` 在 `meson_mmc_irq → meson_mmc_post_req → debug_dma_unmap_sg` 报 `BUG: Invalid wait context`，随后约 18 秒串口转 BL2 并报 cold_boot，未保存到 panic；锁错误与冷复位因果未确定。候选已退出并恢复 `.3`，标准解码未运行；须先修复/定位启动问题才能验收调试解码。[原始堆栈与恢复证据](bringup/2026-11-05-vdec-joint-debug.md#实板结果)
+- MMC `Invalid wait context` 修复原分支 `f911e1d8817fb`、v2 `5deb393be1501` 离线通过；集成生产`.90`与正式`.3`同窗各600秒328.88/342.08 Mbit/s，同窗-3.86%，通过不超过10%的性能门槛，未改回硬IRQ。此前`.93`相对历史-11.52%不能归因MMC或PD。A仍cold_boot，debug_locks/eMMC调试门禁未完成。[同窗结果、生产配置与恢复](bringup/2026-11-05-integration-wifi-control.md)；[集成边界](bringup/2026-11-05-debug-splat-integration.md)
+- ADLA mutex错误合类修复原分支 `53d7db5f377e8` 的真实API QEMU+KASAN+lockdep测试1/1、模块/内建检查完成；v2 `e8c40f17b20ea` 合并到已有5-case独立suite，strict 0/0/0，编译/QEMU待集成窗口。`.83` 没有绑定/lockdep快照，不能判硬件门禁通过。[修复](bringup/2026-11-05-adla-mutex-pd-timing.md#adla-修改与来源)；[冲突处理与未验项](bringup/2026-11-05-debug-splat-integration.md#adla-冲突如何解决)
+- cold_boot原因未明；上游FUSB302 v1已移植到pd-fifo（`d76280411565d`、`bbe16d470a0c1`），`.92`仍在23.740秒回ROM，A失败，未达到合入门槛。首个标称生产`.93`实为debug，已修构建器，不能计作生产样本；正确生产包600秒稳定，但不改变A失败。缺实际Hard_Reset/VBUS/RESET闭环，未继续猜改PD。[本轮证据](bringup/2026-11-05-pd-fifo-validation.md)；[前序统计与状态机](bringup/2026-11-05-tcpm-coldboot-audit.md)
 - PWM 跨 chip 的 prepare_lock/nonatomic_lock 建模已按协调者授权在独立分支提交 `0a35577b8de2` 增加独立 key，arm64 QEMU 锁依赖回归 1/1；regulator 与 Wi-Fi 使用不同 chip，但 debugfs/初次 request 的 Wi-Fi 硬件查询仍有同实例真实 ABBA，保留未解决，实板零 splat 待验。[锁链、拓扑与修复边界](bringup/2026-11-05-debug-splat-fixes.md#pwm-锁依赖分析与修复边界)
-- ADLA 启动时 DMA SG 超限已在独立分支提交 `4c4126df2f8a`，按设备现有上限切分，模块/内建及生产构建完成；W=1+sparse 仍有既存 vendor 诊断。已纳入 `.23`，但候选先遇 MMC 锁错误及冷复位，未完成 ADLA probe 与零 DMA-API 告警联合复验。[根因与验证边界](bringup/2026-11-05-debug-splat-fixes.md#adla-dma-路径)
+- ADLA DMA SG 上限修复 `4c4126df2f8a` 已离线构建并在集成基线中；`.81/.83` 未见旧超限特征，但cold_boot前未取得绑定/流量/零告警完整门禁。W=1+sparse既存vendor诊断仍保留。[根因](bringup/2026-11-05-debug-splat-fixes.md#adla-dma-路径)；[最新实板边界](bringup/2026-11-05-adla-mutex-pd-timing.md#83-实板与新的-pd-尾部)
 - 主线应用程序与插件位于整包和组件包都不提供的 `/opt/vim4-kvm` 私有目录（`hdr10-r14e`、`one-kvm-usb-*`），重刷或新板安装主线后须另行安装这些运行时，否则启动器 exec 失败。[启动器](../board/vim4-kvm-run)
 - 内核升级在写入 kernels.json 后、切换 extlinux 前中断，会使面板报告 Mainline 不可用并拒绝选择；U-Boot 仍启动旧整包，重新登记可恢复面板。[安装器](../packaging/kernel/register-runtime.py)
 - board-window 在新刷 5.15 镜像使用 `LINUX /Image` 符号链接布局时拒绝基线，因为要求路径含 release；当前板的版本化路径不受影响。[预检](../tools/board-window)
@@ -42,7 +44,7 @@
 
 ## Wi-Fi 与 SDIO
 
-- brcmfmac NVRAM 注释解析越界已在独立分支移植上游修复 `17d29954473b6`；真实解析器 KUnit 在 arm64 QEMU + KASAN 通过 3/3。`.23` 串口确认 Wi-Fi 固件初始化成功、未见旧越界特征，但候选冷复位，整轮调试验收未完成。[修复来源与边界](bringup/2026-11-05-debug-splat-fixes.md#上游核对与-brcmfmac)
+- brcmfmac NVRAM 上游修复 `17d29954473b6` 的真实解析器 KUnit 在 arm64 QEMU+KASAN通过3/3；`.23` 和 `.81` 均确认固件初始化、未见旧越界，但新的锁错误/冷复位使整轮调试验收未完成，不能声称流量回归通过。[来源](bringup/2026-11-05-debug-splat-fixes.md#上游核对与-brcmfmac)；[最新实板边界](bringup/2026-11-05-debug-splat-board-validation.md#a-实板结果与新锁报告)
 - meson-gx-mmc 错误恢复在停止超时后仍归还缓冲区，可能在硬件仍访问时复用内存；缺当前已修证明，保留待核对。[主机路径审查](bringup/2026-11-02-wifi-sdio-host-path.md#改动)
 - meson-gx-mmc 的 dma_map_sg 失败路径可能写越界，影响映射失败后的内存安全；缺当前已修证明，保留待核对。[主机路径审查](bringup/2026-11-02-wifi-sdio-host-path.md#改动)
 - brcmfmac 未检查 OOB 路由写失败，设备配置失败时可能继续使用未就绪中断，影响收发；缺当前已修证明，保留待核对。[主机路径审查](bringup/2026-11-02-wifi-sdio-host-path.md#改动)

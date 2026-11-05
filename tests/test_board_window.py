@@ -309,6 +309,17 @@ class WindowTests(unittest.TestCase):
             self.assertEqual(output.splitlines(), ['7.3.0-vim4kvm-uhd4+ legacy',
                                                   '7.3.0-vim4kvm-uhd4+ default'])
 
+    def test_recovery_ignores_candidate_diagnostic_json(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            legacy = dict(build_id='1' * 40, release='7.3.test')
+            current = dict(legacy, namespace='integration-7-3', payload_id='production')
+            for plan in (legacy, current):
+                window.record_candidate(root, plan, 'a' * 64)
+            window.save(root / 'candidate-pd-forensics.json', dict(release='7.3.test', files={}))
+            self.assertCountEqual(window.recorded_candidates(root),
+                                  [dict(plan, archive_sha256='a' * 64) for plan in (legacy, current)])
+
     def test_recovery_retains_each_payload_with_same_kernel(self):
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)

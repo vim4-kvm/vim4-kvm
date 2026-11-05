@@ -59,6 +59,14 @@
 - [测试清单 audio-1](2026-11-05-kunit-inventory-audio-1.md) — kernel；逐文件入口、原检查及待确认处置。
 - [测试清单 audio-2](2026-11-05-kunit-inventory-audio-2.md) — kernel；逐文件入口、原检查及待确认处置。
 - [测试清单 audio-3](2026-11-05-kunit-inventory-audio-3.md) — kernel；逐文件入口、原检查及待确认处置。
+- [集成生产与正式基线同窗Wi-Fi对照](2026-11-05-integration-wifi-control.md) — kernel network；`.3/.90`各600秒342.08/328.88 Mbit/s，同窗-3.86%通过性能门槛，生产配置与恢复4K视频已核；五个旧splat首报均在`.92`已覆盖区间内，完整调试A仍未完成。
+- [PD FIFO移植与A/B验证](2026-11-05-pd-fifo-validation.md) — kernel usb network；`.92`仍cold_boot；修复复用O=配置陈旧问题后，真正生产`.93`完成600秒均值326.97 Mbit/s（-11.52%），未回退硬IRQ；最终`.3`与4K视频恢复，PD分支未通过合入门槛。
+- [TCPM冷复位专项与正式启动统计](2026-11-05-tcpm-coldboot-audit.md) — kernel usb；核对Get_Source_Cap再等待路径及FUSB302上游待审排空补丁；只读34 boot中确认20次正式启动、2次早期非请求复位，PD根因未定，提交移植方案待审。
+- [冷复位的 Wi-Fi probe 排除实验](2026-11-05-debug-splat-reset-isolation.md) — kernel network usb；E1内核明确拒载brcmfmac仍cold_boot，eMMC门禁未运行；自动回 `.3` 后另有未请求复位，最终身份/4K视频恢复；E2供电前提无法确认，未做。
+- [启动修复重放到 KUnit 迁移基线](2026-11-05-debug-splat-integration.md) — kernel；v2保留原分支，MMC/ADLA重放到7e35e3b，合并为一个ADLA KUnit suite，逐提交strict 0/0/0；编译与统一候选验收待集成窗口。
+- [ADLA 锁类修复与 PD 启动时序比较](2026-11-05-adla-mutex-pd-timing.md) — kernel network usb；调用点宏及QEMU KUnit 1/1；`.83` Soft_Reset收到及时Accept后仍cold_boot，A未过，已恢复 `.3` 与4K视频；B改用集成候选。
+- [启动修复实板复验与生产吞吐准备](2026-11-05-debug-splat-board-validation.md) — kernel network usb；`.81` 新暴露 ADLA mutex 类别报告后 cold_boot，PD 同步采证；已恢复 `.3` 与4K视频，生产 `.82` 待清理旧候选容量后测600秒吞吐。
+- [MMC 硬中断锁修复与冷复位分析](2026-11-05-mmc-irq-reset-analysis.md) — kernel usb；DMA 完成恢复到 IRQ 线程、SDIO 短锁改 raw，离线构建完成；两次 cold_boot 原因未明，列出下一窗口同步采证要求，未上板。
 - [解码与启动修复联合调试](2026-11-05-vdec-joint-debug.md) — kernel video；`.23` 启动遇 MMC IRQ 锁上下文错误和未解释冷复位，未运行解码；已恢复 `.3` 与 4K 视频。
 - [风扇自适应温度对照](2026-11-05-fan-thermal-adaptive.md) — kernel manager；生产.90最高58.6°C，比.3高0.8°C、无新增降频；收尾清理冲突已修，原manager与视频核验通过。
 - [风扇标准 thermal 迁移](2026-11-05-fan-thermal.md) — kernel manager；15级DT档位及用户态兼容，原分支离线检查与首次基线未稳定记录。

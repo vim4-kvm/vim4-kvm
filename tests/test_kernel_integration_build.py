@@ -13,6 +13,23 @@ SPEC.loader.exec_module(BUILD)
 
 
 class IntegrationConfigTests(unittest.TestCase):
+    def test_generated_gate_rejects_stale_debug_configuration(self):
+        with tempfile.TemporaryDirectory() as directory:
+            config = Path(directory) / '.config'
+            generated = Path(directory) / 'auto.conf'
+            config.write_text('CONFIG_MODULES=y\n# CONFIG_KASAN is not set\n')
+            generated.write_text('CONFIG_MODULES=y\nCONFIG_KASAN=y\n')
+            with self.assertRaisesRegex(ValueError, 'CONFIG_KASAN'):
+                BUILD.check_generated_config(config, generated)
+
+    def test_generated_gate_accepts_omitted_disabled_options(self):
+        with tempfile.TemporaryDirectory() as directory:
+            config = Path(directory) / '.config'
+            generated = Path(directory) / 'auto.conf'
+            config.write_text('CONFIG_MODULES=y\nCONFIG_TYPEC=m\nCONFIG_CC_VERSION_TEXT="gcc test"\n# CONFIG_KASAN is not set\n')
+            generated.write_text('CONFIG_MODULES=y\nCONFIG_TYPEC=m\nCONFIG_CC_VERSION_TEXT=gcc test\n')
+            BUILD.check_generated_config(config, generated)
+
     def test_production_rejects_changed_configuration(self):
         with tempfile.TemporaryDirectory() as directory:
             config = Path(directory) / '.config'

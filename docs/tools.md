@@ -20,6 +20,7 @@
 | [vm](../tools/vm) | 无；写远端 | Mac 管理 VM 工作树；推送预览列出 origin 尚未包含的提交，来源分支未发布时也可推新任务分支，仍禁止推受保护分支。 |
 | [ubuntu-build.py](../tools/ubuntu-build.py)、ubuntu-image.py、[packaging/ubuntu/](../packaging/ubuntu)、[packaging/image/](../packaging/image) | 无 | 组件打包与镜像组装；开发包可指定目标已安装版本下限。 |
 | [packaging/kernel/](../packaging/kernel) | 独占 | 内核构建及板端准备。 |
+| [build-integration.py](../packaging/kernel/build-integration.py) | 无 | 持heavy票离线构建并封存生产/调试RAM候选；复用同一O=时同步并核对生效配置，保存生成头证据，分别传构建号可指定顺序。 |
 | [package-unified.py](../packaging/kernel/package-unified.py)（同目录 package-hdr10.py、package-final.py、package-vdec.py） | 无 | 封存已构建候选包。 |
 | [build-integration.py](../packaging/kernel/build-integration.py) | 无；写 VM 构建目录 | 持 heavy 租约后离线构建指定完整 SHA 的生产/调试 RAM 候选，复用同一 O=，封包后清理对象；不排票、不访问板子。 |
 | [build-gstreamer.py](../packaging/kernel/build-gstreamer.py)（test_gstreamer_p010.py、test_gstreamer_pq.py、test_gstreamer_visible_crop.py） | 无 | 插件构建及离线协商回放。 |
