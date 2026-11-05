@@ -17,6 +17,7 @@
 
 ## 2026-11-05
 
+- [启动修复实板复验与生产吞吐准备](2026-11-05-debug-splat-board-validation.md) — kernel network usb；`.81` 新暴露 ADLA mutex 类别报告后 cold_boot，PD 同步采证；已恢复 `.3` 与4K视频，生产 `.82` 待清理旧候选容量后测600秒吞吐。
 - [MMC 硬中断锁修复与冷复位分析](2026-11-05-mmc-irq-reset-analysis.md) — kernel usb；DMA 完成恢复到 IRQ 线程、SDIO 短锁改 raw，离线构建完成；两次 cold_boot 原因未明，列出下一窗口同步采证要求，未上板。
 - [解码与启动修复联合调试](2026-11-05-vdec-joint-debug.md) — kernel video；`.23` 启动遇 MMC IRQ 锁上下文错误和未解释冷复位，未运行解码；已恢复 `.3` 与 4K 视频。
 - [调试启动 splat 离线修复与 PWM 锁拓扑](2026-11-05-debug-splat-fixes.md) — kernel；brcmfmac 上游移植及真实解析 KUnit、ADLA SG 上限修复；PWM 独立 key 修正跨实例建模，同实例 ABBA 明确保留，未上板。

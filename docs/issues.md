@@ -5,10 +5,11 @@
 
 ## 内核与部署
 
-- 联合调试 `.23` 的 MMC `Invalid wait context` 已在独立分支提交 `f911e1d8817fb`：请求完成恢复到 IRQ 线程、SDIO 寄存器锁改 raw；strict checkpatch、W=1+有效 sparse、模块/内建及生产构建完成，未实板复验。[根因、上游核对与验证](bringup/2026-11-05-mmc-irq-reset-analysis.md#mmc-根因与修复)
-- 两次 RAM 候选意外 cold_boot 原因未明；末条 Linux 时戳不是复位发生时间，0x00/sticky=0 也不足以区分 PD/掉电、复位输入或看门狗；没有 panic/协议/供电时序证据，未作猜测性修改。[串口与复位标记分析、下一窗口采证](bringup/2026-11-05-mmc-irq-reset-analysis.md#两次冷复位的共同证据及限度)
+- MMC `Invalid wait context` 修复 `f911e1d8817fb` 的离线检查完成；`.81` 启动未见原报告，但新的 ADLA lockdep 与冷复位先发生，eMMC/SDIO 完整回归未运行。生产 `.82` 已封存，600秒吞吐因板端容量不足待运行。[实板边界](bringup/2026-11-05-debug-splat-board-validation.md#a-实板结果与新锁报告)；[根因与上游核对](bringup/2026-11-05-mmc-irq-reset-analysis.md#mmc-根因与修复)
+- `.81` 新暴露 ADLA `possible recursive locking detected`：dev_mutex 与 SMMU mutex 地址不同，但 OS 包装函数同一 mutex_init 调用点赋予同类；设备初始化按 dev_mutex→SMMU 嵌套，18.57秒关闭锁检查。独立于 DMA 段长，完整锁图及修复尚未完成。[具体路径](bringup/2026-11-05-debug-splat-board-validation.md#a-实板结果与新锁报告)
+- RAM 调试候选意外 cold_boot 原因未明；`.81` 同步 UART 量出首条 Linux 到ROM23.94秒、最后 printk 到ROM1.08秒，PD 接管后处于等待能力/安排 Soft_Reset，缺实际 Hard_Reset、VBUS/RESET波形及连续 watchdog 计数，未作猜测性修改。[新增时序与采证边界](bringup/2026-11-05-debug-splat-board-validation.md#冷复位同步证据)
 - PWM 跨 chip 的 prepare_lock/nonatomic_lock 建模已按协调者授权在独立分支提交 `0a35577b8de2` 增加独立 key，arm64 QEMU 锁依赖回归 1/1；regulator 与 Wi-Fi 使用不同 chip，但 debugfs/初次 request 的 Wi-Fi 硬件查询仍有同实例真实 ABBA，保留未解决，实板零 splat 待验。[锁链、拓扑与修复边界](bringup/2026-11-05-debug-splat-fixes.md#pwm-锁依赖分析与修复边界)
-- ADLA 启动时 DMA SG 超限已在独立分支提交 `4c4126df2f8a`，按设备现有上限切分，模块/内建及生产构建完成；W=1+sparse 仍有既存 vendor 诊断。已纳入 `.23`，但候选先遇 MMC 锁错误及冷复位，未完成 ADLA probe 与零 DMA-API 告警联合复验。[根因与验证边界](bringup/2026-11-05-debug-splat-fixes.md#adla-dma-路径)
+- ADLA DMA SG 上限修复 `4c4126df2f8a` 已离线构建；`.81` 未见旧超限特征，但新的 ADLA mutex 类别错误先关闭 lockdep，随后冷复位，未完成绑定/流量/零告警门禁。W=1+sparse 既存 vendor 诊断仍保留。[根因](bringup/2026-11-05-debug-splat-fixes.md#adla-dma-路径)；[实板边界](bringup/2026-11-05-debug-splat-board-validation.md#a-实板结果与新锁报告)
 - 主线应用程序与插件位于整包和组件包都不提供的 `/opt/vim4-kvm` 私有目录（`hdr10-r14e`、`one-kvm-usb-*`），重刷或新板安装主线后须另行安装这些运行时，否则启动器 exec 失败。[启动器](../board/vim4-kvm-run)
 - 内核升级在写入 kernels.json 后、切换 extlinux 前中断，会使面板报告 Mainline 不可用并拒绝选择；U-Boot 仍启动旧整包，重新登记可恢复面板。[安装器](../packaging/kernel/register-runtime.py)
 - board-window 在新刷 5.15 镜像使用 `LINUX /Image` 符号链接布局时拒绝基线，因为要求路径含 release；当前板的版本化路径不受影响。[预检](../tools/board-window)
@@ -37,7 +38,7 @@
 
 ## Wi-Fi 与 SDIO
 
-- brcmfmac NVRAM 注释解析越界已在独立分支移植上游修复 `17d29954473b6`；真实解析器 KUnit 在 arm64 QEMU + KASAN 通过 3/3。`.23` 串口确认 Wi-Fi 固件初始化成功、未见旧越界特征，但候选冷复位，整轮调试验收未完成。[修复来源与边界](bringup/2026-11-05-debug-splat-fixes.md#上游核对与-brcmfmac)
+- brcmfmac NVRAM 上游修复 `17d29954473b6` 的真实解析器 KUnit 在 arm64 QEMU+KASAN通过3/3；`.23` 和 `.81` 均确认固件初始化、未见旧越界，但新的锁错误/冷复位使整轮调试验收未完成，不能声称流量回归通过。[来源](bringup/2026-11-05-debug-splat-fixes.md#上游核对与-brcmfmac)；[最新实板边界](bringup/2026-11-05-debug-splat-board-validation.md#a-实板结果与新锁报告)
 - meson-gx-mmc 错误恢复在停止超时后仍归还缓冲区，可能在硬件仍访问时复用内存；缺当前已修证明，保留待核对。[主机路径审查](bringup/2026-11-02-wifi-sdio-host-path.md#改动)
 - meson-gx-mmc 的 dma_map_sg 失败路径可能写越界，影响映射失败后的内存安全；缺当前已修证明，保留待核对。[主机路径审查](bringup/2026-11-02-wifi-sdio-host-path.md#改动)
 - brcmfmac 未检查 OOB 路由写失败，设备配置失败时可能继续使用未就绪中断，影响收发；缺当前已修证明，保留待核对。[主机路径审查](bringup/2026-11-02-wifi-sdio-host-path.md#改动)
