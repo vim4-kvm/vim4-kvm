@@ -8,20 +8,20 @@ F＝标准样本数据比对；T＝工具迁出。V/B/F 均待实板。
 
 ## `drivers/media/platform/amlogic/t7-hdmirx/test_timings.py`
 
-类型：测试；处置待确认，保留。
+类型：测试；处置见下表，V/B/F 均待实板。
 
 原自述：Run the actual RX timing query and VDIN ioctls against register transitions.  Requires Linux UAPI headers, but no board, kernel modules or privileges.
 
 | 基线行 | 测试入口 | 原风险/处置 |
 |---|---|---|
-| 106 | `C main` | 原检查：RGB/444/422/420, 8/10/12-bit, range/601/709 and unsupported HDR guards passed / Measured timing ioctls: UHD/FHD, fractional rate, torn counter, loss, unsupported modes passed；处置待确认 |
+| 106 | `C main` | V/B/F：UHD/FHD、分数帧率、RGB/444/422/420 与深度/范围、VRR 前沿、torn counter/rollover 和 coherent invalid 测量；查询失败不能发布半结果或改变 lease，标准 timing/ioctl 与受控源样本 |
 
 ## `drivers/media/platform/amlogic/t7-hdmirx/test_vdin.py`
 
-类型：测试；处置待确认，保留。
+类型：测试；处置见下表，V/B/F 均待实板。
 
 原自述：Run actual snapshot IRQ/capture code against bounded MMIO and failure schedules.
 
 | 基线行 | 测试入口 | 原风险/处置 |
 |---|---|---|
-| 150 | `C main` | 原检查：VDIN completion ordering, DMA bounds, timing change and timeout containment passed；处置待确认 |
+| 150 | `C main` | B/F：地址/stride 先于 DMA 请求、两次 completion 边界、packer/reset、缩放/gamut/字节分量、源改变、timeout 后 DMA 与接收 lease 隔离、split MMIO bank 边界；真实 capture 与标准像素样本 |
