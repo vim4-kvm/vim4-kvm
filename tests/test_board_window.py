@@ -289,7 +289,7 @@ class WindowTests(unittest.TestCase):
             with self.subTest(value=value), self.assertRaises(RuntimeError):
                 window.verify_baseline(before, value)
 
-    def test_large_inventory_cleanup_fits_linux_exec_argument(self):
+    def test_cleanup_ignores_observations_and_fits_linux_exec_argument(self):
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)
             module = root / 'cleanup.py'
@@ -297,7 +297,13 @@ class WindowTests(unittest.TestCase):
             legacy = dict(build_id='1' * 40, release='7.3.0-vim4kvm-uhd4+',
                           files={str(i): 'a' * 64 for i in range(4000)})
             current = dict(legacy, namespace='kbase', payload_id='default')
-            script = window.module_cleanup_script([legacy, current], str(module))
+            for plan in (legacy, current):
+                window.record_candidate(root, plan, 'a' * 64)
+            for name, data in (('candidate-manager-proof.json', {}),
+                               ('candidate-running-identity.json', {'release': FORMAL_RELEASE}),
+                               ('candidate-receiver-ready.json', {'framesDecoded': 12})):
+                (root / name).write_text(json.dumps(data))
+            script = window.module_cleanup_script(window.recorded_candidates(root), str(module))
             self.assertLess(len(script.encode()), 128 * 1024)
             output = subprocess.check_output([sys.executable, '-c', script], text=True)
             self.assertEqual(output.splitlines(), ['7.3.0-vim4kvm-uhd4+ legacy',
@@ -312,7 +318,7 @@ class WindowTests(unittest.TestCase):
             legacy = dict(build_id=kernel)
             for plan in (first, second, legacy):
                 window.record_candidate(root, plan, 'a' * 64)
-            recovered = [json.loads(p.read_text()) for p in root.glob('candidate-*.json')]
+            recovered = window.recorded_candidates(root)
             self.assertEqual(len(recovered), 3)
             self.assertEqual({p.get('payload_id') for p in recovered}, {'default', 'coherent', None})
             self.assertTrue((root / ('candidate-' + kernel + '.json')).exists())
@@ -555,6 +561,11 @@ import {measureDecoded} from './tools/board-window-timing.mjs';
 let clock=0;
 const options={now:()=>clock, sleep:async ms=>{clock+=ms},readyTimeoutMs:1000};
 const result=await measureDecoded(async()=>clock<500?null:{id:'v',ssrc:1,framesDecoded:1+(clock-500)/50},.2,options);
+clock=0;
+const early=await measureDecoded(async()=>({id:'v',ssrc:1,framesDecoded:1+clock/50}),10,
+ {...options,shouldStop:()=>clock>=200});
+assert.equal(early.elapsedMs,200);
+assert.equal(early.fps,20);
 assert.equal(result.elapsedMs,200);
 assert.equal(result.samples[0].framesDecoded,1);
 assert.equal(result.samples.length,5);

@@ -22,6 +22,7 @@ PATTERNS = (
     '/sys/devices/system/cpu/cpu*/cpuidle/state*/usage',
     '/sys/devices/system/cpu/cpu*/cpuidle/state*/time',
     '/sys/class/thermal/cooling_device*/type', '/sys/class/thermal/cooling_device*/cur_state',
+    '/sys/class/thermal/cooling_device*/max_state', '/sys/class/thermal/thermal_zone*/mode',
     '/sys/bus/platform/devices/khadas-mcu-fan-ctrl/speed_percent', '/sys/class/fan/speed',
     '/sys/devices/system/cpu/cpufreq/policy*/scaling_governor',
     '/sys/devices/system/cpu/cpufreq/policy*/scaling_available_frequencies',

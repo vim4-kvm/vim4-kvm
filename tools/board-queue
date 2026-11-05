@@ -67,8 +67,8 @@ class Queue:
             out.write(json.dumps(dict(time=time.time(), event=event, **item)) + '\n')
 
     def enqueue(self, who, purpose, minutes, heavy=False, parent=None):
-        if not 0 < minutes <= 30:
-            raise ValueError('--max-min must be >0 and <=30')
+        if not 0 < minutes <= 50:
+            raise ValueError('--max-min must be >0 and <=50 (above 30 requires explicit coordinator authorization)')
         with self.guard():
             order_path = self.root / 'sequence'
             order = int(order_path.read_text()) + 1 if order_path.exists() else 1
@@ -236,7 +236,8 @@ def main():
         p = commands.add_parser(action)
         p.add_argument('--who', required=True)
         p.add_argument('--purpose', required=True)
-        p.add_argument('--max-min', type=float, default=30)
+        p.add_argument('--max-min', type=float, default=30,
+                       help='Lease minutes; above 30 requires explicit coordinator authorization (maximum 50)')
         p.add_argument('--heavy', action='store_true')
         if action == 'run':
             p.add_argument('command', nargs=argparse.REMAINDER)

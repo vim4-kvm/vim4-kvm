@@ -11,6 +11,9 @@
 
 ## 工作区、构建与打包
 
+重型构建在Mac侧通过 `tools/board-queue run --heavy --who TASK --purpose PURPOSE -- orb -m vim4-build ...`
+排队，由队列协调构建与板端采样；不要直接用legacy lockf绕过队列。构建票不占板票。
+
 | 入口（同族文件） | 影响 | 用途 |
 |---|---|---|
 | [workspace.py](../tools/workspace.py) | 无 | 工作区管理与构建。 |
@@ -123,4 +126,5 @@
 | [edge-jpeg-check.py](../tools/edge-jpeg-check.py)、edge-jpeg-profile.py | 独占 | JPEG 驱动及分段计时。 |
 | [mcp-screenshot.py](../packaging/hdr2-pq/mcp-screenshot.py) | 只读 | 持板锁获取 MCP 截图。 |
 | [onekvm-local-bench.py](../tools/onekvm-local-bench.py) | 独占；可写远端 | Mac 调度容器或板端 CPU/内存基准；内核参数只记源码身份，驱动验证单独运行。 |
-| [test-fan-policy.sh](../tools/test-fan-policy.sh) | 无 | VM 离线验证内核风扇函数。 |
+| [test-fan-policy.sh](../tools/test-fan-policy.sh) | 无 | 仅5.15：离线验证厂商风扇曲线函数。 |
+| [fan-thermal-check.py](../tools/fan-thermal-check.py) | 独占；休眠 | 外部集成RAM包prepare/compare仅离线；上板校运行身份后做温控/面板/稳定温度检查。不自行申请板窗。 |

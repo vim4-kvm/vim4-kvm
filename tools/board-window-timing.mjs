@@ -42,7 +42,7 @@ export async function closeVideo(page) {
 // Timing boundary separated from browser transport for deterministic replay.
 export async function measureDecoded(sample, seconds, {
   now = () => performance.now(), sleep = ms => new Promise(r => setTimeout(r, ms)),
-  readyTimeoutMs = 60000,
+  readyTimeoutMs = 60000, shouldStop = () => false,
 } = {}) {
   const readyDeadline = now() + readyTimeoutMs;
   let first;
@@ -53,7 +53,7 @@ export async function measureDecoded(sample, seconds, {
   }
   if (!(first?.framesDecoded > 0)) throw new Error('No actual decoded frame before readiness deadline');
   const started = now(), samples = [{ elapsedMs: 0, ...first }];
-  while (now() - started < seconds * 1000) {
+  while (now() - started < seconds * 1000 && !await shouldStop()) {
     await sleep(Math.min(50, seconds * 1000 - (now() - started)));
     const stat = await sample();
     if (!stat || stat.ssrc !== first.ssrc || stat.id !== first.id || stat.codec !== first.codec ||
