@@ -64,6 +64,10 @@ FILE_PATH_CHANGES，人工核对现有 MAINTAINERS 的 Wave5 目录通配覆盖�
 主仓库完整离线检查 534 项通过（14 skipped），工具 `--help`、默认计划模式通过；
 未运行工具的板端执行模式。
 
+后续故障注入配置复验发现跨配置 M= 复用旧对象，已清理自身模块目录产物后
+重新确认生产 CC/CHECK、无 KUnit 导出和无注入 whitelist，最终证据为
+`build/kunit-migration/production-clean-rebuild.log`；见[方案](2026-11-05-wave5-fault-injection-plan.md)。
+
 原始输出保存在主仓库 `build/kunit-migration/`（不入库）：
 
 | 阶段 | 文件 |

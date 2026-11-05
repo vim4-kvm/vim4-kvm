@@ -36,6 +36,7 @@ IR/按键及NOR与eMMC引脚限制见[设备树记录](../bringup/2026-10-21-edg
 | debugfs audiobus读触发abort/重启 | 只读也访问未上电MMIO，dump不受head限制；诊断持板锁，只读已审阅具名状态，不盲扫 | [事故](../bringup/2026-10-25-audiobus-read-abort.md) |
 | 板NFS loopback挂自己卡死、RESET后无日志 | 服务端放Mac/VM，冻结用docker pause或VM内nft丢包 | [NAS/USB](../bringup/2026-10-18-nas-storage-usb-disk.md) |
 | make C=2成功但未跑sparse | 旧版被警告跳过；固定工具、查实际CHECK行，拒绝不可用日志，不只看退出码 | [门禁](../bringup/2026-10-31-hdr2-uhd4-gate.md) |
+| 切换配置后 M= 仍复用旧模块对象 | 跨配置先清理自身目录模块产物，确认实际 CC/CHECK，并检查配置敏感导出/注入符号；退出码不能证明对象属于新配置 | [HDMI RX 迁移](../bringup/2026-11-05-hdmirx-kunit-results.md) |
 | Bifrost回边补丁主机通过、G52挂起 | 分支偏移误算前块而重置计数，须加layout回归；CFG和静态统计不能替代最终编码与硬件验证，短负载全帧正确且无新增timeout才测FPS，出错即否决并正常重启 | [修复](../archive/gpu-loop-repair.md) |
 | 根目录解包破坏/lib，动态程序失效 | 安装保目录符号链接、留stock启动项，按工具参数 | tools/kernel-install.sh、[内核](../kernel.md) |
 | 换Image后模块BTF错、SSH失联 | 分离BTF依赖原vmlinux类型ID，release/vermagic不足；同次构建完整模块、核实际加载，不关BTF掩混装 | [DDC](../bringup/2026-10-19-hdmirx-ddc.md) |

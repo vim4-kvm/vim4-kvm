@@ -14,10 +14,10 @@
 | `wave5-hw.c:wave5_vpu_enc_finish_seq` | ERRNO；唯一调用者 `wave5-vpuapi.c:wave5_vpu_enc_close` 在调用前清零 `fail_res`，检查负返回值并释放本次 PM/锁引用，不标记 destroyed、不释放 DMA；`wave5_stop_encoder` 随后执行隔离 | DESTROY 未完成时 close/STREAMOFF 的错误回收、隔离与后续恢复 |
 | `wave5-hw.c:wave5_vpu_reset` | ERRNO；入口已有不修改状态的参数错误分支；初始化、重初始化、恢复及 remove 调用者均检查失败，不能把返回错误当作 DMA 停止 | 恢复复位失败时停止恢复、永久隔离和保留 DMA；不证明复位内部的总线时序 |
 
-两处 `ALLOW_ERROR_INJECTION(..., ERRNO)` 均用 `CONFIG_FAIL_FUNCTION` 包围。
-其 Kconfig 依赖链经过 FAULT_INJECTION、DEBUG_KERNEL、debugfs 与
-FUNCTION_ERROR_INJECTION/KPROBES。生产配置关闭 FAIL_FUNCTION 时，
-即使 FUNCTION_ERROR_INJECTION 开启也不生成这两个 whitelist 条目。
+两处直接使用上游 `ALLOW_ERROR_INJECTION(..., ERRNO)`，不另套条件编译。
+宏在 FUNCTION_ERROR_INJECTION 关闭时自身为空操作；生产配置须保持该项关闭。
+本方案只在调试候选启用 fail_function，其 Kconfig 依赖链经过
+FAULT_INJECTION、DEBUG_KERNEL、debugfs 与 FUNCTION_ERROR_INJECTION/KPROBES。
 不加新模块参数、私有 ABI 或默认开启的注入逻辑；生产函数体与调用顺序不变。
 
 按同一源码树的 `Documentation/fault-injection/fault-injection.rst` 中
@@ -99,13 +99,20 @@ debug-only 标注，真实掉电、DMA 停止、恢复后数据正确性均未�
 
 ## 离线验证记录
 
-标注独立提交于内核 `8d3530f41a4db`。
+标注独立提交于内核 `8d3530f41a4db`；`e05cc33e80edf` 按审查意见单独移除外层条件编译，
+生产排除条件相应以 FUNCTION_ERROR_INJECTION 关闭为准。
 原始日志位于主仓库 `build/kunit-migration/wave5-injection-build.log` 与
 `wave5-injection-final.log`。heavy 锁下编译 debug 模块/内建，W=1、有效 sparse、
 strict checkpatch 完成；无改动头文件。QEMU arm64 既有 KUnit 9/9，通过期间
 没有配置或触发 fail_function。未修改 binding/DTS，未运行板端验证。
 
-debug 对象 `nm` 可见两个 `_eil_addr_wave5_*`；另以 FUNCTION_ERROR_INJECTION=y、
-FAULT_INJECTION=n/FAIL_FUNCTION=n、KUNIT=n 重编生产模块，确认两项全部不存在。
-这是编译产物排除检查，未加载模块或访问 debugfs。保留原有 vDSO sparse
+debug 对象 `nm` 可见两个 `_eil_addr_wave5_*`。外层条件移除后，另在
+FUNCTION_ERROR_INJECTION=y/FAIL_FUNCTION=n 对象确认条目存在，再按生产配置
+FUNCTION_ERROR_INJECTION=n 重编模块，确认两项全部不存在，日志为
+`wave5-injection-upstream-style.log` 与 `production-clean-rebuild.log`。
+前一日志保留了配置切换后 M= 复用旧对象导致排除检查失败的现场，最终结论
+以后者清理本目录模块产物后实际 CC/CHECK 及 nm 检查为准。
+这是编译产物排除检查，未加载模块或
+访问 debugfs。初次日志中 FUNCTION_ERROR_INJECTION=y/FAIL_FUNCTION=n 的排除
+结论只适用于 `8d3530f41a4db` 的旧条件，不适用于后续修正。保留原有 vDSO sparse
 `__kernel_getrandom` 准备阶段诊断，Wave5 修改范围无诊断；smatch 未安装。
