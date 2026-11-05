@@ -20,7 +20,7 @@ F＝标准样本数据比对；T＝工具迁出。V/B/F 均待实板。
 
 | 基线行 | 测试入口 | 原风险/处置 |
 |---|---|---|
-| 34 | `C main` | K/V/B：共享 plane 的 UV 偏移、1088 行容量和导入越界；以带流 compliance、真实 DMA-BUF 边界与 DMA 调试验证，不重造 vb2 |
+| 34 | `C main` | V/B：共享 plane 的 UV 偏移、1088 行容量和导入越界；以带流 compliance、真实 DMA-BUF 边界与 DMA 调试验证，不重造 vb2 |
 | 247 | `C main` | V/B：lookahead 重排时间戳、队列公平性、LAST/drain、提交失败回滚和 destroy 失败时 DMA 留存；标准带流与实板故障注入 |
 | 400 | `C main` | V/B：source index 上下界、drain sentinel 和 PTS 所有权；带流编码、调试内核越界检查 |
 
