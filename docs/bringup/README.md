@@ -17,6 +17,8 @@
 
 ## 2026-11-05
 
+- [冷复位 A/B r60](2026-11-05-vdec-coldboot-ab-r60.md) — kernel；A 2次/1复位、B 1次/0复位，恢复再复位后停；最终正式恢复，17项未运行。
+- [RESET/VBUS/PD 闭环方案](2026-11-05-vdec-reset-measurement-plan.md) — kernel、usb；仅方案，需实物接线与仪器确认，未排板。
 - [冷复位 A/B r59 入场失败](2026-11-05-vdec-coldboot-ab-r59.md) — kernel；默认串口路径不存在，零 SSH/上传/启动，20 项未运行，票已释放。
 - [冷复位 A/B 工具与封包](2026-11-05-vdec-coldboot-ab-tools.md) — kernel；UART 审查修正、固定批次、早期采集及两组封包离线核验；未上板。
 - [冷复位同 RAM 封装 A/B 计划](2026-11-05-vdec-coldboot-ab-plan.md) — kernel；正式包/.28 交替各十次，累计50分钟已批准；工具复审前不排板。

@@ -101,6 +101,8 @@ flush。`.83` Accept 后回等待能力时是 `pd is already on`，不能称这�
 
 ## 正式 .3 的只读启动统计
 
+本节为历史口径；最新正式包 RAM/eMMC 复位与分母见[r60](2026-11-05-vdec-coldboot-ab-r60.md)。
+
 只读票 `b37e4690e1aa450a9e6ad616082e1ca2`，12:14:45–12:15:55，约70.2秒。
 执行 list-boots，逐 boot 提取 Linux version、末35条和 shutdown/reboot 标记；前后均
 正式 `.3`，boot_id `bf5454df-a33d-446e-95b9-a67b8067d178` 未变。没有 RAM 启动、
