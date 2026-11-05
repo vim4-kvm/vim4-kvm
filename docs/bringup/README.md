@@ -17,6 +17,7 @@
 
 ## 2026-11-05
 
+- [全树 KUnit 最终组合复验](2026-11-05-kunit-final-replay.md) — kernel；82 个 Python 已迁出/删除，九配置 arm64 QEMU 11 套 44/44；WERROR=n 仅作运行复验，既有静态失败及实板边界保留。
 - [PWM 既有 KUnit 复验](2026-11-05-pwm-kunit-results.md) — kernel power；复用原测试 QEMU 1/1，PWM/clk-pwm/regulator 内建/模块及静态检查完成；无 Python 可迁，同控制器 ABBA 保留，实板未验。
 - [brcmfmac KUnit 迁移结果](2026-11-05-brcmfmac-kunit-results.md) — kernel network；删除 P2P Python，arm64 QEMU 新参数/决策 2 项与已有 NVRAM 3 项均通过，构建/范围静态检查完成；固件/P2P/offload 待实板。
 - [ADLA KUnit 迁移结果](2026-11-05-adla-kunit-results.md) — kernel；四个 Python 删除，真实 allocator/取消/边界 arm64 QEMU 4/4，内建/模块编译完成；既有 W=1/sparse 门禁未通过，DMA/复位/生命周期待实板。
@@ -27,7 +28,7 @@
 - [T7 HDMI RX KUnit 迁移结果](2026-11-05-hdmirx-kunit-results.md) — kernel video audio；20 个 Python 迁出/删除，arm64 QEMU 9/9，内建/模块与范围静态检查完成；硬件语义待实板。
 - [Wave5 故障注入离线方案](2026-11-05-wave5-fault-injection-plan.md) — kernel video；标准 fail_function 注入点、隔离/DMA 预期与判定；仅准备，全部待实板，内部时序注入缺口单列。
 - [Wave5 KUnit 迁移结果](2026-11-05-wave5-kunit-results.md) — kernel video；13 个 Python 文件迁出/删除，arm64 QEMU 9/9；W=1、有效 sparse、模块/内建及静态检查完成，硬件语义待实板。
-- [内核树测试迁移清单](2026-11-05-kernel-test-migration.md) — kernel；87 个文件逐项盘点，77 个已迁出/删除，34 项 KUnit；保留生成器/vdec/协调暂缓测试，实板及部分静态门禁未完成。
+- [内核树测试迁移清单](2026-11-05-kernel-test-migration.md) — kernel；87 个文件逐项盘点，82 个已迁出/删除，保留生成器/vdec；44 项组合重跑通过，实板及部分静态门禁未完成。
 - [测试清单 drm-1](2026-11-05-kunit-inventory-drm-1.md) — kernel；逐文件入口、原检查及待确认处置。
 - [测试清单 drm-2](2026-11-05-kunit-inventory-drm-2.md) — kernel；逐文件入口、原检查及待确认处置。
 - [测试清单 drm-3](2026-11-05-kunit-inventory-drm-3.md) — kernel；逐文件入口、原检查及待确认处置。

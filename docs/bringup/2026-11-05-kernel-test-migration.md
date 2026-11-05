@@ -6,8 +6,10 @@
 排除 comedi 和 DRM CI 后共 87 个 Python 文件；其中 4 个是源码生成器，
 1 个是禁止修改的 vdec 测试，另有 Wave5 板端工具。不能将 87 全部视为待删测试。
 下列分表逐文件登记；未能确认的风险明确标待确认并保留。
-非暂缓范围已完成风险确认及迁移，共 77 个 Python 文件迁出/删除，arm64 QEMU
-直接测试生产函数累计 34/34；各批结果、实际命令和未验边界如下。
+全部授权范围已完成风险确认及文件迁移，共 82 个 Python 文件迁出/删除。
+逐批 arm64 QEMU 的实际结果如下；九份配置合并后的完整重跑为 **11 套、44/44**，
+包含全部 fixup 后的代码。最终提交、实际命令、完整输出及失败证据见
+[组合复验](2026-11-05-kunit-final-replay.md)。
 
 | 已执行批次 | Python 文件数 | 实际 QEMU KUnit | 结果记录 |
 |---|---|---|---|
@@ -17,16 +19,21 @@
 | Meson DRM | 18 | 8/8 | [结果](2026-11-05-drm-kunit-results.md) |
 | Meson ASoC | 15 | 3/3 | [结果](2026-11-05-asoc-kunit-results.md) |
 | 其余非暂缓驱动 | 9 | 风扇 3/3，其余为 V/B | [逐子系统结果](2026-11-05-remaining-drivers-kunit-results.md) |
+| ADLA（暂缓解除后） | 4 | 4/4 | [结果](2026-11-05-adla-kunit-results.md) |
+| brcmfmac（暂缓解除后） | 1 | 新 2/2，复用 NVRAM 3/3 | [结果](2026-11-05-brcmfmac-kunit-results.md) |
+| PWM/PWM regulator（无 Python） | 0 | 复用原测试 1/1 | [结果](2026-11-05-pwm-kunit-results.md) |
 
-构建和检查已执行；CRG/TCPM 的既有有效 sparse 诊断按用户决定保留，明确记为
-静态门禁未通过，其余各批的检查范围及限制见结果。所有 V/B/F 均待实板，删除
+构建和检查已执行；CRG/TCPM 的有效 sparse、ADLA 的 W=1/sparse 保留既有诊断，
+明确记为静态门禁未通过，其余各批的检查范围及限制见结果。组合运行 profile
+显式 WERROR=n 保留编译警告，不作为静态门禁通过证据。所有 V/B/F 均待实板，删除
 不等于验证通过。Wave5 内部阶段故障注入仍有缺口，不能声称已覆盖。
 
-剩余 10 文件：4 个上游生成器继续保留；1 个 vdec 测试禁止修改；ADLA 四文件、
-brcmfmac 一文件按协调要求暂缓，待 t48 确认后再确认风险和迁移。Meson PWM/PWM
-regulator 相关代码同样暂缓，基线清单中没有该目录 Python。保留的待确认项未删除，
-整个任务仍有协调暂缓范围未完成。两个工作树均只在 `kunit-migration` 提交，未
-push、合并、对外发送或访问板子。
+剩余 5 文件：4 个上游生成器继续保留；1 个 vdec 测试禁止修改，保留其待确认风险。
+ADLA/brcmfmac/PWM 的暂缓已按协调解除，先执行指定的内核 debug-splat-fixes 和
+主仓库 main 合并，原四个修复提交未改写，随后完成风险清单及迁移/复验。
+PWM 原本没有 Python，复用现有 KUnit；同控制器 ABBA 未解决，见结果边界。
+本轮风扇源码只读。所有提交仍只在两个 `kunit-migration` 分支，未 push、合并到
+其他分支、对外发送或访问板子。
 
 | 分表 | 文件数 |
 |---|---|

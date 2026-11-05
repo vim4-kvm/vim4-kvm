@@ -10,6 +10,7 @@
 |---|---|
 | `437a77da87f6e` | `adlak_kunit.c` 四项、Kconfig/Makefile/`.kunitconfig` 和私有声明头；真实 allocator/取消/OS mutex 条件导出；删除含 K 风险的三个 Python |
 | `a5310d48b6313` | 删除 DMA、复位、真实等待者/worker 生命周期 mock，无生产改动 |
+| `514e0f9b81ab7` | 以标准 fallthrough 标注利用率 switch 原先进入下一 case 的路径，解除完整 QEMU 配置的默认编译错误，不改变计算或控制流 |
 
 arm64 QEMU 实际 4/4：
 
@@ -21,8 +22,8 @@ arm64 QEMU 实际 4/4：
 - 直接测试生产 `adlak_range_valid()` 和 `adlak_fixup_valid()` 的负数、尾边界、
   溢出安全、字对齐、shift/unit 约束。未重建 ioctl、DMA、时钟或等待队列。
 
-生产改动只增加 KUnit 可见性/条件导出及声明；取消函数参数使用等价的 Linux
-固定宽度类型。函数体、调用位置、锁范围、MMIO 和 DMA 时序未变。合入分支已有
+生产改动增加 KUnit 可见性/条件导出、声明和上述编译标注；取消函数参数使用
+等价的 Linux 固定宽度类型。原计算、调用位置、锁范围、MMIO 和 DMA 时序未变。合入分支已有
 SG 上限修复继续保留，见[启动 splat 记录](2026-11-05-debug-splat-fixes.md)。
 
 在 VM `/home/deepdream/src/linux-7.3-kunit-migration`，持主仓库 heavy 构建票，
@@ -67,6 +68,18 @@ M 路径触发旧 Makefile 的 include 路径错误，已改用绝对 M 路径�
 `main-tests-deferred-inventory.log` 均为 539 项、14 skipped、OK；锚点修复前的失败
 保留在 `main-tests-merge-splat.log`。
 本记录全测 `main-tests-adla-results.log` 同为 539 项、14 skipped、OK。
+
+九配置组合的首次整套构建在 `all-final-run.log` 保留：COMPILE_TEST 使 WERROR
+开启，既有 debugfs 隐式 fallthrough 被拒绝，QEMU 未启动。标注后普通目标编译
+及 C=2 完成（`adla-fallthrough-compile.log`），DEBUG_FS=y/KUNIT=n 模块 W=1/C=2
+实际重编完成（`adla-debug-module.log`、配置 production-debugfs.config）。标准标注
+不增加指令或改变原落入下一 case 的行为。完整配置的额外 W=1 目标仍被既有
+do_resume/do_suspend 未使用变量错误阻断（`adla-fallthrough-build.log`），门禁继续
+记未通过；该次目标检查没有关闭 WERROR 或屏蔽该诊断。标注提交 strict checkpatch 零诊断，
+见 `adla-fallthrough-commit.log`；最终全套运行结果另记，不用普通目标编译代替。
+第二次全套构建仍被已有 missing-prototypes 阻断，失败见 `all-final-run2.log`。
+最终组合运行 profile 显式 WERROR=n，以保留全部 vendor 警告并执行运行测试；
+原 W=1/sparse 失败结论不变，未改生产配置或提交的各目录 `.kunitconfig`。
 
 全部 V/B 待实板：同步 CANCEL/WAIT 的成功、超时、信号和硬件错误；reset 停 DMA
 后才能发布/释放，失败必须隔离；close 超时后的 context/模块 pin 与迟到完成；

@@ -86,7 +86,7 @@ CRG EP0/status/ring 逐次分配/IRQ 失败、halt/drain 后回收、超时保�
 enable/disable 幂等。使用标准接口、KASAN/lockdep、DMA 调试与适用的标准故障注入，
 本轮均未运行。没有将删除 mock、编译或风扇 QEMU 当作这些风险通过。
 
-协调暂缓的 ADLA 四文件与 brcmfmac 一文件保留待确认；Meson PWM/PWM regulator
+本批完成时协调暂缓的 ADLA 四文件与 brcmfmac 一文件保留待确认；Meson PWM/PWM regulator
 相关代码未修改，基线 87 个 Python 中没有该目录的文件。vdec 及 firmware/meson
 继续由其他分支负责，未修改。
 
@@ -100,4 +100,10 @@ enable/disable 幂等。使用标准接口、KASAN/lockdep、DMA 调试与适用
 范围 W=1 编译成功；风扇有效 sparse 无范围诊断，CRG 既有地址空间/端序等
 诊断仍在，门禁仍未通过。改动提交 strict checkpatch 零 error/warning/check。
 主仓库 `main-tests-review-fix.log`：534 项，14 skipped，OK。本次未重跑 QEMU
-或访问板子；TCPM 未改，保留此前 sparse 未通过结论。协调暂缓范围继续保留。
+或访问板子；TCPM 未改，保留此前 sparse 未通过结论。
+
+此后协调暂缓已解除，先合入原样保留四提交的 debug-splat-fixes，再完成
+[ADLA](2026-11-05-adla-kunit-results.md)、
+[brcmfmac](2026-11-05-brcmfmac-kunit-results.md) 迁移及
+[PWM 既有 KUnit 复验](2026-11-05-pwm-kunit-results.md)。本记录前述暂缓状态仅代表
+当批次边界，最终全树数量与完整重跑状态见[总清单](2026-11-05-kernel-test-migration.md)。
