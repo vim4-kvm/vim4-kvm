@@ -1,8 +1,44 @@
-# 2026-11-05：H.264 隔行支持设计要点（未实现）
+# 2026-11-05：H.264 隔行支持设计与离线实现
 
 按协调决定先验证多 slice；隔行 SPS 的 52 条失败排在其后。这是完整的新能力，
-不能只删除 `FRAME_MBS_ONLY` 检查。以下是实现前的设计审查材料，没有新增隔行
-支持提交，也没有宣称实板通过。分组证据见[失败聚类](2026-11-05-vdec-failure-groups.md)。
+不能只删除 `FRAME_MBS_ONLY` 检查。以下保留设计审查材料，并记录已完成的离线
+准备提交；隔行入口仍关闭，尚未实板验证。分组证据见[失败聚类](2026-11-05-vdec-failure-groups.md)。
+
+## 已完成的离线准备
+
+| 内核提交 | 改动 | 实际验证 |
+|---|---|---|
+| `d85738cf7a151` | 先把 map-unit 高度展开为帧高，再做 canvas 对齐；序列面积使用完整帧宏块数 | arm64 QEMU KUnit 18/18 |
+| `7eca35df43339` | 保留参考项 fields、对应场 POC 和长期参考标志；列表容量覆盖 32 个场参考 | arm64 QEMU KUnit 19/19 |
+| `50378b37858bb` | 当前 POC 使用标准 reflist builder 的结果，frame 取 Min，field 取对应场；寄存器依次写 current/top/bottom | arm64 QEMU KUnit 20/20 |
+
+三个提交分别完成 W=1 模块/内建构建、实际 sparse CHECK，以及对 format-patch
+输出运行 strict checkpatch。修改私有头声明的提交也运行 kernel-doc。原始日志位于
+`build/hwdecode-parity/interlaced/`，分别以 `dimensions-`、`references-`、
+`current-poc-` 为前缀；KUnit 原始串口为 `*-qemu.log`，结果为 `*-result.json`。
+内建检查有既有的 arm64 vgetrandom 声明告警，vdec 检查无告警；没有修改 DT binding。
+参考列表首次构建发现初始化循环越界，修正后重跑通过，失败日志保留为
+`references-kunit-initial-build-failure.log`。
+
+`50378b37858bb` 修正参考帧取 Min、当前帧仍取 top 的不一致：bottom < top 时
+会影响 colocated POC 距离。测试调用真实参考列表配置函数，覆盖负 bottom POC、
+top/bottom field 与 IDR；IDR 判断改为位标志判断，且在提前返回前完成当前 POC
+计算。canvas/MV 仍以 top POC 查找身份，留待 timestamp 生命周期改动处理。
+
+### 下个窗口的 POC 对照边界
+
+对保存的 JVT-AVC_V1 全部特性 trace，结合全套结果与 r47 的通过结果，筛选
+“此前通过、frame_mbs_only=1、包含 B slice、bottom POC 偏移非零”的交集为空。
+一次性筛选脚本与输出保存在 `build/hwdecode-parity/interlaced/select-bottom-poc.py`、
+`bottom-poc-controls.json`，扩展检查结果在 `all-bottom-poc.json`。
+
+- `MR5_TANDBERG_C` 是逐行，top-to-bottom offset=-5，但只有 I/P slice，且之前失败，不能算所要求的 B 帧回归对照。
+- `cama1_vtc_c` 包含 B slice、delta_pic_order_cnt_bottom=-1，但 SPS 允许隔行，作为隔行负偏移验收项，不冒充已通过的逐行对照。
+- bottom POC 等于或大于 top 时，Min 与原来取 top 相同，因此这类已通过码流在此处的计算值不变。这是代码推理，不是新增实板通过记录。
+- 下个窗口仍保留已通过的逐行 B 帧和多 slice 对照；按协调决定，不为交集为空硬凑码流。待 JVT-FR-EXT 子集运行时补负偏移逐行 B 帧；KUnit 不能替代这项实板像素证据。
+
+本阶段没有上板。下一候选先跑三节点带流 compliance，再跑隔行受影响码流和
+逐行/多 slice 对照；MV 地址、timestamp 所有权、HOLD/sequence 尚待实现。
 
 ## 已定位的缺口与拟定边界
 
