@@ -379,6 +379,23 @@ def mdec_cycle():
     set_power_permission(False)
 
 
+def hevc_cycle():
+    """Probe HEVC power/clocks after MDEC validation, without firmware or DMA."""
+    device = t7_device()
+    require_suspended(device)
+    if not (device / 'mdec_test').read_text().startswith('passed=1 '):
+        raise RuntimeError('HEVC probe requires the completed MDEC power sequence')
+    set_power_permission(True)
+    run('python3', '-c', 'from pathlib import Path; '
+        f'Path({str(device / "hevc_test")!r}).write_text("1")', timeout=8)
+    result = (device / 'hevc_test').read_text().strip()
+    print('HEVC_POWER_TEST', result, flush=True)
+    if not result.startswith('passed=1 ') or faulted():
+        raise RuntimeError('HEVC power-on/read/reference-release did not pass')
+    require_suspended(device)
+    set_power_permission(False)
+
+
 def outer_register_snapshot(payload):
     """Stop at step eight; the reader independently denies all internal DOS addresses."""
     if Path('/sys/module/aml_vdec_drv/parameters/t7_snapshot_only').read_text().strip() != 'Y':
