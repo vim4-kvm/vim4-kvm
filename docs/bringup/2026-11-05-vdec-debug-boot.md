@@ -78,3 +78,35 @@ compliance 命令与 Fluster 均未开始，不能把预检通过记为零 splat
 验证。启动日志门禁提前到任何解码器操作之前，预检后和结束时再检查；正常的
 DMA-API 启用信息不算错误，实际 WARNING/KASAN 等仍直接失败。新增一项真实诊断
 失败路径回归，主仓库 536 项、11 跳过通过，输出 `vdec-startup-guard-tests.log`。
+
+## 启动 splat 修复交接
+
+按用户最新安排，三项启动问题由独立 worker 修复，解码任务不再修改这些目录。
+已经通过 tools/vm 创建 VM 工作树 `/home/deepdream/src/linux-7.3-debug-splat-fixes`，
+分支 `debug-splat-fixes`，起点为部署版本
+`2662456a1a636f668454ab04a1c63f567206a592`；构建目录为
+`/home/deepdream/build/debug-splat-fixes`。交接时未向该工作树复制代码、未产生修复提交。
+hwdecode-parity 也未改动这三个子系统。
+
+### brcmfmac 草稿
+
+Mac 主仓库私有目录 `build/hwdecode-parity/edit/brcmfmac/` 有草稿：
+firmware.c/h、Kconfig、Makefile、firmware_kunit.c 和 .kunitconfig。尚未编译、未跑
+KUnit、未做静态检查，不是已验证补丁；仅供接手者审阅，勿直接视作完成。
+
+草稿在 nvram_parser 保存输入长度，用有界 strnchr 查找注释换行，有界 memchr
+处理 NUL，避免末尾无终止字符时越界；保留 NUL 先于换行时的原语义。
+通过 KUnit visibility 暴露真实 brcmf_fw_nvram_strip；两个拟议用例覆盖无 NUL/
+无换行的末尾注释，以及 NUL 先于后续键值换行。前者使用精确长度分配，建议开启
+KASAN 实际复现旧实现失败，再验证修复。使用标准 KUnit device 辅助，不模拟 Wi-Fi
+总线或固件请求；原始实板堆栈见上述 r32 日志。
+
+### PWM 与 ADLA
+
+这两项没有代码草稿。PWM 原始锁链在 r32 dmesg 的启动 4.2 秒附近；ADLA 的
+DMA-API 警告在 16.7 秒附近。需要接手者从实际调用关系核对修复及各自验证方法。
+
+首个 lockdep 故障会关闭后续锁检查，KASAN 默认只报告首个错误，因此 r32 中
+后续未再报错不能证明解码器内存或锁安全。下一次调试窗口等待用户通知修复分支
+就绪，再由 hwdecode-parity 合入独立修复构建候选，一次启动同时验证修复与解码。
+在此之前解码任务只做离线工作，不再开调试板窗口。
