@@ -8,7 +8,7 @@ F＝标准样本数据比对；T＝工具迁出。V/B/F 均待实板。
 
 ## `drivers/misc/adla/test_platform.py`
 
-类型：测试；处置待确认，保留。
+类型：测试；协调暂缓，保留原文件；待 t48 确认后再审风险和迁移，避免与启动 splat 修复冲突。
 
 原自述：Execute the actual platform power functions with fault-injected host APIs.
 
@@ -20,7 +20,7 @@ F＝标准样本数据比对；T＝工具迁出。V/B/F 均待实板。
 
 ## `drivers/net/wireless/broadcom/brcm80211/brcmfmac/test_p2p.py`
 
-类型：测试；处置待确认，保留。
+类型：测试；协调暂缓，保留原文件；待 t48 确认后再审风险和迁移，避免与启动 splat 修复冲突。
 
 原自述：Compile actual P2P request builders against a recording firmware boundary.
 
@@ -30,23 +30,23 @@ F＝标准样本数据比对；T＝工具迁出。V/B/F 均待实板。
 
 ## `drivers/pmdomain/amlogic/test_secure_pwrc.py`
 
-类型：测试；处置待确认，保留。
+类型：测试；处置见下表，V/B/F 全部待实板。
 
 原自述：Fault the actual secure-domain transition callbacks and polling macro.
 
 | 基线行 | 测试入口 | 原风险/处置 |
 |---|---|---|
-| 63 | `C main` | 原检查：Secure PWRC: 12 transition/failure cases and unmodified-domain behavior passed；处置待确认 |
+| 63 | `C main` | B：secure domain SET/GET 的错误传播、有限轮询、失败/拒绝/未知状态、legacy domain 不额外轮询；真实 genpd/SMC 和标准调试注入，虚拟时间不证明掉电 |
 
 ## `drivers/thermal/test_khadas_mcu_fan.py`
 
-类型：测试；处置待确认，保留。
+类型：测试；处置见下表，V/B/F 全部待实板。
 
 原自述：Exercise the driver's actual quiet policy, fault handling and work lifecycle.
 
 | 基线行 | 测试入口 | 原风险/处置 |
 |---|---|---|
-| 100 | `C main` | 原检查：Khadas quiet fan policy, faults and lifecycle: PASS；处置待确认 |
+| 100 | `C main` | K：默认/自定义温度曲线单调性、fault 最小风量且不压低热传感器、紧急/启停绕过渐变和正常步进上限；V/B：六传感器缺失/读取失败、sysfs 阈值事务、regmap 失败、worker 延迟与 suspend/resume 回收，真实 thermal/sysfs 与注入 |
 
 ## `drivers/tty/vt/gen_ucs_fallback_table.py`
 

@@ -12,13 +12,13 @@ F＝标准样本数据比对；T＝工具迁出。V/B/F 均待实板。
 
 ## `drivers/media/cec/platform/meson/test_ao_cec_t7.py`
 
-类型：测试；处置待确认，保留。
+类型：测试；处置见下表，V/B/F 全部待实板。
 
 原自述：Compare T7 CEC pad/filter programming with the vendor CECA implementation.
 
 | 基线行 | 测试入口 | 原风险/处置 |
 |---|---|---|
-| 165 | `C main` | 待确认：核对内嵌 C 的断言 |
+| 165 | `C main` | V/B：CEC pad/filter/CECB route 的无关位保存、logical addr 合法/清空与写失败、probe notifier/IRQ/clock 逐次 unwind、remove 顺序及 DT 资源；标准 cec-compliance 与真实 HDMI/时钟/IRQ |
 
 ## `drivers/media/platform/amlogic/vdec/test_t7_lifetime.py`
 
@@ -71,7 +71,7 @@ F＝标准样本数据比对；T＝工具迁出。V/B/F 均待实板。
 
 ## `drivers/misc/adla/test_cancel.py`
 
-类型：测试；处置待确认，保留。
+类型：测试；协调暂缓，保留原文件；待 t48 确认后再审风险和迁移，避免与启动 splat 修复冲突。
 
 原自述：Execute actual pending/finished/scheduled cancellation with controlled lists.
 
@@ -82,7 +82,7 @@ F＝标准样本数据比对；T＝工具迁出。V/B/F 均待实板。
 
 ## `drivers/misc/adla/test_iova.py`
 
-类型：测试；处置待确认，保留。
+类型：测试；协调暂缓，保留原文件；待 t48 确认后再审风险和迁移，避免与启动 splat 修复冲突。
 
 原自述：Host tests execute the driver's bitmap IOVA allocator, including rollback.
 
@@ -92,7 +92,7 @@ F＝标准样本数据比对；T＝工具迁出。V/B/F 均待实板。
 
 ## `drivers/misc/adla/test_lifecycle.py`
 
-类型：测试；处置待确认，保留。
+类型：测试；协调暂缓，保留原文件；待 t48 确认后再审风险和迁移，避免与启动 splat 修复冲突。
 
 原自述：Execute real error-completion and close paths with controlled DMA/reset events.
 
