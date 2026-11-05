@@ -6,6 +6,7 @@
 无线固件/配套模块见[源码锁](../../packaging/kernel/sources.toml)；PHY trap固件根因未明，P2P缺真实对端协商/传输验收。
 风扇分Linux温控与U-Boot上电测试，后者早于Linux；改温控不会取消上电测试。
 [安静风扇/验证入口](../bringup/2026-10-20-edge-quiet-fan.md)、[U-Boot禁用/验证](../bringup/2026-10-17-uboot-quiet-fan.md)。
+[标准thermal迁移与待验清单](../bringup/2026-11-05-fan-thermal.md)：DT档位与标准trip调参，旧故障输出/限速不再保留，尚未上板。
 IR/按键及NOR与eMMC引脚限制见[设备树记录](../bringup/2026-10-21-edge-ir-keys-spinor.md)。
 厂商VDIN、vfm_cap、Wave521和CRG驱动见common_drivers；新板DT/安装按[内核](../kernel.md)，保留stock回退，不替换/lib符号链接。
 模块替换、initramfs及整包操作均按该文档；构建成功不证明启动、温控、采集或USB通过，硬件回归须独占。
