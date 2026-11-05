@@ -7,8 +7,8 @@
 
 | 内核提交 | 实际变更 |
 |---|---|
-| `f7af0143b6055` | `t7_audio_kunit.c` 三项、Kconfig/Makefile/`.kunitconfig`；真实生产 EQ/DRC 验证及 card 参数函数按 visibility 条件导出；私有 TDM link 参数类型原样移至头文件；删除两个含 K 风险的 Python |
-| `5e2db1b17f90c` | 删除其余 13 个寄存器/DAPM/PCM mock，无生产改动 |
+| `8ae2f94521141` | `t7_audio_kunit.c` 三项、Kconfig/Makefile/`.kunitconfig`；真实生产 EQ/DRC 验证及 card 参数函数按 visibility 条件导出；私有 TDM link 参数类型原样移至头文件；删除两个含 K 风险的 Python |
+| `6c262d98e42db` | 删除其余 13 个寄存器/DAPM/PCM mock，无生产改动 |
 
 arm64 QEMU 3/3：biquad Q23 稳定性/位宽边界，full/multiband DRC 成对系数与
 增益约束，以及真实 ASoC card/runtime/hw_params 对象的 FE/BE 转换。
@@ -52,3 +52,16 @@ sparse 为 `84ec0658c81db4ccc4aabc420d3dc118c2c6a310`；准备阶段有未修改
 通道/位宽/selector、MMIO bank 隔离、reset/cache/clock/电源失败与逐写回收、
 多 formatter rollback、重复启停和实际样本。假想外部端点的图可达性不能证明
 VIM4 接线或真实音频通路；生产 DT 资源及路由后续用标准 schema/DTB/ALSA 验证。
+
+审查后以 `fixup!` 和 `rebase -i --autosquash 2662456a1a636` 折回头文件排序修正，
+上表为重写后的提交。`t7-aed.c` 的 KUnit include 移至系统头文件组首，`axg-card.c`
+的本地 include 排序；保持 `sound/soc.h` 先于依赖它的 `sound/soc-dai.h`。
+原始重放与逐提交差异见 `build/kunit-migration/review-fix-autosquash2.log`、
+`review-fix-range-diff-final.log`，strict checkpatch 见 `review-fix-checkpatch-final.log`。
+`review-fix-build.log` 保留第一次额外交换 sound 头文件后出现的类型编译错误，
+已恢复依赖顺序；最终对应构建命令保留在 `review-fix-build.sh`，输出
+`review-fix-build2.log`。此次只改 include 顺序，未改生产函数或测试逻辑。
+最终内建、独立测试模块及 KUNIT=n 生产模块的范围 W=1/有效 sparse 重跑完成，
+有实际 CC/CHECK，范围无诊断；strict checkpatch 零 error/warning/check。
+主仓库 `main-tests-review-fix.log`：534 项，14 skipped，OK。本次未重跑 QEMU，
+此前 3/3 的原始证据保留；未访问板子。

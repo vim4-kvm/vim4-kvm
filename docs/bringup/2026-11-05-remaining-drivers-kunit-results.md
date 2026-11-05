@@ -10,14 +10,14 @@
 
 | 子系统 | 内核提交 | 替代验证与本次结果 |
 |---|---|---|
-| Khadas thermal fan | `b753a3f6abb2e` | 删除 1 个 Python；生产温度曲线、故障下限、渐变函数直接 KUnit，arm64 QEMU 3/3；内建/测试模块/生产模块 W=1 与 sparse 无范围诊断 |
-| Meson CEC | `94581a3a43df2` | 删除 1 个 Python；V/B 待 cec-compliance、真实路由/时钟/IRQ；内建/模块 W=1 与 sparse 无范围诊断 |
-| Meson secure genpd | `21bc1813105ca` | 删除 1 个 Python；B 待真实 SMC/电源域及标准故障注入；内建/模块 W=1 与 sparse 无范围诊断 |
-| USB HID/UAC2 function | `0bf6b46dbd3f2` | 删除 2 个 Python；V/B 待标准 USB/ALSA 与绑定生命周期；内建/模块 W=1 与 sparse 无范围诊断 |
-| CRG UDC | `cf12b3deae231` | 删除 3 个 Python；V/B 待真实 USB/IRQ/DMA；内建/模块 W=1 编译完成，sparse 未通过 |
-| FUSB302/TCPM | `922815d751461` | 删除 1 个 Python；V/B 待真实 TCPM/PD/regulator；内建/模块 W=1 编译完成，TCPM sparse 未通过，FUSB302 本身无范围诊断 |
+| Khadas thermal fan | `5eb8482550622` | 删除 1 个 Python；生产温度曲线、故障下限、渐变函数直接 KUnit，arm64 QEMU 3/3；内建/测试模块/生产模块 W=1 与 sparse 无范围诊断 |
+| Meson CEC | `399eaac6de011` | 删除 1 个 Python；V/B 待 cec-compliance、真实路由/时钟/IRQ；内建/模块 W=1 与 sparse 无范围诊断 |
+| Meson secure genpd | `60d3da1419ffa` | 删除 1 个 Python；B 待真实 SMC/电源域及标准故障注入；内建/模块 W=1 与 sparse 无范围诊断 |
+| USB HID/UAC2 function | `3f58f9e78a75f` | 删除 2 个 Python；V/B 待标准 USB/ALSA 与绑定生命周期；内建/模块 W=1 与 sparse 无范围诊断 |
+| CRG UDC | `66ebbb5c5719b` | 删除 3 个 Python；V/B 待真实 USB/IRQ/DMA；内建/模块 W=1 编译完成，sparse 未通过 |
+| FUSB302/TCPM | `d4eee9d02eede` | 删除 1 个 Python；V/B 待真实 TCPM/PD/regulator；内建/模块 W=1 编译完成，TCPM sparse 未通过，FUSB302 本身无范围诊断 |
 
-另外 `75de0985c4b1a` 单独修正 CRG 既有 W=1 未使用变量错误：删除未使用常量和
+另外 `dba6936a6cdd0` 单独修正 CRG 既有 W=1 未使用变量错误：删除未使用常量和
 仅计算地址的局部变量，保留调试指针并标 `__maybe_unused`，去掉未使用的返回值
 局部变量，但仍调用原中断处理并返回 `IRQ_HANDLED`。无 MMIO、锁、回调或执行
 顺序改变。风扇生产代码只改可见性，三个函数体不变；测试不重建 thermal、regmap
@@ -89,3 +89,15 @@ enable/disable 幂等。使用标准接口、KASAN/lockdep、DMA 调试与适用
 协调暂缓的 ADLA 四文件与 brcmfmac 一文件保留待确认；Meson PWM/PWM regulator
 相关代码未修改，基线 87 个 Python 中没有该目录的文件。vdec 及 firmware/meson
 继续由其他分支负责，未修改。
+
+审查后将风扇系统 include 排序、本地 include 移至系统组之后，删除 CRG 的多余
+空行；以 `fixup!` 和 `rebase -i --autosquash 2662456a1a636` 折回原提交，
+上表提交号已同步。原始记录 `build/kunit-migration/review-fix-autosquash*.log`、
+`review-fix-range-diff-final.log` 保留重放及逐提交差异；改动提交的 strict checkpatch
+为 `review-fix-checkpatch-final.log`，构建命令/输出为 `review-fix-build.sh`、
+`review-fix-build2.log`。没有更改函数体、测试逻辑或硬件顺序。
+最终风扇/CRG 内建、启用 KUnit 的模块和 KUNIT=n 生产模块均实际重编完成，
+范围 W=1 编译成功；风扇有效 sparse 无范围诊断，CRG 既有地址空间/端序等
+诊断仍在，门禁仍未通过。改动提交 strict checkpatch 零 error/warning/check。
+主仓库 `main-tests-review-fix.log`：534 项，14 skipped，OK。本次未重跑 QEMU
+或访问板子；TCPM 未改，保留此前 sparse 未通过结论。协调暂缓范围继续保留。
