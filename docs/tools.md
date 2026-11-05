@@ -11,6 +11,9 @@
 
 ## 工作区、构建与打包
 
+重型构建在Mac侧用 `/usr/bin/lockf -k /tmp/vim4-heavy.lock` 包住 `orb -m vim4-build ...`，
+只持构建锁、不持板锁；已有入口见 [package-final.py](../packaging/kernel/package-final.py)。
+
 | 入口（同族文件） | 影响 | 用途 |
 |---|---|---|
 | [workspace.py](../tools/workspace.py) | 无 | 工作区管理与构建。 |
