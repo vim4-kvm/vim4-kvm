@@ -120,5 +120,7 @@ W=1 的全树原始诊断保留，编译退出成功不等于零告警。旧 ADL
 真实模块加载。ADLA 利用率显示仍需实板回归，PWM 同控制器 ABBA 仍按既有记录保留。
 板窗按[生产回归清单](2026-11-05-integration-regression-plan.md)等待协调者通知，
 首错即停，结束恢复正式 `.3` 并核对实际视频推进。
+本页记录离线阶段；后续通知后实际执行的[生产.90板窗](2026-11-05-integration-prod90-regression.md)
+保留首错与恢复结果，不以本页的构建/QEMU通过代替整轮生产验收。
 离线核对发现旧 edge-jpeg-check 要求 taint 恒为0，正式外置GPU模块已有 OOT taint；
 清单已标明该入口限制，改用现有 driver-bench JPEG 路径与资源/数据检查，不放宽旧断言。

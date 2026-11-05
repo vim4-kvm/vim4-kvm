@@ -17,6 +17,7 @@
 
 ## 2026-11-05
 
+- [生产 .90 首错停止回归窗口](2026-11-05-integration-prod90-regression.md) — kernel；采集/JPEG/Wave5短轮及七份码流解码通过，候选应用重启后API接收首错；152秒窗口后完整恢复.3并核视频，缺入口/前提逐项未验。
 - [集成候选构建与 KUnit 复验](2026-11-05-integration-build-results.md) — kernel；fd41fb5 生产.90/调试.91 RAM全量校验通过，现存迁移驱动/标准CCF arm64 QEMU 15套59/59；额外DMA-BUF两次超时登记，板测待安排。
 - [集成候选回归与构建准备](2026-11-05-integration-regression-plan.md) — kernel；19 分钟生产回归清单、缺入口/待实板边界及同 O= 双候选 RAM 构建入口；仅离线准备，未排 heavy、未构建、未访问板子。
 - [KUnit 提交说明与利用率审查返工](2026-11-05-kunit-review-rework.md) — kernel；25 提交补正文/Signed-off-by，消息阶段空 diff、原四 SHA 保留；最终 29 完整 patch 检查通过，撤销 fallthrough 并独立补 break；QEMU 44/44，利用率显示需实板回归。
