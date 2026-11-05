@@ -17,6 +17,25 @@
 
 ## 2026-11-05
 
+- [内核树测试迁移清单](2026-11-05-kernel-test-migration.md) — kernel；87 个文件初始盘点，含保留的上游生成器与 vdec；未确认项保留。
+- [测试清单 drm-1](2026-11-05-kunit-inventory-drm-1.md) — kernel；逐文件入口、原检查及待确认处置。
+- [测试清单 drm-2](2026-11-05-kunit-inventory-drm-2.md) — kernel；逐文件入口、原检查及待确认处置。
+- [测试清单 drm-3](2026-11-05-kunit-inventory-drm-3.md) — kernel；逐文件入口、原检查及待确认处置。
+- [测试清单 other-1](2026-11-05-kunit-inventory-other-1.md) — kernel；逐文件入口、原检查及待确认处置。
+- [测试清单 other-2](2026-11-05-kunit-inventory-other-2.md) — kernel；逐文件入口、原检查及待确认处置。
+- [测试清单 other-3](2026-11-05-kunit-inventory-other-3.md) — kernel；逐文件入口、原检查及待确认处置。
+- [测试清单 other-4](2026-11-05-kunit-inventory-other-4.md) — kernel；逐文件入口、原检查及待确认处置。
+- [测试清单 hdmirx-1](2026-11-05-kunit-inventory-hdmirx-1.md) — kernel；逐文件入口、原检查及待确认处置。
+- [测试清单 hdmirx-2](2026-11-05-kunit-inventory-hdmirx-2.md) — kernel；逐文件入口、原检查及待确认处置。
+- [测试清单 hdmirx-3](2026-11-05-kunit-inventory-hdmirx-3.md) — kernel；逐文件入口、原检查及待确认处置。
+- [测试清单 hdmirx-4](2026-11-05-kunit-inventory-hdmirx-4.md) — kernel；逐文件入口、原检查及待确认处置。
+- [测试清单 jpeg-1](2026-11-05-kunit-inventory-jpeg-1.md) — kernel；逐文件入口、原检查及待确认处置。
+- [测试清单 wave5-1](2026-11-05-kunit-inventory-wave5-1.md) — kernel；逐文件入口、原检查及待确认处置。
+- [测试清单 wave5-2](2026-11-05-kunit-inventory-wave5-2.md) — kernel；逐文件入口、原检查及待确认处置。
+- [测试清单 wave5-3](2026-11-05-kunit-inventory-wave5-3.md) — kernel；逐文件入口、原检查及待确认处置。
+- [测试清单 audio-1](2026-11-05-kunit-inventory-audio-1.md) — kernel；逐文件入口、原检查及待确认处置。
+- [测试清单 audio-2](2026-11-05-kunit-inventory-audio-2.md) — kernel；逐文件入口、原检查及待确认处置。
+- [测试清单 audio-3](2026-11-05-kunit-inventory-audio-3.md) — kernel；逐文件入口、原检查及待确认处置。
 - [解码 KUnit 迁移结果](2026-11-05-vdec-kunit-results.md) — kernel video；移除七个 Python 测试文件，arm64 QEMU 五套 17/17，模块/内建与修改范围静态检查通过；硬件语义待实板。
 - [解码测试迁移清单](2026-11-05-vdec-test-migration.md) — kernel video；逐项登记七个文件、49 项测试的风险与 KUnit/compliance/实板替代验证。
 - [HEVC 接口与固件模式](2026-11-05-hevc-interface-review.md) — kernel video；保留 stateful，核对三种 codec 的固件参数方向；未发现 T7 主机完整参数注入模式，结论限于源码接口。
