@@ -224,7 +224,13 @@ def run_fluster(plan, output, deadline, env):
                 raise RuntimeError('DMA stop not confirmed after ' + name)
             # A pixel mismatch is evidence to collect, not a DMA safety failure.
             # Check diagnostics before allowing another stream on either kernel.
-            require_clean_kernel_log(output)
+            try:
+                require_clean_kernel_log(output)
+            except TimeoutError as error:
+                report['vectors'][name]['result'] = 'Timeout'
+                report['vectors'][name]['reason'] = str(error)
+                save()
+                raise
         return all(report['vectors'][v['name']]['result'] == 'Success' for v in selected)
     except BaseException as error:
         report['stopped'] = str(error)
@@ -459,6 +465,8 @@ def run_performance(plan, output, deadline, env):
 def require_clean_kernel_log(output):
     kernel_log = run('journalctl', '-k', '-b', '--no-pager', timeout=15)
     (output / 'kernel.log').write_text(kernel_log)
+    if re.search(r'aml-vdec-drv[^\n]*(?:dec timeout=|hevc: timeout)', kernel_log):
+        raise TimeoutError('Kernel decoder timeout; recover before another stream')
     # DMA-API also emits normal "debugging enabled" startup messages. Actual
     # DMA violations emit WARNING, as the ADLA failure in debug run32 did.
     if re.search(r'BUG:|Oops:|WARNING:|Call trace:|possible circular locking|KASAN:', kernel_log):
@@ -516,6 +524,9 @@ def acceptance_window(args):
                 run_compliance(plan, compliance_output, deadline, env)
             conformance_passed = run_fluster(plan, output, deadline, env)
             for index, followup in enumerate(plan.get('fluster_followups', [])):
+                if deadline - time.monotonic() < plan['vector_timeout_seconds'] * 2 + 30:
+                    conformance_passed = False
+                    break
                 require_clean_kernel_log(output)
                 extra_output = output / f'fluster-followup-{index}'
                 extra_output.mkdir()

@@ -120,6 +120,14 @@ class DecoderWindowTests(unittest.TestCase):
                 self.assertEqual(result['vectors']['first']['result'], 'Fail')
                 self.assertEqual(result['vectors']['second']['result'], 'Not run' if warning else 'Success')
 
+    def test_kernel_decoder_timeout_is_not_hidden_by_fluster_error(self):
+        with tempfile.TemporaryDirectory() as directory, \
+                patch.object(window, 'run', return_value=(
+                    'Nov 05 10:57:44 Khadas kernel: aml-vdec-drv fe320000.video-codec: dec timeout=500\n')):
+            with self.assertRaisesRegex(TimeoutError, 'Kernel decoder timeout'):
+                window.require_clean_kernel_log(Path(directory))
+            self.assertIn('dec timeout=500', (Path(directory) / 'kernel.log').read_text())
+
     def test_bounded_process_terminates_decoder_child(self):
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)

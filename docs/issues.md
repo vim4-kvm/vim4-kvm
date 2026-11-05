@@ -16,8 +16,9 @@
 
 ## 采集与编码
 
-- 解码 `.25` HEVC 等待 SOURCE_CHANGE 超时；草稿无条件设置 NAL_SEARCH_CTL bit21，而厂商只在有效 8K 尺寸启用。模式与启动顺序差异待单变量验证，尚不能归类为固件能力限制。[离线差异表](bringup/2026-11-05-vdec-independent-fluster.md#hevc-离线差异表)
-- 解码 `.25` stateless/JPEG compliance 各 60/60，但标准流像素仍有差异：H.264 BA1_FT_C 摘要不匹配，MPEG-2 att 有 23,959 个超容差位置。AUD_MW_E 通过；驱动/插件/固件原因未区分，5.15 对照未运行。[逐流结果](bringup/2026-11-05-vdec-independent-fluster.md#实际结果)
+- 解码 `.25` HEVC 等待 SOURCE_CHANGE 超时；按厂商尺寸条件限制 bit21 后仍超时，尚不能归类为固件能力限制。下一实验为 ACTION/CPU reset 顺序及读回。[实验记录](bringup/2026-11-05-vdec-full-conformance.md#hevc-bit21-单变量实验)
+- 解码 `.25` stateless/JPEG compliance 各 60/60，完整标准流仅 H.264 58/135、MPEG-2 18/43 通过。隔行 SPS 与多 slice 有驱动显式拒绝路径，其他像素差异待定位。[失败聚类](bringup/2026-11-05-vdec-failure-groups.md)
+- 厂商 `5.15.137-vim4kvm-hdrdual6` 一次性启动在解码前发生 DRM vblank WARNING、CPU 2 hard LOCKUP panic；102 条对照均未运行，已恢复 `.3`。按用户决定暂停对照。[启动与恢复证据](bringup/2026-11-05-vdec-full-conformance.md#515-一次性启动与中止)
 - debugfs frame 入口未统一 YUV3 的源资格检查；开发者用该入口采集不合格源时，可能绕过 V4L2 队列的格式限制。[V4L2 采集记录](bringup/2026-11-02-hfr-yuv-window.md#yuv444-和未验项)
 - 新鲜 DRM 与普通 AVI 信息不一致时，YUV3 源资格可能误判为 SDR，影响采集颜色解释；验收需保存两者实际记录。[V4L2 采集记录](bringup/2026-11-02-hfr-yuv-window.md#yuv444-和未验项)
 - 5.15 专用 VDIN1 插件将百分之一 Hz 读数取整，分数帧率输入会得到不准确的 caps；One-KVM 直开设备的路径不受影响。[vim4_vdin1_caps](../gst-plugin-vfmcap/src/gstvim4vdin1src.c)
