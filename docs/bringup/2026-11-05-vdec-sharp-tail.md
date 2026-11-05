@@ -70,6 +70,14 @@ ffprobe 的显示/编码顺序与 pkt_pos；`*.reference.log`、`reference-run.l
 现在不能把缺帧归为固件或已证实的用户态限制。若证实为用户态问题，按 CVFC1
 登记限制，不维护私有插件补丁。
 
+随后在宿主构建同一锁定源码中未修改的 h264parse，独立运行
+`filesrc → h264parse → byte-stream/AU → filesink`。Field 的 30 个 slice、PAFF
+的 23 个 slice 全部保留，逐 NAL payload SHA 与原输入顺序一致。证据为
+`sharp-analysis/parser-identity.json`、`parser-probe.log`、`*.parsed.trace` 和
+`parser-slice-comparison.json`。此实验没有 V4L2 设备，只排除了该宿主 parser
+路径丢弃 slice；不能替代板端 decoder/DQBUF 跟踪，也未确定缺帧归属。
+
 按协调要求，后续内核先 rebase 到集成基线
 `fd41fb5950b9da1fb336ce00d5137d27ee9755fa`，保存 range-diff 并逐提交重新构建与
 运行 KUnit。`.27` 部分全集结果不代表新基线通过。
+重放与逐提交检查见[集成基线记录](2026-11-05-vdec-integrated-rebase.md)。
