@@ -9,6 +9,7 @@ status files and never opens MMIO, HID, or capture devices.
 import argparse
 import atexit
 import base64
+import contextlib
 import datetime
 import hashlib
 import importlib.machinery
@@ -382,7 +383,7 @@ def collect(host, directory):
     return report
 
 
-def ready(host, timeout=120, expected=None, old_boot=None):
+def ready(host, timeout=120, expected=None, old_boot=None, *, deadline_bound=False):
     deadline = time.monotonic() + timeout
     last = None
     while time.monotonic() < deadline:
@@ -405,7 +406,8 @@ if apps==['one-kvm']:
  assert 'state' in stats and 'fps' in stats
 print('ready')
 '''.replace('EXPECTED', repr(expected)).replace('OLD', repr(old_boot))
-            ssh(host, 'sudo -n python3 -c ' + shlex.quote(script), timeout=30)
+            ssh(host, 'sudo -n python3 -c ' + shlex.quote(script),
+                timeout=max(.01, min(30, deadline-time.monotonic())) if deadline_bound else 30)
             return
         except (OSError, subprocess.SubprocessError) as exc:
             last = exc
@@ -470,9 +472,9 @@ def module_cleanup_script(plans, script):
             + '[m.cleanup_module_mountpoint(p) for p in ' + repr(identities) + ']')
 
 
-def validate_bundle(bundle):
+def validate_bundle(bundle, *, ram_baseline_control=False):
     with tarfile.open(bundle) as archive:
-        plan, metadata, entries = once.read_trial(archive)
+        plan, metadata, entries = once.read_trial(archive, ram_baseline_control=ram_baseline_control)
         for name, expected in plan['files'].items():
             if hashlib.sha256(archive.extractfile(entries[name]).read()).hexdigest() != expected:
                 raise ValueError('bundle hash mismatch: ' + name)
@@ -486,7 +488,33 @@ def validate_bundle(bundle):
         return plan
 
 
-def verify_candidate_dt(host, plan, baseline_properties=None):
+def verify_ram_baseline_runtime(plan, runtime):
+    prefix = str(once.candidate_prefix(plan))
+    init = [token for token in runtime['cmdline'].split() if token.startswith(('init=', 'rdinit='))]
+    if init != ['init=' + prefix + '/init']:
+        raise RuntimeError('RAM baseline control did not boot its private init')
+    if (runtime['module_root'] != prefix + '/modules/' + plan['release'] or
+            'ro' not in runtime['module_options'].split(',')):
+        raise RuntimeError('RAM baseline control has the wrong module bind source or permissions')
+
+
+def verify_candidate_dt(host, plan, baseline_properties=None, *, ram_baseline_control=False):
+    if 'ram_baseline_control' in plan or ram_baseline_control:
+        if not ram_baseline_control or plan.get('ram_baseline_control') is not True:
+            raise ValueError('RAM baseline control requires explicit runtime verification')
+        once.validate_ram_baseline(plan, dict(release=plan['baseline_release'],
+            build_id=plan['baseline_id'], files=plan['baseline_files']))
+        script = """from pathlib import Path
+import json
+target=str(Path(TARGET).resolve())
+mounts=[line.split() for line in Path('/proc/self/mountinfo').read_text().splitlines()]
+matches=[entry for entry in mounts if entry[4]==target]
+if len(matches)!=1: raise RuntimeError('expected one private module bind mount')
+print(json.dumps(dict(cmdline=Path('/proc/cmdline').read_text(),
+                     module_root=matches[0][3],module_options=matches[0][5])))
+""".replace('TARGET', repr('/lib/modules/' + plan['release']))
+        verify_ram_baseline_runtime(plan, json.loads(ssh_python(host, script)))
+        return
     if plan.get('baseline_id') == plan['build_id'] and not plan.get('dt_properties'):
         raise ValueError('Same Image candidate requires readable DT identity')
     if plan.get('baseline_id') == plan['build_id']:
@@ -501,7 +529,81 @@ def verify_candidate_dt(host, plan, baseline_properties=None):
             raise RuntimeError('Running candidate DT property differs: ' + name)
 
 
-def boot(host, device, directory, plan=None, baseline_release=None):
+@contextlib.contextmanager
+def continuous_uart(device, directory, *, deadline):
+    """Explicit batch opt-in; keep this context through final baseline recovery."""
+    require_board()
+    port = load('board_uart_port', ROOT / 'tools/uart-run.py')
+    recorder = load('board_uart_evidence', ROOT / 'tools/board_uart.py')
+    fd = port.open_port(device, 921600)
+    try:
+        with recorder.ContinuousUART(fd, directory) as stream:
+            stream.deadline = deadline
+            yield stream
+    finally:
+        os.close(fd)
+
+
+def boot_recorded(host, stream, plan=None, baseline_release=None):
+    """The explicit continuous path; the historical boot loop stays separate."""
+    def require_budget():
+        if stream.deadline - time.monotonic() < 120 + (360 if plan else 0):
+            raise TimeoutError('Preserve the boot slot and final recovery budget')
+    require_budget()
+    old_boot = ssh(host, 'cat /proc/sys/kernel/random/boot_id').strip()
+    mac = ssh(host, 'cat /sys/class/net/eth0/address').strip() if plan else None
+    if plan and not re.fullmatch(r'(?:[0-9a-fA-F]{2}:){5}[0-9a-fA-F]{2}', mac):
+        raise ValueError('invalid baseline ethernet MAC')
+    release = plan['release'] if plan else baseline_release
+    require_budget()
+    cursor = stream.arm(release)
+    selected = interrupted = False
+    tail = b''
+    process = subprocess.Popen(['ssh', '-oBatchMode=yes', '-oConnectTimeout=5', host,
+                                'sudo -n reboot'], stdin=subprocess.DEVNULL,
+                               stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL,
+                               start_new_session=True)
+    try:
+        deadline = time.monotonic() + 45
+        while time.monotonic() < deadline:
+            cursor, data = stream.read_since(cursor, min(.1, deadline-time.monotonic()))
+            tail = (tail + data)[-65536:]
+            if plan and not interrupted and (b'Hit SPACE' in tail or b'autoboot' in tail):
+                stream.send(b' ')
+                interrupted = True
+            if interrupted and not selected and (b'kvim4#' in tail or b'kvim4n#' in tail):
+                stream.send(('setenv ethaddr ' + mac + '; ' + plan['command'] + '\n').encode())
+                selected = True
+            if stream.events.linux_started is not None:
+                break
+        else:
+            raise TimeoutError('No selected Linux boot within 45 seconds')
+        if plan and not selected:
+            raise RuntimeError('RAM candidate was not selected')
+        deadline = stream.events.linux_started / 1e9 + 45
+        while time.monotonic() < deadline:
+            stream.check()
+            try:
+                ready(host, timeout=min(3, deadline-time.monotonic()), expected=release,
+                      old_boot=old_boot, deadline_bound=True)
+            except TimeoutError:
+                continue
+            stream.check()
+            return
+        raise TimeoutError('Selected Linux did not become ready within 45 seconds')
+    finally:
+        if process.poll() is None:
+            process.terminate()
+            try:
+                process.wait(timeout=3)
+            except subprocess.TimeoutExpired:
+                process.kill()
+                process.wait(timeout=3)
+
+
+def boot(host, device, directory, plan=None, baseline_release=None, *, uart=None):
+    if uart is not None:
+        return boot_recorded(host, uart, plan, baseline_release)
     uart = load('board_uart', ROOT / 'tools/uart-run.py')
     old_boot = ssh(host, 'cat /proc/sys/kernel/random/boot_id').strip()
     mac = None
@@ -560,6 +662,7 @@ def main():
     p.add_argument('candidate', type=Path)
     p.add_argument('--sha256', required=True, help='trusted candidate.tar SHA256')
     p.add_argument('--reuse-staged', action='store_true', help='verify and reuse the exact immutable payload')
+    p.add_argument('--ram-baseline-control', action='store_true', help='explicit unchanged-package RAM control')
     p.add_argument('--baseline-files', nargs='+', help='first HDR2 payload: original baseline recovery files')
     p = commands.add_parser('return-baseline')
     p.add_argument('--video-check', nargs=argparse.REMAINDER,
@@ -661,7 +764,7 @@ def main():
             digest = args.sha256
             if sha(bundle) != digest:
                 raise ValueError('archive SHA256 mismatch')
-        plan = validate_bundle(bundle)
+        plan = validate_bundle(bundle, ram_baseline_control=args.ram_baseline_control)
         proof_path = directory / 'baseline-proof.json'
         if proof_path.exists():
             proof = json.loads(proof_path.read_text())
@@ -691,15 +794,16 @@ def main():
 s=importlib.util.spec_from_file_location('once',SCRIPT)
 m=importlib.util.module_from_spec(s);s.loader.exec_module(m)
 assert m.sha(BUNDLE)==DIGEST
-m.stage(BUNDLE,retained_baseline=PROOF,reuse_staged=REUSE)
-""".replace('SCRIPT', repr(remote + '/display-once.py')).replace('BUNDLE', repr(remote + '/candidate.tar')).replace('DIGEST', repr(digest)).replace('PROOF', repr(proof)).replace('REUSE', repr(args.reuse_staged))
+m.stage(BUNDLE,retained_baseline=PROOF,reuse_staged=REUSE,ram_baseline_control=CONTROL)
+""".replace('SCRIPT', repr(remote + '/display-once.py')).replace('BUNDLE', repr(remote + '/candidate.tar')).replace('DIGEST', repr(digest)).replace('PROOF', repr(proof)).replace('REUSE', repr(args.reuse_staged)).replace('CONTROL', repr(args.ram_baseline_control))
         ssh_python(args.host, script)
         require_board()
         boot(args.host, args.device, directory, plan)
         running = identity(args.host, [])
         if running['build_id'] != plan['build_id']:
             raise RuntimeError('running kernel build ID differs from candidate')
-        verify_candidate_dt(args.host, dict(plan, baseline_id=proof['build_id']), proof.get('dt_properties', {}))
+        verify_candidate_dt(args.host, dict(plan, baseline_id=proof['build_id']), proof.get('dt_properties', {}),
+                            ram_baseline_control=args.ram_baseline_control)
         result = collect(args.host, directory)
     else:
         proof = json.loads((directory / 'baseline-proof.json').read_text())

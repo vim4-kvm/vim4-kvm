@@ -56,6 +56,34 @@ stage/cleanup携带同一正式来源锁；上传超时不重试。此节是离�
 
 ## 基线与证据
 
+### 显式 RAM 基线对照与连续 UART
+
+`display-once.py prepare/stage --ram-baseline-control` 仅用于不改正式 Image、DT 和
+完整模块清单的 RAM 对照；`board-window boot-candidate` 也须显式传同名选项。
+包内模式标志不能自行授权：默认 prepare 仍拒绝相同 Image/DT，默认 read/stage
+拒绝带对照标志的包。仍需独立 namespace/payload、当前正式 proof、静态 init、
+归档校验、新 boot ID；运行时验证私有 `init=` 及只读模块 bind 来源，不能把普通
+默认启动或自动回退误判为对照成功。不得改 DT 属性伪装成另一类试验。
+
+连续采证通过 `board-window` 模块 API 显式开启：在已持板票的批次外层使用
+`with continuous_uart(device, directory, deadline=deadline) as uart`，随后各次 `boot(..., uart=uart)`，
+上下文保持到最终恢复/视频验证结束；不传 uart 时仍使用原来的单次启动日志路径。
+目录须预先存在，`uart.raw` 和 `uart-chunks.jsonl` 拒绝覆盖，只有一个串口 reader。
+原始流按索引区分 RX/TX；每块有 UTC/monotonic ns、offset/length，`begin_sample()`
+标注实验序号，`mark()` 留操作事件。收到 login 后继续记录，SSH ready 不占串口。
+
+显式路径每次启动等待 Linux 与 ready 分别有界；`BootEvents` 区分选错 release、
+内核 BUG/WARNING/Oops/KASAN 和进入 Linux 后的 ROM/第二次启动。冷复位抛
+`ColdBootReset`，不隐式重试；调用者只有按已审计划核对恢复才可继续，串口断开
+不当作成功。`uart.recovery(release)` 接续解析同一 USB 块中的恢复日志，不能清掉
+内核错误；再次复位仍报错。完整 20 次游标、总预算及最终恢复属于批次编排，
+此 API 不会自行启动下一次，也不授权样本追加。
+deadline 是整个板窗的宿主 monotonic 截止点；候选启动前保留120秒槽和360秒恢复，
+正常基线恢复至少保留120秒。前置身份采集后再次检查，预算不足不发送 reboot。
+
+当前授权仅限 [冷复位 A/B 计划](bringup/2026-11-05-vdec-coldboot-ab-plan.md)，
+工具须经协调者审查后才能排票。离线测试不证明串口链或硬锁恢复的实板可靠性。
+
 基线文件按当前部署登记选择，覆盖启动、模块、程序/插件和运行时登记，不能只给uname。缓存身份、参数和失效键见[board-window 的 baseline](../tools/board-window)：当天相同键才复用，变化/跨日重测，失败不缓存；测量后再核身份，缓存须跨worktree共享。
 性能对照另提供公开settings，含源/运动程序哈希、编码配置、浏览器及接收机身份，不放凭据；设置变化更新settings。未带设置的旧调用只证明短接收门禁，不能证明性能条件一致。
 

@@ -31,6 +31,59 @@ def static_elf(kind=1):
 
 
 class TrialTest(unittest.TestCase):
+    def test_ram_baseline_control_is_explicit_and_preserves_all_package_files(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            self.fixture(root, release=FORMAL_RELEASE, baseline_release=FORMAL_RELEASE)
+            report = json.loads((root/'payload/manifest.json').read_text())
+            state = json.loads((root/'baseline.json').read_text())
+            state['build_id'] = report['kernel_build_id']
+            boot = '/boot/kernels/' + FORMAL_RELEASE + '/'
+            state['files'].update({boot+n: report['artifacts'][n] for n in ('Image', 'vim4.dtb')})
+            state['files'].update({'/lib/modules/'+FORMAL_RELEASE+'/'+n: h for n,h in report['modules'].items()})
+            (root/'baseline.json').write_text(json.dumps(state))
+            layout = dict(namespace='coldboot', payload_id='control')
+            parent = once.candidate_parent(layout)
+            (root/'init').write_bytes(static_elf() + (str(parent)+'/').encode() + b'\0')
+            args = (root/'payload', root/'init', root/'baseline.json')
+            with patch.object(once, 'formal_baseline', return_value=state):
+                # Existing default still rejects identical Image/DT packages.
+                for options in ({}, {'ram_baseline_control': False}):
+                    with self.assertRaisesRegex(ValueError, 'distinct DT'):
+                        once.prepare(*args, root/'rejected', release=FORMAL_RELEASE, **layout, **options)
+                once.prepare(*args, root/'control', release=FORMAL_RELEASE,
+                             ram_baseline_control=True, **layout)
+                bundle = root/'control/candidate.tar'
+                with tarfile.open(bundle) as archive:
+                    with self.assertRaisesRegex(ValueError, 'explicitly enabled'):
+                        once.read_trial(archive, state)
+                    plan, _, _ = once.read_trial(archive, state, ram_baseline_control=True)
+                    self.assertNotIn('dt_properties', plan)
+                    self.assertTrue(plan['ram_baseline_control'])
+                    for artifact in ('Image', 'vim4.dtb'):
+                        bad = dict(state, files=dict(state['files'], **{boot+artifact: '0'*64}))
+                        with self.subTest(artifact=artifact), self.assertRaisesRegex(ValueError, 'changes'):
+                            once.read_trial(archive, bad, ram_baseline_control=True)
+                    for operation in ('remove', 'extra'):
+                        bad = dict(state, files=dict(state['files']))
+                        if operation == 'remove':
+                            del bad['files'][next(n for n in bad['files'] if n.startswith('/lib/modules/'))]
+                        else:
+                            bad['files']['/lib/modules/'+FORMAL_RELEASE+'/extra.ko'] = '0'*64
+                        with self.subTest(operation=operation), self.assertRaisesRegex(ValueError, 'module inventory'):
+                            once.read_trial(archive, bad, ram_baseline_control=True)
+
+    def test_explicit_false_does_not_change_ordinary_trial_bytes(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            original = self.fixture(root)
+            once.prepare(root/'payload', root/'init', root/'baseline.json', root/'explicit-false',
+                         ram_baseline_control=False)
+            with tarfile.open(original) as first, tarfile.open(root/'explicit-false/candidate.tar') as second:
+                self.assertEqual(first.getnames(), second.getnames())
+                for name in first.getnames():
+                    self.assertEqual(first.extractfile(name).read(), second.extractfile(name).read(), name)
+
     def test_large_debug_image_cannot_load_across_t7_unmapped_memory(self):
         header = bytearray(64)
         header[56:60] = b'ARM\x64'

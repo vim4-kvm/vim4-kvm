@@ -25,6 +25,56 @@ FORMAL_RELEASE = window.once.formal_baseline()['release']
 
 
 class WindowTests(unittest.TestCase):
+    def test_ram_control_rejects_default_boot_and_wrong_or_writable_module_bind(self):
+        plan = dict(release=FORMAL_RELEASE, build_id='a'*40, namespace='coldboot', payload_id='a')
+        prefix = str(window.once.candidate_prefix(plan))
+        state = dict(cmdline='root=test init='+prefix+'/init',
+                     module_root=prefix+'/modules/'+FORMAL_RELEASE, module_options='ro,relatime')
+        window.verify_ram_baseline_runtime(plan, state)
+        for changes in (dict(cmdline='root=test'), dict(cmdline=state['cmdline']+' init=/sbin/init'),
+                        dict(module_root='/lib/modules/'+FORMAL_RELEASE), dict(module_options='rw')):
+            with self.subTest(changes=changes), self.assertRaises(RuntimeError):
+                window.verify_ram_baseline_runtime(plan, dict(state, **changes))
+
+    def test_continuous_boot_requires_explicit_uart_argument(self):
+        stream = Mock()
+        with patch.object(window, 'boot_recorded') as recorded:
+            window.boot('host', 'port', Path('/unused'), {'release': 'trial'}, uart=stream)
+            recorded.assert_called_once_with('host', stream, {'release': 'trial'}, None)
+
+    def test_continuous_boot_timeout_does_not_retry_or_start_readiness(self):
+        stream = Mock()
+        stream.deadline = 3000
+        process = Mock()
+        process.poll.return_value = None
+        with patch.object(window, 'ssh', side_effect=['previous', 'c8:63:14:74:70:0d']), \
+                patch.object(window.subprocess, 'Popen', return_value=process) as reboot, \
+                patch.object(window.time, 'monotonic', side_effect=[0, 0, 0, 46]), \
+                patch.object(window, 'ready') as ready:
+            with self.assertRaisesRegex(TimeoutError, '45 seconds'):
+                window.boot_recorded('host', stream, dict(release='trial', command='sysboot trial'))
+        reboot.assert_called_once()
+        ready.assert_not_called()
+        stream.send.assert_not_called()
+        process.terminate.assert_called_once()
+
+    def test_continuous_boot_reserves_recovery_before_any_new_reboot(self):
+        stream = Mock(deadline=479)
+        with patch.object(window.time, 'monotonic', return_value=0), \
+                patch.object(window, 'ssh') as ssh, patch.object(window.subprocess, 'Popen') as reboot:
+            with self.assertRaisesRegex(TimeoutError, 'recovery budget'):
+                window.boot_recorded('host', stream, dict(release='trial'))
+            ssh.assert_not_called()
+            reboot.assert_not_called()
+            stream.arm.assert_not_called()
+
+    def test_opt_in_readiness_bounds_ssh_without_changing_default_timeout(self):
+        for enabled, expected_timeout in ((False, 30), (True, 2)):
+            with self.subTest(enabled=enabled), patch.object(window.time, 'monotonic', side_effect=[0, 0, 1]), \
+                    patch.object(window, 'ssh') as ssh:
+                window.ready('host', timeout=3, deadline_bound=enabled)
+                self.assertEqual(ssh.call_args.kwargs['timeout'], expected_timeout)
+
     def test_return_reboots_without_kbase_and_checks_restored_identity(self):
         once = window.load('bind_once', ROOT/'packaging/kernel/display-once.py')
         for upload_timeout, missing_after_reboot in ((False, False), (True, False), (False, True)):
@@ -367,6 +417,9 @@ class WindowTests(unittest.TestCase):
                 patch.object(window.os, 'write') as write, \
                 patch.object(window.os, 'close'), patch.object(window, 'ready') as ready:
             window.boot('mock', 'serial', Path(directory), dict(command='sysboot candidate', release='candidate'))
+            self.assertEqual([p.name for p in Path(directory).iterdir()],
+                             [next(Path(directory).glob('uart-*.log')).name])
+            self.assertEqual(next(Path(directory).glob('uart-*.log')).read_bytes(), b''.join(chunks))
         self.assertEqual([c.args[1] for c in write.call_args_list],
                          [b' ', b'setenv ethaddr c8:63:14:74:70:0d; sysboot candidate\n'])
         ready.assert_called_once_with('mock', expected='candidate', old_boot='old-boot')

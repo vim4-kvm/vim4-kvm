@@ -141,8 +141,32 @@ def trial_boot_command(prefix, file_size, header):
     return f'setenv kernel_addr_r 0x{address:08x}; ' + command
 
 
+def validate_ram_baseline(plan, baseline):
+    """A control boots the unchanged formal package through a private RAM init."""
+    formal = formal_baseline()
+    if (baseline['release'] != formal['release'] or
+            baseline['build_id'] != formal['build_id'] or
+            plan['release'] != baseline['release'] or
+            plan['build_id'] != baseline['build_id'] or
+            not plan.get('namespace') or not plan.get('payload_id')):
+        raise ValueError('RAM baseline control requires the formal identity and private payload')
+    boot = '/boot/kernels/' + baseline['release'] + '/'
+    for name in ('Image', 'vim4.dtb'):
+        if plan['files'].get(name) != baseline['files'].get(boot + name) or name not in plan['files']:
+            raise ValueError('RAM baseline control changes ' + name)
+    prefix = '/lib/modules/' + baseline['release'] + '/'
+    expected = {name.removeprefix(prefix): value for name, value in baseline['files'].items()
+                if name.startswith(prefix)}
+    private = 'modules/' + plan['release'] + '/'
+    actual = {name.removeprefix(private): value for name, value in plan['files'].items()
+              if name.startswith('modules/')}
+    if not expected or actual != expected:
+        raise ValueError('RAM baseline control changes the complete module inventory')
+
+
 def prepare(payload, init, baseline, output, release=RELEASE,
-            baseline_release=None, baseline_id=None, namespace=None, payload_id=None):
+            baseline_release=None, baseline_id=None, namespace=None, payload_id=None,
+            ram_baseline_control=False):
     state = json.loads(baseline.read_text())
     baseline_release = state['release'] if baseline_release is None else baseline_release
     baseline_id = state['build_id'] if baseline_id is None else baseline_id
@@ -164,7 +188,13 @@ def prepare(payload, init, baseline, output, release=RELEASE,
             raise ValueError('candidate artifact hash mismatch: ' + name)
     if state['release'] != baseline_release or state['build_id'] != baseline_id:
         raise ValueError('baseline proof release/build ID mismatch')
-    if same_image:
+    if ram_baseline_control:
+        control_files = {name: report['artifacts'][name] for name in ('Image', 'vim4.dtb')}
+        control_files.update({'modules/' + release + '/' + name: digest
+                             for name, digest in report['modules'].items()})
+        validate_ram_baseline(dict(release=release, build_id=build_id, files=control_files,
+                                   namespace=namespace, payload_id=payload_id), state)
+    elif same_image:
         boot = '/boot/kernels/' + baseline_release
         if (baseline_release != formal_baseline()['release'] or not namespace or not payload_id or
                 report['artifacts']['Image'] != state['files'].get(boot+'/Image') or
@@ -242,7 +272,9 @@ def prepare(payload, init, baseline, output, release=RELEASE,
                     baseline_files=state['files'], baseline_cmdline=cmdline,
                     files=files, command=command, source=report['source'])
         plan.update(layout)
-        if same_image:
+        if ram_baseline_control:
+            plan['ram_baseline_control'] = True
+        elif same_image:
             plan['dt_properties'] = report['dt_properties']
             plan['baseline_dt_properties'] = {name: state['dt_properties'][name]
                                                for name in report['dt_properties']}
@@ -344,7 +376,7 @@ def retained_preflight(plan, state):
             raise RuntimeError('retained baseline file changed: ' + name)
 
 
-def read_trial(archive, baseline=None):
+def read_trial(archive, baseline=None, *, ram_baseline_control=False):
     """Normalize existing trial.json and HDR2 manifest.json RAM payloads."""
     entries = {}
     for member in archive.getmembers():
@@ -358,6 +390,8 @@ def read_trial(archive, baseline=None):
         entries[name] = member
     metadata = 'trial.json' if 'trial.json' in entries else 'manifest.json'
     report = json.load(archive.extractfile(entries[metadata]))
+    if metadata != 'trial.json' and 'ram_baseline_control' in report:
+        raise ValueError('RAM baseline control requires trial.json metadata')
     if metadata == 'trial.json':
         plan = report
     else:
@@ -384,7 +418,13 @@ def read_trial(archive, baseline=None):
             if directive not in config:
                 raise ValueError('HDR2 config does not use the private RAM payload: ' + directive)
     validate_release(plan['release'])
-    if baseline is not None and plan['build_id'] == baseline['build_id']:
+    if 'ram_baseline_control' in plan or ram_baseline_control:
+        if not ram_baseline_control or plan.get('ram_baseline_control') is not True or metadata != 'trial.json':
+            raise ValueError('RAM baseline control must be explicitly enabled for this trial')
+        proof = baseline if baseline is not None else dict(
+            release=plan['baseline_release'], build_id=plan['baseline_id'], files=plan['baseline_files'])
+        validate_ram_baseline(plan, proof)
+    elif baseline is not None and plan['build_id'] == baseline['build_id']:
         boot = '/boot/kernels/' + baseline['release']
         if (baseline['release'] != formal_baseline()['release'] or not plan.get('namespace') or
                 not plan.get('payload_id') or not plan.get('dt_properties') or
@@ -427,7 +467,7 @@ def read_trial(archive, baseline=None):
     return plan, metadata, entries
 
 
-def stage(bundle, retained_baseline=None, reuse_staged=False):
+def stage(bundle, retained_baseline=None, reuse_staged=False, ram_baseline_control=False):
     def ensure_mountpoint(directory):
         # HDR2 uses a distinct release but its static PID 1 still needs
         # an existing empty bind destination; never install modules here.
@@ -443,7 +483,8 @@ def stage(bundle, retained_baseline=None, reuse_staged=False):
         else:
             retained_preflight(plan, retained_baseline)
     with tarfile.open(bundle) as archive:
-        plan, metadata, entries = read_trial(archive, retained_baseline)
+        plan, metadata, entries = read_trial(archive, retained_baseline,
+                                            ram_baseline_control=ram_baseline_control)
         if metadata == 'manifest.json' and retained_baseline is None:
             raise ValueError('HDR2 payload requires original retained baseline proof')
         check(plan)
@@ -521,8 +562,11 @@ def main():
     prepare_parser.add_argument('--baseline-id', help='Defaults to the captured baseline proof')
     prepare_parser.add_argument('--namespace')
     prepare_parser.add_argument('--payload-id')
+    prepare_parser.add_argument('--ram-baseline-control', action='store_true',
+                                help='explicitly wrap the unchanged formal package as a RAM control')
     stage_parser = commands.add_parser('stage')
     stage_parser.add_argument('bundle', type=Path)
+    stage_parser.add_argument('--ram-baseline-control', action='store_true')
     stage_parser.add_argument('--retained-baseline', type=lambda p: json.loads(Path(p).read_text()),
                               help='original baseline proof for chained RAM trials')
     args = vars(parser.parse_args())

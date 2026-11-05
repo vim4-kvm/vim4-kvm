@@ -43,7 +43,7 @@
 | 入口（同族文件） | 影响 | 用途 |
 |---|---|---|
 | [board-queue](../tools/board-queue) | 无 | 协调主机管理板票与采样；子命令影响由被调用入口决定。 |
-| [board-window](../tools/board-window) | 破坏；重启 | RAM 启动、采样与恢复。 |
+| [board-window](../tools/board-window)（[board_uart.py](../tools/board_uart.py)） | 破坏；重启 | RAM 启动、采样与恢复；显式 RAM 基线对照及批次级连续 UART，默认启动路径不变。 |
 | [board.py](../tools/board.py) | 破坏；清盘 | check / deploy / verify / provision / enroll / recover / flash。 |
 | [install-components.sh](../tools/install-components.sh) | 独占 | 板端组件升级与迁移。 |
 | [uart-run.py](../tools/uart-run.py)、uart-log.py | 独占 | Mac 串口执行或抓日志；纯日志只读，发送前核对命令影响。 |
