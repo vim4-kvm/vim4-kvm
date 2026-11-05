@@ -18,6 +18,77 @@ SPEC.loader.exec_module(window)
 
 
 class DecoderWindowTests(unittest.TestCase):
+    def test_startup_diagnostic_failure_is_preserved_and_blocks_acceptance(self):
+        with tempfile.TemporaryDirectory() as directory:
+            output = Path(directory)
+            for message in ('DMA-API: debugging enabled by kernel config\n',
+                            'WARNING: possible circular locking dependency detected\n',
+                            'BUG: KASAN: vmalloc-out-of-bounds in strchr+0x3c/0x80\n'):
+                with self.subTest(message=message), patch.object(window, 'run', return_value=message):
+                    if message.startswith('DMA-API: debugging'):
+                        window.require_clean_kernel_log(output)
+                    else:
+                        with self.assertRaisesRegex(RuntimeError, 'Kernel diagnostic failure'):
+                            window.require_clean_kernel_log(output)
+                    self.assertEqual((output / 'kernel.log').read_text(), message)
+
+    def test_fluster_missing_result_cannot_pass_on_exit_zero(self):
+        with tempfile.TemporaryDirectory() as directory:
+            path = Path(directory) / 'raw.json'
+            for content in (None, {}, {'test_suites': {}}):
+                if content is not None:
+                    path.write_text(json.dumps(content))
+                with self.subTest(content=content), self.assertRaisesRegex(ValueError, 'Missing or malformed'):
+                    window.fluster_result(path, 'suite', 'decoder', 'vector')
+            for status in ('Not run', 'Not supported', 'Timeout', 'Fail'):
+                path.write_text(json.dumps({'test_suites': {'suite': {'decoders': {
+                    'decoder': {'vectors': {'vector': {'result': status, 'time': 0}}}}}}}))
+                self.assertEqual(window.fluster_result(path, 'suite', 'decoder', 'vector')['result'], status)
+
+    def test_fluster_timeout_stops_before_the_next_vector(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            output = root / 'results'
+            output.mkdir()
+            manifest = root / 'bundle-manifest.json'
+            manifest.write_text(json.dumps({'fluster_revision': 'locked', 'files': {}, 'suites': [{
+                'name': 'suite', 'codec': 'H.264', 'mainline_decoder': 'decoder', 'test_method': 'md5',
+                'vectors': [{'name': 'first', 'input_path': 'resources/first'},
+                            {'name': 'second', 'input_path': 'resources/second'}]}]}))
+            plan = {'bundle': str(root), 'bundle_sha256': window.sha(manifest), 'suite': 'suite',
+                    'kernel': 'mainline', 'start': 0, 'count': 2, 'vector_timeout_seconds': 30}
+            calls = []
+
+            def process(command, log, timeout, env):
+                calls.append(command)
+                if 'list' in command:
+                    log.write_text('    decoder: available... OK\n')
+                    return 0
+                raise subprocess.TimeoutExpired(command, timeout)
+
+            with patch.object(window, 'bounded_process', side_effect=process), \
+                    self.assertRaisesRegex(RuntimeError, 'first: Timeout'):
+                window.run_fluster(plan, output, window.time.monotonic() + 600, {})
+            result = json.loads((output / 'results.json').read_text())
+            self.assertEqual(result['vectors']['first']['result'], 'Timeout')
+            self.assertEqual(result['vectors']['second']['result'], 'Not run')
+            self.assertEqual(len(calls), 2)
+
+    def test_bounded_process_terminates_decoder_child(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            terminated = root / 'child-terminated'
+            child = ('import signal,sys; from pathlib import Path; '
+                     f'signal.signal(signal.SIGTERM, lambda *_: (Path({str(terminated)!r}).write_text("stopped"), sys.exit(0))); '
+                     'print("ready", flush=True); signal.pause()')
+            parent = ('import signal,subprocess,sys; '
+                      'signal.signal(signal.SIGTERM, signal.SIG_IGN); '
+                      f'p=subprocess.Popen([sys.executable,"-c",{child!r}],stdout=subprocess.PIPE,text=True); '
+                      'assert p.stdout.readline().strip()=="ready"; p.wait()')
+            with self.assertRaises(subprocess.TimeoutExpired):
+                window.bounded_process([sys.executable, '-c', parent], root / 'process.log', 2)
+            self.assertEqual(terminated.read_text(), 'stopped')
+
     def test_baseline_requires_each_service_active(self):
         with patch.object(window, 'run', side_effect=['active\n', 'inactive\n']) as run, \
                 self.assertRaises(ValueError):

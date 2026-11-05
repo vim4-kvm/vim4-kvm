@@ -43,6 +43,9 @@
 - [测试清单 audio-1](2026-11-05-kunit-inventory-audio-1.md) — kernel；逐文件入口、原检查及待确认处置。
 - [测试清单 audio-2](2026-11-05-kunit-inventory-audio-2.md) — kernel；逐文件入口、原检查及待确认处置。
 - [测试清单 audio-3](2026-11-05-kunit-inventory-audio-3.md) — kernel；逐文件入口、原检查及待确认处置。
+- [调试启动 splat 离线修复与 PWM 锁拓扑](2026-11-05-debug-splat-fixes.md) — kernel；brcmfmac 上游移植及真实解析 KUnit、ADLA SG 上限修复；PWM 独立 key 修正跨实例建模，同实例 ABBA 明确保留，未上板。
+- [解码调试候选启动与门禁](2026-11-05-vdec-debug-boot.md) — kernel deployment；修正大 Image 加载地址后进入调试 Linux，暴露 PWM 锁、ADLA DMA、brcmfmac 越界及工具 media 查找问题；基线和视频已恢复，标准流未运行。
+- [解码标准验收离线准备](2026-11-05-vdec-standard-preparation.md) — kernel video；调试整包、锁定 Fluster/ISO 输入、compliance 与性能工具；无本轮硬件结果，HEVC 超时仍待验证。
 - [解码 KUnit 迁移结果](2026-11-05-vdec-kunit-results.md) — kernel video；移除七个 Python 测试文件，arm64 QEMU 五套 17/17，模块/内建与修改范围静态检查通过；硬件语义待实板。
 - [解码测试迁移清单](2026-11-05-vdec-test-migration.md) — kernel video；逐项登记七个文件、49 项测试的风险与 KUnit/compliance/实板替代验证。
 - [HEVC 接口与固件模式](2026-11-05-hevc-interface-review.md) — kernel video；保留 stateful，核对三种 codec 的固件参数方向；未发现 T7 主机完整参数注入模式，结论限于源码接口。

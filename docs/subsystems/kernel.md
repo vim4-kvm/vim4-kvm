@@ -14,7 +14,7 @@ IR/按键及NOR与eMMC引脚限制见[设备树记录](../bringup/2026-10-21-edg
 
 - [构建、安装与回退](../kernel.md)、[VM工作树](../workspace.md#构建)、[部署门禁](deployment.md#内核开发流程与部署门禁)。
 - [Wi-Fi、WPA3及P2P证据](../kernel-mainline.md#相关记录)。
-- [内存、拷贝与锁调试](../memory-copy-audit.md)。
+- [内存、拷贝与锁调试](../memory-copy-audit.md)、[PWM/CCF 锁拓扑与修复边界](../pwm-clock-locking.md)。
 - [下游补丁快照](../archive/kernel-patch-inventory.md)。
 - [电压、温控、空闲与挂起审查](../archive/platform-pm-offline.md)、[板测清单](../parity/platform-pm-board-checklist.md)。
 - [GPU差距、散热与验收](../archive/gpu-parity-plan.md)。
@@ -28,6 +28,7 @@ IR/按键及NOR与eMMC引脚限制见[设备树记录](../bringup/2026-10-21-edg
 - 改动范围提交前完成 strict checkpatch、W=1 和有效 sparse、模块/内建构建、改动头文件 kernel-doc；smatch 可用则运行。改 binding 时先 schema 后板 DTB 检查。工具缺失、跳过或失败不得记通过。
 - 提交单一目的且可独立构建；binding 先于其驱动/DTS 使用者。作者、版权及来源按[代码规范](../code-standards.md)保留。
 - H.264/MPEG-2 节点使用 stateless，HEVC 使用 stateful，JPEG 独立。HEVC 内核只消费固件元数据，不解析码流；确需解析先报告，不新增私有用户态 ABI。
+- 标准码流、调试候选与同板性能按[解码验收合同](../vdec-validation.md)，入口复用 vdec-window；锁定码流在宿主校验，板上不下载，未运行与超时单列。
 
 ## 错题
 

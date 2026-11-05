@@ -5,6 +5,8 @@
 
 ## 内核与部署
 
+- PWM 跨 chip 的 prepare_lock/nonatomic_lock 建模已按协调者授权在独立分支提交 `0a35577b8de2` 增加独立 key，arm64 QEMU 锁依赖回归 1/1；regulator 与 Wi-Fi 使用不同 chip，但 debugfs/初次 request 的 Wi-Fi 硬件查询仍有同实例真实 ABBA，保留未解决，实板零 splat 待验。[锁链、拓扑与修复边界](bringup/2026-11-05-debug-splat-fixes.md#pwm-锁依赖分析与修复边界)
+- ADLA 启动时 DMA SG 超限已在独立分支提交 `4c4126df2f8a`，按设备现有上限切分，模块/内建及生产构建完成；W=1+sparse 仍有既存 vendor 诊断，尚待合入调试候选与实板零 DMA-API 告警复验。[根因与验证边界](bringup/2026-11-05-debug-splat-fixes.md#adla-dma-路径)
 - 主线应用程序与插件位于整包和组件包都不提供的 `/opt/vim4-kvm` 私有目录（`hdr10-r14e`、`one-kvm-usb-*`），重刷或新板安装主线后须另行安装这些运行时，否则启动器 exec 失败。[启动器](../board/vim4-kvm-run)
 - 内核升级在写入 kernels.json 后、切换 extlinux 前中断，会使面板报告 Mainline 不可用并拒绝选择；U-Boot 仍启动旧整包，重新登记可恢复面板。[安装器](../packaging/kernel/register-runtime.py)
 - board-window 在新刷 5.15 镜像使用 `LINUX /Image` 符号链接布局时拒绝基线，因为要求路径含 release；当前板的版本化路径不受影响。[预检](../tools/board-window)
@@ -33,6 +35,7 @@
 
 ## Wi-Fi 与 SDIO
 
+- brcmfmac NVRAM 注释解析越界已在独立分支移植上游修复 `17d29954473b6`；真实解析器 KUnit 在 arm64 QEMU + KASAN 通过 3/3，尚待合入调试候选与实板启动复验。[修复来源与边界](bringup/2026-11-05-debug-splat-fixes.md#上游核对与-brcmfmac)
 - meson-gx-mmc 错误恢复在停止超时后仍归还缓冲区，可能在硬件仍访问时复用内存；缺当前已修证明，保留待核对。[主机路径审查](bringup/2026-11-02-wifi-sdio-host-path.md#改动)
 - meson-gx-mmc 的 dma_map_sg 失败路径可能写越界，影响映射失败后的内存安全；缺当前已修证明，保留待核对。[主机路径审查](bringup/2026-11-02-wifi-sdio-host-path.md#改动)
 - brcmfmac 未检查 OOB 路由写失败，设备配置失败时可能继续使用未就绪中断，影响收发；缺当前已修证明，保留待核对。[主机路径审查](bringup/2026-11-02-wifi-sdio-host-path.md#改动)
