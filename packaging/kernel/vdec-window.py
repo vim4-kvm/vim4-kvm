@@ -221,13 +221,19 @@ def run_fluster(plan, output, deadline, env):
             if code or not re.search(r'^\s*' + re.escape(name) + r':.*\.\.\. OK\s*$', available, re.M):
                 raise ValueError('Fluster decoder unavailable: ' + name)
         for index, vector in enumerate(selected, start):
+            name = vector['name']
+            if name in plan.get('known_unsupported', {}):
+                report['vectors'][name] = {'result': 'Known unsupported',
+                                           'reason': plan['known_unsupported'][name]}
+                save()
+                print('FLUSTER_VECTOR', index, name, 'Known unsupported', flush=True)
+                continue
             # A pixel comparison may decode twice (hardware and ISO reference).
             process_limit = timeout * (2 if suite['test_method'] == 'pixel' else 1) + 15
             if time.monotonic() + process_limit > deadline:
                 report['stopped'] = 'window budget reserved for recovery'
                 save()
                 return False
-            name = vector['name']
             raw = output / f'vector-{index:04d}.json'
             log = output / f'vector-{index:04d}.log'
             command = [*base, '-o', str(output / f'decode-{index:04d}'), 'run',

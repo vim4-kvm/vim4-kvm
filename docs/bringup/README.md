@@ -17,6 +17,8 @@
 
 ## 2026-11-05
 
+- [H.264 全集最终汇总与评审边界](2026-11-05-vdec-avc-final.md) — kernel video；110/135套件通过，旧58项零回退；20Fail、5已知不支持，保留原始Error/Timeout；r58恢复通过，可进入代码评审但未达完整5.15验收。
+
 - [r57 Sharp STREAMOFF 与续跑](2026-11-05-vdec-r57-sharp-streamoff.md) — kernel video；累计103S/21F/1Error/2Timeout/8未运行；Sharp两队列STREAMOFF成功、无FLUSH调用，SP1超时后正式恢复通过。
 
 - [r56 FMO 停止与 Khadas parser 来源](2026-11-05-vdec-r56-fmo-parser.md) — kernel video；累计79S/17F/1Timeout/38未运行；已知FMO超时立即恢复，系统parser匹配Khadas包，首条STREAMOFF实测通过。
