@@ -17,6 +17,7 @@
 
 ## 2026-11-05
 
+- [PWM 既有 KUnit 复验](2026-11-05-pwm-kunit-results.md) — kernel power；复用原测试 QEMU 1/1，PWM/clk-pwm/regulator 内建/模块及静态检查完成；无 Python 可迁，同控制器 ABBA 保留，实板未验。
 - [brcmfmac KUnit 迁移结果](2026-11-05-brcmfmac-kunit-results.md) — kernel network；删除 P2P Python，arm64 QEMU 新参数/决策 2 项与已有 NVRAM 3 项均通过，构建/范围静态检查完成；固件/P2P/offload 待实板。
 - [ADLA KUnit 迁移结果](2026-11-05-adla-kunit-results.md) — kernel；四个 Python 删除，真实 allocator/取消/边界 arm64 QEMU 4/4，内建/模块编译完成；既有 W=1/sparse 门禁未通过，DMA/复位/生命周期待实板。
 - [其余非暂缓驱动测试迁移结果](2026-11-05-remaining-drivers-kunit-results.md) — kernel usb thermal；9 个 Python 删除，风扇 arm64 QEMU 3/3，范围构建完成；CRG/TCPM 有效 sparse 未通过，V/B 待实板。
