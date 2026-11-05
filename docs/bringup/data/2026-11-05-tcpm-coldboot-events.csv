@@ -1,0 +1,4 @@
+kernel,boot_id,phase,seconds_since_linux,configuration,uart_timing,evidence
+7.3.1-vim4-20261104.3,797ac66abfa04f66beec68ae044aa6a6,startup,7.428245,formal .3,11:06:17.653890 requested reboot.target; 11:06:28.237171 Linux .3; 11:06:35.665416 unrequested ROM without shutdown; 11:06:45.920523 Linux .3 again,logs/debug-splat-a83/
+7.3.1-vim4-20261104.3,b9b9ed3774394e3098c462186aba272d,startup,7.517541,formal .3,11:52:28.555161 Linux .3 after E1; 11:52:36.072687 unrequested ROM; actual requested recovery reboot.target at 11:53:10.643526,logs/debug-splat-e1/
+7.3.1-vim4-20261105.28,not captured,startup before decoder validation,approximately 6; last kernel timestamp 5.540308 is only a lower bound,production config SHA256 7be7563e089ff628a320cd82ed163d88c576e4c7612f6bf849b230d2b9719b1c,NetworkManager/systemd-hostnamed startup then NUL and BL1 cold_boot; no per-line host timestamps; automatically booted .3,logs/hwdecode-parity-r51/uart-1793898813155997000.log

@@ -23,6 +23,7 @@
 - [H.264 场缓冲生命周期](2026-11-05-vdec-field-lifetime.md) — kernel video；`.27` stateless compliance 60/60；r49 子集 7/10、四条隔行转通过，CVFC1 正确裁剪后 50 帧逐字节相等；恢复 `.3`。
 - [H.264 Sharp 尾帧与 r50](2026-11-05-vdec-sharp-tail.md) — kernel video；预算内运行 65/135，54 Success、11 Fail；两条 Sharp 各缺一帧，其余帧逐字节正确，排空路径待定位。
 - [解码分支集成基线重放](2026-11-05-vdec-integrated-rebase.md) — kernel video；56 个补丁 range-diff 不变、逐提交构建通过；17 次 QEMU KUnit 通过，`.28` 实板验收待运行。
+- [r51 `.28` 启动冷复位](2026-11-05-vdec-r51-coldboot.md) — kernel usb video；启动约6秒回 ROM，解码验收未运行；正式 `.3` 身份与视频恢复，计入候选冷复位统计。
 - [T7 H.264 多 slice 生命周期修复](2026-11-05-vdec-multislice.md) — kernel video；`.26` 复验 11 条 Fail 转通过，3 条单 slice 对照通过；7 Fail、1 内核 Timeout 保留；恢复 `.3` 和视频，上传已归档清理。
 - [独立格式 Fluster 与 HEVC 启动顺序](2026-11-05-vdec-independent-fluster.md) — kernel video；H.264 子集 1/2，MPEG-2 0/2（1 未运行），像素失败即停止；清理已归档上传，恢复 `.3`；HEVC bit21 模式差异待验证。
 - [解码缓冲序号修复与复验](2026-11-05-vdec-buffer-sequence.md) — kernel video；独立序号提交与静态检查；`.25` stateless/JPEG 各 60/60，HEVC SOURCE_CHANGE 超时，Fluster 未运行；已恢复 `.3` 与视频。
