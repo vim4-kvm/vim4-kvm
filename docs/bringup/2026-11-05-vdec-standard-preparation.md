@@ -1,6 +1,7 @@
 # 2026-11-05：解码标准验收离线准备
 
-本记录只有离线构建与工具验证，没有占板。生产仍为既有基线；调试候选未部署，
+本记录记录离线构建与工具验证。后续首轮候选在 U-Boot 读 Image 时异常，未进入
+候选 Linux，已恢复正式基线，见[启动记录](2026-11-05-vdec-debug-boot.md)。
 标准码流硬件结果、带流 compliance、5.15 对照及性能全部未运行。
 [验收合同](../vdec-validation.md)描述入口，[KUnit 结果](2026-11-05-vdec-kunit-results.md)
 记录前置迁移，不把这些证据合并成硬件验收通过。
@@ -51,7 +52,25 @@ H.264/HEVC bundle manifest SHA256 为
 `5110980ef12c4c999ad11c309f08e4274a8a1436b15db8d1ecac643c3a75da1b`。
 原始输出为 `fluster-avc-hevc-prepare.log`、`fluster-avc-hevc-seal.log`，完整下载日志
 在 VM bundle 的 `download.log`。单独重试仍得到 HTML，记录 `itu-retry.log`；
-响应头保留在 VM tools 的 `itu-response-headers.txt`。两版对照须保留同样的缺失项。
+响应头保留在 VM tools 的 `itu-response-headers.txt`。以上是首次封存状态，补齐结果如下。
+
+用户随后提供慢速逐个下载的 93 个 ZIP。当前板窗结束、基线及视频恢复后，重新逐个
+核对发布者 MD5，再导入新的缓存；没有覆盖先前封存包。`--seal-cached` 已确认
+HEVC **147/147**、JVT-AVC_V1 **135/135**、High **45/45** 全部可用；连同 MPEG-2
+52 条，计划输入 **379/379** 已就绪。此计数仅指输入，不是硬解通过数。
+
+最新目录为 VM `/home/deepdream/build/hwdecode-parity-fluster-avc-hevc-complete-v2`，
+manifest SHA256 `eebc3e7202bfe35ce0d0a65506145a9d65bbae75b785b8334ad76bb054177772`，
+归档 SHA256 `6b00986ed4ddba213f413c83c01a7bd6d4e392d01ee028416cd657eda9cabed4`。
+封存后独立复核 504 个列出文件和归档内相同文件的 SHA256，均通过；两版对照应改用
+此完整输入包。原始输出为 `hevc-local-import-v2.log`、
+`fluster-avc-hevc-complete-v2-seal.log`、`fluster-complete-verify.log`；逐 ZIP 来源与
+摘要保留在新目录的 `local-import.json`。
+
+导入时 VM 直接读 Mac Downloads 阻塞，封存被提前启动，曾产生可用输入为零的
+`complete` 清单；它未上板且不作为验收输入。终止阻塞进程后先复制至工作区，等待
+93 条导入成功再顺序封存为 `complete-v2`。失败输出保留在
+`fluster-avc-hevc-complete-seal.log`，不覆盖或隐去该次失败。
 
 MPEG-2 的 52 条已由宿主校验后封存，最新 bundle manifest SHA256
 `f4fbdfb634e776da8a48162a49954111faad289bcbec42b1b75c749453c39378`，记录
