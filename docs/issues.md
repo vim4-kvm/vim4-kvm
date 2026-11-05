@@ -5,7 +5,7 @@
 
 ## 内核与部署
 
-- MMC `Invalid wait context` 修复原分支 `f911e1d8817fb`、v2 `5deb393be1501` 离线通过；正确生产`.93`完成600秒单TCP接收，326.97 Mbit/s，相对369.55基线下降11.52%，已报告且未改回硬IRQ。A仍cold_boot，debug_locks/eMMC调试门禁未完成，性能尚未验收。[本轮数据与配置纠错](bringup/2026-11-05-pd-fifo-validation.md#b生产配置与脚本误判的边界)；[集成边界](bringup/2026-11-05-debug-splat-integration.md)
+- MMC `Invalid wait context` 修复原分支 `f911e1d8817fb`、v2 `5deb393be1501` 离线通过；集成生产`.90`与正式`.3`同窗各600秒328.88/342.08 Mbit/s，同窗-3.86%，通过不超过10%的性能门槛，未改回硬IRQ。此前`.93`相对历史-11.52%不能归因MMC或PD。A仍cold_boot，debug_locks/eMMC调试门禁未完成。[同窗结果、生产配置与恢复](bringup/2026-11-05-integration-wifi-control.md)；[集成边界](bringup/2026-11-05-debug-splat-integration.md)
 - ADLA mutex错误合类修复原分支 `53d7db5f377e8` 的真实API QEMU+KASAN+lockdep测试1/1、模块/内建检查完成；v2 `e8c40f17b20ea` 合并到已有5-case独立suite，strict 0/0/0，编译/QEMU待集成窗口。`.83` 没有绑定/lockdep快照，不能判硬件门禁通过。[修复](bringup/2026-11-05-adla-mutex-pd-timing.md#adla-修改与来源)；[冲突处理与未验项](bringup/2026-11-05-debug-splat-integration.md#adla-冲突如何解决)
 - cold_boot原因未明；上游FUSB302 v1已移植到pd-fifo（`d76280411565d`、`bbe16d470a0c1`），`.92`仍在23.740秒回ROM，A失败，未达到合入门槛。首个标称生产`.93`实为debug，已修构建器，不能计作生产样本；正确生产包600秒稳定，但不改变A失败。缺实际Hard_Reset/VBUS/RESET闭环，未继续猜改PD。[本轮证据](bringup/2026-11-05-pd-fifo-validation.md)；[前序统计与状态机](bringup/2026-11-05-tcpm-coldboot-audit.md)
 - PWM 跨 chip 的 prepare_lock/nonatomic_lock 建模已按协调者授权在独立分支提交 `0a35577b8de2` 增加独立 key，arm64 QEMU 锁依赖回归 1/1；regulator 与 Wi-Fi 使用不同 chip，但 debugfs/初次 request 的 Wi-Fi 硬件查询仍有同实例真实 ABBA，保留未解决，实板零 splat 待验。[锁链、拓扑与修复边界](bringup/2026-11-05-debug-splat-fixes.md#pwm-锁依赖分析与修复边界)
