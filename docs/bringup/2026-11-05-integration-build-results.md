@@ -3,7 +3,9 @@
 集成源码固定为 `fd41fb5950b9da1fb336ce00d5137d27ee9755fa`，工作树
 `/home/deepdream/src/linux-7.3-integration-73`，由协调者通过 tools/vm 登记。
 所有编译、封包和运行验证走 board-queue heavy，不访问板子、不排板窗。
-两套构建及独立完整 RAM 复读通过；同 SHA 的 QEMU 组合复验尚待完成。
+两套构建及独立完整 RAM 复读通过；同 SHA 的全部现存迁移驱动与标准CCF gate组合
+arm64 QEMU **15套、59/59通过，0 skipped**。另行追加的DMA-BUF压力组两次超时，
+未定位原因，单独保留失败记录及issue，不声称全内核所有KUnit通过。
 
 ## 输入与构建过程
 
@@ -74,14 +76,24 @@ ram-validation.json。两套封包后已删除自身10878个`.o`；Image/.ko、�
 ## 组合 KUnit
 
 当前 SHA 的风扇改动删除了旧策略及其 KUnit（含 drivers/thermal/.kunitconfig），
-不恢复已经删除的策略测试。原十一套中当前保留十套驱动测试；增加相关上游
-DMA-BUF fence/chain/unwrap/reservation 套件，单列其结果，避免用旧数量假装覆盖仍在。
+不恢复已经删除的策略测试。原十一套中当前保留十套驱动测试；最终补充相关上游
+CCF gate套件，单列其结果，避免用旧数量假装覆盖仍在。
 ADLA 必须实际运行新增 `adla_mutex_roles_test`，不能只验证旧四项。
 
-运行继续复用同一 O=，九份当前配置是 wave5、hdmirx、jpeg、meson DRM、Meson ASoC、
-DMA-BUF、ADLA、brcmfmac、PWM。使用 arm64 QEMU，无 suite filter；运行 profile
+运行继续复用同一 O=，八份驱动配置是 wave5、hdmirx、jpeg、meson DRM、Meson ASoC、
+ADLA、brcmfmac、PWM，另加只选择标准CLK_GATE_KUNIT_TEST的片段。arm64 QEMU无suite filter；profile
 沿用明确记录的 WERROR=n、generic KASAN 和 PROVE_LOCKING，不改生产配置或提交的
-各目录配置。完整命令在 run-kunit.sh，结果仍待执行；不将过去44/44移植为本次通过。
+各目录配置。完整命令在 run-kunit.sh；双vCPU/300秒运行上限，全部59项在27.637秒内
+运行通过（含配置/构建总44.085秒）。其中现存迁移驱动10套42项，CCF gate5套17项，
+ADLA的五项含新增锁类用例全部通过，完整日志无BUG/WARNING/KASAN/lockdep/panic错误特征。
+`kunit-drivers-clock-wrapper.log`保存实际命令与配置/编译/运行输出，候选 `kunit/`
+保存test.log、result.json、config、kunitconfig、Image.gz；在VM与Mac均有副本。
+
+最终QEMU配置SHA-256：`8d3c00aeb49ae761b660bb37d84f8017d64346fe58f7f38216ecd696ff73e6ea`；
+Image.gz：`a584595c6f6369f89f5caf35945bd36a1a39c88cc2c3e13b95e839a9d08a0918`。
+运行后再次确认指定SHA和干净源码，并删除同O=的测试构建`.o`。
+
+## DMA-BUF 压力复验超时
 
 首次单 vCPU、300秒运行超时：解析器报告46项中33 passed、12 crashed、1 skipped，
 13 errors。原始KTAP确认 ADLA 五项含锁类用例通过，接着 DMA-BUF fence-chain 未完成；
@@ -89,8 +101,16 @@ qemu被工具超时SIGTERM终止，crashed是截断输出的解析标签，不�
 也不能把其余未执行驱动套件记通过。完整失败产物在候选 `kunit/failed-single-cpu/`，
 实际脚本另存 `run-kunit-single-cpu.sh`，完整编译/运行输出 `kunit-wrapper.log`。
 源码确认竞争测试至少需要两颗在线CPU（首次因此跳过），chain压力4096节点。
-随后改为 `--qemu_args '-smp 2' --timeout 900` 重跑相同完整配置，仍待完成；
-复用已构建的同SHA测试Image，不改源码、不减少用例。两套RAM包不受此执行超时影响。
+随后改为 `--qemu_args '-smp 2' --timeout 900` 重跑同一配置，仍超时：
+46项中34 passed、12 crashed、13 errors，竞争用例已通过、无skip，fence-chain仍未完成。
+两次最后进展均为test_wait_forward的slow提示，未出现该项结束KTAP；不能据此判断
+是TCG性能问题还是内核等待问题。第二次失败副本在 `kunit/failed-smp2/`，脚本
+`run-kunit-dmabuf-smp2.sh` 与输出 `kunit-smp2-wrapper.log` 保留，未修改内核或测试源码。
+
+DMA-BUF是替代已删除风扇套件时额外选择的上游压力组，不是迁移驱动原测试。
+此额外验证**未通过/原因未定位**，登记[issue](../issues.md#内核与部署)，不能用
+最终驱动/CCF组合的结果覆盖这两次失败。最终配置保留全部现存迁移驱动测试，
+选用完整的标准CCF gate套件补充时钟逻辑覆盖。两套RAM包的独立全量校验结论不变。
 
 ## 验证边界
 

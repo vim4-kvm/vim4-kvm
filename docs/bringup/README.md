@@ -17,7 +17,7 @@
 
 ## 2026-11-05
 
-- [集成候选构建与 KUnit 复验](2026-11-05-integration-build-results.md) — kernel；fd41fb5 同 O= 生产/调试 RAM 候选、完整模块身份与组合 QEMU；进行中，板测待安排。
+- [集成候选构建与 KUnit 复验](2026-11-05-integration-build-results.md) — kernel；fd41fb5 生产.90/调试.91 RAM全量校验通过，现存迁移驱动/标准CCF arm64 QEMU 15套59/59；额外DMA-BUF两次超时登记，板测待安排。
 - [集成候选回归与构建准备](2026-11-05-integration-regression-plan.md) — kernel；19 分钟生产回归清单、缺入口/待实板边界及同 O= 双候选 RAM 构建入口；仅离线准备，未排 heavy、未构建、未访问板子。
 - [KUnit 提交说明与利用率审查返工](2026-11-05-kunit-review-rework.md) — kernel；25 提交补正文/Signed-off-by，消息阶段空 diff、原四 SHA 保留；最终 29 完整 patch 检查通过，撤销 fallthrough 并独立补 break；QEMU 44/44，利用率显示需实板回归。
 - [全树 KUnit 最终组合复验](2026-11-05-kunit-final-replay.md) — kernel；82 个 Python 已迁出/删除，九配置 arm64 QEMU 11 套 44/44；WERROR=n 仅作运行复验，既有静态失败及实板边界保留。

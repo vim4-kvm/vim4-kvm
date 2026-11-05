@@ -5,6 +5,7 @@
 
 ## 内核与部署
 
+- `fd41fb5950b9` 在arm64 QEMU/KASAN/PROVE_LOCKING下跑额外上游DMA-BUF压力组，单CPU/300秒与双CPU/900秒均在fence-chain的test_wait_forward slow提示后超时，未定位TCG性能或内核等待问题；双CPU竞争用例通过，不能将未完成项记通过。不是实板故障证据，本任务不修改核心实现。[两次配置、原始输出与边界](bringup/2026-11-05-integration-build-results.md#dma-buf-压力复验超时)
 - 联合调试 `.23` 在 `meson_mmc_irq → meson_mmc_post_req → debug_dma_unmap_sg` 报 `BUG: Invalid wait context`，随后约 18 秒串口转 BL2 并报 cold_boot，未保存到 panic；锁错误与冷复位因果未确定。候选已退出并恢复 `.3`，标准解码未运行；须先修复/定位启动问题才能验收调试解码。[原始堆栈与恢复证据](bringup/2026-11-05-vdec-joint-debug.md#实板结果)
 - PWM 跨 chip 的 prepare_lock/nonatomic_lock 建模已按协调者授权在独立分支提交 `0a35577b8de2` 增加独立 key，arm64 QEMU 锁依赖回归 1/1；regulator 与 Wi-Fi 使用不同 chip，但 debugfs/初次 request 的 Wi-Fi 硬件查询仍有同实例真实 ABBA，保留未解决，实板零 splat 待验。[锁链、拓扑与修复边界](bringup/2026-11-05-debug-splat-fixes.md#pwm-锁依赖分析与修复边界)
 - ADLA 启动时 DMA SG 超限已在独立分支提交 `4c4126df2f8a`，按设备现有上限切分，模块/内建及生产构建完成；W=1+sparse 仍有既存 vendor 诊断。已纳入 `.23`，但候选先遇 MMC 锁错误及冷复位，未完成 ADLA probe 与零 DMA-API 告警联合复验。[根因与验证边界](bringup/2026-11-05-debug-splat-fixes.md#adla-dma-路径)
