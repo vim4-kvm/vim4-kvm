@@ -4,7 +4,8 @@
 `8c94ee343220cebc8f208097daf2308fd5a04c76`。目录
 `drivers/media/platform/amlogic/vdec/` 有七个 Python 文件、49 个测试方法；
 此前“24 项”是历史阶段数，不能当作当前范围。
-下表在删除前登记原风险与替代验证；“迁移/删除”是处置计划，不表示已经完成。
+下表在删除前登记原风险与替代验证。七个文件现已全部移除，纯逻辑迁移的
+17 项 KUnit 已通过；其余硬件验证仍待运行，见[执行结果](2026-11-05-vdec-kunit-results.md)。
 所有原名省略 `test_` 前缀。不保留 Python 或重新构造假的 vb2/V4L2 对象。
 
 ## 逐项处置
@@ -104,35 +105,4 @@ strict checkpatch 和改动头文件 kernel-doc 检查后提交。变更 binding
 [MJPEG](2026-11-04-mjpeg-decoder.md)、[HEVC](2026-11-05-hevc-stateful.md)；
 这些历史正常路径证据不能证明所有故障路径通过。
 
-## 已完成：H.264 头部
-
-`02ad5d554b856` 补充最小配置缺失的 REGMAP_MMIO 依赖；`32885171b804a` 将
-`test_h264_headers.py` 三项迁入 `h264_headers_kunit.c` 并删除原 Python 文件。
-测试调用实际内核序列化函数，使用条件 KUnit 导出，不抽取 C 代码、不模拟内核对象。
-入口为内核 vdec 的 [.kunitconfig](https://github.com/vim4-kvm/linux/blob/hwdecode-parity/drivers/media/platform/amlogic/vdec/.kunitconfig)。
-
-实际执行 `tools/testing/kunit/kunit.py run --arch arm64`：三个用例全部通过，
-保存完整 QEMU 输出、JSON 和配置。内建驱动/测试已运行；生产配置模块和
-KUnit 测试模块均编译通过。改动文件 W=1 和 C=1 有实际 CC/CHECK、无诊断；
-sparse 固定源码 `84ec0658c81db4ccc4aabc420d3dc118c2c6a310`，报告版本
-`v0.6.5-rc1-21-g84ec0658`。系统旧 sparse 不作为有效结果。
-
-strict checkpatch 为零 error/warning/check；只忽略新文件自动提示
-FILE_PATH_CHANGES，已人工确认 MAINTAINERS 的 vdec 目录通配覆盖新文件。
-本步未修改头文件或 DT binding；kernel-doc 额外检查原有 h264_headers.h 无诊断。
-smatch 未安装，未运行，不能称通过。
-
-保留失败和范围边界：首次全内核 W=1 被未改动的 arm64 syscall 表
-override-init 警告阻断，不能算全内核检查通过；正常配置 KUnit 之后才通过。
-最小配置缺少 REGMAP_MMIO 的编译失败由上述独立依赖提交修复。
-扩大到整个驱动目录的 sparse 还报告原有 `aml_S4_dec_ops` 缺少声明；内建准备
-阶段还报告未改动 vdso 的 `__kernel_getrandom`。这些不是本次新文件诊断，
-不宣称整棵树零警告。
-
-原始输出在 `build/hwdecode-parity/`：`h264-kunit-run.log`、`run2.log`、
-`run3.log` 保留各次构建；`h264-kunit-qemu.log`、`h264-kunit-result.json`、
-`h264-kunit.config` 是实际运行证据；`h264-kunit-static-module.log` 与
-`h264-kunit-module-config.log` 保存模块、内建及 sparse 输出，
-`h264-kunit-commit.log` 保存最终 checkpatch。没有访问板子。
-
-剩余六个 Python 文件仍在迁移中；本节不表示第 1 节已经全部完成。
+迁移提交、实际命令、原始输出和未验边界集中在[执行结果](2026-11-05-vdec-kunit-results.md)。
