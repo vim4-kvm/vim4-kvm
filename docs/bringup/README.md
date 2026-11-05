@@ -17,6 +17,7 @@
 
 ## 2026-11-05
 
+- [冷复位的 Wi-Fi probe 排除实验](2026-11-05-debug-splat-reset-isolation.md) — kernel network usb；E1内核明确拒载brcmfmac仍cold_boot，eMMC门禁未运行；自动回 `.3` 后另有未请求复位，最终身份/4K视频恢复；E2供电前提无法确认，未做。
 - [启动修复重放到 KUnit 迁移基线](2026-11-05-debug-splat-integration.md) — kernel；v2保留原分支，MMC/ADLA重放到7e35e3b，合并为一个ADLA KUnit suite，逐提交strict 0/0/0；编译与统一候选验收待集成窗口。
 - [ADLA 锁类修复与 PD 启动时序比较](2026-11-05-adla-mutex-pd-timing.md) — kernel network usb；调用点宏及QEMU KUnit 1/1；`.83` Soft_Reset收到及时Accept后仍cold_boot，A未过，已恢复 `.3` 与4K视频；B改用集成候选。
 - [启动修复实板复验与生产吞吐准备](2026-11-05-debug-splat-board-validation.md) — kernel network usb；`.81` 新暴露 ADLA mutex 类别报告后 cold_boot，PD 同步采证；已恢复 `.3` 与4K视频，生产 `.82` 待清理旧候选容量后测600秒吞吐。

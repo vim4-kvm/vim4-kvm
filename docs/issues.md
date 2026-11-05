@@ -5,9 +5,9 @@
 
 ## 内核与部署
 
-- MMC `Invalid wait context` 修复原分支 `f911e1d8817fb` 已完成离线检查，v2重放为 `5deb393be1501`、patch-id不变；`.83` 未见原报告，但cold_boot使指定eMMC/SDIO门禁未运行。生产600秒吞吐改用统一集成候选，尚未验收。[来源与集成边界](bringup/2026-11-05-debug-splat-integration.md)
+- MMC `Invalid wait context` 修复原分支 `f911e1d8817fb` 已完成离线检查，v2为 `5deb393be1501`、patch-id不变；`.83` 和禁Wi-Fi的E1都因cold_boot未执行指定eMMC/SDIO门禁。生产600秒吞吐留统一集成候选，尚未验收。[集成边界](bringup/2026-11-05-debug-splat-integration.md)；[E1未验项](bringup/2026-11-05-debug-splat-reset-isolation.md#e1-实板结果)
 - ADLA mutex错误合类修复原分支 `53d7db5f377e8` 的真实API QEMU+KASAN+lockdep测试1/1、模块/内建检查完成；v2 `e8c40f17b20ea` 合并到已有5-case独立suite，strict 0/0/0，编译/QEMU待集成窗口。`.83` 没有绑定/lockdep快照，不能判硬件门禁通过。[修复](bringup/2026-11-05-adla-mutex-pd-timing.md#adla-修改与来源)；[冲突处理与未验项](bringup/2026-11-05-debug-splat-integration.md#adla-冲突如何解决)
-- 调试候选cold_boot原因未明；`.83` 实际Soft_Reset TX至Accept13.577ms，未超本树60ms，随后等待Source_Capabilities时日志中断。初始标注100ms阶段再次明显提前；无Hard_Reset/VBUS/RESET波形及连续watchdog证据，不把“内核慢”认定为原因，未改PD。[实板与新的PD尾部](bringup/2026-11-05-adla-mutex-pd-timing.md#83-实板与新的-pd-尾部)
+- cold_boot原因未明；`.83` 的Soft_Reset收到及时Accept，E1中内核明确拒载brcmfmac后仍复位，排除驱动probe的必要性。自动回正式 `.3` 后也有一次本脚本未请求的复位。没有Hard_Reset/VBUS/RESET波形闭环；E2默认供电前提无法确认，未运行或修改PD。[区分结果与边界](bringup/2026-11-05-debug-splat-reset-isolation.md)
 - PWM 跨 chip 的 prepare_lock/nonatomic_lock 建模已按协调者授权在独立分支提交 `0a35577b8de2` 增加独立 key，arm64 QEMU 锁依赖回归 1/1；regulator 与 Wi-Fi 使用不同 chip，但 debugfs/初次 request 的 Wi-Fi 硬件查询仍有同实例真实 ABBA，保留未解决，实板零 splat 待验。[锁链、拓扑与修复边界](bringup/2026-11-05-debug-splat-fixes.md#pwm-锁依赖分析与修复边界)
 - ADLA DMA SG 上限修复 `4c4126df2f8a` 已离线构建并在集成基线中；`.81/.83` 未见旧超限特征，但cold_boot前未取得绑定/流量/零告警完整门禁。W=1+sparse既存vendor诊断仍保留。[根因](bringup/2026-11-05-debug-splat-fixes.md#adla-dma-路径)；[最新实板边界](bringup/2026-11-05-adla-mutex-pd-timing.md#83-实板与新的-pd-尾部)
 - 主线应用程序与插件位于整包和组件包都不提供的 `/opt/vim4-kvm` 私有目录（`hdr10-r14e`、`one-kvm-usb-*`），重刷或新板安装主线后须另行安装这些运行时，否则启动器 exec 失败。[启动器](../board/vim4-kvm-run)
