@@ -2,8 +2,9 @@
 
 按[隔行设计](2026-11-05-vdec-interlaced-design.md)完成四个独立准备提交，再单独
 开放隔行入口。各提交均实际运行离线检查；生产配置 `.27` 在 r48 完成 stateless
-compliance，HEVC streaming 超时后停止并恢复 `.3`。隔行像素与完整帧导出未运行，
-不能据此宣称隔行已经验收。
+compliance，HEVC streaming 超时后停止并恢复 `.3`。r49 解耦 HEVC 后，六条隔行中
+四条通过、两条仍像素失败，三条对照全部通过；CVFC1 完整帧按正确偏移裁剪后
+50 帧逐字节相等。尚未重跑 H.264 全集，不能宣称完整隔行或逐行回归验收完成。
 
 ## 提交与验证
 
@@ -18,8 +19,6 @@ compliance，HEVC streaming 超时后停止并恢复 `.3`。隔行像素与完�
 每个提交分别通过 W=1 模块/内建构建、有效 sparse、format-patch strict
 checkpatch；修改头文件也运行 kernel-doc。vdec 无诊断，内建前置仍有既有的
 arm64 `__kernel_getrandom` sparse 声明告警。没有 DT binding 修改，smatch 未安装。
-开放入口的首次提交正文换行触发 checkpatch 警告，修正文后重跑通过；未推送前
-仅修正提交正文，没有改写前四个提交。
 
 原始输出在 `build/hwdecode-parity/interlaced/`：四个提交分别为
 `series-{1..4}-kunit.log`、`*-qemu.log`、`*-result.json`、`*-module.log`、
@@ -32,7 +31,6 @@ arm64 `__kernel_getrandom` sparse 声明告警。没有 DT binding 修改，smat
 复用注册的 `vdec-sequence` 工作树和 O=，快进到已提交的入口 HEAD 后构建。
 `interlaced/candidate-build-resume.log` 保存完整构建、封包及私有模块核验输出；
 `run48/artifact-identity.json` 保存 VM 来源与 Mac 副本的哈希/长度核对。
-私有模块复制后 fsync，再与 VM 原文件比较，不能仅用副本自己的哈希证明来源。
 
 | 产物 | 实际身份 |
 |---|---|
@@ -120,8 +118,38 @@ HEVC 原始内核日志为 `timeout, irq_status 00 status 00 pc 00000a1d shift 0
 `/var/tmp/hwdecode-standard-r48`，见 `run48/board-upload-files.json` 和
 `upload-cleanup.log`。未修改正式启动配置。
 
-下一窗口复用 `.27`，先运行 capture_probe，再运行上述十条 Fluster；不重试
+后续 r49 复用 `.27`，先运行 capture_probe，再运行上述十条 Fluster；不重试
 HEVC，不重建内核。普通像素 Fail 继续收集，窗口级错误仍停止并恢复。
+
+## r49 隔行子集与对照
+
+原始结果在 `logs/hwdecode-parity-r49/validation-fluster-1793893158785852000/`。
+`results/vector-*.json` 与 `results/fluster-followup-*/vector-*.json` 保存 Fluster
+原始 JSON；`window-status.json` 为流程成功、conformance 未全通过，不能混为一谈。
+同一已提交 H.264 HEAD、Image、私有模块和配置均沿用上表。
+
+| 码流 | 以前结果 | `.27` r49 | 说明 |
+|---|---|---|---|
+| AUD_MW_E | Success | Success | 逐行对照 |
+| BA1_Sony_D | Success | Success | 逐行对照 |
+| BA1_FT_C | `.26` Success | Success | 多 slice 对照 |
+| CAMASL3_Sony_B | Fail | Success | MBAFF、多 slice |
+| CVFI1_Sony_D | Fail | Success | field、多 slice |
+| cabac_mot_picaff0_full | Fail | Success | PAFF |
+| cama1_vtc_c | Fail | Success | PAFF/MBAFF，含负 bottom POC 偏移 |
+| Sharp_MP_Field_1_B | Fail | Fail | 待离线定位，不能归因固件 |
+| Sharp_MP_PAFF_1r2 | Fail | Fail | 待离线定位，不能归因固件 |
+| CVFC1_Sony_C | Fail | Fail | 套件仍 Fail；独立完整帧证据证明驱动输出正确，见下节 |
+
+选定 10 条全部运行：**7 Success、3 Fail、0 Error、0 Timeout、0 未运行**。
+普通 Fail 后继续执行到最后一条，内核日志未发现 BUG/WARNING/Oops 或解码超时。
+这仍是生产配置功能结果，不替代调试内核锁与内存检查。全集其余 125 条本窗未运行；
+不能将本次增量与旧版本结果拼成 `.27` 全集通过数。HEVC/JPEG 本窗未运行。
+
+恢复 `.3` 的完整身份核对通过，Mac 5 秒实际解码 302 帧、60.36 fps，
+3840×2160 H.265，新增 dropped/freeze/lost 均为 0。612 个上传文件逐项归档核对后
+删除，见 `run49/board-upload-files.json`、`upload-cleanup.log`。本任务复用的 O=
+和驱动目录共清理 11,712 个 `.o`，保留 Image、模块和包，详见 `object-cleanup.json`。
 
 ## CVFC1 的一次性证据工具
 
@@ -129,11 +157,24 @@ HEVC，不重建内核。普通像素 Fail 继续收集，窗口级错误仍停�
 VideoMeta 时使用原 CAPTURE；`gstv4l2codecpool.c` 将驱动输出 vinfo 写入 meta。
 `build/hwdecode-parity/interlaced/capture-full.c` 提供一次性 sink，要求完整 coded
 尺寸和 NV12 元数据，将 352×288 全部编码像素重排为 I420，仅去掉行 padding。
-它已用 `-Wall -Wextra -Werror` 编译，尚未证明实板能导出。
+它已用 `-Wall -Wextra -Werror` 编译，并在 r49 实际导出完整 50 帧。
 
 `vdec-window.py` 的可选 `capture_probe` 在 compliance 后运行该工具，沿用
 manifest、逐文件 SHA、超时、内核告警检查与恢复；没有新增另一套占板流程。
 导出必须有 50 帧和完整文件长度。宿主一次性脚本 `compare-cvfc1.py` 从 `(26,60)`
 裁出 300×168，与参考 I420 逐字节比较，并保存每帧结果与首个差异位置。参考
-文件 MD5 已与 Fluster 的期望值一致，但目前没有完整硬件帧，**尚不能把 CVFC1
-登记为驱动通过**。工具和分析脚本仅放 build/，不作为仓库测试或私有插件维护。
+文件 MD5 与 Fluster 的期望值一致。工具和分析脚本仅放 build/，不作为仓库测试
+或私有插件维护。
+
+r49 的 `capture-probe.json` 记录退出 0、50 帧、7,603,200 字节。完整硬件输出
+`run49/full-capture.i420` SHA-256 为
+`b5d8caf13f7b4cebc3736a23ebf79584c216c05fd415d71ad1fe853e70d657fe`。
+宿主 `run49/cvfc1-compare.json` 记录 **50/50 帧逐字节相等**，裁剪后 MD5
+`9fdb17e17d332b5d9752362c9c7ff9b0` 与参考相同，没有差异字节。
+同一完整帧改从 `(0,0)` 裁剪得到 `d2aeaea0b9da3509442377a849cc2ff1`，
+恰好复现套件错误值。因此登记为**驱动通过、套件 Fail**。
+
+用户态版本由 [GStreamer 源码锁](../../packaging/kernel/vdec-gstreamer.toml) 固定。
+1.24.2 的 `sys/v4l2codecs/gstv4l2codech264dec.c`：`new_sequence()` 第 897–899 行
+只取 crop 宽高；`copy_output_buffer()` 第 1036 行起从原点复制，不处理 crop 偏移。
+一次性 sink 通过 VideoMeta 保留原 CAPTURE；没有修改该插件，也没有改变标准套件结果。
