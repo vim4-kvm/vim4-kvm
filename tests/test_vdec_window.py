@@ -18,6 +18,20 @@ SPEC.loader.exec_module(window)
 
 
 class DecoderWindowTests(unittest.TestCase):
+    def test_startup_diagnostic_failure_is_preserved_and_blocks_acceptance(self):
+        with tempfile.TemporaryDirectory() as directory:
+            output = Path(directory)
+            for message in ('DMA-API: debugging enabled by kernel config\n',
+                            'WARNING: possible circular locking dependency detected\n',
+                            'BUG: KASAN: vmalloc-out-of-bounds in strchr+0x3c/0x80\n'):
+                with self.subTest(message=message), patch.object(window, 'run', return_value=message):
+                    if message.startswith('DMA-API: debugging'):
+                        window.require_clean_kernel_log(output)
+                    else:
+                        with self.assertRaisesRegex(RuntimeError, 'Kernel diagnostic failure'):
+                            window.require_clean_kernel_log(output)
+                    self.assertEqual((output / 'kernel.log').read_text(), message)
+
     def test_fluster_missing_result_cannot_pass_on_exit_zero(self):
         with tempfile.TemporaryDirectory() as directory:
             path = Path(directory) / 'raw.json'

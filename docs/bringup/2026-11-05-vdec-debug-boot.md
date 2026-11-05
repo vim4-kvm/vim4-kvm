@@ -72,3 +72,9 @@ compliance 命令与 Fluster 均未开始，不能把预检通过记为零 splat
 预写恢复完成，完整正式基线身份重新通过；`returned-video.log` 实测五秒新增
 300 帧、59.954 fps，新增丢帧和冻结均为零，板锁释放。后续必须先处理启动诊断和
 工具门禁，不能筛掉这些日志继续宣称调试验收通过。
+
+离线工具修正：media core 在 `drivers/media/mc/mc-devnode.c` 注册的是 media bus，
+不是 media class；改从 `/sys/bus/media/devices` 按真实父设备关联查找，待下一轮实板
+验证。启动日志门禁提前到任何解码器操作之前，预检后和结束时再检查；正常的
+DMA-API 启用信息不算错误，实际 WARNING/KASAN 等仍直接失败。新增一项真实诊断
+失败路径回归，主仓库 536 项、11 跳过通过，输出 `vdec-startup-guard-tests.log`。

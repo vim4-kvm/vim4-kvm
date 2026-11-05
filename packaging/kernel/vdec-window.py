@@ -366,8 +366,8 @@ def run_compliance(plan, output, deadline, env):
             media = item['media']
             if media == 'auto':
                 device = (Path('/sys/class/video4linux') / matching[0] / 'device').resolve()
-                related = [p for p in Path('/sys/class/media').glob('media*')
-                           if (p / 'device').resolve() == device]
+                related = [p for p in Path('/sys/bus/media/devices').glob('media*')
+                           if p.resolve().parent == device]
                 if len(related) != 1:
                     raise ValueError('Expected one media device belonging to ' + matching[0])
                 media = '/dev/' + related[0].name
@@ -442,6 +442,15 @@ def run_performance(plan, output, deadline, env):
         raise RuntimeError('Clock/CPU telemetry is incomplete; inspect raw errors')
 
 
+def require_clean_kernel_log(output):
+    kernel_log = run('journalctl', '-k', '-b', '--no-pager', timeout=15)
+    (output / 'kernel.log').write_text(kernel_log)
+    # DMA-API also emits normal "debugging enabled" startup messages. Actual
+    # DMA violations emit WARNING, as the ADLA failure in debug run32 did.
+    if re.search(r'BUG:|Oops:|WARNING:|Call trace:|possible circular locking|KASAN:', kernel_log):
+        raise RuntimeError('Kernel diagnostic failure; inspect raw kernel log')
+
+
 def acceptance_window(args):
     plan = json.loads(args.validation_plan.read_text())
     proof = json.loads(args.manifest.read_text())
@@ -461,7 +470,9 @@ def acceptance_window(args):
     # fails. No unload/reload after failure: the caller must restore the baseline.
     success = False
     try:
+        require_clean_kernel_log(output)
         prepare_acceptance_decoder(plan, proof)
+        require_clean_kernel_log(output)
         if args.action == 'fluster':
             if plan.get('nodes'):
                 compliance_output = output / 'compliance'
@@ -485,10 +496,7 @@ def acceptance_window(args):
             (output / 'kmemleak.log').write_text(leaks)
             if leaks.strip():
                 raise RuntimeError('kmemleak reported outstanding objects')
-        kernel_log = run('journalctl', '-k', '-b', '--no-pager', timeout=15)
-        (output / 'kernel.log').write_text(kernel_log)
-        if re.search(r'BUG:|Oops:|WARNING:|Call trace:|DMA-API:|possible circular locking|KASAN:', kernel_log):
-            raise RuntimeError('Kernel diagnostic failure; inspect raw kernel log')
+        require_clean_kernel_log(output)
         success = True
     finally:
         if not (output / 'kernel.log').exists():

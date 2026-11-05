@@ -5,6 +5,8 @@
 
 ## 内核与部署
 
+- 调试内核启动时 PWM regulator/meson PWM 的时钟设置与 clk-pwm duty 查询形成 prepare_lock/PWM nonatomic_lock 循环依赖；PROVE_LOCKING 已实板报告，阻塞零 splat 验收。[解码调试记录](bringup/2026-11-05-vdec-debug-boot.md#高地址启动复验)
+- ADLA 启动时 DMA SG 段长 73,728 字节超过设备声明的 65,536 字节，DMA_API_DEBUG 已实板告警，解码尚未运行。[解码调试记录](bringup/2026-11-05-vdec-debug-boot.md#高地址启动复验)
 - 主线应用程序与插件位于整包和组件包都不提供的 `/opt/vim4-kvm` 私有目录（`hdr10-r14e`、`one-kvm-usb-*`），重刷或新板安装主线后须另行安装这些运行时，否则启动器 exec 失败。[启动器](../board/vim4-kvm-run)
 - 内核升级在写入 kernels.json 后、切换 extlinux 前中断，会使面板报告 Mainline 不可用并拒绝选择；U-Boot 仍启动旧整包，重新登记可恢复面板。[安装器](../packaging/kernel/register-runtime.py)
 - board-window 在新刷 5.15 镜像使用 `LINUX /Image` 符号链接布局时拒绝基线，因为要求路径含 release；当前板的版本化路径不受影响。[预检](../tools/board-window)
@@ -33,6 +35,7 @@
 
 ## Wi-Fi 与 SDIO
 
+- brcmfmac NVRAM 注释解析使用无长度限制的 strchr，调试内核启动时在固件缓冲区末尾发生 KASAN vmalloc-out-of-bounds 读；待修复并实板复验。[解码调试记录](bringup/2026-11-05-vdec-debug-boot.md#高地址启动复验)
 - meson-gx-mmc 错误恢复在停止超时后仍归还缓冲区，可能在硬件仍访问时复用内存；缺当前已修证明，保留待核对。[主机路径审查](bringup/2026-11-02-wifi-sdio-host-path.md#改动)
 - meson-gx-mmc 的 dma_map_sg 失败路径可能写越界，影响映射失败后的内存安全；缺当前已修证明，保留待核对。[主机路径审查](bringup/2026-11-02-wifi-sdio-host-path.md#改动)
 - brcmfmac 未检查 OOB 路由写失败，设备配置失败时可能继续使用未就绪中断，影响收发；缺当前已修证明，保留待核对。[主机路径审查](bringup/2026-11-02-wifi-sdio-host-path.md#改动)
