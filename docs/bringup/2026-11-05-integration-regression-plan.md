@@ -40,11 +40,8 @@ olddefconfig 后核对片段要求，完整配置差异进入 identity.json。�
 `*.o`，保留最后一套 Image/.ko、两套包、身份和日志。提取的完整模块 stage 在封包后
 删除，模块仍完整保留在包内。失败保留日志/现场，不写 complete.json，不交付半成包。
 
-每套生成 `payload/manifest.json`、`module-identities.json`、`identity.json`、
-`ram/candidate.tar`、`ram/trial.json`；核全部 modules.order、vermagic、BTF、
-build ID、SHA-256，保留 config/Module.symvers/System.map/vmlinux.btf。
-根目录 `production.log`/`debug.log` 存实际命令与原始输出，`complete.json`
-仅两套成功后生成。包只用于 RAM 链，不改默认项/登记、不安装用户态。
+封包身份、原始输出及实际工具修正见[构建记录](2026-11-05-integration-build-results.md)。
+`complete.json` 仅两套成功后生成；包只用于 RAM 链，不改默认项/登记、不安装用户态。
 编译 W=1；既有 ADLA 等诊断保留，不将编译退出成功写成静态零告警。
 
 ## 生产候选板窗预算
@@ -64,7 +61,7 @@ build ID、SHA-256，保留 config/Module.symvers/System.map/vmlinux.btf。
 | 子系统 / 时长 | 板上做法（按表串行） | 通过判据 / 限制 |
 |---|---|---|
 | HDMI RX，2 分钟 | 按 QUERY_DV_TIMINGS/节点名确认当前运动信源；已编译 [hdmirx-stream-check](../../tools/hdmirx-stream-check.c) 对真实 VDIN 节点做短 MMAP 与 DMABUF/持导出轮，保存首末帧；[frame-check](../../tools/hdmirx-frame-check.py) 在离线端核对图样。 | 每轮有界 STREAMON/OFF、帧几何/时间戳/错误标志正确，运动标记推进；退出后导出/fd/CMA 归还，无新 DMA/IRQ 错误。全模式/compliance 另窗，不能凭帧数证明内容。 |
-| T7 JPEG，1.5 分钟 | 使用当前私有插件运行 [edge-jpeg-check](../../tools/edge-jpeg-check.py)，缩短为每轮 30 帧，保留其六组质量/尺寸/重复退出覆盖，保存首末 JPEG。 | 工具所有断言通过，JPEG IRQ 推进、实际软件解码成功、PTS 递增、DMA 对象清空且 CMA 回归；离线比对运动与颜色。缺 4K 信源/插件则待验，不改工具降低要求。 |
+| T7 JPEG，1.5 分钟 | 现有 [driver-bench](../../tools/vim4-driver-bench.c) 的 edge/jpeg 模式做短质量/尺寸与重复退出轮，留码流供 jpegparse/jpegdec 离线解码。旧 [edge-jpeg-check](../../tools/edge-jpeg-check.py) 要求零 taint，与正式外置 GPU 的 OOT taint 冲突，不能直接调用。 | 输出完整、PTS 递增、JPEG IRQ 推进，退出后 CMA/导出归还，无新增 taint/DMA 错误；实际解码并比对运动/颜色。缺 4K 信源/插件则待验。旧工具六组断言未运行不算通过，不放宽其门禁。 |
 | DRM/显示，1 分钟 | `modetest -M meson -c -p` 记录连接器/模式/plane；[GBM 探针](../../tools/gbm-scanout-probe.c) 传入实际 card 节点，做当前模式的短扫描输出/释放，与 RX 同开。 | modeset/释放完成，RX 仍出帧，无 fence/引用/PLL 超时；无接收器或 DRM master 被占则 scanout 待验，不抢 master。探针不覆盖 page-flip/完整 IGT/AFBC 故障。 |
 | ASoC 音频，1 分钟 | 复用 [audio-continuity](../../tools/one-kvm-audio-continuity.mjs) 与 [HDMI 已有源音](../../tools/hdmi-audio-tone.c)，按原 [音频准备流程](../../packaging/kernel/final-regression.py) 核对 ALSA 输入路由后，做短接收；记录 aplay/arecord 枚举及 amixer 状态。 | 实际 AudioData/渲染音频非零且已知频率正确，无 XRUN/异常中断；结束恢复原速率/路由/服务。只读 ALSA 枚举不能替代此项；AED 控件边界、所有速率另验，不盲读 audiobus MMIO。 |
 | brcmfmac，1.5 分钟 | 保存 `iw phy` 能力与 `iw dev`；有现成 SAE 连接及有线恢复时运行 [check-wifi-p2p](../../packaging/kernel/check-wifi-p2p.py) 一轮，覆盖能力查询、STA+GO 建立/删除、ping 和管理归还。 | 无固件 trap/NVRAM 越界，声明能力与接口角色一致，STA 不丢失、GO 有建立/删除证据，恢复原 NM。无 SAE 前提则该步骤待验；真实对端协商/传输没有现成已验对端，不宣称通过。600 秒 TCP 属前一 worker 窗口，不在此重复。 |
