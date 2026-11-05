@@ -65,3 +65,32 @@ UDC configured、管理器与 One-KVM active，taint 保持 4096，无新增 Oop
 `logs/hwdecode-parity-r29/`、`hwdecode-parity-r30/`；保留 compliance、首条码流
 失败、IRQ、内核日志、模块身份与恢复视频计数。主仓库离线检查 531 项通过，
 11 项按环境跳过。
+
+## 启动握手与输入 FIFO 离线候选
+
+当前 hwdecode-parity 基准为 `e6f9f06b06d3765148ae6a271c64d8482a175531`。
+hevc.c 保留未提交改动，等待用户通知独立启动 splat 修复分支就绪后联合构建和实板
+验证，详见[调试启动交接](2026-11-05-vdec-debug-boot.md#启动-splat-修复交接)。
+第 31、32 轮均未运行标准流，不能证明这些候选解决了原来的首帧超时。
+
+本次读取厂商 common_drivers `563cff9dab2c8cd44590bf57c8ffaa7e2dae35e1`：
+
+| 候选变化 | 厂商证据与原因 |
+|---|---|
+| 新 AU 的 WAIT_FLAG 为零；启动微码前写 ACTION_DONE | vh265.c:14152、14268；fresh frame-based 输入无无效前缀，启动需要释放命令握手 |
+| 输入结束地址为 exclusive end，写指针按 8 字节对齐 | utils/vdec.c:1985、1993，utils/vdec.h:76；旧代码减一且写指针不对齐 |
+| 分配量多保留一个 FIFO 字，避免填充恰好占满整圈 | 厂商对环尾写指针做回绕；本驱动每 AU 使用独立缓冲，保留空位使读写指针不会重合为“空”。16 KiB 填充与厂商一致，不解析输入 |
+| 设置 endian 后先使能 FIFO，再启用取流 | utils/vdec.c:2312–2333；旧代码先启用取流，顺序与厂商不同 |
+| 超时同时记录缓存 IRQ 状态和实际 DEC_STATUS | 原 status 00 只是缓存 IRQ 值；没有 IRQ 时不能据此推断固件实际命令状态。仅增加既有具名寄存器读数 |
+
+原始逐行源码摘录在 `build/hwdecode-parity/hevc-input-vendor-evidence.log`。
+这些是源码协议差异及待验修正，不是已证明的超时根因；后续需标准流实际出帧、
+原始 Fluster 结果、带流 compliance 及干净的调试日志，才能提交行为修复。
+
+离线实际验证：strict checkpatch 零 error/warning/check；模块和内建均完成 W=1、
+有效 sparse，日志包含 hevc.c 的 CHECK；arm64 QEMU 现有五套 KUnit **17/17**。
+本轮 KUnit 只证明已有纯逻辑回归未坏，不覆盖 FIFO、微码握手或像素正确性。
+无头文件、DT binding/DTS 改动，未运行 smatch（未安装）。原始输出为
+`hevc-input-checkpatch.log`、`hevc-input-module.log`、`hevc-input-kunit.log`；
+当前补丁、模块身份与 KUnit JSON 保存在 `build/hwdecode-parity/debug-input/`。
+该模块只对应原 `.22` Image/BTF；合入独立修复后的新候选必须重新构建，不能沿用。
