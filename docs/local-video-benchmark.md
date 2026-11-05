@@ -49,15 +49,13 @@ heap 与 VDIN/VPU 的映射类型可能不同，不能据此认定驱动已提�
 
 ## 驱动回归与复制候选
 
-为软件 benchmark 增加 `--kernel-source /path/to/linux-7.3` 可先在本机编译运行
-实际 IRQ/环/vb2 C 代码、输入状态无等待查询与启动稳定性检查、Wave5 平面偏移、profile 转换、逐行刷新预算，
-以及 ASan/UBSan 分配失败/关闭回归。
-这些 C 回归需要本机编译器；profile/刷新测试还需要 Linux V4L2 UAPI 头文件，
-macOS 缺少这些头时在 Linux VM 运行对应脚本，默认 buffer benchmark 仍可从 Mac 发起。
-实际 IRQ 和 DMA 由可控桩替代，属于生命周期回归，不是硬件仿真。
+`--kernel-source` 只记录内核源码版本和脏状态。buffer benchmark 不再调用
+内核树中的 Python/mock；驱动纯逻辑单独运行 KUnit，接口与 DMA 生命周期
+按[内核驱动验证规则](subsystems/kernel.md#内核驱动开发与验证)另验。
+软件 buffer 性能不能作为驱动正确性或硬件 DMA 停机的证据。
 
-Linux ARM64 中另运行内核源码的
-`drivers/media/platform/amlogic/t7-hdmirx/test_copy.py --output /tmp/vdin-copy-bench`。
+Linux ARM64 中另运行主仓库的
+`tools/t7-vdin-copy-bench.py --kernel-source /path/to/linux --output /tmp/vdin-copy-bench`。
 它编译独立 SIMD 候选汇编和当前内核实际 `memcpy_generic`，先校验越界、非整块
 尾部和标量回退。候选未链接到驱动；编译出的程序可复制到板上单独运行。
 

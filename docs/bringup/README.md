@@ -25,6 +25,40 @@
 - [独立格式 Fluster 与 HEVC 启动顺序](2026-11-05-vdec-independent-fluster.md) — kernel video；H.264 子集 1/2，MPEG-2 0/2（1 未运行），像素失败即停止；清理已归档上传，恢复 `.3`；HEVC bit21 模式差异待验证。
 - [解码缓冲序号修复与复验](2026-11-05-vdec-buffer-sequence.md) — kernel video；独立序号提交与静态检查；`.25` stateless/JPEG 各 60/60，HEVC SOURCE_CHANGE 超时，Fluster 未运行；已恢复 `.3` 与视频。
 - [生产配置解码功能验收](2026-11-05-vdec-production-validation.md) — kernel video；`.24` 正常启动，stateless 带流 compliance 遇输出缓冲序号不递增；后续未运行，已恢复 `.3` 与 4K 视频。
+- [生产 .90 首窗与单项接收补测](2026-11-05-integration-prod90-regression.md) — kernel；首窗采集/编码局部通过、API接收首错保留；随后获批仅补应用重启接收，4K H.265解码推进通过，两窗均恢复.3并核视频，其余未验不变。
+- [集成候选构建与 KUnit 复验](2026-11-05-integration-build-results.md) — kernel；fd41fb5 生产.90/调试.91 RAM全量校验通过，现存迁移驱动/标准CCF arm64 QEMU 15套59/59；额外DMA-BUF两次超时登记，板测待安排。
+- [集成候选回归与构建准备](2026-11-05-integration-regression-plan.md) — kernel；19 分钟生产回归清单、缺入口/待实板边界及同 O= 双候选 RAM 构建入口；仅离线准备，未排 heavy、未构建、未访问板子。
+- [KUnit 提交说明与利用率审查返工](2026-11-05-kunit-review-rework.md) — kernel；25 提交补正文/Signed-off-by，消息阶段空 diff、原四 SHA 保留；最终 29 完整 patch 检查通过，撤销 fallthrough 并独立补 break；QEMU 44/44，利用率显示需实板回归。
+- [全树 KUnit 最终组合复验](2026-11-05-kunit-final-replay.md) — kernel；82 个 Python 已迁出/删除，九配置 arm64 QEMU 11 套 44/44；WERROR=n 仅作运行复验，既有静态失败及实板边界保留。
+- [PWM 既有 KUnit 复验](2026-11-05-pwm-kunit-results.md) — kernel power；复用原测试 QEMU 1/1，PWM/clk-pwm/regulator 内建/模块及静态检查完成；无 Python 可迁，同控制器 ABBA 保留，实板未验。
+- [brcmfmac KUnit 迁移结果](2026-11-05-brcmfmac-kunit-results.md) — kernel network；删除 P2P Python，arm64 QEMU 新参数/决策 2 项与已有 NVRAM 3 项均通过，构建/范围静态检查完成；固件/P2P/offload 待实板。
+- [ADLA KUnit 迁移结果](2026-11-05-adla-kunit-results.md) — kernel；四个 Python 删除，真实 allocator/取消/边界 arm64 QEMU 4/4，内建/模块编译完成；既有 W=1/sparse 门禁未通过，DMA/复位/生命周期待实板。
+- [其余非暂缓驱动测试迁移结果](2026-11-05-remaining-drivers-kunit-results.md) — kernel usb thermal；9 个 Python 删除，风扇 arm64 QEMU 3/3，范围构建完成；CRG/TCPM 有效 sparse 未通过，V/B 待实板。
+- [Meson ASoC KUnit 迁移结果](2026-11-05-asoc-kunit-results.md) — kernel audio；15 个 Python 删除，arm64 QEMU 3/3，构建及范围静态检查完成，音频/硬件待实板。
+- [Meson DRM KUnit 迁移结果](2026-11-05-drm-kunit-results.md) — kernel video；18 个 Python 删除，QEMU 8/8，内建/可用模块与有效 sparse 等检查完成；显示/DMA 待实板。
+- [T7 JPEG KUnit 迁移结果](2026-11-05-jpeg-kunit-results.md) — kernel video；两个 Python 删除，arm64 QEMU 2/2，范围构建与静态检查通过；真实 DMA 和像素待实板。
+- [T7 HDMI RX KUnit 迁移结果](2026-11-05-hdmirx-kunit-results.md) — kernel video audio；20 个 Python 迁出/删除，arm64 QEMU 9/9，内建/模块与范围静态检查完成；硬件语义待实板。
+- [Wave5 故障注入离线方案](2026-11-05-wave5-fault-injection-plan.md) — kernel video；标准 fail_function 注入点、隔离/DMA 预期与判定；仅准备，全部待实板，内部时序注入缺口单列。
+- [Wave5 KUnit 迁移结果](2026-11-05-wave5-kunit-results.md) — kernel video；13 个 Python 文件迁出/删除，arm64 QEMU 9/9；W=1、有效 sparse、模块/内建及静态检查完成，硬件语义待实板。
+- [内核树测试迁移清单](2026-11-05-kernel-test-migration.md) — kernel；87 个文件逐项盘点，82 个已迁出/删除，保留生成器/vdec；44 项组合重跑通过，实板及部分静态门禁未完成。
+- [测试清单 drm-1](2026-11-05-kunit-inventory-drm-1.md) — kernel；逐文件入口、原检查及待确认处置。
+- [测试清单 drm-2](2026-11-05-kunit-inventory-drm-2.md) — kernel；逐文件入口、原检查及待确认处置。
+- [测试清单 drm-3](2026-11-05-kunit-inventory-drm-3.md) — kernel；逐文件入口、原检查及待确认处置。
+- [测试清单 other-1](2026-11-05-kunit-inventory-other-1.md) — kernel；逐文件入口、原检查及待确认处置。
+- [测试清单 other-2](2026-11-05-kunit-inventory-other-2.md) — kernel；逐文件入口、原检查及待确认处置。
+- [测试清单 other-3](2026-11-05-kunit-inventory-other-3.md) — kernel；逐文件入口、原检查及待确认处置。
+- [测试清单 other-4](2026-11-05-kunit-inventory-other-4.md) — kernel；逐文件入口、原检查及待确认处置。
+- [测试清单 hdmirx-1](2026-11-05-kunit-inventory-hdmirx-1.md) — kernel；逐文件入口、原检查及待确认处置。
+- [测试清单 hdmirx-2](2026-11-05-kunit-inventory-hdmirx-2.md) — kernel；逐文件入口、原检查及待确认处置。
+- [测试清单 hdmirx-3](2026-11-05-kunit-inventory-hdmirx-3.md) — kernel；逐文件入口、原检查及待确认处置。
+- [测试清单 hdmirx-4](2026-11-05-kunit-inventory-hdmirx-4.md) — kernel；逐文件入口、原检查及待确认处置。
+- [测试清单 jpeg-1](2026-11-05-kunit-inventory-jpeg-1.md) — kernel；逐文件入口、原检查及待确认处置。
+- [测试清单 wave5-1](2026-11-05-kunit-inventory-wave5-1.md) — kernel；逐文件入口、原检查及待确认处置。
+- [测试清单 wave5-2](2026-11-05-kunit-inventory-wave5-2.md) — kernel；逐文件入口、原检查及待确认处置。
+- [测试清单 wave5-3](2026-11-05-kunit-inventory-wave5-3.md) — kernel；逐文件入口、原检查及待确认处置。
+- [测试清单 audio-1](2026-11-05-kunit-inventory-audio-1.md) — kernel；逐文件入口、原检查及待确认处置。
+- [测试清单 audio-2](2026-11-05-kunit-inventory-audio-2.md) — kernel；逐文件入口、原检查及待确认处置。
+- [测试清单 audio-3](2026-11-05-kunit-inventory-audio-3.md) — kernel；逐文件入口、原检查及待确认处置。
 - [解码与启动修复联合调试](2026-11-05-vdec-joint-debug.md) — kernel video；`.23` 启动遇 MMC IRQ 锁上下文错误和未解释冷复位，未运行解码；已恢复 `.3` 与 4K 视频。
 - [调试启动 splat 离线修复与 PWM 锁拓扑](2026-11-05-debug-splat-fixes.md) — kernel；brcmfmac 上游移植及真实解析 KUnit、ADLA SG 上限修复；PWM 独立 key 修正跨实例建模，同实例 ABBA 明确保留，未上板。
 - [解码调试候选启动与门禁](2026-11-05-vdec-debug-boot.md) — kernel deployment；修正大 Image 加载地址后进入调试 Linux，暴露 PWM 锁、ADLA DMA、brcmfmac 越界及工具 media 查找问题；基线和视频已恢复，标准流未运行。

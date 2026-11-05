@@ -95,5 +95,3 @@ get_state 调用 `clk_get_rate()`，另一个从 CCF duty 回调进入 PWM。通
 - 若先仅修启动不同实例的建模：独立 key 是准确的建模修正，须明确保留上述
   debugfs 同 chip 问题，不能宣称整个锁设计已解决。协调者已批准这种分阶段范围；
   不以默认不读 debugfs 为永久修复。
-
-

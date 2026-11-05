@@ -163,7 +163,7 @@ def main():
     parser.add_argument('--board', help='SSH target; runs on its current kernel without rebooting')
     parser.add_argument('--cpu', type=int, default=0, help='Board benchmark CPU only (default A73 CPU0)')
     parser.add_argument('--dma-heaps', help='Board only: comma-separated /dev/dma_heap paths; allocates private buffers')
-    parser.add_argument('--kernel-source', type=Path, help='Also run local C ownership/offset/rollback regression gates')
+    parser.add_argument('--kernel-source', type=Path, help='Record the kernel source revision and dirty status')
     parser.add_argument('--samples', type=int, default=9)
     parser.add_argument('--batch-ms', type=int, default=100)
     parser.add_argument('--baseline', type=Path)
@@ -184,22 +184,13 @@ def main():
         parse_result(MARKER + json.dumps(baseline))
     repository = (ROOT / 'One-KVM').resolve()
     source = source_state(repository)
-    regressions = []
     if args.kernel_source:
         kernel = args.kernel_source.resolve()
-        for relative in ('amlogic/t7-hdmirx/test_stream.py', 'amlogic/t7-hdmirx/test_core.py',
-                         'chips-media/wave5/test_buffers.py',
-                         'chips-media/wave5/test_encoder_cleanup.py',
-                         'chips-media/wave5/test_profiles.py', 'chips-media/wave5/test_intra_refresh.py'):
-            script = kernel / 'drivers/media/platform' / relative
-            result = command([sys.executable, str(script)])
-            print(result, file=sys.stderr)
-            regressions.append(dict(test=relative, output=result))
     executable = builder(args.container, repository)
     if source_state(repository) != source:
         raise ValueError('One-KVM sources changed during the benchmark build; rerun with stable sources')
     result, environment = run_benchmark(args, executable)
-    result.update(source=source, environment=environment, kernel_regressions=regressions,
+    result.update(source=source, environment=environment,
                   measured_at=datetime.now(timezone.utc).isoformat())
     if args.kernel_source:
         result['kernel_source'] = dict(revision=command(['git', '-C', str(kernel), 'rev-parse', 'HEAD']),

@@ -18,6 +18,7 @@
 | [ubuntu-build.py](../tools/ubuntu-build.py)、ubuntu-image.py、[packaging/ubuntu/](../packaging/ubuntu)、[packaging/image/](../packaging/image) | 无 | 组件打包与镜像组装；开发包可指定目标已安装版本下限。 |
 | [packaging/kernel/](../packaging/kernel) | 独占 | 内核构建及板端准备。 |
 | [package-unified.py](../packaging/kernel/package-unified.py)（同目录 package-hdr10.py、package-final.py、package-vdec.py） | 无 | 封存已构建候选包。 |
+| [build-integration.py](../packaging/kernel/build-integration.py) | 无；写 VM 构建目录 | 持 heavy 租约后离线构建指定完整 SHA 的生产/调试 RAM 候选，复用同一 O=，封包后清理对象；不排票、不访问板子。 |
 | [build-gstreamer.py](../packaging/kernel/build-gstreamer.py)（test_gstreamer_p010.py、test_gstreamer_pq.py、test_gstreamer_visible_crop.py） | 无 | 插件构建及离线协商回放。 |
 | [maintain.py](../packaging/kernel/maintain.py) | 无 | 补丁导出与前移。 |
 | [vdec-fixtures.py](../packaging/kernel/vdec-fixtures.py) | 无 | 生成 H.264/MPEG-2/MJPEG 运动样本；JPEG 保留全范围参考像素，generate-fields 下载并校验固定场编码样本。离线逐帧比较 I420 并量化平面误差，非逐字节一致仍返回失败。 |
@@ -94,10 +95,12 @@
 | [mali-dma-probe.c](../tools/mali-dma-probe.c)、mali-dma-probe.comp、mali-cl-probe.c | 独占 | GPU 缓冲导入。 |
 | [npu-validate.py](../tools/npu-validate.py)、npu-probe.c、npu-models.json、npu-uapi-probe.c | 独占 | NPU 推理及接口验证。 |
 | [memory-bench.py](../tools/memory-bench.py)、memory-bench.c | 独占 | Linux 内存吞吐基准。 |
+| [t7-vdin-copy-bench.py](../tools/t7-vdin-copy-bench.py) | 独占 | Linux ARM64 离线编译 SIMD 候选与内核 memcpy 对照；生成程序的 benchmark 模式分配真实 VDIN MMAP 缓冲。 |
 | [gbm-scanout-probe.c](../tools/gbm-scanout-probe.c) | 独占 | GBM 扫描输出。 |
 | [measure-gpu.py](../packaging/hdr10/measure-gpu.py)、[application-receiver.mjs](../packaging/hdr10/application-receiver.mjs) | 独占 | HDR10 GPU 转换与应用接收取证。 |
 | [rtp-udp-bench.c](../tools/rtp-udp-bench.c) | 独占 | Linux/板端 UDP 发送基准。 |
 | [encoder-vbv-run.py](../tools/encoder-vbv-run.py)、encoder-vbv-bench.c、encoder-vbv-probe.c | 独占 | VBV 固定输入基准。 |
+| [wave5-reproduce-hang.py](../tools/wave5-reproduce-hang.py) | 独占 | Wave5 编码/取消与有界进程取证；默认仅输出计划，执行须独占板窗、停止视频应用并预备恢复。 |
 | [encoder-vbv-summary.py](../tools/encoder-vbv-summary.py)、encoder-vbv-quality.py | 无 | VBV 与画质汇总。 |
 | [display-color.py](../tools/display-color.py)、display-color.c | 独占 | 离线分析或板端显示颜色校准。 |
 | [hdmi-color-check.py](../tools/hdmi-color-check.py)、hdmi-resolution-check.py | 无 | HDMI 颜色与细节分析。 |
@@ -119,5 +122,5 @@
 | [hdmirx-frame-check.py](../tools/hdmirx-frame-check.py) | 无 | 离线原始帧标记校验。 |
 | [edge-jpeg-check.py](../tools/edge-jpeg-check.py)、edge-jpeg-profile.py | 独占 | JPEG 驱动及分段计时。 |
 | [mcp-screenshot.py](../packaging/hdr2-pq/mcp-screenshot.py) | 只读 | 持板锁获取 MCP 截图。 |
-| [onekvm-local-bench.py](../tools/onekvm-local-bench.py) | 独占；可写远端 | Mac 调度容器或板端 CPU/内存基准。 |
+| [onekvm-local-bench.py](../tools/onekvm-local-bench.py) | 独占；可写远端 | Mac 调度容器或板端 CPU/内存基准；内核参数只记源码身份，驱动验证单独运行。 |
 | [test-fan-policy.sh](../tools/test-fan-policy.sh) | 无 | VM 离线验证内核风扇函数。 |

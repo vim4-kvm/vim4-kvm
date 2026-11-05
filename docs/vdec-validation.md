@@ -1,7 +1,7 @@
 # 解码标准验收
 
 使用 Linux media 的接口规范和标准码流证明驱动行为；规范不意味着准备上游投稿。
-内核代码规则见[内核](subsystems/kernel.md#解码驱动开发与验证)，板窗口及恢复统一走
+内核代码规则见[内核](subsystems/kernel.md#内核驱动开发与验证)，板窗口及恢复统一走
 [board-window](board-window.md)。本页描述工具合同，不代表实板已经通过。
 
 ## 离线准备
