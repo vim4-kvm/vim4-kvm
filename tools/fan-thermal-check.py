@@ -2,13 +2,17 @@
 """Prepared board-window checks; never acquires a board window itself.
 
 Run only after the coordinator reserves the board. sample observes an already
-running, preheated workload. compare is offline. Other phases change thermal
+running, preheated workload. prepare and compare are offline. Control phases change thermal
 emulation, fan settings or system sleep and restore their temporary settings.
 """
 import argparse
+import hashlib
+import importlib.machinery
+import importlib.util
 import json
 import os
 import signal
+import struct
 from pathlib import Path
 import subprocess
 import sys
@@ -20,6 +24,69 @@ from vim4fan import SENSORS, snapshot
 
 THERMAL = Path('/sys/class/thermal')
 DUTIES = (5, 10, 15, 20, 25, 30, 35, 43, 52, 61, 70, 77, 85, 92, 100)
+
+
+def prepare(args):
+    """Validate a supplied RAM archive locally; never build or contact a board."""
+    bundle = args.ram_package.resolve()
+    with bundle.open('rb') as source:
+        digest = hashlib.file_digest(source, 'sha256').hexdigest()
+    if digest != args.sha256:
+        raise ValueError('RAM archive SHA256 differs from the supplied trusted digest')
+    path = Path(__file__).resolve().with_name('board-window')
+    loader = importlib.machinery.SourceFileLoader('fan_board_window', str(path))
+    spec = importlib.util.spec_from_loader(loader.name, loader)
+    window = importlib.util.module_from_spec(spec)
+    loader.exec_module(window)
+    candidate = window.validate_bundle(bundle)
+    baseline = window.once.formal_baseline()
+    if candidate['release'] != args.release:
+        raise ValueError('RAM archive release differs from --release')
+    if candidate.get('baseline_release', baseline['release']) != baseline['release'] or \
+            candidate.get('baseline_id', baseline['build_id']) != baseline['build_id']:
+        raise ValueError('RAM archive was prepared for a different retained baseline')
+    plan = dict(candidate=dict(package=str(bundle), sha256=digest, release=args.release,
+                               build_id=candidate['build_id'], source=candidate.get('source')),
+                baseline=dict(release=baseline['release'], build_id=baseline['build_id']),
+                boot_command=['tools/board-window', 'boot-candidate', str(bundle), '--sha256', digest],
+                recovery_command=['tools/board-window', 'return-baseline', '--video-check'])
+    args.output.parent.mkdir(parents=True, exist_ok=True)
+    args.output.write_text(json.dumps(plan, indent=2) + '\n')
+
+
+def running_identity(root=Path('/')):
+    notes = (root / 'sys/kernel/notes').read_bytes()
+    offset, build_id = 0, None
+    while offset + 12 <= len(notes):
+        namesize, size, kind = struct.unpack_from('<III', notes, offset)
+        offset += 12
+        name = notes[offset:offset + namesize].rstrip(b'\0')
+        offset += (namesize + 3) & ~3
+        value = notes[offset:offset + size]
+        offset += (size + 3) & ~3
+        if name == b'GNU' and kind == 3:
+            build_id = value.hex()
+    if build_id is None:
+        raise ValueError('Running kernel has no GNU build ID')
+    return dict(release=(root / 'proc/sys/kernel/osrelease').read_text().strip(), build_id=build_id)
+
+
+def verify_identity(plan, role, actual):
+    expected = plan['baseline' if role in ('baseline', 'returned') else 'candidate']
+    if any(actual[key] != expected[key] for key in ('release', 'build_id')):
+        raise ValueError(f'Running {role} release/build ID differs from supplied plan')
+
+
+def steady(readings):
+    """Reject a drifting measurement window, including a cooling baseline."""
+    if len(readings) < 120:
+        return False
+    minutes = [readings[i:i + 60] for i in range(0, len(readings), 60)]
+    for kind in SENSORS:
+        means = [sum(r['temperatures'][kind] for r in minute) / len(minute) for minute in minutes]
+        if max(means) - min(means) > 500:
+            return False
+    return True
 
 
 def fan_device():
@@ -135,15 +202,26 @@ def sample(args):
         state['passive_states'] = {(p / 'type').read_text().strip(): int((p / 'cur_state').read_text())
                                    for p in THERMAL.glob('cooling_device*')
                                    if 'cpufreq' in (p / 'type').read_text()}
+        state['cpu_policies'] = {p.name: {name: (p / name).read_text().strip() for name in
+                                        ('scaling_governor', 'scaling_cur_freq', 'scaling_min_freq', 'scaling_max_freq')}
+                                 for p in Path('/sys/devices/system/cpu/cpufreq').glob('policy*')}
         state['monotonic'] = time.monotonic()
         readings.append(state)
         time.sleep(1)
-    args.output.write_text(json.dumps(dict(kernel=os.uname().release, ambient=args.ambient,
-                                          workload=args.workload, readings=readings), indent=2) + '\n')
+    args.output.write_text(json.dumps(dict(identity=running_identity(), role=args.role,
+                                          plan=json.loads(args.candidate_plan.read_text()),
+                                          ambient=args.ambient, elapsed=time.monotonic() - start,
+                                          stable=steady(readings), workload=args.workload,
+                                          readings=readings), indent=2) + '\n')
 
 
 def compare(args):
     baseline, candidate = [json.loads(p.read_text()) for p in (args.baseline, args.candidate)]
+    assert baseline['role'] == 'baseline' and candidate['role'] == 'candidate'
+    assert baseline['plan'] == candidate['plan'], 'Samples refer to different RAM candidates'
+    for role, report in (('baseline', baseline), ('candidate', candidate)):
+        verify_identity(report['plan'], role, report['identity'])
+        assert report['elapsed'] >= 300 and steady(report['readings']), f'{role} is not a stable five-minute sample'
     assert baseline['workload'] == candidate['workload'], 'Use the same workload and settings'
     assert abs(baseline['ambient'] - candidate['ambient']) <= 1, 'Ambient temperatures differ by >1°C'
     def maximum(report):
@@ -180,7 +258,12 @@ def suspend():
 
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument('phase', choices=('emulation', 'panel', 'sample', 'compare', 'suspend'))
+    parser.add_argument('phase', choices=('prepare', 'emulation', 'panel', 'sample', 'compare', 'suspend'))
+    parser.add_argument('--ram-package', type=Path, help='Externally built production RAM candidate.tar (prepare only)')
+    parser.add_argument('--release', help='Expected release supplied by the integration builder')
+    parser.add_argument('--sha256', help='Trusted RAM archive SHA256 supplied by the integration builder')
+    parser.add_argument('--candidate-plan', type=Path, help='JSON produced by offline prepare')
+    parser.add_argument('--role', choices=('baseline', 'candidate', 'returned'), default='candidate')
     parser.add_argument('--exclusive', action='store_true', help='Coordinator has reserved the board')
     parser.add_argument('--seconds', type=int, default=300)
     parser.add_argument('--ambient', type=float)
@@ -189,11 +272,19 @@ def main():
     parser.add_argument('--baseline', type=Path)
     parser.add_argument('--candidate', type=Path)
     args = parser.parse_args()
+    if args.phase == 'prepare':
+        if not all((args.ram_package, args.release, args.sha256, args.output)):
+            parser.error('prepare requires --ram-package, --release, --sha256 and --output')
+        prepare(args)
+        return
     if args.phase == 'compare':
         assert args.baseline and args.candidate
         compare(args)
         return
     assert args.exclusive and os.geteuid() == 0, 'Requires root and a coordinated exclusive board window'
+    assert args.candidate_plan, 'Provide the prepared external RAM candidate plan'
+    verify_identity(json.loads(args.candidate_plan.read_text()), args.role, running_identity())
+    assert args.phase == 'sample' or args.role == 'candidate', 'Control checks require the integration candidate'
     def interrupted(signum, frame):
         raise InterruptedError(f'Board check interrupted by signal {signum}')
     for signum in (signal.SIGTERM, signal.SIGALRM):

@@ -124,4 +124,4 @@
 | [mcp-screenshot.py](../packaging/hdr2-pq/mcp-screenshot.py) | 只读 | 持板锁获取 MCP 截图。 |
 | [onekvm-local-bench.py](../tools/onekvm-local-bench.py) | 独占；可写远端 | Mac 调度容器或板端 CPU/内存基准。 |
 | [test-fan-policy.sh](../tools/test-fan-policy.sh) | 无 | 仅5.15：离线验证厂商风扇曲线函数。 |
-| [fan-thermal-check.py](../tools/fan-thermal-check.py) | 独占；休眠 | 预备的标准温控仿真、面板助手、负载温度和睡眠检查；compare仅离线。不自行申请板窗。 |
+| [fan-thermal-check.py](../tools/fan-thermal-check.py) | 独占；休眠 | 外部集成RAM包prepare/compare仅离线；上板校运行身份后做温控/面板/稳定温度检查。不自行申请板窗。 |

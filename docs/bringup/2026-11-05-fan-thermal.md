@@ -27,12 +27,13 @@
 用户已接受这些故障语义变化，不新增core故障策略、用户态调速守护进程或私有调试ABI。
 有效100°C请求仍能压过其他低请求，但依赖真实MCU写入成功，百分比不证明风扇转动。
 
-## 离线验证
+## 原分支离线验证（不是集成RAM候选输入）
 
-内核提交d8744ec5fe70a（DT）和68751e223a298（驱动），主仓库用户态92379c0，
+内核返工后为a79be4150c7e8（生命周期）、82979d5b8b83f（DT）和8096c2400ff5e（策略删除），主仓库用户态92379c0，
 面板a0e15b6与85ef0b1。精确命令和原始日志见协调者收到的任务结果文件。
 内建/模块对象W=1及有效sparse 84ec0658通过；fan/MCU无诊断，共同准备步骤的vDSO有未改动声明告警。
-strict checkpatch的DT项零诊断，删除私有ABI/测试项只有已核对的MAINTAINERS提醒。
+对format-patch输出跑strict checkpatch：生命周期/DT零诊断，策略删除无错误但有MAINTAINERS提醒（exit 1）。
+旧提交只检查diff的“通过”结论已在任务结果文件中撤回，原始format-patch命令和输出均已保存。
 MCU/thermal schema及11个VIM4 DTB（含vdec-test）的定向与完整schema检查通过，
 反编译确认每板90个固定fan map及CPU保护和轮询保留；DTC仍有未改动pinctrl节点告警。
 生产配置Image、dtbs及2338个模块完成，独立fan模块完成MODPOST/链接/BTF，不作为部署候选。
@@ -43,33 +44,14 @@ MCU/thermal schema及11个VIM4 DTB（含vdec-test）的定向与完整schema检�
 
 ## 预备批量板窗（不在本任务执行）
 
-等解码调试窗口结束，由协调者预约独占板窗；先核候选Image/DTB/完整模块和BTF来源一致。
-脚本不自动申请板锁；调用者按板窗规范持锁并将原始JSON/日志保存到本记录对应证据目录。
-默认每阶段15分钟超时，实板每任务累计不超过30分钟，首错退出离线分析。
+集成阶段改为只接收构建者给出的生产RAM归档、release和外部SHA256；不使用本任务自建Image。
+执行步骤、manager构建/临时安装/原件恢复、.3身份校验及24–28分钟估算统一见
+[集成窗口准备](../fan-thermal-window.md)。本轮只离线准备，不排heavy或板票，候选到手后仍等协调者通知上板。
 
-1. 基线：在旧安静曲线、同环境、固定应用/信源/编码设置下预热至温升趋稳。
-   `python3 tools/fan-thermal-check.py sample --exclusive --ambient 25 --workload IDENTIFIER --output baseline.json`
-   采5分钟，记录六区温度和cpufreq cooling状态。基线与候选应由同一环境条件配对。
-2. 标准对象：六区完整enabled，policy=step_wise，一个fan cdev/max_state=100，各区15个fan map；
-   CPU保护map未变。无新BUG/Oops/WARNING/taint或热关机。
-3. 仿真：`python3 tools/fan-thermal-check.py emulation --exclusive`。
-   逐区逐trip边界正反向注入，2秒内达到期望档位，六区轮流100°C均全速；
-   另一有效区仍热时冷区更新不能覆盖它。脚本finally清除仿真；不会注入critical以上。
-   可能触发既有CPU passive/hot，不能把仿真降频当真实负载降频。
-4. 面板后台：`python3 tools/fan-thermal-check.py panel --exclusive`。
-   65/85/100写入90个trip并读回一致，启动恢复路径一致，最后恢复原始曲线与配置文件。
-   这测生产助手，不冒充真实网页/API上板验收；另在面板执行一次应用/刷新，确认显示一致，
-   非法60/62/100拒绝且未改硬件，重启面板后恢复保存值。
-5. 候选负载：同基线预热、同参数采5分钟到candidate.json；
-   `python3 tools/fan-thermal-check.py compare --baseline baseline.json --candidate candidate.json`。
-   环境温度差≤1°C、最高温相对增加≤3°C、常用负载两组CPU均<85°C、无新增被动降频/热关机。
-   热关机/内核错误另检查journal，脚本的温度对比不能代替系统日志。
-   噪声由用户主观判断，不设dBA指标，不从MCU百分比推导定量噪声。
-6. 系统睡眠：确认平台支持RTC唤醒后，在低档/高档负载分别运行
-   `python3 tools/fan-thermal-check.py suspend --exclusive`，验证整机睡眠/唤醒后2秒内按新温度收敛；
-   停扇/供电现象、regulator/I2C日志和服务状态另记。显示器休眠不能替代整机睡眠。
-7. 晚注册：只在专用可模块化候选和短冷板窗口延迟正常sensor模块加载，出现后2秒内绑定15个map并参与max；
-   无可用候选则明确未验。脚本不自动解绑活跃传感器或移除CPU热保护。
+温度对照要求两边相同负载和锚点，分别预热3分钟、采至少5分钟并验证末段稳定；
+判据仍为最高温增加≤3°C、常见负载CPU<85°C、无新增降频。噪声仅主观判断。
+首次proof包含原manager文件哈希，候选只做RAM bind覆盖，结束正常返回.3并核原manager/风扇配置/视频推进。
 
-未提供真实传感器错误/MCU写错误注入装置，不能以emul_temp覆盖这两项；用户已选择默认内核行为。
-睡眠失败恢复、解绑最大档、物理起转仍需后续合适候选和窗口，未通过负载观察自动算通过。
+逐trip仿真、跨区max、面板读回、系统睡眠等phase保留，均须提供外部candidate-plan并校运行身份；
+不默认塞进完整温度对照窗口。真实读温/MCU写错注入装置未提供，不能用emul_temp冒充故障注入。
+晚注册、睡眠失败恢复、物理起转仍为未验项；标准路径不再新增解绑最大档行为。
