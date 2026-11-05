@@ -45,7 +45,7 @@ Fluster 的 Meson 配方构建。授权不包含将参考源码、二进制或�
 | 已建立的 board-window 名、串口、原应用视频检查 | 复用该窗口的基线 proof；无论成功失败都收集结果并调用 return-baseline，不另建恢复流程 |
 | 测试时长、恢复保留时间 | 窗口不能超过项目上限；已有板票必须足够。测试耗尽预算时保留未运行状态并退出 |
 | Fluster bundle 哈希、测试集、开始位置/数量 | 同一套件可拆成多个窗口，两版内核使用相同输入；每次只启动一个码流进程 |
-| compliance 节点、格式、带帧头输入和 media 节点 | 配置输入格式后运行 streaming；stateless 带 media/Request 检查，保留版本、完整输出及每个 summary |
+| compliance 节点、格式、带帧头输入和 media 节点 | 配置输入格式后运行 streaming；media 拓扑用 `-M` 单独检查，视频用 `-d` 并自动关联 Request API 的 media fd；保留版本、完整输出及每个 summary |
 | 性能管线、运动输入、同步模式及具名时钟文件 | 不修改 CPU/DVFS 策略；不扫描任意 MMIO；同步采集处理进程 CPU 和实际时钟读数 |
 
 Fluster 每个窗口先实际运行 `list -c`。解码器或参考解码器不可用就停止；退出零但
@@ -57,14 +57,18 @@ Fluster 每个窗口先实际运行 `list -c`。解码器或参考解码器不�
 超时。恢复预算不足时写交接记录，不在票据过期后发起重启。
 Fluster 计划可同时带节点列表，在同一调试内核窗口先跑 compliance，再跑标准流；
 compliance 也启用首个失败/警告即退出。
+锁定版本的 `-m` 会覆盖 `-d` 并遍历 media 下所有节点，不能用它给单个视频节点
+附加 media 检查，否则会在其他 codec 输入配置前提前测试它们。结果必须恰好包含
+所请求设备的一个总结，发现额外设备或缺少总结即失败。
 计划的 `fluster_followups` 可在首组通过后追加已封存的测试子集，逐组输出独立
 结果目录，全部共用原截止时间；前组失败不得启动后组。生产配置窗口可以验证
 功能和像素，仍核运行配置哈希，但必须与尚未完成的调试内核锁/内存验收分开记录。
 
 compliance 本身有覆盖边界：所用上游版本的 `testRequests()` 不生成 stateless
-codec 的完整控制，收到缺少控制的 ENOENT 后停止带流部分。仍运行媒体与 Request
-检查，但必须将实际跳过项记清；真实 stateless 出帧和参考正确性由 Fluster 补足。
-不能把命令行带了 streaming 参数写成实际流测试全覆盖。
+codec 的完整控制，收到缺少控制的 ENOENT 后停止该 Request 流检查。独立的
+MMAP streaming 仍可运行，并对返回 ERROR 的缓冲检查 sequence 等队列语义。
+因此既不能把它写成“完全不跑流”，也不能把缓冲往返通过写成有效像素解码通过；
+保留实际跳过项及 ERROR 缓冲证据，真实 stateless 出帧和参考正确性由 Fluster 补足。
 
 性能程序[源码](../packaging/kernel/vdec-benchmark.c)只统计实际 fakesink 渲染/丢帧，
 不映射和比较像素。最大吞吐不按时钟限速，实时播放测完整时长；后者明确记录 sink

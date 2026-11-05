@@ -16,7 +16,7 @@
 
 ## 采集与编码
 
-- 解码 stateless 通用 DONE/ERROR 完成路径没有递增缓冲 sequence；生产配置 `.24` 的带流 v4l2-compliance 在第二个 OUTPUT buffer 失败。media 8/8，后续 JPEG/HEVC 与 Fluster 按首错即停未运行；须补齐队列序号生命周期后以同一命令复验，不能归类为工具跳过或固件限制。[实板与源码定位](bringup/2026-11-05-vdec-production-validation.md#实板结果)
+- 解码 `.25` 已修复通用缓冲 sequence，stateless/JPEG compliance 各 60/60；HEVC 配置 AMP_A_Samsung_7 后等待 SOURCE_CHANGE 超时，内核报 irq/status 00、pc 00000a1e、shift 00000072。握手/启动路径待定位，不能归类为固件能力限制；Fluster 和 5.15 同板对照未运行。[实板证据](bringup/2026-11-05-vdec-buffer-sequence.md#r36-基线门禁与-r37-有效复验)
 - debugfs frame 入口未统一 YUV3 的源资格检查；开发者用该入口采集不合格源时，可能绕过 V4L2 队列的格式限制。[V4L2 采集记录](bringup/2026-11-02-hfr-yuv-window.md#yuv444-和未验项)
 - 新鲜 DRM 与普通 AVI 信息不一致时，YUV3 源资格可能误判为 SDR，影响采集颜色解释；验收需保存两者实际记录。[V4L2 采集记录](bringup/2026-11-02-hfr-yuv-window.md#yuv444-和未验项)
 - 5.15 专用 VDIN1 插件将百分之一 Hz 读数取整，分数帧率输入会得到不准确的 caps；One-KVM 直开设备的路径不受影响。[vim4_vdin1_caps](../gst-plugin-vfmcap/src/gstvim4vdin1src.c)

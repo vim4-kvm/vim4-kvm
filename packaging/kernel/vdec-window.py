@@ -352,6 +352,24 @@ def run_compliance(plan, output, deadline, env):
     if bounded_process([tool, '--version'], output / 'v4l-utils-version.log', 10, env):
         raise RuntimeError('Unable to record v4l-utils version')
     results = []
+
+    def check(command, item_id, name, device, limit):
+        timeout = min(limit, deadline - time.monotonic())
+        if timeout < 30:
+            raise TimeoutError('Insufficient time for compliance and recovery')
+        log = output / (item_id + '-compliance.log')
+        code = bounded_process(command, log, timeout, env)
+        content = log.read_text()
+        devices = re.findall(r'^Total for .* device ([^:]+):', content, re.M)
+        summaries = re.findall(r'Total for[^\n]*:.*?Succeeded:\s*(\d+),\s*Failed:\s*(\d+),\s*Warnings:\s*(\d+)', content)
+        passed = (devices == [device] and len(summaries) == 1 and not code and
+                  all(int(failed) == int(warnings) == 0 for _, failed, warnings in summaries))
+        results.append(dict(id=item_id, node=name, device=device, exit=code,
+                            summaries=summaries, passed=passed))
+        save_result(output / 'results.json', results)
+        if not passed:
+            raise RuntimeError('Compliance failed: ' + name)
+
     for item in plan['nodes']:
         matching = [p.parent.name for p in Path('/sys/class/video4linux').glob('video*/name')
                     if p.read_text().strip() == item['name']]
@@ -372,24 +390,14 @@ def run_compliance(plan, output, deadline, env):
                 if len(related) != 1:
                     raise ValueError('Expected one media device belonging to ' + matching[0])
                 media = '/dev/' + related[0].name
-            command.extend(['-m', media])
+            # -m selects the media device and recursively tests every node,
+            # overriding -d and reaching other codecs before their input setup.
+            # -M checks only the topology; -d discovers its Request API media fd.
+            check([tool, '-E', '-W', '-M', media], item['id'] + '-media',
+                  item['name'] + ' media', media, 45)
         if item.get('stream'):
             command.extend(['--stream-from-hdr', item['fourcc'] + '=' + item['stream']])
-        timeout = min(120, deadline - time.monotonic())
-        if timeout < 30:
-            raise TimeoutError('Insufficient time for streaming compliance and recovery')
-        log = output / (item['id'] + '-compliance.log')
-        code = bounded_process(command, log, timeout, env)
-        content = log.read_text()
-        summaries = re.findall(r'Total for[^\n]*:.*?Succeeded:\s*(\d+),\s*Failed:\s*(\d+),\s*Warnings:\s*(\d+)', content)
-        passed = bool(summaries) and not code and all(int(failed) == int(warnings) == 0
-                                                     for _, failed, warnings in summaries)
-        results.append(dict(id=item['id'], node=item['name'], exit=code, summaries=summaries, passed=passed,
-                            stateless_streaming='not covered by compliance; requires Fluster'
-                            if item.get('media') else None))
-        save_result(output / 'results.json', results)
-        if not passed:
-            raise RuntimeError('Streaming compliance failed: ' + item['name'])
+        check(command, item['id'], item['name'], '/dev/' + matching[0], 120)
 
 
 def run_performance(plan, output, deadline, env):
