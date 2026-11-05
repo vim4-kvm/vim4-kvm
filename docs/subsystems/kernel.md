@@ -20,11 +20,11 @@ IR/按键及NOR与eMMC引脚限制见[设备树记录](../bringup/2026-10-21-edg
 - [GPU差距、散热与验收](../archive/gpu-parity-plan.md)。
 - [HEVC 接口与固件参数证据](../bringup/2026-11-05-hevc-interface-review.md)。
 
-## 解码驱动开发与验证
+## 内核驱动开发与验证
 
-- 按 Linux process/media 规范实现；每个改动先明确验证方法，实际运行并保存原始输出才标记已验证。短期不向上游投稿，不准备投稿材料或对外发送邮件、补丁。
-- vdec 目录不保留或新增 Python/宿主 mock 测试。纯逻辑迁 KUnit；V4L2 语义用带流 compliance 和标准码流；时钟、电源与 DMA 停机用实板。故障注入只用内核标准机制且限调试配置，不能模拟整套 vb2/V4L2。
-- KUnit 用实际生产函数，必要时按 visibility 接口暴露 static 函数；入口为 [maintain.py](../../packaging/kernel/maintain.py) 和内核 vdec 的 `.kunitconfig`，迁移风险逐项记入[清单](../bringup/2026-11-05-vdec-test-migration.md)。
+- 整个内核树按 Linux process 及对应子系统规范实现；每个改动先明确验证方法，实际运行并保存原始输出才标记已验证。短期不向上游投稿，不准备投稿材料或对外发送邮件、补丁。
+- 所有驱动不新增 Python/宿主 mock 测试，现有项目测试按[全树清单](../bringup/2026-11-05-kernel-test-migration.md)分批迁移；未确认风险保留待确认。纯逻辑迁 KUnit；接口语义用 V4L2 compliance、ALSA、DRM 等标准接口及带流测试；像素与数据用标准样本；时钟、电源与 DMA 停机用实板。故障注入只用内核标准机制且限调试配置，不能模拟整套 vb2/V4L2/DRM/ASoC。上游源码生成工具保留，板端工具迁出内核树。
+- KUnit 直接调用实际生产函数，必要时按 visibility 接口暴露 static 函数；使用各目录 `.kunitconfig` 在 arm64 QEMU 实际运行。不得抽取源码、拼假框架或用宿主断言调用顺序替代。为可测性重构时保留执行顺序与硬件访问时序；必须改变行为时另作提交，并记“需实板回归”。[vdec 清单](../bringup/2026-11-05-vdec-test-migration.md)与[结果](../bringup/2026-11-05-vdec-kunit-results.md)为记录范例；删除测试不等于替代验证通过。
 - 改动范围提交前完成 strict checkpatch、W=1 和有效 sparse、模块/内建构建、改动头文件 kernel-doc；smatch 可用则运行。改 binding 时先 schema 后板 DTB 检查。工具缺失、跳过或失败不得记通过。
 - 提交单一目的且可独立构建；binding 先于其驱动/DTS 使用者。作者、版权及来源按[代码规范](../code-standards.md)保留。
 - H.264/MPEG-2 节点使用 stateless，HEVC 使用 stateful，JPEG 独立。HEVC 内核只消费固件元数据，不解析码流；确需解析先报告，不新增私有用户态 ABI。
