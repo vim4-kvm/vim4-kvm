@@ -21,6 +21,7 @@
 | [build-gstreamer.py](../packaging/kernel/build-gstreamer.py)（test_gstreamer_p010.py、test_gstreamer_pq.py、test_gstreamer_visible_crop.py） | 无 | 插件构建及离线协商回放。 |
 | [maintain.py](../packaging/kernel/maintain.py) | 无 | 补丁导出与前移。 |
 | [vdec-fixtures.py](../packaging/kernel/vdec-fixtures.py) | 无 | 生成 H.264/MPEG-2/MJPEG 运动样本；JPEG 保留全范围参考像素，generate-fields 下载并校验固定场编码样本。离线逐帧比较 I420 并量化平面误差，非逐字节一致仍返回失败。 |
+| [vdec-capture.c](../packaging/kernel/vdec-capture.c) | 指定管线 | 用 GStreamer appsink 映射视频元数据，只保存可见 I420 平面，不做范围转换、不写入对齐填充；编译依赖及用法见文件。硬解管线须持板锁。 |
 | [build-vdec-gstreamer.py](../packaging/kernel/build-vdec-gstreamer.py)（test_gstreamer_mpeg2.py） | 无 | 按独立源码锁构建私有 stateless 解码插件并回放 MPEG-2 标准控制转换；不覆盖系统插件。 |
 | [hdmi-mode-fixture.py](../packaging/kernel/hdmi-mode-fixture.py)（hdmi-modes.json） | 只读 | 离线准备及板端输入模式验证。 |
 | [register-runtime.py](../packaging/kernel/register-runtime.py) | 独占 | 盘点及板端运行时登记、安装。 |
