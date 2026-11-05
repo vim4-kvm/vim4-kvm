@@ -498,13 +498,8 @@ def verify_ram_baseline_runtime(plan, runtime):
         raise RuntimeError('RAM baseline control has the wrong module bind source or permissions')
 
 
-def verify_candidate_dt(host, plan, baseline_properties=None, *, ram_baseline_control=False):
-    if 'ram_baseline_control' in plan or ram_baseline_control:
-        if not ram_baseline_control or plan.get('ram_baseline_control') is not True:
-            raise ValueError('RAM baseline control requires explicit runtime verification')
-        once.validate_ram_baseline(plan, dict(release=plan['baseline_release'],
-            build_id=plan['baseline_id'], files=plan['baseline_files']))
-        script = """from pathlib import Path
+def ram_runtime(host, release):
+    script = """from pathlib import Path
 import json
 target=str(Path(TARGET).resolve())
 mounts=[line.split() for line in Path('/proc/self/mountinfo').read_text().splitlines()]
@@ -512,8 +507,17 @@ matches=[entry for entry in mounts if entry[4]==target]
 if len(matches)!=1: raise RuntimeError('expected one private module bind mount')
 print(json.dumps(dict(cmdline=Path('/proc/cmdline').read_text(),
                      module_root=matches[0][3],module_options=matches[0][5])))
-""".replace('TARGET', repr('/lib/modules/' + plan['release']))
-        verify_ram_baseline_runtime(plan, json.loads(ssh_python(host, script)))
+""".replace('TARGET', repr('/lib/modules/' + release))
+    return json.loads(ssh_python(host, script))
+
+
+def verify_candidate_dt(host, plan, baseline_properties=None, *, ram_baseline_control=False):
+    if 'ram_baseline_control' in plan or ram_baseline_control:
+        if not ram_baseline_control or plan.get('ram_baseline_control') is not True:
+            raise ValueError('RAM baseline control requires explicit runtime verification')
+        once.validate_ram_baseline(plan, dict(release=plan['baseline_release'],
+            build_id=plan['baseline_id'], files=plan['baseline_files']))
+        verify_ram_baseline_runtime(plan, ram_runtime(host, plan['release']))
         return
     if plan.get('baseline_id') == plan['build_id'] and not plan.get('dt_properties'):
         raise ValueError('Same Image candidate requires readable DT identity')
@@ -536,12 +540,17 @@ def continuous_uart(device, directory, *, deadline):
     port = load('board_uart_port', ROOT / 'tools/uart-run.py')
     recorder = load('board_uart_evidence', ROOT / 'tools/board_uart.py')
     fd = port.open_port(device, 921600)
+    stream = None
     try:
-        with recorder.ContinuousUART(fd, directory) as stream:
+        stream = recorder.ContinuousUART(fd, directory)
+        with stream:
             stream.deadline = deadline
             yield stream
     finally:
-        os.close(fd)
+        # A stuck reader still owns this descriptor; do not recycle its number
+        # under that thread. __exit__ reports failure instead of releasing it.
+        if stream is None or not stream.thread.is_alive():
+            os.close(fd)
 
 
 def boot_recorded(host, stream, plan=None, baseline_release=None):
@@ -650,6 +659,24 @@ def boot(host, device, directory, plan=None, baseline_release=None, *, uart=None
         os.close(fd)
         (directory / ('uart-' + str(time.time_ns()) + '.log')).write_bytes(output)
     ready(host, expected=plan['release'] if plan else baseline_release, old_boot=old_boot)
+
+
+def stage_bundle(host, bundle, digest, plan, proof, *, reuse_staged=False, ram_baseline_control=False):
+    """Stage an already validated bundle using the common retained-proof gate."""
+    require_board()
+    verify_persistent_files(host, proof)
+    remote = '/tmp/board-window-' + plan['build_id']
+    ssh(host, 'mkdir -p ' + remote)
+    subprocess.run(['scp', str(bundle), host + ':' + remote + '/candidate.tar'], check=True, timeout=90)
+    subprocess.run(['scp', str(ROOT / 'packaging/kernel/display-once.py'),
+                    str(once.SOURCES), host + ':' + remote + '/'], check=True, timeout=30)
+    script = """import importlib.util
+s=importlib.util.spec_from_file_location('once',SCRIPT)
+m=importlib.util.module_from_spec(s);s.loader.exec_module(m)
+assert m.sha(BUNDLE)==DIGEST
+m.stage(BUNDLE,retained_baseline=PROOF,reuse_staged=REUSE,ram_baseline_control=CONTROL)
+""".replace('SCRIPT', repr(remote + '/display-once.py')).replace('BUNDLE', repr(remote + '/candidate.tar')).replace('DIGEST', repr(digest)).replace('PROOF', repr(proof)).replace('REUSE', repr(reuse_staged)).replace('CONTROL', repr(ram_baseline_control))
+    ssh_python(host, script)
 
 
 def main():

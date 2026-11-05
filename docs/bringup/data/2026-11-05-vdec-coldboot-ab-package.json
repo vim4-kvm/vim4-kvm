@@ -1,0 +1,73 @@
+{
+  "archives": {
+    "A": {
+      "sha256": "c157ead74743b5d91918a07cfd65d7f8b1d719a23777e024f74c94c7add531c1",
+      "release": "7.3.1-vim4-20261105",
+      "build_id": "bdbfa439f298e92b5bad092528d11119a974f262",
+      "source_archive_sha256": "a12069066760768a833803ad11e7e1fc212674e4ff09f40bdf2017cc1d55e204",
+      "modules_archive_sha256": "982e896caab8594fad58ae92b71976f05b06fa89e15603a9c932bee7e620019f",
+      "modules": 2354,
+      "init_sha256": "6d20a9077d0a63898d1eb74743ab1b1cbdd99d325370faabfce1524b355b006b",
+      "compiler_command": [
+        "orb",
+        "-m",
+        "vim4-build",
+        "-u",
+        "deepdream",
+        "gcc",
+        "-static",
+        "-O2",
+        "-Wall",
+        "-Wextra",
+        "-Werror",
+        "-DRELEASE=\"7.3.1-vim4-20261105\"",
+        "-DTRIAL_ROOT=\"/var/lib/vim4-kvm/ram-candidates/hwdecode/coldboot-a-v1/\"",
+        "-DCOLDBOOT_CAPTURE",
+        "/Users/deepdream/Developer/github/localhost-copilot/vim4-kvm/packaging/kernel/display-once-init.c",
+        "-o",
+        "/Users/deepdream/Developer/github/localhost-copilot/vim4-kvm/build/hwdecode-parity/coldboot-ab/A-init"
+      ]
+    },
+    "B": {
+      "sha256": "440928af06544eeff52ecb314e566425ff22501fc4f4f2e35be3caeb29e81e7d",
+      "release": "7.3.1-vim4-20261105.28",
+      "build_id": "81bb2f999ffffb38d549afbf8b15fb3048184c0f",
+      "source_archive_sha256": "1ff9d5241ae352abf2acc18f6a3c8aaeff7353f24f1dd7395c6a27fb08f77870",
+      "modules_archive_sha256": "43f5a90e4213663e009c27306d3140655fe2642d200f8a0fe378b333d800ace6",
+      "modules": 2354,
+      "init_sha256": "3f08c33e02292a13bfaf44a6e025a18dc900ac3a2d4dd0fc19d7c28c210c757c",
+      "compiler_command": [
+        "orb",
+        "-m",
+        "vim4-build",
+        "-u",
+        "deepdream",
+        "gcc",
+        "-static",
+        "-O2",
+        "-Wall",
+        "-Wextra",
+        "-Werror",
+        "-DRELEASE=\"7.3.1-vim4-20261105.28\"",
+        "-DTRIAL_ROOT=\"/var/lib/vim4-kvm/ram-candidates/hwdecode/coldboot-b-v1/\"",
+        "-DCOLDBOOT_CAPTURE",
+        "/Users/deepdream/Developer/github/localhost-copilot/vim4-kvm/packaging/kernel/display-once-init.c",
+        "-o",
+        "/Users/deepdream/Developer/github/localhost-copilot/vim4-kvm/build/hwdecode-parity/coldboot-ab/B-init"
+      ]
+    }
+  },
+  "default_init_identical": true,
+  "default_init_sha256": "c26a21aaedb0503436c4aa732f7df80acf45f8c718d6baaf13c2e7d70ea910c6",
+  "normalized_extlinux_identical": true,
+  "module_names_identical": true,
+  "modules_per_group": 2354,
+  "modules_with_different_hashes": 2341,
+  "collector_sha256": "02a205ec0750219231b2e7c028f6c4a9fc18a505b6af47ffd81accbb00176ced",
+  "static_init_source_sha256": "cfc58fffebcd819ea0309cf195c35e0a51ff52a292a70c9f861fb63b86008739",
+  "dt_diff_sha256": "9d393c840c1e70b066530ad91d5a722d5965e52112f6ecaf1792d731e9c44295",
+  "config_sha256": "7e7f8a32b24a43b30a03e636a37f2bebd23c8d2fe48f8a07199a4773fe850c41",
+  "baseline_proof_sha256": "97ed9ea01bed95ec35780d99cf7f418aae1f5cfc43a2eea1ce6337e365ea651e",
+  "video_checker_sha256": "253d055bcbb6f921c6362e1909eb2ca9ea3b8ed35c254a90baff743254153e10",
+  "hardware_run": false
+}

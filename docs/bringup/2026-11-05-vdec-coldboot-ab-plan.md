@@ -64,8 +64,8 @@ acceptance/MDEC/HEVC 实验，不进行 modprobe 干预、解码、吞吐或性�
 不把 USB UART 收包时间说成精确硬件事件时间。
 
 两组用相同、仅 RAM 生效的早期采集器：静态 init 核验身份后、exec systemd 前
-先采 cmdline、boot ID、当前模块状态及配置清单；后续后台采集不阻塞 systemd
-或改变模块加载顺序。在 Linux uptime 约 3/5/8/15 秒和 ready/60 秒处尝试快照，
+异步启动采集；不保证首份快照先于 systemd 完成，不等待采集或主动改变模块加载顺序。
+在 Linux uptime 约 3/5/8/15/45/60 秒尝试快照，ready 后及观察结束传宿主；
 若开始太晚或上次读尚未完成，则记 skipped/deadline，不能补写早期数据。
 该探针本身可能扰动时序，A/B 必须同版同策略，比较历史数据时注明。
 

@@ -68,6 +68,22 @@ class WindowTests(unittest.TestCase):
             reboot.assert_not_called()
             stream.arm.assert_not_called()
 
+    def test_stuck_continuous_reader_retains_its_port_descriptor(self):
+        port = Mock()
+        port.open_port.return_value = 42
+        stream = Mock()
+        stream.__enter__ = Mock(return_value=stream)
+        stream.__exit__ = Mock(side_effect=RuntimeError('reader did not stop'))
+        stream.thread.is_alive.return_value = True
+        recorder = Mock()
+        recorder.ContinuousUART.return_value = stream
+        with patch.object(window, 'require_board'), patch.object(window, 'load', side_effect=[port, recorder]), \
+                patch.object(window.os, 'close') as close:
+            with self.assertRaisesRegex(RuntimeError, 'reader did not stop'):
+                with window.continuous_uart('unused', Path('/unused'), deadline=3000):
+                    pass
+            close.assert_not_called()
+
     def test_opt_in_readiness_bounds_ssh_without_changing_default_timeout(self):
         for enabled, expected_timeout in ((False, 30), (True, 2)):
             with self.subTest(enabled=enabled), patch.object(window.time, 'monotonic', side_effect=[0, 0, 1]), \

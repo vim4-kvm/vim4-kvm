@@ -166,7 +166,7 @@ def validate_ram_baseline(plan, baseline):
 
 def prepare(payload, init, baseline, output, release=RELEASE,
             baseline_release=None, baseline_id=None, namespace=None, payload_id=None,
-            ram_baseline_control=False):
+            ram_baseline_control=False, early_capture=False):
     state = json.loads(baseline.read_text())
     baseline_release = state['release'] if baseline_release is None else baseline_release
     baseline_id = state['build_id'] if baseline_id is None else baseline_id
@@ -183,6 +183,8 @@ def prepare(payload, init, baseline, output, release=RELEASE,
     if report['release'] != release:
         raise ValueError('candidate release differs from the tested launcher contract')
     static_arm64(init)
+    if early_capture and b'COLDBOOT_CAPTURE: enabled' not in init.read_bytes():
+        raise ValueError('early capture requires the matching opt-in static init')
     for name in ('Image', 'vim4.dtb', 'modules.tar.gz'):
         if sha(payload / name) != report['artifacts'][name]:
             raise ValueError('candidate artifact hash mismatch: ' + name)
@@ -267,11 +269,18 @@ def prepare(payload, init, baseline, output, release=RELEASE,
         shutil.copyfile(init, work / 'init')
         (work / 'extlinux.conf').write_text(config)
         files = {name: sha(work / name) for name in ('Image', 'vim4.dtb', 'init', 'extlinux.conf')}
+        if early_capture:
+            shutil.copyfile(Path(__file__).with_name('coldboot-collect.py'), work/'coldboot-collect.py')
+            (work/'capture').mkdir()
+            (work/'capture/.keep').touch()
+            files.update({name: sha(work/name) for name in ('coldboot-collect.py', 'capture/.keep')})
         plan = dict(build_id=build_id, baseline_id=baseline_id, release=release,
                     baseline_release=baseline_release,
                     baseline_files=state['files'], baseline_cmdline=cmdline,
                     files=files, command=command, source=report['source'])
         plan.update(layout)
+        if early_capture:
+            plan['early_capture'] = True
         if ram_baseline_control:
             plan['ram_baseline_control'] = True
         elif same_image:
@@ -307,6 +316,9 @@ def prepare(payload, init, baseline, output, release=RELEASE,
                 raise ValueError('module archive is incomplete')
             for name in ('Image', 'vim4.dtb', 'init', 'extlinux.conf'):
                 archive.add(work / name, arcname=name)
+            if early_capture:
+                for name in ('coldboot-collect.py', 'capture/.keep'):
+                    archive.add(work/name, arcname=name)
             (work / 'trial.json').write_text(json.dumps(plan, indent=2) + '\n')
             archive.add(work / 'trial.json', arcname='trial.json')
         (output / 'trial.json').write_text(json.dumps(plan, indent=2) + '\n')
@@ -464,6 +476,11 @@ def read_trial(archive, baseline=None, *, ram_baseline_control=False):
         raise ValueError('trial archive inventory mismatch')
     if not {'Image', 'vim4.dtb', 'init', 'extlinux.conf'} <= set(plan['files']):
         raise ValueError('missing boot artifacts')
+    if plan.get('early_capture'):
+        if not {'coldboot-collect.py', 'capture/.keep'} <= set(plan['files']):
+            raise ValueError('missing early capture assets')
+        if b'COLDBOOT_CAPTURE: enabled' not in archive.extractfile(entries['init']).read():
+            raise ValueError('early capture init marker is missing')
     return plan, metadata, entries
 
 
@@ -564,6 +581,8 @@ def main():
     prepare_parser.add_argument('--payload-id')
     prepare_parser.add_argument('--ram-baseline-control', action='store_true',
                                 help='explicitly wrap the unchanged formal package as a RAM control')
+    prepare_parser.add_argument('--early-capture', action='store_true',
+                                help='include the bounded read-only coldboot collector for opt-in init')
     stage_parser = commands.add_parser('stage')
     stage_parser.add_argument('bundle', type=Path)
     stage_parser.add_argument('--ram-baseline-control', action='store_true')

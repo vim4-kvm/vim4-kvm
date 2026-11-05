@@ -18,16 +18,23 @@ class ColdBootReset(RuntimeError):
 
 
 class BootEvents:
+    failure = re.compile(
+        rb'WARNING: CPU: \d+ PID: \d+|------------\[ cut here \]------------|'
+        rb'^(?:\[\s*\d+(?:\.\d+)?\]\s*)?BUG: |'
+        rb'Kernel panic -|Internal error: Oops|Unable to handle kernel|'
+        rb'WARNING: possible circular locking dependency detected')
+
     def __init__(self, release):
         self.release = release
         self.linux_started = None
         self.error = None
         self.tail = b''
-        self.after_reset = b''
+        self.after_reset = []
+        self.reset_at = None
 
     def feed(self, data, monotonic_ns):
         if isinstance(self.error, ColdBootReset):
-            self.after_reset += data
+            self.after_reset.append((monotonic_ns, data))
             return
         lines = (self.tail + data).split(b'\n')
         self.tail = lines.pop()
@@ -37,7 +44,7 @@ class BootEvents:
         for number, line in enumerate(lines):
             if self.error is not None:
                 return
-            if re.search(rb'BUG:|WARNING:|Kernel panic|Oops:|KASAN:|possible circular locking', line):
+            if self.failure.search(line):
                 self.error = RuntimeError('Kernel failure in UART: ' + line.decode(errors='replace'))
                 return
             match = re.search(rb'Linux version (\S+)', line)
@@ -51,10 +58,12 @@ class BootEvents:
             elif self.linux_started is not None and b'T7:BL:' in line:
                 self.error = ColdBootReset('Selected Linux returned to T7 ROM')
             if isinstance(self.error, ColdBootReset):
+                self.reset_at = monotonic_ns
                 # A ROM marker and the recovery banner may share one USB read.
-                self.after_reset = b''.join(part + b'\n' for part in lines[number + 1:]) + self.tail
+                remaining = b''.join(part + b'\n' for part in lines[number + 1:]) + self.tail
                 if match:
-                    self.after_reset = line + b'\n' + self.after_reset
+                    remaining = line + b'\n' + remaining
+                self.after_reset = [(monotonic_ns, remaining)]
                 self.tail = b''
                 return
 
@@ -77,6 +86,7 @@ class ContinuousUART:
         self.events = None
         self.sample = None
         self.recovering = False
+        self.final_target = None
         self.thread = threading.Thread(target=self._read, name='board-uart', daemon=True)
 
     def __enter__(self):
@@ -100,23 +110,47 @@ class ContinuousUART:
     def begin_sample(self, sample):
         with self.condition:
             self.check()
+            if self.final_target is not None:
+                raise RuntimeError('Final recovery cannot start another sample')
             self.sample = sample
             self._record('event', event='sample-start')
+
+    def observe_running(self, release):
+        """Check entry-phase kernel faults without claiming a requested reboot."""
+        with self.condition:
+            self.check()
+            self.events = BootEvents(release)
+            self._record('event', event='observe-running', release=release)
 
     def arm(self, release):
         """Explicit boundary before a requested reboot; no automatic retries."""
         with self.condition:
             self.check()
+            if self.final_target is not None and release != self.final_target:
+                raise RuntimeError('Final recovery cannot select another candidate')
             self.events = BootEvents(release)
             self.recovering = False
             self._record('event', event='requested-boot', release=release)
             return len(self.data)
+
+    def final_recovery(self, release):
+        """Stop sampling permanently; retain the failure before normal recovery."""
+        with self.condition:
+            if self.error is not None:
+                self.check()
+            self._record('event', event='final-recovery', release=release,
+                         previous_error=str(self.events.error) if self.events else None)
+            self.final_target = release
+            self.events = None
 
     def check(self):
         if self.error is not None:
             raise RuntimeError('Continuous UART reader failed') from self.error
         if self.events is not None and self.events.error is not None:
             raise self.events.error
+
+    def cold_reset(self):
+        return self.events is not None and isinstance(self.events.error, ColdBootReset)
 
     def recovery(self, release):
         """Caller acknowledges a cold reset, then monitors the default boot."""
@@ -126,7 +160,8 @@ class ContinuousUART:
             pending = self.events.after_reset
             self.events = BootEvents(release)
             self.recovering = True
-            self.events.feed(pending, time.monotonic_ns())
+            for stamp, data in pending:
+                self.events.feed(data, stamp)
             self._record('event', event='automatic-recovery', release=release)
             self.check()
 

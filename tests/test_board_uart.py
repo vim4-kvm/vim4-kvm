@@ -17,12 +17,35 @@ class ContinuousUARTTests(unittest.TestCase):
             events.feed(data, 123)
         self.assertEqual(events.linux_started, 123)
         self.assertIsInstance(events.error, uart.ColdBootReset)
-        for signature in (b'BUG:', b'WARNING:', b'Kernel panic', b'Oops:', b'KASAN:'):
+        for signature in (b'BUG: fault', b'[    4.200] BUG: fault',
+                          b'WARNING: CPU: 0 PID: 123', b'------------[ cut here ]------------',
+                          b'Kernel panic - not syncing', b'Internal error: Oops',
+                          b'Unable to handle kernel', b'BUG: KASAN:'):
             events = uart.BootEvents('trial')
             events.feed(b'Linux version trial\n'+signature[:2], 1)
             events.feed(signature[2:]+b' real kernel failure\n', 2)
             self.assertIsInstance(events.error, RuntimeError)
             self.assertNotIsInstance(events.error, uart.ColdBootReset)
+
+    def test_userspace_warning_and_embedded_bug_word_are_not_kernel_failures(self):
+        events = uart.BootEvents('trial')
+        events.feed(b'Linux version trial\nsystemd: WARNING: unit not found\n'
+                    b'WARNING: deprecated option\nhelper: BUG: report this message\n', 1)
+        self.assertIsNone(events.error)
+
+    def test_recovery_replays_original_chunk_timestamps(self):
+        with tempfile.TemporaryDirectory() as directory:
+            reader, writer = socket.socketpair()
+            try:
+                with uart.ContinuousUART(reader.fileno(), directory) as stream:
+                    stream.arm('trial')
+                    with stream.condition:
+                        stream.events.feed(b'Linux version trial\nT7:BL: reset\nLinux ver', 111)
+                        stream.events.feed(b'sion formal\n', 222)
+                        stream.recovery('formal')
+                    self.assertEqual(stream.events.linux_started, 222)
+            finally:
+                reader.close(); writer.close()
 
     def test_wrong_kernel_and_repeated_linux_boot_cannot_pass(self):
         events = uart.BootEvents('trial')
@@ -31,6 +54,38 @@ class ContinuousUARTTests(unittest.TestCase):
         events = uart.BootEvents('trial')
         events.feed(b'Linux version trial\nLinux version trial\n', 1)
         self.assertIsInstance(events.error, uart.ColdBootReset)
+
+    def test_final_recovery_retains_failure_and_cannot_resume_sampling(self):
+        with tempfile.TemporaryDirectory() as directory:
+            reader, writer = socket.socketpair()
+            try:
+                with uart.ContinuousUART(reader.fileno(), directory) as stream:
+                    stream.arm('trial')
+                    stream.events.feed(b'BUG: failure\n', 1)
+                    stream.final_recovery('formal')
+                    with self.assertRaisesRegex(RuntimeError, 'another sample'):
+                        stream.begin_sample('B2')
+                    with self.assertRaisesRegex(RuntimeError, 'another candidate'):
+                        stream.arm('trial')
+                    stream.arm('formal')
+                records = (Path(directory)/'uart-chunks.jsonl').read_text()
+                self.assertIn('BUG: failure', records)
+            finally:
+                reader.close(); writer.close()
+
+    def test_entry_warning_stops_before_first_requested_boot(self):
+        with tempfile.TemporaryDirectory() as directory:
+            reader, writer = socket.socketpair()
+            try:
+                with self.assertRaisesRegex(RuntimeError, 'Kernel failure'):
+                    with uart.ContinuousUART(reader.fileno(), directory) as stream:
+                        stream.observe_running('formal')
+                        writer.sendall(b'[ 40.1] WARNING: CPU: 0 PID: 42\n')
+                        stream.read_since(0, 2)
+                records = (Path(directory)/'uart-chunks.jsonl').read_text()
+                self.assertNotIn('requested-boot', records)
+            finally:
+                reader.close(); writer.close()
 
     def test_real_stream_continues_past_login_and_preserves_rx_tx_offsets(self):
         with tempfile.TemporaryDirectory() as directory:

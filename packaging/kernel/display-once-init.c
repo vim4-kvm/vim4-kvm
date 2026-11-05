@@ -20,6 +20,32 @@
 #define TRIAL_ROOT "/var/lib/vim4-kvm/display-m1/"
 #endif
 
+#ifdef COLDBOOT_CAPTURE
+static int start_coldboot_capture(const char *directory)
+{
+	char output[1200], script[1200];
+	pid_t child;
+
+	if (snprintf(output, sizeof(output), "%s/capture", directory) >= (int)sizeof(output) ||
+	    snprintf(script, sizeof(script), "%s/coldboot-collect.py", directory) >= (int)sizeof(script))
+		return -1;
+	if (mount("tmpfs", output, "tmpfs", MS_NOSUID | MS_NODEV | MS_NOEXEC,
+		  "mode=0700,size=16m"))
+		return -1;
+	child = fork();
+	if (child < 0)
+		return -1;
+	if (!child) {
+		execl("/usr/bin/python3", "python3", "-u", script, "--output", output, (char *)NULL);
+		perror("COLDBOOT_CAPTURE_FAILURE");
+		_exit(1);
+	}
+	puts("COLDBOOT_CAPTURE: enabled");
+	fflush(stdout);
+	return 0;
+}
+#endif
+
 static uint32_t little32(const unsigned char *p)
 {
 	return p[0] | (uint32_t)p[1] << 8 | (uint32_t)p[2] << 16 |
@@ -141,6 +167,11 @@ int main(void)
 		goto fail;
 	puts("DISPLAY_ONCE: matching modules mounted; starting systemd");
 	fflush(stdout);
+#ifdef COLDBOOT_CAPTURE
+	step = "start coldboot capture";
+	if (start_coldboot_capture(executable))
+		goto fail;
+#endif
 	step = "exec systemd";
 	execl("/sbin/init", "/sbin/init", (char *)NULL);
 fail:

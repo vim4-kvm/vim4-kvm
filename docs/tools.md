@@ -50,6 +50,8 @@
 | [oowow-flash.sh](../tools/oowow-flash.sh) | 破坏；清盘 | Mac 驱动 OOWOW 刷写。 |
 | [kernel-install.sh](../tools/kernel-install.sh)、rootfs-policy.py、[promote.py](../packaging/kernel/promote.py) | 独占；改默认启动项 | 板端安装内核、根分区策略或登记候选。 |
 | [display-once.py](../packaging/kernel/display-once.py)（display-once-init.c） | 独占 | 准备或暂存 RAM 启动候选。 |
+| [coldboot-ab.py](../packaging/kernel/coldboot-ab.py) | 破坏；重启 | 默认离线核验两组锁定 RAM 包；显式 execute 在既有票内交替启动、连续 UART 采证和恢复正式基线，不自行排票。 |
+| [coldboot-collect.py](../packaging/kernel/coldboot-collect.py) | 只读 | 仅显式启用的 RAM init 启动；有界子进程读取模块参数和配置，完整快照留 tmpfs，串口只报紧凑摘要。 |
 | [final-window.py](../packaging/kernel/final-window.py)（final-board.py） | 破坏；重启 | 正式包部署、验证与恢复。 |
 | [final-regression.py](../packaging/kernel/final-regression.py)（final-manager-check.mjs） | 独占；断开 USB | 离线快照及部署回归；manager 检查用 `VIM4_EXPECTED_RELEASE` 指定窗口内核，核 TCPM、标准 thermal 风扇及当前管理页。 |
 | [vdec-window.py](../packaging/kernel/vdec-window.py)（vdec-register-dump.c、[vdec-benchmark.c](../packaging/kernel/vdec-benchmark.c)） | 破坏；重启 | 解码候选窗口、compliance、fluster 与性能；默认离线，复用板队列、manifest、watchdog 和基线视频恢复；`--baseline-proof` 排票前核对保护清单；像素失败继续、超时/内核异常停止；`known_unsupported` 按已有证据逐项跳过并单列原因，不计通过；`keep_output_vectors` 保留点名输出，`trace_vectors` 用独立 tracefs instance 记录队列事件并保存丢事件计数，`ioctl_trace_vectors` 使用已校验的 `ioctl_trace_tool` 记录 ioctl，`vector_environment` 设置逐流调试日志；见[验收合同](vdec-validation.md)。 |

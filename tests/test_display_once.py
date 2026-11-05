@@ -78,11 +78,27 @@ class TrialTest(unittest.TestCase):
             root = Path(directory)
             original = self.fixture(root)
             once.prepare(root/'payload', root/'init', root/'baseline.json', root/'explicit-false',
-                         ram_baseline_control=False)
+                         ram_baseline_control=False, early_capture=False)
             with tarfile.open(original) as first, tarfile.open(root/'explicit-false/candidate.tar') as second:
                 self.assertEqual(first.getnames(), second.getnames())
                 for name in first.getnames():
                     self.assertEqual(first.extractfile(name).read(), second.extractfile(name).read(), name)
+
+    def test_early_capture_requires_matching_init_and_inventory(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            self.fixture(root)
+            args = (root/'payload', root/'init', root/'baseline.json')
+            with self.assertRaisesRegex(ValueError, 'matching opt-in'):
+                once.prepare(*args, root/'rejected', early_capture=True)
+            with (root/'init').open('ab') as init:
+                init.write(b'COLDBOOT_CAPTURE: enabled\0')
+            once.prepare(*args, root/'capture', early_capture=True)
+            with tarfile.open(root/'capture/candidate.tar') as archive:
+                plan, _, entries = once.read_trial(archive)
+                self.assertTrue(plan['early_capture'])
+                self.assertEqual(archive.extractfile(entries['coldboot-collect.py']).read(),
+                                 (ROOT/'packaging/kernel/coldboot-collect.py').read_bytes())
 
     def test_large_debug_image_cannot_load_across_t7_unmapped_memory(self):
         header = bytearray(64)
