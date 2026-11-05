@@ -17,7 +17,8 @@
 
 ## 2026-11-05
 
-- [风扇标准 thermal 迁移](2026-11-05-fan-thermal.md) — kernel manager；15级DT档位及用户态兼容；生产.90窗口因.3基线温度未稳定而停止，候选未启动，原manager与视频核验正常。
+- [风扇自适应温度对照](2026-11-05-fan-thermal-adaptive.md) — kernel manager；生产.90最高58.6°C，比.3高0.8°C、无新增降频；收尾清理冲突已修，原manager与视频核验通过。
+- [风扇标准 thermal 迁移](2026-11-05-fan-thermal.md) — kernel manager；15级DT档位及用户态兼容，原分支离线检查与首次基线未稳定记录。
 - [调试启动 splat 离线修复与 PWM 锁拓扑](2026-11-05-debug-splat-fixes.md) — kernel；brcmfmac 上游移植及真实解析 KUnit、ADLA SG 上限修复；PWM 独立 key 修正跨实例建模，同实例 ABBA 明确保留，未上板。
 - [解码调试候选启动与门禁](2026-11-05-vdec-debug-boot.md) — kernel deployment；修正大 Image 加载地址后进入调试 Linux，暴露 PWM 锁、ADLA DMA、brcmfmac 越界及工具 media 查找问题；基线和视频已恢复，标准流未运行。
 - [解码标准验收离线准备](2026-11-05-vdec-standard-preparation.md) — kernel video；调试整包、锁定 Fluster/ISO 输入、compliance 与性能工具；无本轮硬件结果，HEVC 超时仍待验证。

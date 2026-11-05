@@ -1,6 +1,6 @@
 # 风扇集成候选窗口准备
 
-本页为窗口操作步骤；实际执行与未验边界见[上板记录](bringup/2026-11-05-fan-thermal.md)。
+本页为窗口操作步骤；实际执行与未验边界见[上板记录](bringup/2026-11-05-fan-thermal-adaptive.md)。
 只接收集成构建者给出的**生产 RAM 包**，
 不使用fan-thermal工作树自建Image，也不重编集成内核。入口为
 [fan-thermal-check.py](../tools/fan-thermal-check.py)，RAM链复用
