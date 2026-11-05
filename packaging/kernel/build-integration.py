@@ -15,6 +15,7 @@ import os
 from pathlib import Path
 import platform
 import re
+import shlex
 import shutil
 import subprocess
 
@@ -24,7 +25,7 @@ RECIPE = Path(__file__).resolve().parent
 
 def run(*args, **kwargs):
     command = list(map(str, args))
-    print('+', ' '.join(command), flush=True)
+    print('+', shlex.join(command), flush=True)
     return subprocess.run(command, check=True, **kwargs)
 
 
@@ -102,7 +103,8 @@ def seal_modules(build, stage, release, make_args, env):
     modules = stage / 'lib/modules' / release
     for name in ('build', 'source'):
         (modules / name).unlink(missing_ok=True)
-    expected = set((build / 'modules.order').read_text().splitlines())
+    expected = {str(Path(name).with_suffix('.ko'))
+                for name in (build / 'modules.order').read_text().splitlines()}
     installed = {str(p.relative_to(modules / 'kernel')).removesuffix('.xz')
                  for p in (modules / 'kernel').rglob('*.ko*')}
     if installed != expected:
@@ -123,7 +125,7 @@ def seal_modules(build, stage, release, make_args, env):
 def build_profile(args, profile, number, day, env):
     clean_revision(args.source, args.revision)
     target = args.destination / profile
-    target.mkdir()
+    target.mkdir(exist_ok=args.package_only)
     build = args.build
     localversion = '-vim4-' + day + ('' if number == 1 else '.' + str(number))
     env = dict(env, LOCALVERSION=localversion, KBUILD_BUILD_VERSION='1',
@@ -133,21 +135,41 @@ def build_profile(args, profile, number, day, env):
                  'KBUILD_BUILD_USER=vim4-kvm', 'KBUILD_BUILD_HOST=vim4-build']
     # Clean before switching profiles: preserve the directory, never reuse a
     # module object built with the other configuration. Packages live outside O=.
-    if (build / 'Makefile').exists():
-        run('make', *make_args, 'clean', env=env)
-    shutil.copy2(RECIPE / 'kernel.config', build / '.config')
-    if profile == 'debug':
-        run('bash', args.source / 'scripts/kconfig/merge_config.sh', '-m',
-            '-O', build, build / '.config', RECIPE / 'vdec-debug.config', env=env)
-    run('make', *make_args, 'olddefconfig', env=env)
+    if not args.package_only:
+        if (build / 'Makefile').exists():
+            run('make', *make_args, 'clean', env=env)
+        shutil.copy2(RECIPE / 'kernel.config', build / '.config')
+        if profile == 'debug':
+            run('bash', args.source / 'scripts/kconfig/merge_config.sh', '-m',
+                '-O', build, build / '.config', RECIPE / 'vdec-debug.config', env=env)
+        run('make', *make_args, 'olddefconfig', env=env)
     check_config(build / '.config', profile)
-    run('make', *make_args, '-j' + str(args.jobs), 'W=1', 'Image', 'dtbs', 'modules', env=env)
+    if not args.package_only:
+        run('make', *make_args, '-j' + str(args.jobs), 'W=1', 'Image', 'dtbs', 'modules', env=env)
     release = (build / 'include/config/kernel.release').read_text().strip()
-    run('python3', RECIPE.parent / 'kbase/build.py', '--vendor', args.vendor,
-        '--kernel-source', args.source, '--kernel-revision', args.revision,
-        '--kernel-build', build, '--output', target / 'external',
-        '--dtb', build / 'arch/arm64/boot/dts/amlogic/amlogic-t7-a311d2-khadas-vim4-display-m0.dtb',
-        env=env)
+    if not release.endswith(localversion):
+        raise ValueError('Build release does not match the requested candidate number')
+    if args.package_only:
+        external = json.loads((target / 'external/manifest.json').read_text())
+        if external['kernel'] != args.revision:
+            raise ValueError('External modules refer to a different kernel SHA')
+        for name, expected in external['kernelFiles'].items():
+            if sha(build / name) != expected:
+                raise ValueError('External modules do not match the retained build: ' + name)
+        if sha(target / 'external/candidate.dtb') != external['candidateDtbSha256']:
+            raise ValueError('Retained candidate DTB hash mismatch')
+        extras = target / 'external/stage/lib/modules' / release / 'extra'
+        for name, key in (('mali_kbase.ko', 'moduleSha256'),
+                          ('vim4_kbase_heaps.ko', 'heapModuleSha256'),
+                          ('governor_vim4.ko', 'governorModuleSha256')):
+            if sha(extras / name) != external[key]:
+                raise ValueError('Retained external module hash mismatch: ' + name)
+    else:
+        run('python3', RECIPE.parent / 'kbase/build.py', '--vendor', args.vendor,
+            '--kernel-source', args.source, '--kernel-revision', args.revision,
+            '--kernel-build', build, '--output', target / 'external',
+            '--dtb', build / 'arch/arm64/boot/dts/amlogic/amlogic-t7-a311d2-khadas-vim4-display-m0.dtb',
+            env=env)
     stage = target / 'external/stage'
     modules, identities = seal_modules(build, stage, release, make_args, env)
     payload = target / 'payload'
@@ -214,6 +236,10 @@ def main():
     parser.add_argument('--build-number', type=int, required=True,
                         help='Unused UTC-day production build number; debug uses the next number')
     parser.add_argument('--jobs', type=int, default=8)
+    parser.add_argument('--profile', choices=('both', 'production', 'debug'), default='both',
+                        help='Split configurations across separate heavy leases; keep the same O=')
+    parser.add_argument('--package-only', action='store_true',
+                        help='Resume a failed seal for one profile using its verified build and stage')
     args = parser.parse_args()
     if not re.fullmatch('[0-9a-f]{40}', args.revision):
         parser.error('revision must be a full lowercase commit SHA')
@@ -221,6 +247,8 @@ def main():
         parser.error('invalid ethernet MAC')
     if args.build_number < 1 or args.jobs < 1:
         parser.error('build number and jobs must be positive')
+    if args.package_only and args.profile == 'both':
+        parser.error('--package-only requires a single --profile')
     if platform.system() != 'Linux' or platform.machine() != 'aarch64':
         parser.error('requires Linux ARM64; invoke inside vim4-build under the heavy lease')
     for left, right in ((args.build, args.source), (args.destination, args.source),
@@ -237,14 +265,21 @@ def main():
     baseline = json.loads(args.baseline.read_text())
     if not all(key in baseline for key in ('release', 'build_id', 'files', 'cmdline')):
         parser.error('incomplete baseline proof')
-    args.destination.mkdir(parents=True, exist_ok=False)
+    args.destination.mkdir(parents=True, exist_ok=args.profile != 'both')
     args.build.mkdir(parents=True, exist_ok=True)
     env = dict(os.environ)
     env['SOURCE_DATE_EPOCH'] = output('git', '-C', args.source, 'show', '-s', '--format=%ct', 'HEAD')
     env['KBUILD_BUILD_TIMESTAMP'] = output('date', '-u', '-d', '@' + env['SOURCE_DATE_EPOCH'])
     day = datetime.datetime.now(datetime.timezone.utc).strftime('%Y%m%d')
+    for name in ('production', 'debug'):
+        identity = args.destination / name / 'identity.json'
+        if identity.exists() and json.loads(identity.read_text())['source'] != args.revision:
+            parser.error('retained candidate belongs to a different source SHA')
     for profile, number in (('production', args.build_number), ('debug', args.build_number + 1)):
-        with (args.destination / (profile + '.log')).open('x') as log:
+        if args.profile not in ('both', profile):
+            continue
+        mode = 'a' if args.package_only else 'x'
+        with (args.destination / (profile + '.log')).open(mode) as log:
             # Include both subprocess output and the printed command transcript.
             with contextlib.redirect_stdout(log):
                 saved = os.dup(1), os.dup(2)
@@ -263,10 +298,15 @@ def main():
             if path.is_file():
                 path.unlink()
                 removed += 1
-    save(args.destination / 'complete.json', dict(source=args.revision, objects_removed=removed,
-         identities={name: sha(args.destination / name / 'identity.json')
-                     for name in ('production', 'debug')}))
-    print(args.destination / 'complete.json')
+    identities = {name: sha(args.destination / name / 'identity.json')
+                  for name in ('production', 'debug')
+                  if (args.destination / name / 'identity.json').exists()}
+    if len(identities) == 2:
+        save(args.destination / 'complete.json', dict(source=args.revision,
+             objects_removed=removed, identities=identities))
+        print(args.destination / 'complete.json')
+    else:
+        print(args.destination / args.profile / 'identity.json')
 
 
 if __name__ == '__main__':
