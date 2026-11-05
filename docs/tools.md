@@ -119,5 +119,5 @@
 | [hdmirx-frame-check.py](../tools/hdmirx-frame-check.py) | 无 | 离线原始帧标记校验。 |
 | [edge-jpeg-check.py](../tools/edge-jpeg-check.py)、edge-jpeg-profile.py | 独占 | JPEG 驱动及分段计时。 |
 | [mcp-screenshot.py](../packaging/hdr2-pq/mcp-screenshot.py) | 只读 | 持板锁获取 MCP 截图。 |
-| [onekvm-local-bench.py](../tools/onekvm-local-bench.py) | 独占；可写远端 | Mac 调度容器或板端 CPU/内存基准。 |
+| [onekvm-local-bench.py](../tools/onekvm-local-bench.py) | 独占；可写远端 | Mac 调度容器或板端 CPU/内存基准；内核参数只记源码身份，驱动验证单独运行。 |
 | [test-fan-policy.sh](../tools/test-fan-policy.sh) | 无 | VM 离线验证内核风扇函数。 |
