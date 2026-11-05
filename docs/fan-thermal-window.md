@@ -1,6 +1,7 @@
 # 风扇集成候选窗口准备
 
-本页为未执行的准备步骤，不代表已上板通过。只接收集成构建者给出的**生产 RAM 包**，
+本页为窗口操作步骤；实际执行与未验边界见[上板记录](bringup/2026-11-05-fan-thermal.md)。
+只接收集成构建者给出的**生产 RAM 包**，
 不使用fan-thermal工作树自建Image，也不重编集成内核。入口为
 [fan-thermal-check.py](../tools/fan-thermal-check.py)，RAM链复用
 [board-window](../tools/board-window)；锁与证明规则见[短窗口](board-window.md)。
@@ -18,7 +19,7 @@ python3 tools/fan-thermal-check.py prepare --ram-package "$RAM_PACKAGE" \
 prepare只读归档，复用board-window的完整inventory/逐文件摘要/RAM启动布局校验，
 核release和既定恢复基线，再输出候选build ID、源SHA、归档路径和恢复身份。
 归档格式不含内核配置，生产/调试身份须与构建者的生产构建收据对应，不能仅凭release名字判断。
-包到手后才执行；当前没有集成包，不能用合成测试夹具充当候选。
+包到手后才执行，不能用合成测试夹具充当候选。
 板测各phase必须带此plan，运行release/build ID不符立即拒绝。
 温度JSON记录plan、运行身份、角色、实际采样时长、六区温度、cpufreq cooling状态和频率/策略。
 
@@ -26,9 +27,9 @@ prepare只读归档，复用board-window的完整inventory/逐文件摘要/RAM�
 
 本轮已fetch origin/main并确认它是manager fan-thermal的祖先；分支仅多两个风扇提交。
 实际SHA见任务结果。构建前再次fetch并做祖先校验；若main推进导致不再包含最新main，先离线整合并验证，
-不能在板窗内rebase。构建/安装不与本次离线准备一同执行。
+不能在板窗内rebase。构建须在板窗外完成。
 
-后续由协调者放开heavy后，通过队列构建Ubuntu ARM64组件（包含嵌入前端）：
+协调者放开heavy后，通过队列构建Ubuntu ARM64组件（包含嵌入前端）：
 
 ```sh
 tools/board-queue run --heavy --who fan-thermal --purpose manager-package -- \
@@ -42,11 +43,13 @@ tools/board-queue run --heavy --who fan-thermal --purpose manager-package -- \
 配置、sudoers和unit仍用板上原件，必须在窗口预检其与新helper/命令接口兼容；不兼容则中止并离线准备。
 
 窗口内先捕获原manager二进制/helper的真实文件哈希、服务unit/override、服务活动状态，
-并将原文件纳入首次board-window baseline-proof。记录原风扇L/M/H、配置是否存在及其内容。
+并保存独立的original-manager-proof，返回后逐项核验。外部RAM包可能已固定baseline_files；
+不得为了追加manager路径改写包内清单或改变其来源SHA。board-window首次proof仍须完整匹配该清单。
+记录原风扇L/M/H、配置是否存在及其内容。
 不以origin/main的重编译产物冒充“原manager”，不备份无关凭据或整个应用数据目录。
 
-候选RAM启动后上传新二进制/helper到`/run/fan-thermal-manager/`并核SHA256，
-仅临时bind覆盖（以下是届时在板上执行的步骤，本轮未执行）：
+候选RAM启动后上传新二进制/helper到私有临时目录并核SHA256，
+仅临时bind覆盖（以下以`/run/fan-thermal-manager/`为例）：
 
 ```sh
 sudo -n systemctl stop vim4-manager
@@ -72,7 +75,7 @@ sudo -n systemctl start vim4-manager
 ## 窗口顺序与相同负载
 
 1. 在正式.3上捕获首次baseline-proof，确认默认启动仍是.3，release/build ID符合plan的baseline。
-   原manager二进制/helper必须在proof文件列表中；board-window会补齐正式内核/模块/启动文件证明。
+   board-window补齐正式内核/模块/启动文件证明；原manager二进制/helper另存证明并在返回后独立核验。
    同时保存原风扇配置（含不存在状态）、实际L/M/H、CPU governor/min/max和环境温度。
 2. 固定一个常见负载：One-KVM、3840×2160@60Hz运动源、H.265、30Mbps请求，保持原音频状态，
    不做音频验收或HID操作。若现场不能维持该负载，先记录双方都能复现的替代参数，不能中途换codec/源。
@@ -89,7 +92,7 @@ sudo -n systemctl start vim4-manager
 tools/board-window --host "$HOST" --window "$WINDOW" boot-candidate "$RAM_PACKAGE" --sha256 "$SHA256"
 ```
 
-若是本批首次boot，传`--baseline-files`包含原manager二进制/helper的列表，或复用同WINDOW已捕获的proof。
+复用同WINDOW已捕获、与外部包baseline_files一致的proof，并保留独立的原manager证明。
 如果轮到本任务时已经在集成候选上，只有同日、同身份、同设置且含六区稳定温度的.3基线可复用；
 其他任务的普通视频冒烟不是温度基线。没有合格温度基线则先回.3，额外启动成本须计入30分钟预算，不能省掉对照。
 
@@ -131,12 +134,12 @@ tools/board-window --host "$HOST" --window "$WINDOW" return-baseline --video-che
 ```
 
 VIDEO_CHECK是预先准备的原应用真实解码推进可执行脚本路径（不是包含空格的shell复合命令）。board-window按首次proof校完整原内核/模块/启动文件、
-用户态文件哈希，并执行视频检查；不能用systemctl active代替真实推进。
+清单内文件哈希，并执行视频检查；不能用systemctl active代替真实推进。
 原manager应在重启后自动启动，核原二进制/helper哈希、服务MainPID及页面/API、原L/M/H和配置文件，
 确认无残留manager bind且实际release/build ID为plan baseline（当前为.3），保存returned-baseline-identity.json。
 若正常返回或manager恢复失败，不循环重启/重绑，保存UART、proof及具体恢复交接，交协调者处理。
 
-## 时长预算（估算，尚无本轮实测）
+## 时长预算
 
 | 阶段 | 预算 |
 |---|---|
@@ -152,4 +155,4 @@ VIDEO_CHECK是预先准备的原应用真实解码推进可执行脚本路径（
 完整温度对照本身不适合承诺15分钟。若基线/候选任一未稳定、启动耗时超预算，
 在剩余恢复预算不足前停止；不延长到30分钟以外、不把未稳定数据当通过。
 逐trip仿真、面板交互、系统睡眠等现有phase保留，但不默认挤进本次温度窗口；需协调者选择范围并重排总预算。
-构建、包校验、上传准备、恢复命令审阅均在占板前完成，本轮未排任何票。
+构建、包校验、上传准备、恢复命令审阅均在占板前完成。
