@@ -17,6 +17,8 @@
 
 ## 2026-11-05
 
+- [r56 FMO 停止与 Khadas parser 来源](2026-11-05-vdec-r56-fmo-parser.md) — kernel video；累计79S/17F/1Timeout/38未运行；已知FMO超时立即恢复，系统parser匹配Khadas包，首条STREAMOFF实测通过。
+
 - [r55 系统 parser 来源核对](2026-11-05-vdec-r55-parser-identity.md) — kernel video；候选正常启动，采证脚本提前退出，续跑未运行；系统 parser 与同版本官方 deb 哈希不同，来源待补证，正式恢复通过。
 
 - [r54 Sharp 尾帧与队列跟踪](2026-11-05-vdec-r54-sharp-trace.md) — kernel video；stateless compliance 通过，AVC 53S/10F/72未运行；零丢事件的 trace 证明末 slice 未进 OUTPUT，定位用户态排空，正式恢复通过。

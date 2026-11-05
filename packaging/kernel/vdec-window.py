@@ -237,6 +237,9 @@ def run_fluster(plan, output, deadline, env):
                 command.append('--keep')
             if name in plan.get('trace_vectors', []):
                 command.append('--verbose')
+            if name in plan.get('ioctl_trace_vectors', []):
+                command = [plan['ioctl_trace_tool'], '-f', '-yy', '-e', 'trace=ioctl',
+                           '-o', str(output / f'vector-{index:04d}-ioctl.log'), *command]
             vector_env = dict(env, **plan.get('vector_environment', {}).get(name, {}))
             try:
                 trace = v4l2_trace(output, index) if name in plan.get('trace_vectors', []) else nullcontext()
