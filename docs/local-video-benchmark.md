@@ -54,8 +54,8 @@ heap 与 VDIN/VPU 的映射类型可能不同，不能据此认定驱动已提�
 按[内核驱动验证规则](subsystems/kernel.md#内核驱动开发与验证)另验。
 软件 buffer 性能不能作为驱动正确性或硬件 DMA 停机的证据。
 
-Linux ARM64 中另运行内核源码的
-`drivers/media/platform/amlogic/t7-hdmirx/test_copy.py --output /tmp/vdin-copy-bench`。
+Linux ARM64 中另运行主仓库的
+`tools/t7-vdin-copy-bench.py --kernel-source /path/to/linux --output /tmp/vdin-copy-bench`。
 它编译独立 SIMD 候选汇编和当前内核实际 `memcpy_generic`，先校验越界、非整块
 尾部和标量回退。候选未链接到驱动；编译出的程序可复制到板上单独运行。
 

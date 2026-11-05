@@ -93,6 +93,7 @@
 | [mali-dma-probe.c](../tools/mali-dma-probe.c)、mali-dma-probe.comp、mali-cl-probe.c | 独占 | GPU 缓冲导入。 |
 | [npu-validate.py](../tools/npu-validate.py)、npu-probe.c、npu-models.json、npu-uapi-probe.c | 独占 | NPU 推理及接口验证。 |
 | [memory-bench.py](../tools/memory-bench.py)、memory-bench.c | 独占 | Linux 内存吞吐基准。 |
+| [t7-vdin-copy-bench.py](../tools/t7-vdin-copy-bench.py) | 独占 | Linux ARM64 离线编译 SIMD 候选与内核 memcpy 对照；生成程序的 benchmark 模式分配真实 VDIN MMAP 缓冲。 |
 | [gbm-scanout-probe.c](../tools/gbm-scanout-probe.c) | 独占 | GBM 扫描输出。 |
 | [measure-gpu.py](../packaging/hdr10/measure-gpu.py)、[application-receiver.mjs](../packaging/hdr10/application-receiver.mjs) | 独占 | HDR10 GPU 转换与应用接收取证。 |
 | [rtp-udp-bench.c](../tools/rtp-udp-bench.c) | 独占 | Linux/板端 UDP 发送基准。 |
