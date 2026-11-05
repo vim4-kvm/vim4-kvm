@@ -160,8 +160,10 @@ class QueueTests(unittest.TestCase):
         until(lambda: not self.queue.status())
 
     def test_maximum_window_is_enforced(self):
+        token = self.enqueue(minutes=50)
+        self.assertEqual(self.queue.read(token)['seconds'], 3000)
         with self.assertRaises(ValueError):
-            self.enqueue(minutes=31)
+            self.enqueue(minutes=51)
 
     def test_run_holds_private_ticket_during_repeated_cancel(self):
         child = """
