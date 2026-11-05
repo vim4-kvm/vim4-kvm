@@ -1,5 +1,8 @@
 # 2026-11-05：PWM 既有 KUnit 复验
 
+> 本页保留原验证时的 SHA。修订后的对应、完整提交检查与当前利用率修复边界见
+> [审查返工记录](2026-11-05-kunit-review-rework.md)。
+
 PWM/Meson PWM、clk-pwm 和 PWM regulator 在基线 87 个 Python 文件中没有条目，
 合入后再次核对这些目录也没有 Python。直接复用已审 `0a35577b8de28` 的
 `drivers/pwm/core_kunit.c`，没有重复写测试，没有更改这些目录或 `include/linux/pwm.h`。

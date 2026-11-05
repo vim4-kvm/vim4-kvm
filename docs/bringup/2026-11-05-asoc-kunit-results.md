@@ -1,5 +1,8 @@
 # 2026-11-05：Meson ASoC KUnit 迁移结果
 
+> 本页保留原验证时的 SHA。修订后的对应、完整提交检查与当前利用率修复边界见
+> [审查返工记录](2026-11-05-kunit-review-rework.md)。
+
 `sound/soc/meson/` 的 15 个 Python 文件全部删除。风险分类先在主仓库
 `5ae16d5` 提交，见清单 [1](2026-11-05-kunit-inventory-audio-1.md)、
 [2](2026-11-05-kunit-inventory-audio-2.md)、[3](2026-11-05-kunit-inventory-audio-3.md)。

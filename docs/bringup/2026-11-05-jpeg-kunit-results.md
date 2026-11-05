@@ -1,5 +1,8 @@
 # 2026-11-05：T7 JPEG KUnit 迁移结果
 
+> 本页保留原验证时的 SHA。修订后的对应、完整提交检查与当前利用率修复边界见
+> [审查返工记录](2026-11-05-kunit-review-rework.md)。
+
 内核 `bebd278ea650c` 删除 t7-jpeg 的两个 Python 文件，独立 KUnit 2/2 在
 arm64 QEMU 通过。风险先在主仓库 `fd6f7ea` 登记于[清单](2026-11-05-kunit-inventory-jpeg-1.md)。
 本轮仅离线，DMA、故障路径及像素替代验证全部待实板。

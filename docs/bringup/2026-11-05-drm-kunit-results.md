@@ -1,5 +1,8 @@
 # 2026-11-05：Meson DRM KUnit 迁移结果
 
+> 本页保留原验证时的 SHA。修订后的对应、完整提交检查与当前利用率修复边界见
+> [审查返工记录](2026-11-05-kunit-review-rework.md)。
+
 Meson DRM 的 18 个 Python 全部删除，arm64 QEMU KUnit 8/8。
 风险先在主仓库 `ed1a0ad` 提交，见清单
 [1](2026-11-05-kunit-inventory-drm-1.md)、[2](2026-11-05-kunit-inventory-drm-2.md)、

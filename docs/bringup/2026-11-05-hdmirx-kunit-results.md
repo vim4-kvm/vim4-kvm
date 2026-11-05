@@ -1,5 +1,8 @@
 # 2026-11-05：T7 HDMI RX KUnit 迁移结果
 
+> 本页保留原验证时的 SHA。修订后的对应、完整提交检查与当前利用率修复边界见
+> [审查返工记录](2026-11-05-kunit-review-rework.md)。
+
 `drivers/media/platform/amlogic/t7-hdmirx/` 的 20 个 Python 文件全部迁出或删除。
 独立 KUnit 模块 9 项在 arm64 QEMU 实际通过。四个生产校验函数体未改；
 环槽选择与 READY→COPYING 循环原样提取，仍在原 `irq_lock` 临界区中执行，

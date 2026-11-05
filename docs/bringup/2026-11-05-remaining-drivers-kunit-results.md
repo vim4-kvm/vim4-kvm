@@ -1,5 +1,8 @@
 # 2026-11-05：其余非暂缓驱动测试迁移结果
 
+> 本页保留原验证时的 SHA。修订后的对应、完整提交检查与当前利用率修复边界见
+> [审查返工记录](2026-11-05-kunit-review-rework.md)。
+
 风险分类先在主仓库 `16b1023` 提交，见清单
 [other-1](2026-11-05-kunit-inventory-other-1.md)、
 [other-2](2026-11-05-kunit-inventory-other-2.md)、

@@ -17,6 +17,7 @@
 
 ## 2026-11-05
 
+- [KUnit 提交说明与利用率审查返工](2026-11-05-kunit-review-rework.md) — kernel；25 提交补正文/Signed-off-by，消息阶段空 diff、原四 SHA 保留；最终 29 完整 patch 检查通过，撤销 fallthrough 并独立补 break；QEMU 44/44，利用率显示需实板回归。
 - [全树 KUnit 最终组合复验](2026-11-05-kunit-final-replay.md) — kernel；82 个 Python 已迁出/删除，九配置 arm64 QEMU 11 套 44/44；WERROR=n 仅作运行复验，既有静态失败及实板边界保留。
 - [PWM 既有 KUnit 复验](2026-11-05-pwm-kunit-results.md) — kernel power；复用原测试 QEMU 1/1，PWM/clk-pwm/regulator 内建/模块及静态检查完成；无 Python 可迁，同控制器 ABBA 保留，实板未验。
 - [brcmfmac KUnit 迁移结果](2026-11-05-brcmfmac-kunit-results.md) — kernel network；删除 P2P Python，arm64 QEMU 新参数/决策 2 项与已有 NVRAM 3 项均通过，构建/范围静态检查完成；固件/P2P/offload 待实板。

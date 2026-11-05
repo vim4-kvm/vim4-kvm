@@ -1,5 +1,8 @@
 # 2026-11-05：brcmfmac P2P 测试迁移结果
 
+> 本页保留原验证时的 SHA。修订后的对应、完整提交检查与当前利用率修复边界见
+> [审查返工记录](2026-11-05-kunit-review-rework.md)。
+
 先合入已审 `debug-splat-fixes`，保留其四个提交，内核 merge 为 `c34249a0729e6`。
 风险清单主仓库 `7c39e36` 先行，见 [other-2](2026-11-05-kunit-inventory-other-2.md)。
 内核 `11ef9a271b306` 删除唯一剩余 `test_p2p.py`，新增独立 `p2p_kunit.c`、

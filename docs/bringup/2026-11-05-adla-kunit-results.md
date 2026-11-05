@@ -1,5 +1,8 @@
 # 2026-11-05：ADLA 测试迁移结果
 
+> 本页保留原验证时的 SHA。修订后的对应、完整提交检查与当前利用率修复边界见
+> [审查返工记录](2026-11-05-kunit-review-rework.md)。
+
 协调暂缓解除后，先合入内核 `debug-splat-fixes`：merge `c34249a0729e6` 的第二
 父提交为 `0a35577b8de28`，原四个修复提交未改写。主仓库 merge `2884a56` 保留
 双方 README 条目，并修正新文档指向已更名规则章节的锚点。主仓库风险清单先于
@@ -10,7 +13,7 @@
 |---|---|
 | `437a77da87f6e` | `adlak_kunit.c` 四项、Kconfig/Makefile/`.kunitconfig` 和私有声明头；真实 allocator/取消/OS mutex 条件导出；删除含 K 风险的三个 Python |
 | `a5310d48b6313` | 删除 DMA、复位、真实等待者/worker 生命周期 mock，无生产改动 |
-| `514e0f9b81ab7` | 以标准 fallthrough 标注利用率 switch 原先进入下一 case 的路径，解除完整 QEMU 配置的默认编译错误，不改变计算或控制流 |
+| `514e0f9b81ab7`（已撤销） | 此前未经厂商历史核对即标注 fallthrough，未修复被覆盖的计算；后续审查撤销，独立 break 修复及“需实板回归”见返工记录 |
 
 arm64 QEMU 实际 4/4：
 
@@ -22,8 +25,9 @@ arm64 QEMU 实际 4/4：
 - 直接测试生产 `adlak_range_valid()` 和 `adlak_fixup_valid()` 的负数、尾边界、
   溢出安全、字对齐、shift/unit 约束。未重建 ioctl、DMA、时钟或等待队列。
 
-生产改动增加 KUnit 可见性/条件导出、声明和上述编译标注；取消函数参数使用
-等价的 Linux 固定宽度类型。原计算、调用位置、锁范围、MMIO 和 DMA 时序未变。合入分支已有
+原 KUnit 迁移增加可见性/条件导出和声明；取消函数参数使用等价的 Linux 固定宽度
+类型。纯逻辑函数的原计算、调用位置、锁范围、MMIO 和 DMA 时序未变；后续利用率
+行为修复单独提交并标“需实板回归”。合入分支已有
 SG 上限修复继续保留，见[启动 splat 记录](2026-11-05-debug-splat-fixes.md)。
 
 在 VM `/home/deepdream/src/linux-7.3-kunit-migration`，持主仓库 heavy 构建票，

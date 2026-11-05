@@ -11,6 +11,11 @@
 包含全部 fixup 后的代码。最终提交、实际命令、完整输出及失败证据见
 [组合复验](2026-11-05-kunit-final-replay.md)。
 
+后续[审查返工](2026-11-05-kunit-review-rework.md)补齐每提交正文和 Signed-off-by，
+消息阶段文件 diff 为空，原四个修复 SHA 不变。撤销原 fallthrough 标注后，依厂商
+历史独立修复利用率分支的 break，标“需实板回归”；当前 SHA 对照和完整提交检查
+见返工记录。新提交上的完整 QEMU 仍为 44/44，未验证实际利用率显示。
+
 | 已执行批次 | Python 文件数 | 实际 QEMU KUnit | 结果记录 |
 |---|---|---|---|
 | Wave5 | 13 | 9/9 | [结果](2026-11-05-wave5-kunit-results.md)及[仅离线准备的故障注入方案](2026-11-05-wave5-fault-injection-plan.md) |
