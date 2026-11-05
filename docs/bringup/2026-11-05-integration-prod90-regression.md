@@ -1,6 +1,8 @@
-# 2026-11-05：生产 .90 首错停止回归窗口
+# 2026-11-05：生产 .90 首窗与单项接收补测
 
 **窗口整体未通过；已恢复正式 `.3` 并验证真实视频解码推进。**
+这是首窗结论；随后获批的单项补测已通过，见[补测记录](#获批单项补测通过)。
+其他未验项保持原状态，未因接收补测通过而扩大验收结论。
 `.90` 启动及下列采集/编码短轮通过，应用重启后的接收检查遇到8081拒绝连接，
 按首错即停采证/恢复，没有重试或再占板。接收脚本缺少重启应用后的API就绪等待，
 不能区分尚未就绪或实际启动失败，**不能据此归因内核，也不能记候选端到端通过**。
@@ -67,7 +69,7 @@ offer，SSH报 `connect failed: Connection refused`，浏览器 `Failed to fetch
 
 离线保留实际执行的video-check-first-attempt.py，给后续video-check.py补一行
 现有 `bw.ready('vim4', timeout=60)`，Python字节编译通过。
-**修正没有在板上复测；未申请第二张板票。** 是否重测由协调者后续安排。
+首窗收尾时修正尚未在板上复测、未申请第二票；后续协调者明确批准的补测另记于末节。
 
 ## 未验项与原因
 
@@ -83,7 +85,7 @@ offer，SSH报 `connect failed: Connection refused`，浏览器 `Failed to fetch
 | HID/UAC2 | M6测试USB主机和受控UAC音频前提未确认，未重绑、未发HID、未录音 |
 | CRG/FUSB302/TCPM | 只有只读状态，无主机枚举/异常控制夹具；未reset/睡眠/唤醒/热插拔，未拔单线供电 |
 | Wave5/B类 | 短正常编码不能代替挂死/隔离/复位/恢复；生产配置不注入，仍按独立故障注入方案待调试窗 |
-| 候选应用接收 | 本次首错未通过；补API等待后仍待获批窗口复测 |
+| 候选应用接收 | 首窗失败保留；后续仅此项获批补测通过，见末节 |
 
 ## 原始输出与验证
 
@@ -94,3 +96,49 @@ board-results.tar.gz为75,924,100字节，解包目录
 `board-results/kunit-migration-prod90/`含各轮JSON/码流、results.json、状态及dmesg。
 编排输出 `build/kunit-migration/integration-73/board-window-wrapper.log`，离线解码输出
 offline-board-decode.log与初次autodetect日志均保留。没有push、合并或修改内核源码。
+
+## 获批单项补测通过
+
+协调者确认首窗8081错误不归因内核，明确批准一次FIFO补测、上限15分钟，
+只验证`.90`应用重启后的端到端WebRTC接收。没有重跑采集/JPEG/Wave5等已过项目，
+没有补测其他缺入口或前提的项；前述未验清单保持不变。
+
+补测前在UTC `2026-11-05T14:05:41.262885+00:00` 完成两脚本的py_compile检查，
+均PASS；时间、路径及SHA256保存于
+`build/kunit-migration/integration-73/retest-pycompile.log`。
+video-check.py SHA256为 `f0d3308dd915ac3066040d3198a85b4ca4e3a05d5cb1fdee779a7722959fe3bb`，
+retest-window.py为 `a14fb3a4ab49e582cd3c300a6b558b4ae30d26c164339e32c22587bd496c4c68`。
+
+等待复用 `bw.ready(timeout=60)`，另设65秒SIGALRM墙钟硬限；整个候选接收步骤
+150秒上限，失败即停并采one-kvm journal、systemctl状态和8081监听状态，再恢复。
+超时分支已准备但本次未触发，不声称做过故障注入。
+
+```sh
+tools/board-queue run --who kunit-migration \
+  --purpose 'approved .90 application restart WebRTC retest only; bounded API wait; restore .3 video' \
+  --max-min 15 -- python3 build/kunit-migration/integration-73/board-assets/retest-window.py
+```
+
+票 `2770606356514a3cbaef27f4fa8365d6`，Unix起止
+`1793887541.7127051` / `1793887723.5995898`，共 **181.887秒**（含等既有heavy结束），
+未超15分钟，sampling独占，结束已释放。两次窗口合计约5分34秒。
+
+| 补测步骤 | 实际结果 |
+|---|---|
+| 启动/重启应用 | 同一`.90` RAM包启动成功；systemctl restart one-kvm成功 |
+| API就绪 | 2.097秒；等待期间的暂态stderr原样保留，最终ready通过 |
+| 端到端接收 | H.265 3840×2160，5.0019秒解码推进304帧；接收后复核仍为`.90`及build ID `6c5ebf0605c190d7670374fb6ea880958f54cba1` |
+| 服务采证 | 成功时也保存candidate-service-state.log，含one-kvm journal/状态及8081监听 |
+| 恢复正式基线 | 正常重启回`.3`，完整保护文件、原模块notes、DT/应用/cmdline核对通过 |
+| 恢复视频 | H.265 3840×2160，5.0031秒推进298帧；API等待0.510秒 |
+
+**应用重启后的接收补测PASS，`.3`恢复及视频推进PASS。** 这只关闭首窗遗漏的
+单项验证，不抹掉首窗失败，不作性能、长期稳定性或像素正确性结论。
+
+原始输出 `logs/kunit-migration-prod90-retest/`：window-result.json、
+preflight/baseline proof、candidate-video.log、candidate-service-state.log、
+post-receive-identity.json、两次UART、returned-baseline-identity.json、
+returned-video.log、return-baseline.log。API等待暂态stderr与最终接收JSON同文件，
+JSON在末行。实际脚本为board-assets/retest-window.py和video-check.py，完整执行输出
+`build/kunit-migration/integration-73/retest-board-window-wrapper.log`。
+本次没有内核源码/默认项变更，没有push或合并。
