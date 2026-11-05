@@ -1,8 +1,9 @@
 # 2026-11-05：T7 H.264 多 slice 的 picture 生命周期
 
 独立内核提交 `adadb95ff898ef7ef08d2e77e7947dcb3e61708f` 修正 T7 后续 slice
-被显式拒绝的问题。离线检查和生产配置 `.26` 封包已完成；本记录暂不声称
-实板像素通过。隔行支持按[已审设计](2026-11-05-vdec-interlaced-design.md)后续拆分。
+被显式拒绝的问题。生产配置 `.26` 实板复验：19 条多 slice 中 11 条转为通过、
+7 条仍 Fail、1 条仍内核超时；3 条已通过的单 slice 对照全部通过。已恢复 `.3`
+及视频并清理上传。隔行支持按[已审设计](2026-11-05-vdec-interlaced-design.md)后续拆分。
 
 ## 根因与修改
 
@@ -66,3 +67,38 @@ Fail/普通 Error 逐流保留并继续。
 
 `run47/selection.json` 保存顺序和旧结果；输入由宿主归档重新校验上传，不依赖
 已清理的 r32 板端目录。窗口结束恢复 `.3`、核身份和视频，再归档清理本轮上传。
+
+## r47 实板结果
+
+[逐流 CSV](data/2026-11-05-vdec-multislice.csv) 保留旧结果、新结果、特性与原始
+JSON 路径。本轮 22/22 均运行，合计 14 Success / 7 Fail / 1 Timeout，没有
+Not run。3 条对照通过只能说明所选对照无回归，不能代替完整 135 条重新验收。
+也不能把跨 `.25`/`.26` 的结果相加，称为 `.26` 全套通过数。
+
+| 分类 | 数量 | 码流 |
+|---|---:|---|
+| 原 Fail → Success | 11 | BA1_FT_C、BASQP1_Sony_C、CABACI3_Sony_B、CABAST3_Sony_E、CABASTBR3_Sony_B、CI1_FT_B、MR1_BT_A、SL1_SVA_B、SVA_Base_B、SVA_CL1_E、SVA_FM1_E |
+| 隔行交叉项仍 Fail | 5 | CAMASL3_Sony_B、CVFI1_Sony_D、CVFI2_Sony_H、CVNLFI1_Sony_C、CVNLFI2_Sony_H |
+| cropping 交叉项仍 Fail | 1 | CVFC1_Sony_C |
+| FMO 交叉项仍 Fail | 1 | FM1_BT_B |
+| 仍内核超时 | 1 | FM1_FT_E |
+| 原 Success → Success | 3 | AUD_MW_E、BA1_Sony_D、BA2_Sony_F |
+
+最后的 FM1_FT_E 原始 Fluster JSON 仍是 Error，但内核在 12:46:07 报
+`dec timeout=500`。新门禁立即记录 Timeout、终止窗口并恢复，没有继续解码。
+`window-status.json` 正确为 `success=false`、`recovery_required=true`，不是整窗
+通过；此前已完成的逐流结果保留。内核日志没有新增 BUG/WARNING/KASAN 特征，
+但这是生产配置，不能据此声称做过 KASAN/lockdep 验收。
+
+原始结果在 `logs/hwdecode-parity-r47/validation-fluster-1793882467351467000/results/`，
+每个 followup 都保留 `results.json`、Fluster JSON、日志、逐流内核日志。主目录
+保存候选身份、启动 UART、恢复身份及 `returned-video.log`。
+
+本轮没有重跑带流 compliance，也没有运行 MPEG-2、HEVC 或其余 AVC 向量；
+`.25` compliance 的历史结果不记作 `.26` 新通过。后续受影响的接口验证仍需补齐。
+5.15 对照继续暂停，不能将未解决项归为厂商固件不支持。
+
+恢复证明为 `WINDOW_FINISHED baseline restored=True`；五秒 3840×2160 H.265
+视频新增 303 帧，约 60.57 fps，丢帧/冻结/丢包增量均零。666 个上传文件已在
+Mac 归档、逐文件哈希核验、远端再次核验后删除。板票已释放；清理本任务 O=
+及模块目录的对象文件，保留 Image、模块、归档和日志，见 `run47/object-cleanup.json`。

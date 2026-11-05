@@ -20,7 +20,7 @@
 - [完整 AVC/MPEG-2 一致性与 bit21 实验](2026-11-05-vdec-full-conformance.md) — kernel video；H.264 58/135、MPEG-2 18/43；HEVC bit21 仍超时，5.15 启动 hard lockup，对照未运行；已恢复 `.3` 并归档清理。
 - [标准码流失败特性聚类](2026-11-05-vdec-failure-groups.md) — kernel video；隔行 SPS 52 Fail、多 slice 18 Fail；主机驱动显式限制，修复待验证；附逐流结果与重叠分组。
 - [H.264 隔行支持设计](2026-11-05-vdec-interlaced-design.md) — kernel video；尺寸、场参考、MV 与 HOLD 生命周期的实现前设计，先做多 slice 验证，尚未开放隔行入口。
-- [T7 H.264 多 slice 生命周期修复](2026-11-05-vdec-multislice.md) — kernel video；独立提交与静态检查，生产配置 `.26` 已封包、双端哈希一致；22 条复验计划已准备，实板待运行。
+- [T7 H.264 多 slice 生命周期修复](2026-11-05-vdec-multislice.md) — kernel video；`.26` 复验 11 条 Fail 转通过，3 条单 slice 对照通过；7 Fail、1 内核 Timeout 保留；恢复 `.3` 和视频，上传已归档清理。
 - [独立格式 Fluster 与 HEVC 启动顺序](2026-11-05-vdec-independent-fluster.md) — kernel video；H.264 子集 1/2，MPEG-2 0/2（1 未运行），像素失败即停止；清理已归档上传，恢复 `.3`；HEVC bit21 模式差异待验证。
 - [解码缓冲序号修复与复验](2026-11-05-vdec-buffer-sequence.md) — kernel video；独立序号提交与静态检查；`.25` stateless/JPEG 各 60/60，HEVC SOURCE_CHANGE 超时，Fluster 未运行；已恢复 `.3` 与视频。
 - [生产配置解码功能验收](2026-11-05-vdec-production-validation.md) — kernel video；`.24` 正常启动，stateless 带流 compliance 遇输出缓冲序号不递增；后续未运行，已恢复 `.3` 与 4K 视频。
