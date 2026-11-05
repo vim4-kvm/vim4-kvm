@@ -17,6 +17,7 @@
 
 ## 2026-11-05
 
+- [Meson DRM KUnit 迁移结果](2026-11-05-drm-kunit-results.md) — kernel video；18 个 Python 删除，QEMU 8/8，内建/可用模块与有效 sparse 等检查完成；显示/DMA 待实板。
 - [T7 JPEG KUnit 迁移结果](2026-11-05-jpeg-kunit-results.md) — kernel video；两个 Python 删除，arm64 QEMU 2/2，范围构建与静态检查通过；真实 DMA 和像素待实板。
 - [T7 HDMI RX KUnit 迁移结果](2026-11-05-hdmirx-kunit-results.md) — kernel video audio；20 个 Python 迁出/删除，arm64 QEMU 9/9，内建/模块与范围静态检查完成；硬件语义待实板。
 - [Wave5 故障注入离线方案](2026-11-05-wave5-fault-injection-plan.md) — kernel video；标准 fail_function 注入点、隔离/DMA 预期与判定；仅准备，全部待实板，内部时序注入缺口单列。
