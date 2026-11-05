@@ -363,7 +363,15 @@ def run_compliance(plan, output, deadline, env):
                 raise RuntimeError('Unable to set compliance input format: ' + item['id'])
         command = [tool, '-E', '-W', '-d', '/dev/' + matching[0], '-s', str(item['frames'])]
         if item.get('media'):
-            command.extend(['-m', item['media']])
+            media = item['media']
+            if media == 'auto':
+                device = (Path('/sys/class/video4linux') / matching[0] / 'device').resolve()
+                related = [p for p in Path('/sys/class/media').glob('media*')
+                           if (p / 'device').resolve() == device]
+                if len(related) != 1:
+                    raise ValueError('Expected one media device belonging to ' + matching[0])
+                media = '/dev/' + related[0].name
+            command.extend(['-m', media])
         if item.get('stream'):
             command.extend(['--stream-from-hdr', item['fourcc'] + '=' + item['stream']])
         timeout = min(120, deadline - time.monotonic())
