@@ -17,13 +17,14 @@
 
 ## 2026-11-05
 
+- [其余非暂缓驱动测试迁移结果](2026-11-05-remaining-drivers-kunit-results.md) — kernel usb thermal；9 个 Python 删除，风扇 arm64 QEMU 3/3，范围构建完成；CRG/TCPM 有效 sparse 未通过，V/B 待实板。
 - [Meson ASoC KUnit 迁移结果](2026-11-05-asoc-kunit-results.md) — kernel audio；15 个 Python 删除，arm64 QEMU 3/3，构建及范围静态检查完成，音频/硬件待实板。
 - [Meson DRM KUnit 迁移结果](2026-11-05-drm-kunit-results.md) — kernel video；18 个 Python 删除，QEMU 8/8，内建/可用模块与有效 sparse 等检查完成；显示/DMA 待实板。
 - [T7 JPEG KUnit 迁移结果](2026-11-05-jpeg-kunit-results.md) — kernel video；两个 Python 删除，arm64 QEMU 2/2，范围构建与静态检查通过；真实 DMA 和像素待实板。
 - [T7 HDMI RX KUnit 迁移结果](2026-11-05-hdmirx-kunit-results.md) — kernel video audio；20 个 Python 迁出/删除，arm64 QEMU 9/9，内建/模块与范围静态检查完成；硬件语义待实板。
 - [Wave5 故障注入离线方案](2026-11-05-wave5-fault-injection-plan.md) — kernel video；标准 fail_function 注入点、隔离/DMA 预期与判定；仅准备，全部待实板，内部时序注入缺口单列。
 - [Wave5 KUnit 迁移结果](2026-11-05-wave5-kunit-results.md) — kernel video；13 个 Python 文件迁出/删除，arm64 QEMU 9/9；W=1、有效 sparse、模块/内建及静态检查完成，硬件语义待实板。
-- [内核树测试迁移清单](2026-11-05-kernel-test-migration.md) — kernel；87 个文件初始盘点，含保留的上游生成器与 vdec；未确认项保留。
+- [内核树测试迁移清单](2026-11-05-kernel-test-migration.md) — kernel；87 个文件逐项盘点，77 个已迁出/删除，34 项 KUnit；保留生成器/vdec/协调暂缓测试，实板及部分静态门禁未完成。
 - [测试清单 drm-1](2026-11-05-kunit-inventory-drm-1.md) — kernel；逐文件入口、原检查及待确认处置。
 - [测试清单 drm-2](2026-11-05-kunit-inventory-drm-2.md) — kernel；逐文件入口、原检查及待确认处置。
 - [测试清单 drm-3](2026-11-05-kunit-inventory-drm-3.md) — kernel；逐文件入口、原检查及待确认处置。
