@@ -15,6 +15,64 @@ check = importlib.util.module_from_spec(SPEC)
 SPEC.loader.exec_module(check)
 
 
+def replay(temperature):
+    """Drive the actual sampling loop with a clock, never wait for wall time."""
+    now = [0.0]
+    def sleep(seconds):
+        now[0] += seconds
+    def read():
+        values = temperature(now[0])
+        if isinstance(values, int):
+            values = dict.fromkeys(SENSORS, values)
+        return dict(temperatures=values, passive_states={'cpufreq-cpu0': 0})
+    return check.adaptive_sample(read, clock=lambda: now[0], sleep=sleep)
+
+
+class AdaptiveTemperatureTest(unittest.TestCase):
+    def test_warming_and_cooling_settle_on_the_same_first_complete_window(self):
+        for direction in (-1, 1):
+            with self.subTest(direction=direction):
+                report = replay(lambda t: int(50000 + direction * max(0, 360 - t) * 20))
+                self.assertEqual(report['measurement']['start_seconds'], 360)
+                self.assertEqual(report['measurement']['end_seconds'], 660)
+                self.assertEqual(report['elapsed'], 660)
+                self.assertEqual(len(report['readings']), 660)  # early drift retained
+                self.assertFalse(report['checks'][0]['stable'])
+
+    def test_all_six_zones_must_settle_and_drift_stops_at_fifteen_minutes(self):
+        for direction in (-1, 1):
+            with self.subTest(direction=direction):
+                def values(t):
+                    temperatures = dict.fromkeys(SENSORS, 50000)
+                    temperatures[SENSORS[-1]] += int(direction * t * 20)
+                    return temperatures
+                report = replay(values)
+                self.assertIsNone(report['measurement'])
+                self.assertEqual(report['elapsed'], 900)
+                self.assertFalse(any(c['stable'] for c in report['checks']))
+
+    def test_inclusive_half_degree_boundary_and_last_permitted_window(self):
+        for spread, accepted in ((500, True), (501, False)):
+            with self.subTest(spread=spread):
+                report = replay(lambda t: 50000 + (spread if int(t // 60) % 2 else 0))
+                self.assertEqual(report['measurement'] is not None, accepted)
+                if accepted:
+                    self.assertEqual(report['elapsed'], 480)
+        report = replay(lambda t: int(50000 + max(0, 600 - t) * 20))
+        self.assertEqual(report['measurement']['end_seconds'], 900)
+
+    def test_time_buckets_do_not_treat_a_partial_minute_as_complete(self):
+        rows = [dict(monotonic=t, temperatures=dict.fromkeys(SENSORS, 50000))
+                for t in range(180, 480)]
+        self.assertIsNone(check.select_measurement(rows, 0, 479.99))
+        self.assertTrue(check.select_measurement(rows, 0, 480)['stable'])
+        # Five minutes are required even if an oversampled four-minute tail
+        # has enough rows to look like five groups of sixty samples.
+        incomplete = [dict(monotonic=240 + i / 2, temperatures=dict.fromkeys(SENSORS, 50000))
+                      for i in range(480)]
+        self.assertIsNone(check.select_measurement(incomplete, 0, 480))
+
+
 class FanCandidateTest(unittest.TestCase):
     def test_external_archive_identity_and_tampering(self):
         from test_display_once import TrialTest, once
@@ -46,8 +104,8 @@ class FanCandidateTest(unittest.TestCase):
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)
             plan = dict(baseline=dict(release='baseline', build_id='a'), candidate=dict(release='candidate', build_id='b'))
-            rows = [dict(temperatures=dict.fromkeys(SENSORS, 50000), passive_states={'thermal-cpufreq-0': 0}) for _ in range(120)]
-            baseline = dict(role='baseline', plan=plan, identity=plan['baseline'], elapsed=300, readings=rows, workload='same', ambient=25)
+            baseline = replay(lambda t: 60000 if t < 180 else 50000)
+            baseline.update(role='baseline', plan=plan, identity=plan['baseline'], workload='same', ambient=25)
             candidate = copy.deepcopy(baseline)
             candidate.update(role='candidate', identity=plan['candidate'])
             args = SimpleNamespace(baseline=root / 'base.json', candidate=root / 'candidate.json')
@@ -59,18 +117,32 @@ class FanCandidateTest(unittest.TestCase):
             with self.assertRaisesRegex(ValueError, 'release/build ID'):
                 check.compare(args)
             candidate['identity'] = plan['candidate']
-            for row in candidate['readings'][60:]:
+            for row in candidate['readings'][240:]:
                 row['temperatures']['a73-thermal'] = 52000
             args.candidate.write_text(json.dumps(candidate))
             with self.assertRaisesRegex(AssertionError, 'stable five-minute'):
                 check.compare(args)
             # A hot baseline that cooled before its last two minutes must not
             # inflate the comparison ceiling and hide a warmer candidate.
-            cooling = copy.deepcopy(baseline)
-            cooling['readings'] = copy.deepcopy(rows) + copy.deepcopy(rows)
-            for row in cooling['readings'][:60]:
-                row['temperatures']['a73-thermal'] = 60000
-            self.assertFalse(check.steady(cooling['readings']))
+            cooling = replay(lambda t: 60000 if t < 360 else 50000)
+            self.assertIsNone(check.select_measurement(cooling['readings'], 0, 480))
+
+    def test_compare_uses_selected_window_and_keeps_three_degree_limit(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            plan = dict(baseline=dict(release='baseline', build_id='a'), candidate=dict(release='candidate', build_id='b'))
+            args = SimpleNamespace(baseline=root / 'base.json', candidate=root / 'candidate.json')
+            for temperature, accepted in ((53000, True), (53001, False)):
+                baseline = replay(lambda t: 60000 if t < 180 else 50000)
+                candidate = replay(lambda t: temperature)
+                for role, report, path in (('baseline', baseline, args.baseline), ('candidate', candidate, args.candidate)):
+                    report.update(role=role, identity=plan[role], plan=plan, workload='same', ambient=29)
+                    path.write_text(json.dumps(report))
+                if accepted:
+                    check.compare(args)
+                else:
+                    with self.assertRaisesRegex(AssertionError, 'increased >3'):
+                        check.compare(args)
 
 
 class FanThermalTest(unittest.TestCase):

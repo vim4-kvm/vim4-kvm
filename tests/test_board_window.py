@@ -555,6 +555,11 @@ import {measureDecoded} from './tools/board-window-timing.mjs';
 let clock=0;
 const options={now:()=>clock, sleep:async ms=>{clock+=ms},readyTimeoutMs:1000};
 const result=await measureDecoded(async()=>clock<500?null:{id:'v',ssrc:1,framesDecoded:1+(clock-500)/50},.2,options);
+clock=0;
+const early=await measureDecoded(async()=>({id:'v',ssrc:1,framesDecoded:1+clock/50}),10,
+ {...options,shouldStop:()=>clock>=200});
+assert.equal(early.elapsedMs,200);
+assert.equal(early.fps,20);
 assert.equal(result.elapsedMs,200);
 assert.equal(result.samples[0].framesDecoded,1);
 assert.equal(result.samples.length,5);

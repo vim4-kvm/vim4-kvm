@@ -2,7 +2,7 @@
 """Prepared board-window checks; never acquires a board window itself.
 
 Run only after the coordinator reserves the board. sample observes an already
-running, preheated workload. prepare and compare are offline. Control phases change thermal
+running workload until a stable five-minute window is found. prepare and compare are offline. Control phases change thermal
 emulation, fan settings or system sleep and restore their temporary settings.
 """
 import argparse
@@ -24,6 +24,9 @@ from vim4fan import SENSORS, snapshot
 
 THERMAL = Path('/sys/class/thermal')
 DUTIES = (5, 10, 15, 20, 25, 30, 35, 43, 52, 61, 70, 77, 85, 92, 100)
+MIN_WARMUP = 180
+MEASUREMENT_SECONDS = 300
+SIDE_SECONDS = 900
 
 
 def prepare(args):
@@ -77,16 +80,51 @@ def verify_identity(plan, role, actual):
         raise ValueError(f'Running {role} release/build ID differs from supplied plan')
 
 
-def steady(readings):
-    """Reject a drifting measurement window, including a cooling baseline."""
-    if len(readings) < 120:
-        return False
-    minutes = [readings[i:i + 60] for i in range(0, len(readings), 60)]
-    for kind in SENSORS:
-        means = [sum(r['temperatures'][kind] for r in minute) / len(minute) for minute in minutes]
-        if max(means) - min(means) > 500:
-            return False
-    return True
+def assess_window(readings, started, end_seconds):
+    """Use five complete time buckets; sampling overhead must not move boundaries."""
+    start_seconds = end_seconds - MEASUREMENT_SECONDS
+    minutes = [[] for _ in range(5)]
+    for reading in readings:
+        offset = reading['monotonic'] - started - start_seconds
+        if 0 <= offset < MEASUREMENT_SECONDS:
+            minutes[int(offset // 60)].append(reading)
+    complete = all(minutes) and sum(map(len, minutes)) >= 120
+    means = {kind: [sum(r['temperatures'][kind] for r in minute) / len(minute)
+                    for minute in minutes] for kind in SENSORS} if complete else {}
+    ranges = {kind: max(values) - min(values) for kind, values in means.items()}
+    return dict(start_seconds=start_seconds, end_seconds=end_seconds,
+                minute_means=means, ranges=ranges,
+                stable=bool(complete and all(value <= 500 for value in ranges.values())))
+
+
+def select_measurement(readings, started, elapsed):
+    """Replay the first eligible stable window, without discarding its early minutes."""
+    for end in range(MIN_WARMUP + MEASUREMENT_SECONDS, min(int(elapsed), SIDE_SECONDS) + 1, 60):
+        window = assess_window(readings, started, end)
+        if window['stable']:
+            return window
+    return None
+
+
+def adaptive_sample(read, *, clock=time.monotonic, sleep=time.sleep, progress=lambda check: None):
+    """Retain the whole history, checking once per minute through the 15-minute cap."""
+    started = clock()
+    readings, checks = [], []
+    next_check = MIN_WARMUP + MEASUREMENT_SECONDS
+    while True:
+        if clock() >= started + next_check:
+            window = assess_window(readings, started, next_check)
+            checks.append(window)
+            progress(window)
+            if window['stable'] or next_check == SIDE_SECONDS:
+                return dict(started_monotonic=started, elapsed=clock() - started,
+                            readings=readings, checks=checks,
+                            measurement=window if window['stable'] else None)
+            next_check += 60
+        state = read()
+        state['monotonic'] = clock()
+        readings.append(state)
+        sleep(max(0, min(1, started + next_check - clock())))
 
 
 def fan_device():
@@ -188,55 +226,61 @@ def panel():
     print(json.dumps(dict(phase='panel-helper', passed=True)))
 
 
+def read_thermal_state():
+    state = snapshot()
+    assert not state['sensor_fault'], state
+    # Old quiet kernels expose only the maximum. Read all six independently.
+    state['temperatures'] = {kind: int((zone / 'temp').read_text()) for kind, zone in zip(SENSORS, zones())}
+    state['passive_states'] = {(p / 'type').read_text().strip(): int((p / 'cur_state').read_text())
+                              for p in THERMAL.glob('cooling_device*')
+                              if 'cpufreq' in (p / 'type').read_text()}
+    state['cpu_policies'] = {p.name: {name: (p / name).read_text().strip() for name in
+                                    ('scaling_governor', 'scaling_cur_freq', 'scaling_min_freq', 'scaling_max_freq')}
+                             for p in Path('/sys/devices/system/cpu/cpufreq').glob('policy*')}
+    return state
+
+
 def sample(args):
     assert args.output and args.ambient is not None
-    assert 10 <= args.seconds <= 600
-    readings = []
-    start = time.monotonic()
-    while time.monotonic() - start < args.seconds:
-        state = snapshot()
-        assert not state['sensor_fault'], state
-        # Old quiet kernels expose only the maximum, so collect six temperatures
-        # independently for comparable CPU and per-sensor evidence.
-        state['temperatures'] = {kind: int((zone / 'temp').read_text()) for kind, zone in zip(SENSORS, zones())}
-        state['passive_states'] = {(p / 'type').read_text().strip(): int((p / 'cur_state').read_text())
-                                   for p in THERMAL.glob('cooling_device*')
-                                   if 'cpufreq' in (p / 'type').read_text()}
-        state['cpu_policies'] = {p.name: {name: (p / name).read_text().strip() for name in
-                                        ('scaling_governor', 'scaling_cur_freq', 'scaling_min_freq', 'scaling_max_freq')}
-                                 for p in Path('/sys/devices/system/cpu/cpufreq').glob('policy*')}
-        state['monotonic'] = time.monotonic()
-        readings.append(state)
-        time.sleep(1)
-    args.output.write_text(json.dumps(dict(identity=running_identity(), role=args.role,
-                                          plan=json.loads(args.candidate_plan.read_text()),
-                                          ambient=args.ambient, elapsed=time.monotonic() - start,
-                                          stable=steady(readings), workload=args.workload,
-                                          readings=readings), indent=2) + '\n')
+    report = adaptive_sample(read_thermal_state,
+                             progress=lambda window: print(json.dumps(window), flush=True))
+    report.update(identity=running_identity(), role=args.role,
+                  plan=json.loads(args.candidate_plan.read_text()), ambient=args.ambient,
+                  stable=report['measurement'] is not None, workload=args.workload)
+    args.output.write_text(json.dumps(report, indent=2) + '\n')
+    assert report['stable'], 'No stable five-minute window within the 15-minute side limit'
 
 
 def compare(args):
     baseline, candidate = [json.loads(p.read_text()) for p in (args.baseline, args.candidate)]
     assert baseline['role'] == 'baseline' and candidate['role'] == 'candidate'
     assert baseline['plan'] == candidate['plan'], 'Samples refer to different RAM candidates'
+    measured = []
     for role, report in (('baseline', baseline), ('candidate', candidate)):
         verify_identity(report['plan'], role, report['identity'])
-        assert report['elapsed'] >= 300 and steady(report['readings']), f'{role} is not a stable five-minute sample'
+        window = select_measurement(report['readings'], report['started_monotonic'], report['elapsed'])
+        assert window and window == report['measurement'], f'{role} is not a stable five-minute sample'
+        selected = [r for r in report['readings'] if window['start_seconds'] <=
+                    r['monotonic'] - report['started_monotonic'] < window['end_seconds']]
+        measured.append(selected)
     assert baseline['workload'] == candidate['workload'], 'Use the same workload and settings'
     assert abs(baseline['ambient'] - candidate['ambient']) <= 1, 'Ambient temperatures differ by >1°C'
-    def maximum(report):
-        return max(max(r['temperatures'].values()) for r in report['readings'])
-    assert maximum(candidate) - maximum(baseline) <= 3000, 'Maximum temperature increased >3°C'
-    assert max(r['temperatures'][kind] for r in candidate['readings'] for kind in SENSORS[:2]) < 85000
-    def passive(report):
+    def maximum(rows):
+        return max(max(r['temperatures'].values()) for r in rows)
+    old_rows, new_rows = measured
+    assert maximum(new_rows) - maximum(old_rows) <= 3000, 'Maximum temperature increased >3°C'
+    assert all(max(r['temperatures'][kind] for r in rows for kind in SENSORS[:2]) < 85000
+               for rows in measured), 'CPU temperature is not below 85°C'
+    def passive(rows):
         values = {}
-        for reading in report['readings']:
+        for reading in rows:
             for kind, state in reading['passive_states'].items():
                 values[kind] = max(values.get(kind, 0), state)
         return values
-    old = passive(baseline)
-    assert all(state <= old.get(kind, 0) for kind, state in passive(candidate).items()), 'New CPU passive cooling'
-    print(json.dumps(dict(phase='compare', passed=True, baseline_max=maximum(baseline), candidate_max=maximum(candidate))))
+    old = passive(old_rows)
+    assert all(state <= old.get(kind, 0) for kind, state in passive(new_rows).items()), 'New CPU passive cooling'
+    print(json.dumps(dict(phase='compare', passed=True, baseline_max=maximum(old_rows), candidate_max=maximum(new_rows),
+                          baseline_window=baseline['measurement'], candidate_window=candidate['measurement'])))
 
 
 def suspend():
@@ -265,7 +309,6 @@ def main():
     parser.add_argument('--candidate-plan', type=Path, help='JSON produced by offline prepare')
     parser.add_argument('--role', choices=('baseline', 'candidate', 'returned'), default='candidate')
     parser.add_argument('--exclusive', action='store_true', help='Coordinator has reserved the board')
-    parser.add_argument('--seconds', type=int, default=300)
     parser.add_argument('--ambient', type=float)
     parser.add_argument('--workload', help='Exact source/application/codec/settings identity')
     parser.add_argument('--output', type=Path)
@@ -289,9 +332,9 @@ def main():
         raise InterruptedError(f'Board check interrupted by signal {signum}')
     for signum in (signal.SIGTERM, signal.SIGALRM):
         signal.signal(signum, interrupted)
-    signal.alarm(900)
+    signal.alarm(SIDE_SECONDS + 30 if args.phase == 'sample' else 900)
     if args.phase == 'sample':
-        assert args.workload, 'Describe the already running preheated workload'
+        assert args.workload, 'Describe the already running workload'
         sample(args)
     else:
         {'emulation': emulation, 'panel': panel, 'suspend': suspend}[args.phase]()
