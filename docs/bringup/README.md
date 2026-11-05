@@ -17,6 +17,8 @@
 
 ## 2026-11-05
 
+- [r57 Sharp STREAMOFF 与续跑](2026-11-05-vdec-r57-sharp-streamoff.md) — kernel video；累计103S/21F/1Error/2Timeout/8未运行；Sharp两队列STREAMOFF成功、无FLUSH调用，SP1超时后正式恢复通过。
+
 - [r56 FMO 停止与 Khadas parser 来源](2026-11-05-vdec-r56-fmo-parser.md) — kernel video；累计79S/17F/1Timeout/38未运行；已知FMO超时立即恢复，系统parser匹配Khadas包，首条STREAMOFF实测通过。
 
 - [r55 系统 parser 来源核对](2026-11-05-vdec-r55-parser-identity.md) — kernel video；候选正常启动，采证脚本提前退出，续跑未运行；系统 parser 与同版本官方 deb 哈希不同，来源待补证，正式恢复通过。
