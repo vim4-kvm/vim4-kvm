@@ -17,6 +17,7 @@
 
 ## 2026-11-05
 
+- [解码标准验收离线准备](2026-11-05-vdec-standard-preparation.md) — kernel video；调试整包、锁定 Fluster/ISO 输入、compliance 与性能工具；无本轮硬件结果，HEVC 超时仍待验证。
 - [解码 KUnit 迁移结果](2026-11-05-vdec-kunit-results.md) — kernel video；移除七个 Python 测试文件，arm64 QEMU 五套 17/17，模块/内建与修改范围静态检查通过；硬件语义待实板。
 - [解码测试迁移清单](2026-11-05-vdec-test-migration.md) — kernel video；逐项登记七个文件、49 项测试的风险与 KUnit/compliance/实板替代验证。
 - [HEVC 接口与固件模式](2026-11-05-hevc-interface-review.md) — kernel video；保留 stateful，核对三种 codec 的固件参数方向；未发现 T7 主机完整参数注入模式，结论限于源码接口。

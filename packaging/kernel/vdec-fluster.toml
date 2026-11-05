@@ -1,0 +1,63 @@
+# Names verified with fluster.py -ne list -c at this revision.
+# A host with no decoder devices reports KO; availability must be checked again
+# inside the supervised board window. HEVC uses the stateful interface on T7.
+source_url = "https://github.com/fluendo/fluster.git"
+revision = "45d6dca42398305ac3a3ad9a0712028a2d08d97a"
+version = "0.6.0"
+vector_timeout_seconds = 30
+window_seconds = 900
+recovery_seconds = 180
+
+[mpeg2_reference]
+source_url = "https://standards.iso.org/ittf/PubliclyAvailableStandards/c039486_ISO_IEC_13818-5_2005_Reference_Software.zip"
+source_sha256 = "ba372c4069e9c96d0675e1442dbcb5a9c7f46d8ca760866bd51f185641ba759e"
+archive_member = "video.zip"
+meson_recipe = "subprojects/packagefiles/mpeg2video/meson.build"
+# ISO licence accepted by the user for local validation only. Source and binary
+# stay in private build artifacts, never in a repository or distributed package.
+
+[[suites]]
+name = "JVT-AVC_V1"
+path = "test_suites/h.264/JVT-AVC_V1.json"
+sha256 = "602cb6495b77514d11812c9a957682dc583172b24524ea29bc83bfa1d5803bb0"
+vectors = 135
+mainline_decoder = "GStreamer-H.264-V4L2SL"
+vendor_decoder = "GStreamer-H.264-V4L2"
+
+[[suites]]
+name = "JVT-FR-EXT"
+path = "test_suites/h.264/JVT-FR-EXT.json"
+sha256 = "4adeeb82abbc258c7f7247f1bcf7e9d70788bf0ea28ee209e498ab9c31746a51"
+profiles = ["High"]
+vectors = 45
+mainline_decoder = "GStreamer-H.264-V4L2SL"
+vendor_decoder = "GStreamer-H.264-V4L2"
+
+[[suites]]
+name = "JCT-VC-HEVC_V1"
+path = "test_suites/h.265/JCT-VC-HEVC_V1.json"
+sha256 = "778c3cf8724b7f3a9f9ad59d4633531f110e3d660d27f47721b96e148224d04f"
+vectors = 147
+mainline_decoder = "GStreamer-H.265-V4L2"
+vendor_decoder = "GStreamer-H.265-V4L2"
+
+[[suites]]
+name = "MPEG2_VIDEO-MAIN"
+path = "test_suites/mpeg2v/MPEG2_VIDEO-MAIN.json"
+sha256 = "63b49a077bcc3d1930f749f50eafa809cdae997c5cc610186a4f2a7c51eb3287"
+vectors = 43
+mainline_decoder = "GStreamer-MPEG2_VIDEO-V4L2SL"
+vendor_decoder = "GStreamer-MPEG2_VIDEO-V4L2"
+reference_decoder = "ISO-MPEG2-VIDEO"
+
+[[suites]]
+name = "MPEG2_VIDEO-422"
+path = "test_suites/mpeg2v/MPEG2_VIDEO-422.json"
+sha256 = "db0064d2089e9313b82c11055ec9191160779bc2e8c799ef29b4f8a589d156bd"
+vectors = 9
+mainline_decoder = "GStreamer-MPEG2_VIDEO-V4L2SL"
+vendor_decoder = "GStreamer-MPEG2_VIDEO-V4L2"
+reference_decoder = "ISO-MPEG2-VIDEO"
+
+# This Fluster revision has no JPEG suite. Keep the existing MJPEG fixtures as
+# supplementary evidence; do not label them Fluster conformance results.

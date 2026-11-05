@@ -7,22 +7,27 @@ Boot actions install the candidate and arm baseline recovery. Reboots and
 functional baseline checks are supervised steps described in the bringup record.
 """
 import argparse
+import gzip
 import hashlib
 import json
 import os
 from pathlib import Path
 import resource
+import re
 import shlex
 import shutil
+import signal
 import struct
 import subprocess
 import sys
 import tarfile
+import threading
 import time
 
 
 BOOT_ACTIONS = ('boot-install', 'arm-baseline', 'verify-baseline')
-ACTIONS = (*BOOT_ACTIONS, 'probe', 'power', 'snapshot', 'mdec', 'compliance', 'h264', 'h264-1080p', 'wave')
+ACTIONS = (*BOOT_ACTIONS, 'probe', 'power', 'snapshot', 'mdec', 'compliance', 'fluster',
+           'performance', 'h264', 'h264-1080p', 'wave')
 BASE_ID = 'f283ab1f8a001a19bab5247afc4f9b0c00c1da99'
 BASE_RELEASE = '7.3.0-vim4kvm-uhd1+'
 BOOT_DIR = Path('/boot/kernels') / BASE_RELEASE
@@ -79,6 +84,517 @@ def sha(path):
         for chunk in iter(lambda: source.read(1024 * 1024), b''):
             digest.update(chunk)
     return digest.hexdigest()
+
+
+def save_result(path, data):
+    temporary = path.with_suffix('.tmp')
+    temporary.write_text(json.dumps(data, ensure_ascii=False, indent=2) + '\n')
+    temporary.replace(path)
+
+
+def terminate_process_group(process):
+    try:
+        os.killpg(process.pid, signal.SIGTERM)
+    except ProcessLookupError:
+        pass
+    try:
+        process.wait(timeout=3)
+    except subprocess.TimeoutExpired:
+        pass
+    try:
+        os.killpg(process.pid, signal.SIGKILL)
+    except ProcessLookupError:
+        pass
+    process.wait(timeout=2)
+
+
+def bounded_process(command, log, timeout, env=None):
+    """Bound the entire Fluster process tree, including its decoder children."""
+    with log.open('w') as stream:
+        stream.write(shlex.join(command) + '\n')
+        stream.flush()
+        process = subprocess.Popen(command, stdout=stream, stderr=subprocess.STDOUT,
+                                   env=env, start_new_session=True)
+        try:
+            return process.wait(timeout=timeout)
+        except BaseException:
+            # Killing Fluster alone leaves Pool/GStreamer children holding the
+            # video device. Hardware DMA safety still requires baseline recovery.
+            terminate_process_group(process)
+            raise
+
+
+def fluster_result(path, suite, decoder, vector):
+    """Exit zero without a selected vector result is not conformance evidence."""
+    try:
+        data = json.loads(path.read_text())
+        entry = data['test_suites'][suite]['decoders'][decoder]['vectors'][vector]
+        status = entry['result']
+        elapsed = float(entry['time'])
+    except (OSError, ValueError, KeyError, TypeError) as error:
+        raise ValueError('Missing or malformed Fluster result for ' + vector) from error
+    if status not in ('Success', 'Fail', 'Timeout', 'Error', 'Not run', 'Not supported'):
+        raise ValueError('Unexpected Fluster result: ' + str(status))
+    return {'result': status, 'time': elapsed}
+
+
+def verify_files(root, files):
+    for name, expected in files.items():
+        path = root / name
+        if Path(name).is_absolute() or '..' in Path(name).parts or path.is_symlink():
+            raise ValueError('Invalid manifest file: ' + name)
+        if sha(path) != expected:
+            raise ValueError('Manifest checksum differs: ' + name)
+
+
+def run_fluster(plan, output, deadline, env):
+    bundle = Path(plan['bundle'])
+    manifest_path = bundle / 'bundle-manifest.json'
+    if sha(manifest_path) != plan['bundle_sha256']:
+        raise ValueError('Fluster bundle manifest differs from host preparation')
+    manifest = json.loads(manifest_path.read_text())
+    suite = next(s for s in manifest['suites'] if s['name'] == plan['suite'])
+    decoder = suite[plan['kernel'] + '_decoder']
+    start, count = plan['start'], plan['count']
+    timeout = plan['vector_timeout_seconds']
+    if not (0 <= start < len(suite['vectors']) and 0 < count <= len(suite['vectors']) - start
+            and 1 <= timeout <= 120):
+        raise ValueError('Invalid Fluster vector range or timeout')
+    selected = suite['vectors'][start:start + count]
+    inputs = {v['input_path'] for v in selected if 'input_path' in v}
+    verify_files(bundle, {name: digest for name, digest in manifest['files'].items()
+                          if not name.startswith('resources/') or name in inputs})
+    report = {'suite': suite['name'], 'decoder': decoder,
+              'bundle_sha256': plan['bundle_sha256'], 'fluster_revision': manifest['fluster_revision'],
+              'vectors': {v['name']: {'result': 'Not run', 'reason': v.get('reason', 'outside this window')}
+                          for v in suite['vectors']}}
+    for vector in selected:
+        report['vectors'][vector['name']]['reason'] = vector.get('reason', 'not reached')
+    result_path = output / 'results.json'
+
+    def save():
+        statuses = [v['result'] for v in report['vectors'].values()]
+        report['counts'] = {status: statuses.count(status) for status in sorted(set(statuses))}
+        report['total'] = len(statuses)
+        save_result(result_path, report)
+
+    save()
+    if any(v.get('availability', 'available') != 'available' for v in selected):
+        report['stopped'] = 'selected window contains unavailable inputs; no decoder was started'
+        save()
+        raise ValueError(report['stopped'])
+    base = [sys.executable, str(bundle / 'fluster/fluster.py'), '-ne',
+            '-tsd', str(bundle / 'suites'), '-r', str(bundle / 'resources')]
+    try:
+        listing = output / 'fluster-list.log'
+        code = bounded_process([*base, 'list', '-c', '-d', suite['codec']], listing,
+                               min(45, max(1, deadline - time.monotonic())), env)
+        available = listing.read_text()
+        for name in [decoder, *([suite['reference_decoder']] if 'reference_decoder' in suite else [])]:
+            if code or not re.search(r'^\s*' + re.escape(name) + r':.*\.\.\. OK\s*$', available, re.M):
+                raise ValueError('Fluster decoder unavailable: ' + name)
+        for index, vector in enumerate(selected, start):
+            # A pixel comparison may decode twice (hardware and ISO reference).
+            process_limit = timeout * (2 if suite['test_method'] == 'pixel' else 1) + 15
+            if time.monotonic() + process_limit > deadline:
+                report['stopped'] = 'window budget reserved for recovery'
+                save()
+                raise TimeoutError(report['stopped'])
+            name = vector['name']
+            raw = output / f'vector-{index:04d}.json'
+            log = output / f'vector-{index:04d}.log'
+            command = [*base, '-o', str(output / f'decode-{index:04d}'), 'run',
+                       '-j', '1', '-t', str(timeout), '-ff', '-ts', suite['name'],
+                       '-tv', name, '-d', decoder, '-s', '-so', str(raw), '-f', 'json']
+            try:
+                code = bounded_process(command, log, process_limit, env)
+                entry = fluster_result(raw, suite['name'], decoder, name)
+                if code and entry['result'] == 'Success':
+                    entry = {'result': 'Error', 'reason': f'Fluster exited {code} despite Success'}
+            except subprocess.TimeoutExpired:
+                entry = {'result': 'Timeout', 'reason': 'whole process tree deadline'}
+            except (OSError, ValueError) as error:
+                entry = {'result': 'Error', 'reason': str(error)}
+            report['vectors'][name] = dict(entry, raw_result=raw.name, log=log.name)
+            save()
+            if entry['result'] != 'Success':
+                raise RuntimeError('First Fluster failure: ' + name + ': ' + entry['result'])
+            if plan['kernel'] == 'mainline' and faulted():
+                raise RuntimeError('DMA stop not confirmed after ' + name)
+    except BaseException as error:
+        report['stopped'] = str(error)
+        save()
+        raise
+
+
+def validate_acceptance_plan(plan, proof):
+    if proof.get('source') in FAILED_SOURCES:
+        raise ValueError('Known failing candidate')
+    if plan['kernel'] not in ('mainline', 'vendor'):
+        raise ValueError('Expected mainline or vendor comparison')
+    prefix = '7.3.' if plan['kernel'] == 'mainline' else '5.15.'
+    if not proof['release'].startswith(prefix) or not proof.get('kernel_build_id'):
+        raise ValueError('Kernel manifest does not match the comparison side')
+    if not 0 < plan['window_seconds'] <= 1800 or plan['recovery_seconds'] < 180:
+        raise ValueError('Window must leave at least three minutes for recovery and be <=30 minutes')
+    if plan['window_seconds'] <= plan['recovery_seconds'] + 60:
+        raise ValueError('Insufficient test budget')
+    if not re.fullmatch(r'[\w.-]+', plan['board_window']) or not plan['video_check']:
+        raise ValueError('Existing board-window recovery proof and video check are required')
+
+
+def require_acceptance_kernel(plan, proof):
+    if os.geteuid() or os.uname().release != proof['release']:
+        raise ValueError('Expected root on the manifested kernel')
+    if build_id('/sys/kernel/notes') != proof['kernel_build_id']:
+        raise ValueError('Running kernel build ID differs')
+    require_watchdog()
+    if Path('/tmp/vim4-vdec-reset-required').exists():
+        raise ValueError('Prior failure requires baseline recovery before another action')
+    for name, expected in plan['protected_files'].items():
+        if sha(name) != expected:
+            raise ValueError('Protected baseline changed: ' + name)
+    if not plan['protected_files']:
+        raise ValueError('Protected baseline files are required')
+    governors = list(Path('/sys/devices/system/cpu/cpufreq').glob('policy*/scaling_governor'))
+    if not governors:
+        raise ValueError('CPU policy cannot be verified')
+    for path in governors:
+        if path.read_text().strip() != 'performance':
+            raise ValueError('Decoder comparisons require the unchanged performance CPU policy')
+    for path in Path('/sys/kernel/config/usb_gadget').glob('*/functions/mass_storage.*/lun.*/file'):
+        if path.read_text().strip():
+            raise ValueError('Virtual media must be ejected before the recovery reboot')
+    for name, expected in plan['files'].items():
+        if sha(name) != expected:
+            raise ValueError('Validation tool/input differs: ' + name)
+    if plan['kernel'] == 'mainline':
+        trial = plan['trial_root'].rstrip('/')
+        if not trial.startswith('/var/lib/vim4-kvm/ram-candidates/'):
+            raise ValueError('Expected a private RAM candidate')
+        if 'init=' + trial + '/init' not in Path('/proc/cmdline').read_text().split():
+            raise ValueError('Not booted through the manifested private PID 1')
+        private = trial + '/modules/' + proof['release']
+        target = str(Path('/lib/modules', proof['release']).resolve())
+        if not any(line.split()[3:5] == [private, target] and 'ro' in line.split()[5].split(',')
+                   for line in Path('/proc/self/mountinfo').read_text().splitlines()):
+            raise ValueError('Private candidate modules are not mounted read-only')
+        if (Path('/proc/sys/kernel/panic').read_text().strip() != '20' or
+                Path('/proc/sys/kernel/panic_on_oops').read_text().strip() != '1'):
+            raise ValueError('Candidate requires panic=20 and panic_on_oops=1')
+    if plan.get('debug_kernel'):
+        config = gzip.decompress(Path('/proc/config.gz').read_bytes())
+        if hashlib.sha256(config).hexdigest() != proof['config_sha256']:
+            raise ValueError('Running debug configuration differs from manifest')
+        for name in ('KASAN', 'KASAN_GENERIC', 'DEBUG_KMEMLEAK', 'PROVE_LOCKING',
+                     'DEBUG_ATOMIC_SLEEP', 'DMA_API_DEBUG'):
+            if ('CONFIG_' + name + '=y').encode() not in config.splitlines():
+                raise ValueError('Missing debug check: ' + name)
+
+
+def prepare_acceptance_decoder(plan, proof):
+    coexistence = plan.get('coexistence', False)
+    if coexistence:
+        require_services()
+    else:
+        run('systemctl', 'stop', 'one-kvm', timeout=20)
+        for path in Path('/proc').glob('[0-9]*/fd/*'):
+            try:
+                target = str(path.readlink())
+            except OSError:
+                continue
+            if target.startswith(('/dev/video', '/dev/jpegenc')):
+                raise ValueError('A video client still owns a device: ' + str(path))
+    if plan['kernel'] == 'vendor':
+        return
+    if coexistence and Path('/sys/module/aml_vdec_drv').exists():
+        raise ValueError('Coexistence starts from a fresh decoder instance')
+    for name in (() if coexistence else ('aml_vdec_drv', 'wave5', 't7_jpeg')):
+        if Path('/sys/module', name).exists():
+            run('modprobe', '-r', name, timeout=10)
+    private = plan.get('private_driver')
+    if private:
+        module = Path(private['path'])
+        if (private['image_build_id'] != proof['kernel_build_id'] or
+                private['base_revision'] != proof['source'] or
+                sha(module) != plan['files'][str(module)] or
+                sha(private['patch']) != plan['files'][private['patch']] or
+                run('modinfo', '-F', 'vermagic', str(module)).strip() != private['vermagic'] or
+                private['vermagic'].split()[0] != proof['release']):
+            raise ValueError('Private module must match the exact Image and recorded source patch')
+        for dependency in run('modinfo', '-F', 'depends', str(module)).strip().split(','):
+            if dependency:
+                run('modprobe', dependency)
+        run('insmod', str(module), 'enable_t7=1', 't7_snapshot_only=0', timeout=10)
+        if build_id('/sys/module/aml_vdec_drv/notes/.note.gnu.build-id') != private['build_id']:
+            raise ValueError('Loaded private decoder build ID differs')
+    else:
+        module = Path(run('modinfo', '-n', 'aml_vdec_drv').strip())
+        relative = str(module.resolve().relative_to((Path('/lib/modules') / proof['release']).resolve()))
+        if sha(module) != proof['modules'][relative]:
+            raise ValueError('Decoder module differs from the full kernel package')
+        run('modprobe', 'aml_vdec_drv', 'enable_t7=1', 't7_snapshot_only=0', timeout=10)
+    probe_without_power()
+    mdec_cycle()
+    if plan.get('hevc'):
+        hevc_cycle()
+        set_power_permission(True)
+        run('python3', '-c', 'from pathlib import Path; '
+            f'Path({str(t7_device() / "hevc_core_test")!r}).write_text("1")', timeout=8)
+        if not (t7_device() / 'hevc_core_test').read_text().startswith('passed=1 '):
+            raise RuntimeError('HEVC firmware preflight failed')
+    set_power_permission(True)
+
+
+def run_compliance(plan, output, deadline, env):
+    tool = plan['compliance_tool']
+    if bounded_process([tool, '--version'], output / 'v4l-utils-version.log', 10, env):
+        raise RuntimeError('Unable to record v4l-utils version')
+    results = []
+    for item in plan['nodes']:
+        matching = [p.parent.name for p in Path('/sys/class/video4linux').glob('video*/name')
+                    if p.read_text().strip() == item['name']]
+        if len(matching) != 1:
+            raise ValueError('Expected exactly one decoder node: ' + item['name'])
+        if item.get('fourcc'):
+            setup = [plan['control_tool'], '-d', '/dev/' + matching[0],
+                     '--set-fmt-video-out', f"width={item['width']},height={item['height']},pixelformat={item['fourcc']}"]
+            if bounded_process(setup, output / (item['id'] + '-format.log'), 10, env):
+                raise RuntimeError('Unable to set compliance input format: ' + item['id'])
+        command = [tool, '-E', '-W', '-d', '/dev/' + matching[0], '-s', str(item['frames'])]
+        if item.get('media'):
+            command.extend(['-m', item['media']])
+        if item.get('stream'):
+            command.extend(['--stream-from-hdr', item['fourcc'] + '=' + item['stream']])
+        timeout = min(120, deadline - time.monotonic())
+        if timeout < 30:
+            raise TimeoutError('Insufficient time for streaming compliance and recovery')
+        log = output / (item['id'] + '-compliance.log')
+        code = bounded_process(command, log, timeout, env)
+        content = log.read_text()
+        summaries = re.findall(r'Total for[^\n]*:.*?Succeeded:\s*(\d+),\s*Failed:\s*(\d+),\s*Warnings:\s*(\d+)', content)
+        passed = bool(summaries) and not code and all(int(failed) == int(warnings) == 0
+                                                     for _, failed, warnings in summaries)
+        results.append(dict(id=item['id'], node=item['name'], exit=code, summaries=summaries, passed=passed,
+                            stateless_streaming='not covered by compliance; requires Fluster'
+                            if item.get('media') else None))
+        save_result(output / 'results.json', results)
+        if not passed:
+            raise RuntimeError('Streaming compliance failed: ' + item['name'])
+
+
+def run_performance(plan, output, deadline, env):
+    case = plan['performance']
+    seconds = case['seconds']
+    if not 1 <= seconds <= 600 or (case['sync'] and seconds != 600):
+        raise ValueError('Playback requires a full 600 seconds; throughput must be bounded')
+    if not case.get('motion') or case['clip'] not in plan['files']:
+        raise ValueError('Performance requires a SHA-locked motion clip')
+    if not plan['clock_files']:
+        raise ValueError('Explicit reviewed decoder clock/DVFS files are required')
+    if time.monotonic() + seconds + 30 > deadline:
+        raise TimeoutError('Insufficient performance and recovery budget')
+    stop = threading.Event()
+
+    def telemetry():
+        paths = [Path(name) for name in plan['clock_files']]
+        paths += list(Path('/sys/devices/system/cpu/cpufreq').glob('policy*/scaling_cur_freq'))
+        paths += [Path('/proc/stat')]
+        with (output / 'clocks-cpu.jsonl').open('w') as log:
+            while not stop.is_set():
+                sample = {'wall_ns': time.time_ns(), 'monotonic_ns': time.monotonic_ns(),
+                          'values': {}, 'errors': {}}
+                for path in paths:
+                    try:
+                        sample['values'][str(path)] = path.read_text().strip()
+                    except OSError as error:
+                        sample['errors'][str(path)] = str(error)
+                log.write(json.dumps(sample) + '\n')
+                log.flush()
+                stop.wait(1)
+
+    monitor = threading.Thread(target=telemetry, daemon=True)
+    monitor.start()
+    log = output / 'performance.log'
+    try:
+        code = bounded_process([plan['benchmark_tool'], case['pipeline'], str(seconds),
+                                '1' if case['sync'] else '0'], log, seconds + 30, env)
+    finally:
+        stop.set()
+        monitor.join(timeout=5)
+    summaries = [json.loads(line) for line in log.read_text().splitlines()
+                 if line.startswith('{"event":"summary"')]
+    report = {'case': case, 'clip_sha256': plan['files'][case['clip']],
+              'coexistence': bool(plan.get('coexistence')), 'exit': code, 'summaries': summaries}
+    save_result(output / 'results.json', report)
+    if code or len(summaries) != 1 or not summaries[0]['success']:
+        raise RuntimeError('Decoder performance window did not complete')
+    samples = [json.loads(line) for line in (output / 'clocks-cpu.jsonl').read_text().splitlines()]
+    if monitor.is_alive() or not samples or any(s['errors'] for s in samples):
+        raise RuntimeError('Clock/CPU telemetry is incomplete; inspect raw errors')
+
+
+def acceptance_window(args):
+    plan = json.loads(args.validation_plan.read_text())
+    proof = json.loads(args.manifest.read_text())
+    validate_acceptance_plan(plan, proof)
+    require_acceptance_kernel(plan, proof)
+    output = Path(plan['output'])
+    output.mkdir(parents=True, exist_ok=False)
+    seconds = args.validation_seconds
+    if seconds is None or not 60 <= seconds <= plan['window_seconds'] - plan['recovery_seconds']:
+        raise ValueError('Host must provide the remaining validation budget')
+    # Leave time inside the remote process limit for kmemleak and journal output.
+    deadline = time.monotonic() + seconds - 45
+    env = dict(os.environ)
+    env.update(plan.get('environment', {}))
+    env['GST_REGISTRY'] = str(output / 'gst-registry.bin')
+    # Changes in kernel diagnostics are captured even when the decoder process
+    # fails. No unload/reload after failure: the caller must restore the baseline.
+    success = False
+    try:
+        prepare_acceptance_decoder(plan, proof)
+        if args.action == 'fluster':
+            if plan.get('nodes'):
+                compliance_output = output / 'compliance'
+                compliance_output.mkdir()
+                run_compliance(plan, compliance_output, deadline, env)
+            run_fluster(plan, output, deadline, env)
+        elif args.action == 'compliance':
+            run_compliance(plan, output, deadline, env)
+        elif args.action == 'performance':
+            run_performance(plan, output, deadline, env)
+        else:
+            raise ValueError('Validation plan supports compliance, fluster or performance')
+        if plan['kernel'] == 'mainline':
+            if faulted():
+                raise RuntimeError('Decoder reported an unsafe stop')
+            require_suspended(t7_device())
+        if plan.get('debug_kernel'):
+            run('python3', '-c', 'from pathlib import Path; '
+                'Path("/sys/kernel/debug/kmemleak").write_text("scan")', timeout=30)
+            leaks = Path('/sys/kernel/debug/kmemleak').read_text()
+            (output / 'kmemleak.log').write_text(leaks)
+            if leaks.strip():
+                raise RuntimeError('kmemleak reported outstanding objects')
+        kernel_log = run('journalctl', '-k', '-b', '--no-pager', timeout=15)
+        (output / 'kernel.log').write_text(kernel_log)
+        if re.search(r'BUG:|Oops:|WARNING:|Call trace:|DMA-API:|possible circular locking|KASAN:', kernel_log):
+            raise RuntimeError('Kernel diagnostic failure; inspect raw kernel log')
+        success = True
+    finally:
+        if not (output / 'kernel.log').exists():
+            try:
+                bounded_process(['journalctl', '-k', '-b', '--no-pager'], output / 'kernel.log', 15)
+            except (OSError, subprocess.SubprocessError):
+                print('Kernel log collection failed; preserve UART evidence', flush=True)
+        if not success:
+            Path('/tmp/vim4-vdec-reset-required').write_text('Validation failed; recover baseline, no codec retry.\n')
+        save_result(output / 'window-status.json', {'success': success, 'recovery_required': not success})
+        print('VALIDATION_COMPLETE' if success else 'RESET_REQUIRED', str(output), flush=True)
+
+
+def execute_acceptance(args, plan, proof):
+    validate_acceptance_plan(plan, proof)
+    repo = Path(__file__).resolve().parents[2]
+    recovery = repo / 'logs' / plan['board_window']
+    if not (recovery / 'baseline-proof.json').is_file():
+        raise ValueError('Prepare the existing board-window baseline proof before this action')
+    # A prepared batch may already own the queue ticket. Do not nest locks.
+    from importlib.machinery import SourceFileLoader
+    queue_module = SourceFileLoader('vdec_board_queue', str(repo / 'tools/board-queue')).load_module()
+    queue = queue_module.Queue()
+    ticket = os.environ.get('BOARD_TICKET')
+    if not ticket:
+        if args.locked:
+            raise ValueError('--locked requires a live board ticket')
+        subprocess.run([str(repo / 'tools/board-queue'), 'run', '--who', 'hwdecode-parity',
+                        '--purpose', 'vdec-' + args.action, '--max-min', str(plan['window_seconds'] / 60),
+                        '--', sys.executable, str(Path(__file__).resolve()), *sys.argv[1:], '--locked'], check=True)
+        return
+    item = queue.read(ticket)
+    remaining = item['started'] + item['seconds'] - time.time()
+    if item['state'] != 'held' or item['heavy'] or remaining < plan['window_seconds'] - 30:
+        raise ValueError('Board ticket lacks the complete validation and recovery budget')
+    deadline = time.monotonic() + min(remaining, plan['window_seconds'])
+    remote = Path(args.payload)
+    local = recovery / ('validation-' + args.action + '-' + str(time.time_ns()))
+    local.mkdir()
+    shutil.copy2(args.manifest, local / 'kernel-manifest.json')
+    shutil.copy2(args.validation_plan, local / 'validation-plan.json')
+    save_result(local / 'runner.json', {'source_sha256': sha(Path(__file__))})
+    observer = None
+    observer_log = None
+    sampling = args.action == 'performance'
+    try:
+        subprocess.run(['ssh', '-oBatchMode=yes', 'vim4', shlex.join(['mkdir', '-p', str(remote)])], check=True, timeout=15)
+        for path, name in ((args.manifest, 'kernel-manifest.json'),
+                           (args.validation_plan, 'validation-plan.json'), (Path(__file__), 'vdec-window.py')):
+            subprocess.run(['scp', str(path), 'vim4:' + str(remote / name)], check=True, timeout=30)
+        # Upload and collection consume the same lease as decoding. A remote
+        # timeout also terminates descendants if the SSH connection disappears.
+        seconds = int(deadline - time.monotonic() - plan['recovery_seconds'] - 45)
+        if seconds < 60:
+            raise TimeoutError('Preparation exhausted the validation budget')
+        command = ['sudo', '-n', 'timeout', '--signal=TERM', '--kill-after=5', str(seconds),
+                   'python3', str(remote / 'vdec-window.py'), args.action, '--remote',
+                   '--validation-seconds', str(seconds),
+                   '--validation-plan', str(remote / 'validation-plan.json'),
+                   '--manifest', str(remote / 'kernel-manifest.json')]
+        if sampling:
+            queue.sampling(ticket, True)
+        if plan.get('coexistence'):
+            if not sampling or not plan.get('kvm_check'):
+                raise ValueError('Coexistence requires performance and a concurrent video receiver')
+            observer_log = (local / 'kvm-receiver.json').open('w')
+            observer = subprocess.Popen(plan['kvm_check'], stdout=observer_log,
+                                        start_new_session=True)
+        with (local / 'window.log').open('w') as log:
+            subprocess.run(['ssh', '-oBatchMode=yes', '-oConnectTimeout=5', 'vim4', shlex.join(command)],
+                           stdout=log, stderr=subprocess.STDOUT, check=True,
+                           timeout=seconds + 10)
+        if observer:
+            if observer.wait(timeout=30):
+                raise RuntimeError('Concurrent KVM receiver failed')
+            observer_log.flush()
+            measured = json.loads((local / 'kvm-receiver.json').read_text())
+            first, last = measured['samples'][0], measured['samples'][-1]
+            if last['framesDecoded'] <= first['framesDecoded'] or measured['fps'] <= 0:
+                raise RuntimeError('Concurrent KVM did not advance decoded frames')
+            save_result(local / 'kvm-summary.json', {'fps': measured['fps'],
+                'frames_decoded': last['framesDecoded'] - first['framesDecoded'],
+                'frames_dropped': last['framesDropped'] - first['framesDropped'],
+                'freezes': last['freezeCount'] - first['freezeCount'],
+                'first_timestamp_ms': first['timestamp'], 'last_timestamp_ms': last['timestamp']})
+    finally:
+        try:
+            if observer and observer.poll() is None:
+                terminate_process_group(observer)
+            if observer_log:
+                observer_log.close()
+            if sampling:
+                queue.sampling(ticket, False)
+        except (OSError, ValueError, RuntimeError, subprocess.SubprocessError) as error:
+            (local / 'observer-cleanup-error.txt').write_text(str(error) + '\n')
+        try:
+            command = ['sudo', '-n', 'tar', '-C', plan['output'], '--exclude=gst-registry.bin', '-cf', '-', '.']
+            with (local / 'results.tar').open('wb') as archive:
+                subprocess.run(['ssh', '-oBatchMode=yes', '-oConnectTimeout=5', 'vim4', shlex.join(command)],
+                               stdout=archive, check=True, timeout=30)
+            with tarfile.open(local / 'results.tar') as archive:
+                archive.extractall(local / 'results', filter='data')
+        except (OSError, subprocess.SubprocessError, tarfile.TarError) as error:
+            (local / 'collection-error.txt').write_text(str(error) + '\n')
+        remaining = deadline - time.monotonic()
+        if remaining < plan['recovery_seconds']:
+            save_result(local / 'recovery-handoff.json', {
+                'board_window': plan['board_window'], 'remaining_seconds': remaining,
+                'reason': 'insufficient recovery budget; no reboot initiated'})
+            raise TimeoutError('Recovery budget exhausted; preserve proof for recovery handoff')
+        subprocess.run([str(repo / 'tools/board-window'), '--window', plan['board_window'],
+                        '--device', plan['serial_device'], 'return-baseline',
+                        '--video-check', *plan['video_check']], check=True,
+                       timeout=plan['recovery_seconds'])
 
 
 def require_baseline_files():
@@ -592,6 +1108,9 @@ def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('action', choices=ACTIONS)
     parser.add_argument('--manifest', type=Path)
+    parser.add_argument('--validation-plan', type=Path,
+                        help='Prepared compliance/Fluster window with exact kernel, input and tool identities')
+    parser.add_argument('--validation-seconds', type=int, help=argparse.SUPPRESS)
     parser.add_argument('--fixtures', default='/var/tmp/vim4-vdec-fixtures')
     parser.add_argument('--payload', default='/var/tmp/vim4-vdec-mdec')
     parser.add_argument('--backup', default='/var/backups/vim4-vdec-mdec-20261022')
@@ -603,6 +1122,14 @@ def main():
     parser.add_argument('--build-id', help=argparse.SUPPRESS)
     args = parser.parse_args()
     if args.remote:
+        if args.validation_plan:
+            def interrupted(signum, frame):
+                # Let bounded_process terminate its separate decoder session
+                # before the outer timeout's final SIGKILL.
+                raise SystemExit(128 + signum)
+            signal.signal(signal.SIGTERM, interrupted)
+            acceptance_window(args)
+            return
         # Remove experimental device factories with the temporary payload.
         os.environ['GST_REGISTRY'] = str(Path(args.payload) / 'gst-registry.bin')
         # Keep missing diagnostic tools in the temporary payload, off the rootfs
@@ -613,6 +1140,20 @@ def main():
         board_window(args)
         return
     if not args.execute:
+        if args.validation_plan:
+            plan = json.loads(args.validation_plan.read_text())
+            print(json.dumps({'action': args.action, 'offline': True, 'ssh': False,
+                              'validation_plan': plan}, indent=2))
+            return
+        if args.action in ('fluster', 'performance'):
+            print(json.dumps({'action': args.action, 'offline': True, 'ssh': False,
+                              'requires': ['offline input/tool checksums', 'kernel manifest',
+                                           'validation plan', 'existing board-window recovery proof'],
+                              'order': ['board-queue', 'watchdog and exact kernel identity',
+                                        'bounded single-stream tests; stop on first failure',
+                                        'save raw results, including timeout and not-run',
+                                        'board-window baseline and video recovery']}, indent=2))
+            return
         print(json.dumps({'action': args.action, 'offline': True, 'ssh': False,
                           'order': ['heavy then board locks', 'RAM-only boot or supervised baseline recovery',
                                     'probe: gate off, EPERM, read-only SMC status',
@@ -628,7 +1169,12 @@ def main():
     if not (args.at_board or args.once_baseline) or args.manifest is None:
         parser.error('--execute requires --at-board or --once-baseline, and --manifest')
     proof = json.loads(args.manifest.read_text())
+    if args.validation_plan:
+        execute_acceptance(args, json.loads(args.validation_plan.read_text()), proof)
+        return
     require_candidate(args.action, proof, once=bool(args.once_baseline))
+    if args.action in ('fluster', 'performance'):
+        parser.error(args.action + ' requires --validation-plan with offline prepared inputs')
     if not args.locked:
         command = ['/usr/bin/lockf', '-t', '3600', '/tmp/vim4-heavy.lock',
                    '/usr/bin/lockf', '-t', '600', '/tmp/vim4-board.lock',

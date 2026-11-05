@@ -23,6 +23,7 @@
 | [vdec-fixtures.py](../packaging/kernel/vdec-fixtures.py) | 无 | 生成 H.264/MPEG-2/MJPEG 运动样本；JPEG 保留全范围参考像素，generate-fields 下载并校验固定场编码样本。离线逐帧比较 I420 并量化平面误差，非逐字节一致仍返回失败。 |
 | [vdec-capture.c](../packaging/kernel/vdec-capture.c) | 指定管线 | 用 GStreamer appsink 映射视频元数据，只保存可见 I420 平面，不做范围转换、不写入对齐填充；编译依赖及用法见文件。硬解管线须持板锁。 |
 | [build-vdec-gstreamer.py](../packaging/kernel/build-vdec-gstreamer.py)（test_gstreamer_mpeg2.py） | 无 | 按独立源码锁构建私有 stateless 解码插件并回放 MPEG-2 标准控制转换；不覆盖系统插件。 |
+| [prepare-vdec-fluster.py](../packaging/kernel/prepare-vdec-fluster.py)、[build-vdec-mpeg2-reference.py](../packaging/kernel/build-vdec-mpeg2-reference.py) | 无 | 宿主按锁准备标准码流、校验并记录离线清单；单独从已取得的 ISO 归档构建私有 MPEG-2 参考解码器。 |
 | [hdmi-mode-fixture.py](../packaging/kernel/hdmi-mode-fixture.py)（hdmi-modes.json） | 只读 | 离线准备及板端输入模式验证。 |
 | [register-runtime.py](../packaging/kernel/register-runtime.py) | 独占 | 盘点及板端运行时登记、安装。 |
 | [assemble-phase2.py](../packaging/hdr10/assemble-phase2.py)（同目录 ram-payload.py、analyze-phase2.py、ffmpeg-vm.py、check-phase2-plugins.py、screen-observe.swift、test-receiver.mjs） | 只读 | HDR10 封装、插件检查及证据分析。 |
@@ -46,7 +47,7 @@
 | [display-once.py](../packaging/kernel/display-once.py)（display-once-init.c） | 独占 | 准备或暂存 RAM 启动候选。 |
 | [final-window.py](../packaging/kernel/final-window.py)（final-board.py） | 破坏；重启 | 正式包部署、验证与恢复。 |
 | [final-regression.py](../packaging/kernel/final-regression.py)（final-manager-check.mjs） | 独占；断开 USB | 离线快照及部署回归。 |
-| [vdec-window.py](../packaging/kernel/vdec-window.py)（vdec-register-dump.c） | 破坏；重启 | 解码候选窗口与寄存器取证；hevc_cycle 供已验证 MDEC 的私有窗口检查独立核心，不加载固件或解码。 |
+| [vdec-window.py](../packaging/kernel/vdec-window.py)（vdec-register-dump.c、[vdec-benchmark.c](../packaging/kernel/vdec-benchmark.c)） | 破坏；重启 | 解码候选窗口、compliance、fluster 与性能；默认离线，验证计划复用板队列、manifest、watchdog 和基线视频恢复，首错停止；见[验收合同](vdec-validation.md)。 |
 | [check-wifi-p2p.py](../packaging/kernel/check-wifi-p2p.py) | 独占 | Wi-Fi/P2P 验证。 |
 | [phase2-window.py](../packaging/hdr10/phase2-window.py)（m6-gates.py、phase2-board.py、phase2-run） | 破坏；重启 | HDR10 批量验收窗口。 |
 | [build.py](../packaging/kbase/build.py)（同目录 package.py、run.py、check-style.py、check-semantics.py、check-heaps.py、clpeak-subset.py、dma-profile.py、default-parity.py、resolve-egl.c、heaps/vim4_kbase_heaps.c、dvfs/governor_vim4.c） | 独占 | kbase 构建、GPU 门禁与调频。 |
