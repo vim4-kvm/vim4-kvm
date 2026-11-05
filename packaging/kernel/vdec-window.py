@@ -411,6 +411,29 @@ def run_compliance(plan, output, deadline, env):
         check(command, item['id'], item['name'], '/dev/' + matching[0], 120)
 
 
+def run_capture_probe(plan, output, deadline, env):
+    case = plan['capture_probe']
+    for key in ('tool', 'input'):
+        if case[key] not in plan['files']:
+            raise ValueError('Capture probe requires SHA-locked ' + key)
+    limit = case['timeout_seconds']
+    if not 1 <= limit <= 60 or time.monotonic() + limit + 10 > deadline:
+        raise TimeoutError('Insufficient capture probe and recovery budget')
+    target = output / 'full-capture.i420'
+    log = output / 'capture-probe.log'
+    code = bounded_process([case['tool'], case['input'], str(target)], log, limit, env)
+    require_clean_kernel_log(output)
+    summaries = [json.loads(line) for line in log.read_text().splitlines()
+                 if line.startswith('{"event":"capture-summary"')]
+    expected_bytes = case['frames'] * case['coded_width'] * case['coded_height'] * 3 // 2
+    report = {'case': case, 'exit': code, 'summaries': summaries,
+              'bytes': target.stat().st_size if target.exists() else 0}
+    save_result(output / 'capture-probe.json', report)
+    if (code or len(summaries) != 1 or not summaries[0]['success'] or
+            summaries[0]['frames'] != case['frames'] or report['bytes'] != expected_bytes):
+        raise RuntimeError('Full coded-frame capture did not complete')
+
+
 def run_performance(plan, output, deadline, env):
     case = plan['performance']
     seconds = case['seconds']
@@ -522,8 +545,12 @@ def acceptance_window(args):
                 compliance_output = output / 'compliance'
                 compliance_output.mkdir()
                 run_compliance(plan, compliance_output, deadline, env)
+            if plan.get('capture_probe'):
+                run_capture_probe(plan, output, deadline, env)
             conformance_passed = run_fluster(plan, output, deadline, env)
             for index, followup in enumerate(plan.get('fluster_followups', [])):
+                if plan.get('stop_on_failure') and not conformance_passed:
+                    break
                 if deadline - time.monotonic() < plan['vector_timeout_seconds'] * 2 + 30:
                     conformance_passed = False
                     break
