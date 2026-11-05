@@ -451,6 +451,23 @@ def require_clean_kernel_log(output):
         raise RuntimeError('Kernel diagnostic failure; inspect raw kernel log')
 
 
+def require_joint_debug_state(output, phase):
+    stats = Path('/proc/lockdep_stats').read_text()
+    (output / (phase + '-lockdep.log')).write_text(stats)
+    if not re.search(r'^\s*debug_locks:\s+1\s*$', stats, re.M):
+        raise RuntimeError('Lockdep is no longer checking locks')
+    adla = Path('/sys/bus/platform/devices/fe371000.accelerator/driver')
+    wifi = [p for p in Path('/sys/class/net').glob('*/device/driver')
+            if p.resolve().name == 'brcmfmac']
+    state = {'adla_driver': str(adla.resolve()) if adla.is_symlink() else None,
+             'wifi_devices': [str(p) for p in wifi]}
+    save_result(output / (phase + '-devices.json'), state)
+    if not state['adla_driver'] or not wifi:
+        raise RuntimeError('ADLA and Wi-Fi must actually probe during debug validation')
+    if 'brcmf_c_preinit_dcmds: Firmware: BCM43752/2' not in (output / 'kernel.log').read_text():
+        raise RuntimeError('Wi-Fi firmware initialization evidence is missing')
+
+
 def acceptance_window(args):
     plan = json.loads(args.validation_plan.read_text())
     proof = json.loads(args.manifest.read_text())
@@ -471,8 +488,12 @@ def acceptance_window(args):
     success = False
     try:
         require_clean_kernel_log(output)
+        if plan.get('joint_debug'):
+            require_joint_debug_state(output, 'startup')
         prepare_acceptance_decoder(plan, proof)
         require_clean_kernel_log(output)
+        if plan.get('joint_debug'):
+            require_joint_debug_state(output, 'before-decode')
         if args.action == 'fluster':
             if plan.get('nodes'):
                 compliance_output = output / 'compliance'
@@ -499,15 +520,19 @@ def acceptance_window(args):
         require_clean_kernel_log(output)
         success = True
     finally:
-        if not (output / 'kernel.log').exists():
-            try:
-                bounded_process(['journalctl', '-k', '-b', '--no-pager'], output / 'kernel.log', 15)
-            except (OSError, subprocess.SubprocessError):
-                print('Kernel log collection failed; preserve UART evidence', flush=True)
+        try:
+            require_clean_kernel_log(output)
+            if plan.get('joint_debug'):
+                require_joint_debug_state(output, 'end')
+        except (OSError, RuntimeError, subprocess.SubprocessError) as error:
+            success = False
+            (output / 'end-diagnostic-error.txt').write_text(str(error) + '\n')
         if not success:
             Path('/tmp/vim4-vdec-reset-required').write_text('Validation failed; recover baseline, no codec retry.\n')
         save_result(output / 'window-status.json', {'success': success, 'recovery_required': not success})
         print('VALIDATION_COMPLETE' if success else 'RESET_REQUIRED', str(output), flush=True)
+    if not success:
+        raise RuntimeError('Final debug diagnostics failed')
 
 
 def execute_acceptance(args, plan, proof):
