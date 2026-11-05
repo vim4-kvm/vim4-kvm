@@ -1,0 +1,21 @@
+{
+  "kernel_archive_sha256": "a12069066760768a833803ad11e7e1fc212674e4ff09f40bdf2017cc1d55e204",
+  "outer_members": 32,
+  "outer_appledouble": [],
+  "module_archive_members": 2791,
+  "module_archive_appledouble": [],
+  "installed_module_files": 2354,
+  "module_inventory_appledouble": [],
+  "runtime_files": 10,
+  "runtime_appledouble": [],
+  "boot_files": [
+    "Image",
+    "Module.symvers",
+    "config",
+    "manifest.json",
+    "panfrost.dtb",
+    "vim4.dtb",
+    "vmlinux.btf"
+  ],
+  "conclusion": "No AppleDouble file is installed to /boot, /lib/modules or runtime; five sidecars exist only in recipe and archived source provenance"
+}

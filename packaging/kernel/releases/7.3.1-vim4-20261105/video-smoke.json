@@ -1,0 +1,31 @@
+{
+  "motion600": {
+    "raw_evidence": "logs/deploy-73/window-5/motion-4k600.json",
+    "raw_sha256": "afff680cc1a082890fc69f69e49caac8617ac436cd99120b88e0c6ccc60f2e31",
+    "fps": 59.99970258897424,
+    "width": 3840,
+    "height": 2160,
+    "codec": "video/H265",
+    "deltas": {
+      "framesDecoded": 36000,
+      "framesDropped": 0,
+      "freezeCount": 0,
+      "packetsLost": 0
+    }
+  },
+  "fresh5": {
+    "raw_evidence": "logs/deploy-73/window-11/candidate-fresh4k-video.json",
+    "raw_sha256": "b309b1e2819ba3b9289b0bae7a62774e864757a299d4cf4c5e063c5993a06e9e",
+    "fps": 59.76499265555202,
+    "width": 3840,
+    "height": 2160,
+    "codec": "video/H265",
+    "deltas": {
+      "framesDecoded": 299,
+      "framesDropped": 0,
+      "freezeCount": 0,
+      "packetsLost": 0
+    }
+  },
+  "reuse": "t48 approved same sealed assets; window5 diagnostics false match reclassified; original failed result retained"
+}

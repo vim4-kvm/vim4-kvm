@@ -1,152 +1,115 @@
-# 2026-11-05：集成正式包八类检查通过，预算门禁停止并回退
+# 2026-11-05：7.3 集成内核与新 manager 正式部署
 
-**正式验收未完成；当前默认恢复为 `.3`，manager 恢复为原 dev.9.g710698b。**
-候选内核与新 manager 已实际安装、启动，八类检查通过；最后的管理页检查因剩余测试
-时间不足 180 秒而未启动。遵守协调者累计第 38 分钟停止新测试、总计 45 分钟的授权，
-提前进入恢复，没有缩减恢复预留或把未运行项记为通过。
-来源锁、workspace manager revision、正式 release 收据、当前身份文档和 release tag 均未推进。
-后续获批补 manager 的窗口及登录传输失败后的回退，见[续窗记录](2026-11-05-integration-manager-continuation.md)。
+**已通过协调者批准范围，保留新内核与 manager 为正式默认。**
+Mainline 运行 `7.3.1-vim4-20261105`，manager 为 dev.10.g85ef0b1；原 `.3` 整包留作回退。
+同封存资产的八类结果与最后 manager 续窗合并验收；19 档 HDMI 矩阵未重跑、不记通过，音频仅状态检查。
+当前身份及哈希以[正式锁](../../packaging/kernel/sources.toml)和[收据](../../packaging/kernel/releases/7.3.1-vim4-20261105/validation.json)为准。
 
-## 最后窗口的结果
+## 最终身份与续窗
 
-窗口 `6680b1e20cce4053aeec614d79e77e04`（FIFO 1243）耗时 649.463 秒；
-候选 boot ID `c075c2db-63c8-4442-bd5d-27e16ff00f7e`，release/build ID 与下方正式包一致。
-完整七个启动文件、2341 个模块、2354 个模块目录文件与已加载模块身份通过，既有 taint 4096。
-新 manager 版本为 **2.5.1+vim4.20261029.102.dev.10.g85ef0b1**，来源仍是 `85ef0b1`；
-安装文件和实际运行进程均核 SHA。dev.10 避免 dev.9.g85 在 dpkg 排序中低于原 dev.9.g710。
-deb SHA256 `5b7490a8cb6b1e362ae08eb113f818e28e4aa658506538cf5c3688f9f5ec9002`，
-修正后的包构建、隔离 verify、相对原包的版本排序均离线通过。
+内核源码 `fd41fb5950b9da1fb336ce00d5137d27ee9755fa`，GNU build ID
+`bdbfa439f298e92b5bad092528d11119a974f262`；归档 SHA256
+`a12069066760768a833803ad11e7e1fc212674e4ff09f40bdf2017cc1d55e204`。
+UTC 打包日按 release.py 查空闲序号，build 1 不带 `.1`；源码分支为 vim4-kvm-7.3。
+manager 源码 `85ef0b1287c2dd428003b609e575ce33cbc4f99a`，版本
+`2.5.1+vim4.20261029.102.dev.10.g85ef0b1`，deb SHA256
+`5b7490a8cb6b1e362ae08eb113f818e28e4aa658506538cf5c3688f9f5ec9002`。
 
-| 类别 | 实际范围与结果 |
+最终 FIFO 1245，票 `cd5dede2c94f4c9ba0c6e0952df210c1`，**167.967 秒**，已释放。
+协调者批准最多两张票、每张 15 分钟（测试 8/恢复 7）；仅使用第一张，未取第二张。
+先在原 `.3`/原 manager 上，经 SSH 18080→板端正式 80 完成只读 loginManager 登录、
+取得正常会话并核原内核，之后才安装 manager、重核完整候选并原子切 Mainline、重启。
+没有使用 localBackend 绕过认证，本窗没有 M6 通道、MCP、HID 或介质/HDMI 操作。
+
+最终 boot ID `c81a3c7b-2247-4052-9904-f78120781b74`；UART 观察一次正常启动，
+BL2 主机时刻 19:34:32.092 UTC，无就绪后复位。
+完整七个启动文件、2341 模块/2354 模块目录文件、已加载模块身份及 BTF 通过，既有 taint 4096。
+manager 安装文件与实际进程 SHA 一致；Mainline available/selected、Vendor available、默认及运行身份通过。
+新鲜 H.265 3840×2160 五秒推进 **299 帧、59.7650 fps**，丢帧/冻结/丢包增量零。
+最终 health、默认指针及 `.3` 的 **2361 个受保护文件**通过后，最后原子写 accepted runtime 元数据。
+`window-11/result.json` 为 accepted=true / manager_passed=true / retained_default=true。
+
+## 九类验收范围
+
+前八类来自窗口 9 同一封存内核/manager；协调者明确认可续窗复用，最后只补 manager 和身份/风扇/新鲜视频。
+
+| 类别 | 结果与边界 |
 |---|---|
-| HDMI 模式 | 1080p60→4K60、清 EDID 无信号、恢复；浏览器分别推进 299/298/303 帧；**19 档矩阵未重跑，不记通过** |
-| H.264 | 3840×2160，约 10 秒 597 帧，59.6927 fps；丢帧/冻结/丢包增量零 |
-| H.265 | 3840×2160，约 10 秒 602 帧，60.1854 fps；同上计数增量零 |
-| 4K60 运动 | 同一未改变的正式包在窗口 5 实测 600.003 秒、36000 帧、59.9997 fps、三个异常计数增量零；本窗核验该原始凭证并在新 boot 另做 5 秒解码，未重跑 600 秒 |
-| 音频 | 服务 active、HDMI 采集及 UAC2 播放 PCM 存在；仅状态检查，没有听音或内容验收 |
-| HID | M6 原生接收 5 对按键、2 对点击、7 个移动事件、2 个滚轮事件；含 WebSocket 正反相对移动；USB profile 恢复后重复得到同样事件计数 |
-| 虚拟介质 | 专用 16 MiB FAT 的 RO/RW 挂载、M6 marker 读取、1 MiB 写入 SHA、弹出与 LUN 清空、板侧从实际镜像读回 SHA 均通过；结束删除专用镜像 |
-| GPU | Mali-G52 / EGL 1.5 / GLES 3.2，3.001485 秒 1952 帧，像素 179/128/128/255，gl_error=0；不作性能对照结论 |
-| 管理页 | **未运行**：启动前的 180 秒预算门禁拒绝；面板风扇 save/readback/恢复及最终内核/PD/移动布局检查均不记通过 |
+| HDMI 模式 | 1080p60→4K60、清 EDID 无信号及恢复通过；各次浏览器推进299/298/303帧；**19档矩阵未重跑，不记通过** |
+| H.264 | 实际3840×2160，约10秒597帧、59.6927fps，丢帧/冻结/丢包增量零 |
+| H.265 | 实际3840×2160，约10秒602帧、60.1854fps，同上计数增量零 |
+| 4K60运动 | 同一正式包窗口5实测600.003秒、36000帧、59.9997fps，三个异常计数增量零；后续核原始凭证并新boot另做5秒，未重跑600秒 |
+| 音频 | 服务active、HDMI采集和UAC2播放PCM存在；仅状态检查，无听音/内容验收 |
+| HID | M6原生5对按键、2对点击、7移动、2滚轮事件，含WebSocket正反相对移动；USB profile恢复后重复得到同样计数 |
+| 虚拟介质 | 专用16MiB FAT，M6 RO/RW读marker、写1MiB核SHA、安全弹出/LUN清空、板侧从实际镜像读回SHA通过；结束删除测试镜像 |
+| GPU | Mali-G52/EGL1.5/GLES3.2，3.001485秒1952帧，像素179/128/128/255，gl_error=0；不作性能对照结论 |
+| 管理页 | 最终窗口认证、面板fan保存/刷新读回/恢复、内核available/default与Vendor、实时TCPM5V3A、15点fan与移动布局均通过，无pageerror/横向溢出 |
 
-介质写入 1048576 字节的 SHA256 为
+介质写入 1048576 字节 SHA256：
 `bd8a5183fdafb052402b7f52480145004a781b927f0d376e4fbd922da44f6926`。
-介质与 HID 结论来自 M6 原生结果和板侧实际镜像，不以 API 成功代替。
-USB 配置恢复沿用先例，通过 API 切换 profile 再恢复，未手写 UDC。
-每类通过后校验服务、UDC、taint、同一 boot ID 及内核诊断；本窗候选一次正常启动，
-UART BL2 主机观测时刻 18:45:45.342 UTC，未发生就绪后的复位。
+USB 恢复沿用先例，经 API 切换 profile 再恢复，未手写 UDC；结论取 M6 原生事件/实际镜像，不以 API 成功代替。
+窗口 9 先截图、明确选 U.S.、hold_key 逐字保持引导，下载六项工具逐项核 SHA；结束恢复 mode88/US，
+关闭本任务两个终端并补拍 TestUFO 前台，没有操作其他 Chrome 标签页。
 
-### 风扇持久化与 M6 恢复
+### 风扇持久化与面板保存
 
-入场保存的锚点为 60/80/100°C；新 manager 启动的 ExecStartPre fan-restore
-实际 exited/status=0，journal 无恢复失败。六区逐项读回全部 90 个 trip，均为
-45000、47500、50000、52500、55000、57500、60000、65000、70000、75000、
-80000、85000、90000、95000、100000 m°C，符合原保存锚点；此项与未运行的面板检查分开计。
+入场有保存的60/80/100°C锚点；新 manager 启动 ExecStartPre fan-restore exited/status=0，
+journal 无恢复失败，六区共90个trip逐项符合保存锚点。
+面板实际改为65/85/100°C并应用，刷新页面读回三输入值；API与六区90trip及小数温度逐项一致。
+再经面板恢复60/80/100°C，恢复原保存文件的字节、模式和存在性，完整对比通过；之后再次运行
+fan-persistence 核90trip和ExecStartPre。最终原锚点对应15点为
+45/47.5/50/52.5/55/57.5/60/65/70/75/80/85/90/95/100°C。
+面板保留启动固件历史快照；实时状态独立显示内核TCPM ready、5V/3A，未把固件历史fallback当当前合同。
 
-M6 先截图，菜单明确显示 U.S. 为选中项，选择后以 hold_key 逐字保持 50ms 引导；
-下载的六项工具逐项核 SHA，主机报告 deepdremsMinim6.lan。只操作本任务新开的终端。
-结束原生客户端退出，恢复 display mode 88 和 com.apple.keylayout.US，关闭本任务两个
-终端窗口；补拍 `m6-all-own-windows-closed-testufo.jpg` 确认 Chrome TestUFO 前台。
-没有碰其他 Chrome 标签页。
+## 构建、封包与来源验证
 
-### 回退与累计时间
+新 VM 目录 `/home/deepdream/build/deploy-73-20261105-fd41fb5950b9/` 使用独立源码副本和空 O=。
+所有构建/隔离verify均走heavy队列；构建后只删本任务*.o，保留vmlinux、模块和封包产物。
+生产.config字节一致，实际auto.conf全部4623项值一致，vmlinux无kasan_report。
+首次27个字符串的引号表示差异误报保留；按Kconfig字符串值严格比较后通过，没有豁免选项。
+外层24个文件、内层2354个模块目录文件完整集合/SHA、2341模块的vermagic/BTF/build ID通过。
+manager初包dev9.g85在dpkg排序低于原dev9.g710；首错恢复后改为dev10重建，来源源码未改，版本排序通过。
+其他应用及共享运行器保持原部署字节，不因本次切内核而重编或替换。
 
-最后窗口结果为 accepted=false、restored=true。恢复 `.3` 的完整共享运行器、登记与
-原 runtime 元数据，安装原件 manager dev.9.g710698b；正常重启后 build ID
-`e595ad243d663f6c33b92678a4de6e0b78ec16d5`、模块与基线保护文件一致，manager active。
-回退 boot ID `eaa40c20-6137-477a-9285-a26f517307a2`；H.265 3840×2160 五秒推进
-301 帧、60.1753 fps，丢帧/冻结/丢包增量零。
-夹具清理命令成功；交互复核的最后截图门禁到达测试截止时间而超时，原错误保留于
-`cleanup-error.json`，随后仍在同票恢复阶段手动复核并关闭本任务剩余空终端、恢复 TestUFO，
-没有把这个交互超时覆盖为无错误。
+Mac tar 的 **5个AppleDouble v2侧文件**只在VM recipe及来源归档中；封存包外层32成员、
+模块归档2791成员、2354模块文件及10运行时文件均无._或__MACOSX，七文件启动清单亦无。
+原manifest保留这些侧文件的来源SHA，原件另存build-input-metadata.json；来源检查核格式头与原始SHA，
+真实源码仍逐项匹配Git工作树。原包及原manifest未改，构建时hardware_validated/boardTested标志保持原值；
+硬件验收由独立validation/installed-proof/manager/fan/regressions收据表述。
 
-十张非 heavy 票共 **2373.657 秒（39 分 33.657 秒，含恢复）**，均已释放；
-逐票 started、release mtime 和耗时保存在 `build/deploy-73/board-budget.json`。
-最后两票开始时分别按保守累计 24/29 分钟计算截止时间，没有重置总预算。
-继续验收需要新的时间授权；现有 45 分钟授权不足以覆盖下一次安装、测试和恢复预留。
+正式锁已更新tested_build/retained_runtime及下一包输入（20261105 build2），workspace仅推进manager85。
+VM本任务source上本地轻量tag **v7.3.1-vim4-20261105**精确指向fd41fb5；未改git身份或配置，未push/发布。
+收据包含完整模块库存、生产配置/封包核验、实板身份、manager面板/PD、fan前后、600秒及新鲜视频、
+前八类引用、原始部署输入、旧.2授权清理及`.3`保留证明。
+提交前`python3 -m unittest discover -s tests -p 'test_*.py'`：557项、跳过14项、无失败；
+原始输出`logs/deploy-73/formal-accepted-tests-final.log`，Git差异空白检查通过。
 
 ## 已授权的旧启动目录清理
 
-协调者 t48 **依据用户“部署所有东西”的授权批准**，仅删除未引用的
-`/boot/kernels/7.3.1-vim4-20261104.2`。窗口 4 内再次核验 extlinux/kernels.json
-没有引用，目录只有七个预期文件且 SHA 与正式收据逐项相同，之后才删除。
-实际释放 **58040320 字节**；`df -B1 /boot` 可用量由 46362624 增至 104402944，
-登记文件没有变化。`.2` 模块/固件、`.3` 整包和 Vendor 均保留。
-原 `.2` 整包仍在 Mac `build/pm-typec-parity/`，SHA256
-`f40370e057e40376f2687dceb7875568b34e85615fecef1459eddd301e6c73ba`，可按整包重装。
-原始输出在 `logs/deploy-73/window-4/approved-old-boot-cleanup.log`。
+t48 **依据用户“部署所有东西”的授权批准**仅删未引用的
+`/boot/kernels/7.3.1-vim4-20261104.2`。窗口4内再次核extlinux/kernels.json无引用，
+目录七文件SHA逐项匹配收据后才删除；实际释放58040320字节，/boot可用46362624→104402944。
+`.2`模块/固件、`.3`整包和Vendor保留；Mac原`.2`归档SHA
+`f40370e057e40376f2687dceb7875568b34e85615fecef1459eddd301e6c73ba`，可整包重装。
+`.3`回退归档SHA `dda222dfc7038485cbf657ad4a4dce2e82f16c0ad4f4befd5b1130eb950202f1`，
+原manager dev9.g710包SHA `26c06134e146c488c54d8cde37c2da7633e77c6b99b29799f00661a95c62c87b`。
 
-## 后续窗口与保留的失败证据
+## 前期停止与保留证据
 
-- 窗口 4 安装候选后发现初包版本排序不高于原 manager，首错回退，原结果保留。
-- 窗口 5 完成新内核身份、manager、风扇持久化及 600 秒视频，后续诊断脚本以不带边界且
-  忽略大小写的表达式误把 `ramoops:` 和既有 iwconfig `warning:` 当作 splat，触发回退。
-  原 failed 结果、完整 journal 和 traceback 保留；离线修正匹配 Linux 诊断前缀边界，
-  对真实 BUG/Oops/WARNING/Call trace/KASAN/panic/Wave5 超时仍阻断，两个离线回放测试通过。
-  本窗 4K 凭证引用明确记录重分类原因，没有把窗口 5 改写为整体通过。
-- 窗口 6/7 截图审核等待超时，发生在安装前，无写入；窗口 8 的终端启动截图没有得到
-  预期窗口，立即停止，恢复 `.3`/原 manager/视频。释放后改为显式菜单选 US、Dock
-  打开终端和保持组合键；窗口 9 下载引导成功。
+首阶段十票共2373.657秒（含恢复），遵守累计38分钟停新测试、45分钟含恢复的授权；
+八类通过后因manager180秒上限无法满足剩余测试时间，回退并请批续窗。
+随后额外20分钟票1244登录传输失败，用235.073秒首错恢复，详见[续窗历史](2026-11-05-integration-manager-continuation.md)。
+协调者再批最多两张15分钟票，1245完成验收，用167.967秒；未重置或隐去各阶段历史预算。
 
-原始输出还包括 `window-5/motion-4k600.json`、`window-9/regressions.json`、
-`window-9/fan-persistence.log`、M6 原生事件/介质结果、全部 UART、恢复 proof 与视频。
-失败窗口没有覆盖或删除。以下是清理批准前的前期记录；涉及“待批/未安装”的描述仅指当时。
+保留的主要失败：入场实际manager710与历史workspace1400不符；截图比较子进程缺浏览器环境；
+完整包安装前boot空间不足；重启后旧SSH转发失效导致恢复视频Failed to fetch，另票重建转发补核验；
+窗口5诊断表达式忽略边界/大小写，误把ramoops/iwconfig warning判为splat而回退；
+两个截图审核等待超时及一次终端启动截图不符均按失败停止。原failed result与日志不覆盖。
+诊断脚本离线修为Linux诊断前缀边界，真实BUG/Oops/WARNING/Call trace/KASAN/panic/Wave5超时仍阻断，
+两个回放测试通过；600秒凭证引用明确记重分类，没有把窗口5整体改为成功。
+原`.3`恢复启动两次出现一次已知类复位，UART阶段/偏移保留；最终候选无此复位。
 
-## 候选与离线证据
-
-正式候选源码为 `fd41fb5950b9da1fb336ce00d5137d27ee9755fa`，
-release `7.3.1-vim4-20261105`，GNU build ID
-`bdbfa439f298e92b5bad092528d11119a974f262`。
-使用新的 VM 源码副本与独立空 O=，未复用生产/调试候选输出。
-2338 个基础模块与 3 个外部模块通过同次完整集合、vermagic、BTF、build ID 检查。
-归档 SHA256 为 `a12069066760768a833803ad11e7e1fc212674e4ff09f40bdf2017cc1d55e204`。
-
-生产 `.config` 与仓库配置字节一致；实际 `auto.conf` 的全部 4623 项值一致，
-`vmlinux` 无 `kasan_report`。首次门禁把 27 个字符串的有引号/无引号格式差别
-当作不等而停止；检查 Kconfig 输出逻辑后按字符串值解析，再严格比较全部选项，
-没有豁免配置项、重编或覆盖现场。初次日志与原始差异保留，续封包另取 heavy 票。
-独立复核拷回归档的外层 24 个文件、内层 2354 个模块目录文件的完整集合与哈希，
-以及 2341 个模块库存收据。封包后仅清理本任务 `*.o`，保留 vmlinux、模块和产物。
-
-目标 manager 为 `85ef0b1287c2dd428003b609e575ce33cbc4f99a`，
-初次构建版本 `2.5.1+vim4.20261029.102.dev.9.g85ef0b1`，干净来源；
-deb SHA256 `ef21ab9b727ad087c7da53d231a22fd43bba1b98105bb26f4cfeeb8ebaf06025`。
-构建和隔离 verify 均经 heavy 队列通过，未安装到板子。
-
-## 前期停止与恢复记录
-
-| 窗口/票据前缀 | 秒 | 结果 |
-|---|---:|---|
-| 1 / e647fc6 | 4.941 | 入场 manager 实为710，计划历史1400不符；安装前停止 |
-| 2 / 795cab0 | 15.112 | 原视频59.3673fps；截图比较子进程缺浏览器环境，停止，无HID |
-| 3 / 2431ea4 | 146.263 | TestUFO场景通过；完整包安装前因boot空间不足拒绝 |
-| 恢复 / 5283ed7 | 11.680 | 重建重启后失效的SSH转发，原视频60.1787fps及保护文件补核验通过 |
-| 4 / 8433bef | 170.127 | 获批清理.2启动目录；候选安装完成但初manager版本排序失败，回退通过 |
-| 5 / 24a6b5d | 862.902 | 600秒视频与风扇持久化通过；诊断脚本误匹配，回退通过 |
-| 6 / 8f7d40c | 76.179 | 截图复核超时，安装前停止 |
-| 7 / a29b8df | 136.266 | 同上 |
-| 8 / 20b0ba0 | 300.725 | M6终端启动截图不符，首错回退与视频通过 |
-| 9 / 6680b1e | 649.463 | 八类通过，管理页预算拒绝；回退与视频通过 |
-
-窗口3恢复`.3`时，UART两次BL2主机观测为17:35:44.873/17:36:02.736 UTC，
-第二次启动身份正确；这是原基线的非请求启动复位，不能记为候选复位。
-该窗视频Failed to fetch是旧SSH转发已断开，原restored=false保留，恢复短票补核验另记。
-
-TestUFO最初按全画面变化被判活动；协调者随后明确它是已知运动源。
-新判据核URL/布局/尺寸，屏蔽三条UFO动画带和菜单时钟/状态区后其余区域静止、光标不动；
-首次新场景比较两项变化均零。没有借此操作其他标签页或忽略未知对话框。
-
-## 原始资产与边界
-
-- `build/deploy-73/`：独立O=构建/封包/manager heavy日志、生产配置比较、包验证、
-  窗口编排及81文件哈希清单；`board-budget.json`保存十票原始时间。
-- `logs/deploy-73/window*`与`recovery-proof/`：逐窗命令输出、完整身份、UART、失败/恢复结果、
-  M6截图与原生事件；窗口9保存使用时的`inputs.used.json`，后续夹具改动另封清单。
-- `.3`回退整包SHA256：`dda222dfc7038485cbf657ad4a4dce2e82f16c0ad4f4befd5b1130eb950202f1`；
-  原manager包SHA256：`26c06134e146c488c54d8cde37c2da7633e77c6b99b29799f00661a95c62c87b`。
-- 本任务不push、不合并、不发布；候选已安装文件保留以便后续逐项核验后继续，当前默认仍`.3`。
-
-允许的启动例外仅为协调者指定的新默认首次启动一次已知cold_boot：记录UART时刻和阶段，
-第二次启动须身份正确；连续第二次复位或就绪后任何复位均首错回退。
-HDMI和M6操作沿用[先例](2026-11-03-kernel-731-deploy.md#九类门禁及额外检查)，
-范围限制没有被解释为完整19档矩阵、音频内容或延迟验收。
+原始命令与输出在`build/deploy-73/`和`logs/deploy-73/window*`、`recovery-proof/`；
+最终是window-11，`board-budget.json`保留逐票started/release mtime与耗时。
+失败不归因为已证实内核回归；本次不扩展为19档矩阵、音频内容、端到端延迟或睡眠验收。
+无子代理、无push、无合并。

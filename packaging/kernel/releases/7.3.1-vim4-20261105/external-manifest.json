@@ -1,0 +1,42 @@
+{
+  "vendor": "80a07ad5406d57855c996285ae75a50a1b9147ae",
+  "kernel": "fd41fb5950b9da1fb336ce00d5137d27ee9755fa",
+  "boardTested": false,
+  "runtimeManifestSha256": "3e379f49090b7e1a1fb8145320a2aa03dc0aa05cdde2cfa7e9e996e6b9a48834",
+  "moduleSha256": "d6a3107f7ff9b41ca573d8106a6ad231cda0b6ee98159e5a4bc88914621db069",
+  "heapModuleSha256": "1985db513571cd01be635c239a9f70a0276f4477732e99800cf404f0b06e5572",
+  "governorModuleSha256": "843643766bc259fe8f762f2663e798529917f959d800bd4f02b53edc11a8b6f3",
+  "governorSources": {
+    "._Makefile": "08b03059af5f1580c4154420010c656f14fba51bfbadc03e6669cf7e7ce9bdae",
+    "Makefile": "91e0b1608cd761ac1f9dd5f4cff72940c2230bb56926a0ef4946d78d1fdfc294",
+    "._governor_vim4.c": "08b03059af5f1580c4154420010c656f14fba51bfbadc03e6669cf7e7ce9bdae",
+    "governor_vim4.c": "29bfc4e63b6890020e0e961bcc881ac6b237bedf69b17d1830b4cf50ca1dccab"
+  },
+  "heapSources": {
+    "._Makefile": "08b03059af5f1580c4154420010c656f14fba51bfbadc03e6669cf7e7ce9bdae",
+    "Makefile": "462a77f2ba79cb400cc2634823246a854214c4b2838f720d932ed7077d278bff",
+    "._README.md": "08b03059af5f1580c4154420010c656f14fba51bfbadc03e6669cf7e7ce9bdae",
+    "README.md": "c1a76aa51bde4169cf4225bb8ae3d200e1901de373a2c815410a7df5eead9f0d",
+    "._vim4_kbase_heaps.c": "08b03059af5f1580c4154420010c656f14fba51bfbadc03e6669cf7e7ce9bdae",
+    "vim4_kbase_heaps.c": "ae91c195ba705733c49a8fa57a6886bc07f7b3ad7b01ef4c2dd9aaa6d1f58ddb"
+  },
+  "patches": {
+    "0001-kernel-api.patch": "74071bbeef8c7f1872a426799b95985af49539cf5c9270aebf1892d8ddfd5d43",
+    "0002-t7-platform.patch": "f0effab95de11f89f5d82a5b466232f80c92c25d09de9cab8ccbcd049803b6db",
+    "0003-devfreq-thermal.patch": "c19c179737a7487e968b6f6100e95a13fb64f589dd00770692683a0ef3473088",
+    "0005-runtime-api.patch": "efc3be1be2fab1e98572024daf856cfd95eac139ba1be4bbf72f7122baaae7db",
+    "0006-t7-reset-quirk.patch": "e973fd5a4b977b58cdec89e74f1c2071df35631a9cc0c62229f7e7e7220fe496",
+    "0007-mmu-fault-region.patch": "c75efedc581386645cae4cc56ad0676227416d08cfa7dee12f319f681817165f",
+    "0008-t7-devfreq-policy.patch": "db045efa9fddf4cf2de02db7ab8ded8d7056cac4b6aa62f3876590f1db7427a7",
+    "0009-system-workqueue.patch": "5fc5a2b8ec3cc9c53706c50efaab7b86f07f168bdfea51e5ec0c20edbee32434"
+  },
+  "dtPatchSha256": "295b65c361973201108d1e6d7333664f5a1c2ebc02291dd2664adb0ffca95793",
+  "abiSha256": "98b864242a760fae1c20fa6a44254549cd4837d0fd51151887309d63bd19e43a",
+  "retainedDtbSha256": "1895efb65a1cc42daf006989129750dd52acce5034676c7e76c38eda0021e013",
+  "candidateDtbSha256": "cf2080fefccad0153c496a1e83828f028522a1c2b582029e7c4107949e79296e",
+  "kernelFiles": {
+    ".config": "7be7563e089ff628a320cd82ed163d88c576e4c7612f6bf849b230d2b9719b1c",
+    "Module.symvers": "9e54cbe2d161279b9e818a18515e924ad9c3a9ba1f87ce9cf0f8b55c3feff78d",
+    "arch/arm64/boot/Image": "20da39dadbee1813e2914cdec8bd475aa04e4cbbaf1ae86d7a767bc69a2f3153"
+  }
+}

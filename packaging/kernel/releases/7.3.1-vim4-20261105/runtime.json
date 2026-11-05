@@ -1,0 +1,54 @@
+{
+  "schema": 1,
+  "release": "7.3.1-vim4-20261105",
+  "image_source_revision": "fd41fb5950b9da1fb336ce00d5137d27ee9755fa",
+  "build_id": "bdbfa439f298e92b5bad092528d11119a974f262",
+  "package_sha256": "a12069066760768a833803ad11e7e1fc212674e4ff09f40bdf2017cc1d55e204",
+  "manifest": "manifest.json",
+  "installed": true,
+  "default_boot": "Mainline",
+  "profiles": {
+    "kbase": {
+      "dtb": "vim4.dtb",
+      "sha256": "cf2080fefccad0153c496a1e83828f028522a1c2b582029e7c4107949e79296e",
+      "compatible": "khadas,vim4-mali-kbase-r44p0",
+      "blacklist": [
+        "panfrost"
+      ],
+      "modules": [
+        "vim4_kbase_heaps",
+        "governor_vim4",
+        "mali_kbase"
+      ],
+      "gpu_driver": "mali",
+      "wrapper": "/usr/libexec/vim4-kvm-run",
+      "gpu_wrapper": "/usr/lib/vim4-kvm/python/vim4gpu.py",
+      "egl": "private-prefix",
+      "vulkan": "private-icd",
+      "opencl": "private-icd"
+    },
+    "panfrost": {
+      "dtb": "panfrost.dtb",
+      "sha256": "1895efb65a1cc42daf006989129750dd52acce5034676c7e76c38eda0021e013",
+      "gpu_driver": "panfrost",
+      "userspace": "system-mesa"
+    }
+  },
+  "blob": {
+    "provision_separately": true,
+    "sha256": "536ee80c17dc5c54e7c6ff029ca43270da8efc3fdc5b3aeb263f364419368494",
+    "uk": "11.39",
+    "glvnd_vendor": false
+  },
+  "validation": {
+    "accepted": "integration nine-class approved scope plus fan90-trip persistence and authenticated manager panel qualified",
+    "receipt": "validation.json",
+    "limitations": [
+      "19-mode HDMI matrix not rerun; only1080p60/4K60/no-signal recovery qualified.",
+      "Audio service/device state only; no listening or audio content acceptance.",
+      "Continuation reused approved HID/media/GPU/HDMI results on the identical sealed assets; noM6/HID during continuation.",
+      "No end-to-end latency or host sleep/resume qualification."
+    ]
+  },
+  "gpu_default": "kbase"
+}

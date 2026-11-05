@@ -1,0 +1,54 @@
+{
+  "classes": [
+    {
+      "id": "4k60",
+      "passed": true,
+      "scope": "same unchanged formal candidate 600s receipt, diagnostics reclassified; fresh 5s decode after reboot"
+    },
+    {
+      "id": "hdmi-modes",
+      "passed": true,
+      "scope": "limited modes; 19-mode matrix not rerun"
+    },
+    {
+      "id": "h264",
+      "passed": true,
+      "scope": "current-build"
+    },
+    {
+      "id": "h265",
+      "passed": true,
+      "scope": "current-build"
+    },
+    {
+      "id": "audio",
+      "passed": true,
+      "scope": "service/device state only"
+    },
+    {
+      "id": "hid",
+      "passed": true,
+      "scope": "current-build"
+    },
+    {
+      "id": "media",
+      "passed": true,
+      "scope": "current-build"
+    },
+    {
+      "id": "gpu",
+      "passed": true,
+      "scope": "current-build"
+    },
+    {
+      "id": "manager",
+      "passed": true,
+      "scope": "authenticated panel, fan write/readback/restore, kernel available/default, TCPM5V3A, mobile layout"
+    }
+  ],
+  "earlier_raw_evidence": "logs/deploy-73/window-9",
+  "earlier_result_sha256": "ee75e18c212571405ac62fac6c853688a50daffbf806ba2296be402e9e3ed841",
+  "continuation_raw_evidence": "logs/deploy-73/window-11",
+  "continuation_result_sha256": "10e6dae3c441cdbdf9f0e84f29df915df1150a716f2962a4ad104b0155948cb3",
+  "scope_authorization": "t48 narrowed continuation: reuse eight classes on unchanged sealed assets; noM6 or HID during continuation"
+}
