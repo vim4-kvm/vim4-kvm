@@ -17,7 +17,7 @@
 
 ## 2026-11-05
 
-- [集成正式包与部署空间门禁](2026-11-05-integration-formal-deploy.md) — kernel deployment manager；正式包与manager隔离验证通过，已知TestUFO门禁通过；安装器因boot空间不足拒绝，`.3`恢复视频补核验通过，旧`.2`清理待批。
+- [集成正式包八类检查与预算回退](2026-11-05-integration-formal-deploy.md) — kernel deployment manager；八类检查与风扇90trip持久化通过，管理页因预算未启动；已回退`.3`和原manager并核视频，获批仅清理旧`.2`启动目录；正式锁未推进。
 
 - [完整 AVC/MPEG-2 一致性与 bit21 实验](2026-11-05-vdec-full-conformance.md) — kernel video；H.264 58/135、MPEG-2 18/43；HEVC bit21 仍超时，5.15 启动 hard lockup，对照未运行；已恢复 `.3` 并归档清理。
 - [标准码流失败特性聚类](2026-11-05-vdec-failure-groups.md) — kernel video；隔行 SPS 52 Fail、多 slice 18 Fail；主机驱动显式限制，修复待验证；附逐流结果与重叠分组。
