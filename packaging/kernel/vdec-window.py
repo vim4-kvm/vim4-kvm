@@ -380,6 +380,14 @@ def require_acceptance_kernel(plan, proof):
 
 def prepare_acceptance_decoder(plan, proof):
     coexistence = plan.get('coexistence', False)
+    preserve_probe = plan.get('preserve_decoder_probe', False)
+    if preserve_probe:
+        if (plan['kernel'] != 'mainline' or coexistence or
+                plan.get('private_driver')):
+            raise ValueError('Preserving decoder probe requires the full mainline module')
+        if (not Path('/sys/module/aml_vdec_drv').exists() or
+                not (t7_device() / 'driver').is_symlink()):
+            raise ValueError('Decoder must already be loaded and bound')
     if coexistence:
         require_services()
     else:
@@ -395,7 +403,8 @@ def prepare_acceptance_decoder(plan, proof):
         return
     if coexistence and Path('/sys/module/aml_vdec_drv').exists():
         raise ValueError('Coexistence starts from a fresh decoder instance')
-    for name in (() if coexistence else ('aml_vdec_drv', 'wave5', 't7_jpeg')):
+    unload = ('wave5', 't7_jpeg') if preserve_probe else ('aml_vdec_drv', 'wave5', 't7_jpeg')
+    for name in (() if coexistence else unload):
         if Path('/sys/module', name).exists():
             run('modprobe', '-r', name, timeout=10)
     private = plan.get('private_driver')
@@ -419,7 +428,12 @@ def prepare_acceptance_decoder(plan, proof):
         relative = str(module.resolve().relative_to((Path('/lib/modules') / proof['release']).resolve()))
         if sha(module) != proof['modules'][relative]:
             raise ValueError('Decoder module differs from the full kernel package')
-        run('modprobe', 'aml_vdec_drv', timeout=10)
+        if preserve_probe:
+            loaded = build_id('/sys/module/aml_vdec_drv/notes/.note.gnu.build-id')
+            if loaded != proof['module_build_ids'][relative]:
+                raise ValueError('Bound decoder build ID differs from the kernel package')
+        else:
+            run('modprobe', 'aml_vdec_drv', timeout=10)
     probe_runtime_pm()
 
 

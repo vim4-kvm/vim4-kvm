@@ -69,6 +69,48 @@ class DecoderWindowTests(unittest.TestCase):
                 self.assertIn('os.close(', script)
                 self.assertIn('aml_hevc_decoder', script)
 
+    def test_preserved_probe_releases_encoders_without_reloading_decoder(self):
+        plan = {'kernel': 'mainline', 'preserve_decoder_probe': True}
+        proof = {'release': '7.3.test', 'modules': {'kernel/aml.ko': 'hash'},
+                 'module_build_ids': {'kernel/aml.ko': 'module'}}
+        module = '/lib/modules/7.3.test/kernel/aml.ko'
+        for loaded_id in ('module', 'wrong'):
+            with self.subTest(loaded_id=loaded_id), \
+                    patch.object(window.Path, 'glob', return_value=[]), \
+                    patch.object(window.Path, 'exists', return_value=True), \
+                    patch.object(window.Path, 'is_symlink', return_value=True), \
+                    patch.object(window, 't7_device', return_value=Path('/device')), \
+                    patch.object(window, 'sha', return_value='hash'), \
+                    patch.object(window, 'build_id', return_value=loaded_id), \
+                    patch.object(window, 'run', return_value=module) as run, \
+                    patch.object(window, 'probe_runtime_pm') as probe:
+                if loaded_id == 'wrong':
+                    with self.assertRaisesRegex(ValueError, 'Bound decoder build ID'):
+                        window.prepare_acceptance_decoder(plan, proof)
+                    probe.assert_not_called()
+                else:
+                    window.prepare_acceptance_decoder(plan, proof)
+                    probe.assert_called_once_with()
+                loads = [c.args for c in run.call_args_list if c.args[0] in ('modprobe', 'insmod')]
+                self.assertEqual(loads, [('modprobe', '-r', 'wave5'),
+                                         ('modprobe', '-r', 't7_jpeg')])
+
+    def test_preserved_probe_refuses_unbound_or_mixed_modules_before_stopping_app(self):
+        cases = [({'kernel': 'vendor'}, True),
+                 ({'kernel': 'mainline', 'private_driver': {'path': '/private'}}, True),
+                 ({'kernel': 'mainline', 'coexistence': True}, True),
+                 ({'kernel': 'mainline'}, False)]
+        for options, bound in cases:
+            plan = dict(options, preserve_decoder_probe=True)
+            with self.subTest(options=options, bound=bound), \
+                    patch.object(window.Path, 'exists', return_value=True), \
+                    patch.object(window.Path, 'is_symlink', return_value=bound), \
+                    patch.object(window, 't7_device', return_value=Path('/device')), \
+                    patch.object(window, 'run') as run:
+                with self.assertRaises(ValueError):
+                    window.prepare_acceptance_decoder(plan, {})
+                run.assert_not_called()
+
     def test_retired_register_actions_are_rejected_at_cli_parsing(self):
         for action in ('power', 'mdec', 'snapshot'):
             with self.subTest(action=action):

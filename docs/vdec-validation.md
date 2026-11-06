@@ -43,6 +43,11 @@ HEVC 固件/电源由真实解码任务验证，不依赖旧 passing 缓存或 d
 power/mdec/snapshot 动作及内核写入式诊断已删除，旧动作在参数解析时明确拒绝。
 power_state、faulted 两个只读状态属性保留；不增加新的寄存器操作入口。
 
+运行期DOS租约验收可显式使用 `preserve_decoder_probe`：先记录编码器在位时的
+普通decoder open EBUSY，再准备解码。该模式只卸载编码器，保留已绑定decoder，
+核实际加载build ID与整包一致后普通open/close验PM；拒绝私有模块、vendor及混合共存模式。
+这样EBUSY后的恢复与解码后的租约释放能在同一绑定上验证，不能以重载decoder掩盖状态错误。
+
 验证计划分成以下几组，具体字段校验见入口中的 `validate_acceptance_plan`、
 `require_acceptance_kernel` 和三个 `run_*` 函数：
 
