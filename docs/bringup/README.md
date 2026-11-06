@@ -17,6 +17,7 @@
 
 ## 2026-11-06
 
+- [r70 .32短回归](2026-11-06-vdec-r70-integration32.md) — kernel video；DOS step=0、H.264十条通过；Sony仍有ERROR缓冲，HEVC有效输入WAIT=0仍超时；无冷复位，正式恢复/清理通过。
 - [.32集成与板窗计划](2026-11-06-vdec-integration32-plan.md) — kernel video；HEVC WAIT_FLAG、DOS降噪及MPEG-2单向B参考修复集成，离线封包与短回归计划；待批，不部署。
 - [r69 MPEG-2 像素与单向 B 参考](2026-11-06-mpeg2-r69-analysis.md) — kernel video；四条色度矩阵无像素变化符合 4:2:0 语义；sony-ct1/ct2 两张起始 B 因缺前向 anchor 被拒绝，topic 修复及六流清单待上板。
 - [r69联合验证与AVC收口](2026-11-06-vdec-r69-joint.md) — kernel video；合r65为129S/1F/5KU，旧110/58均无回退；MPEG-2完成29次4S/25F，HEVC streaming超时；正式恢复/清理通过。
