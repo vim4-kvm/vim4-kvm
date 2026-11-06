@@ -1,0 +1,1 @@
+[    0.000000] Booting Linux on physical CPU 0x0000000000 [0x4(vim4-kvm@vim4-build) (gcc (Ubuntu 13.3.0-6ubuntu2~24.04.1) 13.3.0, GNU ld (GNU Binutils for Ubuntu) 2.42) #1 SMP PREEMPT Fri Nov  6 02:03:34 UTC 2026

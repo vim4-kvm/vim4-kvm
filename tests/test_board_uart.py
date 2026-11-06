@@ -47,13 +47,24 @@ class ContinuousUARTTests(unittest.TestCase):
             finally:
                 reader.close(); writer.close()
 
-    def test_wrong_kernel_and_repeated_linux_boot_cannot_pass(self):
+    def test_uart_release_is_evidence_and_repeated_boot_still_stops(self):
         events = uart.BootEvents('trial')
         events.feed(b'Linux version other\n', 1)
-        self.assertIsInstance(events.error, RuntimeError)
+        self.assertIsNone(events.error)
+        self.assertEqual(events.observed_release, 'other')
         events = uart.BootEvents('trial')
         events.feed(b'Linux version trial\nLinux version trial\n', 1)
         self.assertIsInstance(events.error, uart.ColdBootReset)
+
+    def test_two_banners_count_as_one_boot_but_either_can_detect_next_boot(self):
+        for second in (b'Booting Linux on physical CPU', b'Linux version trial'):
+            events = uart.BootEvents('trial')
+            events.feed(b'Booting Linux on physical CPU\n', 10)
+            events.feed(b'Linux version trial\n', 20)
+            self.assertEqual(events.linux_started, 10)
+            self.assertIsNone(events.error)
+            events.feed(second+b'\n', 30)
+            self.assertIsInstance(events.error, uart.ColdBootReset)
 
     def test_final_recovery_retains_failure_and_cannot_resume_sampling(self):
         with tempfile.TemporaryDirectory() as directory:

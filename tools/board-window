@@ -553,6 +553,47 @@ def continuous_uart(device, directory, *, deadline):
             os.close(fd)
 
 
+def boot_identity(host, plan, timeout):
+    """Read only the running identity; verify APPEND against the sealed config."""
+    config = str(once.candidate_prefix(plan)) + '/extlinux.conf' if plan else None
+    script = """import hashlib,json,pathlib,platform,struct
+data=pathlib.Path('/sys/kernel/notes').read_bytes()
+offset=0; ids=[]
+while offset+12<=len(data):
+ n,d,k=struct.unpack_from('<III',data,offset); offset+=12
+ start=offset+((n+3)&~3)
+ if data[offset:offset+n]==b'GNU\\0' and k==3: ids.append(data[start:start+d].hex())
+ offset=start+((d+3)&~3)
+assert len(ids)==1, 'ambiguous GNU build ID'
+result=dict(release=platform.release(),build_id=ids[0],
+ cmdline=pathlib.Path('/proc/cmdline').read_text().strip(),
+ boot_id=pathlib.Path('/proc/sys/kernel/random/boot_id').read_text().strip())
+config=CONFIG
+if config is not None:
+ data=pathlib.Path(config).read_bytes()
+ result.update(config_sha256=hashlib.sha256(data).hexdigest(),config=data.decode())
+print(json.dumps(result))
+""".replace('CONFIG', repr(config))
+    return json.loads(ssh_python(host, script, timeout=timeout))
+
+
+def require_boot_identity(state, release, old_boot, plan=None):
+    if not state['boot_id'] or state['boot_id'] == old_boot:
+        return False
+    if state['release'] != release:
+        raise RuntimeError('SSH booted an unexpected kernel release')
+    if plan:
+        if state['build_id'] != plan['build_id']:
+            raise RuntimeError('SSH kernel build ID differs from bundle')
+        if state['config_sha256'] != plan['files']['extlinux.conf']:
+            raise RuntimeError('RAM boot config differs from sealed bundle')
+        append = [line.split(None, 1)[1] for line in state['config'].splitlines()
+                  if line.strip().startswith('APPEND ')]
+        if len(append) != 1 or state['cmdline'].split() != append[0].split():
+            raise RuntimeError('SSH command line differs from sealed APPEND')
+    return True
+
+
 def boot_recorded(host, stream, plan=None, baseline_release=None):
     """The explicit continuous path; the historical boot loop stays separate."""
     def require_budget():
@@ -573,7 +614,7 @@ def boot_recorded(host, stream, plan=None, baseline_release=None):
                                stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL,
                                start_new_session=True)
     try:
-        deadline = time.monotonic() + 45
+        deadline = time.monotonic() + 120
         while time.monotonic() < deadline:
             cursor, data = stream.read_since(cursor, min(.1, deadline-time.monotonic()))
             tail = (tail + data)[-65536:]
@@ -583,23 +624,33 @@ def boot_recorded(host, stream, plan=None, baseline_release=None):
             if interrupted and not selected and (b'kvim4#' in tail or b'kvim4n#' in tail):
                 stream.send(('setenv ethaddr ' + mac + '; ' + plan['command'] + '\n').encode())
                 selected = True
-            if stream.events.linux_started is not None:
-                break
-        else:
-            raise TimeoutError('No selected Linux boot within 45 seconds')
-        if plan and not selected:
-            raise RuntimeError('RAM candidate was not selected')
-        deadline = stream.events.linux_started / 1e9 + 45
-        while time.monotonic() < deadline:
             stream.check()
+            if plan and not selected:
+                continue
+            try:
+                state = boot_identity(host, plan, timeout=min(3, max(.1, deadline-time.monotonic())))
+            except (OSError, subprocess.SubprocessError):
+                continue
+            if not require_boot_identity(state, release, old_boot, plan):
+                continue
             try:
                 ready(host, timeout=min(3, deadline-time.monotonic()), expected=release,
                       old_boot=old_boot, deadline_bound=True)
             except TimeoutError:
                 continue
             stream.check()
+            confirmed = boot_identity(host, plan, timeout=min(3, max(.1, deadline-time.monotonic())))
+            stream.check()
+            require_boot_identity(confirmed, release, old_boot, plan)
+            if confirmed['boot_id'] != state['boot_id']:
+                raise RuntimeError('SSH boot identity changed during readiness')
+            stream.mark('ssh-boot-identity', identity=confirmed,
+                        uart_linux_started=stream.events.linux_started,
+                        uart_bytes_lost=stream.events.observed_release != release)
             return
-        raise TimeoutError('Selected Linux did not become ready within 45 seconds')
+        stream.mark('ssh-boot-timeout', uart_linux_started=stream.events.linux_started,
+                    uart_observed_release=stream.events.observed_release)
+        raise TimeoutError('No verified SSH boot ready within 120 seconds')
     finally:
         if process.poll() is None:
             process.terminate()

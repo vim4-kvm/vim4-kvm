@@ -27,6 +27,7 @@ class BootEvents:
     def __init__(self, release):
         self.release = release
         self.linux_started = None
+        self.observed_release = None
         self.error = None
         self.tail = b''
         self.after_reset = []
@@ -48,20 +49,25 @@ class BootEvents:
                 self.error = RuntimeError('Kernel failure in UART: ' + line.decode(errors='replace'))
                 return
             match = re.search(rb'Linux version (\S+)', line)
-            if match:
-                if self.linux_started is not None:
+            booting = b'Booting Linux' in line
+            if match or booting:
+                # A normal boot emits both banners; either survives a dropped
+                # serial chunk. A repeated banner means another Linux start.
+                repeated = (booting and self.linux_started is not None) or (match and self.observed_release is not None)
+                if repeated:
                     self.error = ColdBootReset('A second Linux boot followed the selected candidate')
-                elif match[1].decode(errors='replace') != self.release:
-                    self.error = RuntimeError('UART booted an unexpected kernel release')
                 else:
-                    self.linux_started = monotonic_ns
+                    if self.linux_started is None:
+                        self.linux_started = monotonic_ns
+                    if match:
+                        self.observed_release = match[1].decode(errors='replace')
             elif self.linux_started is not None and b'T7:BL:' in line:
                 self.error = ColdBootReset('Selected Linux returned to T7 ROM')
             if isinstance(self.error, ColdBootReset):
                 self.reset_at = monotonic_ns
                 # A ROM marker and the recovery banner may share one USB read.
                 remaining = b''.join(part + b'\n' for part in lines[number + 1:]) + self.tail
-                if match:
+                if match or booting:
                     remaining = line + b'\n' + remaining
                 self.after_reset = [(monotonic_ns, remaining)]
                 self.tail = b''

@@ -1,5 +1,6 @@
 import base64
 import contextlib
+import hashlib
 import http.server
 import importlib.machinery
 import importlib.util
@@ -25,6 +26,63 @@ FORMAL_RELEASE = window.once.formal_baseline()['release']
 
 
 class WindowTests(unittest.TestCase):
+    def test_r67_truncated_uart_uses_ssh_identity_and_rejects_mismatches(self):
+        # Exact bytes 26852:27066 from r67 uart.raw; provenance in its record.
+        captured = (ROOT/'tests/fixtures/r67-truncated-boot.txt').read_bytes()
+        uart = window.load('boot_replay_uart', ROOT/'tools/board_uart.py')
+        config = '  APPEND root=test init=/candidate/init\n'
+        plan = dict(release='trial', build_id='a'*40, command='sysboot trial',
+                    files={'extlinux.conf': hashlib.sha256(config.encode()).hexdigest()})
+        valid = dict(release='trial', build_id='a'*40, boot_id='new',
+                     cmdline='root=test init=/candidate/init', config=config,
+                     config_sha256=plan['files']['extlinux.conf'])
+        for changes in ({}, {'release': 'wrong'}, {'build_id': 'b'*40},
+                        {'cmdline': 'root=test'}, {'config_sha256': 'bad'}):
+            with self.subTest(changes=changes):
+                stream = Mock(deadline=3000)
+                stream.events = uart.BootEvents('trial')
+                def read(cursor, timeout):
+                    stream.events.feed(captured, 1_000_000_000)
+                    return 1, b'Hit SPACE\nkvim4#\n'+captured
+                stream.read_since.side_effect = read
+                stream.check.side_effect = lambda: (
+                    self.assertIsNone(stream.events.error))
+                with patch.object(window, 'ssh', side_effect=['old', 'c8:63:14:74:70:0d']), \
+                        patch.object(window, 'boot_identity', return_value=dict(valid, **changes)), \
+                        patch.object(window, 'ready') as ready, \
+                        patch.object(window.subprocess, 'Popen'), \
+                        patch.object(window.time, 'monotonic', return_value=0):
+                    if changes:
+                        with self.assertRaises(RuntimeError):
+                            window.boot_recorded('host', stream, plan)
+                        ready.assert_not_called()
+                    else:
+                        window.boot_recorded('host', stream, plan)
+                        ready.assert_called_once()
+                        self.assertEqual(stream.events.linux_started, 1_000_000_000)
+                        self.assertIsNone(stream.events.observed_release)
+                        self.assertTrue(stream.mark.call_args.kwargs['uart_bytes_lost'])
+
+    def test_no_uart_banner_and_no_ssh_remains_zero_starts(self):
+        uart = window.load('boot_absent_uart', ROOT/'tools/board_uart.py')
+        stream = Mock(deadline=3000)
+        stream.events = uart.BootEvents('trial')
+        stream.read_since.return_value = (0, b'')
+        ticks = iter([0, 0, 0, 0, 0, 0, 121])
+        with patch.object(window, 'ssh', return_value='old'), \
+                patch.object(window, 'boot_identity', side_effect=subprocess.TimeoutExpired('ssh', 3)), \
+                patch.object(window, 'ready') as ready, \
+                patch.object(window.subprocess, 'Popen'), \
+                patch.object(window.time, 'monotonic', side_effect=lambda: next(ticks)):
+            with self.assertRaisesRegex(TimeoutError, '120 seconds'):
+                window.boot_recorded('host', stream, baseline_release='trial')
+        self.assertIsNone(stream.events.linux_started)
+        self.assertIsNone(stream.mark.call_args.kwargs['uart_linux_started'])
+        ready.assert_not_called()
+
+    def test_existing_boot_is_not_accepted_as_a_new_start(self):
+        self.assertFalse(window.require_boot_identity({'boot_id': 'old'}, 'trial', 'old'))
+
     def test_ram_control_rejects_default_boot_and_wrong_or_writable_module_bind(self):
         plan = dict(release=FORMAL_RELEASE, build_id='a'*40, namespace='coldboot', payload_id='a')
         prefix = str(window.once.candidate_prefix(plan))
@@ -49,9 +107,9 @@ class WindowTests(unittest.TestCase):
         process.poll.return_value = None
         with patch.object(window, 'ssh', side_effect=['previous', 'c8:63:14:74:70:0d']), \
                 patch.object(window.subprocess, 'Popen', return_value=process) as reboot, \
-                patch.object(window.time, 'monotonic', side_effect=[0, 0, 0, 46]), \
+                patch.object(window.time, 'monotonic', side_effect=[0, 0, 0, 121]), \
                 patch.object(window, 'ready') as ready:
-            with self.assertRaisesRegex(TimeoutError, '45 seconds'):
+            with self.assertRaisesRegex(TimeoutError, '120 seconds'):
                 window.boot_recorded('host', stream, dict(release='trial', command='sysboot trial'))
         reboot.assert_called_once()
         ready.assert_not_called()

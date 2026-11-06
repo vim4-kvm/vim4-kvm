@@ -17,6 +17,7 @@
 
 ## 2026-11-06
 
+- [r67启动识别修复](2026-11-06-vdec-r67-startup.md) — kernel video；候选版本行残缺导致旧UART门禁误停，码流未运行；改由SSH身份核验，保留UART复位检测，附真实捕获回放。
 - [r66插件身份拦截与恢复](2026-11-06-vdec-r66-identity.md) — kernel video；路径转换缺陷被门禁拦截，码流未运行；正式恢复两次冷复位后自然恢复成功，附路径修复及r67条件。
 - [r65集成部分全集](2026-11-06-vdec-r65-joint.md) — kernel video；119S/1F/5KU/10未运行，MR3/4/5与Sharp_Field逐字节正确；日志采证超时单列，正式恢复；[r66续跑计划](2026-11-06-vdec-r66-plan.md)待批。
 - [AVC评审版与三格式集成计划](2026-11-06-vdec-integration31-plan.md) — kernel video；两提交逐项门禁完成，AVC/HEVC无冲突集成；H.264全集→MPEG-2 29次→HEVC，待批板窗。
