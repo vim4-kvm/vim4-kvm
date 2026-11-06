@@ -17,6 +17,7 @@
 
 ## 2026-11-06
 
+- [r72 HEVC首帧与起始B验证](2026-11-06-vdec-r72-swap-first-frame.md) — kernel video；HEVC compliance 56/56、首帧精确但EOS失败，Sony错误缓冲消除仍2F，H.264三条通过；正式冷复位后自然恢复。
 - [.34厂商HEVC序列与诊断计划](2026-11-06-vdec-integration34-plan.md) — kernel video；HEVC厂商序列+secure swap固件、MPEG-2单向B别名候选、生产W=1整包与KUnit 29/29，四流MPEG-2与HEVC首帧清单，待批板窗。
 - [HEVC secure swap缺口](2026-11-06-hevc-firmware-swap.md) — kernel video；包4.129应先请求swap，修正SMC variant/core及SCRATCH8保存恢复；尖端2a622cf6经协调者heavy：W=1、KUnit 25/25通过，纳入.34。
 - [r71 MPEG-2 单向 B 候选](2026-11-06-mpeg2-r71-leading-b.md) — kernel video；sony-ct1 已定位微码 DATA_EMPTY；两条 sony 逐宏块无前向预测，ISO 未用参考别名输出精确不变，独立 REF0 候选及四流清单待上板。
