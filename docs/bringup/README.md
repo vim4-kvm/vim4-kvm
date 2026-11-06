@@ -17,6 +17,7 @@
 
 ## 2026-11-06
 
+- [r74候选冷复位与自然恢复](2026-11-06-vdec-r74-coldboot.md) — kernel video；.36启动7.440秒冷复位，所有解码项未运行；首次自然恢复正式fd41fb5，2372 proof/视频/归档清理通过，无重试。
 - [.36 HEVC inter短流计划](2026-11-06-vdec-integration36-plan.md) — kernel video；主线加MV容量/DPB测试/每slice DBLK修复，先全I回归再三条P/B逐帧验证；离线准备，待批板窗。
 - [HEVC P/B路径审查](2026-11-06-hevc-inter.md) — kernel video；08后131项增量，修MV边缘CTU容量及每slice DBLK覆写，补DPB KUnit；三条现有P/B流与30帧MD5清单；协调者heavy：KUnit 33/33、W=1通过，板验待运行。
 - [HEVC 主线整理系列](2026-11-06-hevc-mainline-series.md) — kernel video；基于32624d39的九提交，逐提交strict通过、与.35仅诊断差异；协调者heavy：KUnit 29/29、W=1通过，已快进内核主线f7b59cb3，未部署。
