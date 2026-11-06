@@ -2,7 +2,7 @@
 
 离线定位到 frame_num gap 的无缓冲 DPB 项使驱动提前返回 ERROR；不是只凭整文件
 MD5 推测 LTR 寄存器错误。topic `vdec-avc-residual` 在 `c99c3ed` 上的独立修复为
-`0096602bed208f6da17e46fb6b84c5a26f953186`。构建/KUnit/静态检查已运行，
+`dfd3af9c1ad939a6f23f02b9eed4a61123820d1c`（审查后 amend 原0096602）。构建/KUnit/静态检查已运行，
 **修复后像素未上板验证**；不修改 [r61](2026-11-05-vdec-r61-parser-ab.md) 的 Fail。
 
 ## 首错与 MMCO
@@ -64,6 +64,12 @@ active 列表保留占位项是合法的；宏块实际引用和“出现在列�
 占位项借当前输出 canvas，不配置/释放独立 canvas，也不分配 MV。若 L1[0] 为占位项，
 在读取其 POC/MV 前 dev_dbg 并返回错误。日志分开记录占位列表项与 colocated 选择；
 宏块 ref_idx 的计数来自 JM，不冒充板端固件内部跟踪。
+L1[0] 占位直接拒绝是已知限制：即使某个合法非 direct B slice 不使用它，本实现仍
+拒绝，尚未实现这种情况的硬件处理，不能把它概括为规范禁止的码流。
+
+S4 外部 canvas 在当前图完成配置后才得到 y/u/v 索引，placeholder 随后借用这三个
+索引；释放时只清索引，不释放借用对象。新增 KUnit 断言覆盖这一步及真实参考不被覆盖。
+S4 没有实物，仅有构建和 KUnit 证据，不能沿用 T7 的实板结论。
 
 `check.module.log`、`check.builtin.log`：模块/内建 W=1、C=2 有效 sparse CHECK 已运行；
 改动目录无告警。内建日志有树外既有 vdso/vgetrandom 缺声明 sparse 告警，不说全树零告警。
@@ -73,10 +79,13 @@ active 列表保留占位项是合法的；宏块实际引用和“出现在列�
 0 errors/0 warnings/0 checks；header kernel-doc 无输出。构建后仅调整函数续行缩进。
 无 DT/binding 修改，不适用 dt_binding_check。
 主仓库全套离线检查588项完成、11项跳过，输出保存在 `ltr/main-tests.log`。
+S4 amend 后重跑结果为 `check-s4.*`：26/26 KUnit、模块/内建 W=1、有效 sparse、
+header kernel-doc 和 format-patch strict checkpatch 0/0/0；仍未覆盖真实 vb2 查找。
 
 修复后另用已有 FRAME/ANNEXB visl 镜像复跑三条，目录
 `build/hwdecode-parity/avc-residual/visl/mr-gap-recheck/`：每条300请求、进程0、
 trace零丢失，全部控制内容与之前官方 Ubuntu 组相同。插件哈希已保存；visl 镜像没有
 重建，也不执行 Amlogic 硬件路径，此项只复核输入序列，不证明修复正确。
 
-下一步仅提交 [实板计划](2026-11-05-vdec-gap-validation-plan.md) 待批准，不排票、不部署。
+协调者已批准 [实板计划](2026-11-05-vdec-gap-validation-plan.md)，按新 SHA 构建 `.29`；
+结果另记，批准和封包不等于实板通过，不部署。

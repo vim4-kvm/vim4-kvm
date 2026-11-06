@@ -1,6 +1,6 @@
 # 2026-11-05：H.264 缺口参考修复实板计划
 
-**待协调者批准，未排票。** 验证 [缺口修复](2026-11-05-vdec-gap-references.md)；
+**协调者已批准，只启动一次候选。** 验证 [缺口修复](2026-11-05-vdec-gap-references.md)；
 生产配置 RAM 候选只增加 topic 的已验证提交，不混 HEVC 草稿、不修改默认启动项。
 封包时记录源码/config/Image/模块/固件 SHA 和 build ID，先离线核对 manifest。
 
