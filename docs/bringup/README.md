@@ -17,6 +17,7 @@
 
 ## 2026-11-06
 
+- [HEVC 输出过程与单 AU 隔离](2026-11-06-vdec-fixes-b.md) — kernel video；批 B 头解析、C.5.2、discard 与坏 AU 隔离，离线门禁及待验口径。
 - [解码功能修复批 A](2026-11-06-vdec-fixes-a.md) — kernel video；去门、工具配套、单次 RPS 与裁剪回退，离线验证及待验边界。
 - [.39解码分层重构验收](2026-11-06-vdec-integration39-results.md) — kernel video；独立132条120S/10E/2T与.38等价、12失败I420逐字节相同；接口与其他格式相同，九窗正式2372 proof/视频恢复，未部署。
 - [r98/r100合法drain尾部裁决](2026-11-06-vdec-integration39-r98-drain.md) — kernel video；数据帧精确，STOP/LAST时机改变尾部DQ数；旧.38两种路径有实测，限定仅末OUTPUT及空LAST归一化，不重跑、无驱动修改。
