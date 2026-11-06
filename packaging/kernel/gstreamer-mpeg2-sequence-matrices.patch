@@ -1,0 +1,16 @@
+--- a/gst-libs/gst/codecs/gstmpeg2decoder.c
++++ b/gst-libs/gst/codecs/gstmpeg2decoder.c
+@@ -524,8 +524,12 @@
+   priv->quant_matrix = QUANT_MATRIX_EXT_INIT;
+ 
+   if (_seq_hdr_is_valid (&priv->seq_hdr) &&
+-      memcmp (&priv->seq_hdr, &seq_hdr, sizeof (seq_hdr)) == 0)
++      memcmp (&priv->seq_hdr, &seq_hdr, sizeof (seq_hdr)) == 0) {
++    /* Even identical headers restore sequence matrices after picture updates.
++     * Notify the subclass without draining the unchanged sequence. */
++    priv->seq_changed = TRUE;
+     return GST_FLOW_OK;
++  }
+ 
+   priv->seq_ext = SEQ_EXT_INIT;
+   priv->seq_display_ext = SEQ_DISPLAY_EXT_INIT;
