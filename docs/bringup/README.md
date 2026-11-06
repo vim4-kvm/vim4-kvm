@@ -17,6 +17,7 @@
 
 ## 2026-11-06
 
+- [.37 HEVC一致性修复复测](2026-11-06-hevc-integration37-results.md) — kernel video；132条118S/1F/11E/2T，较.36增16通过、旧Success无回退；compliance七次56/56，五窗正式proof/视频恢复，14失败留证，未部署。
 - [.37 HEVC一致性修复验收计划](2026-11-06-vdec-integration37-plan.md) — kernel video；独立生产O=、无线屏蔽变体，先全I/短流/重复compliance与30条定向+6条代表，无退步再跑132条全集；正式proof/视频恢复，未部署。
 - [HEVC 全集失败首轮修复](2026-11-06-hevc-conformance-fixes.md) — kernel video；30条分组、修≤4K逐slice模式/每图重排/EOS事件顺序，补拒绝诊断；heavy KUnit34/34、W=1成功，候选未上板。
 - [HEVC 8bit全集结果](2026-11-06-hevc-full-results.md) — kernel video；132条唯一执行，102S/16F/11E/3T、零未运行，30条失败留证；HEVC compliance两窗epoll/EOS失败，六窗正式proof/视频恢复通过，未部署。
