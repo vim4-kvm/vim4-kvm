@@ -17,6 +17,10 @@
 
 ## 2026-11-06
 
+- [.39解码分层重构验收](2026-11-06-vdec-integration39-results.md) — kernel video；独立132条120S/10E/2T与.38等价、12失败I420逐字节相同；接口与其他格式相同，九窗正式2372 proof/视频恢复，未部署。
+- [r98/r100合法drain尾部裁决](2026-11-06-vdec-integration39-r98-drain.md) — kernel video；数据帧精确，STOP/LAST时机改变尾部DQ数；旧.38两种路径有实测，限定仅末OUTPUT及空LAST归一化，不重跑、无驱动修改。
+- [.39 重构行为对照计划](2026-11-06-vdec-integration39-plan.md) — kernel video；独立W=1生产包与debugfs诊断，HEVC132条及其他格式严格对照.38，累计第二次冷复位停，不部署。
+- [.39 对照的 .38 同包补基准](2026-11-06-vdec-integration39-baseline.md) — kernel video；r97补采H264三流/MPEG2四流/JPEG三样本，JPEG video2及60/60；正式恢复时一次冷复位后2372 proof/被动视频通过。
 - [解码分层重构系列](2026-11-06-vdec-refactor-series.md) — kernel video；两类节点接口、纯DPB/硬件拆分、统一job与debugfs诊断；行为对照.38，板验工具同步改用debugfs，未上板。
 - [HEVC正式部署准备与入场停止](2026-11-06-hevc-formal-deploy.md) — kernel deployment；首包5a9cb11e离线核验完成；空间预检与未知工作界面先后停止，零安装/重启/HID；孤立.3启动目录按条件授权清理，当前仍fd41fb5，等待用户让出测试源。
 - [.38 HEVC第二轮修复复测](2026-11-06-hevc-integration38-results.md) — kernel video；独立132条120S/10E/2T，RPS_B/E新增通过、旧118条Success无回退；5次56/56，12失败及定向RPM留证，四窗正式proof/视频恢复，未部署。

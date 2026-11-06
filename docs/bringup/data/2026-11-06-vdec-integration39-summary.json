@@ -1,0 +1,39 @@
+{
+  "source": "0ae8beaa56d3a798e8078c5f727c34ed3acafd9c",
+  "release": "7.3.1-vim4-20261106.39",
+  "build_id": "76042204fe7ec153b8e42f77372d037b4d065740",
+  "ram_sha256": "a204f1b03b3600f4cd507316d3cc2ba4be28699cf6820ab36539cf98dbb9f5e7",
+  "manifest_sha256": "8325346600ba61c70f317bdf5d8da678a063b1fb469c111bfca4bd655c1cd397",
+  "config_sha256": "7be7563e089ff628a320cd82ed163d88c576e4c7612f6bf849b230d2b9719b1c",
+  "kernel_diagnostics": "production, no KASAN/kmemleak audit",
+  "counts": {
+    "Success": 120,
+    "Error": 10,
+    "Timeout": 2
+  },
+  "independent_cases": 132,
+  "not_run": 0,
+  "w1_warnings": 1168,
+  "new_w1_warnings": [],
+  "vdec_warnings": [],
+  "arm64_qemu_kunit": "46/46",
+  "failure_captures_byte_equal": 12,
+  "cold_resets": 1,
+  "boots_by_release": {
+    "7.3.1-vim4-20261105": {
+      "starts": 10,
+      "cold_resets": 1
+    },
+    "7.3.1-vim4-20261106.38": {
+      "starts": 2,
+      "cold_resets": 0
+    },
+    "7.3.1-vim4-20261106.39": {
+      "starts": 7,
+      "cold_resets": 0
+    }
+  },
+  "matrix_sha256": "f8d2ccc6eb9add9e28a34af4f9f907ae50ae1de0dab200c1f89bb279f46c7fd5",
+  "deployed": false,
+  "pushed": false
+}
