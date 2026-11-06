@@ -17,6 +17,7 @@
 
 ## 2026-11-06
 
+- [.36无线初始化屏蔽计划](2026-11-06-vdec-integration36-no-radio-plan.md) — kernel video；同包仅追加模块/initcall/service屏蔽参数，2357文件不变；内建SDIO路径核验，物理断电未证明，待批板窗。
 - [r78两次冷复位停止全集](2026-11-06-vdec-r78-full-stop.md) — kernel video；两次.36在7.585/7.526秒复位，零解码；两次正式自然恢复成功，2372 proof/视频通过，全集132条未运行，后7批不排票。
 - [.36 HEVC 8bit全集计划](2026-11-06-vdec-integration36-full-plan.md) — kernel video；136条Main/Still输入与逐帧参考就绪，132条拟分8窗、4条超尺寸单列；FFmpeg/HM整流对发布者136/136，离线准备待批，不排板。
 - [HEVC全集参考核验](2026-11-06-hevc-full-reference.md) — kernel video；133条FFmpeg、3条锁定HM与发布者整流MD5一致，8297帧参考；确认裁剪与参数集切换的特殊口径，无板票。
