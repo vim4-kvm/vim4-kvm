@@ -17,6 +17,7 @@
 
 ## 2026-11-06
 
+- [HEVC 一致性第三轮](2026-11-06-hevc-conformance-round3.md) — kernel video；无效RPM裁剪回退整幅、EOS纯DPB冲刷与旧POC失效；heavy KUnit44/44、W=1成功，待SLIST/RAP_B定向板验。
 - [.38 HEVC第二轮验收计划](2026-11-06-vdec-integration38-plan.md) — kernel video；独立O=、无线屏蔽候选；14条定向采完整RPM，12代表后独立132全集，旧118条Success任一退步停系列。
 - [HEVC 一致性第二轮](2026-11-06-hevc-conformance-round2.md) — kernel video；补首slice有效地址、LT回绕和连续/重启CRA，14条候选映射及完整RPM采证；heavy KUnit39/39、W=1成功，未上板。
 - [.37 HEVC一致性修复复测](2026-11-06-hevc-integration37-results.md) — kernel video；132条118S/1F/11E/2T，较.36增16通过、旧Success无回退；compliance七次56/56，五窗正式proof/视频恢复，14失败留证，未部署。
