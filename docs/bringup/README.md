@@ -17,6 +17,7 @@
 
 ## 2026-11-06
 
+- [.36 HEVC inter短流计划](2026-11-06-vdec-integration36-plan.md) — kernel video；主线加MV容量/DPB测试/每slice DBLK修复，先全I回归再三条P/B逐帧验证；离线准备，待批板窗。
 - [HEVC P/B路径审查](2026-11-06-hevc-inter.md) — kernel video；08后131项增量，修MV边缘CTU容量及每slice DBLK覆写，补DPB KUnit；三条现有P/B流与30帧MD5清单；协调者heavy：KUnit 33/33、W=1通过，板验待运行。
 - [HEVC 主线整理系列](2026-11-06-hevc-mainline-series.md) — kernel video；基于32624d39的九提交，逐提交strict通过、与.35仅诊断差异；协调者heavy：KUnit 29/29、W=1通过，已快进内核主线f7b59cb3，未部署。
 - [r73 HEVC EOS与整理版回归](2026-11-06-vdec-r73-eos.md) — kernel video；HEVC 56/56、首帧精确且status0，初始事件顺序正确；MPEG-2四流实际输出等于r72，H.264三条通过，正式恢复无冷复位。
