@@ -59,23 +59,34 @@ t48 在 `.31` integration 中运行了 `5f7ed4f720237…`。本任务只读归�
   离线解析 16 个 Vhdr AU 拼接恰好等于 h265 文件，软件解码得到 16 帧 256×256 I420。
   因此本轮不能用“compliance 送了无效数据”解释超时；未指定有效输入的其他测试则不能据此类推。
 
-下一独立提交只把新 AU 的 WAIT_FLAG 从 1 改为 0。厂商 `run()` 新帧写 0，
-仅续帧时写 `data_invalid`；本驱动复制 AU 到 coherent 缓冲首地址，零偏移且没有
-无效前缀。非零 flag 不符合该输入契约，是当前最直接的协议差异。
-IDR 已被识别但在早期 slice 处停住，与 flag/前缀处理错误相容，尚不能证明因果，
-更不能仅凭 PC=a1d 解读微码；需要下一窗单变量证据。
-FIFO 已经取数，改变其开启顺序的依据较弱；end/WP 差异仍存在但不在 ring 尾部，
-不优先于 WAIT_FLAG；bit21 单改的历史实验无效。它们均不混入本提交。
-新增 dev_dbg 只记录输入长度、最多 16 字节前缀、DMA 起点和 skip=0，供下一窗确认
-送入的确实是 fixture AU；不增加内核码流解析或强行制造 SOURCE_CHANGE。
+r69 后以 `f065c6712f7e…` 单改初始 WAIT_FLAG=0，并记录输入前缀；r70 实板证明
+启动后固件又写成 1，仍停在同一 SHIFT/IDR，未解决超时。
+
+## r70 结论与差异表补充
+
+`run70/archive/results/kernel-journal-0019.jsonl`：有效 AU=5999 字节、前缀匹配、skip=0；
+reset 前后 WAIT=0/status=ff，启动后 WAIT=1；SHIFT=0x28→0x63，NAL=0x20→0x14，
+timeout PC=a1f、摘要 a1d，IRQ/status=0。两次 PC 读取不同不能证明等待的是哪个条件。
+最初 WAIT=1 不是本轮停滞的充分解释。首个 slice 前协议详见
+[握手对照表与候选](2026-11-05-hevc-header-handshake.md)。
+
+| 新核对项 | 厂商/当前差异与下一候选 |
+|---|---|
+| 自动头解析 | 厂商 NAL_SEARCH_CTL bit0=0 时无需主机逐头应答；当前0x200008合法，没找到必须盲补的命令 |
+| 手动头握手 | 厂商 bit0=1：09报告NAL，主机01/02/03/04应答；候选首次格式探测使用此路径，已知格式后仍自动 |
+| slice应答 | 厂商08/RPM后才发05；当前已有同一路径，r70没到08，不预发05或伪造事件 |
+| mailbox/调试 | mask=1、mode高位MBX0一致；缺少IRQ原值/FIQ路由/AMRISC mask及debug/RPM读回，候选补齐只读诊断 |
+
+新提交 `857b5a2e2442f8d17cb024869b4e1aba035c84aa` 为定位候选，尚非已证实修复。
+不改 bit21/FIFO/end/WP，不加 IRQ 注入、轮询应答或新模块参数。
 
 ## 给 t48/t3k 的下一窗短清单
 
 1. 按 integration 既有身份/入场门禁，保存 UART、模块/固件身份与 IRQ 起点，启用
    CONFIG_DYNAMIC_DEBUG 和 `file hevc.c +p`；不混装本任务最小验证配置模块。
-2. 只跑 HEVC compliance，继续显式使用 r69 同一 hevc-intra.vhdr；检查 input 前缀、
-   bytes=0x176f、skip=0，启动前 WAIT_FLAG=0，ACTION/reset 读回、IRQ 增量和 SOURCE_CHANGE。
-   没有有效 HEVC 输入时的超时另行标记，不能归为本候选有效码流回归。
+2. 只跑带同一有效 hevc-intra.vhdr 的 HEVC compliance；首次 search应为0x200001，
+   期待09和NAL 32/33/34/20的逐头应答01/02/03/04，再到08/RPM与SOURCE_CHANGE。
+   保存新mailbox/parser/debug读回；没有有效HEVC输入的其他测试另行标记。
 3. compliance 通过后，仅跑同一 256×256 八位全 I 样本首帧捕获；保存可见 I420，
    对软件参考比较尺寸/平面哈希及误差。仅有缓冲或事件不等于正确画面；本窗不扩到 P/B/全套。
 4. 失败即停 HEVC，不换流、不再捕获：保存 input/三阶段/timeout 快照、IRQ 差值和
@@ -102,18 +113,12 @@ FIFO 已经取数，改变其开启顺序的依据较弱；end/WP 差异仍存�
 missing MODULE_DESCRIPTION 警告，修改文件无编译诊断。两个构建均通过 heavy 队列，
 O= 仍复用本任务的 kunit/module 目录，没有碰板。主仓库全套测试结果见本任务日志。
 
-本轮发现并修正产物身份记录方式：`M=drivers/media/platform/amlogic/vdec` 将模块
-输出到源码目录，先前脚本却对 O= 下生成符号阶段的模块取哈希；首轮记录的哈希不能
-作为该次 M= 重编译产物的身份。M= 编译确实执行并通过，但其输出与取哈希路径不同。
-因此本轮另经 heavy 队列执行 `make O=…/module W=1 -j8 modules`，确认编译和链接
-均在 O= 下完成，再对实际产物取哈希。新候选以这份产物为准：
+更正产物身份：M=编译输出在源码目录，旧脚本却对O=中较早产物取哈希，不能用作
+那次重编译的身份。另经heavy队列执行 `make O=…/module W=1 -j8 modules`，
+对实际O=产物核验，r69后候选模块SHA为：
 `0cb14906c4214ae9b8ef51e9d34572c081974b013d37ebad5fb7512af6168856`。
 本任务仍只交源码，由 t3k 集成构建；不把此最小配置模块用于 integration 混装。
 
-原始输出为 `build/vdec-hevc/` 下 `r69-evidence.log`（多份 journal 的 HEVC 摘录及
-fixture 头/长度/拼接核验）、`r69-v4l2-test-buffers.cpp`（同版本工具源码）、
-`r69-fixture-framemd5.log`（16 帧软件解码）、`kunit-r69.log`/
-`kunit-r69-qemu.log`/`result-r69.json`、`module-r69-intree.log`、
-`source-r69.sha256`、`module-r69-intree.sha256` 和 `vm-validation-r69.tar`；
-队列及主仓库测试输出为 `logs/vdec-hevc/heavy-r69*.log` 和 `repo-tests-r69-delivery.log`。
-真实 AU 的因果修复、首帧、像素及解码后 DMA 停机仍未验证，交上述短清单。
+r69原始证据、工具源码、软件参考、KUnit及构建输出保存在 `build/vdec-hevc/*r69*`；
+主仓库测试为 `logs/vdec-hevc/repo-tests-r69-delivery.log`，全部588项、跳过14项。
+最新候选验证、产物SHA和判停见[握手记录](2026-11-05-hevc-header-handshake.md)。
