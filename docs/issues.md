@@ -57,6 +57,6 @@
 
 ## 测试工具
 
-- `final-regression.py` 默认19档HDMI、9档H.264及11档H.265的未跟踪夹具 `build/kernel/final/` 丢失，包括 `raw-modes.py`、`modes.jsonl`、`browser-modes.mjs`、`run-browser.py` 和 `smoke-4k.py`；Mac主仓/兄弟工作树与VM build/src均未找到，完整矩阵回归前须恢复并核验夹具。本次HEVC主线部署经协调者明确授权沿用deploy-73的缩减口径：HDMI仅1080p/4K及无信号恢复，编码非9/11模式，仅正式应用H.264/H.265各4K单档10秒加600秒运动；其他类别仍按计划。不把缺失矩阵记为通过；[deploy-73的实际范围](bringup/2026-11-05-integration-formal-deploy.md#九类验收范围)亦为缩减口径，后续完整九类全回归须先恢复上述夹具。
+- `final-regression.py` 默认19档HDMI、9档H.264及11档H.265的未跟踪夹具 `build/kernel/final/` 丢失，包括 `raw-modes.py`、`modes.jsonl`、`browser-modes.mjs`、`run-browser.py` 和 `smoke-4k.py`；Mac主仓/兄弟工作树与VM build/src均未找到，完整矩阵回归前须恢复并核验夹具。本次[HEVC主线部署准备](bringup/2026-11-06-hevc-formal-deploy.md)经协调者明确授权沿用deploy-73的缩减口径：HDMI仅1080p/4K及无信号恢复，编码非9/11模式，仅正式应用H.264/H.265各4K单档10秒加600秒运动；其他类别仍按计划，当前尚未部署。不把缺失矩阵记为通过；[deploy-73的实际范围](bringup/2026-11-05-integration-formal-deploy.md#九类验收范围)亦为缩减口径，后续完整九类全回归须先恢复上述夹具。
 - One-KVM HDMI 重采样有限输入测试在整包全量运行时出现一次输入队列超过半秒音频量的保护失败；独立复核和未改源码的全量库测试重试均通过。需进一步区分并行调度与测试输入生产速度，不能据此判定实板采集停滞。[TWCC 打包记录](bringup/2026-11-04-uu-twcc.md)
 - M6 测试源只记录绘制或 vsync 回调，缺实际呈现回执；重复/跳号无法可靠归因采集端，严格连续性门禁受限，需对照 presentedTime 与采集帧号。[高刷与 444 记录](bringup/2026-11-02-hfr-yuv-window.md)

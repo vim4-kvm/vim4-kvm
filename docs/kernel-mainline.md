@@ -2,7 +2,7 @@
 
 本页管主线源码、整包升级与维护；安装只读[身份](#源码与配置)、[升级合同](#正式构建与整包升级)，占板另读[短窗口](board-window.md#占板时间最短化)。
 当前身份唯一来源：[sources.toml](../packaging/kernel/sources.toml)；tested_build/retained_runtime是验收与保留状态，package是下一包，不能混用。
-[集成正式部署](bringup/2026-11-05-integration-formal-deploy.md)已保留为默认 Mainline，配套新 manager；同封存资产的八类检查与 manager 续窗门禁通过，含风扇90个trip持久化、面板保存/读回/恢复及实时TCPM 5V/3A。HDMI仅1080p60/4K60往返和无信号恢复，19档矩阵未重跑；音频仅状态检查。原[build 3](bringup/2026-11-04-boot-pd-tcpm.md)整包保留回退；旧build 2仅获批删除未引用启动目录，模块/固件与Mac原整包仍保留。release tag仅建在VM本任务源码，未push或发布Release。
+[集成正式部署](bringup/2026-11-05-integration-formal-deploy.md)已保留为默认 Mainline，配套新 manager；同封存资产的八类检查与 manager 续窗门禁通过，含风扇90个trip持久化、面板保存/读回/恢复及实时TCPM 5V/3A。HDMI仅1080p60/4K60往返和无信号恢复，19档矩阵未重跑；音频仅状态检查。[HEVC部署准备](bringup/2026-11-06-hevc-formal-deploy.md)尚未安装新包，当前正式整包仍完整保留；原[build 3](bringup/2026-11-04-boot-pd-tcpm.md)未引用且未登记的启动目录已按条件授权清理，模块/固件与Mac原整包保留。旧build 2亦只删未引用启动目录。release tag仅建在VM原任务源码，未push或发布Release。
 导航：[路线图](#通用内核路线图) · [审查](#审查边界与后续验证) · [补丁维护](#补丁维护方法) · [隔离](#wave5-隔离告警) · [历史](#相关记录)。
 
 ## 源码与配置

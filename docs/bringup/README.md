@@ -17,6 +17,7 @@
 
 ## 2026-11-06
 
+- [HEVC正式部署准备与入场停止](2026-11-06-hevc-formal-deploy.md) — kernel deployment；首包5a9cb11e离线核验完成；空间预检与未知工作界面先后停止，零安装/重启/HID；孤立.3启动目录按条件授权清理，当前仍fd41fb5，等待用户让出测试源。
 - [.38 HEVC第二轮修复复测](2026-11-06-hevc-integration38-results.md) — kernel video；独立132条120S/10E/2T，RPS_B/E新增通过、旧118条Success无回退；5次56/56，12失败及定向RPM留证，四窗正式proof/视频恢复，未部署。
 - [HEVC 一致性第三轮](2026-11-06-hevc-conformance-round3.md) — kernel video；无效RPM裁剪回退整幅、EOS纯DPB冲刷与旧POC失效；heavy KUnit44/44、W=1成功，待SLIST/RAP_B定向板验。
 - [.38 HEVC第二轮验收计划](2026-11-06-vdec-integration38-plan.md) — kernel video；独立O=、无线屏蔽候选；14条定向采完整RPM，12代表后独立132全集，旧118条Success任一退步停系列。
