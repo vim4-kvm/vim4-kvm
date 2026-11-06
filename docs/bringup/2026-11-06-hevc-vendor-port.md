@@ -4,6 +4,9 @@
 尖端f21dfc47由协调者经heavy代跑：W=1、KUnit 25/25通过，模块`58bf25309444`。
 接续[启动证据](2026-11-05-hevc-start.md)与[r70 结果](2026-11-06-vdec-r70-integration32.md)。
 
+**路由更正**：amvdec_ports实际选decoder_v4l/h265；本文及CSV的decoder/h265是对照源，
+并非V4L实际入口。parser自检差异及r71排序见[08前定位](2026-11-06-hevc-pre08-analysis.md)。
+
 ## 身份与分支选择
 
 厂商根为相邻主仓库只读 `common_drivers/drivers/media_modules/`，其 Git HEAD 为
@@ -12,7 +15,6 @@ vdec_hevc_if.c 没有未提交修改。以下 file:line 都相对此根，不沿
 内核源为 VM `/home/deepdream/src/linux-7.3-vdec-hevc-port`，分支
 `experiment/hevc-vendor-port`，起点 `857b5a2e2442f8d17cb024869b4e1aba035c84aa`。
 唯一 O= 根为 `/home/deepdream/build/vdec-hevc-port`，其中 module、kunit 分开。
-tools/vm登记的任务分支仍为vdec-hevc-port，后续登记校验会拒绝当前experiment分支。
 
 | 判定 | 源码依据及本轮选择 |
 |---|---|
@@ -85,18 +87,17 @@ expression_context保留附近计算和条件；运行值不能凭同名判同�
 
 `aadc70fb57248`经heavy队列全新O=：arm64 QEMU 25/25通过；W=1模块编译链接通过，
 五个既有KUnit模块missing MODULE_DESCRIPTION警告，HEVC修改无编译诊断。
-最终f21dfc47ecf5e的checkpatch为0 errors/0 warnings；重跑heavy时keeper报
-Operation not permitted，未执行最终模块/KUnit，不能把前尖端结果继承到最终尖端。
+最终f21dfc47ecf5e的checkpatch为0 errors/0 warnings；本worker的heavy受权限阻挡，
+后由协调者代跑W=1、KUnit 25/25通过。
 Mac原始输出在build/vdec-hevc-port/validation-aadc.tar、checkpatch.log和
 logs/vdec-hevc-port/heavy*.log；脚本为build/vdec-hevc-port/validate.sh。
 
 ## t48/t3k 单次上板清单
 
-1. **先完成最终尖端heavy门禁及审diff**，再由t3k合integration、按既有身份/uptime/UART门禁执行。不得混装本轮最小配置模块。记录内核SHA、release/build ID、模块及固件SHA、fixture SHA、起始IRQ、有效payload=5999与前缀。保留hevc.c dynamic debug。
+1. 最终尖端已由协调者审diff并完成heavy；由t3k按integration身份/uptime/UART门禁执行，不混装最小配置模块。记录内核SHA、release/build ID、模块/固件/fixture SHA、IRQ、5999字节payload及前缀，保留hevc.c dynamic debug。
 2. 只运行原同一hevc-intra.vhdr的带流compliance。预期首次search=0x200008，允许无09，期望08/RPM、SOURCE_CHANGE；重投后05→0a及CAPTURE完成。若firmware启用默认其他parser位，先与表的已知差异对照，不在板窗临时改寄存器。
 3. compliance通过后只捕获同一256×256八位全I码流首帧，保存可见I420（98304字节），逐平面哈希/最大误差对比同fixture软件参考。不扩P/B、10bit、DV、其他流，不新增假设重试。
 4. 任一timeout、WARN/Oops、非请求复位、ERROR缓冲、错误像素或AXI停机失败立即停止HEVC；保存三阶段/IRQ/RPM/header-reply/timeout、UART和停机证据。由t3k按现有流程隔离/恢复；本worker不触板、不申请板票。
 
 未完成：实际厂商固件名/swap与TEE内部轨迹；逐条条件筛选和运行值验证；全默认参数同值
-（bit20、endian、workspace布局、有效slot数）；最终尖端模块/KUnit；首帧硬件验收。
-当前提交可供继续离线审查，不是已获入场资格的integration候选。
+（bit20、endian、workspace布局、有效slot数）；首帧硬件验收。
