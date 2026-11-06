@@ -59,5 +59,7 @@ L1[0]占位直接拒绝的已知限制保持不变，详见r63。
 - PATH未找到smatch，未运行；本次无新板端记录，未运行compliance或像素复测。
 - 主仓库全套检查588项完成、11项跳过，原始输出为 `main-tests.log`。
 
-上述原始输出均在 `build/hwdecode-parity/mr3-storage/`。下一步仅提交
-[存储归属验证计划](2026-11-06-vdec-mr3-storage-plan.md)待批准。
+上述原始输出均在 `build/hwdecode-parity/mr3-storage/`。
+后续按[存储归属验证计划](2026-11-06-vdec-mr3-storage-plan.md)完成
+[r64](2026-11-06-vdec-r64-storage.md)：MR3/4/5各300帧逐字节正确，10条全部通过；
+真实buffer命中但canvas缺失的路径已捕获，正式默认恢复，未部署。

@@ -1,16 +1,16 @@
 # 2026-11-06：MR3 存储归属修复实板计划
 
-**待批准，未排票、未启动新候选。** 目标是验证
+**协调者已批准一次新候选启动，入场按方案C提速。** 目标是验证
 `d444ab83f7fab8044eea48902b17310763bb7a04` 的存储归属判断，并用新dynamic debug日志
-确认r63缺失的失败路径证据。不能把上一轮板窗授权扩展成新启动额度。
+确认r63缺失的失败路径证据。本次使用独立授权，不等待其他codec topic。
 
 候选从该已提交HEAD构建完整生产配置RAM包，配置与正式kernel.config一致，无HEVC
 私有草稿。使用构建当天UTC日期的新release，记录Image/config/模块/固件/包SHA和build ID；
 不在`.29`上单独混入新模块。封包及离线manifest/protected_files检查完成后才申请板票。
 
-请求一张FIFO sampling票，目标15分钟、上限30分钟，**只启动一次候选**。
-预算沿用r63：连续入场观察5分钟，上传/启动3分钟，compliance/解码5分钟，归档/恢复
-proof/视频8分钟，余量9分钟。候选或恢复发生冷复位直接进入恢复流程，不追加启动。
+一张FIFO sampling票，目标15分钟、上限30分钟，**只启动一次候选**。
+预算：入场proof/视频1分钟，上传/启动3分钟，compliance/解码5分钟，归档/恢复
+proof/视频8分钟，余量13分钟。候选或恢复发生冷复位直接进入恢复流程，不追加启动。
 
 顺序与样本保持r63相同：stateless带流compliance及media检查 → MR3/MR4/MR5 →
 AUD_MW_E、BA1_Sony_D、BA1_FT_C、CAMASL3_Sony_B、CVFI1_Sony_D、
@@ -33,8 +33,9 @@ MR4/5与7条对照不得回退。
 
 入场前在宿主离线运行私有 `build/hwdecode-parity/browser/smoke.mjs`，显式设置
 PLAYWRIGHT_MODULE及PLAYWRIGHT_BROWSERS_PATH；receiver保持r61/r63的Chrome通道，
-核实际版本，不全局安装、不临场修依赖。入场重新观察连续5分钟无复位、uptime/boot_id
-一致，核当前正式baseline proof、完整保护文件清单及视频；任何门禁失败不启动候选。
+核实际版本，不全局安装、不临场修依赖。入场uptime已满300秒即可，UART连续接收、
+proof/视频前后boot_id及uptime连续且无复位，不额外等待5分钟；核当前正式baseline
+proof和完整保护文件清单。任何门禁失败不启动候选。
 
 恢复、清理沿用r63：连续主机时间戳UART，正常恢复正式默认后核proof，检查/重传cleanup
 helper，待候选挂载解除再清理；owned固件按SHA删除，正式模块不动。输出归档Mac并核
