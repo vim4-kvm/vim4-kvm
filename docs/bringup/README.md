@@ -23,6 +23,8 @@
 
 ## 2026-11-05
 
+- [HEVC 首次启动离线对照](2026-11-05-hevc-start.md) — kernel video；ACTION/CPU reset 时序候选、逐步差异与 t3k 同窗清单；未上板，首帧待验。
+
 - [MR3/4/5 缺口参考定位](2026-11-05-vdec-gap-references.md) — kernel video；JM与DQBUF定位缺口项导致ERROR，含S4索引修正的topic修复26项KUnit通过，像素未上板；[验证计划](2026-11-05-vdec-gap-validation-plan.md)已批准。
 - [r61 parser A/B 像素采证](2026-11-05-vdec-r61-parser-ab.md) — kernel video；官方14S/3F、Khadas17F，14条仅缺显示帧且已有像素正确；LTR首错10/16/16，正式恢复通过。
 - [H.264 visl 离线控制采证](2026-11-05-vdec-visl-controls.md) — kernel video；17条五组QEMU控制采证，14条Khadas漏末slice、官方parser恢复；像素未验，LTR继续定位。
