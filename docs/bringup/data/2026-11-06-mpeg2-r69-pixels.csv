@@ -1,0 +1,24 @@
+name,width,height,frames,reference_frames,max,over2,first_frame,type,plane,x,y,mb_x,mb_y,mb_token,class
+Tek-5-long_conf4,704,480,150,150,3,150,4,B,Y,646,201,40,12,<-=,small-drift
+Tek-5.2_conf4,704,480,4,4,2,0,,,,,,,,,pass
+att,32,32,132,132,29,23959,5,P,Y,24,0,1,0,>  ,structured-drift
+bits_conf_lep_11,720,576,3,3,2,0,,,,,,,,,pass
+conf2,720,576,31,31,3,29,4,B,Y,445,95,27,5,X-=,small-drift
+gi_9_bit_stream,720,480,16,16,3,3,12,B,Y,704,311,44,19,X-=,small-drift
+gi_stream,720,480,19,19,3,36,4,B,Y,91,442,5,27,X-=,small-drift
+hhi_burst_long,720,576,46,46,3,4,6,P,Y,36,304,2,19,>-=,small-drift
+ibm-bw,720,480,30,30,3,7,26,P,Y,412,355,25,22,>  ,small-drift
+mcp10ccett,720,576,4,4,0,0,,,,,,,,,pass
+mei_2stream,704,480,4,4,3,1,2,B,U,9,115,1,14,<  ,small-drift
+mei_2stream.60f,704,480,61,61,3,76,4,B,Y,233,212,14,13,X-=,small-drift
+nokia6_dual_60,720,576,60,60,4,166,4,P,Y,333,253,20,15,> =,small-drift
+ntr_skipped_v3,720,576,60,60,4,2009,2,P,Y,717,164,44,10,>  ,small-drift
+sony-ct1,352,224,60,60,232,236513,0,B,Y,0,0,0,0,< =,leading-B-zero
+sony-ct2,704,480,24,24,230,1013759,0,B,Y,0,0,0,0,<-=,leading-B-zero
+sony-ct3,720,480,7,7,2,0,,,,,,,,,pass
+sony-ct4,720,480,60,60,3,12,14,P,U,27,59,3,7,>-=,small-drift
+tcela-14,720,480,61,61,3,12,5,P,Y,709,96,44,6,> =,small-drift
+tcela-7,720,480,61,61,3,126,4,B,Y,215,13,13,0,<-=,small-drift
+tcela-8,720,480,4,4,3,8,2,P,Y,563,359,35,22,>  ,small-drift
+tcela-9,720,480,61,61,6,32850,2,P,Y,67,348,4,21,>  ,small-drift
+teracom_vlc4,720,576,65,65,64,4965,3,P,Y,455,80,28,5,>  ,structured-drift

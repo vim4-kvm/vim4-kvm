@@ -17,6 +17,7 @@
 
 ## 2026-11-06
 
+- [r69 MPEG-2 像素与单向 B 参考](2026-11-06-mpeg2-r69-analysis.md) — kernel video；四条色度矩阵无像素变化符合 4:2:0 语义；sony-ct1/ct2 两张起始 B 因缺前向 anchor 被拒绝，topic 修复及六流清单待上板。
 - [r69联合验证与AVC收口](2026-11-06-vdec-r69-joint.md) — kernel video；合r65为129S/1F/5KU，旧110/58均无回退；MPEG-2完成29次4S/25F，HEVC streaming超时；正式恢复/清理通过。
 - [r68候选冷复位与被动恢复](2026-11-06-vdec-r68-coldboot.md) — kernel video；.31启动8.219秒冷复位，正式自然恢复也复位一次，第二次恢复成功；零码流，proof/视频/清理通过。
 - [r67启动识别修复](2026-11-06-vdec-r67-startup.md) — kernel video；候选版本行残缺导致旧UART门禁误停，码流未运行；改由SSH身份核验，保留UART复位检测，附真实捕获回放。
