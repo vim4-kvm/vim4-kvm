@@ -21,7 +21,7 @@
 ## 采集与编码
 
 - 解码 `.25` HEVC 等待 SOURCE_CHANGE 超时；按厂商尺寸条件限制 bit21 后仍超时，尚不能归类为固件能力限制。下一实验为 ACTION/CPU reset 顺序及读回。[实验记录](bringup/2026-11-05-vdec-full-conformance.md#hevc-bit21-单变量实验)
-- `.28` H.264 原环境全集仍110/135套件通过（旧58项无回退）、20Fail、5已知不支持，实际Error/Timeout历史不抹去。r61在官方parser下另确认14条驱动像素正确，剩余MR3/4/5两parser均Fail；不改写原环境统计。[缺口参考修复](bringup/2026-11-05-vdec-gap-references.md)离线26项KUnit通过，实板像素未验，尚未关闭。调试锁/内存、HOLD+FLUSH、High profile子集和5.15有效对照未验，不能宣称完整parity。[最终汇总](bringup/2026-11-05-vdec-avc-final.md)、[r61逐帧证据](bringup/2026-11-05-vdec-r61-parser-ab.md)
+- `.28` H.264 原环境全集仍110/135套件通过（旧58项无回退）、20Fail、5已知不支持，实际Error/Timeout历史不抹去。r61在官方parser下另确认14条驱动像素正确，当时MR3/4/5两parser均Fail；不改写原环境统计。[缺口参考修复](bringup/2026-11-05-vdec-gap-references.md)在[r63](bringup/2026-11-06-vdec-r63-gap.md)使MR4/5逐字节正确、7条对照无回退；MR3仍53帧错误、12对ERROR，未关闭，候选未部署。调试锁/内存、HOLD+FLUSH、High profile子集和5.15有效对照未验，不能宣称完整parity。[最终汇总](bringup/2026-11-05-vdec-avc-final.md)、[r61逐帧证据](bringup/2026-11-05-vdec-r61-parser-ab.md)
 - Khadas `2:1.24.2-1ubuntu4` h264parse漏末slice是用户态问题，非内核：r61的13条隔行和CAWP5用官方Ubuntu同版本parser全部Success，Khadas组均少一个显示帧且其余像素逐帧正确；具体影响清单/MD5见[r61](bringup/2026-11-05-vdec-r61-parser-ab.md)。此前两条Sharp预计同类，本轮官方parser效果未验证。修复方向可选换官方包或向Khadas报告，由用户决定；当前只在任务私有前缀验证，未替换系统库、未对外发送报告。
 - 历史 `.25` stateless/JPEG compliance 各 60/60，MPEG-2 标准流18/43；后续 H.264 多 slice、隔行已推进至上述`.28`结果。MPEG-2与HEVC未决问题未由本轮H.264验收解决。[失败聚类](bringup/2026-11-05-vdec-failure-groups.md)
 - `.27` r49 隔行子集四条转通过，Sharp_MP_Field_1_B/Sharp_MP_PAFF_1r2 仍像素 Fail，全集待重跑。CVFC1 驱动输出 50 帧按 `(26,60)` 裁剪后逐字节等于参考，MD5 `9fdb17e17d332b5d9752362c9c7ff9b0`；GStreamer 1.24.2 v4l2codecs 忽略 crop 偏移，从原点裁剪复现套件错值 `d2aeaea0b9da3509442377a849cc2ff1`。登记驱动通过/套件 Fail，不改插件。[原始证据与代码位置](bringup/2026-11-05-vdec-field-lifetime.md#cvfc1-的一次性证据工具)

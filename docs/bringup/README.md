@@ -17,6 +17,7 @@
 
 ## 2026-11-06
 
+- [r63 缺口修复实板验证](2026-11-06-vdec-r63-gap.md) — kernel video；9S/1F，MR4/5逐字节正确、7对照无回退；MR3仍53帧错误/12对ERROR，正式恢复通过，未部署。
 - [r62 入场依赖失败](2026-11-06-vdec-r62-entry.md) — kernel video；正式proof通过，宿主Playwright缺失导致零候选启动；私有依赖与离线receiver冒烟完成，替代票已批准。
 
 ## 2026-11-05

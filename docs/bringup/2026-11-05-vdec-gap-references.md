@@ -3,7 +3,8 @@
 离线定位到 frame_num gap 的无缓冲 DPB 项使驱动提前返回 ERROR；不是只凭整文件
 MD5 推测 LTR 寄存器错误。topic `vdec-avc-residual` 在 `c99c3ed` 上的独立修复为
 `dfd3af9c1ad939a6f23f02b9eed4a61123820d1c`（审查后 amend 原0096602）。构建/KUnit/静态检查已运行，
-**修复后像素未上板验证**；不修改 [r61](2026-11-05-vdec-r61-parser-ab.md) 的 Fail。
+本页记录离线阶段，不修改 [r61](2026-11-05-vdec-r61-parser-ab.md) 的历史 Fail；
+后续 [r63](2026-11-06-vdec-r63-gap.md) 实板确认MR4/5正确、MR3仍失败。
 
 ## 首错与 MMCO
 
