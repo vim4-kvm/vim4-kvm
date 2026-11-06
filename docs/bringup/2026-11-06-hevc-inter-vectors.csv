@@ -1,0 +1,4 @@
+name,input_path,input_bytes,input_sha256,frames,width,height,format,publisher_md5,reorder_limit,expected_types
+cip_B_NEC_3,resources/JCT-VC-HEVC_V1/cip_B_NEC_3/cip_B_NEC_3/cip_B_NEC_3.bit,13228,786e5bd6ac5418f1e4950fc9c5251826128b15d94eda29679b72a4f79d8a77f7,5,416,240,yuv420p,1315714c7b3f3237b469259f66d9b7aa,0,I=1 P=4
+MERGE_E_TI_3,resources/JCT-VC-HEVC_V1/MERGE_E_TI_3/MERGE_E_TI_3/MERGE_E_TI_3.bit,15971,e5f1f706176e91b72d13686b8864fe1c8e8be764faa417e3cabbf0df1cf78af0,8,416,240,yuv420p,6e74dbd450123246c22bf01b389bbe11,3,I=1 B=7
+TMVP_A_MS_3,resources/JCT-VC-HEVC_V1/TMVP_A_MS_3/TMVP_A_MS_3.bit,17238,33556aa42355ba43575a6e6f1b579420a9217f576fc0ae07ee57fa2750a38d52,17,416,240,yuv420p,168f8096e56b8a8c1aa03fa5fffdfd23,3,I=1 B=16
