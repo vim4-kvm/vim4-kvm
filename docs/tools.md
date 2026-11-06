@@ -24,7 +24,7 @@
 | [build-integration.py](../packaging/kernel/build-integration.py) | 无 | 持heavy票离线构建并封存生产/调试RAM候选；复用同一O=时同步并核对生效配置，保存生成头证据，分别传构建号可指定顺序。 |
 | [package-unified.py](../packaging/kernel/package-unified.py)（同目录 package-hdr10.py、package-final.py、package-vdec.py） | 无 | 封存已构建候选包。 |
 | [build-integration.py](../packaging/kernel/build-integration.py) | 无；写 VM 构建目录 | 持 heavy 租约后离线构建指定完整 SHA 的生产/调试 RAM 候选，复用同一 O=，封包后清理对象；不排票、不访问板子。 |
-| [build-gstreamer.py](../packaging/kernel/build-gstreamer.py)（test_gstreamer_p010.py、test_gstreamer_pq.py、test_gstreamer_visible_crop.py） | 无 | 插件构建及离线协商回放。 |
+| [build-gstreamer.py](../packaging/kernel/build-gstreamer.py)（test_gstreamer_p010.py、test_gstreamer_pq.py、test_gstreamer_visible_crop.py、[test_gstreamer_hevc_eos.py](../packaging/kernel/test_gstreamer_hevc_eos.py)） | 无 | 插件构建及离线协商回放；HEVC EOS fixture用实际驱动/GStreamer C复现初始事件与LAST分流，不打开设备。 |
 | [maintain.py](../packaging/kernel/maintain.py) | 无 | 补丁导出与前移。 |
 | [vdec-fixtures.py](../packaging/kernel/vdec-fixtures.py) | 无 | 生成 H.264/MPEG-2/MJPEG 运动样本；JPEG 保留全范围参考像素，generate-fields 下载并校验固定场编码样本。离线逐帧比较 I420 并量化平面误差，非逐字节一致仍返回失败。 |
 | [vdec-capture.c](../packaging/kernel/vdec-capture.c) | 指定管线 | 用 GStreamer appsink 映射视频元数据，只保存可见 I420 平面，不做范围转换、不写入对齐填充；编译依赖及用法见文件。硬解管线须持板锁。 |
