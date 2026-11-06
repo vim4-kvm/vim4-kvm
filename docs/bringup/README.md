@@ -17,6 +17,7 @@
 
 ## 2026-11-06
 
+- [HEVC 主线整理系列](2026-11-06-hevc-mainline-series.md) — kernel video；基于32624d39的九提交，逐提交strict通过、与.35仅诊断差异；协调者heavy：KUnit 29/29、W=1通过，已快进内核主线f7b59cb3，未部署。
 - [r72 HEVC EOS定位](2026-11-06-hevc-r72-eos.md) — kernel video；首帧逐字节正确，缺DYN_RESOLUTION导致初始事件与drain LAST混用；两行内核候选d593d7a4及实际GStreamer C离线重放；协调者heavy：KUnit 25/25、W=1通过。
 - [HEVC secure swap缺口](2026-11-06-hevc-firmware-swap.md) — kernel video；包4.129应先请求swap，修正SMC variant/core及SCRATCH8保存恢复；尖端2a622cf6经协调者heavy：W=1、KUnit 25/25通过，纳入.34。
 - [r71 MPEG-2 单向 B 候选](2026-11-06-mpeg2-r71-leading-b.md) — kernel video；sony-ct1 已定位微码 DATA_EMPTY；两条 sony 逐宏块无前向预测，ISO 未用参考别名输出精确不变，独立 REF0 候选及四流清单待上板。
