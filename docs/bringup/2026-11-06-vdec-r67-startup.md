@@ -29,6 +29,8 @@ FIFO1393，连续UART记录191.360秒。一次请求候选启动、一次请求�
 UART接受`Booting Linux`或`Linux version`，同次启动的两行合并计数；
 重复启动标记或Linux之后返回T7 ROM仍触发复位处理，WARN/BUG检测保留。
 UART版本只作证据，不再单独裁定候选身份。
+已知盲区：两次启动若各丢失一种banner，剩余两行可能被合并成一次；
+依靠中间的T7:BL: ROM标记检测复位，不能宣称UART计数在任意丢字节下完整。
 
 连续路径在既有120秒就绪上限内等待SSH身份：release、GNU build ID、完整cmdline，
 以及不同于请求重启前的boot_id。cmdline与候选extlinux的APPEND逐项相等，
