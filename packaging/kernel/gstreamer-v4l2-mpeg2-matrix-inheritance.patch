@@ -1,0 +1,27 @@
+--- a/sys/v4l2codecs/gstv4l2codecmpeg2dec.c
++++ b/sys/v4l2codecs/gstv4l2codecmpeg2dec.c
+@@ -648,13 +648,22 @@
+   /* overwrite the sequence ones if needed, see 6.1.1.6 for reference */
+   if (slice->quant_matrix) {
+-    if (slice->quant_matrix->load_intra_quantiser_matrix)
++    /* Luma updates also replace chroma unless explicitly overridden below. */
++    if (slice->quant_matrix->load_intra_quantiser_matrix) {
+       memcpy (self->v4l2_quantisation.intra_quantiser_matrix,
+           slice->quant_matrix->intra_quantiser_matrix,
+           sizeof (self->v4l2_quantisation.intra_quantiser_matrix));
+-    if (slice->quant_matrix->load_non_intra_quantiser_matrix)
++      memcpy (self->v4l2_quantisation.chroma_intra_quantiser_matrix,
++          slice->quant_matrix->intra_quantiser_matrix,
++          sizeof (self->v4l2_quantisation.chroma_intra_quantiser_matrix));
++    }
++    if (slice->quant_matrix->load_non_intra_quantiser_matrix) {
+       memcpy (self->v4l2_quantisation.non_intra_quantiser_matrix,
+           slice->quant_matrix->non_intra_quantiser_matrix,
+           sizeof (self->v4l2_quantisation.non_intra_quantiser_matrix));
++      memcpy (self->v4l2_quantisation.chroma_non_intra_quantiser_matrix,
++          slice->quant_matrix->non_intra_quantiser_matrix,
++          sizeof (self->v4l2_quantisation.chroma_non_intra_quantiser_matrix));
++    }
+     if (slice->quant_matrix->load_chroma_intra_quantiser_matrix)
+       memcpy (self->v4l2_quantisation.chroma_intra_quantiser_matrix,
+           slice->quant_matrix->chroma_intra_quantiser_matrix,
