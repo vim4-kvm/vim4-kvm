@@ -17,6 +17,7 @@
 
 ## 2026-11-06
 
+- [r71 MPEG-2 单向 B 候选](2026-11-06-mpeg2-r71-leading-b.md) — kernel video；sony-ct1 已定位微码 DATA_EMPTY；两条 sony 逐宏块无前向预测，ISO 未用参考别名输出精确不变，独立 REF0 候选及四流清单待上板。
 - [r71 HEVC 08前定位](2026-11-06-hevc-pre08-analysis.md) — kernel video；逐头IRQ已通，按slice前资源排序；更正实际decoder_v4l路由，注明f21覆盖范围，无内核改动。
 - [r71 .33 手动头IRQ与请求拒绝](2026-11-06-vdec-r71-handshake.md) — kernel video；HEVC四次09应答后仍无08，MPEG-2微码错误已采到但脚本误停，H.264三条通过，正式恢复。
 - [.33集成与诊断计划](2026-11-06-vdec-integration33-plan.md) — kernel video；compliance降噪门禁、H.264三条、MPEG-2请求失败诊断、HEVC手动NAL握手，待批板窗。

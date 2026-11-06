@@ -1,5 +1,9 @@
 # 2026-11-06：r70 sony 起始 B 请求拒绝追踪
 
+后续 [r71 微码失败与候选](2026-11-06-mpeg2-r71-leading-b.md) 已确定 sony-ct1 是
+DATA_EMPTY/-EIO，主机参考查找成功；逐宏块及 ISO 实验证实缺失方向未参与预测，
+新增有效 REF0 别名候选待上板。下文保留 r70 当时的证据边界。
+
 r70 没有证实“缺失前向参考被换算成旧时间戳”的假设。复用原 arm64 QEMU visl
 环境和与板上 SHA 相同的私有库，sony-ct1 的 77 个、sony-ct2 的 30 个 picture
 控制均与板上 ioctl 逐字段相同，包括两个失败图像的 `forward_ref_ts=U64_MAX`、
