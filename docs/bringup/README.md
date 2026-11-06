@@ -17,6 +17,7 @@
 
 ## 2026-11-06
 
+- [r73 HEVC EOS与整理版回归](2026-11-06-vdec-r73-eos.md) — kernel video；HEVC 56/56、首帧精确且status0，初始事件顺序正确；MPEG-2四流实际输出等于r72，H.264三条通过，正式恢复无冷复位。
 - [.35整理系列与EOS验收计划](2026-11-06-vdec-integration35-plan.md) — kernel video；MPEG-2主线整理版、HEVC动态分辨率声明；四流对r72逐字节回归与同一首帧EOS判据，离线准备，待批板窗。
 - [r72 HEVC EOS定位](2026-11-06-hevc-r72-eos.md) — kernel video；首帧逐字节正确，缺DYN_RESOLUTION导致初始事件与drain LAST混用；两行内核候选d593d7a4及实际GStreamer C离线重放；协调者heavy：KUnit 25/25、W=1通过。
 - [r72 HEVC首帧与起始B验证](2026-11-06-vdec-r72-swap-first-frame.md) — kernel video；HEVC compliance 56/56、首帧精确但EOS失败，Sony错误缓冲消除仍2F，H.264三条通过；正式冷复位后自然恢复。
