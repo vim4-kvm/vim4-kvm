@@ -35,6 +35,13 @@ Fluster 的 Meson 配方构建。授权不包含将参考源码、二进制或�
 执行仍需原有显式执行标志、内核 manifest 和现场/一次性启动条件。
 原先仅面向历史内核的诊断动作保持原准入限制。
 
+采用解码分层重构的主线 HEVC 候选须在验收计划设置
+`hevc_diagnostic_api: "debugfs-v1"`，并启用/挂载 debugfs。
+预检读取 `/sys/kernel/debug/aml-vdec/<platform-device>/` 下的
+`hevc_test` 与 `hevc_core_test`；缺声明、版本不匹配或缺文件均拒绝，
+不回退旧 sysfs。旧候选继续配套其已归档的工具/计划，不用新工具猜测接口。
+三个 bring-up 模块门在这一重构候选仍保留，去门属于后续独立行为系列。
+
 验证计划分成以下几组，具体字段校验见入口中的 `validate_acceptance_plan`、
 `require_acceptance_kernel` 和三个 `run_*` 函数：
 

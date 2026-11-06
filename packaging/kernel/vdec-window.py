@@ -32,6 +32,8 @@ ACTIONS = (*BOOT_ACTIONS, 'probe', 'power', 'snapshot', 'mdec', 'compliance', 'f
 BASE_ID = 'f283ab1f8a001a19bab5247afc4f9b0c00c1da99'
 BASE_RELEASE = '7.3.0-vim4kvm-uhd1+'
 BOOT_DIR = Path('/boot/kernels') / BASE_RELEASE
+HEVC_DIAGNOSTIC_API = 'debugfs-v1'
+HEVC_DIAGNOSTIC_ROOT = Path('/sys/kernel/debug/aml-vdec')
 BASE_FILES = {
     'Image': '855f0fa8caa49fdb9973bd7cd1cbbfaa2c5f62138574862e651e16eb0fda42b5',
     'vim4.dtb': 'd2333e962326d0710300b71e758440a94b177eb273921f70e5ba12eb5f640cf6',
@@ -331,6 +333,8 @@ def validate_acceptance_plan(plan, proof):
         raise ValueError('Known failing candidate')
     if plan['kernel'] not in ('mainline', 'vendor'):
         raise ValueError('Expected mainline or vendor comparison')
+    if plan['kernel'] == 'mainline' and plan.get('hevc'):
+        require_hevc_diagnostic_api(plan)
     prefix = '7.3.' if plan['kernel'] == 'mainline' else '5.15.'
     if not proof['release'].startswith(prefix) or not proof.get('kernel_build_id'):
         raise ValueError('Kernel manifest does not match the comparison side')
@@ -437,11 +441,12 @@ def prepare_acceptance_decoder(plan, proof):
     probe_without_power()
     mdec_cycle()
     if plan.get('hevc'):
-        hevc_cycle()
+        hevc_cycle(plan)
+        core_test = hevc_diagnostic_file(t7_device(), 'hevc_core_test')
         set_power_permission(True)
         run('python3', '-c', 'from pathlib import Path; '
-            f'Path({str(t7_device() / "hevc_core_test")!r}).write_text("1")', timeout=8)
-        if not (t7_device() / 'hevc_core_test').read_text().startswith('passed=1 '):
+            f'Path({str(core_test)!r}).write_text("1")', timeout=8)
+        if not core_test.read_text().startswith('passed=1 '):
             raise RuntimeError('HEVC firmware preflight failed')
     set_power_permission(True)
 
@@ -1151,16 +1156,30 @@ def mdec_cycle():
     set_power_permission(False)
 
 
-def hevc_cycle():
+def require_hevc_diagnostic_api(plan):
+    if plan.get('hevc_diagnostic_api') != HEVC_DIAGNOSTIC_API:
+        raise ValueError('Mainline HEVC preflight requires diagnostic API ' + HEVC_DIAGNOSTIC_API)
+
+
+def hevc_diagnostic_file(device, name):
+    path = HEVC_DIAGNOSTIC_ROOT / device.name / name
+    if not path.is_file():
+        raise RuntimeError('Missing manifested HEVC diagnostic: ' + str(path))
+    return path
+
+
+def hevc_cycle(plan):
     """Probe HEVC power/clocks after MDEC validation, without firmware or DMA."""
+    require_hevc_diagnostic_api(plan)
     device = t7_device()
+    power_test = hevc_diagnostic_file(device, 'hevc_test')
     require_suspended(device)
     if not (device / 'mdec_test').read_text().startswith('passed=1 '):
         raise RuntimeError('HEVC probe requires the completed MDEC power sequence')
     set_power_permission(True)
     run('python3', '-c', 'from pathlib import Path; '
-        f'Path({str(device / "hevc_test")!r}).write_text("1")', timeout=8)
-    result = (device / 'hevc_test').read_text().strip()
+        f'Path({str(power_test)!r}).write_text("1")', timeout=8)
+    result = power_test.read_text().strip()
     print('HEVC_POWER_TEST', result, flush=True)
     if not result.startswith('passed=1 ') or faulted():
         raise RuntimeError('HEVC power-on/read/reference-release did not pass')

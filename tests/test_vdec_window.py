@@ -18,6 +18,52 @@ SPEC.loader.exec_module(window)
 
 
 class DecoderWindowTests(unittest.TestCase):
+    def test_hevc_preflight_rejects_an_unspecified_diagnostic_api_before_access(self):
+        for api in (None, 'sysfs', 'debugfs-v2'):
+            with self.subTest(api=api), patch.object(window, 't7_device') as device:
+                with self.assertRaisesRegex(ValueError, 'diagnostic API'):
+                    window.hevc_cycle({'hevc_diagnostic_api': api})
+                device.assert_not_called()
+
+    def test_hevc_preflight_does_not_fall_back_to_a_passing_sysfs_file(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            device = root / 'platform' / 'fe320000.video-decoder'
+            device.mkdir(parents=True)
+            (device / 'hevc_test').write_text('passed=1 parser_version=0x10001\n')
+            with patch.object(window, 't7_device', return_value=device), \
+                    patch.object(window, 'HEVC_DIAGNOSTIC_ROOT', root / 'debugfs'), \
+                    patch.object(window, 'set_power_permission') as permission, \
+                    patch.object(window, 'run') as execute:
+                with self.assertRaisesRegex(RuntimeError, 'Missing manifested HEVC diagnostic'):
+                    window.hevc_cycle({'hevc_diagnostic_api': 'debugfs-v1'})
+                permission.assert_not_called()
+                execute.assert_not_called()
+            self.assertTrue((device / 'hevc_test').read_text().startswith('passed=1 '))
+
+    def test_hevc_preflight_uses_the_manifested_debugfs_result(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            device = root / 'platform' / 'fe320000.video-decoder'
+            device.mkdir(parents=True)
+            (device / 'mdec_test').write_text('passed=1 value=0\n')
+            (device / 'hevc_test').write_text('passed=0 parser_version=0\n')
+            debug_device = root / 'debugfs' / device.name
+            debug_device.mkdir(parents=True)
+            power_test = debug_device / 'hevc_test'
+            power_test.write_text('passed=1 parser_version=0x10001\n')
+            with patch.object(window, 't7_device', return_value=device), \
+                    patch.object(window, 'HEVC_DIAGNOSTIC_ROOT', root / 'debugfs'), \
+                    patch.object(window, 'require_suspended'), \
+                    patch.object(window, 'faulted', return_value=False), \
+                    patch.object(window, 'set_power_permission') as permission, \
+                    patch.object(window, 'run') as execute:
+                window.hevc_cycle({'hevc_diagnostic_api': 'debugfs-v1'})
+                self.assertIn(repr(str(power_test)), execute.call_args.args[2])
+                self.assertEqual(permission.call_args_list, [unittest.mock.call(True),
+                                                             unittest.mock.call(False)])
+            self.assertTrue((device / 'hevc_test').read_text().startswith('passed=0 '))
+
     def test_run_plan_retargets_all_search_paths_and_rejects_stale_directories(self):
         original = {'board_window': 'hwdecode-parity-r66', 'environment': {
             'GST_PLUGIN_PATH': '/var/tmp/hwdecode-standard-r66/official:/var/tmp/hwdecode-standard-r65/plugins',

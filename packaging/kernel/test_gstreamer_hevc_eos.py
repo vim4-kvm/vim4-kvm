@@ -44,7 +44,8 @@ FIXTURE = r'''
 struct aml_video_fmt {int type,codec_type; unsigned fourcc; const char *name;};
 struct platform {int num_fmts; const struct aml_video_fmt *dec_fmt;};
 struct aml_vdec_dev {struct platform *pvdec_data;};
-struct aml_vdec_ctx {bool is_hevc,is_jpeg; struct aml_vdec_dev *dev;};
+struct aml_vdec_node_desc {const unsigned *formats; unsigned num_formats,output_flags;};
+struct aml_vdec_ctx {struct aml_vdec_dev *dev; const struct aml_vdec_node_desc *node;};
 struct v4l2_fmtdesc {unsigned index,pixelformat,flags; char description[32];};
 #define strscpy(d,s,n) ((void)snprintf(d,n,"%s",s))
 /* DRIVER */
@@ -83,7 +84,9 @@ int main(void) {
   const struct aml_video_fmt formats[]={{AML_FMT_DEC,CODEC_TYPE_HEVC,1,"HEVC"},
     {AML_FMT_FRAME,0,V4L2_PIX_FMT_NV12M,"NV12M"}};
   struct platform platform={2,formats}; struct aml_vdec_dev dev={&platform};
-  struct aml_vdec_ctx ctx={.is_hevc=true,.dev=&dev}; struct v4l2_fmtdesc fmt={0};
+  const unsigned allowed[]={1,V4L2_PIX_FMT_NV12M};
+  const struct aml_vdec_node_desc node={allowed,2,V4L2_FMT_FLAG_DYN_RESOLUTION};
+  struct aml_vdec_ctx ctx={.dev=&dev,.node=&node}; struct v4l2_fmtdesc fmt={0};
   Object capture={0},output={.fmtdesc=&fmt};
   GstV4l2VideoDec decoder={.v4l2capture=&capture,.v4l2output=&output};
   assert(vidioc_vdec_enum_fmt(&ctx,&fmt,true)==0);
