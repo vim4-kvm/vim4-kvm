@@ -17,6 +17,7 @@
 
 ## 2026-11-06
 
+- [r78两次冷复位停止全集](2026-11-06-vdec-r78-full-stop.md) — kernel video；两次.36在7.585/7.526秒复位，零解码；两次正式自然恢复成功，2372 proof/视频通过，全集132条未运行，后7批不排票。
 - [.36 HEVC 8bit全集计划](2026-11-06-vdec-integration36-full-plan.md) — kernel video；136条Main/Still输入与逐帧参考就绪，132条拟分8窗、4条超尺寸单列；FFmpeg/HM整流对发布者136/136，离线准备待批，不排板。
 - [HEVC全集参考核验](2026-11-06-hevc-full-reference.md) — kernel video；133条FFmpeg、3条锁定HM与发布者整流MD5一致，8297帧参考；确认裁剪与参数集切换的特殊口径，无板票。
 - [r77 HEVC P/B短流通过](2026-11-06-vdec-r77-hevc-inter.md) — kernel video；.36全I 56/56/精确首帧/status0，三条P/B流5/8/17帧MD5全同、正常EOS；单次候选无冷复位，正式2372 proof/视频通过，未部署。
