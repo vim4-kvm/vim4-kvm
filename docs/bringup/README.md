@@ -17,6 +17,7 @@
 
 ## 2026-11-06
 
+- [r70 MPEG-2 请求追踪](2026-11-06-mpeg2-r70-rejections.md) — kernel video；visl 107 个 picture 控制与板上一致，缺前向参考时间戳假设排除；实际模块含 aaec509，持续 ERROR 返回点待诊断窗口，附四流清单。
 - [r70 .32短回归](2026-11-06-vdec-r70-integration32.md) — kernel video；DOS step=0、H.264十条通过；Sony仍有ERROR缓冲，HEVC有效输入WAIT=0仍超时；无冷复位，正式恢复/清理通过。
 - [MPEG-2 P 链算术定位](2026-11-06-mpeg2-rounding.md) — kernel video；21 条参考截取自校验精确，新图像差均≤2；teracom 64 次零运动残差舍入累积已量化，无有证据的内核算术修复。
 - [.32集成与板窗计划](2026-11-06-vdec-integration32-plan.md) — kernel video；HEVC WAIT_FLAG、DOS降噪及MPEG-2单向B参考修复集成，离线封包与短回归计划；待批，不部署。
