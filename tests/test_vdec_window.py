@@ -18,6 +18,50 @@ SPEC.loader.exec_module(window)
 
 
 class DecoderWindowTests(unittest.TestCase):
+    def test_incremental_journal_preserves_anchor_and_stops_on_new_warning(self):
+        def record(cursor, message):
+            return json.dumps({'__CURSOR': cursor, 'MESSAGE': message}) + '\n'
+        chunks = iter([record('a', 'boot'), record('a', 'boot'),
+                       record('a', 'boot') + record('b', 'WARNING: CPU: 1 PID: 2')])
+        commands = []
+        def collect(command, **kwargs):
+            commands.append(command)
+            kwargs['stdout'].write(next(chunks))
+        with tempfile.TemporaryDirectory() as directory, patch.object(window.subprocess, 'run', side_effect=collect):
+            output = Path(directory)
+            with window.incremental_kernel_journal(output):
+                window.require_clean_kernel_log(output)
+                window.require_clean_kernel_log(output)
+                self.assertEqual((output / 'kernel.log').read_text().count('boot'), 1)
+                with self.assertRaisesRegex(RuntimeError, 'diagnostic failure'):
+                    window.require_clean_kernel_log(output)
+                self.assertIn('WARNING:', (output / 'kernel-journal-0003.jsonl').read_text())
+                self.assertEqual((output / 'kernel-journal.cursor').read_text(), 'a\n')
+            self.assertIsNone(window._kernel_journal_reader)
+            self.assertIn('--cursor=a', commands[1])
+
+    def test_incremental_journal_lost_cursor_and_command_timeout_fail_closed(self):
+        for failure in ('cursor', 'timeout', 'truncated'):
+            with self.subTest(failure=failure), tempfile.TemporaryDirectory() as directory:
+                output = Path(directory)
+                reader = window.KernelJournal(output)
+                reader.cursor = 'saved'
+                def collect(command, **kwargs):
+                    if failure == 'timeout':
+                        kwargs['stdout'].write('partial evidence\n')
+                        raise subprocess.TimeoutExpired(command, 15)
+                    kwargs['stdout'].write('{' if failure == 'truncated' else
+                        json.dumps({'__CURSOR': 'later', 'MESSAGE': 'normal'}))
+                with patch.object(window.subprocess, 'run', side_effect=collect) as execute:
+                    with self.assertRaises((ValueError, subprocess.TimeoutExpired)):
+                        reader.read()
+                    with self.assertRaisesRegex(RuntimeError, 'previously failed'):
+                        reader.read()
+                    self.assertEqual(execute.call_count, 1)
+                self.assertEqual(reader.cursor, 'saved')
+                self.assertTrue((output / 'kernel-journal-0001.error').exists())
+                self.assertTrue((output / 'kernel-journal-0001.jsonl').exists())
+
     def test_baseline_plan_rejects_stale_missing_or_extra_protected_files(self):
         files = {'/boot/extlinux/extlinux.conf': 'new', '/boot/Image': 'image'}
         window.require_plan_baseline({'protected_files': dict(files)}, {'files': files})

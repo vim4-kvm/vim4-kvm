@@ -533,9 +533,74 @@ def run_performance(plan, output, deadline, env):
         raise RuntimeError('Clock/CPU telemetry is incomplete; inspect raw errors')
 
 
+_kernel_journal_reader = None
+
+
+class KernelJournal:
+    """Retain incremental evidence and reject a missing journal anchor."""
+
+    def __init__(self, output):
+        self.output = output
+        self.cursor = None
+        self.sequence = 0
+        self.failed = False
+
+    def read(self):
+        if self.failed:
+            raise RuntimeError('Kernel journal collection previously failed')
+        self.sequence += 1
+        stem = self.output / f'kernel-journal-{self.sequence:04d}'
+        command = ['journalctl', '-k', '-b', '--no-pager', '-o', 'json']
+        if self.cursor:
+            # Include the anchor itself so a vacuumed/invalid cursor cannot
+            # silently seek to a later entry and lose diagnostics.
+            command.append('--cursor=' + self.cursor)
+        try:
+            with stem.with_suffix('.jsonl').open('w') as raw, stem.with_suffix('.stderr').open('w') as errors:
+                subprocess.run(command, stdout=raw, stderr=errors, check=True, timeout=15)
+            rows = [json.loads(line) for line in stem.with_suffix('.jsonl').read_text().splitlines()]
+            if not rows or any(not isinstance(row.get('__CURSOR'), str) or
+                               not isinstance(row.get('MESSAGE'), str) for row in rows):
+                raise ValueError('Incomplete kernel journal records')
+            if self.cursor and rows[0]['__CURSOR'] != self.cursor:
+                raise ValueError('Kernel journal cursor was lost')
+            new = rows[1:] if self.cursor else rows
+            text = '\n'.join(row['MESSAGE'] for row in new)
+            check_kernel_diagnostics(text)
+            self.cursor = rows[-1]['__CURSOR']
+            (self.output / 'kernel-journal.cursor').write_text(self.cursor + '\n')
+            return text
+        except BaseException as error:
+            self.failed = True
+            stem.with_suffix('.error').write_text(repr(error) + '\n')
+            raise
+
+
+@contextmanager
+def incremental_kernel_journal(output):
+    """Opt in for one window; default callers retain full journal checks."""
+    global _kernel_journal_reader
+    if _kernel_journal_reader is not None:
+        raise RuntimeError('Kernel journal collector already active')
+    _kernel_journal_reader = KernelJournal(output)
+    try:
+        yield _kernel_journal_reader
+    finally:
+        _kernel_journal_reader = None
+
+
 def require_clean_kernel_log(output):
-    kernel_log = run('journalctl', '-k', '-b', '--no-pager', timeout=15)
-    (output / 'kernel.log').write_text(kernel_log)
+    if _kernel_journal_reader is None:
+        kernel_log = run('journalctl', '-k', '-b', '--no-pager', timeout=15)
+        (output / 'kernel.log').write_text(kernel_log)
+    else:
+        kernel_log = _kernel_journal_reader.read()
+        with (output / 'kernel.log').open('a') as stream:
+            stream.write(kernel_log + '\n')
+    check_kernel_diagnostics(kernel_log)
+
+
+def check_kernel_diagnostics(kernel_log):
     if re.search(r'aml-vdec-drv[^\n]*(?:dec timeout=|hevc: timeout)', kernel_log):
         raise TimeoutError('Kernel decoder timeout; recover before another stream')
     # DMA-API also emits normal "debugging enabled" startup messages. Actual
