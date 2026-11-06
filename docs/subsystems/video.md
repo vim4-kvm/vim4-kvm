@@ -24,6 +24,7 @@ HDMI独立于浏览器，无观看者仍保留EDID和连接；HPD仅表示接收
 ## 按改动范围读取
 
 - [内核证据](../kernel-mainline.md#相关记录)。
+- [解码驱动架构方向](../vdec-architecture.md)：改 7.3 解码驱动前先读。
 - [延迟](../latency.md#相关记录)；[播放差异/未决项](../kvm-delay-causes.md)。
 - [RTP](../archive/rtp-send-optimization-audit.md)、[编码库](../archive/encoder-fast-packing-audit.md)：后端、ABI及硬件边界。
 - [高刷](../archive/1080p120-audit.md)、[VRR](../vrr-preparation.md)：输入/本地输出。
