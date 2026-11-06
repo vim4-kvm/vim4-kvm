@@ -17,6 +17,7 @@
 
 ## 2026-11-06
 
+- [MPEG-2 visl 矩阵根因](2026-11-06-mpeg2-visl.md) — kernel video；25 条三组离线对照，6 条用户态矩阵错误已修、6 条实为 MPEG-1、13 条像素根因待证；含统一窗口清单，未上板。
 - [MR3 旧timestamp与存储归属](2026-11-06-vdec-mr3-storage.md) — kernel video；visl/ioctl定位ts0缓冲比槽位活得久，独立修复27项KUnit通过；[上板计划](2026-11-06-vdec-mr3-storage-plan.md)待批准。
 - [r63 缺口修复实板验证](2026-11-06-vdec-r63-gap.md) — kernel video；9S/1F，MR4/5逐字节正确、7对照无回退；MR3仍53帧错误/12对ERROR，正式恢复通过，未部署。
 - [r62 入场依赖失败](2026-11-06-vdec-r62-entry.md) — kernel video；正式proof通过，宿主Playwright缺失导致零候选启动；私有依赖与离线receiver冒烟完成，替代票已批准。
