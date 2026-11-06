@@ -82,7 +82,12 @@ GPU 纯调频已完成[专项验证](bringup/2026-10-21-edge-gpu-devfreq.md)及�
 定期记录冲突、构建和测试成本；`experiment/*` 隔离私有 ABI、故障注入和受控上电。
 保留原作者和提交签名，先吸收上游已有实现，再删除对应下游补丁。
 
-逐提交运行 strict checkpatch、宿主 fixture、binding 和 DT 实例检查，再用同次配置构建
+开发中的 `topic/*`、`experiment/*` 迭代只在分支尖跑模块 W=1 构建和 QEMU KUnit；
+板窗可把多个分支合成一个 integration 候选，一次启动跑完各自清单，入场时 uptime 已满
+300 秒且连续 UART 无复位即可，不再另等。下面的逐提交检查在合入评审前整理系列时一次完成
+（参照 [v2 评审系列](bringup/2026-11-05-vdec-review-v2.md)）。
+
+合入前逐提交运行 strict checkpatch、宿主 fixture、binding 和 DT 实例检查，再用同次配置构建
 Image、DTB 和完整模块。保留失败、跳过和产物哈希；宿主 fixture 不能代替 KUnit 或硬件验收。
 `packaging/kernel/maintain.py` 提供 inventory、forward 和 verify；具体用法、
 厂商对照与音频基线依赖见[维护快照](archive/kernel-patch-inventory.md#主题序列与一键离线验证)。
