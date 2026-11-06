@@ -18,6 +18,30 @@ SPEC.loader.exec_module(window)
 
 
 class DecoderWindowTests(unittest.TestCase):
+    def test_run_plan_retargets_all_search_paths_and_rejects_stale_directories(self):
+        original = {'board_window': 'hwdecode-parity-r66', 'environment': {
+            'GST_PLUGIN_PATH': '/var/tmp/hwdecode-standard-r66/official:/var/tmp/hwdecode-standard-r65/plugins',
+            'LD_LIBRARY_PATH': '/var/tmp/hwdecode-standard-r65/lib:/var/tmp/hwdecode-standard-r66/lib2:/usr/lib',
+            'GST_REGISTRY': '/var/tmp/hwdecode-standard-r66/registry.bin'},
+            'video_check': ['python3', '/workspace/build/run52/video.py'],
+            'files': {'/var/tmp/hwdecode-standard-r65/input': 'sha'}}
+        with self.assertRaisesRegex(ValueError, 'Stale run directory'):
+            window.require_current_run_paths(original)
+        result = window.retarget_run_plan(original, 67)
+        self.assertEqual(result['environment'], {
+            'GST_PLUGIN_PATH': '/var/tmp/hwdecode-standard-r67/official:/var/tmp/hwdecode-standard-r67/plugins',
+            'LD_LIBRARY_PATH': '/var/tmp/hwdecode-standard-r67/lib:/var/tmp/hwdecode-standard-r67/lib2:/usr/lib',
+            'GST_REGISTRY': '/var/tmp/hwdecode-standard-r67/registry.bin'})
+        self.assertEqual(result['video_check'][1], '/workspace/build/run67/video.py')
+        for key in ('GST_PLUGIN_PATH', 'LD_LIBRARY_PATH', 'GST_REGISTRY'):
+            broken = window.retarget_run_plan(original, 67)
+            broken['environment'][key] += ':/var/tmp/hwdecode-standard-r65/stale'
+            with self.subTest(key=key), self.assertRaisesRegex(ValueError, 'Stale run directory'):
+                window.require_current_run_paths(broken)
+        result['nested'] = [{'source': '/workspace/run66/old'}]
+        with self.assertRaisesRegex(ValueError, 'Stale run directory'):
+            window.require_current_run_paths(result)
+
     def test_incremental_journal_preserves_anchor_and_stops_on_new_warning(self):
         def record(cursor, message):
             return json.dumps({'__CURSOR': cursor, 'MESSAGE': message}) + '\n'

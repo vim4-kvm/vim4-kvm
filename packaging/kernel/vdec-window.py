@@ -286,7 +286,47 @@ def require_plan_baseline(plan, baseline):
         raise ValueError('Validation protected_files must exactly match the current baseline proof')
 
 
+def retarget_run_plan(plan, number):
+    """Rewrite every run-directory component, including colon search paths."""
+    if not isinstance(number, int) or number < 1:
+        raise ValueError('Expected a positive run number')
+    def rewrite(value):
+        if isinstance(value, str):
+            return re.sub(r'(/(?:hwdecode-standard-r|run))\d+(?=/|:|$)',
+                          lambda match: match[1] + str(number), value)
+        if isinstance(value, list):
+            return [rewrite(item) for item in value]
+        if isinstance(value, dict):
+            return {rewrite(key): rewrite(item) for key, item in value.items()}
+        return value
+    result = rewrite(plan)
+    result['board_window'] = f'hwdecode-parity-r{number}'
+    require_current_run_paths(result)
+    return result
+
+
+def require_current_run_paths(plan):
+    match = re.fullmatch(r'hwdecode-parity-r(\d+)', plan['board_window'])
+    if not match:
+        return
+    number = match[1]
+    def check(value):
+        if isinstance(value, str):
+            for found in re.finditer(r'/(?:hwdecode-standard-r|run)(\d+)(?=/|:|$)', value):
+                if found[1] != number:
+                    raise ValueError('Stale run directory in validation plan: ' + value)
+        elif isinstance(value, list):
+            for item in value:
+                check(item)
+        elif isinstance(value, dict):
+            for key, item in value.items():
+                check(key)
+                check(item)
+    check(plan)
+
+
 def validate_acceptance_plan(plan, proof):
+    require_current_run_paths(plan)
     if proof.get('source') in FAILED_SOURCES:
         raise ValueError('Known failing candidate')
     if plan['kernel'] not in ('mainline', 'vendor'):
