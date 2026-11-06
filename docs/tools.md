@@ -115,7 +115,7 @@
 | [perf-sensors.py](../tools/perf-sensors.py)、passthrough-monitor.py、hdmi-control-watch.py | 只读 | 板端遥测与 HDMI 状态观察。 |
 | [vendor-boot-plan.py](../tools/vendor-boot-plan.py) | 无 | 离线一次性启动计划。 |
 | [hdmi-source-mode.swift](../tools/hdmi-source-mode.swift)、hdmi-resolution-source.swift、latency-source.swift、input-target.swift | 独占 | Mac 信源模式、图样及输入接收窗口。 |
-| [latency-receiver.mjs](../tools/latency-receiver.mjs)、board-window-receiver.mjs、board-window-timing.mjs | 独占 | 浏览器帧标记与呈现接收。 |
+| [latency-receiver.mjs](../tools/latency-receiver.mjs)、board-window-receiver.mjs、board-window-timing.mjs | 独占 | 浏览器帧标记与呈现接收；在 build/ 私有目录锁定 Playwright/Chromium，用 PLAYWRIGHT_MODULE 指向 index.mjs，入场前离线导入冒烟；默认使用 Chrome 通道。 |
 | [latency-summary.py](../tools/latency-summary.py)、latency-rtp-summary.py、video-timing-summary.py、input-summary.py | 无 | 离线时序汇总。 |
 | [key-repeat.html](../tools/key-repeat.html) | 无 | 被控电脑浏览器手动长按对照。 |
 | [uu-scroll-probe.swift](../tools/uu-scroll-probe.swift) | 无 | 历史：Mac 滚轮事件调查，见[归档](archive/uu-scroll.md)。 |

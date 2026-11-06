@@ -15,6 +15,10 @@
 
 以下保留完整日期索引。这些里程碑记录的是历史证据；查找当前架构和约束时，仍应先读对应子系统入口。
 
+## 2026-11-06
+
+- [r62 入场依赖失败](2026-11-06-vdec-r62-entry.md) — kernel video；正式proof通过，宿主Playwright缺失导致零候选启动；私有依赖与离线receiver冒烟完成，替代票已批准。
+
 ## 2026-11-05
 
 - [MR3/4/5 缺口参考定位](2026-11-05-vdec-gap-references.md) — kernel video；JM与DQBUF定位缺口项导致ERROR，含S4索引修正的topic修复26项KUnit通过，像素未上板；[验证计划](2026-11-05-vdec-gap-validation-plan.md)已批准。
