@@ -17,6 +17,7 @@
 
 ## 2026-11-06
 
+- [r77 HEVC P/B短流通过](2026-11-06-vdec-r77-hevc-inter.md) — kernel video；.36全I 56/56/精确首帧/status0，三条P/B流5/8/17帧MD5全同、正常EOS；单次候选无冷复位，正式2372 proof/视频通过，未部署。
 - [r76候选及正式恢复冷复位](2026-11-06-vdec-r76-coldboot.md) — kernel video；.36在7.440秒复位，正式首次自然恢复在7.556秒复位、第二次成功；解码全部未运行，2372 proof/视频通过，不重试，转交冷复位测量决策。
 - [r75全I回归与采证误停](2026-11-06-vdec-r75-ioctl-trace.md) — kernel video；H.264三条通过、MPEG-2四流等于r73，HEVC全I 56/56/精确首帧/status0；strace拆行误停导致三条inter未运行，离线回放确认，正式恢复无冷复位。
 - [r74候选冷复位与自然恢复](2026-11-06-vdec-r74-coldboot.md) — kernel video；.36启动7.440秒冷复位，所有解码项未运行；首次自然恢复正式fd41fb5，2372 proof/视频/归档清理通过，无重试。
