@@ -17,6 +17,7 @@
 
 ## 2026-11-06
 
+- [.33集成与诊断计划](2026-11-06-vdec-integration33-plan.md) — kernel video；compliance降噪门禁、H.264三条、MPEG-2请求失败诊断、HEVC手动NAL握手，待批板窗。
 - [HEVC厂商序列移植](2026-11-06-hevc-vendor-port.md) — kernel video；T7分支依据、寄存器目录和七提交；尖端f21dfc47 W=1/KUnit 25/25通过（协调者代跑heavy），未上板。
 - [r70 MPEG-2 请求追踪](2026-11-06-mpeg2-r70-rejections.md) — kernel video；visl 107 个 picture 控制与板上一致，缺前向参考时间戳假设排除；实际模块含 aaec509，持续 ERROR 返回点待诊断窗口，附四流清单。
 - [r70 .32短回归](2026-11-06-vdec-r70-integration32.md) — kernel video；DOS step=0、H.264十条通过；Sony仍有ERROR缓冲，HEVC有效输入WAIT=0仍超时；无冷复位，正式恢复/清理通过。
