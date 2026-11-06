@@ -1,0 +1,129 @@
+{
+  "status": "Stopped by approved second cold reset; superseded by integration41",
+  "source": "bc651815ee7d912f58a1c2e3d6348f93189f7077",
+  "release": "7.3.1-vim4-20261106.40",
+  "build_id": "732f894e2037d900b1211997c9a0c0362cfee233",
+  "counts": {
+    "Not run": 132
+  },
+  "attempted": 0,
+  "original_success_attempted": 0,
+  "original_success_regressions": [],
+  "regression_conclusion": "Not evaluated: no decoding executed",
+  "cold_boots": {
+    "boots": [
+      {
+        "window": 105,
+        "release": "7.3.1-vim4-20261106.40",
+        "requested": true,
+        "offset": 26944,
+        "linux_monotonic_ns": 747383252610208,
+        "cold_reset": false,
+        "ssh_identity": {
+          "release": "7.3.1-vim4-20261106.40",
+          "build_id": "732f894e2037d900b1211997c9a0c0362cfee233",
+          "cmdline": "console=tty0 root=PARTUUID=bcb80000-02 rootwait rw rootfstype=ext4 rootflags=data=ordered console=ttyS0,921600n8 earlycon=meson,0xfe078000 no_console_suspend net.ifnames=0 loglevel=7 panic=20 mem_sleep_default=s2idle modprobe.blacklist=crg_udc,t7_hdmirx,t7_vdin_test,wave5 cma=512M@0x10000000-0xf0000000 vim4.full_kvm=1 vim4.eth_mac=c8:63:14:74:70:0d systemd.mask=tvserver.service systemd.mask=audioserver.service systemd.mask=one-kvm-edge.service systemd.mask=one-kvm-edge-gateway.service systemd.mask=one-kvm-edge-usb.service systemd.mask=binder.service systemd.mask=bluetooth-khadas.service systemd.mask=rc-local.service oops=panic panic=20 init=/var/lib/vim4-kvm/ram-candidates/hwdecode/integration40/732f894e2037d900b1211997c9a0c0362cfee233/init module_blacklist=brcmfmac,hci_uart,btbcm initcall_blacklist=mmc_pwrseq_simple_driver_init systemd.mask=bluetooth.service",
+          "boot_id": "68e981e7-67a2-420c-b703-e62465097641",
+          "config_sha256": "04689d6230f815d396d036df9ebdec8d2d066459c7eee9f28f932a8244b2c26a",
+          "config": "DEFAULT display-once\nTIMEOUT 1\nLABEL display-once\n  LINUX /var/lib/vim4-kvm/ram-candidates/hwdecode/integration40/732f894e2037d900b1211997c9a0c0362cfee233/Image\n  FDT /var/lib/vim4-kvm/ram-candidates/hwdecode/integration40/732f894e2037d900b1211997c9a0c0362cfee233/vim4.dtb\n  APPEND console=tty0 root=PARTUUID=bcb80000-02 rootwait rw rootfstype=ext4 rootflags=data=ordered console=ttyS0,921600n8 earlycon=meson,0xfe078000 no_console_suspend net.ifnames=0 loglevel=7 panic=20 mem_sleep_default=s2idle modprobe.blacklist=crg_udc,t7_hdmirx,t7_vdin_test,wave5 cma=512M@0x10000000-0xf0000000 vim4.full_kvm=1 vim4.eth_mac=c8:63:14:74:70:0d systemd.mask=tvserver.service systemd.mask=audioserver.service systemd.mask=one-kvm-edge.service systemd.mask=one-kvm-edge-gateway.service systemd.mask=one-kvm-edge-usb.service systemd.mask=binder.service systemd.mask=bluetooth-khadas.service systemd.mask=rc-local.service oops=panic panic=20 init=/var/lib/vim4-kvm/ram-candidates/hwdecode/integration40/732f894e2037d900b1211997c9a0c0362cfee233/init module_blacklist=brcmfmac,hci_uart,btbcm initcall_blacklist=mmc_pwrseq_simple_driver_init systemd.mask=bluetooth.service\n"
+        }
+      },
+      {
+        "window": 105,
+        "release": "7.3.1-vim4-20261105",
+        "requested": true,
+        "offset": 110424,
+        "linux_monotonic_ns": 747416832282416,
+        "cold_reset": false,
+        "ssh_identity": {
+          "release": "7.3.1-vim4-20261105",
+          "build_id": "bdbfa439f298e92b5bad092528d11119a974f262",
+          "cmdline": "console=tty0 root=PARTUUID=bcb80000-02 rootwait rw rootfstype=ext4 rootflags=data=ordered console=ttyS0,921600n8 earlycon=meson,0xfe078000 no_console_suspend net.ifnames=0 loglevel=7 panic=20 mem_sleep_default=s2idle modprobe.blacklist=crg_udc,t7_hdmirx,t7_vdin_test,wave5 cma=512M@0x10000000-0xf0000000 vim4.full_kvm=1 vim4.eth_mac=c8:63:14:74:70:0d systemd.mask=tvserver.service systemd.mask=audioserver.service systemd.mask=one-kvm-edge.service systemd.mask=one-kvm-edge-gateway.service systemd.mask=one-kvm-edge-usb.service systemd.mask=binder.service systemd.mask=bluetooth-khadas.service systemd.mask=rc-local.service",
+          "boot_id": "1ba87bdc-27ae-4bcf-8d69-9a5ad5891dc7"
+        }
+      },
+      {
+        "window": 107,
+        "release": "7.3.1-vim4-20261106.40",
+        "requested": true,
+        "offset": 27086,
+        "linux_monotonic_ns": 747941861311416,
+        "cold_reset": false,
+        "ssh_identity": {
+          "release": "7.3.1-vim4-20261106.40",
+          "build_id": "732f894e2037d900b1211997c9a0c0362cfee233",
+          "cmdline": "console=tty0 root=PARTUUID=bcb80000-02 rootwait rw rootfstype=ext4 rootflags=data=ordered console=ttyS0,921600n8 earlycon=meson,0xfe078000 no_console_suspend net.ifnames=0 loglevel=7 panic=20 mem_sleep_default=s2idle modprobe.blacklist=crg_udc,t7_hdmirx,t7_vdin_test,wave5 cma=512M@0x10000000-0xf0000000 vim4.full_kvm=1 vim4.eth_mac=c8:63:14:74:70:0d systemd.mask=tvserver.service systemd.mask=audioserver.service systemd.mask=one-kvm-edge.service systemd.mask=one-kvm-edge-gateway.service systemd.mask=one-kvm-edge-usb.service systemd.mask=binder.service systemd.mask=bluetooth-khadas.service systemd.mask=rc-local.service oops=panic panic=20 init=/var/lib/vim4-kvm/ram-candidates/hwdecode/integration40/732f894e2037d900b1211997c9a0c0362cfee233/init module_blacklist=brcmfmac,hci_uart,btbcm initcall_blacklist=mmc_pwrseq_simple_driver_init systemd.mask=bluetooth.service",
+          "boot_id": "1be6bf22-f28a-40bd-8950-fee18f8b16b9",
+          "config_sha256": "04689d6230f815d396d036df9ebdec8d2d066459c7eee9f28f932a8244b2c26a",
+          "config": "DEFAULT display-once\nTIMEOUT 1\nLABEL display-once\n  LINUX /var/lib/vim4-kvm/ram-candidates/hwdecode/integration40/732f894e2037d900b1211997c9a0c0362cfee233/Image\n  FDT /var/lib/vim4-kvm/ram-candidates/hwdecode/integration40/732f894e2037d900b1211997c9a0c0362cfee233/vim4.dtb\n  APPEND console=tty0 root=PARTUUID=bcb80000-02 rootwait rw rootfstype=ext4 rootflags=data=ordered console=ttyS0,921600n8 earlycon=meson,0xfe078000 no_console_suspend net.ifnames=0 loglevel=7 panic=20 mem_sleep_default=s2idle modprobe.blacklist=crg_udc,t7_hdmirx,t7_vdin_test,wave5 cma=512M@0x10000000-0xf0000000 vim4.full_kvm=1 vim4.eth_mac=c8:63:14:74:70:0d systemd.mask=tvserver.service systemd.mask=audioserver.service systemd.mask=one-kvm-edge.service systemd.mask=one-kvm-edge-gateway.service systemd.mask=one-kvm-edge-usb.service systemd.mask=binder.service systemd.mask=bluetooth-khadas.service systemd.mask=rc-local.service oops=panic panic=20 init=/var/lib/vim4-kvm/ram-candidates/hwdecode/integration40/732f894e2037d900b1211997c9a0c0362cfee233/init module_blacklist=brcmfmac,hci_uart,btbcm initcall_blacklist=mmc_pwrseq_simple_driver_init systemd.mask=bluetooth.service\n"
+        }
+      },
+      {
+        "window": 107,
+        "release": "7.3.1-vim4-20261105",
+        "requested": true,
+        "offset": 110644,
+        "linux_monotonic_ns": 747973820838000,
+        "cold_reset": true,
+        "reset_monotonic_ns": 747981091337958,
+        "seconds_to_reset": 7.270499958,
+        "last_kernel_line": "[    4.843067] brcmfmac: brcmf_c_preinit_dcmds: Firmware: BCM43752/2 wl0: Jan 18 2024 14:50:40 version 18.35.387.23.217 (ga18eaaff) FWID 01-e47f9a86"
+      },
+      {
+        "window": 107,
+        "release": "7.3.1-vim4-20261105",
+        "requested": false,
+        "offset": 174171,
+        "linux_monotonic_ns": 747991522953291,
+        "cold_reset": false
+      },
+      {
+        "window": 108,
+        "release": null,
+        "requested": true,
+        "offset": 26957,
+        "linux_monotonic_ns": 748454253719750,
+        "cold_reset": true,
+        "reset_monotonic_ns": 748461297154583,
+        "seconds_to_reset": 7.043434833,
+        "last_kernel_line": "[    4.732881] Adding 1006652k swap on /dev/zram4.  Priority:5 extents:1 across:1006652k SS"
+      },
+      {
+        "window": 108,
+        "release": "7.3.1-vim4-20261105",
+        "requested": false,
+        "offset": 91609,
+        "linux_monotonic_ns": 748471729711166,
+        "cold_reset": false
+      }
+    ],
+    "cold_resets": [
+      {
+        "window": 107,
+        "release": "7.3.1-vim4-20261105",
+        "requested": true,
+        "offset": 110644,
+        "linux_monotonic_ns": 747973820838000,
+        "cold_reset": true,
+        "reset_monotonic_ns": 747981091337958,
+        "seconds_to_reset": 7.270499958,
+        "last_kernel_line": "[    4.843067] brcmfmac: brcmf_c_preinit_dcmds: Firmware: BCM43752/2 wl0: Jan 18 2024 14:50:40 version 18.35.387.23.217 (ga18eaaff) FWID 01-e47f9a86"
+      },
+      {
+        "window": 108,
+        "release": null,
+        "requested": true,
+        "offset": 26957,
+        "linux_monotonic_ns": 748454253719750,
+        "cold_reset": true,
+        "reset_monotonic_ns": 748461297154583,
+        "seconds_to_reset": 7.043434833,
+        "last_kernel_line": "[    4.732881] Adding 1006652k swap on /dev/zram4.  Priority:5 extents:1 across:1006652k SS"
+      }
+    ],
+    "total_cold_resets": 2,
+    "stop_second_cold_reset": true,
+    "caveat": "Receive-chunk monotonic times; UART loss can obscure banners. Live SSH identity is independent."
+  },
+  "full_csv_sha256": "0981b126df5710f3e6ea176f2b32a9c42470dc4ca15a6fdd3fa4297f71e332fb"
+}
