@@ -17,6 +17,7 @@
 
 ## 2026-11-06
 
+- [HEVC 全集失败首轮修复](2026-11-06-hevc-conformance-fixes.md) — kernel video；30条分组、修≤4K逐slice模式/每图重排/EOS事件顺序，补拒绝诊断；heavy KUnit34/34、W=1成功，候选未上板。
 - [HEVC 8bit全集结果](2026-11-06-hevc-full-results.md) — kernel video；132条唯一执行，102S/16F/11E/3T、零未运行，30条失败留证；HEVC compliance两窗epoll/EOS失败，六窗正式proof/视频恢复通过，未部署。
 - [r79b无线屏蔽与插件门禁](2026-11-06-vdec-r79b-no-radio.md) — kernel video；变体一次启动无复位，无线初始化阻断、HID正常、stateless 60/60；HEVC插件路径误判前停，逐流未运行，正式恢复。
 - [r79入场旧串口缓存停止](2026-11-06-vdec-r79-entry-stop.md) — kernel video；正式boot_id不变、uptime单调，255字节旧ROM片段误触门禁，零上传/零候选启动；功率计拓扑及替代票边界。
