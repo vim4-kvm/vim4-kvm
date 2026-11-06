@@ -17,6 +17,7 @@
 
 ## 2026-11-06
 
+- [HEVC 8bit全集结果](2026-11-06-hevc-full-results.md) — kernel video；132条唯一执行，102S/16F/11E/3T、零未运行，30条失败留证；HEVC compliance两窗epoll/EOS失败，六窗正式proof/视频恢复通过，未部署。
 - [r79b无线屏蔽与插件门禁](2026-11-06-vdec-r79b-no-radio.md) — kernel video；变体一次启动无复位，无线初始化阻断、HID正常、stateless 60/60；HEVC插件路径误判前停，逐流未运行，正式恢复。
 - [r79入场旧串口缓存停止](2026-11-06-vdec-r79-entry-stop.md) — kernel video；正式boot_id不变、uptime单调，255字节旧ROM片段误触门禁，零上传/零候选启动；功率计拓扑及替代票边界。
 - [.36无线初始化屏蔽计划](2026-11-06-vdec-integration36-no-radio-plan.md) — kernel video；同包仅追加模块/initcall/service屏蔽参数，2357文件不变；内建SDIO路径核验，物理断电未证明，待批板窗。
