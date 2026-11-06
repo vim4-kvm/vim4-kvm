@@ -1,0 +1,136 @@
+vector,result,raw_result,previous,prior_25
+AUD_MW_E,Success,Success,Success,Success
+BA1_FT_C,Success,Success,Success,Fail
+BA1_Sony_D,Success,Success,Success,Success
+BA2_Sony_F,Success,Success,Success,Success
+BA3_SVA_C,Success,Success,Success,Success
+BA_MW_D,Success,Success,Success,Success
+BAMQ1_JVC_C,Success,Success,Success,Success
+BAMQ2_JVC_C,Success,Success,Success,Success
+BANM_MW_D,Success,Success,Success,Success
+BASQP1_Sony_C,Success,Success,Success,Fail
+CABA1_Sony_D,Success,Success,Success,Success
+CABA1_SVA_B,Success,Success,Success,Success
+CABA2_Sony_E,Success,Success,Success,Success
+CABA2_SVA_B,Success,Success,Success,Success
+CABA3_Sony_C,Success,Success,Success,Success
+CABA3_SVA_B,Success,Success,Success,Success
+CABA3_TOSHIBA_E,Success,Success,Success,Success
+cabac_mot_fld0_full,Success,Success,Success,Fail
+cabac_mot_frm0_full,Success,Success,Success,Success
+cabac_mot_mbaff0_full,Success,Success,Success,Fail
+cabac_mot_picaff0_full,Success,Success,Success,Fail
+CABACI3_Sony_B,Success,Success,Success,Fail
+CABAST3_Sony_E,Success,Success,Success,Fail
+CABASTBR3_Sony_B,Success,Success,Success,Fail
+CABREF3_Sand_D,Success,Success,Fail,Fail
+CACQP3_Sony_D,Success,Success,Success,Success
+CAFI1_SVA_C,Success,Success,Success,Fail
+CAMA1_Sony_C,Success,Success,Success,Fail
+CAMA1_TOSHIBA_B,Success,Success,Fail,Fail
+cama1_vtc_c,Success,Success,Success,Fail
+cama2_vtc_b,Success,Success,Success,Fail
+CAMA3_Sand_E,Success,Success,Fail,Fail
+cama3_vtc_b,Success,Success,Success,Fail
+CAMACI3_Sony_C,Success,Success,Success,Fail
+CAMANL1_TOSHIBA_B,Success,Success,Fail,Fail
+CAMANL2_TOSHIBA_B,Success,Success,Fail,Fail
+CAMANL3_Sand_E,Success,Success,Fail,Fail
+CAMASL3_Sony_B,Success,Success,Success,Fail
+CAMP_MOT_MBAFF_L30,Success,Success,Success,Fail
+CAMP_MOT_MBAFF_L31,Success,Success,Success,Fail
+CANL1_Sony_E,Success,Success,Success,Success
+CANL1_SVA_B,Success,Success,Success,Success
+CANL1_TOSHIBA_G,Success,Success,Success,Success
+CANL2_Sony_E,Success,Success,Success,Success
+CANL2_SVA_B,Success,Success,Success,Success
+CANL3_Sony_C,Success,Success,Success,Success
+CANL3_SVA_B,Success,Success,Success,Success
+CANL4_SVA_B,Success,Success,Success,Success
+CANLMA2_Sony_C,Success,Success,Success,Fail
+CANLMA3_Sony_C,Success,Success,Success,Fail
+CAPA1_TOSHIBA_B,Success,Success,Fail,Fail
+CAPAMA3_Sand_F,Success,Success,Fail,Fail
+CAPCM1_Sand_E,Success,Success,Success,Success
+CAPCMNL1_Sand_E,Success,Success,Success,Success
+CAPM3_Sony_D,Success,Success,Success,Success
+CAQP1_Sony_B,Success,Success,Success,Success
+cavlc_mot_fld0_full_B,Success,Success,Success,Fail
+cavlc_mot_frm0_full_B,Success,Success,Success,Success
+cavlc_mot_mbaff0_full_B,Success,Success,Success,Fail
+cavlc_mot_picaff0_full_B,Success,Success,Success,Fail
+CAWP1_TOSHIBA_E,Success,Success,Success,Success
+CAWP5_TOSHIBA_E,Success,Success,Fail,Fail
+CI1_FT_B,Success,Success,Success,Fail
+CI_MW_D,Success,Success,Success,Success
+CVBS3_Sony_C,Success,Success,Success,Success
+CVCANLMA2_Sony_C,Success,Success,Success,Fail
+CVFC1_Sony_C,Fail,Fail,Fail,Fail
+CVFI1_Sony_D,Success,Success,Success,Fail
+CVFI1_SVA_C,Success,Success,Success,Fail
+CVFI2_Sony_H,Success,Success,Success,Fail
+CVFI2_SVA_C,Success,Success,Success,Fail
+CVMA1_Sony_D,Success,Success,Success,Fail
+CVMA1_TOSHIBA_B,Success,Success,Fail,Fail
+CVMANL1_TOSHIBA_B,Success,Success,Fail,Fail
+CVMANL2_TOSHIBA_B,Success,Success,Fail,Fail
+CVMAPAQP3_Sony_E,Success,Success,Success,Fail
+CVMAQP2_Sony_G,Success,Success,Success,Fail
+CVMAQP3_Sony_D,Success,Success,Success,Fail
+CVMP_MOT_FLD_L30_B,Success,Success,Success,Fail
+CVMP_MOT_FRM_L31_B,Success,Success,Success,Fail
+CVNLFI1_Sony_C,Success,Success,Success,Fail
+CVNLFI2_Sony_H,Success,Success,Success,Fail
+CVPA1_TOSHIBA_B,Success,Success,Fail,Fail
+CVPCMNL1_SVA_C,Success,Success,Success,Success
+CVPCMNL2_SVA_C,Success,Success,Success,Success
+CVSE2_Sony_B,Success,Success,Success,Success
+CVSE3_Sony_H,Success,Success,Success,Success
+CVSEFDFT3_Sony_E,Success,Success,Success,Success
+CVWP1_TOSHIBA_E,Success,Success,Success,Success
+CVWP2_TOSHIBA_E,Success,Success,Success,Success
+CVWP3_TOSHIBA_E,Success,Success,Success,Success
+CVWP5_TOSHIBA_E,Success,Success,Success,Success
+FI1_Sony_E,Success,Success,Success,Fail
+FM1_BT_B,Known unsupported,Known unsupported,Known unsupported,Fail
+FM1_FT_E,Known unsupported,Known unsupported,Known unsupported,Timeout
+FM2_SVA_C,Known unsupported,Known unsupported,Known unsupported,Error
+HCBP1_HHI_A,Success,Success,Success,Fail
+HCBP2_HHI_A,Success,Success,Success,Fail
+HCMP1_HHI_A,Success,Success,Success,Fail
+LS_SVA_D,Success,Success,Success,Fail
+MIDR_MW_D,Success,Success,Success,Success
+MPS_MW_A,Success,Success,Success,Success
+MR1_BT_A,Success,Success,Success,Fail
+MR1_MW_A,Success,Success,Success,Success
+MR2_MW_A,Success,Success,Success,Success
+MR2_TANDBERG_E,Success,Success,Success,Success
+MR3_TANDBERG_B,Success,Success,Fail,Fail
+MR4_TANDBERG_C,Success,Success,Fail,Fail
+MR5_TANDBERG_C,Success,Success,Fail,Fail
+MR6_BT_B,Success,Success,Success,Fail
+MR7_BT_B,Success,Success,Success,Fail
+MR8_BT_B,Success,Success,Success,Fail
+MR9_BT_B,Success,Success,Success,Fail
+MV1_BRCM_D,Success,Success,Success,Success
+NL1_Sony_D,Success,Success,Success,Success
+NL2_Sony_H,Success,Success,Success,Success
+NL3_SVA_E,Success,Success,Success,Success
+NLMQ1_JVC_C,Success,Success,Success,Success
+NLMQ2_JVC_C,Success,Success,Success,Success
+NRF_MW_E,Success,Success,Success,Success
+Sharp_MP_Field_1_B,Success,Success,Fail,Fail
+Sharp_MP_Field_2_B,Success,Success,Success,Fail
+Sharp_MP_Field_3_B,Success,Success,Success,Fail
+Sharp_MP_PAFF_1r2,Not run,Not run,Fail,Fail
+Sharp_MP_PAFF_2r,Not run,Not run,Fail,Fail
+SL1_SVA_B,Not run,Not run,Success,Fail
+SP1_BT_A,Known unsupported,Not run,Known unsupported,Timeout
+sp2_bt_b,Known unsupported,Not run,Known unsupported,Timeout
+SVA_BA1_B,Not run,Not run,Success,Success
+SVA_BA2_D,Not run,Not run,Success,Success
+SVA_Base_B,Not run,Not run,Success,Fail
+SVA_CL1_E,Not run,Not run,Success,Fail
+SVA_FM1_E,Not run,Not run,Success,Fail
+SVA_NL1_B,Not run,Not run,Success,Success
+SVA_NL2_E,Not run,Not run,Success,Success

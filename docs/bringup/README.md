@@ -17,6 +17,7 @@
 
 ## 2026-11-06
 
+- [r65集成部分全集](2026-11-06-vdec-r65-joint.md) — kernel video；119S/1F/5KU/10未运行，MR3/4/5与Sharp_Field逐字节正确；日志采证超时单列，正式恢复；[r66续跑计划](2026-11-06-vdec-r66-plan.md)待批。
 - [AVC评审版与三格式集成计划](2026-11-06-vdec-integration31-plan.md) — kernel video；两提交逐项门禁完成，AVC/HEVC无冲突集成；H.264全集→MPEG-2 29次→HEVC，待批板窗。
 - [MPEG-2 visl 矩阵根因](2026-11-06-mpeg2-visl.md) — kernel video；25 条三组离线对照，6 条用户态矩阵错误已修、6 条实为 MPEG-1、13 条像素根因待证；含统一窗口清单，未上板。
 - [r64 MR3存储归属验证](2026-11-06-vdec-r64-storage.md) — kernel video；10/10通过，MR3/4/5各300帧逐字节正确、两队列零ERROR；104项buffer命中但无槽实证，正式恢复，未部署。
