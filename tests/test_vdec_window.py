@@ -18,51 +18,64 @@ SPEC.loader.exec_module(window)
 
 
 class DecoderWindowTests(unittest.TestCase):
-    def test_hevc_preflight_rejects_an_unspecified_diagnostic_api_before_access(self):
-        for api in (None, 'sysfs', 'debugfs-v2'):
-            with self.subTest(api=api), patch.object(window, 't7_device') as device:
-                with self.assertRaisesRegex(ValueError, 'diagnostic API'):
-                    window.hevc_cycle({'hevc_diagnostic_api': api})
-                device.assert_not_called()
+    def test_obsolete_hevc_preflight_plan_is_rejected_before_hardware_access(self):
+        plan = {'board_window': 'candidate', 'kernel': 'mainline', 'hevc': True,
+                'hevc_diagnostic_api': 'debugfs-v1'}
+        with patch.object(window, 'run') as execute:
+            with self.assertRaisesRegex(ValueError, 'Obsolete HEVC preflight'):
+                window.validate_acceptance_plan(plan, {'source': 'candidate'})
+            execute.assert_not_called()
 
-    def test_hevc_preflight_does_not_fall_back_to_a_passing_sysfs_file(self):
-        with tempfile.TemporaryDirectory() as directory:
-            root = Path(directory)
-            device = root / 'platform' / 'fe320000.video-decoder'
-            device.mkdir(parents=True)
-            (device / 'hevc_test').write_text('passed=1 parser_version=0x10001\n')
-            with patch.object(window, 't7_device', return_value=device), \
-                    patch.object(window, 'HEVC_DIAGNOSTIC_ROOT', root / 'debugfs'), \
-                    patch.object(window, 'set_power_permission') as permission, \
-                    patch.object(window, 'run') as execute:
-                with self.assertRaisesRegex(RuntimeError, 'Missing manifested HEVC diagnostic'):
-                    window.hevc_cycle({'hevc_diagnostic_api': 'debugfs-v1'})
-                permission.assert_not_called()
-                execute.assert_not_called()
-            self.assertTrue((device / 'hevc_test').read_text().startswith('passed=1 '))
+    def test_normal_module_load_needs_no_opt_in_or_preflight(self):
+        proof = {'source': 'candidate', 'kernel_build_id': 'image', 'release': '7.3.test',
+                 'modules': {'kernel/aml.ko': 'hash'}}
+        module = '/lib/modules/7.3.test/kernel/aml.ko'
+        private = {'path': module, 'image_build_id': 'image', 'base_revision': 'candidate',
+                   'patch': '/tmp/change.patch', 'vermagic': '7.3.test SMP', 'build_id': 'module'}
+        for is_private in (False, True):
+            plan = {'kernel': 'mainline', 'hevc': True, 'files': {module: 'hash',
+                    '/tmp/change.patch': 'hash'}}
+            if is_private:
+                plan['private_driver'] = private
+            def execute(*command, **kwargs):
+                return {('modinfo', '-n', 'aml_vdec_drv'): module,
+                        ('modinfo', '-F', 'vermagic', module): '7.3.test SMP'}.get(command, '')
+            with self.subTest(private=is_private), \
+                    patch.object(window.Path, 'glob', return_value=[]), \
+                    patch.object(window.Path, 'exists', return_value=False), \
+                    patch.object(window, 'sha', return_value='hash'), \
+                    patch.object(window, 'build_id', return_value='module'), \
+                    patch.object(window, 'run', side_effect=execute) as run, \
+                    patch.object(window, 'probe_runtime_pm') as probe:
+                window.prepare_acceptance_decoder(plan, proof)
+                probe.assert_called_once_with()
+                loads = [c.args for c in run.call_args_list if c.args[0] in ('modprobe', 'insmod')]
+                self.assertEqual(loads, [('insmod', module)] if is_private else
+                                 [('modprobe', 'aml_vdec_drv')])
 
-    def test_hevc_preflight_uses_the_manifested_debugfs_result(self):
+    def test_runtime_probe_opens_nodes_and_checks_suspend_without_test_caches(self):
         with tempfile.TemporaryDirectory() as directory:
-            root = Path(directory)
-            device = root / 'platform' / 'fe320000.video-decoder'
-            device.mkdir(parents=True)
-            (device / 'mdec_test').write_text('passed=1 value=0\n')
-            (device / 'hevc_test').write_text('passed=0 parser_version=0\n')
-            debug_device = root / 'debugfs' / device.name
-            debug_device.mkdir(parents=True)
-            power_test = debug_device / 'hevc_test'
-            power_test.write_text('passed=1 parser_version=0x10001\n')
+            device = Path(directory)
+            (device / 'power_state').write_text('VDEC[4]=1 NIC3[39]=1\n')
             with patch.object(window, 't7_device', return_value=device), \
-                    patch.object(window, 'HEVC_DIAGNOSTIC_ROOT', root / 'debugfs'), \
-                    patch.object(window, 'require_suspended'), \
+                    patch.object(window, 'require_suspended') as suspended, \
                     patch.object(window, 'faulted', return_value=False), \
-                    patch.object(window, 'set_power_permission') as permission, \
-                    patch.object(window, 'run') as execute:
-                window.hevc_cycle({'hevc_diagnostic_api': 'debugfs-v1'})
-                self.assertIn(repr(str(power_test)), execute.call_args.args[2])
-                self.assertEqual(permission.call_args_list, [unittest.mock.call(True),
-                                                             unittest.mock.call(False)])
-            self.assertTrue((device / 'hevc_test').read_text().startswith('passed=0 '))
+                    patch.object(window, 'run') as run, \
+                    contextlib.redirect_stdout(io.StringIO()):
+                window.probe_runtime_pm()
+                self.assertEqual(suspended.call_count, 2)
+                script = run.call_args.args[2]
+                self.assertIn('os.open(', script)
+                self.assertIn('os.close(', script)
+                self.assertIn('aml_hevc_decoder', script)
+
+    def test_retired_register_actions_are_rejected_at_cli_parsing(self):
+        for action in ('power', 'mdec', 'snapshot'):
+            with self.subTest(action=action):
+                result = subprocess.run([sys.executable, str(SOURCE), action, '--execute'],
+                                        capture_output=True, text=True, timeout=10)
+                self.assertEqual(result.returncode, 2)
+                self.assertIn('invalid choice', result.stderr)
 
     def test_run_plan_retargets_all_search_paths_and_rejects_stale_directories(self):
         original = {'board_window': 'hwdecode-parity-r66', 'environment': {
@@ -331,7 +344,7 @@ class DecoderWindowTests(unittest.TestCase):
 
     def test_once_package_cannot_overwrite_default_boot_files(self):
         proof = {'release': window.BASE_RELEASE, 'once': True, 'source': 'candidate'}
-        window.require_candidate('mdec', proof, once=True)
+        window.require_candidate('probe', proof, once=True)
         for action in window.BOOT_ACTIONS:
             with self.subTest(action=action), self.assertRaises(ValueError):
                 window.require_candidate(action, proof, once=True)
@@ -350,7 +363,7 @@ class DecoderWindowTests(unittest.TestCase):
                         window.require_watchdog()
 
     def test_once_guard_failure_prevents_codec_commands(self):
-        args = SimpleNamespace(action='mdec', build_id='candidate', once_baseline='/proof')
+        args = SimpleNamespace(action='probe', build_id='candidate', once_baseline='/proof')
         with patch.object(window.os, 'geteuid', return_value=0), \
                 patch.object(window.Path, 'exists', return_value=False), \
                 patch.object(window, 'build_id', return_value='candidate'), \
@@ -389,7 +402,7 @@ class DecoderWindowTests(unittest.TestCase):
                     watchdog.assert_not_called()
 
     def test_no_codec_command_before_baseline_boot_files_are_armed(self):
-        args = SimpleNamespace(action='power', build_id='candidate')
+        args = SimpleNamespace(action='probe', build_id='candidate')
         with patch.object(window.os, 'geteuid', return_value=0), \
                 patch.object(window.Path, 'exists', return_value=False), \
                 patch.object(window, 'build_id', return_value='candidate'), \
@@ -399,7 +412,7 @@ class DecoderWindowTests(unittest.TestCase):
         run.assert_not_called()
 
     def test_timeout_quarantines_without_unload_reload_or_service_restart(self):
-        args = SimpleNamespace(action='power', build_id='candidate', fixtures='/fixtures')
+        args = SimpleNamespace(action='probe', build_id='candidate', fixtures='/fixtures')
         with patch.object(window.os, 'geteuid', return_value=0), \
                 patch.object(window.Path, 'exists', return_value=False), \
                 patch.object(window.Path, 'glob', return_value=[]), \
@@ -408,7 +421,7 @@ class DecoderWindowTests(unittest.TestCase):
                 patch.object(window, 'require_baseline_files'), \
                 patch.object(window, 'begin_stage', return_value={}), \
                 patch.object(window, 'finish_stage'), \
-                patch.object(window, 'power_cycle', side_effect=subprocess.TimeoutExpired('power_test', 8)), \
+                patch.object(window, 'probe_runtime_pm', side_effect=subprocess.TimeoutExpired('metadata open', 8)), \
                 patch.object(window, 'faulted', return_value=False), \
                 patch.object(window, 'video_node', return_value='/dev/video99'), \
                 patch.object(window.subprocess, 'run') as service, \
@@ -439,7 +452,7 @@ class DecoderWindowTests(unittest.TestCase):
         self.assertEqual([call.args[0] for call in run.call_args_list], ['ffprobe'])
 
     def test_unsuspended_close_preserves_recovery_marker_without_unloading(self):
-        args = SimpleNamespace(action='power', build_id='candidate', fixtures='/fixtures')
+        args = SimpleNamespace(action='probe', build_id='candidate', fixtures='/fixtures')
         with tempfile.TemporaryDirectory() as directory:
             device = Path(directory)
             (device / 'power').mkdir()
@@ -455,7 +468,7 @@ class DecoderWindowTests(unittest.TestCase):
                     patch.object(window, 'require_baseline_files'), \
                     patch.object(window, 'begin_stage', return_value={}), \
                     patch.object(window, 'finish_stage'), \
-                    patch.object(window, 'power_cycle', side_effect=lambda: window.require_suspended(device)), \
+                    patch.object(window, 'probe_runtime_pm', side_effect=lambda: window.require_suspended(device)), \
                     patch.object(window, 'faulted', return_value=False), \
                     patch.object(window, 'video_node', return_value='/dev/video99'), \
                     patch.object(window.subprocess, 'run') as service, \
@@ -474,7 +487,7 @@ class DecoderWindowTests(unittest.TestCase):
                              side_effect=lambda path: 'boot-test' if str(path).startswith('/proc/')
                              else read_text(path)):
             path = Path(directory) / 'stages.json'
-            args = SimpleNamespace(action='power', build_id='test')
+            args = SimpleNamespace(action='compliance', build_id='test')
             with self.assertRaises(ValueError):
                 window.begin_stage(args, path)
             args.action = 'probe'
@@ -484,31 +497,13 @@ class DecoderWindowTests(unittest.TestCase):
             window.finish_stage(state, True, path)
             with self.assertRaises(ValueError):
                 window.begin_stage(args, path)
-            args.action = 'power'
+            args.action = 'compliance'
             state = window.begin_stage(args, path)
             window.finish_stage(state, False, path)
-            for action in ('probe', 'power', 'snapshot', 'mdec', 'compliance', 'h264', 'wave'):
+            for action in ('probe', 'compliance', 'h264', 'wave'):
                 args.action = action
                 with self.subTest(action=action), self.assertRaises(ValueError):
                     window.begin_stage(args, path)
-
-    def test_power_cycle_requires_verified_off_state_and_relocks_open(self):
-        with tempfile.TemporaryDirectory() as directory:
-            device = Path(directory)
-            (device / 'power_test').write_text('passed=1 DOS_SW_RESET0=0x0\n')
-            state = device / 'power_state'
-            state.write_text('VDEC[4]=1 NIC3[39]=0 (0=on 1=off)\n')
-            with patch.object(window, 't7_device', return_value=device), \
-                    patch.object(window, 'run') as run, \
-                    patch.object(window, 'set_power_permission') as permission, \
-                    patch.object(window, 'require_suspended'), \
-                    contextlib.redirect_stdout(io.StringIO()):
-                window.power_cycle()
-                self.assertEqual([call.args[0] for call in permission.call_args_list], [True, False])
-                self.assertEqual(run.call_args_list[-1].kwargs['timeout'], 8)
-                state.write_text('VDEC[4]=0 NIC3[39]=0 (0=on 1=off)\n')
-                with self.assertRaises(RuntimeError):
-                    window.power_cycle()
 
     def test_higher_stages_require_their_immediate_predecessor(self):
         with tempfile.TemporaryDirectory() as directory, \
@@ -516,63 +511,15 @@ class DecoderWindowTests(unittest.TestCase):
             path = Path(directory) / 'stages.json'
             path.touch()
             identity = {'boot': 'boot-test', 'build': 'test'}
-            for action, previous, passed in [('compliance', 'mdec', ['probe', 'power']),
-                                             ('compliance', 'mdec', ['probe', 'power', 'snapshot']),
-                                             ('h264-1080p', 'h264', ['probe', 'power', 'mdec', 'compliance'])]:
+            for action, previous, passed in [('compliance', 'probe', []),
+                                             ('h264', 'compliance', ['probe']),
+                                             ('h264-1080p', 'h264', ['probe', 'compliance'])]:
                 state = {'identity': identity, 'passed': passed}
                 with self.subTest(action=action), patch.object(window.json, 'loads', return_value=state):
                     args = SimpleNamespace(action=action, build_id='test')
                     with self.assertRaisesRegex(ValueError, 'Required previous stage: ' + previous):
                         window.begin_stage(args, path)
 
-    def test_mdec_cycle_blocks_open_on_read_or_power_off_failure(self):
-        with tempfile.TemporaryDirectory() as directory:
-            device = Path(directory)
-            result = device / 'mdec_test'
-            state = device / 'power_state'
-            def complete_step(*command, **kwargs):
-                step = int(command[-1].rsplit('write_text(', 1)[1].strip("')"))
-                (device / 'register_step').write_text(
-                    f'step={step if step < 13 else 0} value=0x0 failed=0\n')
-            for passed, off in ((False, True), (True, False), (True, True)):
-                result.write_text(f'passed={int(passed)} MDEC_PIC_DC_CTRL=0x0\n')
-                state.write_text(f'VDEC[4]={int(off)} NIC3[39]=0\n')
-                with self.subTest(passed=passed, off=off), \
-                        patch.object(window, 'power_cycle') as power, \
-                        patch.object(window, 't7_device', return_value=device), \
-                        patch.object(window, 'run', side_effect=complete_step) as run, \
-                        patch.object(window, 'set_power_permission') as permission, \
-                        patch.object(window, 'require_suspended'), \
-                        contextlib.redirect_stdout(io.StringIO()):
-                    if passed and off:
-                        window.mdec_cycle()
-                    else:
-                        with self.assertRaises(RuntimeError):
-                            window.mdec_cycle()
-                    power.assert_called_once()
-                    self.assertEqual(run.call_count, 13)
-                    self.assertIn('register_step', run.call_args.args[-1])
-                    self.assertEqual(run.call_args.kwargs['timeout'], 8)
-                    self.assertEqual([c.args[0] for c in permission.call_args_list],
-                                     [True, False] if passed and off else [True])
-
-    def test_register_read_timeout_stops_before_gate_write_or_poweroff_retry(self):
-        with tempfile.TemporaryDirectory() as directory:
-            device = Path(directory)
-            calls = []
-            def access(*command, **kwargs):
-                step = int(command[-1].rsplit('write_text(', 1)[1].strip("')"))
-                calls.append(step)
-                if step == 9:
-                    raise subprocess.TimeoutExpired('GCLK_EN read', 8)
-                (device / 'register_step').write_text(f'step={step} value=0x0 failed=0\n')
-            with patch.object(window, 'power_cycle'), \
-                    patch.object(window, 't7_device', return_value=device), \
-                    patch.object(window, 'run', side_effect=access), \
-                    patch.object(window, 'set_power_permission'), \
-                    contextlib.redirect_stdout(io.StringIO()), self.assertRaises(subprocess.TimeoutExpired):
-                window.mdec_cycle()
-            self.assertEqual(calls, list(range(1, 10)))
 
 
 if __name__ == '__main__':

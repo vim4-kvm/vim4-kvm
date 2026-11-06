@@ -33,14 +33,15 @@ Fluster 的 Meson 配方构建。授权不包含将参考源码、二进制或�
 [vdec-window.py](../packaging/kernel/vdec-window.py) 的 `compliance`、`fluster`、
 `performance` 接受离线准备的 `--validation-plan`；默认不 SSH。
 执行仍需原有显式执行标志、内核 manifest 和现场/一次性启动条件。
-原先仅面向历史内核的诊断动作保持原准入限制。
+历史内核继续使用其封存工具，不用当前入口重放原始寄存器实验。
 
-采用解码分层重构的主线 HEVC 候选须在验收计划设置
-`hevc_diagnostic_api: "debugfs-v1"`，并启用/挂载 debugfs。
-预检读取 `/sys/kernel/debug/aml-vdec/<platform-device>/` 下的
-`hevc_test` 与 `hevc_core_test`；缺声明、版本不匹配或缺文件均拒绝，
-不回退旧 sysfs。旧候选继续配套其已归档的工具/计划，不用新工具猜测接口。
-三个 bring-up 模块门在这一重构候选仍保留，去门属于后续独立行为系列。
+去掉 bring-up 门后的主线候选不传模块 opt-in 参数，也不执行强制电源/固件预检。
+加载后等待 udev 完成，正常 open/close 解码节点并确认 runtime suspend；
+HEVC 固件/电源由真实解码任务验证，不依赖旧 passing 缓存或 debugfs 预检文件。
+验收计划删除 `hevc_diagnostic_api`，带该旧字段的计划会明确拒绝。
+旧候选继续配套其已归档的工具/计划，不用新工具猜测接口。
+power/mdec/snapshot 动作及内核写入式诊断已删除，旧动作在参数解析时明确拒绝。
+power_state、faulted 两个只读状态属性保留；不增加新的寄存器操作入口。
 
 验证计划分成以下几组，具体字段校验见入口中的 `validate_acceptance_plan`、
 `require_acceptance_kernel` 和三个 `run_*` 函数：

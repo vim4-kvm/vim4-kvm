@@ -27,13 +27,11 @@ import time
 
 
 BOOT_ACTIONS = ('boot-install', 'arm-baseline', 'verify-baseline')
-ACTIONS = (*BOOT_ACTIONS, 'probe', 'power', 'snapshot', 'mdec', 'compliance', 'fluster',
+ACTIONS = (*BOOT_ACTIONS, 'probe', 'compliance', 'fluster',
            'performance', 'h264', 'h264-1080p', 'wave')
 BASE_ID = 'f283ab1f8a001a19bab5247afc4f9b0c00c1da99'
 BASE_RELEASE = '7.3.0-vim4kvm-uhd1+'
 BOOT_DIR = Path('/boot/kernels') / BASE_RELEASE
-HEVC_DIAGNOSTIC_API = 'debugfs-v1'
-HEVC_DIAGNOSTIC_ROOT = Path('/sys/kernel/debug/aml-vdec')
 BASE_FILES = {
     'Image': '855f0fa8caa49fdb9973bd7cd1cbbfaa2c5f62138574862e651e16eb0fda42b5',
     'vim4.dtb': 'd2333e962326d0710300b71e758440a94b177eb273921f70e5ba12eb5f640cf6',
@@ -45,22 +43,6 @@ FAILED_SOURCES = {
     'c6fc96a347d0929a9385c09b408c333a50834091',
     'a915603f5efb795afc72b5d92aa2c72e0e939a14',
 }
-REGISTER_STEPS = (
-    'CPU APB + DOS clocks + NIC3 on; require VDEC off',
-    'DOS_GCLK_EN0 read (VDEC off)',
-    'DOS_GCLK_EN0 write (preserve HCODEC)',
-    'DOS_GCLK_EN0 verify',
-    '800MHz + VDEC on + secure policy; verify domains and physical CLKCTRL',
-    'DOS_GCLK_EN0 verify after secure power-on',
-    'DOS_SW_RESET0 read',
-    'DOS_MEM_PD_VDEC read',
-    'GCLK_EN first read',
-    'GCLK_EN write',
-    'GCLK_EN verify',
-    'MDEC_PIC_DC_CTRL single read',
-    'clocks + VDEC off; release NIC3; verify off',
-)
-
 
 def require_candidate(action, proof, once=False):
     if once:
@@ -333,8 +315,8 @@ def validate_acceptance_plan(plan, proof):
         raise ValueError('Known failing candidate')
     if plan['kernel'] not in ('mainline', 'vendor'):
         raise ValueError('Expected mainline or vendor comparison')
-    if plan['kernel'] == 'mainline' and plan.get('hevc'):
-        require_hevc_diagnostic_api(plan)
+    if plan['kernel'] == 'mainline' and 'hevc_diagnostic_api' in plan:
+        raise ValueError('Obsolete HEVC preflight plan; use the normal runtime PM decoder')
     prefix = '7.3.' if plan['kernel'] == 'mainline' else '5.15.'
     if not proof['release'].startswith(prefix) or not proof.get('kernel_build_id'):
         raise ValueError('Kernel manifest does not match the comparison side')
@@ -429,7 +411,7 @@ def prepare_acceptance_decoder(plan, proof):
         for dependency in run('modinfo', '-F', 'depends', str(module)).strip().split(','):
             if dependency:
                 run('modprobe', dependency)
-        run('insmod', str(module), 'enable_t7=1', 't7_snapshot_only=0', timeout=10)
+        run('insmod', str(module), timeout=10)
         if build_id('/sys/module/aml_vdec_drv/notes/.note.gnu.build-id') != private['build_id']:
             raise ValueError('Loaded private decoder build ID differs')
     else:
@@ -437,18 +419,8 @@ def prepare_acceptance_decoder(plan, proof):
         relative = str(module.resolve().relative_to((Path('/lib/modules') / proof['release']).resolve()))
         if sha(module) != proof['modules'][relative]:
             raise ValueError('Decoder module differs from the full kernel package')
-        run('modprobe', 'aml_vdec_drv', 'enable_t7=1', 't7_snapshot_only=0', timeout=10)
-    probe_without_power()
-    mdec_cycle()
-    if plan.get('hevc'):
-        hevc_cycle(plan)
-        core_test = hevc_diagnostic_file(t7_device(), 'hevc_core_test')
-        set_power_permission(True)
-        run('python3', '-c', 'from pathlib import Path; '
-            f'Path({str(core_test)!r}).write_text("1")', timeout=8)
-        if not core_test.read_text().startswith('passed=1 '):
-            raise RuntimeError('HEVC firmware preflight failed')
-    set_power_permission(True)
+        run('modprobe', 'aml_vdec_drv', timeout=10)
+    probe_runtime_pm()
 
 
 def run_compliance(plan, output, deadline, env):
@@ -1041,7 +1013,7 @@ def begin_stage(args, path=Path('/tmp/vim4-vdec-stages.json')):
     state = json.loads(path.read_text()) if path.exists() else {}
     if state.get('identity') != identity:
         state = {'identity': identity, 'passed': []}
-    previous = {'power': 'probe', 'snapshot': 'power', 'mdec': 'power', 'compliance': 'mdec',
+    previous = {'compliance': 'probe',
                 'h264': 'compliance', 'h264-1080p': 'h264', 'wave': 'h264'}
     if state.get('pending') or state.get('failed'):
         raise ValueError('Previous stage did not finish; collect evidence and restore baseline')
@@ -1077,152 +1049,30 @@ def require_suspended(device):
         raise RuntimeError('Runtime PM did not suspend')
 
 
-POWER_PARAM = '/sys/module/aml_vdec_drv/parameters/allow_t7_power'
-
-
-def set_power_permission(enabled):
-    # A subprocess bounds a sysfs write which might block inside the kernel.
-    run('python3', '-c', 'from pathlib import Path; '
-        f'Path({POWER_PARAM!r}).write_text({"Y" if enabled else "N"!r})', timeout=8)
-
-
-def probe_without_power():
-    if Path(POWER_PARAM).read_text().strip() != 'N':
-        raise ValueError('Power opt-in must default off')
+def probe_runtime_pm():
+    """Exercise ordinary metadata opens without a permission or test cache."""
     run('udevadm', 'settle', '--timeout=5', timeout=8)
-    # Reproduce the previously fatal userspace operation while the gate is off.
-    run('python3', '-c', '''import errno, os, sys
-try:
-    fd = os.open(sys.argv[1], os.O_RDWR | os.O_NONBLOCK)
-except OSError as error:
-    if error.errno != errno.EPERM:
-        raise
-    print('OPEN_BLOCKED_EPERM')
-else:
-    os.close(fd)
-    raise RuntimeError('Open unexpectedly bypassed power gate')
-''', video_node('h264'), timeout=8)
     device = t7_device()
-    print('PRE_POWER_STATE', (device / 'power_state').read_text().strip(), flush=True)
-    if not (device / 'power_test').read_text().startswith('passed=0 '):
-        raise ValueError('Probe unexpectedly performed a power test')
     require_suspended(device)
-    print('PROBE_NO_DOS_MMIO; power gate off', flush=True)
-
-
-def power_cycle():
-    """Only one DOS read; this does not open video or run the decoder."""
-    device = t7_device()
-    run('udevadm', 'settle', '--timeout=5', timeout=8)
-    print('PRE_POWER_STATE', (device / 'power_state').read_text().strip(), flush=True)
-    set_power_permission(True)
-    run('python3', '-c', 'from pathlib import Path; '
-        f'Path({str(device / "power_test")!r}).write_text("1")', timeout=8)
-    result = (device / 'power_test').read_text().strip()
-    print('POWER_TEST', result, flush=True)
-    if not result.startswith('passed=1 '):
-        raise RuntimeError('Power test did not pass')
-    state = (device / 'power_state').read_text().strip()
-    print('POST_POWER_STATE', state, flush=True)
-    if not state.startswith('VDEC[4]=1 '):
-        raise RuntimeError('Secure VDEC domain did not power off')
+    print('PRE_OPEN_POWER_STATE', (device / 'power_state').read_text().strip(), flush=True)
+    run('python3', '-c', '''import os
+from pathlib import Path
+names = {'aml_dev_drv', 'aml_jpeg_decoder', 'aml_hevc_decoder'}
+opened = set()
+for path in sorted(Path('/sys/class/video4linux').glob('video*/name')):
+    name = path.read_text().strip()
+    if name in names:
+        fd = os.open('/dev/' + path.parent.name, os.O_RDWR | os.O_NONBLOCK)
+        os.close(fd)
+        opened.add(name)
+        print('OPEN_CLOSE_OK', name, flush=True)
+if 'aml_dev_drv' not in opened:
+    raise RuntimeError('Decoder node missing')
+''', timeout=8)
     require_suspended(device)
-    set_power_permission(False)
-
-
-def mdec_cycle():
-    """One DOS transaction per sysfs write; stop before any following step on error."""
-    power_cycle()
-    device = t7_device()
-    set_power_permission(True)
-    for step, description in enumerate(REGISTER_STEPS, 1):
-        print('REGISTER_STEP_BEGIN', step, description, flush=True)
-        run('python3', '-c', 'from pathlib import Path; '
-            f'Path({str(device / "register_step")!r}).write_text({str(step)!r})', timeout=8)
-        status = (device / 'register_step').read_text().strip()
-        expected = step if step < len(REGISTER_STEPS) else 0
-        if not status.startswith(f'step={expected} ') or not status.endswith(' failed=0'):
-            raise RuntimeError('Register step failed: ' + status)
-        print('REGISTER_STEP_COMPLETE', step, status, flush=True)
-    result = (device / 'mdec_test').read_text().strip()
-    print('MDEC_TEST', result, flush=True)
-    if not result.startswith('passed=1 '):
-        raise RuntimeError('MDEC single-read test did not pass')
-    state = (device / 'power_state').read_text().strip()
-    print('POST_MDEC_STATE', state, flush=True)
-    if not state.startswith('VDEC[4]=1 '):
-        raise RuntimeError('Secure VDEC domain did not power off after MDEC test')
-    require_suspended(device)
-    set_power_permission(False)
-
-
-def require_hevc_diagnostic_api(plan):
-    if plan.get('hevc_diagnostic_api') != HEVC_DIAGNOSTIC_API:
-        raise ValueError('Mainline HEVC preflight requires diagnostic API ' + HEVC_DIAGNOSTIC_API)
-
-
-def hevc_diagnostic_file(device, name):
-    path = HEVC_DIAGNOSTIC_ROOT / device.name / name
-    if not path.is_file():
-        raise RuntimeError('Missing manifested HEVC diagnostic: ' + str(path))
-    return path
-
-
-def hevc_cycle(plan):
-    """Probe HEVC power/clocks after MDEC validation, without firmware or DMA."""
-    require_hevc_diagnostic_api(plan)
-    device = t7_device()
-    power_test = hevc_diagnostic_file(device, 'hevc_test')
-    require_suspended(device)
-    if not (device / 'mdec_test').read_text().startswith('passed=1 '):
-        raise RuntimeError('HEVC probe requires the completed MDEC power sequence')
-    set_power_permission(True)
-    run('python3', '-c', 'from pathlib import Path; '
-        f'Path({str(power_test)!r}).write_text("1")', timeout=8)
-    result = power_test.read_text().strip()
-    print('HEVC_POWER_TEST', result, flush=True)
-    if not result.startswith('passed=1 ') or faulted():
-        raise RuntimeError('HEVC power-on/read/reference-release did not pass')
-    require_suspended(device)
-    set_power_permission(False)
-
-
-def outer_register_snapshot(payload):
-    """Stop at step eight; the reader independently denies all internal DOS addresses."""
-    if Path('/sys/module/aml_vdec_drv/parameters/t7_snapshot_only').read_text().strip() != 'Y':
-        raise ValueError('Snapshot requires the kernel-enforced eight-step limit')
-    power_cycle()
-    device = t7_device()
-    set_power_permission(True)
-    for step, description in enumerate(REGISTER_STEPS[:8], 1):
-        print('REGISTER_STEP_BEGIN', step, description, flush=True)
-        run('python3', '-c', 'from pathlib import Path; '
-            f'Path({str(device / "register_step")!r}).write_text({str(step)!r})', timeout=8)
-        status = (device / 'register_step').read_text().strip()
-        if not status.startswith(f'step={step} ') or not status.endswith(' failed=0'):
-            raise RuntimeError('Register step failed: ' + status)
-        print('REGISTER_STEP_COMPLETE', step, status, flush=True)
-    for name, path in (('clk', '/sys/kernel/debug/clk/clk_summary'),
-                       ('genpd', '/sys/kernel/debug/pm_genpd/pm_genpd_summary')):
-        try:
-            value = Path(path).read_text()
-        except OSError as error:
-            value = str(error)
-        (Path(payload) / f'active-{name}.txt').write_text(value)
-        print('ACTIVE_STATE', name, value, flush=True)
-    print('OUTER_SNAPSHOT_BEGIN', flush=True)
-    subprocess.run([str(Path(payload) / 'register-reader'), '--devmem',
-                    str(Path(payload) / 'addresses.txt')], check=True, timeout=20)
-    print('OUTER_SNAPSHOT_COMPLETE', flush=True)
-    # Zero never touches DOS and is valid even with the snapshot limit enabled.
-    run('python3', '-c', 'from pathlib import Path; '
-        f'Path({str(device / "register_step")!r}).write_text("0")', timeout=8)
-    state = (device / 'power_state').read_text().strip()
-    if not state.startswith('VDEC[4]=1 '):
-        raise RuntimeError('Snapshot abort did not power off VDEC')
-    print('POST_SNAPSHOT_STATE', state, flush=True)
-    require_suspended(device)
-    set_power_permission(False)
+    if faulted():
+        raise RuntimeError('Decoder fault after metadata open')
+    print('POST_OPEN_POWER_STATE', (device / 'power_state').read_text().strip(), flush=True)
 
 
 def board_window(args):
@@ -1292,32 +1142,16 @@ def board_window(args):
             run('modprobe', 'wave5', 't7_decode_test=1')
             candidate = 'wave5'
         else:
-            parameters = ['enable_t7=1']
-            # Only an explicit higher stage may leave the eight-step limit.
-            # Open still needs allow_t7_power and a successful full MDEC test.
-            if args.action in ('mdec', 'compliance', 'h264', 'h264-1080p'):
-                parameters.append('t7_snapshot_only=0')
-            run('modprobe', 'aml-vdec-drv', *parameters)
+            run('modprobe', 'aml-vdec-drv')
             candidate = 'aml_vdec_drv'
         if args.action == 'probe':
-            probe_without_power()
+            probe_runtime_pm()
             if faulted():
                 raise RuntimeError('Fault reported at probe')
-        elif args.action == 'power':
-            power_cycle()
-        elif args.action == 'mdec':
-            mdec_cycle()
-        elif args.action == 'snapshot':
-            outer_register_snapshot(args.payload)
         elif args.action == 'compliance':
-            mdec_cycle()
-            set_power_permission(True)
             run('v4l2-compliance', '-d', video_node('h264'), timeout=20)
             require_suspended(t7_device())
         else:
-            if args.action in ('h264', 'h264-1080p'):
-                mdec_cycle()
-                set_power_permission(True)
             video_node('wave' if args.action == 'wave' else 'h264')
             output = Path('/tmp/vim4-vdec-' + args.action + '.i420')
             factory = 'v4l2h264dec' if args.action == 'wave' else 'v4l2slh264dec'
@@ -1364,8 +1198,6 @@ def board_window(args):
         else:
             try:
                 if candidate and Path('/sys/module', candidate).exists():
-                    if candidate == 'aml_vdec_drv':
-                        set_power_permission(False)
                     run('modprobe', '-r', candidate)
                 for name in sorted(loaded.intersection(removed)):
                     run('modprobe', name)
@@ -1438,15 +1270,11 @@ def main():
             return
         print(json.dumps({'action': args.action, 'offline': True, 'ssh': False,
                           'order': ['heavy then board locks', 'RAM-only boot or supervised baseline recovery',
-                                    'probe: gate off, EPERM, read-only SMC status',
-                                    'power: explicit opt-in, one DOS read, verified power off',
-                                    'snapshot: stop after step 8; read outer controls, then abort/power off',
-                                    'mdec: thirteen separate steps; EN0 before domain, GCLK read before write',
-                                    'compliance only after probe + power + mdec receipts',
+                                    'probe: ordinary node opens/closes, runtime PM suspend',
+                                    'compliance after normal runtime PM probe',
                                     'stop clients', 'exclusive codec lease', args.action,
                                     'safe unload or RESET_REQUIRED', 'restore boot baseline',
-                                    'encoding + HDMI + services + UDC + actual HID verification'],
-                          'register_steps': dict(enumerate(REGISTER_STEPS, 1))}, indent=2))
+                                    'encoding + HDMI + services + UDC + actual HID verification']}, indent=2))
         return
     if not (args.at_board or args.once_baseline) or args.manifest is None:
         parser.error('--execute requires --at-board or --once-baseline, and --manifest')
