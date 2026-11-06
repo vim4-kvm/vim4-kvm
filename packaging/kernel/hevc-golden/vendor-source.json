@@ -1,0 +1,12 @@
+{
+  "common_drivers_revision": "31619c527655514b4c89516ef609b6db1dd47db6",
+  "deployed_hdrdual6_source_proven": false,
+  "files": {
+    "drivers/media_modules/common/register/register.c": "3cbe4981e2a86944577751af05846237ef425d14049dd52d75a18b28a4bdf407",
+    "drivers/media_modules/common/register/register.h": "a3636d19b5e65cff0882e74f7f9363ecaa1ceec3854ff2b79463f1d987ab9af1",
+    "drivers/media_modules/frame_provider/decoder/utils/amvdec.c": "e0e9b18a3e9961fdc7b5fdbcdee5dc5a111df38bad711740c988f339c7c09d22",
+    "drivers/media_modules/frame_provider/decoder/utils/vdec_power_ctrl.c": "122ce117fd627a561c64375f60a4bc82cb1d49613299aba25b409f7abc4e806b",
+    "drivers/media_modules/frame_provider/decoder/utils/vdec.c": "42832a0f2fbe79f91aa308aaebb4686f44e21ab66e30c5b33869f1861836e5d3",
+    "drivers/media_modules/frame_provider/decoder/h265/vh265.c": "e28cdc9b73f30b6f48ab3b251e6b2595c80eee8552e6bf6f69d51c1655792f1e"
+  }
+}

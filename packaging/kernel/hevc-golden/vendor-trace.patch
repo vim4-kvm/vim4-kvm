@@ -1,0 +1,228 @@
+--- a/drivers/media_modules/common/register/register.c
++++ b/drivers/media_modules/common/register/register.c
+@@ -42,6 +42,31 @@
+ static u32 register_debug;
+ module_param(register_debug, uint, 0664);
+ 
++static bool hevc_golden_trace;
++module_param(hevc_golden_trace, bool, 0644);
++static unsigned int hevc_golden_current_phase;
++
++void hevc_golden_event(char op, unsigned long reg, unsigned int value)
++{
++	if (unlikely(READ_ONCE(hevc_golden_trace)))
++		trace_printk("HGT p=%u op=%c reg=%04lx val=%08x\n",
++			     READ_ONCE(hevc_golden_current_phase), op, reg, value);
++}
++EXPORT_SYMBOL_GPL(hevc_golden_event);
++
++void hevc_golden_phase(unsigned int phase)
++{
++	WRITE_ONCE(hevc_golden_current_phase, phase);
++	hevc_golden_event('E', 0, phase);
++}
++EXPORT_SYMBOL_GPL(hevc_golden_phase);
++
++static void hevc_golden_access(char op, unsigned long reg, unsigned int value)
++{
++	if ((reg >= 0x3000 && reg < 0x3f00) || (reg >= 0x3f33 && reg <= 0x3f35))
++		hevc_golden_event(op, reg, value);
++}
++
+ void registers_offset_config(struct bus_reg_desc *offset_from, s32 val, u32 size)
+ {
+ 	u32 i;
+@@ -134,6 +159,7 @@
+ 	}
+ 
+ 	writel(val, reg_adr);
++	hevc_golden_access('W', reg_compat_offset + addr, val);
+ }
+ EXPORT_SYMBOL(write_dos_reg);
+ 
+@@ -157,6 +183,7 @@
+ 	reg_adr = reg_base[DOS_BUS] + ((reg_compat_offset + addr) << 2);
+ 
+ 	value = readl(reg_adr);
++	hevc_golden_access('R', reg_compat_offset + addr, value);
+ 
+ 	if (unlikely(register_debug)) {
+ 		if (register_debug & CODEC_REG_READ_DEBUG) {
+@@ -173,10 +200,13 @@
+ 
+ int read_dos_reg_comp(ulong addr)
+ {
++	int value;
++
+ 	if (is_support_new_dos_dev())
+ 		return read_dos_reg(addr);
+-	else
+-		return aml_read_dosbus((uint)addr);
++	value = aml_read_dosbus((uint)addr);
++	hevc_golden_access('R', addr, value);
++	return value;
+ }
+ EXPORT_SYMBOL(read_dos_reg_comp);
+ 
+@@ -184,8 +214,10 @@
+ {
+ 	if (is_support_new_dos_dev())
+ 		write_dos_reg(addr, val);
+-	else
++	else {
+ 		aml_write_dosbus((uint)addr, (uint)val);
++		hevc_golden_access('W', addr, val);
++	}
+ }
+ EXPORT_SYMBOL(write_dos_reg_comp);
+ 
+--- a/drivers/media_modules/common/register/register.h
++++ b/drivers/media_modules/common/register/register.h
+@@ -40,6 +40,9 @@
+ 
+ #define READ_VREG(addr) read_dos_reg_comp(addr)
+ 
++void hevc_golden_phase(unsigned int phase);
++void hevc_golden_event(char op, unsigned long reg, unsigned int value);
++
+ 
+ int read_dos_reg(ulong addr);
+ void write_dos_reg(ulong addr, int val);
+--- a/drivers/media_modules/frame_provider/decoder/utils/amvdec.c
++++ b/drivers/media_modules/frame_provider/decoder/utils/amvdec.c
+@@ -18,6 +18,7 @@
+  * Description:
+  */
+ #define DEBUG
++#include "../../../common/register/register.h"
+ #include <linux/kernel.h>
+ #include <linux/types.h>
+ #include <linux/errno.h>
+@@ -668,6 +669,8 @@
+ 		break;
+ 	}
+ 
++	if (type == VFORMAT_HEVC)
++		hevc_golden_event('L', format, vdec);
+ 	if (format < FIRMWARE_MAX) {
+ 		if (is_swap)
+ 			ret = tee_load_video_fw_swap(format, vdec, is_swap);
+@@ -972,17 +975,20 @@
+ s32 amhevc_vdec_loadmc_ex(enum vformat_e type, struct vdec_s *vdec,
+ 	const char *name, char *def)
+ {
++	s32 result = -1;
++
++	hevc_golden_phase(2);
+ 	if (has_hevc_vdec())
+ 		if (fw_tee_enabled())
+-			return optee_load_fw(type, name);
++			result = optee_load_fw(type, name);
+ 		else {
+ 			if (name && strstr(name, "back") != NULL) {
+-				return am_vdec_loadmc_back_ex(vdec, name, def, &amhevc_back_loadmc);
++				result = am_vdec_loadmc_back_ex(vdec, name, def, &amhevc_back_loadmc);
+ 			} else
+-				return am_vdec_loadmc_ex(vdec, name, def, &amhevc_loadmc);
+-		}
+-	else
+-		return -1;
++				result = am_vdec_loadmc_ex(vdec, name, def, &amhevc_loadmc);
++		}
++	hevc_golden_event('F', 0, result);
++	return result;
+ }
+ EXPORT_SYMBOL(amhevc_vdec_loadmc_ex);
+ 
+@@ -1055,6 +1061,7 @@
+ 
+ void amhevc_start(void)
+ {
++	hevc_golden_phase(5);
+ 	if (has_hevc_vdec()) {
+ #ifdef CONFIG_WAKELOCK
+ 		amvdec_wake_lock();
+@@ -1169,6 +1176,7 @@
+ 
+ void amhevc_stop(void)
+ {
++	hevc_golden_phase(8);
+ 	if (has_hevc_vdec()) {
+ 		ulong timeout = jiffies + HZ/10;
+ 
+--- a/drivers/media_modules/frame_provider/decoder/utils/vdec_power_ctrl.c
++++ b/drivers/media_modules/frame_provider/decoder/utils/vdec_power_ctrl.c
+@@ -269,6 +269,9 @@
+ {
+ 	const struct power_manager_s *pm = of_device_get_match_data(dev);
+ 
++	if (id == VDEC_HEVC)
++		hevc_golden_phase(1);
++
+ 	if (get_cpu_major_id() == AM_MESON_CPU_MAJOR_ID_T5M)
+ 		pm_vdec_power_switch(pm->pd_data, VDEC_1, true);    //enable dos top PDID_T5M_DOS_GE2D_WRAP
+ 
+--- a/drivers/media_modules/frame_provider/decoder/utils/vdec.c
++++ b/drivers/media_modules/frame_provider/decoder/utils/vdec.c
+@@ -19,6 +19,7 @@
+  */
+ #define DEBUG
+ #include <linux/kernel.h>
++#include "../../../common/register/register.h"
+ #include <linux/spinlock.h>
+ #include <linux/types.h>
+ #include <linux/errno.h>
+@@ -1898,6 +1899,8 @@
+ 	struct vframe_block_list_s *block = NULL;
+ 	int dummy;
+ 
++	if (input->target == VDEC_INPUT_TARGET_HEVC)
++		hevc_golden_phase(4);
+ 	/* full reset to HW input */
+ 	if (input->target == VDEC_INPUT_TARGET_VLD) {
+ 		WRITE_VREG(VLD_MEM_VIFIFO_CONTROL, 0);
+@@ -5245,6 +5248,8 @@
+ {
+ 	int cpu_type = get_cpu_major_id();
+ 
++	hevc_golden_phase(9);
++
+ 	if (is_vcpu_clk_set()) {
+ 		SET_VREG_MASK(DOS_GCLK_EN3, (1 << 2)); //turn on vcpu clock
+ 	}
+--- a/drivers/media_modules/frame_provider/decoder/h265/vh265.c
++++ b/drivers/media_modules/frame_provider/decoder/h265/vh265.c
+@@ -19,6 +19,7 @@
+  */
+ #define DEBUG
+ #include <linux/kernel.h>
++#include "../../../common/register/register.h"
+ #include <linux/module.h>
+ #include <linux/types.h>
+ #include <linux/errno.h>
+@@ -11755,6 +11756,9 @@
+ 	h265_timeout_unlock(hevc, flags);
+ 
+ 	dec_status = READ_VREG(HEVC_DEC_STATUS_REG);
++	hevc_golden_event('I', 0x30c0, dec_status);
++	if (dec_status == HEVC_DECPIC_DATA_DONE)
++		hevc_golden_phase(7);
+ 
+ 	if (dec_status == HEVC_SLICE_SEGMENT_DONE) {
+ 		ATRACE_COUNTER(hevc->trace.decode_time_name, DECODER_ISR_HEAD_DONE);
+@@ -12311,6 +12315,7 @@
+ #ifdef CONFIG_AMLOGIC_MEDIA_ENHANCEMENT_DOLBYVISION
+ 	struct vdec_s *vdec = hw_to_vdec(hevc);
+ #endif
++	hevc_golden_phase(3);
+ 	/* H265_DECODE_INIT(); */
+ 
+ 	hevc_config_work_space_hw(hevc);
+@@ -14265,6 +14270,7 @@
+ 	ATRACE_COUNTER(hevc->trace.decode_run_time_name, TRACE_RUN_LOADING_RESTORE_END);
+ 	vdec_enable_input(vdec);
+ 
++	hevc_golden_phase(5);
+ 	WRITE_VREG(HEVC_DEC_STATUS_REG, HEVC_ACTION_DONE);
+ 
+ 	if (vdec_frame_based(vdec)) {

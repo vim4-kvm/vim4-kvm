@@ -18,6 +18,7 @@
 |---|---|---|
 | [workspace.py](../tools/workspace.py) | 无 | 工作区管理与构建。 |
 | [vm](../tools/vm) | 无；写远端 | Mac 管理 VM 工作树；推送预览列出 origin 尚未包含的提交，来源分支未发布时也可推新任务分支，仍禁止推受保护分支。 |
+| [hevc-golden/align.py](../packaging/kernel/hevc-golden/align.py) | 无 | 离线归一化/对齐厂商与7.3轨迹；拒绝丢事件或snapshot冒充完整访问，补丁/边界见同目录README。 |
 | [ubuntu-build.py](../tools/ubuntu-build.py)、ubuntu-image.py、[packaging/ubuntu/](../packaging/ubuntu)、[packaging/image/](../packaging/image) | 无 | 组件打包与镜像组装；开发包可指定目标已安装版本下限。 |
 | [packaging/kernel/](../packaging/kernel) | 独占 | 内核构建及板端准备。 |
 | [build-integration.py](../packaging/kernel/build-integration.py) | 无 | 持heavy票离线构建并封存生产/调试RAM候选；复用同一O=时同步并核对生效配置，保存生成头证据，分别传构建号可指定顺序。 |

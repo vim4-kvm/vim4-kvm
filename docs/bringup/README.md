@@ -36,6 +36,8 @@
 
 ## 2026-11-05
 
+- [HEVC 金标准轨迹离线方案](2026-11-05-hevc-golden-plan.md) — kernel video；两侧补丁与对齐工具，hdrdual6源码/模块兼容性未证实；两窗方案待审查及用户批准，未碰板。
+
 - [HEVC 首次启动离线对照](2026-11-05-hevc-start.md) — kernel video；r69/r70有效AU无SOURCE_CHANGE，WAIT_FLAG修正无效；[首slice握手候选](2026-11-05-hevc-header-handshake.md)与compliance/首帧短清单待t3k统一上板。
 
 - [MR3/4/5 缺口参考定位](2026-11-05-vdec-gap-references.md) — kernel video；JM与DQBUF定位缺口项导致ERROR，含S4索引修正的topic修复26项KUnit通过，像素未上板；[验证计划](2026-11-05-vdec-gap-validation-plan.md)已批准。
