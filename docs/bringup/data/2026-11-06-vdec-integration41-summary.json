@@ -1,0 +1,104 @@
+{
+  "status": "Stopped: K9 natural coexistence failed; no decode executed",
+  "source": "f41a9bfd20c09220978f0e348385ad8aaa164048",
+  "release": "7.3.1-vim4-20261107",
+  "build_id": "3facecf3c626ad5a254b66cfbe8636287e5e7ee2",
+  "normal_ram_sha256": "7fc2e46084b579f2889a229afe13ee4a9fa7f13bec11aea07273bd7834b6d0a3",
+  "no_radio_ram_sha256": "12e84f70a07cbf2567877ef190292cb38923ab9321961adc03565892d51e5ab3",
+  "manifest_sha256": "b73709fc7bb3a32c5c584420e65a76c231112f58503105f9aea48e93420beff6",
+  "k9": {
+    "natural_probe": "Fail: overlapping DOS MMIO region request",
+    "bindings": {
+      "wave5": {
+        "loaded": true,
+        "drivers": {
+          "platform:vdec": [
+            "fe310000.video-codec"
+          ]
+        }
+      },
+      "t7_jpeg": {
+        "loaded": true,
+        "drivers": {
+          "platform:t7-jpeg": [
+            "fe320000.jpeg-encoder"
+          ]
+        }
+      },
+      "aml_vdec_drv": {
+        "loaded": true,
+        "drivers": {
+          "platform:aml-vdec-drv": []
+        }
+      }
+    },
+    "busy_open": "Not run",
+    "kvm_activity": "Not run",
+    "decoder_pm": "Not run",
+    "decoder_run": "Not run",
+    "encoder_reload": "Not run"
+  },
+  "counts": {
+    "Not run": 132
+  },
+  "attempted": 0,
+  "old_success_covered": 0,
+  "regression_conclusion": "Pixel regression not evaluated",
+  "boots": {
+    "boots": [
+      {
+        "window": 109,
+        "release": "7.3.1-vim4-20261107",
+        "requested": true,
+        "offset": 27450,
+        "linux_monotonic_ns": 752143464516916,
+        "cold_reset": false,
+        "ssh_identity": {
+          "release": "7.3.1-vim4-20261107",
+          "build_id": "3facecf3c626ad5a254b66cfbe8636287e5e7ee2",
+          "cmdline": "console=tty0 root=PARTUUID=bcb80000-02 rootwait rw rootfstype=ext4 rootflags=data=ordered console=ttyS0,921600n8 earlycon=meson,0xfe078000 no_console_suspend net.ifnames=0 loglevel=7 panic=20 mem_sleep_default=s2idle modprobe.blacklist=crg_udc,t7_hdmirx,t7_vdin_test,wave5 cma=512M@0x10000000-0xf0000000 vim4.full_kvm=1 vim4.eth_mac=c8:63:14:74:70:0d systemd.mask=tvserver.service systemd.mask=audioserver.service systemd.mask=one-kvm-edge.service systemd.mask=one-kvm-edge-gateway.service systemd.mask=one-kvm-edge-usb.service systemd.mask=binder.service systemd.mask=bluetooth-khadas.service systemd.mask=rc-local.service oops=panic panic=20 init=/var/lib/vim4-kvm/ram-candidates/hwdecode/integration41/3facecf3c626ad5a254b66cfbe8636287e5e7ee2/init module_blacklist=brcmfmac,hci_uart,btbcm initcall_blacklist=mmc_pwrseq_simple_driver_init systemd.mask=bluetooth.service",
+          "boot_id": "d45e86c8-8d82-4790-93ec-362f28085551",
+          "config_sha256": "811b3b0c925ebdc44ae724f37947b28645ac4ed10971d5aa09636a4a64dc6513",
+          "config": "DEFAULT display-once\nTIMEOUT 1\nLABEL display-once\n  LINUX /var/lib/vim4-kvm/ram-candidates/hwdecode/integration41/3facecf3c626ad5a254b66cfbe8636287e5e7ee2/Image\n  FDT /var/lib/vim4-kvm/ram-candidates/hwdecode/integration41/3facecf3c626ad5a254b66cfbe8636287e5e7ee2/vim4.dtb\n  APPEND console=tty0 root=PARTUUID=bcb80000-02 rootwait rw rootfstype=ext4 rootflags=data=ordered console=ttyS0,921600n8 earlycon=meson,0xfe078000 no_console_suspend net.ifnames=0 loglevel=7 panic=20 mem_sleep_default=s2idle modprobe.blacklist=crg_udc,t7_hdmirx,t7_vdin_test,wave5 cma=512M@0x10000000-0xf0000000 vim4.full_kvm=1 vim4.eth_mac=c8:63:14:74:70:0d systemd.mask=tvserver.service systemd.mask=audioserver.service systemd.mask=one-kvm-edge.service systemd.mask=one-kvm-edge-gateway.service systemd.mask=one-kvm-edge-usb.service systemd.mask=binder.service systemd.mask=bluetooth-khadas.service systemd.mask=rc-local.service oops=panic panic=20 init=/var/lib/vim4-kvm/ram-candidates/hwdecode/integration41/3facecf3c626ad5a254b66cfbe8636287e5e7ee2/init module_blacklist=brcmfmac,hci_uart,btbcm initcall_blacklist=mmc_pwrseq_simple_driver_init systemd.mask=bluetooth.service\n"
+        }
+      },
+      {
+        "window": 109,
+        "release": "7.3.1-vim4-20261105",
+        "requested": true,
+        "offset": 111049,
+        "linux_monotonic_ns": 752179887033541,
+        "cold_reset": false,
+        "ssh_identity": {
+          "release": "7.3.1-vim4-20261105",
+          "build_id": "bdbfa439f298e92b5bad092528d11119a974f262",
+          "cmdline": "console=tty0 root=PARTUUID=bcb80000-02 rootwait rw rootfstype=ext4 rootflags=data=ordered console=ttyS0,921600n8 earlycon=meson,0xfe078000 no_console_suspend net.ifnames=0 loglevel=7 panic=20 mem_sleep_default=s2idle modprobe.blacklist=crg_udc,t7_hdmirx,t7_vdin_test,wave5 cma=512M@0x10000000-0xf0000000 vim4.full_kvm=1 vim4.eth_mac=c8:63:14:74:70:0d systemd.mask=tvserver.service systemd.mask=audioserver.service systemd.mask=one-kvm-edge.service systemd.mask=one-kvm-edge-gateway.service systemd.mask=one-kvm-edge-usb.service systemd.mask=binder.service systemd.mask=bluetooth-khadas.service systemd.mask=rc-local.service",
+          "boot_id": "f777553b-d165-4a7c-9ef7-605df7b81a41"
+        }
+      }
+    ],
+    "cold_resets": [],
+    "total_cold_resets": 0,
+    "stop_third_cold_reset": false,
+    "caveat": "Receive-chunk monotonic times; UART loss can obscure banners. Live SSH identity is independent."
+  },
+  "recovery": {
+    "window": 109,
+    "restored": true,
+    "protected_files": 2372,
+    "video": {
+      "fps": 59.57614323388159,
+      "first": 9,
+      "last": 307,
+      "width": 3840,
+      "height": 2160
+    },
+    "uart_sha256": "d177a3a6e9e6fca8fe6648162bb1de0b0956d33c315cc3746ea29834633de596",
+    "archive_files": 782,
+    "phase": null,
+    "error": {
+      "error": "before failed: 1"
+    }
+  },
+  "full_csv_sha256": "4530244ad887c8113472a0ff9378e3564a0a9497511ae39af19e15407a25b1ce"
+}
