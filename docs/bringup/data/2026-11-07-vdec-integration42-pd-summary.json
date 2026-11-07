@@ -1,0 +1,594 @@
+{
+  "counts": {
+    "Success": 127,
+    "Fail": 0,
+    "Error": 3,
+    "Timeout": 2,
+    "Not run": 0
+  },
+  "attempted": 132,
+  "original_success_attempted": 120,
+  "original_success_regressions": [],
+  "deployment": false,
+  "kernel_source": "3facfaa37284f7193508c2a16fbf5162c6242616",
+  "release": "7.3.1-vim4-20261107.2",
+  "build_id": "fa5a9fa53dc3f84802722702f18623730ab81d83",
+  "candidate_sha256": "7a32b63ceaeaa0f460015a2f545344ee3ff2e0833999611dd8f9a08096d29457",
+  "windows": [
+    {
+      "window": 111,
+      "full_results": {},
+      "video": {
+        "fps": 59.54807755398066,
+        "first": 6,
+        "last": 304,
+        "width": 3840,
+        "height": 2160
+      },
+      "archive_files": 887,
+      "uart_sha256": "3d6f0770f3b4114fe4ca3af6ccd375d1342bc2158ec9bdb17bce4b0d54fd8589",
+      "inventory_sha256": "b610090fe56ddec1fef7a1d47b8beeefe860feae0b77056676b3c15e8923a399",
+      "phase_sha256": "771333a461e4b8cabe404efc62cafe6f176b4c86b32d7094a254513368850052",
+      "protected_files": 2372,
+      "error": {
+        "error": "execution failed: 1"
+      },
+      "recovery_ssh_seconds": 26.793153708,
+      "returned_identity_sha256": "fcecba7ea84d5715ab41dad804049204762a4c549b03771843c6cdb9eb9ed8c8",
+      "complete_sha256": "fa5ebb481c1bde966e3ae945c86e35e8d6f169085abaf8b6aafc3864aed6d7f7",
+      "fifo_order": 1630,
+      "known_timeout": null,
+      "adjudication": "Missing frozen baseline field; actual cip_B pixels passed; raw-derived metadata replay resolves schema mismatch"
+    },
+    {
+      "window": 112,
+      "full_results": {},
+      "video": {
+        "fps": 60.16210789503331,
+        "first": 2,
+        "last": 303,
+        "width": 3840,
+        "height": 2160
+      },
+      "archive_files": 817,
+      "uart_sha256": "132aade48e1c935e0da0b923773aaa831b0853e58c3e651bd5957ae6d000914e",
+      "inventory_sha256": "27d5f34ce1a31f060dc8de6050c77ba67b70721048dc67e4384050665281dec5",
+      "phase_sha256": null,
+      "protected_files": 2372,
+      "error": {
+        "error": "prime failed: 1"
+      },
+      "recovery_ssh_seconds": 29.496565209,
+      "returned_identity_sha256": "1cc40f996155ce8b3bb7a2cb8506218e833d79a4e0107ef5d8ec9a90e769ab79",
+      "complete_sha256": "fa5ebb481c1bde966e3ae945c86e35e8d6f169085abaf8b6aafc3864aed6d7f7",
+      "fifo_order": 1631,
+      "known_timeout": null,
+      "adjudication": "First-AU/full-stream SHA pairing guard; stopped before decode; corrected offline"
+    },
+    {
+      "window": 113,
+      "full_results": {
+        "Success": 15,
+        "Error": 3
+      },
+      "video": {
+        "fps": 59.569436411413214,
+        "first": 8,
+        "last": 306,
+        "width": 3840,
+        "height": 2160
+      },
+      "archive_files": 1533,
+      "uart_sha256": "8f896c7a4eda29f1cc4e033e061d39628ff301417258108e520865fafd6e7732",
+      "inventory_sha256": "8baecdd63678163f07602dda97ab421451ad5fd1c028732618959301a02080c6",
+      "phase_sha256": "eb997dc05d389ad3afc4fd992e32cfbed11248600aa4dbac9a43f45fb0ab65f1",
+      "protected_files": 2372,
+      "error": null,
+      "recovery_ssh_seconds": 30.207239542,
+      "returned_identity_sha256": "0514bdab3aac0a0c9f0d9fa63be8df94d50aff533c7890a1608d23bcc9333126",
+      "complete_sha256": "fa5ebb481c1bde966e3ae945c86e35e8d6f169085abaf8b6aafc3864aed6d7f7",
+      "fifo_order": 1633,
+      "known_timeout": null,
+      "adjudication": null
+    },
+    {
+      "window": 114,
+      "full_results": {
+        "Success": 112,
+        "Timeout": 1
+      },
+      "video": {
+        "fps": 59.5833241171627,
+        "first": 6,
+        "last": 304,
+        "width": 3840,
+        "height": 2160
+      },
+      "archive_files": 2911,
+      "uart_sha256": "c951333a0a1f9aa3cb033ef9b25fca0b58383bcc8620c94e851114a03a7383bb",
+      "inventory_sha256": "b2293f8f746f59b7c8d9b00e4026529598b76ffd5e571a78e8b99c74a10d64ed",
+      "phase_sha256": "d13cad251b51c75790f22ef5aa83a015bf7092e63619fb680e8c43be4e565b7d",
+      "protected_files": 2372,
+      "error": {
+        "error": "execution failed: 1"
+      },
+      "recovery_ssh_seconds": 30.615253542,
+      "returned_identity_sha256": "38285df1914037d79583a101115fea0027c4fefccb24a4286c0d6a71b65510e8",
+      "complete_sha256": "fa5ebb481c1bde966e3ae945c86e35e8d6f169085abaf8b6aafc3864aed6d7f7",
+      "fifo_order": 1634,
+      "known_timeout": "LTRPSPS_A_Qualcomm_1",
+      "adjudication": null
+    },
+    {
+      "window": 115,
+      "full_results": {
+        "Timeout": 1
+      },
+      "video": {
+        "fps": 59.55278506318228,
+        "first": 6,
+        "last": 304,
+        "width": 3840,
+        "height": 2160
+      },
+      "archive_files": 888,
+      "uart_sha256": "6bd86e247baeb13cf861429fc2cbb35845fcca22546143ddfe62bed8980384dc",
+      "inventory_sha256": "325fefb517aefe2f9af73773641a71be83b5f9cec3ea150d2b34cba2c5bbdfdf",
+      "phase_sha256": "8f55b874049b7ba4b51a2e2bc62cf2205a1e4381ef2122dbba2f32d12f9ca3e0",
+      "protected_files": 2372,
+      "error": {
+        "error": "execution failed: 1"
+      },
+      "recovery_ssh_seconds": 26.837683667,
+      "returned_identity_sha256": "91ce74b7c813c7f0859fb324ed149dd85b5b305473791dd30d7161758ee2a228",
+      "complete_sha256": "fa5ebb481c1bde966e3ae945c86e35e8d6f169085abaf8b6aafc3864aed6d7f7",
+      "fifo_order": 1635,
+      "known_timeout": "WPP_D_ericsson_MAIN_2",
+      "adjudication": null
+    }
+  ],
+  "k9_statistics": [
+    {
+      "path": "/Users/deepdream/Developer/github/localhost-copilot/vim4-kvm-integration42/build/hwdecode-parity/run113/archive/results/k9/after/measure-9010.json",
+      "sha256": "05e073d4b1696016d87f3cc8d1b86388272572a708cb4e3149aa6053038563c1",
+      "capture_completions": 600,
+      "fps": 59.99773030289038,
+      "errors": [],
+      "application_before": {
+        "status": {
+          "state": "streaming",
+          "device": "VIM4 HDMI Input",
+          "format": "NV12",
+          "resolution": [
+            3840,
+            2160
+          ],
+          "clients": 1,
+          "target_fps": 60,
+          "fps": 59.99462
+        },
+        "pid": "1495"
+      },
+      "application_after": {
+        "status": {
+          "state": "streaming",
+          "device": "VIM4 HDMI Input",
+          "format": "NV12",
+          "resolution": [
+            3840,
+            2160
+          ],
+          "clients": 1,
+          "target_fps": 60,
+          "fps": 59.994263
+        },
+        "pid": "1495"
+      },
+      "seconds": 10.36401823899999,
+      "lost": []
+    },
+    {
+      "path": "/Users/deepdream/Developer/github/localhost-copilot/vim4-kvm-integration42/build/hwdecode-parity/run113/archive/results/k9/after-final/measure-9010.json",
+      "sha256": "e48723905dba351740ff55ea44072942a1dc11ad52054c6cf2347eaae748a310",
+      "capture_completions": 600,
+      "fps": 59.99758006421631,
+      "errors": [],
+      "application_before": {
+        "status": {
+          "state": "streaming",
+          "device": "VIM4 HDMI Input",
+          "format": "NV12",
+          "resolution": [
+            3840,
+            2160
+          ],
+          "clients": 1,
+          "target_fps": 60,
+          "fps": 60.005165
+        },
+        "pid": "4178"
+      },
+      "application_after": {
+        "status": {
+          "state": "streaming",
+          "device": "VIM4 HDMI Input",
+          "format": "NV12",
+          "resolution": [
+            3840,
+            2160
+          ],
+          "clients": 1,
+          "target_fps": 60,
+          "fps": 59.998146
+        },
+        "pid": "4178"
+      },
+      "seconds": 10.344094927000015,
+      "lost": []
+    },
+    {
+      "path": "/Users/deepdream/Developer/github/localhost-copilot/vim4-kvm-integration42/build/hwdecode-parity/run113/archive/results/k9/before/measure-9000.json",
+      "sha256": "d6642de37066c5037a087d910cb0f9499ab7131857d796d46509172bcadf3ba3",
+      "capture_completions": 600,
+      "fps": 59.99741780729371,
+      "errors": [],
+      "application_before": {
+        "status": {
+          "state": "streaming",
+          "device": "VIM4 HDMI Input",
+          "format": "NV12",
+          "resolution": [
+            3840,
+            2160
+          ],
+          "clients": 1,
+          "target_fps": 60,
+          "fps": 65.457794
+        },
+        "pid": "854"
+      },
+      "application_after": {
+        "status": {
+          "state": "streaming",
+          "device": "VIM4 HDMI Input",
+          "format": "NV12",
+          "resolution": [
+            3840,
+            2160
+          ],
+          "clients": 1,
+          "target_fps": 60,
+          "fps": 59.99552
+        },
+        "pid": "854"
+      },
+      "seconds": 10.396089801999999,
+      "lost": []
+    },
+    {
+      "path": "/Users/deepdream/Developer/github/localhost-copilot/vim4-kvm-integration42/build/hwdecode-parity/run113/archive/results/k9/before/measure-9001.json",
+      "sha256": "d2cfb3d14dfa0a2acf06e498e8f9ed51a38523613dd4d9534fab6517f8e3d1ff",
+      "capture_completions": 600,
+      "fps": 59.997964676724145,
+      "errors": [],
+      "application_before": {
+        "status": {
+          "state": "streaming",
+          "device": "VIM4 HDMI Input",
+          "format": "NV12",
+          "resolution": [
+            3840,
+            2160
+          ],
+          "clients": 1,
+          "target_fps": 60,
+          "fps": 59.99552
+        },
+        "pid": "854"
+      },
+      "application_after": {
+        "status": {
+          "state": "streaming",
+          "device": "VIM4 HDMI Input",
+          "format": "NV12",
+          "resolution": [
+            3840,
+            2160
+          ],
+          "clients": 1,
+          "target_fps": 60,
+          "fps": 59.985905
+        },
+        "pid": "854"
+      },
+      "seconds": 10.321185442999997,
+      "lost": []
+    },
+    {
+      "path": "/Users/deepdream/Developer/github/localhost-copilot/vim4-kvm-integration42/build/hwdecode-parity/run113/archive/results/k9/before/measure-9002.json",
+      "sha256": "e81533e50f1690a9ad50f6874c1c8c7b38ce19d34801229d397a5c20bbdc5be2",
+      "capture_completions": 600,
+      "fps": 59.99834328447758,
+      "errors": [],
+      "application_before": {
+        "status": {
+          "state": "streaming",
+          "device": "VIM4 HDMI Input",
+          "format": "NV12",
+          "resolution": [
+            3840,
+            2160
+          ],
+          "clients": 1,
+          "target_fps": 60,
+          "fps": 59.985905
+        },
+        "pid": "854"
+      },
+      "application_after": {
+        "status": {
+          "state": "streaming",
+          "device": "VIM4 HDMI Input",
+          "format": "NV12",
+          "resolution": [
+            3840,
+            2160
+          ],
+          "clients": 1,
+          "target_fps": 60,
+          "fps": 59.997334
+        },
+        "pid": "854"
+      },
+      "seconds": 10.368996619,
+      "lost": []
+    }
+  ],
+  "csv_sha256": "f071330e29d4e75ac510328a2b08bb50d3c3f0f664a1d3b0f7da02143e2e201a",
+  "audit_sha256": "2de3eca84f1889a6f46b269016567c3e4190db67a00b1ae4856bae3e8194c7e1",
+  "audit_original_csv_sha256": "83d94ac656be0f57ef3aa57bdef245178c72a3db7fd53f67882f77f925459476",
+  "audit_serialization": "Tracked CSV only converts CRLF to LF; original run113 audit is unchanged",
+  "derived_metadata_sha256": "fab081c6e3e9b991d35e66ed68d02738980810a0e9a457db3d5a2ce6998dd7a2",
+  "boot_ledger": {
+    "boots": [
+      {
+        "window": 111,
+        "release": "7.3.1-vim4-20261107.2",
+        "requested": true,
+        "offset": 27460,
+        "linux_monotonic_ns": 761636277148166,
+        "cold_reset": false,
+        "ssh_identity": {
+          "release": "7.3.1-vim4-20261107.2",
+          "build_id": "fa5a9fa53dc3f84802722702f18623730ab81d83",
+          "cmdline": "console=tty0 root=PARTUUID=bcb80000-02 rootwait rw rootfstype=ext4 rootflags=data=ordered console=ttyS0,921600n8 earlycon=meson,0xfe078000 no_console_suspend net.ifnames=0 loglevel=7 panic=20 mem_sleep_default=s2idle modprobe.blacklist=crg_udc,t7_hdmirx,t7_vdin_test,wave5 cma=512M@0x10000000-0xf0000000 vim4.full_kvm=1 vim4.eth_mac=c8:63:14:74:70:0d systemd.mask=tvserver.service systemd.mask=audioserver.service systemd.mask=one-kvm-edge.service systemd.mask=one-kvm-edge-gateway.service systemd.mask=one-kvm-edge-usb.service systemd.mask=binder.service systemd.mask=bluetooth-khadas.service systemd.mask=rc-local.service oops=panic panic=20 init=/var/lib/vim4-kvm/ram-candidates/hwdecode/integration42/fa5a9fa53dc3f84802722702f18623730ab81d83/init initcall_blacklist=mmc_pwrseq_simple_driver_init systemd.mask=bluetooth.service module_blacklist=brcmfmac,hci_uart,btbcm,fusb302",
+          "boot_id": "6f5011cf-430d-45c9-bef4-b140f3806354",
+          "config_sha256": "395c027f2c59c29ccf744713e65c48219ff24ec8ef21767c0a4592ba8e4bd6f0",
+          "config": "DEFAULT display-once\nTIMEOUT 1\nLABEL display-once\n  LINUX /var/lib/vim4-kvm/ram-candidates/hwdecode/integration42/fa5a9fa53dc3f84802722702f18623730ab81d83/Image\n  FDT /var/lib/vim4-kvm/ram-candidates/hwdecode/integration42/fa5a9fa53dc3f84802722702f18623730ab81d83/vim4.dtb\n  APPEND console=tty0 root=PARTUUID=bcb80000-02 rootwait rw rootfstype=ext4 rootflags=data=ordered console=ttyS0,921600n8 earlycon=meson,0xfe078000 no_console_suspend net.ifnames=0 loglevel=7 panic=20 mem_sleep_default=s2idle modprobe.blacklist=crg_udc,t7_hdmirx,t7_vdin_test,wave5 cma=512M@0x10000000-0xf0000000 vim4.full_kvm=1 vim4.eth_mac=c8:63:14:74:70:0d systemd.mask=tvserver.service systemd.mask=audioserver.service systemd.mask=one-kvm-edge.service systemd.mask=one-kvm-edge-gateway.service systemd.mask=one-kvm-edge-usb.service systemd.mask=binder.service systemd.mask=bluetooth-khadas.service systemd.mask=rc-local.service oops=panic panic=20 init=/var/lib/vim4-kvm/ram-candidates/hwdecode/integration42/fa5a9fa53dc3f84802722702f18623730ab81d83/init initcall_blacklist=mmc_pwrseq_simple_driver_init systemd.mask=bluetooth.service module_blacklist=brcmfmac,hci_uart,btbcm,fusb302\n"
+        }
+      },
+      {
+        "window": 111,
+        "release": "7.3.1-vim4-20261105",
+        "requested": true,
+        "offset": 121609,
+        "linux_monotonic_ns": 761772823102333,
+        "cold_reset": false,
+        "ssh_identity": {
+          "release": "7.3.1-vim4-20261105",
+          "build_id": "bdbfa439f298e92b5bad092528d11119a974f262",
+          "cmdline": "console=tty0 root=PARTUUID=bcb80000-02 rootwait rw rootfstype=ext4 rootflags=data=ordered console=ttyS0,921600n8 earlycon=meson,0xfe078000 no_console_suspend net.ifnames=0 loglevel=7 panic=20 mem_sleep_default=s2idle modprobe.blacklist=crg_udc,t7_hdmirx,t7_vdin_test,wave5 cma=512M@0x10000000-0xf0000000 vim4.full_kvm=1 vim4.eth_mac=c8:63:14:74:70:0d systemd.mask=tvserver.service systemd.mask=audioserver.service systemd.mask=one-kvm-edge.service systemd.mask=one-kvm-edge-gateway.service systemd.mask=one-kvm-edge-usb.service systemd.mask=binder.service systemd.mask=bluetooth-khadas.service systemd.mask=rc-local.service module_blacklist=fusb302",
+          "boot_id": "9c2ff8c4-4b9a-4f22-9864-2bed576314ec"
+        }
+      },
+      {
+        "window": 112,
+        "release": "7.3.1-vim4-20261107.2",
+        "requested": true,
+        "offset": 27101,
+        "linux_monotonic_ns": 763125944391583,
+        "cold_reset": false,
+        "ssh_identity": {
+          "release": "7.3.1-vim4-20261107.2",
+          "build_id": "fa5a9fa53dc3f84802722702f18623730ab81d83",
+          "cmdline": "console=tty0 root=PARTUUID=bcb80000-02 rootwait rw rootfstype=ext4 rootflags=data=ordered console=ttyS0,921600n8 earlycon=meson,0xfe078000 no_console_suspend net.ifnames=0 loglevel=7 panic=20 mem_sleep_default=s2idle modprobe.blacklist=crg_udc,t7_hdmirx,t7_vdin_test,wave5 cma=512M@0x10000000-0xf0000000 vim4.full_kvm=1 vim4.eth_mac=c8:63:14:74:70:0d systemd.mask=tvserver.service systemd.mask=audioserver.service systemd.mask=one-kvm-edge.service systemd.mask=one-kvm-edge-gateway.service systemd.mask=one-kvm-edge-usb.service systemd.mask=binder.service systemd.mask=bluetooth-khadas.service systemd.mask=rc-local.service oops=panic panic=20 init=/var/lib/vim4-kvm/ram-candidates/hwdecode/integration42/fa5a9fa53dc3f84802722702f18623730ab81d83/init initcall_blacklist=mmc_pwrseq_simple_driver_init systemd.mask=bluetooth.service module_blacklist=brcmfmac,hci_uart,btbcm,fusb302",
+          "boot_id": "ae2f0e4a-21db-41f2-ae6c-e17f31f6e1f3",
+          "config_sha256": "395c027f2c59c29ccf744713e65c48219ff24ec8ef21767c0a4592ba8e4bd6f0",
+          "config": "DEFAULT display-once\nTIMEOUT 1\nLABEL display-once\n  LINUX /var/lib/vim4-kvm/ram-candidates/hwdecode/integration42/fa5a9fa53dc3f84802722702f18623730ab81d83/Image\n  FDT /var/lib/vim4-kvm/ram-candidates/hwdecode/integration42/fa5a9fa53dc3f84802722702f18623730ab81d83/vim4.dtb\n  APPEND console=tty0 root=PARTUUID=bcb80000-02 rootwait rw rootfstype=ext4 rootflags=data=ordered console=ttyS0,921600n8 earlycon=meson,0xfe078000 no_console_suspend net.ifnames=0 loglevel=7 panic=20 mem_sleep_default=s2idle modprobe.blacklist=crg_udc,t7_hdmirx,t7_vdin_test,wave5 cma=512M@0x10000000-0xf0000000 vim4.full_kvm=1 vim4.eth_mac=c8:63:14:74:70:0d systemd.mask=tvserver.service systemd.mask=audioserver.service systemd.mask=one-kvm-edge.service systemd.mask=one-kvm-edge-gateway.service systemd.mask=one-kvm-edge-usb.service systemd.mask=binder.service systemd.mask=bluetooth-khadas.service systemd.mask=rc-local.service oops=panic panic=20 init=/var/lib/vim4-kvm/ram-candidates/hwdecode/integration42/fa5a9fa53dc3f84802722702f18623730ab81d83/init initcall_blacklist=mmc_pwrseq_simple_driver_init systemd.mask=bluetooth.service module_blacklist=brcmfmac,hci_uart,btbcm,fusb302\n"
+        }
+      },
+      {
+        "window": 112,
+        "release": "7.3.1-vim4-20261105",
+        "requested": true,
+        "offset": 110679,
+        "linux_monotonic_ns": 763209937722541,
+        "cold_reset": false,
+        "ssh_identity": {
+          "release": "7.3.1-vim4-20261105",
+          "build_id": "bdbfa439f298e92b5bad092528d11119a974f262",
+          "cmdline": "console=tty0 root=PARTUUID=bcb80000-02 rootwait rw rootfstype=ext4 rootflags=data=ordered console=ttyS0,921600n8 earlycon=meson,0xfe078000 no_console_suspend net.ifnames=0 loglevel=7 panic=20 mem_sleep_default=s2idle modprobe.blacklist=crg_udc,t7_hdmirx,t7_vdin_test,wave5 cma=512M@0x10000000-0xf0000000 vim4.full_kvm=1 vim4.eth_mac=c8:63:14:74:70:0d systemd.mask=tvserver.service systemd.mask=audioserver.service systemd.mask=one-kvm-edge.service systemd.mask=one-kvm-edge-gateway.service systemd.mask=one-kvm-edge-usb.service systemd.mask=binder.service systemd.mask=bluetooth-khadas.service systemd.mask=rc-local.service module_blacklist=fusb302",
+          "boot_id": "798a41c7-87b7-45c2-b8cb-3b31b97e39f4"
+        }
+      },
+      {
+        "window": 113,
+        "release": "7.3.1-vim4-20261107.2",
+        "requested": true,
+        "offset": 26992,
+        "linux_monotonic_ns": 764492366856250,
+        "cold_reset": false,
+        "ssh_identity": {
+          "release": "7.3.1-vim4-20261107.2",
+          "build_id": "fa5a9fa53dc3f84802722702f18623730ab81d83",
+          "cmdline": "console=tty0 root=PARTUUID=bcb80000-02 rootwait rw rootfstype=ext4 rootflags=data=ordered console=ttyS0,921600n8 earlycon=meson,0xfe078000 no_console_suspend net.ifnames=0 loglevel=7 panic=20 mem_sleep_default=s2idle modprobe.blacklist=crg_udc,t7_hdmirx,t7_vdin_test,wave5 cma=512M@0x10000000-0xf0000000 vim4.full_kvm=1 vim4.eth_mac=c8:63:14:74:70:0d systemd.mask=tvserver.service systemd.mask=audioserver.service systemd.mask=one-kvm-edge.service systemd.mask=one-kvm-edge-gateway.service systemd.mask=one-kvm-edge-usb.service systemd.mask=binder.service systemd.mask=bluetooth-khadas.service systemd.mask=rc-local.service oops=panic panic=20 init=/var/lib/vim4-kvm/ram-candidates/hwdecode/integration42/fa5a9fa53dc3f84802722702f18623730ab81d83/init initcall_blacklist=mmc_pwrseq_simple_driver_init systemd.mask=bluetooth.service module_blacklist=brcmfmac,hci_uart,btbcm,fusb302",
+          "boot_id": "c662ff9f-c9c8-497f-bd50-94cf54b74625",
+          "config_sha256": "395c027f2c59c29ccf744713e65c48219ff24ec8ef21767c0a4592ba8e4bd6f0",
+          "config": "DEFAULT display-once\nTIMEOUT 1\nLABEL display-once\n  LINUX /var/lib/vim4-kvm/ram-candidates/hwdecode/integration42/fa5a9fa53dc3f84802722702f18623730ab81d83/Image\n  FDT /var/lib/vim4-kvm/ram-candidates/hwdecode/integration42/fa5a9fa53dc3f84802722702f18623730ab81d83/vim4.dtb\n  APPEND console=tty0 root=PARTUUID=bcb80000-02 rootwait rw rootfstype=ext4 rootflags=data=ordered console=ttyS0,921600n8 earlycon=meson,0xfe078000 no_console_suspend net.ifnames=0 loglevel=7 panic=20 mem_sleep_default=s2idle modprobe.blacklist=crg_udc,t7_hdmirx,t7_vdin_test,wave5 cma=512M@0x10000000-0xf0000000 vim4.full_kvm=1 vim4.eth_mac=c8:63:14:74:70:0d systemd.mask=tvserver.service systemd.mask=audioserver.service systemd.mask=one-kvm-edge.service systemd.mask=one-kvm-edge-gateway.service systemd.mask=one-kvm-edge-usb.service systemd.mask=binder.service systemd.mask=bluetooth-khadas.service systemd.mask=rc-local.service oops=panic panic=20 init=/var/lib/vim4-kvm/ram-candidates/hwdecode/integration42/fa5a9fa53dc3f84802722702f18623730ab81d83/init initcall_blacklist=mmc_pwrseq_simple_driver_init systemd.mask=bluetooth.service module_blacklist=brcmfmac,hci_uart,btbcm,fusb302\n"
+        }
+      },
+      {
+        "window": 113,
+        "release": "7.3.1-vim4-20261105",
+        "requested": true,
+        "offset": 121897,
+        "linux_monotonic_ns": 764986780870000,
+        "cold_reset": false,
+        "ssh_identity": {
+          "release": "7.3.1-vim4-20261105",
+          "build_id": "bdbfa439f298e92b5bad092528d11119a974f262",
+          "cmdline": "console=tty0 root=PARTUUID=bcb80000-02 rootwait rw rootfstype=ext4 rootflags=data=ordered console=ttyS0,921600n8 earlycon=meson,0xfe078000 no_console_suspend net.ifnames=0 loglevel=7 panic=20 mem_sleep_default=s2idle modprobe.blacklist=crg_udc,t7_hdmirx,t7_vdin_test,wave5 cma=512M@0x10000000-0xf0000000 vim4.full_kvm=1 vim4.eth_mac=c8:63:14:74:70:0d systemd.mask=tvserver.service systemd.mask=audioserver.service systemd.mask=one-kvm-edge.service systemd.mask=one-kvm-edge-gateway.service systemd.mask=one-kvm-edge-usb.service systemd.mask=binder.service systemd.mask=bluetooth-khadas.service systemd.mask=rc-local.service module_blacklist=fusb302",
+          "boot_id": "e4ac28f7-a346-4e44-94be-fb8dc8d277c2"
+        }
+      },
+      {
+        "window": 114,
+        "release": "7.3.1-vim4-20261107.2",
+        "requested": true,
+        "offset": 27130,
+        "linux_monotonic_ns": 765437912917458,
+        "cold_reset": false,
+        "ssh_identity": {
+          "release": "7.3.1-vim4-20261107.2",
+          "build_id": "fa5a9fa53dc3f84802722702f18623730ab81d83",
+          "cmdline": "console=tty0 root=PARTUUID=bcb80000-02 rootwait rw rootfstype=ext4 rootflags=data=ordered console=ttyS0,921600n8 earlycon=meson,0xfe078000 no_console_suspend net.ifnames=0 loglevel=7 panic=20 mem_sleep_default=s2idle modprobe.blacklist=crg_udc,t7_hdmirx,t7_vdin_test,wave5 cma=512M@0x10000000-0xf0000000 vim4.full_kvm=1 vim4.eth_mac=c8:63:14:74:70:0d systemd.mask=tvserver.service systemd.mask=audioserver.service systemd.mask=one-kvm-edge.service systemd.mask=one-kvm-edge-gateway.service systemd.mask=one-kvm-edge-usb.service systemd.mask=binder.service systemd.mask=bluetooth-khadas.service systemd.mask=rc-local.service oops=panic panic=20 init=/var/lib/vim4-kvm/ram-candidates/hwdecode/integration42/fa5a9fa53dc3f84802722702f18623730ab81d83/init initcall_blacklist=mmc_pwrseq_simple_driver_init systemd.mask=bluetooth.service module_blacklist=brcmfmac,hci_uart,btbcm,fusb302",
+          "boot_id": "4b8aaa8b-5017-4b31-add0-baa478ebaf48",
+          "config_sha256": "395c027f2c59c29ccf744713e65c48219ff24ec8ef21767c0a4592ba8e4bd6f0",
+          "config": "DEFAULT display-once\nTIMEOUT 1\nLABEL display-once\n  LINUX /var/lib/vim4-kvm/ram-candidates/hwdecode/integration42/fa5a9fa53dc3f84802722702f18623730ab81d83/Image\n  FDT /var/lib/vim4-kvm/ram-candidates/hwdecode/integration42/fa5a9fa53dc3f84802722702f18623730ab81d83/vim4.dtb\n  APPEND console=tty0 root=PARTUUID=bcb80000-02 rootwait rw rootfstype=ext4 rootflags=data=ordered console=ttyS0,921600n8 earlycon=meson,0xfe078000 no_console_suspend net.ifnames=0 loglevel=7 panic=20 mem_sleep_default=s2idle modprobe.blacklist=crg_udc,t7_hdmirx,t7_vdin_test,wave5 cma=512M@0x10000000-0xf0000000 vim4.full_kvm=1 vim4.eth_mac=c8:63:14:74:70:0d systemd.mask=tvserver.service systemd.mask=audioserver.service systemd.mask=one-kvm-edge.service systemd.mask=one-kvm-edge-gateway.service systemd.mask=one-kvm-edge-usb.service systemd.mask=binder.service systemd.mask=bluetooth-khadas.service systemd.mask=rc-local.service oops=panic panic=20 init=/var/lib/vim4-kvm/ram-candidates/hwdecode/integration42/fa5a9fa53dc3f84802722702f18623730ab81d83/init initcall_blacklist=mmc_pwrseq_simple_driver_init systemd.mask=bluetooth.service module_blacklist=brcmfmac,hci_uart,btbcm,fusb302\n"
+        }
+      },
+      {
+        "window": 114,
+        "release": "7.3.1-vim4-20261105",
+        "requested": true,
+        "offset": 120770,
+        "linux_monotonic_ns": 766026099654375,
+        "cold_reset": false,
+        "ssh_identity": {
+          "release": "7.3.1-vim4-20261105",
+          "build_id": "bdbfa439f298e92b5bad092528d11119a974f262",
+          "cmdline": "console=tty0 root=PARTUUID=bcb80000-02 rootwait rw rootfstype=ext4 rootflags=data=ordered console=ttyS0,921600n8 earlycon=meson,0xfe078000 no_console_suspend net.ifnames=0 loglevel=7 panic=20 mem_sleep_default=s2idle modprobe.blacklist=crg_udc,t7_hdmirx,t7_vdin_test,wave5 cma=512M@0x10000000-0xf0000000 vim4.full_kvm=1 vim4.eth_mac=c8:63:14:74:70:0d systemd.mask=tvserver.service systemd.mask=audioserver.service systemd.mask=one-kvm-edge.service systemd.mask=one-kvm-edge-gateway.service systemd.mask=one-kvm-edge-usb.service systemd.mask=binder.service systemd.mask=bluetooth-khadas.service systemd.mask=rc-local.service module_blacklist=fusb302",
+          "boot_id": "e911579e-3191-4998-9b37-d374d8d5e47e"
+        }
+      },
+      {
+        "window": 115,
+        "release": "7.3.1-vim4-20261107.2",
+        "requested": true,
+        "offset": 27315,
+        "linux_monotonic_ns": 766489043509833,
+        "cold_reset": false,
+        "ssh_identity": {
+          "release": "7.3.1-vim4-20261107.2",
+          "build_id": "fa5a9fa53dc3f84802722702f18623730ab81d83",
+          "cmdline": "console=tty0 root=PARTUUID=bcb80000-02 rootwait rw rootfstype=ext4 rootflags=data=ordered console=ttyS0,921600n8 earlycon=meson,0xfe078000 no_console_suspend net.ifnames=0 loglevel=7 panic=20 mem_sleep_default=s2idle modprobe.blacklist=crg_udc,t7_hdmirx,t7_vdin_test,wave5 cma=512M@0x10000000-0xf0000000 vim4.full_kvm=1 vim4.eth_mac=c8:63:14:74:70:0d systemd.mask=tvserver.service systemd.mask=audioserver.service systemd.mask=one-kvm-edge.service systemd.mask=one-kvm-edge-gateway.service systemd.mask=one-kvm-edge-usb.service systemd.mask=binder.service systemd.mask=bluetooth-khadas.service systemd.mask=rc-local.service oops=panic panic=20 init=/var/lib/vim4-kvm/ram-candidates/hwdecode/integration42/fa5a9fa53dc3f84802722702f18623730ab81d83/init initcall_blacklist=mmc_pwrseq_simple_driver_init systemd.mask=bluetooth.service module_blacklist=brcmfmac,hci_uart,btbcm,fusb302",
+          "boot_id": "0ef40752-b787-4647-a584-ab0ff40a0fc7",
+          "config_sha256": "395c027f2c59c29ccf744713e65c48219ff24ec8ef21767c0a4592ba8e4bd6f0",
+          "config": "DEFAULT display-once\nTIMEOUT 1\nLABEL display-once\n  LINUX /var/lib/vim4-kvm/ram-candidates/hwdecode/integration42/fa5a9fa53dc3f84802722702f18623730ab81d83/Image\n  FDT /var/lib/vim4-kvm/ram-candidates/hwdecode/integration42/fa5a9fa53dc3f84802722702f18623730ab81d83/vim4.dtb\n  APPEND console=tty0 root=PARTUUID=bcb80000-02 rootwait rw rootfstype=ext4 rootflags=data=ordered console=ttyS0,921600n8 earlycon=meson,0xfe078000 no_console_suspend net.ifnames=0 loglevel=7 panic=20 mem_sleep_default=s2idle modprobe.blacklist=crg_udc,t7_hdmirx,t7_vdin_test,wave5 cma=512M@0x10000000-0xf0000000 vim4.full_kvm=1 vim4.eth_mac=c8:63:14:74:70:0d systemd.mask=tvserver.service systemd.mask=audioserver.service systemd.mask=one-kvm-edge.service systemd.mask=one-kvm-edge-gateway.service systemd.mask=one-kvm-edge-usb.service systemd.mask=binder.service systemd.mask=bluetooth-khadas.service systemd.mask=rc-local.service oops=panic panic=20 init=/var/lib/vim4-kvm/ram-candidates/hwdecode/integration42/fa5a9fa53dc3f84802722702f18623730ab81d83/init initcall_blacklist=mmc_pwrseq_simple_driver_init systemd.mask=bluetooth.service module_blacklist=brcmfmac,hci_uart,btbcm,fusb302\n"
+        }
+      },
+      {
+        "window": 115,
+        "release": "7.3.1-vim4-20261105",
+        "requested": true,
+        "offset": 121427,
+        "linux_monotonic_ns": 766621787845416,
+        "cold_reset": false,
+        "ssh_identity": {
+          "release": "7.3.1-vim4-20261105",
+          "build_id": "bdbfa439f298e92b5bad092528d11119a974f262",
+          "cmdline": "console=tty0 root=PARTUUID=bcb80000-02 rootwait rw rootfstype=ext4 rootflags=data=ordered console=ttyS0,921600n8 earlycon=meson,0xfe078000 no_console_suspend net.ifnames=0 loglevel=7 panic=20 mem_sleep_default=s2idle modprobe.blacklist=crg_udc,t7_hdmirx,t7_vdin_test,wave5 cma=512M@0x10000000-0xf0000000 vim4.full_kvm=1 vim4.eth_mac=c8:63:14:74:70:0d systemd.mask=tvserver.service systemd.mask=audioserver.service systemd.mask=one-kvm-edge.service systemd.mask=one-kvm-edge-gateway.service systemd.mask=one-kvm-edge-usb.service systemd.mask=binder.service systemd.mask=bluetooth-khadas.service systemd.mask=rc-local.service module_blacklist=fusb302",
+          "boot_id": "85a09b9a-0dc0-4e23-93a2-c03f7ae0e0bd"
+        }
+      }
+    ],
+    "cold_resets": [],
+    "total_cold_resets": 0,
+    "stop_third_cold_reset": false,
+    "caveat": "Receive-chunk monotonic times; UART loss can obscure banners. Live SSH identity is independent."
+  },
+  "remaining_failures": [
+    {
+      "name": "LTRPSPS_A_Qualcomm_1",
+      "baseline": "Timeout",
+      "result": "Timeout",
+      "window": "run114",
+      "expected_frames": 500,
+      "frames": 0,
+      "first_mismatch_frame": 0,
+      "first_mismatch_kind": "missing frame",
+      "bytes": 0,
+      "total_md5": null,
+      "status_zero": null,
+      "last": null,
+      "error_buffers": 0,
+      "evidence": "/Users/deepdream/Developer/github/localhost-copilot/vim4-kvm-integration42/build/hwdecode-parity/run114/archive/results/hevc/group-8-full/LTRPSPS_A_Qualcomm_1/equivalence.json"
+    },
+    {
+      "name": "RAP_B_Bossen_2",
+      "baseline": "Error",
+      "result": "Error",
+      "window": "run113",
+      "expected_frames": 80,
+      "frames": 80,
+      "first_mismatch_frame": null,
+      "first_mismatch_kind": null,
+      "bytes": 11980800,
+      "total_md5": "f38befcc280f2fd0d23f48f807f843c2",
+      "status_zero": true,
+      "last": true,
+      "error_buffers": 0,
+      "evidence": "/Users/deepdream/Developer/github/localhost-copilot/vim4-kvm-integration42/build/hwdecode-parity/run113/archive/results/hevc/group-1-full/RAP_B_Bossen_2/comparison.json"
+    },
+    {
+      "name": "RPS_D_ericsson_6",
+      "baseline": "Error",
+      "result": "Error",
+      "window": "run113",
+      "expected_frames": 68,
+      "frames": 49,
+      "first_mismatch_frame": 49,
+      "first_mismatch_kind": "missing frame",
+      "bytes": 7338240,
+      "total_md5": "103126f84d18e320f498b0b7d341d108",
+      "status_zero": false,
+      "last": false,
+      "error_buffers": 0,
+      "evidence": "/Users/deepdream/Developer/github/localhost-copilot/vim4-kvm-integration42/build/hwdecode-parity/run113/archive/results/hevc/group-1-full/RPS_D_ericsson_6/comparison.json",
+      "poc847_decoded": true,
+      "goal_met": true
+    },
+    {
+      "name": "VPSSPSPPS_A_MainConcept_1",
+      "baseline": "Error",
+      "result": "Error",
+      "window": "run113",
+      "expected_frames": 6,
+      "frames": 0,
+      "first_mismatch_frame": 0,
+      "first_mismatch_kind": "missing frame",
+      "bytes": 0,
+      "total_md5": "d41d8cd98f00b204e9800998ecf8427e",
+      "status_zero": false,
+      "last": false,
+      "error_buffers": 1,
+      "evidence": "/Users/deepdream/Developer/github/localhost-copilot/vim4-kvm-integration42/build/hwdecode-parity/run113/archive/results/hevc/group-1-full/VPSSPSPPS_A_MainConcept_1/comparison.json"
+    },
+    {
+      "name": "WPP_D_ericsson_MAIN_2",
+      "baseline": "Timeout",
+      "result": "Timeout",
+      "window": "run115",
+      "expected_frames": 48,
+      "frames": 0,
+      "first_mismatch_frame": 0,
+      "first_mismatch_kind": "missing frame",
+      "bytes": 0,
+      "total_md5": null,
+      "status_zero": null,
+      "last": null,
+      "error_buffers": 0,
+      "evidence": "/Users/deepdream/Developer/github/localhost-copilot/vim4-kvm-integration42/build/hwdecode-parity/run115/archive/results/hevc/group-1-full/WPP_D_ericsson_MAIN_2/equivalence.json"
+    }
+  ]
+}
