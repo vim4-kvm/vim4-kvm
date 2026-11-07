@@ -66,17 +66,28 @@ def preflight_root_space(boot_root, module_bytes, runtime_files, firmware, boot_
         raise ValueError('Insufficient root space for complete modules, runtime and firmware')
 
 
+def mainline_append(append):
+    """Keep firmware PD ownership while preserving other module blacklists."""
+    tokens = append.split()
+    blocked = [name for token in tokens if token.startswith('module_blacklist=')
+               for name in token.split('=', 1)[1].split(',') if name]
+    blocked = list(dict.fromkeys([*blocked, 'fusb302']))
+    tokens = [token for token in tokens if not token.startswith('module_blacklist=')]
+    return ' '.join(tokens + ['module_blacklist=' + ','.join(blocked)])
+
+
 def upgrade_registration(boot, original, report, payload, kernel_dir):
-    """Prepare the existing Mainline record without changing its arguments or other labels."""
+    """Preserve other profiles and arguments while applying Mainline PD policy."""
     fields = boot.boot_entries(original.decode())['Mainline']
     prefix = '/' + str(kernel_dir.relative_to(boot.BOOT))
-    full = dict(fields, LINUX=prefix + '/Image', FDT=prefix + '/vim4.dtb')
+    full = dict(fields, LINUX=prefix + '/Image', FDT=prefix + '/vim4.dtb',
+                APPEND=mainline_append(fields['APPEND']))
     label, lines = None, []
     for line in original.decode().splitlines(keepends=True):
         words = line.split(None, 1)
         if len(words) == 2 and words[0].upper() == 'LABEL':
             label = words[1].strip()
-        if label == 'Mainline' and words and words[0].upper() in ('LINUX', 'FDT'):
+        if label == 'Mainline' and words and words[0].upper() in ('LINUX', 'FDT', 'APPEND'):
             line = '  ' + words[0].upper() + ' ' + full[words[0].upper()] + '\n'
         lines.append(line)
     text = ''.join(lines)
@@ -122,7 +133,8 @@ def boot_profile(source, legacy_services=(), *, version, framebuffer_console=Fal
         # Serial remains the last console and therefore /dev/console's target.
         words.insert(0, 'console=tty0')
     prefix = '/kernels/' + version
-    return {'LINUX': prefix+'/Image', 'FDT': prefix+'/vim4.dtb', 'APPEND': ' '.join(words)}
+    return {'LINUX': prefix+'/Image', 'FDT': prefix+'/vim4.dtb',
+            'APPEND': mainline_append(' '.join(words))}
 
 
 def update_boot_entry(text, existing, previous, full):
@@ -130,9 +142,23 @@ def update_boot_entry(text, existing, previous, full):
         return text
     # Upgrade the earlier exact profile without factory-MAC handoff. Other
     # administrator changes still require an explicit deployment review.
-    before_mac = {**full, 'APPEND':' '.join(w for w in full['APPEND'].split()
-                                          if w != 'vim4.eth_mac=${eth_mac}')}
-    if existing != previous and existing != before_mac:
+    # Recognize only our exact earlier profiles: before the factory-MAC
+    # handoff and before the adopted firmware-PD policy. Other arguments stay
+    # subject to the existing administrator-change refusal.
+    before_pd = []
+    for word in full['APPEND'].split():
+        if word.startswith('module_blacklist='):
+            names = [name for name in word.split('=', 1)[1].split(',') if name != 'fusb302']
+            if names:
+                before_pd.append('module_blacklist=' + ','.join(names))
+        else:
+            before_pd.append(word)
+    compatible = [previous]
+    for words in (full['APPEND'].split(), before_pd):
+        compatible += [{**full, 'APPEND': ' '.join(words)},
+                       {**full, 'APPEND': ' '.join(w for w in words
+                                                 if w != 'vim4.eth_mac=${eth_mac}')}]
+    if existing not in compatible:
         raise ValueError('Mainline has custom boot arguments; refusing to replace it')
     # Upgrade only our exact earlier profile, leaving every other label intact.
     label = None

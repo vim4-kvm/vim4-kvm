@@ -27,6 +27,47 @@ CURRENT = '7.3.1-vim4-20261103'
 
 
 class BootProfileTest(unittest.TestCase):
+    def test_mainline_profile_keeps_radio_blacklists_and_pd_exclusion_once(self):
+        source = {'APPEND': 'root=test module_blacklist=brcmfmac module_blacklist=hci_uart,brcmfmac'}
+        full = runtime.boot_profile(source, version=CURRENT)
+        blocked = [word for word in full['APPEND'].split() if word.startswith('module_blacklist=')]
+        self.assertEqual(blocked, ['module_blacklist=brcmfmac,hci_uart,fusb302'])
+        self.assertEqual(runtime.boot_profile(full, version=CURRENT), full)
+        old = {**full, 'APPEND': full['APPEND'].replace(',fusb302', '')}
+        text = 'DEFAULT Mainline\nLABEL Mainline\n  APPEND ' + old['APPEND'] + '\n'
+        updated = runtime.update_boot_entry(text, old, full, full)
+        self.assertEqual(boot.boot_entries(updated)['Mainline']['APPEND'], full['APPEND'])
+
+    def test_upgrade_applies_pd_policy_to_mainline_and_matching_registry_only(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            boot_root, payload = root/'boot', root/'payload'
+            old = '7.3.1-vim4-20261102'
+            old_root = boot_root/'kernels'/old
+            old_root.mkdir(parents=True)
+            payload.mkdir()
+            (old_root/'Image').write_bytes(('Linux version ' + old + ' ').encode())
+            for name in ('Image', 'vim4.dtb'):
+                (payload/name).write_bytes(name.encode())
+            fields = {'LINUX': '/kernels/'+old+'/Image', 'FDT': '/kernels/'+old+'/vim4.dtb',
+                      'APPEND': 'root=keep module_blacklist=brcmfmac'}
+            vendor = {'label': 'Vendor', 'boot': {'LINUX': '/vendor', 'APPEND': 'vendor=keep'}}
+            records = [vendor, {'label': 'Mainline', 'release': old, 'boot': fields}]
+            manifest = root/'kernels.json'
+            manifest.write_text(json.dumps(records))
+            text = 'DEFAULT Mainline\nLABEL Vendor\n LINUX /vendor\n APPEND vendor=keep\nLABEL Mainline\n'
+            text += ''.join(' '+key+' '+value+'\n' for key,value in fields.items())
+            proxy = SimpleNamespace(BOOT=boot_root, MANIFEST=manifest, boot_entries=boot.boot_entries)
+            updated, registered = runtime.upgrade_registration(proxy, text.encode(),
+                {'release': CURRENT, 'modules': {'kernel/test.ko': 'a'*64}}, payload,
+                boot_root/'kernels'/CURRENT)
+            self.assertEqual(registered[0], vendor)
+            self.assertEqual(boot.boot_entries(updated)['Vendor'], boot.boot_entries(text)['Vendor'])
+            current = boot.boot_entries(updated)['Mainline']
+            self.assertEqual(current['APPEND'], 'root=keep module_blacklist=brcmfmac,fusb302')
+            self.assertEqual(registered[1]['boot'], current)
+            self.assertEqual(json.loads(manifest.read_text()), records)
+
     def test_insufficient_boot_space_is_rejected_before_copy(self):
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)

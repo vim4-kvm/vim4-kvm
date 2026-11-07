@@ -29,6 +29,10 @@ GPT曾被清空；仅用板级工具的专用校验刷机脚本，禁OOWOW /shel
 超时仅告警/让后继取租约，不强杀操作；原持有者立即收尾、释放重排，已有等待者先行。
 
 同批可链式RAM启动，批末return-baseline；全程不改默认项。
+主线正式默认保留固件PD状态，APPEND含`module_blacklist=fusb302`；Mainline登记/升级及普通RAM候选
+保留该策略，无线变体合并模块黑名单而不覆盖它。Vendor策略不变。正式proof已切换到
+[PD策略变更后的2372清单](../../packaging/kernel/releases/7.3.1-vim4-20261105/pd-baseline.json)，
+具体前后hash、验证与持续观察边界见[切换记录](../bringup/2026-11-07-pd-firmware-default.md)。
 核对基线release和build ID，以及服务、UDC和启动哈希；仅支持5.15或sources.toml正式锁的精确release，首次确认默认LINUX/FDT指向捕获基线。
 正式基线须核对release目录、完整模块、采集及kbase身份、DT属性和原应用；恢复须视频推进检查，启动文件/模块必须仍完整，不能引用已清理产物。
 同Image不同DT须独立payload ID、DT属性、完整模块证明，详见窗口合同。

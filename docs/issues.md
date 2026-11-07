@@ -5,7 +5,7 @@
 
 ## 内核与部署
 
-- PD接管A/B首轮原参数A2/10冷复位、`module_blacklist=fusb302`的B0/10；Fisher p≈0.47，历史粗口径14/75合并A也不能证明VBUS致因。失败启动末段TCPM日志未覆盖、没有物理VBUS观测。用户决定直接采用B状态、持续观察，取消追加15次B；正式切换另留恢复proof，后续复位继续追加tcpm-coldboot-events.csv，不宣称已解决。[首轮证据与最后15行](bringup/2026-11-07-pd-takeover-ab.md)
+- 采用B状态、持续观察冷复位：正式默认已追加`module_blacklist=fusb302`，fusb302不加载、PD服务跳过且无原始I²C回退；单次自然默认启动/2372新proof/被动视频通过。A/B首轮A2/10、B0/10，Fisher p≈0.47，历史粗口径14/75合并A也不能证明VBUS致因；失败末段TCPM日志未覆盖、无物理VBUS观测。用户取消追加15次B，后续复位继续记入tcpm-coldboot-events.csv，不宣称已解决。[正式切换及新基线](bringup/2026-11-07-pd-firmware-default.md)、[A/B证据与最后15行](bringup/2026-11-07-pd-takeover-ab.md)
 - K9运行期编解码共存验收未完成：r110的K10已确认三模块自然绑定、DOS区域仅JPEG占用，r109的region冲突已解决；K9-KVM因采证工具选了无调用点事件而未覆盖。原始旁证有600次Wave5 CAPTURE DQ、59.9986fps、零ERROR，不替代busy-open前/中/后和编码器重载门禁。132条解码全Not run，恢复3次冷复位后硬停；后续板窗暂停。[r110证据与边界](bringup/2026-11-06-vdec-integration42-results.md#r110k10通过k9在第一段统计停止)
 - integration42正式恢复新增4次Linux启动/3次冷复位，距Linux起点7.543737/8.794253/7.662153秒，最终自然恢复并过2372 proof/视频；候选无线屏蔽1/0单列。按正式启动项归类累计≥80/17；首个恢复banner缺损，严格release/SSH确认口径≥79/16，另1/1请求正式未确认release。第三次复位前6.206355秒的fusb302 hard-reset只作时序证据，不据此归因或改PD。[逐启动及限制](bringup/2026-11-06-vdec-integration42-results.md#冷复位恢复与停止边界)；较早累计沿下方cold_boot历史条目。
 - 解码评审系列保留 Kövér-Draxl 的 MPEG-2、MJPEG、HEVC 原作者，但原提交 `b1bdea695746b`、`37b50c957b4b1`、`0204da89aa08d` 缺原作者 Signed-off-by。只加整理者自己的签署；strict checkpatch 的 nominal-author 签署错误按失败保留。上游提交前需原作者补 SoB，或按 DCO (b) 完成来源说明；短期不提交上游、不联系作者，不代签、不改作者。整理者签署身份 `localhost-copilot` 不是真实姓名，上游前也须换成真实身份的 SoB。
