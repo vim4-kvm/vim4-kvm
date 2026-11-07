@@ -17,6 +17,7 @@
 
 ## 2026-11-07
 
+- [复用.42正式部署准备](2026-11-07-deploy42-preparation.md) — kernel deployment；实测二进制整包/2341模块同一性及空间通过，B状态PD检查修正、已知显示问题另修；只读采证，无安装/重启/HID，部署等Mac交出。
 - [integration42 固件PD续验](2026-11-07-vdec-integration42-pd-results.md) — kernel video；K9/K10及十份格式输出通过，HEVC132条127S/3E/2T、旧120S无回退；五窗2372 proof/视频恢复、10启动零复位，未部署。
 - [固件PD正式默认](2026-11-07-pd-firmware-default.md) — kernel usb deployment；用户采用fusb302黑名单，单次自然默认启动/2372新proof/视频通过，保留旧清单，持续观察冷复位。
 - [PD接管A/B](2026-11-07-pd-takeover-ab.md) — kernel usb；同正式内核/同sysboot入口，A2/10复位、B0/10，恢复启动单列，未观测物理VBUS，补测因用户决定直接采用而取消。

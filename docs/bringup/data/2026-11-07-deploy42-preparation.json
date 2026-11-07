@@ -1,0 +1,101 @@
+{
+  "identity": {
+    "passed": true,
+    "binary_reused": true,
+    "rebuilt": false,
+    "source": "3facfaa37284f7193508c2a16fbf5162c6242616",
+    "release": "7.3.1-vim4-20261107.2",
+    "build_id": "fa5a9fa53dc3f84802722702f18623730ab81d83",
+    "tree": "d29cfb893ae401d53a5a569c5d5f0fb085b3188b",
+    "archive": {
+      "name": "vim4-kernel-7.3.1-vim4-20261107.2.tar.gz",
+      "sha256": "8fb7c55fce771a1ef076a4aa0014b35c5c76c596b78b09067632965f38842fa8",
+      "bytes": 656129404
+    },
+    "manifest_sha256": "02ebff518a53a75d6beac98a109996dad10192e23f57df1fd7682772ad2e294b",
+    "image_sha256": "20bffa2ae1f341c72894a2bb432547e815720729a6eb06c7ded56b006c38e665",
+    "dtb_sha256": "fbef1ddaecdc7924de841c9fe36885bcb8c36b18cd4b97804a74af44f2588b90",
+    "config_sha256": "7be7563e089ff628a320cd82ed163d88c576e4c7612f6bf849b230d2b9719b1c",
+    "archive_files": 24,
+    "module_count": 2341,
+    "module_files": 2354,
+    "runtime_files": 10,
+    "all_module_files_equal_tested_ram": true,
+    "boot_file_bytes": {
+      "Image": 48282112,
+      "vim4.dtb": 62801,
+      "panfrost.dtb": 62415,
+      "config": 251034,
+      "Module.symvers": 1334423,
+      "vmlinux.btf": 7475530,
+      "manifest.json": 507674
+    },
+    "boot_required_bytes": 58021045,
+    "boot_with_20_percent_bytes": 69625254,
+    "module_install_bytes": 645486322,
+    "runtime_install_bytes": 31325006,
+    "hardware_validation": "Same .42 binaries accepted in r113-r115; formal wireless default still requires deployment window"
+  },
+  "formal_append": "console=tty0 root=PARTUUID=bcb80000-02 rootwait rw rootfstype=ext4 rootflags=data=ordered console=ttyS0,921600n8 earlycon=meson,0xfe078000 no_console_suspend net.ifnames=0 loglevel=7 panic=20 mem_sleep_default=s2idle modprobe.blacklist=crg_udc,t7_hdmirx,t7_vdin_test,wave5 cma=512M@0x10000000-0xf0000000 vim4.full_kvm=1 vim4.eth_mac=${eth_mac} systemd.mask=tvserver.service systemd.mask=audioserver.service systemd.mask=one-kvm-edge.service systemd.mask=one-kvm-edge-gateway.service systemd.mask=one-kvm-edge-usb.service systemd.mask=binder.service systemd.mask=bluetooth-khadas.service systemd.mask=rc-local.service module_blacklist=fusb302",
+  "formal_cmdline": "console=tty0 root=PARTUUID=bcb80000-02 rootwait rw rootfstype=ext4 rootflags=data=ordered console=ttyS0,921600n8 earlycon=meson,0xfe078000 no_console_suspend net.ifnames=0 loglevel=7 panic=20 mem_sleep_default=s2idle modprobe.blacklist=crg_udc,t7_hdmirx,t7_vdin_test,wave5 cma=512M@0x10000000-0xf0000000 vim4.full_kvm=1 vim4.eth_mac=c8:63:14:74:70:0d systemd.mask=tvserver.service systemd.mask=audioserver.service systemd.mask=one-kvm-edge.service systemd.mask=one-kvm-edge-gateway.service systemd.mask=one-kvm-edge-usb.service systemd.mask=binder.service systemd.mask=bluetooth-khadas.service systemd.mask=rc-local.service module_blacklist=fusb302",
+  "space": {
+    "boot_free": 104448000,
+    "boot_required_with_20_percent": 69625254,
+    "root_free": 6343634944,
+    "root_required_with_20_percent": 4133577507
+  },
+  "readonly": {
+    "utc": "2026-11-07T04:42:49.570431+00:00",
+    "fifo_order": 1637,
+    "boot_id": "85a09b9a-0dc0-4e23-93a2-c03f7ae0e0bd",
+    "uptime": "1505.44",
+    "udc": {
+      "/sys/class/udc/fdd00000.usb/state": "configured"
+    },
+    "protected_files": 2372,
+    "baseline_identity_sha256": "0514bdab3aac0a0c9f0d9fa63be8df94d50aff533c7890a1608d23bcc9333126"
+  },
+  "manager_pd": {
+    "fifo_order": 1639,
+    "observed_at": "2026-11-07T04:54:55.494333+00:00",
+    "source_sha256": "018aa7c5c656ff5aa263a6e4294b1a14f7eb61a88d9aeb6c250a317d6298c105",
+    "expectation_sha256": "136de7b34d8c22496bbe45d03199bb3a0b7e6a1fa25a6ea6e71db27c4ba29726",
+    "known_display_issue_accepted": true
+  },
+  "verification_files": {
+    "package-verification.log": "9910e9da68a6242e7884ffbc84b35a589d5f24cc6c705ae3d941b0ed0280b356",
+    "module-verification.json": "54663dfb3353dd5edc8bef9c2956a92b7cc6df662e0a85bfe3e8fa5b080311d0",
+    "archive-files.json": "1bfd5ab6961156c55d01b51bb9fdae21d3b2d16f6b646da0626964e457287c62",
+    "copy-verification.json": "8023a4719497ae5c1eb5c148728b3107f8f398886d1d59ae7929549872fd04d6",
+    "check-plan.log": "7acbfb0aa7113ff4e3aa7760830d3fe74e9bae806b826231dd5229589b28e70d",
+    "manager-pd-unit.log": "7a3fc1d0f14c974fee3c1336d94ab91b780522c822e04e6f26edde50c67a2e7b",
+    "pd-tool-full-tests.log": "11f6ff4a581acdee7851d55459a1ee731c84d8de6506c691ed3f7436a1de4a67",
+    "kernel-range-log-stat.txt": "5fa90d938669ac799496b2ab806f5adce566369d3f8121bd371d80983ff5b83d",
+    "kernel-range-diff-stat.txt": "ed1e5e4be0e3bb72419881c30f4a586758b9445e9cff19f72a763f5f1e7cc682",
+    "hevc-smoke-references.json": "bcbada64177ee45f2e7c1327ff11ed991200ec278d418c5937ca43fbc261f0c5"
+  },
+  "deployment_executed": false,
+  "rebuilt": false,
+  "missing_coverage": [
+    "19 HDMI modes",
+    "9 H264 encoding modes",
+    "11 H265 encoding modes"
+  ],
+  "pd_tool_commit": "f2aea87d1ca1aceb312571927c8d48b27ceb401e",
+  "pd_checks": {
+    "power_keys": "Exact B response key set; no extra history",
+    "vbusPresent": null,
+    "bootContract": null,
+    "kernelPD": {
+      "state": "unavailable",
+      "contract": null
+    },
+    "firmware_required": true,
+    "firmware_ioError": false,
+    "firmware_hardReset": false,
+    "other_firmware_fields": "Preserved in raw evidence; contract/Rp changes are allowed",
+    "node_tests": 5,
+    "python_suite": 617,
+    "python_skipped": 17
+  }
+}
