@@ -15,6 +15,10 @@
 
 以下保留完整日期索引。这些里程碑记录的是历史证据；查找当前架构和约束时，仍应先读对应子系统入口。
 
+## 2026-11-07
+
+- [PD接管A/B](2026-11-07-pd-takeover-ab.md) — kernel usb；同正式内核/同sysboot入口，A2/10复位、B0/10，恢复启动单列，未观测物理VBUS，补测因用户决定直接采用而取消。
+
 ## 2026-11-06
 
 - [integration42 K10共存与采证停止](2026-11-06-vdec-integration42-results.md) — kernel video；三模块绑定及DOS仅JPEG占用通过；K9-KVM因无调用点trace事件未覆盖，恢复3次冷复位后正式2372 proof/视频通过，132条全Not run，硬停未部署。
