@@ -1,0 +1,240 @@
+{
+  "rows": [
+    {
+      "window": 111,
+      "kind": "candidate42",
+      "revoked_seconds": [],
+      "tmds_measurement_ready_seconds": [
+        24.637777,
+        27.238525
+      ],
+      "stable_seconds": null,
+      "revoked_to_stable_seconds": null,
+      "earliest_observed_capture_dq_seconds": 23.086568,
+      "first_observed_decoded_seconds": 20.341845,
+      "limitation": "No explicit stable-transition log; observed first DQ/frame is an upper bound, not the first completed frame since boot",
+      "kernel_events": [
+        [
+          8.283888,
+          "t7-hdmirx fe398000.hdmi-receiver: receiver ready, input port 1; waiting for a stable source"
+        ],
+        [
+          24.637777,
+          "t7-hdmirx TMDS measurement ready after 2 windows: cable=0x8000c5ff tmds=0x800317fc"
+        ],
+        [
+          27.238525,
+          "t7-hdmirx TMDS measurement ready after 1 windows: cable=0x8000c5ff tmds=0x800317fc"
+        ]
+      ]
+    },
+    {
+      "window": 111,
+      "kind": "returnedfd41",
+      "revoked_seconds": [],
+      "tmds_measurement_ready_seconds": [],
+      "stable_seconds": null,
+      "revoked_to_stable_seconds": null,
+      "earliest_observed_capture_dq_seconds": null,
+      "first_observed_decoded_seconds": 22.096871,
+      "limitation": "No explicit stable-transition log; observed first DQ/frame is an upper bound, not the first completed frame since boot; returned boot has no complete kernel journal or Wave5 trace archived",
+      "kernel_events": []
+    },
+    {
+      "window": 112,
+      "kind": "candidate42",
+      "revoked_seconds": [],
+      "tmds_measurement_ready_seconds": [
+        14.238064,
+        17.715223,
+        29.485752,
+        34.752122
+      ],
+      "stable_seconds": null,
+      "revoked_to_stable_seconds": null,
+      "earliest_observed_capture_dq_seconds": 21.080078,
+      "first_observed_decoded_seconds": 18.304098,
+      "limitation": "No explicit stable-transition log; observed first DQ/frame is an upper bound, not the first completed frame since boot",
+      "kernel_events": [
+        [
+          6.312366,
+          "t7-hdmirx fe398000.hdmi-receiver: receiver ready, input port 1; waiting for a stable source"
+        ],
+        [
+          14.238064,
+          "t7-hdmirx TMDS measurement ready after 1 windows: cable=0x8000c600 tmds=0x800317fc"
+        ],
+        [
+          17.715223,
+          "t7-hdmirx TMDS measurement ready after 2 windows: cable=0x8000c5ff tmds=0x800317fc"
+        ],
+        [
+          29.485752,
+          "t7-hdmirx TMDS measurement ready after 2 windows: cable=0x8000c5ff tmds=0x800317fc"
+        ],
+        [
+          34.752122,
+          "t7-hdmirx TMDS measurement ready after 1 windows: cable=0x8000c5ff tmds=0x800317fc"
+        ]
+      ]
+    },
+    {
+      "window": 112,
+      "kind": "returnedfd41",
+      "revoked_seconds": [],
+      "tmds_measurement_ready_seconds": [],
+      "stable_seconds": null,
+      "revoked_to_stable_seconds": null,
+      "earliest_observed_capture_dq_seconds": null,
+      "first_observed_decoded_seconds": 22.137629,
+      "limitation": "No explicit stable-transition log; observed first DQ/frame is an upper bound, not the first completed frame since boot; returned boot has no complete kernel journal or Wave5 trace archived",
+      "kernel_events": []
+    },
+    {
+      "window": 113,
+      "kind": "candidate42",
+      "revoked_seconds": [],
+      "tmds_measurement_ready_seconds": [],
+      "stable_seconds": null,
+      "revoked_to_stable_seconds": null,
+      "earliest_observed_capture_dq_seconds": 21.102741,
+      "first_observed_decoded_seconds": 18.292802,
+      "limitation": "No explicit stable-transition log; observed first DQ/frame is an upper bound, not the first completed frame since boot",
+      "kernel_events": [
+        [
+          6.463539,
+          "t7-hdmirx fe398000.hdmi-receiver: receiver ready, input port 1; waiting for a stable source"
+        ]
+      ]
+    },
+    {
+      "window": 113,
+      "kind": "returnedfd41",
+      "revoked_seconds": [],
+      "tmds_measurement_ready_seconds": [],
+      "stable_seconds": null,
+      "revoked_to_stable_seconds": null,
+      "earliest_observed_capture_dq_seconds": null,
+      "first_observed_decoded_seconds": 21.66278,
+      "limitation": "No explicit stable-transition log; observed first DQ/frame is an upper bound, not the first completed frame since boot; returned boot has no complete kernel journal or Wave5 trace archived",
+      "kernel_events": []
+    },
+    {
+      "window": 114,
+      "kind": "candidate42",
+      "revoked_seconds": [],
+      "tmds_measurement_ready_seconds": [
+        15.230892,
+        15.486814,
+        16.001603
+      ],
+      "stable_seconds": null,
+      "revoked_to_stable_seconds": null,
+      "earliest_observed_capture_dq_seconds": 21.107423,
+      "first_observed_decoded_seconds": 18.267422,
+      "limitation": "No explicit stable-transition log; observed first DQ/frame is an upper bound, not the first completed frame since boot",
+      "kernel_events": [
+        [
+          6.468332,
+          "t7-hdmirx fe398000.hdmi-receiver: receiver ready, input port 1; waiting for a stable source"
+        ],
+        [
+          15.230892,
+          "t7-hdmirx TMDS measurement ready after 3 windows: cable=0x8000c5ff tmds=0x800317fc"
+        ],
+        [
+          15.486814,
+          "t7-hdmirx TMDS measurement ready after 2 windows: cable=0x8000c5ff tmds=0x800317fc"
+        ],
+        [
+          16.001603,
+          "t7-hdmirx TMDS measurement ready after 1 windows: cable=0x8000c5ff tmds=0x800317fc"
+        ]
+      ]
+    },
+    {
+      "window": 114,
+      "kind": "returnedfd41",
+      "revoked_seconds": [],
+      "tmds_measurement_ready_seconds": [],
+      "stable_seconds": null,
+      "revoked_to_stable_seconds": null,
+      "earliest_observed_capture_dq_seconds": null,
+      "first_observed_decoded_seconds": 23.210082,
+      "limitation": "No explicit stable-transition log; observed first DQ/frame is an upper bound, not the first completed frame since boot; returned boot has no complete kernel journal or Wave5 trace archived",
+      "kernel_events": []
+    },
+    {
+      "window": 115,
+      "kind": "candidate42",
+      "revoked_seconds": [],
+      "tmds_measurement_ready_seconds": [],
+      "stable_seconds": null,
+      "revoked_to_stable_seconds": null,
+      "earliest_observed_capture_dq_seconds": 20.952205,
+      "first_observed_decoded_seconds": 18.346745,
+      "limitation": "No explicit stable-transition log; observed first DQ/frame is an upper bound, not the first completed frame since boot",
+      "kernel_events": [
+        [
+          6.363579,
+          "t7-hdmirx fe398000.hdmi-receiver: receiver ready, input port 1; waiting for a stable source"
+        ]
+      ]
+    },
+    {
+      "window": 115,
+      "kind": "returnedfd41",
+      "revoked_seconds": [],
+      "tmds_measurement_ready_seconds": [],
+      "stable_seconds": null,
+      "revoked_to_stable_seconds": null,
+      "earliest_observed_capture_dq_seconds": null,
+      "first_observed_decoded_seconds": 22.075821,
+      "limitation": "No explicit stable-transition log; observed first DQ/frame is an upper bound, not the first completed frame since boot; returned boot has no complete kernel journal or Wave5 trace archived",
+      "kernel_events": []
+    }
+  ],
+  "source_files": {
+    "/Users/deepdream/Developer/github/localhost-copilot/vim4-kvm-integration42/logs/hwdecode-parity-r111/uart.raw": "3d6f0770f3b4114fe4ca3af6ccd375d1342bc2158ec9bdb17bce4b0d54fd8589",
+    "/Users/deepdream/Developer/github/localhost-copilot/vim4-kvm-integration42/logs/hwdecode-parity-r111/uart-chunks.jsonl": "eece0234c6bd850fb123a63eec81f9f04e1a226f7ed201ed3768dd809ec0726b",
+    "/Users/deepdream/Developer/github/localhost-copilot/vim4-kvm-integration42/build/hwdecode-parity/run111/archive/results/k9/before/kernel-journal-0001.jsonl": "d19b812a407953063834d3b75463de4a44a8d2b2359e1bb1d4ae79f3a90de6f7",
+    "/Users/deepdream/Developer/github/localhost-copilot/vim4-kvm-integration42/build/hwdecode-parity/run111/archive/results/k9/before/kernel-journal-0002.jsonl": "f6482ed8b350f2e2399c4e1baa339640a99f28ac56a3ca45c2090c4172887b63",
+    "/Users/deepdream/Developer/github/localhost-copilot/vim4-kvm-integration42/build/hwdecode-parity/run111/archive/results/k9/before/encoder-device.json": "7ba44feebf755f2b7f90cda441dc6a297e8df65d4074b176667320279273ae71",
+    "/Users/deepdream/Developer/github/localhost-copilot/vim4-kvm-integration42/build/hwdecode-parity/run111/archive/results/k9/before/vector-9000-v4l2.trace": "9a808c1442bab5a35b123a51655662daf50a64cf696a5ce16a6572518ab35d1a",
+    "/Users/deepdream/Developer/github/localhost-copilot/vim4-kvm-integration42/build/hwdecode-parity/run111/before-consumer.log": "95394ab080d67c682c04ab41ea3e9192910471846cc741572667383ec7881c5c",
+    "/Users/deepdream/Developer/github/localhost-copilot/vim4-kvm-integration42/logs/hwdecode-parity-r111/returned-video.log": "55021e3627c6b649300fe8a60e0872de92a59d16e1a9084f3dba53ece5bcec92",
+    "/Users/deepdream/Developer/github/localhost-copilot/vim4-kvm-integration42/logs/hwdecode-parity-r112/uart.raw": "132aade48e1c935e0da0b923773aaa831b0853e58c3e651bd5957ae6d000914e",
+    "/Users/deepdream/Developer/github/localhost-copilot/vim4-kvm-integration42/logs/hwdecode-parity-r112/uart-chunks.jsonl": "1bb27451b927c2d4f1fbfb37e6cc83d7f66d56e71d5aeb41affbcd3d951a9f93",
+    "/Users/deepdream/Developer/github/localhost-copilot/vim4-kvm-integration42/build/hwdecode-parity/run112/archive/results/k9/before/kernel-journal-0001.jsonl": "a2ba0d2f012b98077d9e19f736b1b4d19f2be7d82f8ea5ca5bf4d28836095cd3",
+    "/Users/deepdream/Developer/github/localhost-copilot/vim4-kvm-integration42/build/hwdecode-parity/run112/archive/results/k9/before/kernel-journal-0002.jsonl": "eba82ed041416e2f812ae5ad5160a1b73b86ae86879d3f9ba98941b7972846d6",
+    "/Users/deepdream/Developer/github/localhost-copilot/vim4-kvm-integration42/build/hwdecode-parity/run112/archive/results/k9/before/encoder-device.json": "7ba44feebf755f2b7f90cda441dc6a297e8df65d4074b176667320279273ae71",
+    "/Users/deepdream/Developer/github/localhost-copilot/vim4-kvm-integration42/build/hwdecode-parity/run112/archive/results/k9/before/vector-9000-v4l2.trace": "aa60fc46b28f2aa2d535cdf76aa10c0756bc2f94b1e2c58179ef219891174076",
+    "/Users/deepdream/Developer/github/localhost-copilot/vim4-kvm-integration42/build/hwdecode-parity/run112/before-consumer.log": "f2eea98e45fade46571f673b475f842b8adc099552e933eaa4f549e11c6c6a9d",
+    "/Users/deepdream/Developer/github/localhost-copilot/vim4-kvm-integration42/logs/hwdecode-parity-r112/returned-video.log": "5b91bc3ab687ff26f9f2d7d90f887909dcc40f28bb54debead87550f5ffc595c",
+    "/Users/deepdream/Developer/github/localhost-copilot/vim4-kvm-integration42/logs/hwdecode-parity-r113/uart.raw": "8f896c7a4eda29f1cc4e033e061d39628ff301417258108e520865fafd6e7732",
+    "/Users/deepdream/Developer/github/localhost-copilot/vim4-kvm-integration42/logs/hwdecode-parity-r113/uart-chunks.jsonl": "41b25b823ea6f1d2d5cf9740ce34cb7f7d2671074c3b3d942b82d11336085795",
+    "/Users/deepdream/Developer/github/localhost-copilot/vim4-kvm-integration42/build/hwdecode-parity/run113/archive/results/k9/before/kernel-journal-0001.jsonl": "977f6adec29291558cbd435608fd2da8ab1d57bf9d173681654087ea7465fbff",
+    "/Users/deepdream/Developer/github/localhost-copilot/vim4-kvm-integration42/build/hwdecode-parity/run113/archive/results/k9/before/kernel-journal-0002.jsonl": "b70679d627288d25dc2a67dd6c72d71fb5e03f1cf2ce01db81526d540deccd1f",
+    "/Users/deepdream/Developer/github/localhost-copilot/vim4-kvm-integration42/build/hwdecode-parity/run113/archive/results/k9/before/encoder-device.json": "7ba44feebf755f2b7f90cda441dc6a297e8df65d4074b176667320279273ae71",
+    "/Users/deepdream/Developer/github/localhost-copilot/vim4-kvm-integration42/build/hwdecode-parity/run113/archive/results/k9/before/vector-9000-v4l2.trace": "02d9592f47f28de8bdc87dc7b83d1be9ed4e49622a1e1b3faeb4a9d4c2eda9f2",
+    "/Users/deepdream/Developer/github/localhost-copilot/vim4-kvm-integration42/build/hwdecode-parity/run113/before-consumer.log": "6d67aa0c4d48bdf64ec04782c5f98cf753c3ae129eae39208f7487106aff07ac",
+    "/Users/deepdream/Developer/github/localhost-copilot/vim4-kvm-integration42/logs/hwdecode-parity-r113/returned-video.log": "cbdd485a95aa73ecb8e7faaa55cedb44df385f081b0ac3ec46f0ab039147fd77",
+    "/Users/deepdream/Developer/github/localhost-copilot/vim4-kvm-integration42/logs/hwdecode-parity-r114/uart.raw": "c951333a0a1f9aa3cb033ef9b25fca0b58383bcc8620c94e851114a03a7383bb",
+    "/Users/deepdream/Developer/github/localhost-copilot/vim4-kvm-integration42/logs/hwdecode-parity-r114/uart-chunks.jsonl": "698f993955e1797ccba2992aa563c816879bee1a0cea4944a902da6053eead5d",
+    "/Users/deepdream/Developer/github/localhost-copilot/vim4-kvm-integration42/build/hwdecode-parity/run114/archive/results/k9/before/kernel-journal-0001.jsonl": "94e5f9da9437f4cdb64d6bf76db11271d2e70ea880ff219e937520ef6edfa7c9",
+    "/Users/deepdream/Developer/github/localhost-copilot/vim4-kvm-integration42/build/hwdecode-parity/run114/archive/results/k9/before/kernel-journal-0002.jsonl": "4f8384fdb5a9f8d4011a9fd5338284ddab313a1dbb79c6a14091c36e3de27ce7",
+    "/Users/deepdream/Developer/github/localhost-copilot/vim4-kvm-integration42/build/hwdecode-parity/run114/archive/results/k9/before/encoder-device.json": "7ba44feebf755f2b7f90cda441dc6a297e8df65d4074b176667320279273ae71",
+    "/Users/deepdream/Developer/github/localhost-copilot/vim4-kvm-integration42/build/hwdecode-parity/run114/archive/results/k9/before/vector-9000-v4l2.trace": "ea95976bf702a1ddc5b5effe232446c9f4898307696962caf560077b52e4d0aa",
+    "/Users/deepdream/Developer/github/localhost-copilot/vim4-kvm-integration42/build/hwdecode-parity/run114/before-consumer.log": "1c8523d1e45e64dec33c65a9fe4e705d3daa78c58963dc3530540995dd7c67dc",
+    "/Users/deepdream/Developer/github/localhost-copilot/vim4-kvm-integration42/logs/hwdecode-parity-r114/returned-video.log": "8a1fd3770ab644902c111fad3e60da1d3a8c8373aee98d87a4eeaa29a5b5ae20",
+    "/Users/deepdream/Developer/github/localhost-copilot/vim4-kvm-integration42/logs/hwdecode-parity-r115/uart.raw": "6bd86e247baeb13cf861429fc2cbb35845fcca22546143ddfe62bed8980384dc",
+    "/Users/deepdream/Developer/github/localhost-copilot/vim4-kvm-integration42/logs/hwdecode-parity-r115/uart-chunks.jsonl": "7409fe67874505ee096d74e448965613635c5afc8be14475c87c29336c870f23",
+    "/Users/deepdream/Developer/github/localhost-copilot/vim4-kvm-integration42/build/hwdecode-parity/run115/archive/results/k9/before/kernel-journal-0001.jsonl": "53d9db6d1e1f571543607473e2b7faf15cd83051c2f95e8ff88d1964fcfca6bd",
+    "/Users/deepdream/Developer/github/localhost-copilot/vim4-kvm-integration42/build/hwdecode-parity/run115/archive/results/k9/before/kernel-journal-0002.jsonl": "7146ab8d90bcee1c027f5a6a7a37f7d3063456421991ce04affa4e24b1863526",
+    "/Users/deepdream/Developer/github/localhost-copilot/vim4-kvm-integration42/build/hwdecode-parity/run115/archive/results/k9/before/encoder-device.json": "7ba44feebf755f2b7f90cda441dc6a297e8df65d4074b176667320279273ae71",
+    "/Users/deepdream/Developer/github/localhost-copilot/vim4-kvm-integration42/build/hwdecode-parity/run115/archive/results/k9/before/vector-9000-v4l2.trace": "03b4ef3d5fb5647c2c9ff34e76c18402dd5c248e6d7c7c878965d90f9c733e84",
+    "/Users/deepdream/Developer/github/localhost-copilot/vim4-kvm-integration42/build/hwdecode-parity/run115/before-consumer.log": "cc768bee5e49083a69f162e978ba52c38dca4e6bf1b490c20cc817490ffc4927",
+    "/Users/deepdream/Developer/github/localhost-copilot/vim4-kvm-integration42/logs/hwdecode-parity-r115/returned-video.log": "c71a18afac146d416b86a0a7bd6e5bf30f56cd9672bdf2f470daf8060733d661"
+  },
+  "conclusion": "No archived revoked-to-stable transition for these ten boots; cannot reconstruct that latency. Candidate Wave5 DQ and decoded-frame samples demonstrate earlier working .42 boots, but radio-off RAM startup differs from the current formal startup."
+}

@@ -1,0 +1,24 @@
+{
+  "source": "3facfaa37284f7193508c2a16fbf5162c6242616",
+  "release": "7.3.1-vim4-20261107.2",
+  "kernel_build_id": "fa5a9fa53dc3f84802722702f18623730ab81d83",
+  "package_sha256": "8fb7c55fce771a1ef076a4aa0014b35c5c76c596b78b09067632965f38842fa8",
+  "status": "installed-basic-checks",
+  "scope": "user-directed-install-basic-checks",
+  "evidence": "docs/bringup/2026-11-07-deploy42-default.md",
+  "limitations": [
+    "User canceled deployment gates: nine classes, K9 coexistence and decode smoke were not run during this install.",
+    "No HID injection, EDID changes, HDMI/encoding matrices, 600-second motion, audio, media or GPU tests during this install.",
+    "Same binaries have earlier integration42 results; those are historical evidence, not formal-wireless deployment acceptance.",
+    "HEVC integration42 has 127 Success, 3 Error and 2 kernel Timeout among 132 streams; no claim of full 5.15 parity.",
+    "Cold-reset absence in these natural default boots does not establish a fix or physical VBUS cause."
+  ],
+  "passive_video": {
+    "fps": 59.54120554834341,
+    "frames": 298
+  },
+  "installed_proof_sha256": "0cf8e70ef8bc119f02fca87cc5a3e400796a2537d21802d43469709e0fda985d",
+  "baseline_proof_sha256": "5d526938328191ee0c871d47ece5d02549b2e69bdf83aed4779a21a21602a1a2",
+  "runtime_metadata_sha256": "7dc731aa47c9bc572dd3088a83060d02a8fbc89829b48a0c575dc7d1c654f0ae",
+  "logs": "logs/deploy-42/direct-3"
+}

@@ -1,0 +1,915 @@
+{
+  "source": "3facfaa37284f7193508c2a16fbf5162c6242616",
+  "release": "7.3.1-vim4-20261107.2",
+  "build_id": "fa5a9fa53dc3f84802722702f18623730ab81d83",
+  "archive_sha256": "8fb7c55fce771a1ef076a4aa0014b35c5c76c596b78b09067632965f38842fa8",
+  "installed": true,
+  "default": "Mainline",
+  "acceptance_scope": "user-directed-install-basic-checks",
+  "not_run": [
+    "nine-class regression",
+    "K9 coexistence gate",
+    "decode smoke",
+    "HID",
+    "EDID switching",
+    "test matrices"
+  ],
+  "tickets": [
+    {
+      "order": 1640,
+      "ticket": "286c729347614dcbb7050bdb78eceab2",
+      "state": "released"
+    },
+    {
+      "order": 1641,
+      "ticket": "80e9d7d2b86047c2bf812876c3bc16e3",
+      "state": "released"
+    }
+  ],
+  "boots": [
+    {
+      "release": "7.3.1-vim4-20261107.2",
+      "boot_id": "79e39b78-dff7-46e7-96ec-34a798585641",
+      "cold_resets": 0,
+      "uart": "logs/deploy-42/direct-2/uart.raw",
+      "uart_sha256": "fefa9f1df168b829e86313d6b52a0ba2ab502fb6d806dcf9fe8d1d736eaf889e",
+      "uart_index_sha256": "81b510341285fd1c68c3452b60efcba74ccef98edbdb230057ff83ff423e6485",
+      "uart_release": "7.3.1-vim4-20261107.2",
+      "linux_started_monotonic_ns": 770994980386166
+    },
+    {
+      "release": "7.3.1-vim4-20261105",
+      "boot_id": "07be674d-2a09-43e8-98a9-e4abbb108967",
+      "cold_resets": 0,
+      "uart": "logs/deploy-42/direct-2/recovery/uart.raw",
+      "uart_sha256": "7309b223cc344672e14b70158821c749dde6f03de31e030f2186605eadc9139a",
+      "uart_index_sha256": "df9c1dfbe3fa24a2f55eafa6874c57adf6ecdb140600c318875be166482af418",
+      "uart_release": null,
+      "linux_started_monotonic_ns": 771107060362958
+    },
+    {
+      "release": "7.3.1-vim4-20261107.2",
+      "boot_id": "8ad0825f-cb9c-4bea-98a0-19b37be62793",
+      "cold_resets": 0,
+      "uart": "logs/deploy-42/direct-3/uart.raw",
+      "uart_sha256": "d8b9319a4a327d47719fef40a0b521a1c02e9530c2c7c1217f3cdf0a8d92b707",
+      "uart_index_sha256": "e7dfe5981cbb782ad8a48cd5ca89e82bbdc4f41cc97e5c6af1f64a9981c541bb",
+      "uart_release": "7.3.1-vim4-20261107.2",
+      "linux_started_monotonic_ns": 771638073958458
+    }
+  ],
+  "first_attempt": {
+    "installed": false,
+    "error": "CalledProcessError(1, ['node', '/Users/deepdream/Developer/github/localhost-copilot/vim4-kvm-deploy-42/tools/board-window-receiver.mjs', 'http://127.0.0.1:18088', '5', '--local-ip=192.168.50.239'], None, None)",
+    "installation_attempted": true,
+    "restored": true
+  },
+  "recovery_video": {
+    "fps": 59.97324893231374,
+    "frames": 300
+  },
+  "observation": {
+    "samples": 49,
+    "seconds": 240.000097721,
+    "first_uptime": "15.20 92.19",
+    "last_uptime": "255.20 2102.86",
+    "signal_true_samples": 49,
+    "stream_states": [
+      "device_busy"
+    ],
+    "hdmirx_events": [
+      {
+        "seconds": 7.103536,
+        "message": "t7-hdmirx fe398000.hdmi-receiver: receiver ready, input port 1; waiting for a stable source"
+      },
+      {
+        "seconds": 10.632856,
+        "message": "t7-hdmirx TMDS measurement ready after 1 windows: cable=0x8000c5ff tmds=0x800317fc"
+      },
+      {
+        "seconds": 11.174115,
+        "message": "t7-hdmirx TMDS measurement ready after 3 windows: cable=0x8000c5ff tmds=0x800317fd"
+      },
+      {
+        "seconds": 11.430097,
+        "message": "t7-hdmirx TMDS measurement ready after 3 windows: cable=0x8000c5ff tmds=0x800317fc"
+      },
+      {
+        "seconds": 11.690085,
+        "message": "t7-hdmirx TMDS measurement ready after 3 windows: cable=0x8000c5ff tmds=0x800317fd"
+      },
+      {
+        "seconds": 11.97421,
+        "message": "t7-hdmirx TMDS measurement ready after 3 windows: cable=0x8000c5ff tmds=0x800317fc"
+      },
+      {
+        "seconds": 12.230095,
+        "message": "t7-hdmirx TMDS measurement ready after 3 windows: cable=0x8000c5ff tmds=0x800317fc"
+      },
+      {
+        "seconds": 12.488821,
+        "message": "t7-hdmirx TMDS measurement ready after 1 windows: cable=0x8000c5ff tmds=0x800317fc"
+      },
+      {
+        "seconds": 13.286076,
+        "message": "t7-hdmirx TMDS measurement ready after 3 windows: cable=0x8000c5ff tmds=0x800317fd"
+      },
+      {
+        "seconds": 39.475548,
+        "message": "t7-hdmirx TMDS measurement ready after 1 windows: cable=0x8000c5ff tmds=0x800317fc"
+      },
+      {
+        "seconds": 99.215478,
+        "message": "t7-hdmirx TMDS measurement ready after 3 windows: cable=0x8000c5ff tmds=0x800317fc"
+      },
+      {
+        "seconds": 99.759494,
+        "message": "t7-hdmirx TMDS measurement ready after 3 windows: cable=0x8000c5ff tmds=0x800317fc"
+      },
+      {
+        "seconds": 100.271445,
+        "message": "t7-hdmirx TMDS measurement ready after 3 windows: cable=0x8000c5ff tmds=0x800317fc"
+      },
+      {
+        "seconds": 100.783466,
+        "message": "t7-hdmirx TMDS measurement ready after 3 windows: cable=0x8000c5ff tmds=0x800317fc"
+      },
+      {
+        "seconds": 101.299422,
+        "message": "t7-hdmirx TMDS measurement ready after 3 windows: cable=0x8000c600 tmds=0x800317fc"
+      },
+      {
+        "seconds": 101.839412,
+        "message": "t7-hdmirx TMDS measurement ready after 3 windows: cable=0x8000c5ff tmds=0x800317fc"
+      },
+      {
+        "seconds": 102.351413,
+        "message": "t7-hdmirx TMDS measurement ready after 3 windows: cable=0x8000c5ff tmds=0x800317fc"
+      },
+      {
+        "seconds": 102.863392,
+        "message": "t7-hdmirx TMDS measurement ready after 3 windows: cable=0x8000c5ff tmds=0x800317fc"
+      },
+      {
+        "seconds": 103.375386,
+        "message": "t7-hdmirx TMDS measurement ready after 3 windows: cable=0x8000c5ff tmds=0x800317fc"
+      },
+      {
+        "seconds": 103.887364,
+        "message": "t7-hdmirx TMDS measurement ready after 3 windows: cable=0x8000c5ff tmds=0x800317fc"
+      },
+      {
+        "seconds": 104.402122,
+        "message": "t7-hdmirx TMDS measurement ready after 1 windows: cable=0x8000c5ff tmds=0x800317fd"
+      },
+      {
+        "seconds": 141.390546,
+        "message": "t7-hdmirx TMDS measurement ready after 3 windows: cable=0x8000c5ff tmds=0x800317fc"
+      },
+      {
+        "seconds": 141.90254,
+        "message": "t7-hdmirx TMDS measurement ready after 3 windows: cable=0x8000c5ff tmds=0x800317fc"
+      },
+      {
+        "seconds": 142.414535,
+        "message": "t7-hdmirx TMDS measurement ready after 3 windows: cable=0x8000c5ff tmds=0x800317fc"
+      },
+      {
+        "seconds": 142.930505,
+        "message": "t7-hdmirx TMDS measurement ready after 3 windows: cable=0x8000c5ff tmds=0x800317fc"
+      },
+      {
+        "seconds": 143.470494,
+        "message": "t7-hdmirx TMDS measurement ready after 3 windows: cable=0x8000c5ff tmds=0x800317fc"
+      },
+      {
+        "seconds": 143.982481,
+        "message": "t7-hdmirx TMDS measurement ready after 3 windows: cable=0x8000c5ff tmds=0x800317fc"
+      },
+      {
+        "seconds": 144.498513,
+        "message": "t7-hdmirx TMDS measurement ready after 3 windows: cable=0x8000c5ff tmds=0x800317fc"
+      },
+      {
+        "seconds": 145.010466,
+        "message": "t7-hdmirx TMDS measurement ready after 3 windows: cable=0x8000c600 tmds=0x800317fc"
+      },
+      {
+        "seconds": 145.550454,
+        "message": "t7-hdmirx TMDS measurement ready after 3 windows: cable=0x8000c5ff tmds=0x800317fc"
+      },
+      {
+        "seconds": 146.066441,
+        "message": "t7-hdmirx TMDS measurement ready after 3 windows: cable=0x8000c5ff tmds=0x800317fc"
+      },
+      {
+        "seconds": 146.578429,
+        "message": "t7-hdmirx TMDS measurement ready after 3 windows: cable=0x8000c5ff tmds=0x800317fc"
+      },
+      {
+        "seconds": 147.090417,
+        "message": "t7-hdmirx TMDS measurement ready after 3 windows: cable=0x8000c5ff tmds=0x800317fc"
+      },
+      {
+        "seconds": 147.602407,
+        "message": "t7-hdmirx TMDS measurement ready after 3 windows: cable=0x8000c5ff tmds=0x800317fd"
+      },
+      {
+        "seconds": 148.114395,
+        "message": "t7-hdmirx TMDS measurement ready after 3 windows: cable=0x8000c5ff tmds=0x800317fc"
+      },
+      {
+        "seconds": 148.654474,
+        "message": "t7-hdmirx TMDS measurement ready after 3 windows: cable=0x8000c5ff tmds=0x800317fd"
+      },
+      {
+        "seconds": 149.170369,
+        "message": "t7-hdmirx TMDS measurement ready after 3 windows: cable=0x8000c5ff tmds=0x800317fc"
+      },
+      {
+        "seconds": 149.742536,
+        "message": "t7-hdmirx TMDS measurement ready after 3 windows: cable=0x8000c5ff tmds=0x800317fc"
+      },
+      {
+        "seconds": 150.254349,
+        "message": "t7-hdmirx TMDS measurement ready after 3 windows: cable=0x8000c600 tmds=0x800317fc"
+      },
+      {
+        "seconds": 150.769112,
+        "message": "t7-hdmirx TMDS measurement ready after 1 windows: cable=0x8000c5ff tmds=0x800317fc"
+      },
+      {
+        "seconds": 182.989639,
+        "message": "t7-hdmirx TMDS measurement ready after 3 windows: cable=0x8000c5ff tmds=0x800317fc"
+      },
+      {
+        "seconds": 183.501629,
+        "message": "t7-hdmirx TMDS measurement ready after 3 windows: cable=0x8000c5ff tmds=0x800317fc"
+      },
+      {
+        "seconds": 183.757633,
+        "message": "t7-hdmirx TMDS measurement ready after 3 windows: cable=0x8000c5ff tmds=0x800317fc"
+      },
+      {
+        "seconds": 184.013611,
+        "message": "t7-hdmirx TMDS measurement ready after 3 windows: cable=0x8000c5ff tmds=0x800317fc"
+      },
+      {
+        "seconds": 184.528363,
+        "message": "t7-hdmirx TMDS measurement ready after 1 windows: cable=0x8000c5ff tmds=0x800317fc"
+      },
+      {
+        "seconds": 211.885008,
+        "message": "t7-hdmirx TMDS measurement ready after 3 windows: cable=0x8000c600 tmds=0x800317fd"
+      },
+      {
+        "seconds": 212.428983,
+        "message": "t7-hdmirx TMDS measurement ready after 3 windows: cable=0x8000c5ff tmds=0x800317fd"
+      },
+      {
+        "seconds": 212.944976,
+        "message": "t7-hdmirx TMDS measurement ready after 3 windows: cable=0x8000c5ff tmds=0x800317fd"
+      },
+      {
+        "seconds": 213.484966,
+        "message": "t7-hdmirx TMDS measurement ready after 3 windows: cable=0x8000c5ff tmds=0x800317fc"
+      },
+      {
+        "seconds": 214.028948,
+        "message": "t7-hdmirx TMDS measurement ready after 3 windows: cable=0x8000c5ff tmds=0x800317fc"
+      },
+      {
+        "seconds": 214.540982,
+        "message": "t7-hdmirx TMDS measurement ready after 3 windows: cable=0x8000c5ff tmds=0x800317fd"
+      },
+      {
+        "seconds": 215.052935,
+        "message": "t7-hdmirx TMDS measurement ready after 3 windows: cable=0x8000c600 tmds=0x800317fc"
+      },
+      {
+        "seconds": 215.564936,
+        "message": "t7-hdmirx TMDS measurement ready after 3 windows: cable=0x8000c5ff tmds=0x800317fc"
+      },
+      {
+        "seconds": 216.076906,
+        "message": "t7-hdmirx TMDS measurement ready after 3 windows: cable=0x8000c5ff tmds=0x800317fc"
+      },
+      {
+        "seconds": 216.588908,
+        "message": "t7-hdmirx TMDS measurement ready after 3 windows: cable=0x8000c5ff tmds=0x800317fc"
+      },
+      {
+        "seconds": 217.104881,
+        "message": "t7-hdmirx TMDS measurement ready after 3 windows: cable=0x8000c5ff tmds=0x800317fc"
+      },
+      {
+        "seconds": 217.644867,
+        "message": "t7-hdmirx TMDS measurement ready after 3 windows: cable=0x8000c5ff tmds=0x800317fc"
+      },
+      {
+        "seconds": 218.156857,
+        "message": "t7-hdmirx TMDS measurement ready after 3 windows: cable=0x8000c5ff tmds=0x800317fc"
+      },
+      {
+        "seconds": 218.668845,
+        "message": "t7-hdmirx TMDS measurement ready after 3 windows: cable=0x8000c5ff tmds=0x800317fc"
+      },
+      {
+        "seconds": 219.180837,
+        "message": "t7-hdmirx TMDS measurement ready after 3 windows: cable=0x8000c5ff tmds=0x800317fc"
+      },
+      {
+        "seconds": 219.696852,
+        "message": "t7-hdmirx TMDS measurement ready after 3 windows: cable=0x8000c5ff tmds=0x800317fd"
+      },
+      {
+        "seconds": 220.23681,
+        "message": "t7-hdmirx TMDS measurement ready after 3 windows: cable=0x8000c5ff tmds=0x800317fc"
+      },
+      {
+        "seconds": 220.748802,
+        "message": "t7-hdmirx TMDS measurement ready after 3 windows: cable=0x8000c5ff tmds=0x800317fc"
+      },
+      {
+        "seconds": 221.261171,
+        "message": "t7-hdmirx TMDS measurement ready after 3 windows: cable=0x8000c5ff tmds=0x800317fc"
+      },
+      {
+        "seconds": 221.772781,
+        "message": "t7-hdmirx TMDS measurement ready after 3 windows: cable=0x8000c5ff tmds=0x800317fc"
+      },
+      {
+        "seconds": 222.284769,
+        "message": "t7-hdmirx TMDS measurement ready after 3 windows: cable=0x8000c5ff tmds=0x800317fc"
+      },
+      {
+        "seconds": 222.832754,
+        "message": "t7-hdmirx TMDS measurement ready after 3 windows: cable=0x8000c5ff tmds=0x800317fc"
+      },
+      {
+        "seconds": 223.372743,
+        "message": "t7-hdmirx TMDS measurement ready after 3 windows: cable=0x8000c5ff tmds=0x800317fc"
+      },
+      {
+        "seconds": 223.916735,
+        "message": "t7-hdmirx TMDS measurement ready after 3 windows: cable=0x8000c5ff tmds=0x800317fc"
+      },
+      {
+        "seconds": 224.43149,
+        "message": "t7-hdmirx TMDS measurement ready after 1 windows: cable=0x8000c5ff tmds=0x800317fc"
+      },
+      {
+        "seconds": 226.766211,
+        "message": "t7-hdmirx TMDS measurement ready after 2 windows: cable=0x8000c5ff tmds=0x800317fc"
+      },
+      {
+        "seconds": 227.020678,
+        "message": "t7-hdmirx TMDS measurement ready after 3 windows: cable=0x8000c5ff tmds=0x800317fc"
+      },
+      {
+        "seconds": 227.276654,
+        "message": "t7-hdmirx TMDS measurement ready after 3 windows: cable=0x8000c5ff tmds=0x800317fc"
+      },
+      {
+        "seconds": 227.788645,
+        "message": "t7-hdmirx TMDS measurement ready after 3 windows: cable=0x8000c5ff tmds=0x800317fd"
+      },
+      {
+        "seconds": 228.300632,
+        "message": "t7-hdmirx TMDS measurement ready after 3 windows: cable=0x8000c5ff tmds=0x800317fc"
+      },
+      {
+        "seconds": 228.844623,
+        "message": "t7-hdmirx TMDS measurement ready after 3 windows: cable=0x8000c5ff tmds=0x800317fc"
+      },
+      {
+        "seconds": 229.3567,
+        "message": "t7-hdmirx TMDS measurement ready after 3 windows: cable=0x8000c5ff tmds=0x800317fc"
+      },
+      {
+        "seconds": 229.868613,
+        "message": "t7-hdmirx TMDS measurement ready after 3 windows: cable=0x8000c5ff tmds=0x800317fc"
+      },
+      {
+        "seconds": 230.380592,
+        "message": "t7-hdmirx TMDS measurement ready after 3 windows: cable=0x8000c5ff tmds=0x800317fd"
+      },
+      {
+        "seconds": 230.892583,
+        "message": "t7-hdmirx TMDS measurement ready after 3 windows: cable=0x8000c5ff tmds=0x800317fc"
+      },
+      {
+        "seconds": 231.404576,
+        "message": "t7-hdmirx TMDS measurement ready after 3 windows: cable=0x8000c5ff tmds=0x800317fc"
+      },
+      {
+        "seconds": 231.916575,
+        "message": "t7-hdmirx TMDS measurement ready after 3 windows: cable=0x8000c600 tmds=0x800317fc"
+      },
+      {
+        "seconds": 232.428547,
+        "message": "t7-hdmirx TMDS measurement ready after 3 windows: cable=0x8000c5ff tmds=0x800317fc"
+      },
+      {
+        "seconds": 232.940531,
+        "message": "t7-hdmirx TMDS measurement ready after 3 windows: cable=0x8000c5ff tmds=0x800317fc"
+      },
+      {
+        "seconds": 233.456525,
+        "message": "t7-hdmirx TMDS measurement ready after 3 windows: cable=0x8000c5ff tmds=0x800317fc"
+      },
+      {
+        "seconds": 233.996565,
+        "message": "t7-hdmirx TMDS measurement ready after 3 windows: cable=0x8000c5ff tmds=0x800317fc"
+      },
+      {
+        "seconds": 234.509779,
+        "message": "t7-hdmirx TMDS measurement ready after 1 windows: cable=0x8000c5ff tmds=0x800317fc"
+      },
+      {
+        "seconds": 235.024493,
+        "message": "t7-hdmirx TMDS measurement ready after 3 windows: cable=0x8000c5ff tmds=0x800317fc"
+      },
+      {
+        "seconds": 235.564475,
+        "message": "t7-hdmirx TMDS measurement ready after 3 windows: cable=0x8000c5ff tmds=0x800317fd"
+      },
+      {
+        "seconds": 236.076476,
+        "message": "t7-hdmirx TMDS measurement ready after 3 windows: cable=0x8000c5ff tmds=0x800317fc"
+      },
+      {
+        "seconds": 236.588453,
+        "message": "t7-hdmirx TMDS measurement ready after 3 windows: cable=0x8000c5ff tmds=0x800317fd"
+      },
+      {
+        "seconds": 237.100831,
+        "message": "t7-hdmirx TMDS measurement ready after 3 windows: cable=0x8000c5ff tmds=0x800317fd"
+      },
+      {
+        "seconds": 237.612433,
+        "message": "t7-hdmirx TMDS measurement ready after 3 windows: cable=0x8000c5ff tmds=0x800317fc"
+      },
+      {
+        "seconds": 238.156426,
+        "message": "t7-hdmirx TMDS measurement ready after 3 windows: cable=0x8000c5ff tmds=0x800317fc"
+      },
+      {
+        "seconds": 238.700408,
+        "message": "t7-hdmirx TMDS measurement ready after 3 windows: cable=0x8000c5ff tmds=0x800317fc"
+      },
+      {
+        "seconds": 239.212398,
+        "message": "t7-hdmirx TMDS measurement ready after 3 windows: cable=0x8000c5ff tmds=0x800317fc"
+      },
+      {
+        "seconds": 239.72444,
+        "message": "t7-hdmirx TMDS measurement ready after 3 windows: cable=0x8000c5ff tmds=0x800317fd"
+      },
+      {
+        "seconds": 240.236373,
+        "message": "t7-hdmirx TMDS measurement ready after 3 windows: cable=0x8000c5ff tmds=0x800317fc"
+      },
+      {
+        "seconds": 240.748365,
+        "message": "t7-hdmirx TMDS measurement ready after 3 windows: cable=0x8000c5ff tmds=0x800317fc"
+      },
+      {
+        "seconds": 241.26035,
+        "message": "t7-hdmirx TMDS measurement ready after 3 windows: cable=0x8000c5ff tmds=0x800317fc"
+      },
+      {
+        "seconds": 241.77234,
+        "message": "t7-hdmirx TMDS measurement ready after 3 windows: cable=0x8000c5ff tmds=0x800317fc"
+      },
+      {
+        "seconds": 242.284332,
+        "message": "t7-hdmirx TMDS measurement ready after 3 windows: cable=0x8000c5ff tmds=0x800317fc"
+      },
+      {
+        "seconds": 242.800315,
+        "message": "t7-hdmirx TMDS measurement ready after 3 windows: cable=0x8000c5ff tmds=0x800317fc"
+      },
+      {
+        "seconds": 243.372306,
+        "message": "t7-hdmirx TMDS measurement ready after 3 windows: cable=0x8000c5ff tmds=0x800317fc"
+      },
+      {
+        "seconds": 243.884293,
+        "message": "t7-hdmirx TMDS measurement ready after 3 windows: cable=0x8000c600 tmds=0x800317fc"
+      },
+      {
+        "seconds": 244.400321,
+        "message": "t7-hdmirx TMDS measurement ready after 3 windows: cable=0x8000c5ff tmds=0x800317fd"
+      },
+      {
+        "seconds": 244.94028,
+        "message": "t7-hdmirx TMDS measurement ready after 3 windows: cable=0x8000c5ff tmds=0x800317fc"
+      },
+      {
+        "seconds": 245.452256,
+        "message": "t7-hdmirx TMDS measurement ready after 3 windows: cable=0x8000c5ff tmds=0x800317fd"
+      },
+      {
+        "seconds": 245.964245,
+        "message": "t7-hdmirx TMDS measurement ready after 3 windows: cable=0x8000c5ff tmds=0x800317fd"
+      },
+      {
+        "seconds": 246.476237,
+        "message": "t7-hdmirx TMDS measurement ready after 3 windows: cable=0x8000c5ff tmds=0x800317fd"
+      },
+      {
+        "seconds": 246.988231,
+        "message": "t7-hdmirx TMDS measurement ready after 3 windows: cable=0x8000c5ff tmds=0x800317fc"
+      },
+      {
+        "seconds": 247.53621,
+        "message": "t7-hdmirx TMDS measurement ready after 3 windows: cable=0x8000c5ff tmds=0x800317fc"
+      },
+      {
+        "seconds": 248.076197,
+        "message": "t7-hdmirx TMDS measurement ready after 3 windows: cable=0x8000c5ff tmds=0x800317fc"
+      },
+      {
+        "seconds": 248.588191,
+        "message": "t7-hdmirx TMDS measurement ready after 3 windows: cable=0x8000c5ff tmds=0x800317fc"
+      },
+      {
+        "seconds": 249.100184,
+        "message": "t7-hdmirx TMDS measurement ready after 3 windows: cable=0x8000c5ff tmds=0x800317fc"
+      },
+      {
+        "seconds": 249.644193,
+        "message": "t7-hdmirx TMDS measurement ready after 3 windows: cable=0x8000c5ff tmds=0x800317fc"
+      },
+      {
+        "seconds": 250.188156,
+        "message": "t7-hdmirx TMDS measurement ready after 3 windows: cable=0x8000c5ff tmds=0x800317fc"
+      },
+      {
+        "seconds": 250.700154,
+        "message": "t7-hdmirx TMDS measurement ready after 3 windows: cable=0x8000c5ff tmds=0x800317fd"
+      },
+      {
+        "seconds": 251.244137,
+        "message": "t7-hdmirx TMDS measurement ready after 3 windows: cable=0x8000c5ff tmds=0x800317fd"
+      },
+      {
+        "seconds": 251.756118,
+        "message": "t7-hdmirx TMDS measurement ready after 3 windows: cable=0x8000c5ff tmds=0x800317fc"
+      },
+      {
+        "seconds": 252.268117,
+        "message": "t7-hdmirx TMDS measurement ready after 3 windows: cable=0x8000c5ff tmds=0x800317fd"
+      },
+      {
+        "seconds": 252.780096,
+        "message": "t7-hdmirx TMDS measurement ready after 3 windows: cable=0x8000c5ff tmds=0x800317fc"
+      },
+      {
+        "seconds": 253.292099,
+        "message": "t7-hdmirx TMDS measurement ready after 3 windows: cable=0x8000c5ff tmds=0x800317fc"
+      },
+      {
+        "seconds": 253.804075,
+        "message": "t7-hdmirx TMDS measurement ready after 3 windows: cable=0x8000c5ff tmds=0x800317fd"
+      },
+      {
+        "seconds": 254.316098,
+        "message": "t7-hdmirx TMDS measurement ready after 3 windows: cable=0x8000c5ff tmds=0x800317fc"
+      },
+      {
+        "seconds": 254.836058,
+        "message": "t7-hdmirx TMDS measurement ready after 3 windows: cable=0x8000c5ff tmds=0x800317fc"
+      },
+      {
+        "seconds": 255.372045,
+        "message": "t7-hdmirx TMDS measurement ready after 3 windows: cable=0x8000c5ff tmds=0x800317fc"
+      }
+    ],
+    "extra_samples": 19,
+    "extra_first_uptime": "164.91 1347.84",
+    "extra_last_uptime": "255.20 2102.86",
+    "dmesg_limitation": "dmesg: unknown time format: raw",
+    "primary_evidence": "Incremental kernel and one-kvm journal every 5 seconds; plain dmesg also captured in actual-device-paths.json and final-state.json"
+  },
+  "passive_video": {
+    "fps": 59.54120554834341,
+    "frames": 298,
+    "width": 3840,
+    "height": 2160,
+    "codec": "video/H265"
+  },
+  "publication": {
+    "release": "7.3.1-vim4-20261107.2",
+    "proof_files": 2372,
+    "video": {
+      "fps": 59.54120554834341,
+      "frames": 298
+    },
+    "receipt_sha256": "0cf8e70ef8bc119f02fca87cc5a3e400796a2537d21802d43469709e0fda985d",
+    "baseline_sha256": "5d526938328191ee0c871d47ece5d02549b2e69bdf83aed4779a21a21602a1a2",
+    "validation_sha256": "5addfdc10b0ae1818bbf473d4e21af7db12652061a2d47f444c9eb87aa96af59",
+    "runtime_sha256": "99b1ed0da60b3a1623633fbbaf91ec2311179f8c747016b1cd952fd18bdc11ee"
+  },
+  "evidence_files": {
+    "direct-1": {
+      "baseline-proof.json": {
+        "bytes": 362096,
+        "sha256": "843455ed2d2297e020344b922e712b03b189cbbebada2814e837c9093a09c3f3"
+      },
+      "entry-uart-drain.json": {
+        "bytes": 97,
+        "sha256": "f9960681445043a5243a7349dcc2fefce6f9b6ea99718c4b41585aa6feccb1fd"
+      },
+      "entry.json": {
+        "bytes": 1248858,
+        "sha256": "eba1d1d1ae35949eebfb2313cd24b2baf21c6ae4dbeb64ed8ea897d8f182b69f"
+      },
+      "extlinux.conf": {
+        "bytes": 1102,
+        "sha256": "d2c2b9ac406b871c36dfeb5184ea5728b1b6970ab9eef24fd6489588c87e1ee5"
+      },
+      "kernels.json": {
+        "bytes": 605024,
+        "sha256": "1ff35302d22081bb555dd4e7cd598bfdb439dc8c166d3f59b1416d919cfe5fa8"
+      },
+      "local-package.json": {
+        "bytes": 105,
+        "sha256": "8a532b16bc68a0c45afd4a1685a1ff82ba7b545f9cc3bf295c4fdce6799547fb"
+      },
+      "result.json": {
+        "bytes": 313,
+        "sha256": "313eb543817875d06927ba0519888aae9e6ce57a5187bfd6b24bc0c5f32a13bc"
+      },
+      "runtime-build.json": {
+        "bytes": 18190,
+        "sha256": "6d27f791bdf510354921796daa895bba00629b006b02fb24b2115488a1fc2d52"
+      },
+      "stage-root.log": {
+        "bytes": 0,
+        "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      },
+      "uart-chunks.jsonl": {
+        "bytes": 0,
+        "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      },
+      "uart.raw": {
+        "bytes": 0,
+        "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      },
+      "upload-register-runtime.py.log": {
+        "bytes": 318,
+        "sha256": "33afd3d19fa2425a5b11e2891d7fa3b7c68d646bee710f6b53350589d4a640e8"
+      }
+    },
+    "direct-2": {
+      "baseline-proof.json": {
+        "bytes": 362096,
+        "sha256": "91ce74b7c813c7f0859fb324ed149dd85b5b305473791dd30d7161758ee2a228"
+      },
+      "boot-summary.json": {
+        "bytes": 273,
+        "sha256": "40dbf1331998a1d71f482a668826b3bc32bf856ecb1a7c008759d454fbecbbd0"
+      },
+      "cleanup-owned-upload.log": {
+        "bytes": 87,
+        "sha256": "5b019756fd23fcf46c6ee870ae0c6c3009cc752e49ca37f25d651c5f40db5b70"
+      },
+      "entry-uart-drain.json": {
+        "bytes": 97,
+        "sha256": "f9960681445043a5243a7349dcc2fefce6f9b6ea99718c4b41585aa6feccb1fd"
+      },
+      "entry.json": {
+        "bytes": 1248858,
+        "sha256": "abb9e520784e3233793b57a59e3e11a9341bd2cac4430c94896c4996a9669b9e"
+      },
+      "extlinux.conf": {
+        "bytes": 1102,
+        "sha256": "d2c2b9ac406b871c36dfeb5184ea5728b1b6970ab9eef24fd6489588c87e1ee5"
+      },
+      "hash-register-runtime.py.log": {
+        "bytes": 65,
+        "sha256": "d69d89bd0fc1482f7afc3da29ef6dbef458d72bceeca1f2c97956992242f0041"
+      },
+      "hash-rollback.tar.gz.log": {
+        "bytes": 65,
+        "sha256": "8511dd47702c540811c5776caa6ab257619317d3ceeeee2173743d17a66344b2"
+      },
+      "hash-vim4-kernel-7.3.1-vim4-20261107.2.tar.gz.log": {
+        "bytes": 65,
+        "sha256": "4c10b3aa9cef218c6de1dc0f0317836909d422c8632206676044c285348b7065"
+      },
+      "hash-vim4boot.py.log": {
+        "bytes": 65,
+        "sha256": "eec959d20d8ce443d61c7c7e92eaa43dbe5cf3249834f01093b6511b5a06d4a7"
+      },
+      "install.log": {
+        "bytes": 64,
+        "sha256": "5418e20eb77f7dd83b92b27144d5c8b8a7d3e195b3228f57cfbc358993328094"
+      },
+      "installed-proof.json": {
+        "bytes": 57692,
+        "sha256": "74f040fbdafd6c29e8d7ee847607d91ef2dddaa25fe341560dab272778f9005f"
+      },
+      "installed-ready.json": {
+        "bytes": 89,
+        "sha256": "5f9daca9301c1f7aaea19a339e49bbe213bea659cc2b6be1b17603bf6e3e4dbe"
+      },
+      "installed-reboot.log": {
+        "bytes": 0,
+        "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      },
+      "installed-tunnel.log": {
+        "bytes": 0,
+        "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      },
+      "installed-video.json": {
+        "bytes": 601,
+        "sha256": "da934cf16d57f12375279ccf91763507064540cc5f345179891a8d69858c3010"
+      },
+      "kernels.json": {
+        "bytes": 605024,
+        "sha256": "1ff35302d22081bb555dd4e7cd598bfdb439dc8c166d3f59b1416d919cfe5fa8"
+      },
+      "local-package.json": {
+        "bytes": 105,
+        "sha256": "8a532b16bc68a0c45afd4a1685a1ff82ba7b545f9cc3bf295c4fdce6799547fb"
+      },
+      "recovery/uart-chunks.jsonl": {
+        "bytes": 217954,
+        "sha256": "df9c1dfbe3fa24a2f55eafa6874c57adf6ecdb140600c318875be166482af418"
+      },
+      "recovery/uart.raw": {
+        "bytes": 81711,
+        "sha256": "7309b223cc344672e14b70158821c749dde6f03de31e030f2186605eadc9139a"
+      },
+      "registered.json": {
+        "bytes": 588536,
+        "sha256": "d7fcb98900ab1f4d9825f962000dbc365c5139f87ec536a2e45f95bfd2ecd183"
+      },
+      "result.json": {
+        "bytes": 303,
+        "sha256": "e31bd1d12f9f1464283079aa62a599a4741ff6d813f258e996131edc60835cb3"
+      },
+      "returned-passive-observation.json": {
+        "bytes": 17341,
+        "sha256": "2ae53e30d766e696cf596b8ef3d20ade3f08a0dbd06fec0125a0f7446b6e018e"
+      },
+      "returned-proof.json": {
+        "bytes": 362096,
+        "sha256": "1cc40f996155ce8b3bb7a2cb8506218e833d79a4e0107ef5d8ec9a90e769ab79"
+      },
+      "returned-tunnel.log": {
+        "bytes": 0,
+        "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      },
+      "returned-video-summary.json": {
+        "bytes": 48,
+        "sha256": "e2201200c7469795992ad1690d76fa6be8dd9ca5607ddde02d7b6e101502d0cd"
+      },
+      "returned-video.json": {
+        "bytes": 112682,
+        "sha256": "5749dc23e1dfca469ec6714ac7a75f3a9d19f1ef7401bf802499a6515df0eeb7"
+      },
+      "rollback-ready.json": {
+        "bytes": 89,
+        "sha256": "1443c29966e8c7c9d79405f1b9c91cc10fc5d502881891140d4c30b3f1087636"
+      },
+      "rollback-reboot.log": {
+        "bytes": 0,
+        "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      },
+      "rollback-registration.log": {
+        "bytes": 37,
+        "sha256": "376b0494341b6b9eb964f41ebf76aff594fd23268a77c7a0423ad68520e16125"
+      },
+      "runtime-build.json": {
+        "bytes": 18190,
+        "sha256": "6d27f791bdf510354921796daa895bba00629b006b02fb24b2115488a1fc2d52"
+      },
+      "stage-root.log": {
+        "bytes": 0,
+        "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      },
+      "uart-chunks.jsonl": {
+        "bytes": 228891,
+        "sha256": "81b510341285fd1c68c3452b60efcba74ccef98edbdb230057ff83ff423e6485"
+      },
+      "uart.raw": {
+        "bytes": 84953,
+        "sha256": "fefa9f1df168b829e86313d6b52a0ba2ab502fb6d806dcf9fe8d1d736eaf889e"
+      },
+      "upload-register-runtime.py.log": {
+        "bytes": 0,
+        "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      },
+      "upload-rollback.tar.gz.log": {
+        "bytes": 0,
+        "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      },
+      "upload-vim4-kernel-7.3.1-vim4-20261107.2.tar.gz.log": {
+        "bytes": 0,
+        "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      },
+      "upload-vim4boot.py.log": {
+        "bytes": 0,
+        "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      }
+    },
+    "direct-3": {
+      "actual-device-paths.json": {
+        "bytes": 56156,
+        "sha256": "1e16bd756c76bf522828978de83605a3925f63dd49e186048e8b9921afaa35e5"
+      },
+      "baseline-proof.json": {
+        "bytes": 362096,
+        "sha256": "1cc40f996155ce8b3bb7a2cb8506218e833d79a4e0107ef5d8ec9a90e769ab79"
+      },
+      "busy-observation.jsonl": {
+        "bytes": 245157,
+        "sha256": "64ad201b900b45724ab70ce682b499a28f445383b191041860ebcbb71dd7c8af"
+      },
+      "entry-uart-drain.json": {
+        "bytes": 97,
+        "sha256": "f9960681445043a5243a7349dcc2fefce6f9b6ea99718c4b41585aa6feccb1fd"
+      },
+      "entry.json": {
+        "bytes": 1248857,
+        "sha256": "beb5e89dab086625bc36510b87dd9cd22800d7a630908b57bcd6039cac31472c"
+      },
+      "existing-package.log": {
+        "bytes": 62,
+        "sha256": "256d75c43b4736eda3bfee398f1f4c0d22b20183f4419f789b854c64f951366f"
+      },
+      "extlinux.conf": {
+        "bytes": 1102,
+        "sha256": "d2c2b9ac406b871c36dfeb5184ea5728b1b6970ab9eef24fd6489588c87e1ee5"
+      },
+      "final-state.json": {
+        "bytes": 95632,
+        "sha256": "617530472724eeaaf0865614a6603947e8ede920304e2d90a8294a4c12fbb6ce"
+      },
+      "first-ssh.json": {
+        "bytes": 199,
+        "sha256": "fa308339ebf504de00b8e28895e9f00ca2209a58a39527a7378a3d280104fbd0"
+      },
+      "installed-proof.json": {
+        "bytes": 74171,
+        "sha256": "2f65f85ae1a4086175b36996916dda70c904048ac955b3ffe7272f0b54f0feb1"
+      },
+      "installed-tunnel.log": {
+        "bytes": 0,
+        "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      },
+      "installed-video.json": {
+        "bytes": 110827,
+        "sha256": "19946d8c96f7dad0f3844f8f8dd97aac5165aed10f3233ce6e9b783b097be9bd"
+      },
+      "kernels.json": {
+        "bytes": 605024,
+        "sha256": "1ff35302d22081bb555dd4e7cd598bfdb439dc8c166d3f59b1416d919cfe5fa8"
+      },
+      "new-baseline.json": {
+        "bytes": 366820,
+        "sha256": "5d526938328191ee0c871d47ece5d02549b2e69bdf83aed4779a21a21602a1a2"
+      },
+      "observation-summary.json": {
+        "bytes": 126,
+        "sha256": "1f9e9b06b299c36c84a88ee41fdb1e27c4be6d0788c5896a9450d025408d6430"
+      },
+      "observation.jsonl": {
+        "bytes": 600963,
+        "sha256": "d2cc79ecbc528d350030a8d6596a009d6ec6e0b2b6628454c5c0fc6596c02de4"
+      },
+      "passive-video-summary.json": {
+        "bytes": 48,
+        "sha256": "5aa535dbefb67eee03ab8eda03c7a1cfdd731177e2b70599340cf04d0a16b895"
+      },
+      "reboot.log": {
+        "bytes": 0,
+        "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      },
+      "registration.log": {
+        "bytes": 77,
+        "sha256": "6c8d6c8ea7d43d02589416a1583b0213dc99dfb805a06e928de8830f52767ec2"
+      },
+      "result.json": {
+        "bytes": 395,
+        "sha256": "4bb879a557fc2a00a9f30a62047cea27e8695f21848b7a708efb854e2fa2ead8"
+      },
+      "runtime-build.json": {
+        "bytes": 18353,
+        "sha256": "b663dee450f0449fc40b4df89d4791143c029371494922346fe9353c3c44ac9b"
+      },
+      "uart-chunks.jsonl": {
+        "bytes": 232277,
+        "sha256": "e7dfe5981cbb782ad8a48cd5ca89e82bbdc4f41cc97e5c6af1f64a9981c541bb"
+      },
+      "uart.raw": {
+        "bytes": 85147,
+        "sha256": "d8b9319a4a327d47719fef40a0b521a1c02e9530c2c7c1217f3cdf0a8d92b707"
+      }
+    }
+  }
+}

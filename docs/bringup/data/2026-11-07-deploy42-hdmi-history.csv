@@ -1,0 +1,11 @@
+window,kind,revoked_seconds,tmds_measurement_ready_seconds,stable_seconds,revoked_to_stable_seconds,earliest_observed_capture_dq_seconds,first_observed_decoded_seconds,limitation
+111,candidate42,[],"[24.637777, 27.238525]",,,23.086568,20.341845,"No explicit stable-transition log; observed first DQ/frame is an upper bound, not the first completed frame since boot"
+111,returnedfd41,[],[],,,,22.096871,"No explicit stable-transition log; observed first DQ/frame is an upper bound, not the first completed frame since boot; returned boot has no complete kernel journal or Wave5 trace archived"
+112,candidate42,[],"[14.238064, 17.715223, 29.485752, 34.752122]",,,21.080078,18.304098,"No explicit stable-transition log; observed first DQ/frame is an upper bound, not the first completed frame since boot"
+112,returnedfd41,[],[],,,,22.137629,"No explicit stable-transition log; observed first DQ/frame is an upper bound, not the first completed frame since boot; returned boot has no complete kernel journal or Wave5 trace archived"
+113,candidate42,[],[],,,21.102741,18.292802,"No explicit stable-transition log; observed first DQ/frame is an upper bound, not the first completed frame since boot"
+113,returnedfd41,[],[],,,,21.66278,"No explicit stable-transition log; observed first DQ/frame is an upper bound, not the first completed frame since boot; returned boot has no complete kernel journal or Wave5 trace archived"
+114,candidate42,[],"[15.230892, 15.486814, 16.001603]",,,21.107423,18.267422,"No explicit stable-transition log; observed first DQ/frame is an upper bound, not the first completed frame since boot"
+114,returnedfd41,[],[],,,,23.210082,"No explicit stable-transition log; observed first DQ/frame is an upper bound, not the first completed frame since boot; returned boot has no complete kernel journal or Wave5 trace archived"
+115,candidate42,[],[],,,20.952205,18.346745,"No explicit stable-transition log; observed first DQ/frame is an upper bound, not the first completed frame since boot"
+115,returnedfd41,[],[],,,,22.075821,"No explicit stable-transition log; observed first DQ/frame is an upper bound, not the first completed frame since boot; returned boot has no complete kernel journal or Wave5 trace archived"

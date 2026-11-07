@@ -5,6 +5,7 @@
 
 ## 内核与部署
 
+- [.42已设为正式默认](bringup/2026-11-07-deploy42-default.md)，身份以sources.toml为准；按用户决定本次九类/K9/解码冒烟均未运行，历史解码条目的“未部署”保留当时语境。首次正式启动60秒receiver无帧已回退；授权复验49样本/240秒均有4K信号、随后5秒receiver通过并保留新默认，未定位首次失败原因。无客户端时device_busy不能据此断定DOS冲突；未改服务、EDID或源Mac。
 - 已采用B状态的PD显示问题（非本轮内核回退、不阻断部署）：fusb302被cmdline屏蔽、无Type-C端口且PD服务成功跳过时，`vim4pd.kernel_power`仍因DT节点存在返回`kernelPD unavailable/contract null`；helper保留该字段，Overview优先kernelPD而隐藏固件详情。修复另行：被cmdline屏蔽时kernel_power应让出，helper同时保持不运行usb-pd-init，不能引入原始I²C回退。[实际B状态/API采证](../packaging/kernel/pd-b-state.json)记录当次固件timedOut/typecFallback、Rp3A；部署工具固定B接口字段并拒绝I/O错误、hardReset或Linux合同，其余固件协商字段原样存证、允许每次启动不同。本任务不改manager/vim4pd。
 - 采用B状态、持续观察冷复位：正式默认已追加`module_blacklist=fusb302`，fusb302不加载、PD服务跳过且无原始I²C回退；单次自然默认启动/2372新proof/被动视频通过。A/B首轮A2/10、B0/10，Fisher p≈0.47，历史粗口径14/75合并A也不能证明VBUS致因；失败末段TCPM日志未覆盖、无物理VBUS观测。用户取消追加15次B，后续复位继续记入tcpm-coldboot-events.csv，不宣称已解决。[正式切换及新基线](bringup/2026-11-07-pd-firmware-default.md)、[A/B证据与最后15行](bringup/2026-11-07-pd-takeover-ab.md)
 - integration42正式恢复新增4次Linux启动/3次冷复位，距Linux起点7.543737/8.794253/7.662153秒，最终自然恢复并过2372 proof/视频；候选无线屏蔽1/0单列。按正式启动项归类累计≥80/17；首个恢复banner缺损，严格release/SSH确认口径≥79/16，另1/1请求正式未确认release。第三次复位前6.206355秒的fusb302 hard-reset只作时序证据，不据此归因或改PD。[逐启动及限制](bringup/2026-11-06-vdec-integration42-results.md#冷复位恢复与停止边界)；较早累计沿下方cold_boot历史条目。
