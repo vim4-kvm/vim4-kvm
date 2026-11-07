@@ -1,8 +1,11 @@
 // Live manager check inside an approved board ticket. Expects standard thermal
-// fan trips and TCPM; VIM4_EXPECTED_RELEASE identifies this window's kernel.
+// fan trips and the adopted firmware-PD B state. The known unavailable Linux
+// PD display is retained as an observed baseline, not a confirmed contract.
 import assert from 'node:assert/strict';
-import { mkdir } from 'node:fs/promises';
+import { mkdir, readFile, writeFile } from 'node:fs/promises';
+import { execFileSync } from 'node:child_process';
 import { loginManager } from '../../tools/manager-login.mjs';
+import { requireFirmwarePDState } from './final-manager-pd.mjs';
 const expected = process.env.VIM4_EXPECTED_RELEASE;
 assert(expected, 'Set VIM4_EXPECTED_RELEASE to the candidate release');
 assert(process.env.BOARD_TICKET, 'Run inside the approved board-queue window');
@@ -37,9 +40,20 @@ try {
   const status = await statusResponse.json();
   assert.equal(status.hardware.kernel, expected);
   assert.equal(status.hardware.usb, 'configured');
-  assert(status.power?.firmwarePD, 'The PD firmware card must receive its handoff snapshot');
-  assert.deepEqual(status.power.kernelPD, { state: 'ready', contract: { voltageV: 5, currentA: 3 } });
-  await page.getByText('5 V / 3 A', { exact: true }).waitFor();
+  const program = `from pathlib import Path
+import json,re,subprocess
+unit=subprocess.check_output(['systemctl','show','vim4-kvm-pd.service','-p','ActiveState','-p','SubState','-p','Result','-p','ConditionResult','-p','ExecMainStatus'],text=True,timeout=5)
+print(json.dumps(dict(cmdline=Path('/proc/cmdline').read_text().strip(),
+ fusb302_loaded=Path('/sys/module/fusb302').exists(),
+ typec_ports=[p.name for p in Path('/sys/class/typec').glob('port*') if re.fullmatch('port[0-9]+',p.name)],
+ service=dict(line.split('=',1) for line in unit.splitlines()),
+ service_journal=subprocess.check_output(['journalctl','-b','-u','vim4-kvm-pd.service','--no-pager','-o','cat'],text=True,timeout=5))))
+`;
+  const board = JSON.parse(execFileSync('ssh', ['-oBatchMode=yes', '-oConnectTimeout=5',
+    'vim4', 'sudo -n python3 -'], { input: program, encoding: 'utf8', timeout: 20000 }));
+  const pdBaseline = JSON.parse(await readFile(new URL('./pd-b-state.json', import.meta.url), 'utf8'));
+  await writeFile(logs + '/manager-pd-state.json', JSON.stringify({ board, power: status.power }, null, 2) + '\n');
+  requireFirmwarePDState(board, status.power, pdBaseline);
   await page.screenshot({ path: logs + '/manager-pd.png', fullPage: true });
   assert.equal(status.hardware.fanAuto, true);
   assert.equal(status.hardware.fanCurve?.length, 15);
