@@ -31,6 +31,21 @@ def static_elf(kind=1):
 
 
 class TrialTest(unittest.TestCase):
+    def test_candidate_and_radio_variant_share_one_pd_preserving_blacklist(self):
+        with tempfile.TemporaryDirectory() as directory:
+            bundle = self.fixture(Path(directory))
+            with tarfile.open(bundle) as archive:
+                text = archive.extractfile('extlinux.conf').read().decode()
+            append = next(line.split(None, 1)[1] for line in text.splitlines()
+                          if line.strip().startswith('APPEND '))
+            self.assertIn('module_blacklist=fusb302', append.split())
+            radio = once.blacklist_modules(append, ('brcmfmac', 'hci_uart', 'btbcm'))
+            blocked = [word for word in radio.split() if word.startswith('module_blacklist=')]
+            self.assertEqual(blocked, ['module_blacklist=fusb302,brcmfmac,hci_uart,btbcm'])
+            self.assertEqual(once.blacklist_modules(radio, ('fusb302', 'brcmfmac')), radio)
+            state = json.loads((Path(directory)/'baseline.json').read_text())
+            self.assertNotIn('module_blacklist=', state['cmdline'])
+
     def test_ram_baseline_control_is_explicit_and_preserves_all_package_files(self):
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)

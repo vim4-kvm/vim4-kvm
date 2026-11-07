@@ -3,7 +3,9 @@
 按任务读[PD](../usb-pd.md)、[接线](../hardware.md)、[应用集成](application.md)、[输入延迟、长按和Mac滚轮](../input-latency.md)。
 重枚举panic/控制端点故障直读[HID重绑](../kernel.md#hid-重新绑定)、[CRG](../kernel.md#crg-usb-控制端点重连)。
 
-板级gadget拥有configfs；主线KVM由内核TCPM管理PD，旧内核保留有限开机协商。应用用现有HID，不重建gadget或部署上游设备USB脚本。
+板级gadget拥有configfs；主线默认保留固件PD状态并屏蔽fusb302，PD服务按DT所有权跳过、
+不退回原始I²C，见[正式策略与持续观察](../bringup/2026-11-07-pd-firmware-default.md)。
+旧内核保留有限开机协商。应用用现有HID，不重建gadget或部署上游设备USB脚本。
 One-KVM限定助手可临时改描述符/功能链接、增多媒体键/网络实例，不删原HID；停用后恢复原配置，若有介质则保留当前组合至主机弹出。
 端点预算、映射及恢复顺序按[One-KVM HID配置](../../One-KVM/VIM4.md#hid-功能配置)，端点不足先调USB功能，已有自定义组合保持不变。
 早期独立入口边界见[内核证据](../kernel-mainline.md#相关记录)。

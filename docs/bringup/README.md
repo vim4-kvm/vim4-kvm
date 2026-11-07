@@ -17,6 +17,7 @@
 
 ## 2026-11-07
 
+- [固件PD正式默认](2026-11-07-pd-firmware-default.md) — kernel usb deployment；用户采用fusb302黑名单，单次自然默认启动/2372新proof/视频通过，保留旧清单，持续观察冷复位。
 - [PD接管A/B](2026-11-07-pd-takeover-ab.md) — kernel usb；同正式内核/同sysboot入口，A2/10复位、B0/10，恢复启动单列，未观测物理VBUS，补测因用户决定直接采用而取消。
 
 ## 2026-11-06

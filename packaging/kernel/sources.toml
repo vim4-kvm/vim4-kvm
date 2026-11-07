@@ -101,11 +101,13 @@ board_dtb_sha256 = "cf2080fefccad0153c496a1e83828f028522a1c2b582029e7c4107949e79
 manifest_sha256 = "14b41583218c07051e2356a3ca8484a6bb0ca08de913906c83b0f583ae888699"
 package_sha256 = "a12069066760768a833803ad11e7e1fc212674e4ff09f40bdf2017cc1d55e204"
 module_count = 2341
-live_proof_sha256 = "47d677e30d29fc4b64e655efc76fc743038cd94aaf265da9b71462da84dca97b"
-installed_proof_path = "releases/7.3.1-vim4-20261105/installed-proof.json"
-kernels_manifest_sha256 = "2fe69efbc75e2393ceca542f18ff4aadf6e85b1b3b979fee45d4ceae5a7c0c9f"
+live_proof_sha256 = "96d312569220b94e14f0d90471cadbac1313122cfc8e36306ff023203f39f0dc"
+installed_proof_path = "releases/7.3.1-vim4-20261105/pd-installed-proof.json"
+kernels_manifest_sha256 = "1ff35302d22081bb555dd4e7cd598bfdb439dc8c166d3f59b1416d919cfe5fa8"
+baseline_proof_path = "releases/7.3.1-vim4-20261105/pd-baseline.json"
+baseline_proof_sha256 = "0514bdab3aac0a0c9f0d9fa63be8df94d50aff533c7890a1608d23bcc9333126"
 default_boot = "Mainline"
-evidence = "docs/bringup/2026-11-05-integration-formal-deploy.md"
+evidence = "docs/bringup/2026-11-07-pd-firmware-default.md"
 
 [wifi_diagnostics]
 firmware_fwid = "01-e47f9a86"

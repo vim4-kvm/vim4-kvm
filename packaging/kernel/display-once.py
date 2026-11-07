@@ -121,6 +121,16 @@ def trial_cmdline(state):
     return ' '.join(tokens)
 
 
+def blacklist_modules(cmdline, modules):
+    """Merge blacklist arguments so a radio variant retains the PD exclusion."""
+    tokens = cmdline.split()
+    blocked = [name for token in tokens if token.startswith('module_blacklist=')
+               for name in token.split('=', 1)[1].split(',') if name]
+    blocked = list(dict.fromkeys([*blocked, *modules]))
+    tokens = [token for token in tokens if not token.startswith('module_blacklist=')]
+    return ' '.join(tokens + ['module_blacklist=' + ','.join(blocked)])
+
+
 def trial_boot_command(prefix, file_size, header):
     """Keep large debug Images outside the T7 bootloader's low-memory hole."""
     command = f'sysboot mmc 1:2 any ${{pxefile_addr_r}} {prefix}/extlinux.conf; reset'
@@ -241,6 +251,10 @@ def prepare(payload, init, baseline, output, release=RELEASE,
     if layout and (str(Path(prefix).parent) + '/').encode() + b'\0' not in init.read_bytes():
         raise ValueError('static init TRIAL_ROOT does not match payload namespace')
     candidate_cmdline = trial_cmdline(state)
+    if not ram_baseline_control:
+        # Candidate decoding must retain the adopted firmware-owned PD policy.
+        # An explicit baseline-control experiment still reproduces its baseline.
+        candidate_cmdline = blacklist_modules(candidate_cmdline, ('fusb302',))
     if '-npu' in release or release in ('7.3.0-vim4kvm-uhd2+', '7.3.0-vim4kvm-uhd2-nodebug+', '7.3.0-vim4kvm-uhd3+', '7.3.0-vim4kvm-uhd4+'):
         # Qualified uhd1 memory placement, absent from the vendor 5.15 cmdline.
         candidate_cmdline = ' '.join(token for token in candidate_cmdline.split()

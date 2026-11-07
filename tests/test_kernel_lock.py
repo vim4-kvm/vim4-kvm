@@ -53,6 +53,14 @@ class TestedRuntimeLockTest(unittest.TestCase):
         self.assertEqual(installed['manifest_sha256'], built['manifest_sha256'])
         self.assertEqual(installed['module_count'], built['module_count'])
         self.assertEqual(installed['kernels_sha256'], retained['kernels_manifest_sha256'])
+        baseline_path = recipe / retained['baseline_proof_path']
+        self.assertEqual(hashlib.sha256(baseline_path.read_bytes()).hexdigest(),
+                         retained['baseline_proof_sha256'])
+        baseline = json.loads(baseline_path.read_text())
+        self.assertEqual(baseline['build_id'], retained['build_id'])
+        self.assertEqual(baseline['files']['/etc/vim4-kvm/kernels.json'],
+                         retained['kernels_manifest_sha256'])
+        self.assertEqual(installed['baseline_proof_sha256'], retained['baseline_proof_sha256'])
 
 
     def check_build(self, built, *, installed, overlays=None):
