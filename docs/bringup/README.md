@@ -29,6 +29,8 @@
 - [integration41 K9自然共存门禁](2026-11-06-vdec-integration41-results.md) — kernel video；跨日正式构建/QEMU67/旧包不变通过；r109 decoder与JPEG请求同一DOS MMIO而probe-EBUSY，K9失败、132条全Not run，正式2372 proof/视频恢复，未部署。
 - [.40解码修复板验](2026-11-06-vdec-integration40-results.md) — kernel video；W=1/QEMU64通过，无参probe/metadata PM留证；累计第二次冷复位停止，132条全Not run，三窗正式2372 proof/视频恢复，由.41接替，未部署。
 - [HEVC 输出过程与单 AU 隔离](2026-11-06-vdec-fixes-b.md) — kernel video；批 B 头解析、C.5.2、discard 与坏 AU 隔离，离线门禁及待验口径。
+- [DOS 运行期租约](2026-11-06-vdec-dos-runtime-lease.md) — kernel video；K9 修复默认加载顺序竞争，租约移入 runtime PM；重排九提交，heavy 尚待代跑。
+- [T7 DOS 窗口与 probe 资源审计](2026-11-06-vdec-dos-window.md) — kernel video；K10 只改解码器映射，审计 IRQ/reset/时钟/域/DMA，十提交门禁与三方绑定待验。
 - [解码功能修复批 A](2026-11-06-vdec-fixes-a.md) — kernel video；去门、工具配套、单次 RPS 与裁剪回退，离线验证及待验边界。
 - [.39解码分层重构验收](2026-11-06-vdec-integration39-results.md) — kernel video；独立132条120S/10E/2T与.38等价、12失败I420逐字节相同；接口与其他格式相同，九窗正式2372 proof/视频恢复，未部署。
 - [r98/r100合法drain尾部裁决](2026-11-06-vdec-integration39-r98-drain.md) — kernel video；数据帧精确，STOP/LAST时机改变尾部DQ数；旧.38两种路径有实测，限定仅末OUTPUT及空LAST归一化，不重跑、无驱动修改。
