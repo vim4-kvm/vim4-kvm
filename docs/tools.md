@@ -54,7 +54,7 @@
 | [coldboot-ab.py](../packaging/kernel/coldboot-ab.py) | 破坏；重启 | 默认离线核验两组锁定 RAM 包；显式 execute 在既有票内交替启动、连续 UART 及独立 ready 模块快照采证、恢复正式基线，不自行排票。 |
 | [coldboot-collect.py](../packaging/kernel/coldboot-collect.py) | 只读 | 仅显式启用的 RAM init 启动；有界子进程读取模块参数和配置，完整快照留 tmpfs，串口只报紧凑摘要。 |
 | [final-window.py](../packaging/kernel/final-window.py)（final-board.py） | 破坏；重启 | 正式包部署、验证与恢复。 |
-| [final-regression.py](../packaging/kernel/final-regression.py)（final-manager-check.mjs） | 独占；断开 USB | 离线快照及部署回归；manager 检查用 `VIM4_EXPECTED_RELEASE` 指定窗口内核，核 TCPM、标准 thermal 风扇及当前管理页。 |
+| [final-regression.py](../packaging/kernel/final-regression.py)（[final-manager-check.mjs](../packaging/kernel/final-manager-check.mjs)、final-manager-pd.mjs） | 独占；断开 USB | 离线快照及部署回归；manager检查用 `VIM4_EXPECTED_RELEASE` 指定窗口内核，核PD的B状态固定字段、标准thermal风扇和管理页；期望来自[pd-b-state.json](../packaging/kernel/pd-b-state.json)，当次固件协商原样存证，允许合同/Rp变化，拒绝驱动接管/协商回退及I/O错误/hardReset。 |
 | [vdec-window.py](../packaging/kernel/vdec-window.py)（vdec-register-dump.c、[vdec-benchmark.c](../packaging/kernel/vdec-benchmark.c)） | 破坏；重启 | 解码候选窗口、compliance、fluster 与性能；默认离线，复用板队列、manifest、watchdog 和基线视频恢复；`--baseline-proof` 排票前核对保护清单；主线候选正常 open/close 验 runtime PM，不传 bring-up 参数或执行强制预检；显式 `preserve_decoder_probe` 只卸载编码器并核原绑定模块身份，用于运行期租约切换；删除 power/mdec/snapshot 动作，旧动作和诊断计划明确拒绝；像素失败继续、超时/内核异常停止；`known_unsupported` 按已有证据逐项跳过并单列原因，不计通过；`keep_output_vectors` 保留点名输出，`trace_vectors` 用独立 tracefs instance 记录队列事件并保存丢事件计数，`ioctl_trace_vectors` 使用已校验的 `ioctl_trace_tool` 记录 ioctl，`vector_environment` 设置逐流调试日志；见[验收合同](vdec-validation.md)。 |
 | [check-wifi-p2p.py](../packaging/kernel/check-wifi-p2p.py) | 独占 | Wi-Fi/P2P 验证。 |
 | [phase2-window.py](../packaging/hdr10/phase2-window.py)（m6-gates.py、phase2-board.py、phase2-run） | 破坏；重启 | HDR10 批量验收窗口。 |

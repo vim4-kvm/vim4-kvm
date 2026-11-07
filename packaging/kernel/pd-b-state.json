@@ -1,0 +1,51 @@
+{
+  "observed_at": "2026-11-07T04:54:55.494333+00:00",
+  "source_sha256": "018aa7c5c656ff5aa263a6e4294b1a14f7eb61a88d9aeb6c250a317d6298c105",
+  "board": {
+    "cmdline": "console=tty0 root=PARTUUID=bcb80000-02 rootwait rw rootfstype=ext4 rootflags=data=ordered console=ttyS0,921600n8 earlycon=meson,0xfe078000 no_console_suspend net.ifnames=0 loglevel=7 panic=20 mem_sleep_default=s2idle modprobe.blacklist=crg_udc,t7_hdmirx,t7_vdin_test,wave5 cma=512M@0x10000000-0xf0000000 vim4.full_kvm=1 vim4.eth_mac=c8:63:14:74:70:0d systemd.mask=tvserver.service systemd.mask=audioserver.service systemd.mask=one-kvm-edge.service systemd.mask=one-kvm-edge-gateway.service systemd.mask=one-kvm-edge-usb.service systemd.mask=binder.service systemd.mask=bluetooth-khadas.service systemd.mask=rc-local.service module_blacklist=fusb302",
+    "fusb302_loaded": false,
+    "typec_ports": [],
+    "service": {
+      "Result": "success",
+      "ExecMainStatus": "0",
+      "ActiveState": "active",
+      "SubState": "exited",
+      "ConditionResult": "yes"
+    },
+    "service_journal": "Starting vim4-kvm-pd.service - VIM4 USB-capable PD contract at boot...\nPD bootstrap skipped: controller reserved for kernel TCPM\nFinished vim4-kvm-pd.service - VIM4 USB-capable PD contract at boot.\n"
+  },
+  "power": {
+    "vbusPresent": null,
+    "bootContract": null,
+    "firmwarePD": {
+      "psReady": false,
+      "flags": 208,
+      "hardReset": false,
+      "requestFailed": false,
+      "timedOut": true,
+      "ioError": false,
+      "typecFallback": true,
+      "rp": "3A",
+      "sourceRevision": null,
+      "requestRevision": null,
+      "sourceHeader": "0000",
+      "requestHeader": "0000",
+      "rdo": "00000000",
+      "selectedPosition": null,
+      "selectedType": null,
+      "requestedVoltageV": null,
+      "requestedCurrentA": null,
+      "requestedMaxCurrentA": null,
+      "requestedMaxPowerW": null,
+      "requestedPowerW": null,
+      "policyVoltageV": 0,
+      "policyCurrentA": 0,
+      "contract": null,
+      "sourceCapabilities": []
+    },
+    "kernelPD": {
+      "state": "unavailable",
+      "contract": null
+    }
+  }
+}
