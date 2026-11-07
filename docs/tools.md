@@ -60,6 +60,10 @@
 | [phase2-window.py](../packaging/hdr10/phase2-window.py)（m6-gates.py、phase2-board.py、phase2-run） | 破坏；重启 | HDR10 批量验收窗口。 |
 | [build.py](../packaging/kbase/build.py)（同目录 package.py、run.py、check-style.py、check-semantics.py、check-heaps.py、clpeak-subset.py、dma-profile.py、default-parity.py、resolve-egl.c、heaps/vim4_kbase_heaps.c、dvfs/governor_vim4.c） | 独占 | kbase 构建、GPU 门禁与调频。 |
 
+`vdec-window.py` 的编码共存统计辅助函数只解析指定设备 minor 的 CAPTURE `v4l2_dqbuf`，
+按完成数和时间跨度判定活动，拒绝错误缓冲；不依赖无调用点的 `vb2_v4l2_buf_done`。
+它不改变默认窗口或trace采集路径；K9还须独立核验丢事件、应用连续性和busy-open前/中/后统计。
+
 ## 板级服务源码（由 board/install.sh 或组件包安装）
 
 | 入口（同族文件） | 影响 | 用途 |
