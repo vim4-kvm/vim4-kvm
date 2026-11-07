@@ -1,0 +1,310 @@
+{
+  "source": {
+    "candidate.tar": {
+      "source": "/home/deepdream/build/vdec-integration42/bundle/ram/candidate.tar",
+      "sha256": "3a99942f4cacef21b4254a55cfb8afbe3b71a5b31acb86d2207a3adfdf3f9e3a",
+      "size": 687380480
+    },
+    "package-manifest.json": {
+      "source": "/home/deepdream/build/vdec-integration42/bundle/package/manifest.json",
+      "sha256": "02ebff518a53a75d6beac98a109996dad10192e23f57df1fd7682772ad2e294b",
+      "size": 507674
+    },
+    "source": "3facfaa37284f7193508c2a16fbf5162c6242616",
+    "release": "7.3.1-vim4-20261107.2",
+    "build_id": "fa5a9fa53dc3f84802722702f18623730ab81d83",
+    "config_sha256": "7be7563e089ff628a320cd82ed163d88c576e4c7612f6bf849b230d2b9719b1c",
+    "image_sha256": "20bffa2ae1f341c72894a2bb432547e815720729a6eb06c7ded56b006c38e665"
+  },
+  "wireless_variant": {
+    "release": "7.3.1-vim4-20261107.2",
+    "build_id": "fa5a9fa53dc3f84802722702f18623730ab81d83",
+    "source": "3facfaa37284f7193508c2a16fbf5162c6242616",
+    "extra_cmdline": [
+      "module_blacklist=brcmfmac,hci_uart,btbcm",
+      "initcall_blacklist=mmc_pwrseq_simple_driver_init",
+      "systemd.mask=bluetooth.service"
+    ],
+    "original_sha256": "3a99942f4cacef21b4254a55cfb8afbe3b71a5b31acb86d2207a3adfdf3f9e3a",
+    "variant_sha256": "5be8eca765f2fda0ea2d7008cb0a9dbad959196dfdd9527d3fd4edcfedce7843",
+    "unchanged_files": 2357,
+    "differences": [
+      {
+        "path": "extlinux.conf",
+        "original": "3ea9fea0115bea1dfbca557e4fc8fd60b81608bd56b4ca761e1b4c0b838adb61",
+        "variant": "8d1f791b63fe354da5ca073154fbf9e1e1e0fb0871251e14aeab2deab91c5481"
+      },
+      {
+        "path": "trial.json",
+        "original": "7c851ebc153c7d15ad72f45965f98e34b78c276cdaf6ef05a7f670f94afe8a5e",
+        "variant": "008fbfce164f58d5e170b568721308a879d46ab7005ad87203322958192b85de"
+      }
+    ],
+    "validation": "board-window.validate_bundle passed"
+  },
+  "production": {
+    "warnings": 1168,
+    "baseline_warnings": 1168,
+    "decoder_warnings": [],
+    "new_unique_warnings": [],
+    "config_sha256": "7be7563e089ff628a320cd82ed163d88c576e4c7612f6bf849b230d2b9719b1c",
+    "auto_conf_sha256": "b4ed11799dc19569ac36e7e89854f5c7cbd15669084e395643e192b621b67db4",
+    "w1_compiler_command_files": 15,
+    "kasan_report": false
+  },
+  "kunit": {
+    "tests": 67,
+    "passed": 67,
+    "failed": 0,
+    "crashed": 0,
+    "skipped": 0,
+    "errors": 0
+  },
+  "retained_bundles": [
+    "Entire .40 bundle unchanged: 3083 entries",
+    "Entire .41 bundle unchanged: 3083 entries"
+  ],
+  "window": 110,
+  "fifo_order": 1626,
+  "hard_stop": true,
+  "stop_reasons": [
+    "K9 collection gate requires an uncalled vb2_v4l2_buf_done event",
+    "Three cold resets during formal recovery; task threshold reached"
+  ],
+  "k10": {
+    "natural_bindings": {
+      "wave5": {
+        "loaded": true,
+        "drivers": {
+          "platform:vdec": [
+            "fe310000.video-codec"
+          ]
+        }
+      },
+      "t7_jpeg": {
+        "loaded": true,
+        "drivers": {
+          "platform:t7-jpeg": [
+            "fe320000.jpeg-encoder"
+          ]
+        }
+      },
+      "aml_vdec_drv": {
+        "loaded": true,
+        "drivers": {
+          "platform:aml-vdec-drv": [
+            "fe320000.video-codec"
+          ]
+        }
+      }
+    },
+    "dos_reservation": {
+      "start": 4264689664,
+      "end": 4264755199,
+      "reservations": [
+        {
+          "start": 4264689664,
+          "end": 4264755199,
+          "name": "fe320000.jpeg-encoder jpeg-encoder@fe320000",
+          "raw": "fe320000-fe32ffff : fe320000.jpeg-encoder jpeg-encoder@fe320000"
+        }
+      ],
+      "overlapping_resources": [
+        {
+          "start": 4264689664,
+          "end": 4264755199,
+          "name": "fe320000.jpeg-encoder jpeg-encoder@fe320000",
+          "raw": "fe320000-fe32ffff : fe320000.jpeg-encoder jpeg-encoder@fe320000"
+        }
+      ]
+    },
+    "region_error": false
+  },
+  "k9": {
+    "first_measurement": {
+      "capture_completions": 600,
+      "vb2_done": 0,
+      "fps": 59.99857165336933,
+      "errors": [],
+      "application_before": {
+        "status": {
+          "state": "streaming",
+          "device": "VIM4 HDMI Input",
+          "format": "NV12",
+          "resolution": [
+            3840,
+            2160
+          ],
+          "clients": 1,
+          "target_fps": 60,
+          "fps": 59.994835
+        },
+        "pid": "853"
+      },
+      "application_after": {
+        "status": {
+          "state": "streaming",
+          "device": "VIM4 HDMI Input",
+          "format": "NV12",
+          "resolution": [
+            3840,
+            2160
+          ],
+          "clients": 1,
+          "target_fps": 60,
+          "fps": 59.998463
+        },
+        "pid": "853"
+      },
+      "seconds": 10.400534646,
+      "lost": []
+    },
+    "trace_event_counts": {
+      "v4l2_dqbuf": 1200,
+      "v4l2_qbuf": 1200
+    },
+    "result": "Not covered beyond initial measurement; busy-open never executed"
+  },
+  "boots": {
+    "boots": [
+      {
+        "window": 110,
+        "release": "7.3.1-vim4-20261107.2",
+        "requested": true,
+        "offset": 27223,
+        "linux_monotonic_ns": 754834615719791,
+        "cold_reset": false,
+        "ssh_identity": {
+          "release": "7.3.1-vim4-20261107.2",
+          "build_id": "fa5a9fa53dc3f84802722702f18623730ab81d83",
+          "cmdline": "console=tty0 root=PARTUUID=bcb80000-02 rootwait rw rootfstype=ext4 rootflags=data=ordered console=ttyS0,921600n8 earlycon=meson,0xfe078000 no_console_suspend net.ifnames=0 loglevel=7 panic=20 mem_sleep_default=s2idle modprobe.blacklist=crg_udc,t7_hdmirx,t7_vdin_test,wave5 cma=512M@0x10000000-0xf0000000 vim4.full_kvm=1 vim4.eth_mac=c8:63:14:74:70:0d systemd.mask=tvserver.service systemd.mask=audioserver.service systemd.mask=one-kvm-edge.service systemd.mask=one-kvm-edge-gateway.service systemd.mask=one-kvm-edge-usb.service systemd.mask=binder.service systemd.mask=bluetooth-khadas.service systemd.mask=rc-local.service oops=panic panic=20 init=/var/lib/vim4-kvm/ram-candidates/hwdecode/integration42/fa5a9fa53dc3f84802722702f18623730ab81d83/init module_blacklist=brcmfmac,hci_uart,btbcm initcall_blacklist=mmc_pwrseq_simple_driver_init systemd.mask=bluetooth.service",
+          "boot_id": "ba5304c7-7d27-45f5-9941-3d9b62255db8",
+          "config_sha256": "8d1f791b63fe354da5ca073154fbf9e1e1e0fb0871251e14aeab2deab91c5481",
+          "config": "DEFAULT display-once\nTIMEOUT 1\nLABEL display-once\n  LINUX /var/lib/vim4-kvm/ram-candidates/hwdecode/integration42/fa5a9fa53dc3f84802722702f18623730ab81d83/Image\n  FDT /var/lib/vim4-kvm/ram-candidates/hwdecode/integration42/fa5a9fa53dc3f84802722702f18623730ab81d83/vim4.dtb\n  APPEND console=tty0 root=PARTUUID=bcb80000-02 rootwait rw rootfstype=ext4 rootflags=data=ordered console=ttyS0,921600n8 earlycon=meson,0xfe078000 no_console_suspend net.ifnames=0 loglevel=7 panic=20 mem_sleep_default=s2idle modprobe.blacklist=crg_udc,t7_hdmirx,t7_vdin_test,wave5 cma=512M@0x10000000-0xf0000000 vim4.full_kvm=1 vim4.eth_mac=c8:63:14:74:70:0d systemd.mask=tvserver.service systemd.mask=audioserver.service systemd.mask=one-kvm-edge.service systemd.mask=one-kvm-edge-gateway.service systemd.mask=one-kvm-edge-usb.service systemd.mask=binder.service systemd.mask=bluetooth-khadas.service systemd.mask=rc-local.service oops=panic panic=20 init=/var/lib/vim4-kvm/ram-candidates/hwdecode/integration42/fa5a9fa53dc3f84802722702f18623730ab81d83/init module_blacklist=brcmfmac,hci_uart,btbcm initcall_blacklist=mmc_pwrseq_simple_driver_init systemd.mask=bluetooth.service\n"
+        }
+      },
+      {
+        "window": 110,
+        "release": null,
+        "requested": true,
+        "offset": 110796,
+        "linux_monotonic_ns": 754881083525166,
+        "cold_reset": true,
+        "reset_monotonic_ns": 754888627262291,
+        "seconds_to_reset": 7.543737125,
+        "last_kernel_line": "[    5.016489] brcmfmac: brcmf_c_preinit_dcmds: Firmware: BCM43752/2 wl0: Jan 18 2024 14:50:40 version 18.35.387.23.217 (ga18eaaff) FWID 01-e47f9a86"
+      },
+      {
+        "window": 110,
+        "release": "7.3.1-vim4-20261105",
+        "requested": false,
+        "offset": 171770,
+        "linux_monotonic_ns": 754898875258458,
+        "cold_reset": true,
+        "reset_monotonic_ns": 754907669511583,
+        "seconds_to_reset": 8.794253125,
+        "last_kernel_line": "[    5.968884] brcmfmac: brcmf_c_preinit_dcmds: Firmware: BCM43752/2 wl0: Jan 18 2024 14:50:40 version 18.35.387.23.217 (ga18eaaff) FWID 01-e47f9a86"
+      },
+      {
+        "window": 110,
+        "release": "7.3.1-vim4-20261105",
+        "requested": false,
+        "offset": 235307,
+        "linux_monotonic_ns": 754917925458083,
+        "cold_reset": true,
+        "reset_monotonic_ns": 754925587610666,
+        "seconds_to_reset": 7.662152583,
+        "last_kernel_line": "[    6.206355] typec_fusb302 1-0022: Initiating hard-reset, which might result in machine power-loss."
+      },
+      {
+        "window": 110,
+        "release": "7.3.1-vim4-20261105",
+        "requested": false,
+        "offset": 298857,
+        "linux_monotonic_ns": 754935837190541,
+        "cold_reset": false
+      }
+    ],
+    "cold_resets": [
+      {
+        "window": 110,
+        "release": null,
+        "requested": true,
+        "offset": 110796,
+        "linux_monotonic_ns": 754881083525166,
+        "cold_reset": true,
+        "reset_monotonic_ns": 754888627262291,
+        "seconds_to_reset": 7.543737125,
+        "last_kernel_line": "[    5.016489] brcmfmac: brcmf_c_preinit_dcmds: Firmware: BCM43752/2 wl0: Jan 18 2024 14:50:40 version 18.35.387.23.217 (ga18eaaff) FWID 01-e47f9a86"
+      },
+      {
+        "window": 110,
+        "release": "7.3.1-vim4-20261105",
+        "requested": false,
+        "offset": 171770,
+        "linux_monotonic_ns": 754898875258458,
+        "cold_reset": true,
+        "reset_monotonic_ns": 754907669511583,
+        "seconds_to_reset": 8.794253125,
+        "last_kernel_line": "[    5.968884] brcmfmac: brcmf_c_preinit_dcmds: Firmware: BCM43752/2 wl0: Jan 18 2024 14:50:40 version 18.35.387.23.217 (ga18eaaff) FWID 01-e47f9a86"
+      },
+      {
+        "window": 110,
+        "release": "7.3.1-vim4-20261105",
+        "requested": false,
+        "offset": 235307,
+        "linux_monotonic_ns": 754917925458083,
+        "cold_reset": true,
+        "reset_monotonic_ns": 754925587610666,
+        "seconds_to_reset": 7.662152583,
+        "last_kernel_line": "[    6.206355] typec_fusb302 1-0022: Initiating hard-reset, which might result in machine power-loss."
+      }
+    ],
+    "total_cold_resets": 3,
+    "stop_third_cold_reset": true,
+    "caveat": "Receive-chunk monotonic times; UART loss can obscure banners. Live SSH identity is independent."
+  },
+  "video": {
+    "before": {
+      "available": true,
+      "fps": 59.95805384917477,
+      "first": 9,
+      "last": 309,
+      "width": 3840,
+      "height": 2160
+    },
+    "returned": {
+      "available": true,
+      "fps": 59.352837238402685,
+      "first": 12,
+      "last": 309,
+      "width": 3840,
+      "height": 2160
+    }
+  },
+  "recovery_ready_seconds": 84.486962625,
+  "restored": true,
+  "protected_files": 2372,
+  "archived_files": 790,
+  "uart_sha256": "19d8f1242a1dec8467fdc8dcf8ecc13900683f15b4ec317547e04eb9f361a661",
+  "full_counts": {
+    "Not run": 132
+  },
+  "full_csv_sha256": "802d87305e6b1f60aaa0120437d2c98f77b96b8a995b1d9991c1edd2c2c73b35",
+  "startup_identity_caveat": "First formal recovery boot was requested with formal cmdline and Nov 5 build timestamp, but release banner was truncated and no SSH identity was acquired. Keep its observed release null.",
+  "formal_cumulative": {
+    "by_requested_boot_entry": {
+      "starts_at_least": 80,
+      "cold_resets": 17
+    },
+    "release_banner_or_ssh_confirmed": {
+      "starts_at_least": 79,
+      "cold_resets": 16
+    },
+    "requested_formal_unconfirmed": {
+      "starts": 1,
+      "cold_resets": 1
+    }
+  },
+  "unchanged_topology": "Mac -> USB-C power meter -> VIM4; no new power reading"
+}
