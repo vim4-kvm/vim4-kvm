@@ -5,7 +5,8 @@
 
 ## 内核与部署
 
-- T7解码器与JPEG编码器probe时都排他申请同一64K DOS窗口：r109自然共存时Wave5/JPEG已绑定，decoder申请`0xfe320000–0xfe32ffff`返回`-EBUSY`，模块加载但无绑定。运行期DOS租约K9未解决该资源冲突；busy-open/解码/132条均未运行。K10交专门worker改T7映射并审计IRQ/reset/clk等probe资源，本轮未绕过。正式已恢复。[r109代码位置及原始证据](bringup/2026-11-06-vdec-integration41-results.md#r109重叠mmio请求拦住decoder-probe)
+- K9运行期编解码共存验收未完成：r110的K10已确认三模块自然绑定、DOS区域仅JPEG占用，r109的region冲突已解决；K9-KVM因采证工具选了无调用点事件而未覆盖。原始旁证有600次Wave5 CAPTURE DQ、59.9986fps、零ERROR，不替代busy-open前/中/后和编码器重载门禁。132条解码全Not run，恢复3次冷复位后硬停；后续板窗暂停。[r110证据与边界](bringup/2026-11-06-vdec-integration42-results.md#r110k10通过k9在第一段统计停止)
+- integration42正式恢复新增4次Linux启动/3次冷复位，距Linux起点7.543737/8.794253/7.662153秒，最终自然恢复并过2372 proof/视频；候选无线屏蔽1/0单列。按正式启动项归类累计≥80/17；首个恢复banner缺损，严格release/SSH确认口径≥79/16，另1/1请求正式未确认release。第三次复位前6.206355秒的fusb302 hard-reset只作时序证据，不据此归因或改PD。[逐启动及限制](bringup/2026-11-06-vdec-integration42-results.md#冷复位恢复与停止边界)；较早累计沿下方cold_boot历史条目。
 - 解码评审系列保留 Kövér-Draxl 的 MPEG-2、MJPEG、HEVC 原作者，但原提交 `b1bdea695746b`、`37b50c957b4b1`、`0204da89aa08d` 缺原作者 Signed-off-by。只加整理者自己的签署；strict checkpatch 的 nominal-author 签署错误按失败保留。上游提交前需原作者补 SoB，或按 DCO (b) 完成来源说明；短期不提交上游、不联系作者，不代签、不改作者。整理者签署身份 `localhost-copilot` 不是真实姓名，上游前也须换成真实身份的 SoB。
 - `fd41fb5950b9` 在arm64 QEMU/KASAN/PROVE_LOCKING下跑额外上游DMA-BUF压力组，单CPU/300秒与双CPU/900秒均在fence-chain的test_wait_forward slow提示后超时，未定位TCG性能或内核等待问题；双CPU竞争用例通过，不能将未完成项记通过。不是实板故障证据，本任务不修改核心实现。[两次配置、原始输出与边界](bringup/2026-11-05-integration-build-results.md#dma-buf-压力复验超时)
 - MMC `Invalid wait context` 修复原分支 `f911e1d8817fb`、v2 `5deb393be1501` 离线通过；集成生产`.90`与正式`.3`同窗各600秒328.88/342.08 Mbit/s，同窗-3.86%，通过不超过10%的性能门槛，未改回硬IRQ。此前`.93`相对历史-11.52%不能归因MMC或PD。A仍cold_boot，debug_locks/eMMC调试门禁未完成。[同窗结果、生产配置与恢复](bringup/2026-11-05-integration-wifi-control.md)；[集成边界](bringup/2026-11-05-debug-splat-integration.md)

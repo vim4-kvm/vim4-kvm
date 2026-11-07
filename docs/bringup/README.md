@@ -17,6 +17,7 @@
 
 ## 2026-11-06
 
+- [integration42 K10共存与采证停止](2026-11-06-vdec-integration42-results.md) — kernel video；三模块绑定及DOS仅JPEG占用通过；K9-KVM因无调用点trace事件未覆盖，恢复3次冷复位后正式2372 proof/视频通过，132条全Not run，硬停未部署。
 - [integration41 K9自然共存门禁](2026-11-06-vdec-integration41-results.md) — kernel video；跨日正式构建/QEMU67/旧包不变通过；r109 decoder与JPEG请求同一DOS MMIO而probe-EBUSY，K9失败、132条全Not run，正式2372 proof/视频恢复，未部署。
 - [.40解码修复板验](2026-11-06-vdec-integration40-results.md) — kernel video；W=1/QEMU64通过，无参probe/metadata PM留证；累计第二次冷复位停止，132条全Not run，三窗正式2372 proof/视频恢复，由.41接替，未部署。
 - [HEVC 输出过程与单 AU 隔离](2026-11-06-vdec-fixes-b.md) — kernel video；批 B 头解析、C.5.2、discard 与坏 AU 隔离，离线门禁及待验口径。
