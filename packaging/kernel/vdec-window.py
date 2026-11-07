@@ -132,6 +132,35 @@ def verify_files(root, files):
             raise ValueError('Manifest checksum differs: ' + name)
 
 
+def encoder_capture_statistics(text, minor):
+    """Count completed CAPTURE buffers for one encoder's V4L2 device minor.
+
+    Use the ioctl DQBUF events emitted by v4l2-ioctl.c. The similarly named
+    vb2_v4l2_buf_done event has no caller in the current kernel, so its absence
+    cannot establish whether the encoder completed frames.
+    """
+    selected = []
+    for line in text.splitlines():
+        if not re.search(r'\bminor\s*=\s*' + str(minor) + r'\b', line):
+            continue
+        if 'v4l2_dqbuf:' not in line or 'type = VIDEO_CAPTURE_MPLANE' not in line:
+            continue
+        stamp = re.search(r'\s(\d+\.\d+):\s+v4l2_dqbuf:', line)
+        if not stamp:
+            raise ValueError('No encoder completion timestamp in V4L2 trace')
+        selected.append((float(stamp[1]), line))
+    elapsed = selected[-1][0] - selected[0][0] if len(selected) > 1 else 0
+    return {'capture_completions': len(selected),
+            'fps': (len(selected) - 1) / elapsed if elapsed > 0 else 0,
+            'errors': [line for _, line in selected if re.search(r'\bERROR\b', line)]}
+
+
+def require_encoder_capture_activity(report):
+    """Require the approved 4K60 window's completed-frame rate and count."""
+    if report['fps'] < 57 or report['capture_completions'] < 570 or report['errors']:
+        raise RuntimeError('Encoder activity below formal 4K60 reference or ERROR')
+
+
 @contextmanager
 def v4l2_trace(output, index):
     """Capture one stream in an isolated tracefs instance, including timeout cleanup."""

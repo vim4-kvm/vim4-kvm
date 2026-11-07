@@ -117,3 +117,18 @@ Mac→USB-C功率计→板子拓扑不变，无新功率读数；不将黑名单
 [完整摘要](data/2026-11-06-vdec-integration42-summary.json)保留逐启动身份及限制、K9实际统计和恢复。
 板停在正式 `7.3.1-vim4-20261105` / build ID `bdbfa439f298e92b5bad092528d11119a974f262`；
 票已释放。冷复位阈值与采证失败均已报告协调者，不再续跑integration42。
+
+## 收口后的工具修复：仅离线回放
+
+协调者最终裁决采用已实际采到的 `v4l2_dqbuf`，不再依赖任何vb2完成事件，完成数≥570、
+fps≥57、零ERROR等门槛不变。公共工具 `vdec-window.py` 新增指定minor的CAPTURE统计/判定函数；
+K9私有编排调用该函数，trace丢失及应用同PID检查保留。默认窗口及trace采集路径不变。
+本轮冻结的run110脚本、原始数据和判定不追改，**r110 K9-KVM仍为未覆盖**。
+
+`build/hwdecode-parity/replay110-encoder.py` 先按归档清单校验原trace SHA256
+`f498f77c1875915ee182e1228e9598abb12576636aacefb80ded94d1ba8a0ee1`，再用修复函数离线回放：
+Wave5 `/dev/video4`、minor4，准确计到600次、59.9985716534fps、零ERROR；错误minor和OUTPUT-only
+反例均拒绝。结果存 `integration42/encoder-replay.json`/`.log`，没有补造vb2事件或新增板端动作。
+新增测试覆盖队列/设备过滤、无vb2事件仍可计数、空/短/低帧率/ERROR及无完成时戳拒绝；
+36项vdec-window及613项全套测试通过（17项跳过），输出存 `tool-unit.log`/`tool-full-tests.log`。
+该回放只验证工具，不补算busy-open、解码或编码器重载通过；没有新增板端动作或大文件。

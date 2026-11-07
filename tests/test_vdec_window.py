@@ -18,6 +18,42 @@ SPEC.loader.exec_module(window)
 
 
 class DecoderWindowTests(unittest.TestCase):
+    @staticmethod
+    def encoder_trace(count=600, fps=60):
+        return '\n'.join(
+            f' encoder:src-1224 [003] ..... {21 + i / fps:.6f}: v4l2_dqbuf: '
+            f'minor = 4, index = {i % 4}, type = VIDEO_CAPTURE_MPLANE, flags = DONE'
+            for i in range(count))
+
+    def test_encoder_activity_uses_only_selected_capture_dqbuf(self):
+        trace = self.encoder_trace() + '\n' + '\n'.join([
+            ' other-1 [001] ..... 31.0: v4l2_dqbuf: minor = 14, '
+            'type = VIDEO_CAPTURE_MPLANE, flags = ERROR',
+            ' encoder-1 [001] ..... 31.0: v4l2_dqbuf: minor = 4, '
+            'type = VIDEO_OUTPUT_MPLANE, flags = ERROR',
+            ' encoder-1 [001] ..... 31.0: v4l2_qbuf: minor = 4, '
+            'type = VIDEO_CAPTURE_MPLANE, flags = ERROR'])
+        # No vb2 events: these DQBUF events alone prove completed frames.
+        report = window.encoder_capture_statistics(trace, 4)
+        self.assertEqual(report['capture_completions'], 600)
+        self.assertAlmostEqual(report['fps'], 60, places=4)
+        self.assertEqual(report['errors'], [])
+        window.require_encoder_capture_activity(report)
+
+    def test_encoder_activity_rejects_absent_short_slow_and_error_capture(self):
+        traces = ['', self.encoder_trace(count=569), self.encoder_trace(fps=30),
+                  self.encoder_trace().replace('flags = DONE', 'flags = ERROR', 1)]
+        for trace in traces:
+            with self.subTest(trace=trace[:100]):
+                report = window.encoder_capture_statistics(trace, 4)
+                with self.assertRaises(RuntimeError):
+                    window.require_encoder_capture_activity(report)
+
+    def test_encoder_activity_rejects_malformed_completion_timestamp(self):
+        with self.assertRaisesRegex(ValueError, 'completion timestamp'):
+            window.encoder_capture_statistics(
+                'v4l2_dqbuf: minor = 4, type = VIDEO_CAPTURE_MPLANE', 4)
+
     def test_obsolete_hevc_preflight_plan_is_rejected_before_hardware_access(self):
         plan = {'board_window': 'candidate', 'kernel': 'mainline', 'hevc': True,
                 'hevc_diagnostic_api': 'debugfs-v1'}
