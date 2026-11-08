@@ -54,6 +54,6 @@
 
 ## 测试工具
 
-- `final-regression.py` 完整矩阵（19 档 HDMI、9 档 H.264、11 档 H.265）依赖的未跟踪夹具 `build/kernel/final/`（raw-modes.py、modes.jsonl、browser-modes.mjs、run-browser.py、smoke-4k.py）已丢失，Mac 与 VM 均未找到。[deploy-73](bringup/2026-11-05-integration-formal-deploy.md#九类验收范围)与[HEVC 部署](bringup/2026-11-06-hevc-formal-deploy.md)经授权用缩减口径；完整九类回归前须恢复并核验夹具，缺失矩阵不记通过。
+- [formal-gates.py](../packaging/kernel/formal-gates.py) 已将[deploy-73](bringup/2026-11-05-integration-formal-deploy.md#九类验收范围)的受限九类工具化；19 档 HDMI 与 9/11 档编码矩阵夹具仍缺，需由 [hdmi-mode-fixture.py](../packaging/kernel/hdmi-mode-fixture.py) 重建并核验；缺失矩阵不记通过。
 - One-KVM HDMI 重采样有限输入测试在整包全量运行时出现一次输入队列超过半秒音频量的保护失败；独立复核和未改源码的全量库测试重试均通过。需进一步区分并行调度与测试输入生产速度，不能据此判定实板采集停滞。[TWCC 打包记录](bringup/2026-11-04-uu-twcc.md)
 - M6 测试源只记录绘制或 vsync 回调，缺实际呈现回执；重复/跳号无法可靠归因采集端，严格连续性门禁受限，需对照 presentedTime 与采集帧号。[高刷与 444 记录](bringup/2026-11-02-hfr-yuv-window.md)

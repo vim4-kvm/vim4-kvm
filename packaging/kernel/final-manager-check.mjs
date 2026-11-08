@@ -49,7 +49,7 @@ print(json.dumps(dict(cmdline=Path('/proc/cmdline').read_text().strip(),
  service_journal=subprocess.check_output(['journalctl','-b','-u','vim4-kvm-pd.service','--no-pager','-o','cat'],text=True,timeout=5))))
 `;
   const board = JSON.parse(execFileSync('ssh', ['-oBatchMode=yes', '-oConnectTimeout=5',
-    'vim4', 'sudo -n python3 -'], { input: program, encoding: 'utf8', timeout: 20000 }));
+    process.env.VIM4_HOST || 'vim4', 'sudo -n python3 -'], { input: program, encoding: 'utf8', timeout: 20000 }));
   const pdBaseline = JSON.parse(await readFile(new URL('./pd-b-state.json', import.meta.url), 'utf8'));
   await writeFile(logs + '/manager-pd-state.json', JSON.stringify({ board, power: status.power }, null, 2) + '\n');
   requireFirmwarePDState(board, status.power, pdBaseline);

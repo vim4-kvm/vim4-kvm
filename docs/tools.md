@@ -48,8 +48,8 @@
 | [display-once.py](../packaging/kernel/display-once.py)（display-once-init.c） | 独占 | 准备或暂存 RAM 启动候选。 |
 | [coldboot-ab.py](../packaging/kernel/coldboot-ab.py) | 破坏；重启 | 默认离线核验两组锁定 RAM 包；显式 execute 在既有票内交替启动、连续 UART 及独立 ready 模块快照采证、恢复正式基线，不自行排票。 |
 | [coldboot-collect.py](../packaging/kernel/coldboot-collect.py) | 只读 | 仅显式启用的 RAM init 启动；有界子进程读取模块参数和配置，完整快照留 tmpfs，串口只报紧凑摘要。 |
-| [final-window.py](../packaging/kernel/final-window.py)（final-board.py） | 破坏；重启 | 正式包部署、验证与恢复。 |
-| [final-regression.py](../packaging/kernel/final-regression.py)（[final-manager-check.mjs](../packaging/kernel/final-manager-check.mjs)、final-manager-pd.mjs） | 独占；断开 USB | 离线快照及部署回归，含 manager 与 PD B 状态检查；期望值见[pd-b-state.json](../packaging/kernel/pd-b-state.json)，参数见头注释。 |
+| [formal-deploy.py](../packaging/kernel/formal-deploy.py) | 破坏；重启 | 默认离线 plan 核来源锁、整包和回退包，封存工具及夹具哈希；execute 只用已有板票安装/恢复，publish 离线写验收收据。参数见 --help。 |
+| [formal-gates.py](../packaging/kernel/formal-gates.py)（[formal/](../packaging/kernel/formal)、[final-manager-check.mjs](../packaging/kernel/final-manager-check.mjs)、final-manager-pd.mjs） | 独占；发 HID、断开 USB | 受限九类、风扇持久化、解码冒烟及 PD B 状态；复用[pd-b-state.json](../packaging/kernel/pd-b-state.json)。M6 bootstrap 保留截图人工审阅，未审阅不发后续输入；原生程序从源码在 plan 编译，码流/插件归档须显式提供且核跟踪期望哈希。 |
 | [vdec-window.py](../packaging/kernel/vdec-window.py)（vdec-register-dump.c、[vdec-benchmark.c](../packaging/kernel/vdec-benchmark.c)） | 破坏；重启 | 解码候选窗口：compliance、fluster、性能与共存；默认离线，复用板队列、manifest、watchdog 和基线视频恢复，见[验收合同](vdec-validation.md)。 |
 | [check-wifi-p2p.py](../packaging/kernel/check-wifi-p2p.py) | 独占 | Wi-Fi/P2P 验证。 |
 | [phase2-window.py](../packaging/hdr10/phase2-window.py)（m6-gates.py、phase2-board.py、phase2-run） | 破坏；重启 | HDR10 批量验收窗口。 |

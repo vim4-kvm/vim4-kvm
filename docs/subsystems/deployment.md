@@ -24,6 +24,8 @@ GPT曾被清空；仅用板级工具的专用校验刷机脚本，禁OOWOW /shel
 
 ## 内核开发流程与部署门禁
 
+正式安装用 [formal-deploy.py](../../packaging/kernel/formal-deploy.py) 离线 plan、板票内 execute、离线 publish；门禁由 [formal-gates.py](../../packaging/kernel/formal-gates.py) 按计划顺序执行。M6 bootstrap 保留原流程的截图审阅和有界人工回复，不能无人值守批准未知桌面。受限九类不覆盖完整 HDMI/编码矩阵，音频只查状态。
+
 单板按[board-queue/window](../board-window.md)：heavy共享锁下先构建归档，编译释放板锁，不塞进持板run。
 持板上限/任务预算见[规范](../code-standards.md#上板与测试)；采样前开启sampling，结束关闭。
 超时仅告警/让后继取租约，不强杀操作；原持有者立即收尾、释放重排，已有等待者先行。

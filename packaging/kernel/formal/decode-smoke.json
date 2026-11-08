@@ -1,0 +1,44 @@
+{
+  "archive_sha256": "49378e1b62826aa7128a9a307d419a664b5baa052d19f7425e379bd5d48dab75",
+  "files": {
+    "hevc-refs.json": "d9c6e2a68b816545ffe4df0cff83dd8da9929e73f9c4139b2522454dc0b0cf92",
+    "smoke.py": "0d07a2d96afb4ceaa0d1cd96e32a4ea8005c205c40dcd055a0e5b3486033544b",
+    "streams/jpeg-fixtures/mjpeg-420.mjpg": "c841e1197e16dbd619312679c0f919007f648fd45cc55f1c78ee355d98a80de5",
+    "streams/jpeg-fixtures/mjpeg-no-app.mjpg": "7d797680e77d70bd3c87d71345a75736852fc0f6e7395a931c8a43a6372b0e60",
+    "streams/jpeg-fixtures/mjpeg-1080p.mjpg": "d0cc41b262507f204beea072fec50a380765a82a5f73282f5db1787bfb146e13",
+    "streams/resources/JCT-VC-HEVC_V1/DBLK_A_SONY_3/DBLK_A_SONY_3.bit": "d61a13e04a1678816c0f16cf7a47f5bb918de95ecf1b6fab305e2390c3dd7de9",
+    "streams/resources/JCT-VC-HEVC_V1/TILES_B_Cisco_1/TILES_B_Cisco_1/TILES_B_Cisco_1.bin": "d2f65167917e42030db804c60ca7775452445a61930ccee3fa2ad2cd3830a57a",
+    "streams/resources/JCT-VC-HEVC_V1/WPP_A_ericsson_MAIN_2/WPP_A_ericsson_MAIN_2.bit": "54d896d9fbdfa0aae15629001105c6ee132c8459e152abb06efc62cead4324ae",
+    "tools/official/libgstvideoparsersbad.so": "6b8523110912868c168e1c5b85be2883fbafd925c4996bc1069b65915e1d7cf2",
+    "tools/mpeg2-fixed/lib/libgstcodecs-1.0.so.0": "5668e8fabfcbeae07139283e839abf4cebe1425b83f07326e72ca42c4c9684ab",
+    "tools/mpeg2-fixed/lib/libgstcodecparsers-1.0.so.0": "cc4414e28d1d4845c1593c4833dda4f5b0595be416bd1f88e3840dce457d1cc2",
+    "tools/mpeg2-fixed/plugins/libgstvideoparsersbad.so": "2da88e7aa1c9bd39a74f5cf6806d24f1c7cd80ec11aab712b25f0975e89bb017",
+    "tools/mpeg2-fixed/plugins/libgstv4l2codecs.so": "2e21a4ae34d766f5ac87dc7ddbd55a5e79130342dd351c89dc92f51ce03a4bfc",
+    "tools/plugins/libgstv4l2codecs.so": "ca9b5d41cd5cb4e1971778e3db99171c66bc78a24a6b9bcd906cfe7de2e8f601",
+    "tools/hevc/hevc-intra.vhdr": "4740e69655f19beb89b69d91ef68ccb7bece576a38bf4abdee51d9d1a76c18dc",
+    "tools/hevc/hevc-first.h265": "b1156fde7a491f62a774491c9be2a3fdd7cf57761f4e5b7338bb59729739574e",
+    "tools/hevc/hevc-intra.h265": "ea0bdf6ae42f3d238dbe1d09cf385846526e46d239f4f71b4313875f6a823041",
+    "tools/bin/v4l2-compliance": "80245c17cc93906fa4a505cbe684ac861f5213555ffd11cb7de9d0d4d6ba7289",
+    "tools/bin/vdec-benchmark": "c608d57973e648bfea873cb4441834fe1a36549a3d2f506e5a832d18d2f91c96",
+    "tools/bin/v4l2-ctl": "7671e7ea2bcc46644a060d9dd16134d728348e4885dd504e7b69722d82050c3f",
+    "tools/bin/strace-controls": "2fb6ba219a311c052e086d5dc3e45bfbc1dfcc0423df150c5408c35b78c5440c",
+    "tools/bin/mpeg2decode": "a7378621dcea43939087c846d1d7f486085429fef6c53526469e8d2ec582e776",
+    "tools/bin/vdec-capture": "5e7cbf6cb948e4bcd9ae9381a6dd1f2c7c4bda0ae556f1f532f60b91e2aa85b1",
+    "tools/bin/strace": "33b3ea325915f1213dc477d80e0f0b2b09ffeff5e81d98b25a35320fbcbcaf42"
+  },
+  "jpeg": {
+    "mjpeg-420": [
+      5652480,
+      "59fd681d126f530b7b96aa6104b2e9935ff25a9e768657f5053e11043123ebd3"
+    ],
+    "mjpeg-no-app": [
+      5652480,
+      "59fd681d126f530b7b96aa6104b2e9935ff25a9e768657f5053e11043123ebd3"
+    ],
+    "mjpeg-1080p": [
+      49766400,
+      "90aa034add7ef2d1d76bf87342dbc34707108e90deec9bfb6cf9e8413fc2c66a"
+    ]
+  }
+}
+

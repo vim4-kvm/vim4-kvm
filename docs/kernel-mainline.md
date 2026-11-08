@@ -28,6 +28,8 @@
 
 RAM候选的基线准入与恢复证明只在[短窗口](board-window.md#当前正式基线)维护，不沿用正式安装步骤。
 
+正式部署入口为 [formal-deploy.py](../packaging/kernel/formal-deploy.py)：离线 plan 核来源锁与输入，板票内 execute，成功后离线 publish。当前 tested_build 与 retained_runtime 相同会明确拒绝，须准备不同 release 的候选锁与匹配回退包；不支持同版重装。受限门禁与夹具见[工具目录](tools.md)，不代表完整 HDMI/编码矩阵。
+
 ## 通用内核路线图
 
 目标是追平厂商5.15全部适用能力，核心进入DRM/KMS、V4L2、ASoC、genpd等主线框架，
@@ -95,7 +97,7 @@ forward 遇冲突须保留现场，解决后对完整结果运行 verify；构�
 [运行时复位](bringup/2026-10-23-wave5-runtime-window.md)、[软件注入](bringup/2026-10-23-wave5-isolation-final.md)不证明真实固件挂死可恢复；[编码边界](bringup/2026-10-23-wave5-parity-window.md)中的合入也不代表正式安装。
 
 状态字段、文件位置与默认策略见[监控器](../board/vim4-wave5-monitor.py)、[单元](../board/vim4-wave5-monitor.service)。启用自动重启也须确认所有KVM应用已停止、虚拟介质为空且持续空闲；运行中但空闲的One-KVM不能作“无需求”证明，clients未覆盖UU/RTSP/录屏。
-读取失败取消空闲计时，同启动只尝试一次；不能覆盖管理员的自动重启配置。部署接入见[final-window](../packaging/kernel/final-window.py)，板端实测范围以专项记录为准。
+读取失败取消空闲计时，同启动只尝试一次；不能覆盖管理员的自动重启配置。正式安装入口见[formal-deploy](../packaging/kernel/formal-deploy.py)，板端实测范围以专项记录为准。
 
 ## 相关记录
 

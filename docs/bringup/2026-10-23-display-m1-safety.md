@@ -92,7 +92,7 @@ Mac 跑 Python 测试；Linux VM 额外编译执行真实 PID 1 syscall harness�
 
 ## 旧覆盖式 restore 的独立修复
 
-[final-board.py](../../packaging/kernel/final-board.py) 保留兼容旧窗口恢复入口，但 M1
+`final-board.py` 保留兼容旧窗口恢复入口，但 M1
 不再使用它安装覆盖式候选。stop 每个服务最多等 10 秒；超时 kill 后不再次无界 wait，
 非零退出同样记录并继续。优先恢复启动文件及模块，随后对本地文件系统 `sync -f`
 （每次 30 秒上限），避免全局 sync 被无关 CIFS 挂载拖住。同步失败必须报错，不能宣称落盘成功。
