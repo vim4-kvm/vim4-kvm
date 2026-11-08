@@ -50,7 +50,7 @@ Linux行号固定上述213f2715：`t7-vdin-test.c:1578`、
 5.15对照证据：[远程HDR](2026-10-26-remote-hdr-modes.md)、
 四应用HDR缩放、
 [本地双路径](2026-10-25-native-hdr-dual-path.md)、
-[HEVC画质](2026-10-27-hevc-quality.md)、[高刷](2026-10-26-1080p120.md)、
+HEVC画质、[高刷](2026-10-26-1080p120.md)、
 [真实VRR](2026-10-26-vrr-live.md)、NPU、
 GPU趋势。各条只沿用其明确验收范围，
 不将5.15未验的Safari HDR、HDR120或任意12bit也列成7.3已知退步。

@@ -2,7 +2,7 @@
 
 本页管主线源码、整包升级与维护；安装只读[身份](#源码与配置)、[升级合同](#正式构建与整包升级)，占板另读[短窗口](board-window.md#占板时间最短化)。
 当前身份唯一来源：[sources.toml](../packaging/kernel/sources.toml)；tested_build/retained_runtime是验收与保留状态，package是下一包，不能混用。
-[集成正式部署](bringup/2026-11-05-integration-formal-deploy.md)已保留为默认 Mainline，配套新 manager；同封存资产的八类检查与 manager 续窗门禁通过，含风扇90个trip持久化、面板保存/读回/恢复及实时TCPM 5V/3A。HDMI仅1080p60/4K60往返和无信号恢复，19档矩阵未重跑；音频仅状态检查。[HEVC部署准备](bringup/2026-11-06-hevc-formal-deploy.md)尚未安装新包，当前正式整包仍完整保留；原[build 3](bringup/2026-11-04-boot-pd-tcpm.md)未引用且未登记的启动目录已按条件授权清理，模块/固件与Mac原整包保留。旧build 2亦只删未引用启动目录。release tag仅建在VM原任务源码，未push或发布Release。
+当前正式部署与验收范围见[上板记录索引](bringup/README.md)中最新的 deployment 条目，不在本页复述。
 导航：[路线图](#通用内核路线图) · [审查](#审查边界与后续验证) · [补丁维护](#补丁维护方法) · [隔离](#wave5-隔离告警) · [历史](#相关记录)。
 
 ## 源码与配置
@@ -48,10 +48,6 @@ RAM候选的基线准入与恢复证明只在[短窗口](board-window.md#当前�
 | F5 | MIPI与图像处理 | DRM DSI/面板/背光，V4L2 CSI/ISP/sensor、GE2D/GDC/DI/writeback及高阶色彩；需准确扩展硬件，不能套用C3支持当T7完成 |
 | 条件受限 | Dolby Vision、HDCP/安全媒体、密钥/TA与闭源SDK | 缺授权/固件合同的功能明确受限，不以普通文件、软件回退或伪造能力替代；具备条件后仍接标准框架 |
 | 不做接口兼容 | 旧厂商私有ABI | 功能仍在追平范围；以DRM/V4L2/ASoC/dma-buf等标准接口交付，闭源旧消费者另列兼容条件 |
-
-## 2026-10-19 首轮构建结果
-
-导入命令、bundle、产物哈希与未验范围见 `git show ba9972e:docs/archive/kernel-rc7-import.md`。
 
 ## 启动固件预检与模块准备
 
@@ -103,29 +99,12 @@ forward 遇冲突须保留现场，解决后对完整结果运行 verify；构�
 
 ## 相关记录
 
+早期 7.x 实验记录已被正式主线取代，需要时按日期查[索引](bringup/README.md)。
+
 - [RX同链路对照与修复](bringup/2026-10-23-hdmirx-vendor-comparison.md)：TOP测量VALID空窗曾误判失锁，恢复状态不能直接归因源/线缆；短测不证明长期稳定。
 - [M0](bringup/2026-10-23-display-m0-r4.md)、[PCM/SARADC](bringup/2026-10-23-kvm-audio-capture-stability-deploy.md)、[SARADC取证](bringup/2026-10-22-saradc-timeout-audit.md)：静态handoff仅当前布局，原生切模式/4K显示器未验；旧音频/重启证据不算本轮重测。
 - [uhd6正式验收](bringup/2026-10-31-uhd6-formal.md)、[尺寸/QP/GPU批量验证](bringup/2026-10-30-kernel73-gap-validation.md)、[复验](bringup/2026-10-30-kernel73-gap-r3.md)：逐轮通过/失败范围，不与现行身份混用。
-
 - [Wi-Fi 整包安装](bringup/2026-11-02-wifi-sdio-formal.md)、[.217 固件对照](bringup/2026-11-02-wifi-fw217.md)：BCM43752 构建输入、连接与回退；[PHY trap 排查](bringup/2026-10-21-edge-wifi-fps.md)保留转储，内部根因未确认。
 - [管理器与 WPA3](bringup/2026-10-21-manager-mainline-status.md)、[Wi-Fi Direct](bringup/2026-10-21-edge-wifi-p2p.md)：WCC/AKM 与 P2P 适配，真实对端传输未验。
-- [双内核运行时](bringup/2026-10-21-dual-kernel-integration.md)：应用数据与切换验证；此前的[独立实验网关](bringup/2026-10-20-edge-lan-gateway.md)使用回环 8082，不代表正式入口。
-- [实验 HID](bringup/2026-10-20-edge-hid-integration.md)、[USB 功能接入](bringup/2026-10-21-edge-usb-functions.md)：早期独立准备器、助手和数据目录的验证范围；当时 USB 串口未启用。
-- [高码率实验](bringup/2026-10-14-4k60-high-bitrate-experiment.md)、[HEVC 画质模式](bringup/2026-10-27-hevc-quality.md)、[UU 文件传输](bringup/2026-10-25-uu-files.md)：应用能力的原始验收边界。
+- [双内核运行时](bringup/2026-10-21-dual-kernel-integration.md)：应用数据与切换验证。
 - [看门狗运行时复位](bringup/2026-10-23-wave5-parity-window.md)：停止喂狗后的串口与恢复证据，不覆盖睡眠期硬锁。
-- [7.x 缩放与硬件 MJPEG](bringup/2026-10-21-edge-scaling-jpeg.md)：VDIN 下采样、HCODEC/OP-TEE 接入与 4K 帧率边界。
-- [UHD 清晰度复核](bringup/2026-10-20-edge-uhd-detail.md)：Mac 实际渲染栅格、原生单像素细节与 1080p 放大负对照。
-- [7.3 HDMI 音频](bringup/2026-10-20-edge-hdmi-audio.md)：独立 ALSA 声卡及网页 Opus；[动态 LPCM](bringup/2026-10-22-edge-hdmi-audio.md)记录 ACR/AIF 检测、七档采样率、重采样缓冲与无链路恢复。
-- [7.x 逐行刷新](bringup/2026-10-20-edge-cyclic-refresh.md)：固定 UHD60 的周期关键帧、呈现间隔与重复对照。
-- [7.x 状态查询与端到端](bringup/2026-10-20-edge-status-latency.md)：去除实时查询的 20ms 等待、校准时钟与测量开销。
-- [7.x HDMI 真实时序](bringup/2026-10-20-edge-input-timings.md)：标准 V4L2 查询、测量帧率与动态重配的剩余限制。
-- [7.x 失锁查询与队列锁](bringup/2026-10-20-edge-queue-lock.md)：状态/停流锁分离，格式与缓冲生命周期回归。
-- [7.x 动态分辨率](bringup/2026-10-20-edge-dynamic-modes.md)：RGB8 1080p60/4K60 的 PHY、音频、队列和应用重建，以及孤儿缓冲回收。
-- [7.3 HDMI 输入模式覆盖](bringup/2026-10-22-edge-hdmi-modes.md)：实测时序分档、原生 YUV/深色转换和 DMA 行对齐；[最终复核](bringup/2026-10-22-edge-hdmi-modes-final.md)记录浏览器覆盖、HEVC 回退与恢复证据。
-- [VDIN 直接 DMA](bringup/2026-10-20-direct-dma-benchmark.md)：持有/隔离语义、本地回归与 4K60 应用 CPU 对照。
-- [7.3 One-KVM 接入](bringup/2026-10-20-onekvm-wave5.md)：独立后端、网页 4K60 与重配回收故障。
-- [7.3 CPU 性能定位](bringup/2026-10-20-onekvm-performance.md)：真实应用基线、压缩码流缓存和剩余原始帧复制开销。
-- [7.3 HDMI 1080p60](bringup/2026-10-19-hdmirx-dma-ring.md)：实验私有 DMA 环、V4L2 MMAP 复制队列及剩余接入缺口。
-- [7.3 HDMI DMA-buf](bringup/2026-10-19-hdmirx-dmabuf.md)：此前的连续导出、缓冲跨驱动重载及软件 H.264 校验。
-- [7.3 Wave521 与 4K60](bringup/2026-10-19-wave521-uhd.md)：固定 RGB8 输入、NV12、H.264/H.265 硬编码与实测边界。
-- [UU 虚拟屏恢复](bringup/2026-10-15-uu-virtual-screen-recovery.md)：显示器恢复故障的现场取证。

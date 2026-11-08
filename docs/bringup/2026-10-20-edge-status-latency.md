@@ -25,7 +25,7 @@ Mac 的 core 回归也通过；profile/刷新回归需要 Linux V4L2 UAPI 头。
 新归档 SHA256：`f2c5ac54f2edd18188ff9a0d549b648dccb166fe955e9d914412943d629c835c`。
 公共内核头文件及配置与保留 Image 一致，仅改 VDIN 私有回调；未使用 force，
 模块为 intree、taint=0。单模块不附带另一 vmlinux 的 split BTF，处理边界同
-[Wave5 覆盖记录](2026-10-20-edge-cyclic-refresh.md)。没有部署新整包 Image。
+Wave5 覆盖记录。没有部署新整包 Image。
 
 ```sh
 make O=/home/deepdream/build/kernel-edge-uhd1-test CONFIG_DEBUG_INFO_BTF_MODULES= -j8 \

@@ -225,7 +225,6 @@
 ## 2026-10-27
 
 - [当前 One-KVM 延迟与 SDR 缩放瓶颈](2026-10-27-current-video-latency.md) — video application board benchmark
-- [HEVC 无损与固定 QP](2026-10-27-hevc-quality.md) — video application deployment board
 - [UU HDR 降分辨率的 GPU 缩放](2026-10-27-uu-hdr-scale.md) — video uu application deployment board benchmark
 
 ## 2026-10-26
@@ -248,7 +247,6 @@
 - [VDIN1 逐缓冲交付与 RDMA 时序核实](2026-10-25-vdin1-frame-handoff.md) — video kernel board
 - [管理面板前端重构验收与部署](2026-10-25-manager-ui.md) — manager application deployment
 - [UU 协议审查与 P1 修复验收](2026-10-25-uu-protocol-audit.md) — uu application video audio usb audit
-- [UU 限定板子文件传输](2026-10-25-uu-files.md) — uu onekvm usb application board
 - [厂商原生 HDR 与 SDR KVM 双路径交付](2026-10-25-native-hdr-dual-path.md) — kernel video audio onekvm board
 - [音频寄存器只读诊断触发重启](2026-10-25-audiobus-read-abort.md) — audio kernel deployment board uu
 
@@ -315,18 +313,10 @@
 ## 2026-10-20
 
 - [One-KVM 接入 7.3 V4L2/Wave5](2026-10-20-onekvm-wave5.md) — application kernel video board
-- [One-KVM 7.3 CPU 性能定位](2026-10-20-onekvm-performance.md) — application kernel video board
 - [本地基准与 VDIN 直接 DMA](2026-10-20-direct-dma-benchmark.md) — application kernel video board
-- [实验 One-KVM 局域网登录入口](2026-10-20-edge-lan-gateway.md) — application manager board
-- [7.3 One-KVM HID 接入](2026-10-20-edge-hid-integration.md) — application usb audio board
-- [7.x UHD 清晰度与 Mac 渲染分辨率](2026-10-20-edge-uhd-detail.md) — application video board
-- [7.3 HDMI LPCM 与 One-KVM 音频](2026-10-20-edge-hdmi-audio.md) — kernel audio application board
-- [7.x Wave5 逐行刷新与卡顿对照](2026-10-20-edge-cyclic-refresh.md) — kernel video application board
 - [7.x 输入状态等待与端到端延迟](2026-10-20-edge-status-latency.md) — kernel video application board
 - [7.x 安静风扇曲线](2026-10-20-edge-quiet-fan.md) — kernel video deployment board
 - [7.x 启动风扇与 HDMI 恢复](2026-10-20-edge-recovery.md) — kernel video audio application deployment board
-- [7.x HDMI 真实输入时序](2026-10-20-edge-input-timings.md) — kernel video audio application deployment board
-- [7.x 失锁期间的状态查询与队列锁](2026-10-20-edge-queue-lock.md) — kernel video audio deployment board
 - [7.x 1080p60/4K60 自动切换与缓冲回收](2026-10-20-edge-dynamic-modes.md) — kernel video audio application deployment board
 
 ## 2026-10-19
@@ -334,7 +324,6 @@
 - [7.3 edge 首次启动](2026-10-19-edge-firstboot.md) — kernel deployment board
 - [7.3 HDMI RX EDID 与源端 DDC 读回](2026-10-19-hdmirx-ddc.md) — kernel video usb board
 - [7.3 HDMI 私有 DMA 环与 1080p60](2026-10-19-hdmirx-dma-ring.md) — kernel video board
-- [7.3 HDMI DMA-buf 与软件 H.264](2026-10-19-hdmirx-dmabuf.md) — kernel video board
 - [7.3 Wave521 硬编码与 4K60](2026-10-19-wave521-uhd.md) — kernel video board
 
 ## 2026-10-18
@@ -354,13 +343,11 @@
 ## 2026-10-15
 
 - [Screen Sharing 退出后物理桌面未恢复：同步取证](2026-10-15-screen-sharing-desktop-not-restored.md) — video
-- [UU 虚拟屏恢复故障定位](2026-10-15-uu-virtual-screen-recovery.md) — uu video
 - [跨 KVM 运动播放与积压恢复](2026-10-15-cross-kvm-motion-playout-backlog.md) — video
 - [One-KVM 正式启用低延迟播放](2026-10-15-onekvm-low-latency-playout.md) — video application
 
 ## 2026-10-14
 
-- [4K60 高码率编码实验](2026-10-14-4k60-high-bitrate-experiment.md) — video
 - [Wave521 时钟与编码耗时](2026-10-14-wave521-clock-encode-time.md) — video
 
 ## 2026-10-13
