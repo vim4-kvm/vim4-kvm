@@ -278,7 +278,7 @@ def gate_manager():
 
 def gate_pd():
     # Current formal policy is firmware B state; never probe raw I2C or load TCPM.
-    value = api('status')
+    value = json.loads(subprocess.check_output(['node', str(OUT / 'manager-status.mjs')], cwd=ROOT, text=True, timeout=40))
     program = """from pathlib import Path
 import json,re,subprocess
 unit=subprocess.check_output(['systemctl','show','vim4-kvm-pd.service','-p','ActiveState','-p','SubState','-p','Result','-p','ConditionResult','-p','ExecMainStatus'],text=True,timeout=5)
