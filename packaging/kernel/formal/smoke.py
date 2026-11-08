@@ -49,7 +49,7 @@ def bindings():
 
 def capture(name, pipeline, target, frames, timeout=40):
     env = dict(os.environ, GST_PLUGIN_PATH=f'{root}/tools/official:{root}/tools/plugins',
-               GST_REGISTRY=str(out/(name + '.registry')), GST_DEBUG_NO_COLOR='1')
+               GST_REGISTRY=str(root/(name + '.registry')), GST_DEBUG_NO_COLOR='1')
     with (out/(name + '.log')).open('w') as log:
         code = subprocess.run([str(root/'tools/bin/vdec-capture'), pipeline, str(target), str(frames)],
                               stdout=log, stderr=subprocess.STDOUT, env=env, timeout=timeout).returncode
