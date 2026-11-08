@@ -86,13 +86,20 @@ class KernelOwnershipTest(unittest.TestCase):
         (self.node / 'reg').write_bytes(struct.pack('>I', 0x22))
         self.run = self.enterContext(patch.object(pd.subprocess, 'run'))
         self.remember = self.enterContext(patch.object(pd, 'remember_contract'))
+        self.cmdline = self.root / 'cmdline'
+        self.enterContext(patch.object(pd, 'CMDLINE', self.cmdline))
 
     def test_declared_controller_excludes_legacy_even_before_driver_binds(self):
         handoff = self.root / 'khadas,usb-pd-boot'
         handoff.write_bytes(snapshot())
-        self.assertTrue(pd.kernel_pd_enabled())
-        self.assertEqual(pd.bootstrap(handoff, self.root / 'attempt'), 0)
-        self.assertEqual(pd.linux_bootstrap(), 0)
+        # Blacklisting fusb302 keeps the U-Boot contract, not a raw I2C fallback.
+        for cmdline in ('rw', 'rw module_blacklist=wave5,fusb302'):
+            with self.subTest(cmdline=cmdline):
+                self.cmdline.write_text(cmdline + '\n')
+                (self.root / 'attempt').unlink(missing_ok=True)
+                self.assertTrue(pd.kernel_pd_enabled())
+                self.assertEqual(pd.bootstrap(handoff, self.root / 'attempt'), 0)
+                self.assertEqual(pd.linux_bootstrap(), 0)
         self.run.assert_not_called()
         self.remember.assert_not_called()
 
@@ -127,6 +134,9 @@ class KernelPowerTest(unittest.TestCase):
         self.node = self.root / 'dt/controller'
         self.node.mkdir(parents=True)
         self.enterContext(patch.object(pd, 'kernel_pd_node', return_value=self.node))
+        self.cmdline = self.root / 'cmdline'
+        self.cmdline.write_text('rw modprobe.blacklist=fusb302 module_blacklist=wave5\n')
+        self.enterContext(patch.object(pd, 'CMDLINE', self.cmdline))
         self.supply = self.root / 'class/power_supply/tcpm-source-psy-9-0022'
         self.port = self.root / 'class/typec/port7'
         self.device = self.root / 'devices/controller'
@@ -174,6 +184,12 @@ class KernelPowerTest(unittest.TestCase):
         self.assertEqual(self.read(), {'state':'unavailable', 'contract':None})
         with patch.object(pd, 'kernel_pd_node', return_value=None):
             self.assertIsNone(self.read())
+
+    def test_blacklisted_driver_yields_to_firmware_handoff(self):
+        # modprobe.blacklist only stops alias loading; TCPM may still own it.
+        self.assertEqual(self.read()['state'], 'ready')
+        self.cmdline.write_text('rw module_blacklist=fusb302 quiet\n')
+        self.assertIsNone(self.read())
 
 
 class ContractHistoryTest(unittest.TestCase):

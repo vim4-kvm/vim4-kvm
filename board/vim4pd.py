@@ -4,6 +4,7 @@ The service selects boot repair; usb-pd-init records its completed contracts.
 Package installation must not
 start/restart that service: an active USB link must survive runtime updates.
 The manager reads kernel TCPM sysfs or the legacy decoders and previous-boot record.
+A declared controller kept from TCPM by module_blacklist leaves only the U-Boot handoff.
 Firmware snapshots and persisted contracts are history, never live PD state.
 """
 import os
@@ -22,6 +23,7 @@ ATTEMPT = Path('/run/vim4-kvm-pd-boot.done')
 LAST_CONTRACT = Path('/var/lib/vim4-kvm/pd-last-contract.json')
 BOOT_ID = Path('/proc/sys/kernel/random/boot_id')
 DEVICE_TREE = Path('/proc/device-tree')
+CMDLINE = Path('/proc/cmdline')
 
 
 def kernel_pd_node(root=None):
@@ -50,14 +52,26 @@ def kernel_pd_enabled(root=None):
     return kernel_pd_node(root) is not None
 
 
+def kernel_pd_blacklisted(cmdline=None):
+    """Return whether module_blacklist keeps TCPM from ever binding fusb302."""
+    cmdline = CMDLINE if cmdline is None else cmdline
+    try:
+        words = cmdline.read_text().split()
+    except OSError:
+        return False
+    return any('fusb302' in word.removeprefix('module_blacklist=').split(',')
+               for word in words if word.startswith('module_blacklist='))
+
+
 def kernel_power(root=Path('/sys')):
     """Read TCPM's current contract; its current limit is not measured load.
 
-    None selects the legacy reader. A declared controller always returns a
-    state, so missing or unreadable sysfs cannot revive a historical contract.
+    None means TCPM does not own the controller. A declared controller that
+    is not blacklisted always returns a state, so missing or unreadable sysfs
+    cannot revive a historical contract.
     """
     node = kernel_pd_node()
-    if node is None:
+    if node is None or kernel_pd_blacklisted():
         return None
     result = {'state': 'unavailable', 'contract': None}
     try:
