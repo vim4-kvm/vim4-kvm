@@ -18,10 +18,10 @@
 | [ubuntu-build.py](../tools/ubuntu-build.py)、ubuntu-image.py、[packaging/ubuntu/](../packaging/ubuntu)、[packaging/image/](../packaging/image) | 无 | 组件打包与镜像组装；开发包可指定目标已安装版本下限。 |
 | [packaging/kernel/](../packaging/kernel) | 独占 | 内核构建及板端准备。 |
 | [package-unified.py](../packaging/kernel/package-unified.py)（同目录 package-hdr10.py、package-final.py、package-vdec.py） | 无 | 封存已构建候选包。 |
-| [build-integration.py](../packaging/kernel/build-integration.py) | 无；写 VM 构建目录 | 持 heavy 租约后离线构建并封存指定完整 SHA 的生产/调试 RAM 候选；复用同一 O= 时核对生效配置，封包后清理对象；不排票、不访问板子。 |
+| [build-integration.py](../packaging/kernel/build-integration.py) | 无；写 VM 构建目录 | 持 heavy 租约后离线构建并封存指定完整 SHA 的生产/调试 RAM 候选；复用同一 O= 时核对生效配置，封包后清理对象；不排票、不访问板子。打包的是普通 DTB（解码节点 disabled），解码窗口要换成同次构建的 vdec-test DTB。 |
 | [build-gstreamer.py](../packaging/kernel/build-gstreamer.py)（test_gstreamer_p010.py、test_gstreamer_pq.py、test_gstreamer_visible_crop.py、[test_gstreamer_hevc_eos.py](../packaging/kernel/test_gstreamer_hevc_eos.py)） | 无 | 插件构建及离线协商回放；HEVC EOS fixture用实际驱动/GStreamer C复现初始事件与LAST分流，不打开设备。 |
 | [maintain.py](../packaging/kernel/maintain.py) | 无 | 补丁导出与前移。 |
-| [vdec-fixtures.py](../packaging/kernel/vdec-fixtures.py) | 无 | 生成 H.264/MPEG-2/MJPEG 运动样本；JPEG 保留全范围参考像素，generate-fields 下载并校验固定场编码样本。离线逐帧比较 I420 并量化平面误差，非逐字节一致仍返回失败。 |
+| [vdec-fixtures.py](../packaging/kernel/vdec-fixtures.py) | 无 | 生成 H.264/MPEG-2/MJPEG 运动样本；JPEG 保留全范围参考像素，generate-fields 下载并校验固定场编码样本。离线逐帧比较 I420 并量化平面误差，非逐字节一致仍返回失败。generate-hevc-hang 只改写 SPS 长期参考列表、用 libx265 编 64 宽窄图，软件解码出参考并核对语法。 |
 | [vdec-capture.c](../packaging/kernel/vdec-capture.c) | 指定管线 | 用 GStreamer appsink 映射视频元数据，只保存可见 I420 平面，不做范围转换、不写入对齐填充；编译依赖及用法见文件。硬解管线须持板锁。 |
 | [build-vdec-gstreamer.py](../packaging/kernel/build-vdec-gstreamer.py)（test_gstreamer_mpeg2.py） | 无 | 按独立源码锁构建私有 stateless 解码插件及 codecs 库，修正 MPEG-2 控制、picture 色度矩阵继承与重复 sequence 矩阵恢复；回放真实 C 转换，不覆盖系统插件。 |
 | [prepare-vdec-fluster.py](../packaging/kernel/prepare-vdec-fluster.py)、[build-vdec-mpeg2-reference.py](../packaging/kernel/build-vdec-mpeg2-reference.py) | 无 | 宿主按锁准备标准码流、校验并记录离线清单；单独从已取得的 ISO 归档构建私有 MPEG-2 参考解码器。 |

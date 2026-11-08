@@ -20,7 +20,7 @@
 
 ## 采集与编码
 
-- HEVC 8bit `.42` 全集 127/132 Success、3 Error、2 内核 Timeout：RAP_B 像素全对但 SOURCE_CHANGE/CAPTURE 建立不满足非 DRC 事件合同；RPS_D 68 帧未交齐；VPSSPSPPS 首 AU invalid RPM、零帧；LTRPSPS_A/WPP_D 零输出超时。未证明是固件或私有 ABI 限制，不宣称 5.15 parity。10bit/Main10/超尺寸、全面性能、长期稳定及调试锁/内存未验；r80/r81 的 epoll OUTPUT#15 间歇故障未证明消失。[.42 逐流结果](bringup/2026-11-07-vdec-integration42-pd-results.md)、[.38 原始失败](bringup/2026-11-06-hevc-integration38-results.md)、[架构约定](vdec-architecture.md)
+- HEVC 8bit `.44` 全集 129/132：VPSSPSPPS 首 AU（约 300 个参数集）固件 RPM 的 SPS 为空，零帧，"SPS 先于 VPS"已被否定，根因未明；LTRPSPS_A（非空 SPS 长期参考列表）、WPP_D（WPP 加 1 列 CTB）是固件限制，驱动快速报 OUTPUT ERROR。整条流都不可解时，CAPTURE 从未建立，v4l2h265dec 会在 EOS 一直等（STOP 按规范不启动 drain）。10bit/Main10/超尺寸、全面性能、长期稳定及调试锁/内存未验；r80/r81 的 epoll OUTPUT#15 间歇故障未证明消失。[.44 修复与板验](bringup/2026-11-08-hevc-remaining5.md)、[.42 逐流结果](bringup/2026-11-07-vdec-integration42-pd-results.md)、[架构约定](vdec-architecture.md)
 - H.264 `.31`（官方 parser）129 Success、1 Fail（CVFC1）、5 已知不支持；MR3/4/5 经[存储归属修复](bringup/2026-11-06-vdec-r64-storage.md)各 300 帧逐字节正确，不能推广到整个 LTR 集合。S4 仅离线、L1[0] 占位仍拒绝，调试锁/内存、HOLD+FLUSH、High profile 子集和 5.15 有效对照未验。[全集](bringup/2026-11-06-vdec-r69-joint.md)、[最终汇总](bringup/2026-11-05-vdec-avc-final.md)
 - CVFC1 驱动输出按 `(26,60)` 裁剪后逐字节等于参考；GStreamer 1.24.2 v4l2codecs 忽略 crop 偏移导致套件 Fail。登记驱动通过/套件 Fail，不改插件。[证据](bringup/2026-11-05-vdec-field-lifetime.md#cvfc1-的一次性证据工具)
 - Khadas `2:1.24.2-1ubuntu4` 系统 h264parse 排空时漏末 slice，13 条隔行、CAWP5 和两条 Sharp 各少一帧；官方 Ubuntu 同版 parser 全部正确，属用户态问题。换官方包或向 Khadas 报告由用户决定，未替换系统库、未对外报告。[r61](bringup/2026-11-05-vdec-r61-parser-ab.md)、[队列证据](bringup/2026-11-05-vdec-r54-sharp-trace.md)、[来源闭环](bringup/2026-11-05-vdec-r56-fmo-parser.md)
