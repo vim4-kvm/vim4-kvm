@@ -597,5 +597,484 @@
       "execute-2.log": "0a60e36fbfc8c423bd10807e28de800321d5545b439d9e2f143a90ab438438fa",
       "attempt1-staging.list.txt": "cc62d45a21ad67ff2584c9429ff293fd5be6551d17e279dbd6d3fb626697d1ac"
     }
+  },
+  "third_attempt": {
+    "status": "pd-api-404-restored",
+    "plan": "build/deploy-hevc5/plan-2/plan.json",
+    "tool_commit": "aac047e59dc852c8321cdd34b86a413a1bc6c69d",
+    "baseline_verified": true,
+    "candidate_boot_files": {
+      "Module.symvers": "9e54cbe2d161279b9e818a18515e924ad9c3a9ba1f87ce9cf0f8b55c3feff78d",
+      "Image": "ec04494985c3967b356eea24ed4f10d96f51e99ea7741ecdfd10b1f60059a01c",
+      "config": "7be7563e089ff628a320cd82ed163d88c576e4c7612f6bf849b230d2b9719b1c",
+      "panfrost.dtb": "848e9b1d8b637b2a47e4a1f314174cd9e18ec9bf0cf6ae99b1ac334757a947a7",
+      "manifest.json": "d337c8e2103cd57713d3d92fa0c884ad23601f5058ad960715fc477d4538a2db",
+      "vmlinux.btf": "db20ae95e61c8c4664282ed1dd75d2c7d68d78585daf4f3a3ee5836422597676",
+      "vim4.dtb": "fbef1ddaecdc7924de841c9fe36885bcb8c36b18cd4b97804a74af44f2588b90"
+    },
+    "candidate_module_files": 2354,
+    "candidate_modules_match_package": true,
+    "candidate_references": [],
+    "registered_snapshot_sha256": "ad3e98868dfdf4db783f05c82236b729db5eccfa7b1190f2538e98529e6dd93e",
+    "cleanup": {
+      "removed": [
+        "/boot/kernels/7.3.1-vim4-20261108.2",
+        "/lib/modules/7.3.1-vim4-20261108.2"
+      ],
+      "before": {
+        "boot": 46448640,
+        "root": 1927274496
+      },
+      "after": {
+        "boot": 104443904,
+        "root": 2570182656
+      }
+    },
+    "execute_result": {
+      "installed": false,
+      "error": "CalledProcessError(1, ['/Users/deepdream/.local/share/mise/installs/python/latest/bin/python3', '/Users/deepdream/Developer/github/localhost-copilot/vim4-kvm-deploy-hevc5/packaging/kernel/formal-gates.py', 'pd', '--logs', '/Users/deepdream/Developer/github/localhost-copilot/vim4-kvm/logs/deploy-hevc5/window-2', '--plan', '/Users/deepdream/Developer/github/localhost-copilot/vim4-kvm-deploy-hevc5/build/deploy-hevc5/plan-2/plan.json'], None, None)",
+      "installation_attempted": true,
+      "restored": true
+    },
+    "installed": {
+      "release": "7.3.1-vim4-20261108.2",
+      "source": "34fbda5a776e68ebb950c5652630375e33673f6d",
+      "build_id": "f01ed7abb0dd9d3d4f15f238c2e089684d03192c",
+      "kernel_build_id": "f01ed7abb0dd9d3d4f15f238c2e089684d03192c",
+      "default": "Mainline",
+      "cmdline": "console=tty0 root=PARTUUID=bcb80000-02 rootwait rw rootfstype=ext4 rootflags=data=ordered console=ttyS0,921600n8 earlycon=meson,0xfe078000 no_console_suspend net.ifnames=0 loglevel=7 panic=20 mem_sleep_default=s2idle modprobe.blacklist=crg_udc,t7_hdmirx,t7_vdin_test,wave5 cma=512M@0x10000000-0xf0000000 vim4.full_kvm=1 vim4.eth_mac=c8:63:14:74:70:0d systemd.mask=tvserver.service systemd.mask=audioserver.service systemd.mask=one-kvm-edge.service systemd.mask=one-kvm-edge-gateway.service systemd.mask=one-kvm-edge-usb.service systemd.mask=binder.service systemd.mask=bluetooth-khadas.service systemd.mask=rc-local.service module_blacklist=fusb302",
+      "entries": {
+        "Vendor": {
+          "LINUX": "/vmlinuz-5.15.137-vim4kvm-hdrdual6",
+          "INITRD": "/initrd.img-5.15.137-vim4kvm-hdrdual6",
+          "FDTDIR": "/dtb-5.15.137-vim4kvm-hdrdual6",
+          "APPEND": "${rootdev} ${bootargs} ${consoles} ${partitiontype} fan=${fan_mode} ${boot_user_args} aml_media.vdin0_native_hdr=1 rootflags=data=ordered"
+        },
+        "Mainline": {
+          "LINUX": "/kernels/7.3.1-vim4-20261108.2/Image",
+          "FDT": "/kernels/7.3.1-vim4-20261108.2/vim4.dtb",
+          "APPEND": "console=tty0 root=PARTUUID=bcb80000-02 rootwait rw rootfstype=ext4 rootflags=data=ordered console=ttyS0,921600n8 earlycon=meson,0xfe078000 no_console_suspend net.ifnames=0 loglevel=7 panic=20 mem_sleep_default=s2idle modprobe.blacklist=crg_udc,t7_hdmirx,t7_vdin_test,wave5 cma=512M@0x10000000-0xf0000000 vim4.full_kvm=1 vim4.eth_mac=${eth_mac} systemd.mask=tvserver.service systemd.mask=audioserver.service systemd.mask=one-kvm-edge.service systemd.mask=one-kvm-edge-gateway.service systemd.mask=one-kvm-edge-usb.service systemd.mask=binder.service systemd.mask=bluetooth-khadas.service systemd.mask=rc-local.service module_blacklist=fusb302"
+        }
+      },
+      "manifest_sha256": "d337c8e2103cd57713d3d92fa0c884ad23601f5058ad960715fc477d4538a2db",
+      "kernels_sha256": "8ad7f3bbea081049e898e88be20bcf739c3e7ce9b02f98892c08a29d342b0b9d",
+      "module_count": 2341,
+      "module_files": 2354,
+      "loaded_module_build_ids": {
+        "leds_gpio": "29ffc384a275981480e4536ab551f08b846f0e8e",
+        "xt_conntrack": "adf8847047a1d288a0993f2289ce13111d249ba4",
+        "nf_conntrack": "345281fee2a92284742870b0205c76cfee7bfe6e",
+        "dwmac_meson8b": "1a1767f37ef26fe5791ddabda7c1fc011b7eaad4",
+        "snd_seq": "8b6242e6c41a6c7ec137f04c5c645e77dc64c280",
+        "aml_vdec_drv": "a3a8bc8ced9d3535bc5c82658f714c81e547ca55",
+        "t7_jpeg": "d40f623a0da83a1a0cee866b3cedea0e0a5697c0",
+        "btrtl": "d884ac3dbb21cb49d86e20e0ef6b977e1f48db16",
+        "ecdh_generic": "d770768d0039daf849509895996a7dcd98dcc785",
+        "libmd5": "57d3db61030c798e2c5945f2f6fdddde47e753fd",
+        "adla_core": "6bd7bb2f261356263988fb7b08ad5a0bec3c5a47",
+        "ecc": "aa5ac7e9e6eae8bd40866188b5ae86b2af37296a",
+        "snd_seq_device": "58906cf37711f5936751d83c09aa289494c51c6e",
+        "zram": "5c1b0503dc7810ecc719dfb4a3585f3e72f291d0",
+        "cifs": "12f988f532f6c38529d21f6a50bc2521a60a20c0",
+        "nf_nat": "8fad8c01ddcf3f02bd9d759e877f3db389145c1d",
+        "nft_compat": "d294b9e9ef3cf23d96624c3a0c19efb0324ac8f3",
+        "vim4_kbase_heaps": "ca81d80a8699f9196e4f383a9bd5291d0b62d493",
+        "rc_khadas": "c2c161d6789af4a4789d2e8f46c0fca39b460670",
+        "adc_keys": "d37ee9f2a002cf6d7ee6365b458d00cae2465fd3",
+        "led_class": "865cb61e28a769baa0d0da63b68bcd713683c014",
+        "xt_tcpudp": "fb45513257524bdea200ee9cbaf71b171ad664a0",
+        "842_compress": "80a33cf6dd4142b6b4117e9ab9e0aa05bac4b6d9",
+        "t7_vdin_test": "67882cc8249bc62cbf6d87ffe47d5f7419e05480",
+        "nf_defrag_ipv6": "b3067f72d3992a08d68b1ef218194d54045bef36",
+        "u_audio": "1911579383e0bd30217cf09b9a4f551811e5aecb",
+        "u_ether": "6a60bc6d076c1e32b05f150d363dbeef75f89ccf",
+        "gpio_keys_polled": "11977179f3aab5c7251bdc63174644102a255672",
+        "stmmac_platform": "0c462784940d1d173b0bd63fa3bf21a466162f3f",
+        "v4l2_h264": "92849ac8292a08a2c57ac44e21d8bbb2afa6d2d6",
+        "rtc_meson_vrtc": "903e442f704d73519d4bff08536861fd8b2a125b",
+        "stmmac": "a87f4d891199043f59ae79f97c52e769c2ffcea2",
+        "nf_defrag_ipv4": "fc862b5797b7c971190d011297953d3b29c77a5b",
+        "t7_dos": "e5cb0f74dc3e7cc816f1aa655e8eeb9f39672861",
+        "ir_nec_decoder": "6b13716b62dcb46afe1718f1c9a631a05531c68a",
+        "cifs_md4": "033234ca4c33cc707fe705c1ddb71ddd0cb3a17b",
+        "btqca": "3a8668ebf9b1337a14fd2377ad8916a4827134d8",
+        "governor_vim4": "1fbc89bbfe939ac0eba0fa1888c59c870523e7e7",
+        "dwmac_generic": "78d24dbd3b22acc66bc239b0fd01cb1af94db6f5",
+        "meson_ir": "559bc6faacfd780e088d64ff51eee5d7a3efb178",
+        "brcmfmac_wcc": "9624c8d6a8b98de772dd4c2adb6d5dacf3de64a4",
+        "usb_f_hid": "157bfc81685922322d6560c181dff1b3c31bc57e",
+        "dwmac_meson": "7d51312e740a162ab09aad95f03dce44869e41f4",
+        "dwmac_dwc_qos_eth": "954acbb46f34a3db984427a8d844860c64849b1b",
+        "rfkill": "86cea3e7bf462936f92043ade2dc6ebafb2771d4",
+        "typec": "3e1eeab7b5862de557ce15413e764473c99c0f77",
+        "hci_uart": "db9e70628cda56bec7cdec7ed5d485751a36c13a",
+        "nls_ucs2_utils": "4bf93e39c65aef443c541295bc35fd9212e08686",
+        "bluetooth": "f447155b8332059ef04368901e30d61dc892c4b5",
+        "brcmfmac": "3fa693b23e7f749e4ac9845662b6adfc16bc4035",
+        "btbcm": "965d6bc9553cb8e7ec729a76f3c9ad3c91176492",
+        "mali_kbase": "626165849425951e46a27b99da51acf79508b13c",
+        "libarc4": "a460870262e4bf6691ec7982fa286f71c6ce166e",
+        "t7_hdmirx": "75e4765dbc5e5ad5afdcdcca7018739b94bad1b5",
+        "fuse": "c3ffba073042f37e57bbe33bb2580cecba9e2918",
+        "nf_tables": "2f0fab71bc10f38b0964e30a3ba33f3d65823def",
+        "bnep": "2df963b4ebd251dd0fc711de3ecc34c8bd19da30",
+        "crg_udc": "055d99c3c550e5078733be104da98c55ec08ff9c",
+        "usb_f_mass_storage": "f68b3c43417131f4fcd5dc0bc1412b95aa47c1e8",
+        "x_tables": "0643442b2e99282e794cc47717b0783257772544",
+        "mac80211": "0c49c15a11b2f216c66ff2645aebe61df10ac843",
+        "xt_connmark": "217733b97bb5e47620f826e7ca78a19dcc83dd62",
+        "binfmt_misc": "b620fa221076a686143b97284a465934701254ec",
+        "usb_f_uac2": "41dfb36d37d066cff82970604988248c48ceec6f",
+        "libcomposite": "6182b6aa75f8ee3256e5deeeab183ada77d70325",
+        "brcmutil": "33b8a1f20b89876d11984203b15765a10a60822c",
+        "nft_chain_nat": "22a36d9acbb36f2b4678051451a071e837bf3945",
+        "842_decompress": "1acc7e98bcc213c3172be355b29144a9ce94fac2",
+        "ptp": "ff31170f8412720e1530e9235775f599482b6c75",
+        "dm_mod": "ef7e94365ad8127dcc13a70c80911a15865420a6",
+        "ip_tables": "2d75e5e059594f33ee9c694372440b1375132e7b",
+        "aux_hpd_bridge": "0723ceb0c364c2bd3b6ebe3bc25b9367b19f6722",
+        "leds_pwm": "afbdd937390199653ef6e475f8c88c3e2be5bce5",
+        "xt_MASQUERADE": "cebe9d8f724cbf18209abe0836278db9ae1283eb",
+        "cfg80211": "ea81af1015b929228114d3e2f6abb56e76f3188f",
+        "wave5": "b61e58d5b630f98f165f0b28bed22becc216e05d",
+        "usb_f_ncm": "d9fce23e9b36e9856a4daad9d3dde09738467b59",
+        "xt_mark": "e401130be6b1d549996a51457e97df810475537b",
+        "tcpm": "ad85c3fb61214cc9f998a5c1f24407a351d50148"
+      },
+      "boot_sha256": {
+        "Module.symvers": "9e54cbe2d161279b9e818a18515e924ad9c3a9ba1f87ce9cf0f8b55c3feff78d",
+        "Image": "ec04494985c3967b356eea24ed4f10d96f51e99ea7741ecdfd10b1f60059a01c",
+        "config": "7be7563e089ff628a320cd82ed163d88c576e4c7612f6bf849b230d2b9719b1c",
+        "panfrost.dtb": "848e9b1d8b637b2a47e4a1f314174cd9e18ec9bf0cf6ae99b1ac334757a947a7",
+        "manifest.json": "d337c8e2103cd57713d3d92fa0c884ad23601f5058ad960715fc477d4538a2db",
+        "vmlinux.btf": "db20ae95e61c8c4664282ed1dd75d2c7d68d78585daf4f3a3ee5836422597676",
+        "vim4.dtb": "fbef1ddaecdc7924de841c9fe36885bcb8c36b18cd4b97804a74af44f2588b90"
+      },
+      "boot_id": "3e8d65f5-8671-434a-ae1f-239182504e79",
+      "uptime": "22.35 143.32\n",
+      "fusb302_loaded": false
+    },
+    "passive_video": {
+      "fps": 59.55111796504779,
+      "frames": 298
+    },
+    "smoke": {
+      "steps": [
+        {
+          "name": "nodes",
+          "at": 35.835813562,
+          "nodes": {
+            "t7-vdin-test": "/dev/video3",
+            "aml_jpeg_decoder": "/dev/video1",
+            "C&M Wave5 VPU encoder": "/dev/video4",
+            "aml_hevc_decoder": "/dev/video2",
+            "aml_dev_drv": "/dev/video0"
+          },
+          "bindings": {
+            "decoder": "/sys/bus/platform/drivers/aml-vdec-drv",
+            "wave5": true,
+            "t7_jpeg": true
+          }
+        },
+        {
+          "name": "idle",
+          "at": 35.838132555,
+          "registers": {
+            "rows": 256,
+            "hidden": 256,
+            "runtime": "suspended",
+            "sw_reset0": "XXXXXXXX",
+            "gclk_en0": "XXXXXXXX"
+          }
+        },
+        {
+          "name": "encoder-loaded-open",
+          "at": 35.839758037,
+          "errno": 16,
+          "registers": {
+            "rows": 256,
+            "hidden": 256,
+            "runtime": "suspended",
+            "sw_reset0": "XXXXXXXX",
+            "gclk_en0": "XXXXXXXX"
+          }
+        },
+        {
+          "name": "encoders-unloaded",
+          "at": 36.681559092,
+          "bindings": {
+            "decoder": "/sys/bus/platform/drivers/aml-vdec-drv",
+            "wave5": false,
+            "t7_jpeg": false
+          }
+        },
+        {
+          "name": "open",
+          "at": 36.683667456,
+          "registers": {
+            "rows": 256,
+            "hidden": 0,
+            "runtime": "active",
+            "sw_reset0": "00000000",
+            "gclk_en0": "000003ff"
+          }
+        },
+        {
+          "name": "closed",
+          "at": 37.061243804,
+          "registers": {
+            "rows": 256,
+            "hidden": 256,
+            "runtime": "suspended",
+            "sw_reset0": "XXXXXXXX",
+            "gclk_en0": "XXXXXXXX"
+          }
+        },
+        {
+          "name": "hevc-WPP_A_ericsson_MAIN_2",
+          "at": 39.579843118,
+          "exit": 0,
+          "status_zero": true,
+          "bytes": 7188480,
+          "frames": 48,
+          "frame_match": true,
+          "total_md5": "cd7e815eb47e8138fec2185d4de84304",
+          "publisher_md5": "cd7e815eb47e8138fec2185d4de84304",
+          "registers": {
+            "rows": 256,
+            "hidden": 256,
+            "runtime": "suspended",
+            "sw_reset0": "XXXXXXXX",
+            "gclk_en0": "XXXXXXXX"
+          }
+        },
+        {
+          "name": "hevc-DBLK_A_SONY_3",
+          "at": 41.520732971,
+          "exit": 0,
+          "status_zero": true,
+          "bytes": 17971200,
+          "frames": 30,
+          "frame_match": true,
+          "total_md5": "42486a48ea12d5ab6cd98ed2e2807cfe",
+          "publisher_md5": "42486a48ea12d5ab6cd98ed2e2807cfe",
+          "registers": {
+            "rows": 256,
+            "hidden": 256,
+            "runtime": "suspended",
+            "sw_reset0": "XXXXXXXX",
+            "gclk_en0": "XXXXXXXX"
+          }
+        },
+        {
+          "name": "hevc-TILES_B_Cisco_1",
+          "at": 52.500304879,
+          "exit": 0,
+          "status_zero": true,
+          "bytes": 311040000,
+          "frames": 100,
+          "frame_match": true,
+          "total_md5": "3382291f2b19ee2d760647d4cc756e95",
+          "publisher_md5": "3382291f2b19ee2d760647d4cc756e95",
+          "registers": {
+            "rows": 256,
+            "hidden": 256,
+            "runtime": "suspended",
+            "sw_reset0": "XXXXXXXX",
+            "gclk_en0": "XXXXXXXX"
+          }
+        },
+        {
+          "name": "jpeg-mjpeg-420",
+          "at": 54.026228418,
+          "exit": 0,
+          "status_zero": true,
+          "bytes": 5652480,
+          "sha256": "59fd681d126f530b7b96aa6104b2e9935ff25a9e768657f5053e11043123ebd3",
+          "registers": {
+            "rows": 256,
+            "hidden": 256,
+            "runtime": "suspended",
+            "sw_reset0": "XXXXXXXX",
+            "gclk_en0": "XXXXXXXX"
+          }
+        },
+        {
+          "name": "jpeg-mjpeg-no-app",
+          "at": 55.413192245,
+          "exit": 0,
+          "status_zero": true,
+          "bytes": 5652480,
+          "sha256": "59fd681d126f530b7b96aa6104b2e9935ff25a9e768657f5053e11043123ebd3",
+          "registers": {
+            "rows": 256,
+            "hidden": 256,
+            "runtime": "suspended",
+            "sw_reset0": "XXXXXXXX",
+            "gclk_en0": "XXXXXXXX"
+          }
+        },
+        {
+          "name": "jpeg-mjpeg-1080p",
+          "at": 57.019312631,
+          "exit": 0,
+          "status_zero": true,
+          "bytes": 49766400,
+          "sha256": "90aa034add7ef2d1d76bf87342dbc34707108e90deec9bfb6cf9e8413fc2c66a",
+          "registers": {
+            "rows": 256,
+            "hidden": 256,
+            "runtime": "suspended",
+            "sw_reset0": "XXXXXXXX",
+            "gclk_en0": "XXXXXXXX"
+          }
+        }
+      ],
+      "decode_passed": true,
+      "restore": {
+        "wave5": 0,
+        "t7_jpeg": 0,
+        "one-kvm": 0,
+        "active": "active",
+        "bindings": {
+          "decoder": "/sys/bus/platform/drivers/aml-vdec-drv",
+          "wave5": true,
+          "t7_jpeg": true
+        },
+        "nodes": {
+          "t7-vdin-test": "/dev/video3",
+          "aml_jpeg_decoder": "/dev/video1",
+          "C&M Wave5 VPU encoder": "/dev/video4",
+          "aml_hevc_decoder": "/dev/video2",
+          "aml_dev_drv": "/dev/video0"
+        },
+        "after": {
+          "rows": 256,
+          "hidden": 256,
+          "runtime": "suspended",
+          "sw_reset0": "XXXXXXXX",
+          "gclk_en0": "XXXXXXXX"
+        }
+      },
+      "kernel_faults": []
+    },
+    "smoke_result_collection_passed": true,
+    "pd": {
+      "status": "not verified",
+      "error": "GET http://127.0.0.1:18088/api/status returned 404",
+      "cause": "api.mjs ignores MANAGER_URL=18080 and uses 18088 forwarded to board backend 8081"
+    },
+    "restored": {
+      "release": "7.3.1-vim4-20261108",
+      "build_id": "e5b33474e34ac9eec34a8e357a2f25709e8e0715",
+      "ready": {
+        "boot_id": "5ee3a059-f552-4bc4-b9dc-604079a3e9af",
+        "ready_at": 1794139419.429098
+      },
+      "video": {
+        "fps": 59.380224900602485,
+        "frames": 297
+      },
+      "proof_sha256": "0f5b0e57389b6ec88f76d63a945344ba6767fe886393539777d2618975f4d41a"
+    },
+    "uart": {
+      "candidate": {
+        "uboot_count": 1,
+        "linux_count": 1,
+        "starting_kernel_count": 1,
+        "reboot_modes": [
+          "watchdog_reboot"
+        ],
+        "sha256": "1c21ae70d2ea3f46d7f60b09cd473c703415a121f7b0e6c982d5c7a45b2f8c29"
+      },
+      "recovery": {
+        "uboot_count": 1,
+        "linux_count": 1,
+        "starting_kernel_count": 1,
+        "reboot_modes": [
+          "watchdog_reboot"
+        ],
+        "sha256": "6bd13c61c22370d75b41295bda9065846f66077369711f6c9366b311522f0b76"
+      },
+      "extra_cold_reset_observed": false
+    },
+    "kernel_checks": {
+      "candidate_startup_faults": [],
+      "decode_increment_faults": [],
+      "whole_window_final_increment": "not run after execute failure"
+    },
+    "ticket_released": true,
+    "publish": "not run",
+    "log_sha256": {
+      "preflight-3/baseline-proof.json": "62d83e92702e27b929a80f3ae4e95c892c62f673d6365170990cb9f4e7bd9ebf",
+      "preflight-3/candidate-cleanup.json": "39fb0fc424fc75be5aa15c41def48de3843a7830f7bc04b789077210e961ed46",
+      "preflight-3/candidate-inventory.json": "a1e275a465d6d97198b6fb7e12f2c9ffeea4d900c6829c4f4bfa68ca0bc31d4d",
+      "preflight-3/baseline-identity.toml": "bc447e27c0b1f67d98045a698e12172b7aab7223d152bba0fba0e892e04bfa26",
+      "preflight-3/registered.json": "ad3e98868dfdf4db783f05c82236b729db5eccfa7b1190f2538e98529e6dd93e",
+      "preflight-3/baseline-identity-manifest.json": "3e25e238f48877da64bea60bc22b601f64a78e5bb6ad32040fe0ede48b9c4e05",
+      "window-2/entry.json": "3b6fbe2981f99d67c333f4b3125d37f2c004775bf49cfde65f2c7c078f04292c",
+      "window-2/space.json": "c592e48cfa6fb1df7788de8dd9e0f928588ec579378143916f34c2dff5f3be21",
+      "window-2/upload-vim4-kernel-7.3.1-vim4-20261108.2.tar.gz.log": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "window-2/extlinux.conf": "609b992284c55c9893670a53a4858d24dedd75103ec0b19dc7da8d7de3cd710e",
+      "window-2/returned-video-summary.json": "58a24e4226238e0a26295f665d28025b35351b631ec98cbbaa539efb15394cab",
+      "window-2/kernels.json": "ae9ef4d04f0445ca29622a159bab4f95e1404d2cfb4f202ad2470d4fce2b150f",
+      "window-2/gate-pd.log": "e8e58005b1041c490b3badb4cb49783ca19de5b5b808a2ef699cfc5512d070ec",
+      "window-2/plan.json": "1d97ca0596ee41fb0e9790e40e87e07e7cde8ac375723fc01825259efd949124",
+      "window-2/result.json": "00ccdb4ab642a7a53e5592065a326cb3e5308c3ec68c46e4f7d0d515356a0f7b",
+      "window-2/runtime-build.json": "d90dd108c2dc2967768872c417b0e8d4672d8774fd5e7e55424d62dffb5371cd",
+      "window-2/hash-register-runtime.py.log": "d69d89bd0fc1482f7afc3da29ef6dbef458d72bceeca1f2c97956992242f0041",
+      "window-2/upload-vim4boot.py.log": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "window-2/baseline-proof.json": "c42ef5231a264a8db74c9ff4f227d77eb065873bac989ada46870c192c7fe9c9",
+      "window-2/entry-uart-drain.json": "f9960681445043a5243a7349dcc2fefce6f9b6ea99718c4b41585aa6feccb1fd",
+      "window-2/fan-before.json": "71a64e7f3dea60901685a5b807efaca5bcbb603c7561f023318fe3cf57587993",
+      "window-2/upload-vim4-kernel-7.3.1-vim4-20261108.tar.gz.log": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "window-2/uart.raw": "1c21ae70d2ea3f46d7f60b09cd473c703415a121f7b0e6c982d5c7a45b2f8c29",
+      "window-2/local-package.json": "887f67cb76306a3880dbb05cfbcc0e59335501bd172894fbebc13b943c5a4fbd",
+      "window-2/hash-vim4-kernel-7.3.1-vim4-20261108.tar.gz.log": "32817861d6f73ba08823b12de2dab98a4134d9e4d3140406e5be410bd7682921",
+      "window-2/installed-tunnel.log": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "window-2/returned-proof.json": "0f5b0e57389b6ec88f76d63a945344ba6767fe886393539777d2618975f4d41a",
+      "window-2/gate-decode-smoke.log": "f39b20a4786e3be132b03da18916f3a6556f6edbb70e2583c8f75a74d46f6652",
+      "window-2/rollback-registration.log": "fb99efaf9b2f150f9db63a9ba20cb5e335d5723fe7dee648c1464489cec22ca4",
+      "window-2/upload-register-runtime.py.log": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "window-2/baseline-identity.toml": "bc447e27c0b1f67d98045a698e12172b7aab7223d152bba0fba0e892e04bfa26",
+      "window-2/installed-video.json": "88d24de2b59a691f78e8daffffb51ba74348e27f13b27b2444e413fb62722e49",
+      "window-2/hash-vim4boot.py.log": "eec959d20d8ce443d61c7c7e92eaa43dbe5cf3249834f01093b6511b5a06d4a7",
+      "window-2/installed-ready.json": "8e6171d7177819e3b053c0a07f22727bb6949e9033ebdde21fc708a0515d10be",
+      "window-2/rollback-ready.json": "d336d5e7b81d1535ea8080b2d06e133900ca6229a57bdc06fb35befa37a607b4",
+      "window-2/stage-root.log": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "window-2/returned-video.json": "3cd69e47d9dafbb95b65314a9992d3d142d037e154a0abd5ce4472df8c505f31",
+      "window-2/install.log": "f683908affd579efbb917a3fdd330904c62c2305c07b0f6e5760873d96fff771",
+      "window-2/uart-chunks.jsonl": "d0d6de89c4e6a4ab671e86c96601870ff1fc92951bb8af9d7162b64f3366173a",
+      "window-2/registered.json": "350ef838121bce9b28a5e52b29a83966cc15e2aa2858dfd1750278564cb9c8e5",
+      "window-2/passive-video-summary.json": "89d987e7bf36ef6c5ce78fb53718ec67ad0b7f8c487955102dcfa9b2b099c344",
+      "window-2/baseline-identity-manifest.json": "3e25e238f48877da64bea60bc22b601f64a78e5bb6ad32040fe0ede48b9c4e05",
+      "window-2/hash-vim4-kernel-7.3.1-vim4-20261108.2.tar.gz.log": "ba912fc3440062645196b26d76714c7a11c49c6bb306922bda2b7b41ff46752e",
+      "window-2/returned-tunnel.log": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "window-2/installed-proof.json": "2a57c572cfe2c9bbb47b0468c58baab63df98de3f7a02e07153077f7588f4147",
+      "window-2/installed-reboot.log": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "window-2/rollback-reboot.log": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "window-2/recovery/uart.raw": "6bd13c61c22370d75b41295bda9065846f66077369711f6c9366b311522f0b76",
+      "window-2/recovery/uart-chunks.jsonl": "91d455f5577ed7f3c65b1d3db0e1415a9affe5fdd7838c85550cddf9f552c5f1",
+      "window-2/smoke-results/open-registers.txt": "1ff940f04f63ae1206ffbf7311ca0f67758c739cf6cb817711bfc1d8c87a701f",
+      "window-2/smoke-results/busy-registers.txt": "cea9941b98bf8fb32785a0bd46b17a69b7d88dbb4232957eb7ae7d2e440099b6",
+      "window-2/smoke-results/WPP_A_ericsson_MAIN_2-registers.txt": "cea9941b98bf8fb32785a0bd46b17a69b7d88dbb4232957eb7ae7d2e440099b6",
+      "window-2/smoke-results/TILES_B_Cisco_1-registers.txt": "cea9941b98bf8fb32785a0bd46b17a69b7d88dbb4232957eb7ae7d2e440099b6",
+      "window-2/smoke-results/DBLK_A_SONY_3.log": "f1417d36a0e3dabf403f3fdc23a4f46556301ba1314a717a0746363e30e8b9d4",
+      "window-2/smoke-results/TILES_B_Cisco_1.log": "2a9c85c0b322201c4bb55d05f30e05a6a7e6ae0f4d41a01038b8e94faed8ff58",
+      "window-2/smoke-results/mjpeg-420.log": "d8c5cc1dee1f2f62af9ab51cafa05898fb702115768075d9ad1e8574ab1ad25a",
+      "window-2/smoke-results/DBLK_A_SONY_3-registers.txt": "cea9941b98bf8fb32785a0bd46b17a69b7d88dbb4232957eb7ae7d2e440099b6",
+      "window-2/smoke-results/kernel.log": "edbf805df33dd9b01aef1a05abe3dc7bb5d3e9dc7a6dc1788c2761650a3e016e",
+      "window-2/smoke-results/closed-registers.txt": "cea9941b98bf8fb32785a0bd46b17a69b7d88dbb4232957eb7ae7d2e440099b6",
+      "window-2/smoke-results/idle-registers.txt": "cea9941b98bf8fb32785a0bd46b17a69b7d88dbb4232957eb7ae7d2e440099b6",
+      "window-2/smoke-results/mjpeg-1080p-registers.txt": "cea9941b98bf8fb32785a0bd46b17a69b7d88dbb4232957eb7ae7d2e440099b6",
+      "window-2/smoke-results/mjpeg-420-registers.txt": "cea9941b98bf8fb32785a0bd46b17a69b7d88dbb4232957eb7ae7d2e440099b6",
+      "window-2/smoke-results/restored-registers.txt": "cea9941b98bf8fb32785a0bd46b17a69b7d88dbb4232957eb7ae7d2e440099b6",
+      "window-2/smoke-results/WPP_A_ericsson_MAIN_2.log": "f5c7fe0e24d8dc95102e0e5b70fb6626e2fbde07dc18ef0de17dacc0589be20d",
+      "window-2/smoke-results/mjpeg-1080p.log": "6cb88042552830303a1e89f0d606b34645d2c1ed5c8a46aaffa9ed49d29ffe4d",
+      "window-2/smoke-results/mjpeg-no-app.log": "21193a8d3969e1e1eb0e90f6d5f0a6d8510a2bf8cf394f121f0e68760f39819e",
+      "window-2/smoke-results/smoke.json": "301b59cbf9501946723b366445d3498415d0ac05b494b48eb35d1a6c36c8ffda",
+      "window-2/smoke-results/mjpeg-no-app-registers.txt": "cea9941b98bf8fb32785a0bd46b17a69b7d88dbb4232957eb7ae7d2e440099b6",
+      "execute-3.log": "d8568b12b164457734226301edee8649c7327585f31240cd24eae7362abe47e0"
+    }
   }
 }
