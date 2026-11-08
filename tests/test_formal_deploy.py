@@ -1,6 +1,7 @@
 """Offline contracts at the package, boot registration and published receipt boundaries."""
 import argparse
 import copy
+import hashlib
 import importlib.util
 import json
 from pathlib import Path
@@ -101,7 +102,9 @@ class FormalDeployTest(unittest.TestCase):
         logs=Path(plan['logs']);logs.mkdir()
         values={
             'result.json':dict(retained_default=True,release='new',gates=['audio'],package_sha256=self.new['package_sha256']),
-            'new-baseline.json':dict(release='new',build_id='new-id',files={'/new':'c'*64}),
+            'new-baseline.json':dict(release='new',build_id='new-id',files={
+                '/new':'c'*64,
+                '/etc/vim4-kvm/runtime-build.json':hashlib.sha256(json.dumps(dict(running='new')).encode()).hexdigest()}),
             'runtime-build.json':dict(running='new'),
         }
         for name,value in values.items():
@@ -109,6 +112,14 @@ class FormalDeployTest(unittest.TestCase):
         proof=dict(release='new',build_id='new-id',source='source',manifest_sha256=self.new['manifest_sha256'],
                    baseline_proof_sha256=formal.sha(logs/'new-baseline.json'),kernels_sha256='registry')
         (logs/'installed-proof.json').write_text(json.dumps(proof))
+        # SSH stdout must preserve the receipt bytes, including its final newline.
+        runtime_path = logs/'runtime-build.json'
+        original = runtime_path.read_bytes()
+        runtime_path.write_bytes(original+b'\n')
+        with self.assertRaisesRegex(ValueError,'Runtime receipt hash'):
+            formal.publish(plan,logs,self.root)
+        self.assertFalse((self.root/'releases/new').exists())
+        runtime_path.write_bytes(original)
         formal.publish(plan,logs,self.root)
         lock=formal.tomllib.loads((self.root/'sources.toml').read_text())
         self.assertEqual(lock['tested_build'],self.new)

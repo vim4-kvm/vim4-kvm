@@ -267,7 +267,7 @@ for name in record['loaded_module_build_ids']:
  note=Path('/sys/module',name,'notes/.note.gnu.build-id')
  if note.exists():record['loaded_module_build_ids'][name]=note.read_bytes()[16:36].hex()
 vim4boot.atomic_write(p,(json.dumps(record,indent=2)+'\\n').encode());os.sync()
-print(p.read_text())
+sys.stdout.write(p.read_text())
 '''.replace('RELEASE',repr(RELEASE)).replace('RECORD',repr(RECORD)).replace('LOG_PATH',repr(str(LOG))).replace('GATE_SCOPE',repr(','.join(PLAN['gates'])))
             ssh(receipt,'runtime-build.json')
             # Capture the new full baseline without using the still-old local lock.
@@ -577,6 +577,8 @@ def publish(plan, logs, kernel=KERNEL):
         raise ValueError('Proof source differs from tested_build')
     if runtime['running'] != new['release']:
         raise ValueError('Runtime receipt differs from installed release')
+    if sha(logs/'runtime-build.json') != baseline['files']['/etc/vim4-kvm/runtime-build.json']:
+        raise ValueError('Runtime receipt hash differs from installed baseline')
     target = kernel/'releases'/new['release']
     target.mkdir(parents=True,exist_ok=True)
     for source,destination in (('installed-proof.json','installed-proof.json'),
