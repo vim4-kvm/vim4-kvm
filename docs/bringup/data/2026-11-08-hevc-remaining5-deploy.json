@@ -532,5 +532,70 @@
     "window/upload-vim4-kernel-7.3.1-vim4-20261108.2.tar.gz.log": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
     "window/upload-vim4-kernel-7.3.1-vim4-20261108.tar.gz.log": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
     "window/upload-vim4boot.py.log": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+  },
+  "second_attempt": {
+    "status": "stopped-before-execute-insufficient-root-space",
+    "tool_commit": "aac047e59dc852c8321cdd34b86a413a1bc6c69d",
+    "package_rebuilt": false,
+    "package_sha256": "1947d1dbb48def575005f7fbc5efaebcf3db16bef234d2af22909763d5d672e3",
+    "plan": "build/deploy-hevc5/plan-2/plan.json",
+    "gates": [
+      "decode-smoke",
+      "pd"
+    ],
+    "retire": null,
+    "overlay": {},
+    "baseline_verified": true,
+    "baseline_proof_sha256": "c42ef5231a264a8db74c9ff4f227d77eb065873bac989ada46870c192c7fe9c9",
+    "boot_id": "20e783cd-c0d9-44ec-8637-4c5897320645",
+    "candidate_boot_files": {
+      "Module.symvers": "9e54cbe2d161279b9e818a18515e924ad9c3a9ba1f87ce9cf0f8b55c3feff78d",
+      "Image": "ec04494985c3967b356eea24ed4f10d96f51e99ea7741ecdfd10b1f60059a01c",
+      "config": "7be7563e089ff628a320cd82ed163d88c576e4c7612f6bf849b230d2b9719b1c",
+      "panfrost.dtb": "848e9b1d8b637b2a47e4a1f314174cd9e18ec9bf0cf6ae99b1ac334757a947a7",
+      "manifest.json": "d337c8e2103cd57713d3d92fa0c884ad23601f5058ad960715fc477d4538a2db",
+      "vmlinux.btf": "db20ae95e61c8c4664282ed1dd75d2c7d68d78585daf4f3a3ee5836422597676",
+      "vim4.dtb": "fbef1ddaecdc7924de841c9fe36885bcb8c36b18cd4b97804a74af44f2588b90"
+    },
+    "candidate_module_files": 2354,
+    "candidate_modules_match_package": true,
+    "candidate_references": [],
+    "candidate_boot_removed": false,
+    "modules_reused_without_changes": false,
+    "modules_unchanged": true,
+    "staging_archive": {
+      "path": "/dev/shm/deploy-hevc5-attempt1-staging.tar",
+      "sha256": "2ceada6b990473cebe95a86f12380d4bdf19b61fe711f0ff93eae265a858c41e",
+      "bytes": 1361428480,
+      "local": "logs/deploy-hevc5/attempt1-staging.tar",
+      "listing": "logs/deploy-hevc5/attempt1-staging.list.txt",
+      "local_sha256": "2ceada6b990473cebe95a86f12380d4bdf19b61fe711f0ff93eae265a858c41e",
+      "file_inventory_matched": true
+    },
+    "staging_cleanup": {
+      "removed": "/var/tmp/vim4-formal-deploy",
+      "root_free": 1927274496
+    },
+    "space": {
+      "root_free": 1927274496,
+      "required": 2133988236,
+      "deficit": 206713740
+    },
+    "execute_invoked": false,
+    "reboots": 0,
+    "ticket_released": true,
+    "publish": "not run",
+    "logs": "logs/deploy-hevc5",
+    "log_sha256": {
+      "preflight-2/staging-archive.json": "ad24eeafaf6128f1cd0513ebaff105e92c2622bf604d8624859bfa831590fe00",
+      "preflight-2/baseline-proof.json": "c42ef5231a264a8db74c9ff4f227d77eb065873bac989ada46870c192c7fe9c9",
+      "preflight-2/baseline-identity.toml": "bc447e27c0b1f67d98045a698e12172b7aab7223d152bba0fba0e892e04bfa26",
+      "preflight-2/staging-cleanup.json": "cef5ef7078fdd330762f7f63b72fe84cde84cf070e715da9c7ab8e4c3f80e2c0",
+      "preflight-2/baseline-identity-manifest.json": "3e25e238f48877da64bea60bc22b601f64a78e5bb6ad32040fe0ede48b9c4e05",
+      "preflight-2/candidate-and-staging.json": "354dce4cc2e117fb4c876481a0618ef6972e228912c0db93df224cdcbf489ca1",
+      "plan-2.log": "ff80f65b52fc01b0ef08409bf26de9e605c1af813e1d7e881ffb9f97c1aab125",
+      "execute-2.log": "0a60e36fbfc8c423bd10807e28de800321d5545b439d9e2f143a90ab438438fa",
+      "attempt1-staging.list.txt": "cc62d45a21ad67ff2584c9429ff293fd5be6551d17e279dbd6d3fb626697d1ac"
+    }
   }
 }

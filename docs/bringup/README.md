@@ -20,7 +20,7 @@
 
 ## 2026-11-08
 
-- [HEVC 剩余修复正式部署回传失败并恢复](2026-11-08-hevc-remaining5-deploy.md) — kernel video deployment
+- [HEVC 剩余修复正式部署两次尝试与门禁阻塞](2026-11-08-hevc-remaining5-deploy.md) — kernel video deployment
 - [HEVC 剩余5条修复与.44板验](2026-11-08-hevc-remaining5.md) — kernel video
 - [DOS regmap debugfs修复设为默认](2026-11-08-vdec-dos-regmap-deploy.md) — kernel video deployment
 - [fusb302屏蔽时显示固件PD](2026-11-08-manager-pd-firmware-display.md) — manager usb
