@@ -1,0 +1,56 @@
+{
+  "schema": 1,
+  "release": "7.3.1-vim4-20261108.2",
+  "image_source_revision": "34fbda5a776e68ebb950c5652630375e33673f6d",
+  "build_id": "f01ed7abb0dd9d3d4f15f238c2e089684d03192c",
+  "package_sha256": "1947d1dbb48def575005f7fbc5efaebcf3db16bef234d2af22909763d5d672e3",
+  "manifest": "manifest.json",
+  "installed": true,
+  "default_boot": "Mainline",
+  "profiles": {
+    "kbase": {
+      "dtb": "vim4.dtb",
+      "sha256": "fbef1ddaecdc7924de841c9fe36885bcb8c36b18cd4b97804a74af44f2588b90",
+      "compatible": "khadas,vim4-mali-kbase-r44p0",
+      "blacklist": [
+        "panfrost"
+      ],
+      "modules": [
+        "vim4_kbase_heaps",
+        "governor_vim4",
+        "mali_kbase"
+      ],
+      "gpu_driver": "mali",
+      "wrapper": "/usr/libexec/vim4-kvm-run",
+      "gpu_wrapper": "/usr/lib/vim4-kvm/python/vim4gpu.py",
+      "egl": "private-prefix",
+      "vulkan": "private-icd",
+      "opencl": "private-icd"
+    },
+    "panfrost": {
+      "dtb": "panfrost.dtb",
+      "sha256": "848e9b1d8b637b2a47e4a1f314174cd9e18ec9bf0cf6ae99b1ac334757a947a7",
+      "gpu_driver": "panfrost",
+      "userspace": "system-mesa"
+    }
+  },
+  "blob": {
+    "provision_separately": true,
+    "sha256": "536ee80c17dc5c54e7c6ff029ca43270da8efc3fdc5b3aeb263f364419368494",
+    "uk": "11.39",
+    "glvnd_vendor": false
+  },
+  "validation": {
+    "accepted": "Single-subsystem decoder change: complete identity, passive video, DOS regmap debugfs/K9, HEVC/JPEG smoke and firmware PD B state",
+    "receipt": "validation.json",
+    "limitations": [
+      "Single-subsystem gates only; nine-class regression, 600-second motion, HID injection, EDID, audio, media and GPU were not run.",
+      "Decode smoke covers three HEVC conformance streams and three JPEG fixtures; full HEVC/H264/MPEG2 suites were not rerun on this formal package.",
+      "Historical .44 acceptance was HEVC 129/132 and JPEG 3/3; three HEVC streams remain rejected, not full decoder parity.",
+      "One successful natural default boot does not establish a cold-reset fix.",
+      "Formal build.sh was used; W=1, sparse and KUnit were not rerun in this deployment task.",
+      "The supplementary cross-boot journal cursor was invalid; continuous UART, startup journal and decode incremental kernel log were checked instead."
+    ]
+  },
+  "gpu_default": "kbase"
+}

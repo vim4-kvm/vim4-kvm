@@ -1,0 +1,33 @@
+{
+  "sources": {
+    "kernel": "dc220366a1222a03423d5b5987fab3f027ec1d7a",
+    "capture": "b43e564595407b0b637a23f49a3cb390d4a6cbfa",
+    "onekvm": "2cf9ef4da71f5572173cabe3c60c58730a1d539f"
+  },
+  "hardware_validated": false,
+  "sha256": {
+    "Image": "ec04494985c3967b356eea24ed4f10d96f51e99ea7741ecdfd10b1f60059a01c",
+    "config": "7be7563e089ff628a320cd82ed163d88c576e4c7612f6bf849b230d2b9719b1c",
+    "Module.symvers": "9e54cbe2d161279b9e818a18515e924ad9c3a9ba1f87ce9cf0f8b55c3feff78d",
+    "vim4.dtb": "fbef1ddaecdc7924de841c9fe36885bcb8c36b18cd4b97804a74af44f2588b90",
+    "panfrost.dtb": "848e9b1d8b637b2a47e4a1f314174cd9e18ec9bf0cf6ae99b1ac334757a947a7",
+    "vmlinux.btf": "db20ae95e61c8c4664282ed1dd75d2c7d68d78585daf4f3a3ee5836422597676",
+    "modules.tar.gz": "253c6f668efe485edf691c1aa5edf517b793ad049457528af07f1b877a921370",
+    "runtime-files.json": "483e0e8d62243b9265b1e08af970554f2a3daa2dab8608ba574c90e38454af56",
+    "external-manifest.json": "3ea5aad5aeb56c2f9ede7d2db99ea59cbf4e2131a2de14373565a667073d5da8",
+    "native-candidate.json": "5dd05c05737215e69b1c82f0ef6a7c302394a3103259eda350d33f81ea2b93fd",
+    "module-inventory.json": "fba994dea808e881cfb56354a3e875697b9982d84415e65b45fb12d65aef4a31",
+    "runtime-proof.json": "a76153cce6385d0b3efdf16108645809eb4a6ac3310365f9b8f804b080279b52",
+    "manifest.json": "d337c8e2103cd57713d3d92fa0c884ad23601f5058ad960715fc477d4538a2db",
+    "runtime/one-kvm": "34e8808e61c9a52eb62a88e2b01440d4ecef0f60bc7253dc0a7d403410b99337",
+    "runtime/gstreamer-1.0/libgstvfmcap.so": "8cf5655b9b1e3ccbb1f29feb8f848b4127b80c0843c2fe40e7336da13c681395",
+    "runtime/gstreamer-1.0/libgstvideo4linux2.so": "b9269d0509d43b8107a8c686415f7f0c7e5a86e17c04a19d685eb3dca736c4f0",
+    "runtime/gstreamer-1.0/libgstvim4wave5.so": "0240de1c003974d97316ff3f73f771a5cc8db2ced1b7330bcbe64c4ba9cbe229",
+    "runtime/usr/libexec/vim4-board-runtime": "5d791b6bbf163c7915361a5caf56864e71c349022538015abcce340b5cae12c8",
+    "runtime/usr/libexec/vim4-kvm-run": "a80e3eff309445898d60b26e1ecc4e4883a09258133f2b7625d1bdc39b578da6",
+    "runtime/usr/libexec/vim4-mainline-prepare": "3c71bb76b309ffa5ca1d2c47cdc235ed3428e67da7936ab167e834fc013acb46",
+    "runtime/usr/libexec/vim4-mainline-gadget-prepare": "c2743177d6d624a3dcb74bf1eb2f34b9c6ef587409ffbad51467dd0be02c8ba4",
+    "runtime/usr/lib/vim4-kvm/python/vim4gpu.py": "f5703c5dc5ea8ced23b12086d0c920f403ba69c0aa69b0bd834ea2d9a378d84f",
+    "runtime/usr/lib/vim4-kvm/python/vim4boot.py": "3fd2446b49e8f83401b4de5d5420529d87ad4a12c7cffb856f0e6a7d6d8f87f2"
+  }
+}

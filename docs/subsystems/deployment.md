@@ -34,7 +34,7 @@ GPT曾被清空；仅用板级工具的专用校验刷机脚本，禁OOWOW /shel
 主线正式默认保留固件PD状态，APPEND含`module_blacklist=fusb302`；Mainline登记/升级及普通RAM候选
 保留该策略，无线变体合并模块黑名单而不覆盖它。Vendor策略不变。正式proof已切换到
 [sources.toml正式锁](../../packaging/kernel/sources.toml)指定的基线清单；
-[本次默认部署](../bringup/2026-11-08-vdec-dos-regmap-deploy.md)按单子系统门禁做了针对性测试、K9和解码冒烟，未跑九类回归。
+[本次默认部署](../bringup/2026-11-08-hevc-remaining5-deploy.md)按单子系统门禁通过完整身份、被动视频、K9/解码冒烟和PD B检查，未跑九类回归。
 PD策略的前后hash及持续观察边界见[切换记录](../bringup/2026-11-07-pd-firmware-default.md)。
 核对基线release和build ID，以及服务、UDC和启动哈希；仅支持5.15或sources.toml正式锁的精确release，首次确认默认LINUX/FDT指向捕获基线。
 正式基线须核对release目录、完整模块、采集及kbase身份、DT属性和原应用；恢复须视频推进检查，启动文件/模块必须仍完整，不能引用已清理产物。

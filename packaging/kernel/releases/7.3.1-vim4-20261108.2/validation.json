@@ -1,0 +1,34 @@
+{
+  "source": "34fbda5a776e68ebb950c5652630375e33673f6d",
+  "release": "7.3.1-vim4-20261108.2",
+  "kernel_build_id": "f01ed7abb0dd9d3d4f15f238c2e089684d03192c",
+  "package_sha256": "1947d1dbb48def575005f7fbc5efaebcf3db16bef234d2af22909763d5d672e3",
+  "status": "installed-targeted-checks",
+  "scope": "single-subsystem-targeted-checks",
+  "evidence": "docs/bringup/2026-11-08-hevc-remaining5-deploy.md",
+  "limitations": [
+    "Single-subsystem gates only; nine-class regression, 600-second motion, HID injection, EDID, audio, media and GPU were not run.",
+    "Decode smoke covers three HEVC conformance streams and three JPEG fixtures; full HEVC/H264/MPEG2 suites were not rerun on this formal package.",
+    "Historical .44 acceptance was HEVC 129/132 and JPEG 3/3; three HEVC streams remain rejected, not full decoder parity.",
+    "One successful natural default boot does not establish a cold-reset fix.",
+    "Formal build.sh was used; W=1, sparse and KUnit were not rerun in this deployment task.",
+    "The supplementary cross-boot journal cursor was invalid; continuous UART, startup journal and decode incremental kernel log were checked instead."
+  ],
+  "passive_video": [
+    {
+      "fps": 59.55659366562165,
+      "frames": 298
+    },
+    {
+      "fps": 59.552642749911406,
+      "frames": 298
+    }
+  ],
+  "smoke_sha256": "4e03120d7b131b9217d426ff8db3befb0cb61098cdca70d1323857f536d2e8f5",
+  "pd_state_sha256": "e00bc27b226fad5362c916e2b3f378226094ba1fe168b9fd8ed0702600e560ad",
+  "installed_proof_sha256": "ab87e18f25390fc55a821f25a7e6d81183145b21a20c2b4c8684accb895d02c1",
+  "baseline_proof_sha256": "b46a8e1aba8ccf141056c7ee5d25cd008d41cd2fb1a65c32e661ab590aafbaf5",
+  "runtime_metadata_sha256": "7596bb86aa1fafbc8323efe9f68c6b9b76eb42569042b6f293c4c6e7cb72111a",
+  "logs": "logs/deploy-hevc5/window-4",
+  "successful_attempt": 4
+}

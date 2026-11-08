@@ -1,0 +1,28 @@
+{
+  "release": "7.3.0-vim4kvm-hdr10r3+",
+  "sources": {
+    "kernel": "dc220366a1222a03423d5b5987fab3f027ec1d7a",
+    "capture": "b43e564595407b0b637a23f49a3cb390d4a6cbfa",
+    "onekvm": "2cf9ef4da71f5572173cabe3c60c58730a1d539f"
+  },
+  "hardware_validated": false,
+  "vendor_firmware_included": false,
+  "limitations": [
+    "native SDR snapshot branch unavailable",
+    "5.15 GPU baseline and 7.3 pixel/performance gates pending",
+    "NanoKVM/JetKVM/PiKVM native Wave5 source not integrated"
+  ],
+  "sha256": {
+    "Image": "fb5496a2a197bf1f63d0538cff0ee4bbeb034ef725bec29f1df7acde0d7c2f53",
+    "README.md": "72e552c80d9f3e128a45f03f2c07b32b4f5a520d0d1d1452bf6e64ad83c22a24",
+    "gstreamer-1.0/libgstvfmcap.so": "8cf5655b9b1e3ccbb1f29feb8f848b4127b80c0843c2fe40e7336da13c681395",
+    "gstreamer-1.0/libgstvideo4linux2.so": "b9269d0509d43b8107a8c686415f7f0c7e5a86e17c04a19d685eb3dca736c4f0",
+    "hdr10-prepare": "04fa4bcf751dc362312eb14ed9967b680da477cd9f27a8959f46d654bda5f5a3",
+    "hdr10-run": "85c7e242d9624a047615ef2a8e2529674d50f79ab4f6730a841f9b72b703e466",
+    "manifest.json": "e30d21eaaa2d3d076cd806f4f33c07d8dadd6f5dd7c1d54b34923875a06424c8",
+    "modules.tar.gz": "75c24762cc4eb72bbd82a3e5846bf50c58352a198d17e0a7241098abd5ef2ce3",
+    "one-kvm": "34e8808e61c9a52eb62a88e2b01440d4ecef0f60bc7253dc0a7d403410b99337",
+    "runtime-proof.json": "cfac44e7750cd41683f0956e4edf0985f11d262993e1951bb7cfdd7eeabe3e23",
+    "vim4.dtb": "0c795e920aff8319c85346048c5c2423e9bf18bab65a3c3e9d04ec8cc7d5fc5a"
+  }
+}
