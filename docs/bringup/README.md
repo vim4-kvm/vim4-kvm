@@ -15,6 +15,10 @@
 
 以下保留完整日期索引。这些里程碑记录的是历史证据；查找当前架构和约束时，仍应先读对应子系统入口。
 
+## 2026-11-08
+
+- [fusb302屏蔽时显示固件PD](2026-11-08-manager-pd-firmware-display.md) — manager usb；vim4pd让出内核PD状态、helper不走I²C，manager dev.11上板，概览显示U-Boot交接，PD服务未重启。
+
 ## 2026-11-07
 
 - [.42 正式默认部署](2026-11-07-deploy42-default.md) — kernel deployment；首轮无帧已恢复，复验49次/240秒4K信号与5秒视频通过，保留3facfaa3/.42默认及新2372 proof；按用户决定九类/K9/解码冒烟未运行。

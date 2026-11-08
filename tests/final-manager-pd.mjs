@@ -5,7 +5,7 @@ import { requireFirmwarePDState } from '../packaging/kernel/final-manager-pd.mjs
 
 const observed = JSON.parse(await readFile(new URL('../packaging/kernel/pd-b-state.json', import.meta.url), 'utf8'));
 
-test('captured formal B state accepts unavailable kernel PD without inventing a contract', () => {
+test('captured formal B state shows the firmware handoff without inventing a contract', () => {
   requireFirmwarePDState(observed.board, observed.power, observed);
 });
 
@@ -43,6 +43,7 @@ test('I2C errors and claimed Linux contracts cannot masquerade as unchanged firm
     power => { power.firmwarePD.ioError = true; },
     power => { power.bootContract = { voltageV: 5, currentA: 3 }; },
     power => { power.kernelPD = { state: 'ready', contract: { voltageV: 5, currentA: 3 } }; },
+    power => { power.kernelPD = { state: 'unavailable', contract: null }; },
     power => { power.firmwarePD.hardReset = true; },
     power => { power.vbusPresent = true; },
     power => { power.lastContract = { voltageV: 5, currentA: 3 }; },

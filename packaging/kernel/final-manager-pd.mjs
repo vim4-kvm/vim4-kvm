@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 
-// The baseline is an observed B-state response. It preserves the known
-// unavailable kernel-PD display without turning it into a confirmed contract.
+// The baseline is an observed B-state response. With fusb302 blacklisted the
+// board module yields Linux PD state, leaving only the U-Boot handoff.
 export function requireFirmwarePDState(board, power, expected) {
   const blocked = board.cmdline.split(/\s+/).filter(word => word.startsWith('module_blacklist='))
     .flatMap(word => word.slice('module_blacklist='.length).split(','));
@@ -15,7 +15,7 @@ export function requireFirmwarePDState(board, power, expected) {
     'Manager PD response must retain the B-state fields without fallback history');
   assert.equal(power.vbusPresent, null);
   assert.equal(power.bootContract, null, 'B state must not claim Linux bootstrap negotiation');
-  assert.deepEqual(power.kernelPD, expected.power.kernelPD);
+  assert.equal('kernelPD' in power, false, 'Blacklisted fusb302 must not report Linux PD state');
   assert(power.firmwarePD && typeof power.firmwarePD === 'object', 'Firmware handoff is required');
   assert.equal(power.firmwarePD.ioError, false, 'Firmware handoff reports an I/O error');
   assert.equal(power.firmwarePD.hardReset, false, 'Firmware handoff reports a hard reset');

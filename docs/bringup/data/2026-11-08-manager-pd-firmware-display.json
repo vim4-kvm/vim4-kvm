@@ -1,0 +1,103 @@
+{
+  "run": "logs/manager-pd/run-20261108T031009Z",
+  "package": "2.5.1+vim4.20261029.102.dev.11.gf384b3d",
+  "pre_board": {
+    "boot_id": "8ad0825f-cb9c-4bea-98a0-19b37be62793",
+    "release": "7.3.1-vim4-20261107.2",
+    "fusb302_loaded": false,
+    "typec_ports": [],
+    "pd_unit": "Result=success\nExecMainStartTimestampMonotonic=6967473\nActiveState=active\nInvocationID=22e8792d32ee4f5294d566908d2604aa",
+    "manager": "MainPID=1104\nActiveState=active",
+    "vim4pd": "f7fdac85dfcf9adfe1a2b136581d08f376f06a806078660d0a4dfc429de853b0",
+    "helper": "86c1babe280577b1bc834ee7ae2b830d6ee3de5ac067294911dcaa38bdf673e6",
+    "packages": "vim4-kvm-board 2.5.1+vim4.20261027.3.dev.18.g7ecac56\nvim4-manager 2.5.1+vim4.20261029.102.dev.10.g85ef0b1\n",
+    "udc": [
+      "configured"
+    ]
+  },
+  "post_board": {
+    "boot_id": "8ad0825f-cb9c-4bea-98a0-19b37be62793",
+    "release": "7.3.1-vim4-20261107.2",
+    "fusb302_loaded": false,
+    "typec_ports": [],
+    "pd_unit": "Result=success\nExecMainStartTimestampMonotonic=6967473\nActiveState=active\nInvocationID=22e8792d32ee4f5294d566908d2604aa",
+    "manager": "MainPID=370609\nActiveState=active",
+    "vim4pd": "9cdfde80725f043f6b88bcce1312c88f2a60a68e8e30dba4c13c053345856cb4",
+    "helper": "46230fb7917bc118ce07c77939561c7c5541097f15b89687b410ca6a4a314a38",
+    "packages": "vim4-kvm-board 2.5.1+vim4.20261027.3.dev.18.g7ecac56\nvim4-manager 2.5.1+vim4.20261029.102.dev.11.gf384b3d\n",
+    "udc": [
+      "configured"
+    ]
+  },
+  "pre_power": {
+    "vbusPresent": null,
+    "bootContract": null,
+    "firmwarePD": {
+      "psReady": false,
+      "flags": 208,
+      "hardReset": false,
+      "requestFailed": false,
+      "timedOut": true,
+      "ioError": false,
+      "typecFallback": true,
+      "rp": "3A",
+      "sourceRevision": null,
+      "requestRevision": null,
+      "sourceHeader": "0000",
+      "requestHeader": "0000",
+      "rdo": "00000000",
+      "selectedPosition": null,
+      "selectedType": null,
+      "requestedVoltageV": null,
+      "requestedCurrentA": null,
+      "requestedMaxCurrentA": null,
+      "requestedMaxPowerW": null,
+      "requestedPowerW": null,
+      "policyVoltageV": 0,
+      "policyCurrentA": 0,
+      "contract": null,
+      "sourceCapabilities": []
+    },
+    "kernelPD": {
+      "state": "unavailable",
+      "contract": null
+    }
+  },
+  "post_power": {
+    "vbusPresent": null,
+    "bootContract": null,
+    "firmwarePD": {
+      "psReady": false,
+      "flags": 208,
+      "hardReset": false,
+      "requestFailed": false,
+      "timedOut": true,
+      "ioError": false,
+      "typecFallback": true,
+      "rp": "3A",
+      "sourceRevision": null,
+      "requestRevision": null,
+      "sourceHeader": "0000",
+      "requestHeader": "0000",
+      "rdo": "00000000",
+      "selectedPosition": null,
+      "selectedType": null,
+      "requestedVoltageV": null,
+      "requestedCurrentA": null,
+      "requestedMaxCurrentA": null,
+      "requestedMaxPowerW": null,
+      "requestedPowerW": null,
+      "policyVoltageV": 0,
+      "policyCurrentA": 0,
+      "contract": null,
+      "sourceCapabilities": []
+    }
+  },
+  "raw_sha256": {
+    "pre-overview.png": "e48c704940f4532b5d568efc586aed3e27bf867b1dbcd2da8f988d5c35c04f19",
+    "post-overview.png": "a4ec47910011532ab210b3e0bf9477485e2a29774d7f9b6c14bc65c98391585b",
+    "deploy.log": "23d4c11479ddf4f5d4ecda4aebc865700d2da9ae792b6467ae99a051035d2751",
+    "check.log": "c1301ccaecd8d441f7f608dee4b5456ed0efc9d5f96342d9c514657b0986ff1d",
+    "manager-pd-state.json": "e00bc27b226fad5362c916e2b3f378226094ba1fe168b9fd8ed0702600e560ad"
+  }
+}

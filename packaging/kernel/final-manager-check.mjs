@@ -1,6 +1,5 @@
 // Live manager check inside an approved board ticket. Expects standard thermal
-// fan trips and the adopted firmware-PD B state. The known unavailable Linux
-// PD display is retained as an observed baseline, not a confirmed contract.
+// fan trips and the adopted firmware-PD B state, shown from the U-Boot handoff.
 import assert from 'node:assert/strict';
 import { mkdir, readFile, writeFile } from 'node:fs/promises';
 import { execFileSync } from 'node:child_process';
