@@ -1,7 +1,7 @@
 # 厂商能力对照与剩余门禁
 
 本页管能力追平的范围与依赖；表中“实现”“部署”“验收”分别判断，不作为当前完成率。
-当前内核身份见[主线入口](../kernel-mainline.md)，固定历史比较来源见[证据快照](../archive/parity-sources.md)。
+当前内核身份见[主线入口](../kernel-mainline.md)。
 导航：[能力表](#能力表)、[保护退出](#保护退出)、[实施顺序](#实施顺序)、[性能](#性能与证据)。
 
 ## 能力表
@@ -61,4 +61,4 @@ GPU 默认策略已有[限定实测](../bringup/2026-10-31-kbase-r11-policy.md)�
 Wi-Fi 的长短轮次与未验传输见[平台](platform.md)，不能跨条件拼接成全面通过。
 [快速性能窗口](../bringup/2026-10-31-p0-2-performance.md)受运行时和标记阻断，
 [PM 窗口](../bringup/2026-11-02-p0-2-pm-window.md)只完成基线 idle；其余缺测仍不确定。
-音频、光学、长期增长及缺工具项独立报告，预算以[分窗矩阵](../overnight-performance-plan.md)为准。
+音频、光学、长期增长及缺工具项独立报告，预算由 `python3 tools/perf-baseline.py matrix` 输出。

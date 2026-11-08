@@ -5,7 +5,7 @@
 等同于 Hard_Reset。FUSB302 有对应的 RX FIFO 排空待审补丁，值得优先审查移植。
 本轮只分析和读 journal，未改 DT/驱动，未重启；改动方案须经协调者批准后实施。
 
-前序：[E1](2026-11-05-debug-splat-reset-isolation.md)、
+前序：E1、
 [时序](2026-11-05-adla-mutex-pd-timing.md)。UTC。
 
 ## 状态机核对
@@ -116,7 +116,7 @@ flush。`.83` Accept 后回等待能力时是 `pd is already on`，不能称这�
 
 逐次 boot_id、UART 主机时戳和分类见[冷复位统计表](data/2026-11-05-tcpm-coldboot-events.csv)。
 其中前两条是本次正式 `.3` 统计的 7.428245/7.517541 秒事件。
-后追加的 [r51 `.28`](2026-11-05-vdec-r51-coldboot.md) 是生产配置候选，启动约6秒
+后追加的 r51 `.28` 是生产配置候选，启动约6秒
 回 ROM（末条内核时戳5.540308秒，缺逐行主机时戳），不加入上述正式 `.3` 分母。
 
 异常 journal 最后 monotonic 为5.517813/5.541635秒，比 UART 早停，不是复位瞬间。

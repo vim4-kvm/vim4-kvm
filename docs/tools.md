@@ -123,7 +123,7 @@
 | [latency-receiver.mjs](../tools/latency-receiver.mjs)、board-window-receiver.mjs、board-window-timing.mjs | 独占 | 浏览器帧标记与呈现接收；在 build/ 私有目录锁定 Playwright/Chromium，用 PLAYWRIGHT_MODULE 指向 index.mjs，入场前离线导入冒烟；默认使用 Chrome 通道。 |
 | [latency-summary.py](../tools/latency-summary.py)、latency-rtp-summary.py、video-timing-summary.py、input-summary.py | 无 | 离线时序汇总。 |
 | [key-repeat.html](../tools/key-repeat.html) | 无 | 被控电脑浏览器手动长按对照。 |
-| [uu-scroll-probe.swift](../tools/uu-scroll-probe.swift) | 无 | 历史：Mac 滚轮事件调查，见[归档](archive/uu-scroll.md)。 |
+| [uu-scroll-probe.swift](../tools/uu-scroll-probe.swift) | 无 | 历史：Mac 滚轮事件调查，见[滚轮语义](input-latency.md#滚轮语义)。 |
 | [hdmi-audio-tone.c](../tools/hdmi-audio-tone.c)、uac-record-level.swift | 无 | Mac HDMI 测试音与 UAC2 录音。 |
 | [hdmi-capture.sh](../tools/hdmi-capture.sh) | 独占 | 板端单帧 PNG 采集。 |
 | [hid-rebind-check.py](../tools/hid-rebind-check.py)、crg-udc-check.py | 独占；断开 USB | HID 重绑定回归。 |

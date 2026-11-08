@@ -1,6 +1,6 @@
 # 2026-10-26：远程 HDR 全局默认与源端切换
 
-接续 [GPU Main10 60fps](2026-10-26-hdr-gpu-pipeline.md)，增加管理器全局默认，
+接续 GPU Main10 60fps，增加管理器全局默认，
 继续核实真实 HDMI 的 PQ/SDR 切换和官方 UU 客户端。
 
 ## 全局设置

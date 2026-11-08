@@ -13,7 +13,7 @@ SP slice 不支持而预先跳过**；不能表述成 135 条都实际运行或�
 源码 `960132382e00864f4944aee077cd621927a97bb0`，基于正式 `fd41fb5` 重放的
 56 个提交；`.28` GNU build ID `81bb2f999ffffb38d549afbf8b15fb3048184c0f`。
 生产配置与正式配置一致，无调试片段、无 HEVC 私有草稿；完整身份和逐提交验证见
-[重放记录](2026-11-05-vdec-integrated-rebase.md)。四个有效解码窗口 r54、r56、r57、r58
+重放记录。四个有效解码窗口 r54、r56、r57、r58
 使用同一候选、同一锁定 fluster commit/标准输入，不混入旧 `.27` 的结果。
 
 | 口径 | Success | Fail | Error | Timeout | Known unsupported | 未实际运行 |
@@ -62,7 +62,7 @@ Sharp 的系统库来源已由 dpkg MD5、APT policy、安装历史确认是 Kha
 [来源和 SHA](2026-11-05-vdec-r56-fmo-parser.md)、[QBUF/DQBUF](2026-11-05-vdec-r54-sharp-trace.md)。
 两条流实际以 OUTPUT/CAPTURE STREAMOFF 成功收尾并可继续后续解码；没有
 VIDIOC_DECODER_CMD，因此 **HOLD 的 STREAMOFF 收尾有实证，HOLD+FLUSH 未实测**。
-不能把没有 DQBUF 的缓冲算成已 DQBUF。[ioctl 原始证据](2026-11-05-vdec-r57-sharp-streamoff.md)。
+不能把没有 DQBUF 的缓冲算成已 DQBUF。ioctl 原始证据。
 不替换系统库，不打插件补丁。
 
 其余 17 项按主要特性分组，以下不是已证明的根因：

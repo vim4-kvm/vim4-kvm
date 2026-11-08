@@ -2,7 +2,7 @@
 
 本页管对应能力差距与验证条件；当前身份见[主线入口](../kernel-mainline.md)。
 离线组件不提升硬件资格，处理组件保持默认禁用；真实器件与路由条件见[上板清单](audio-board-checklist.md)。
-导航：[能力与边界](#能力与边界)；[范围和依赖](README.md)；[固定来源](../archive/parity-sources.md)。
+导航：[能力与边界](#能力与边界)；[范围和依赖](README.md)。
 
 ## 能力与边界
 
@@ -22,7 +22,7 @@
 | A12 硬件ASRC A/B | 缺失 | 新写组件、系数SRAM/AA/auto-adjust/watchdog、标准控件及排他时钟回收；B固定source6→16k。输入变率须停流更新；SRAM供电、漂移与专用RX共享尚未验证 | 主线ASoC候选；A01/A03、双时钟与长期水位测试，两个独立采样时钟源、长时录音比较 |
 | A13 AED/EQ/DRC等音效 | 缺失 | 新写48k双声道TDMOUT B首lane组件，FRDDR tap/DAPM、双RAM EQ/DC/全频及三段DRC、标准音量/TLV系数控件；离线校验通过。其他目的端、实时调参/噪声检测未交付 | 主线ASoC候选；响应/动态范围及扩展路由仍待实现或验证，音频分析仪、已知测试音 |
 | A14 VAD 与低功耗录音唤醒 | 缺失 | 新写16k PDM正常录音检测组件、FIR/LUT、IRQ累计事件/wake hook。低功耗PDM保留、SRAM/DDR交接及系统PM未实现；关键词ASR符号只见调用无实现 | 主线ASoC＋PM/wakeup仍有代码欠账；A09、P06/P08，PDM麦克风、在场RESET、电流/唤醒测试；当前禁挂起 |
-| A15 HiFi DSP0/1、mailbox/音频固件 | 缺失 | [固定源码证据](../archive/audio-processing-offline.md#dsp-与关键词识别的不可交付证据)：host私有LOAD/START接口依赖缺失loader头文件，无匹配固件/算法实现和远端协议；当前无法交付DSP功能 | 取得可分发固件、SDK/工具链及内存/mailbox合同后接remoteproc/rpmsg/ASoC；匹配固件与回环硬件 |
+| A15 HiFi DSP0/1、mailbox/音频固件 | 缺失 | host私有LOAD/START接口依赖缺失loader头文件，无匹配固件/算法实现和远端协议；当前无法交付DSP功能 | 取得可分发固件、SDK/工具链及内存/mailbox合同后接remoteproc/rpmsg/ASoC；匹配固件与回环硬件 |
 | A16 eARC TX/RX | 缺失 | V1:1386和V0:1346均disabled，非当前板厂商启用能力；E无本板可用链。ARC寄存器节点不是eARC验收 | 选装路线：主线ASoC/CEC/HDMI接口，先核对板上连线与厂商支持；D05/A03，eARC电视/AVR、协议分析仪；不列当前必须追平的前置任务 |
 | A17 板载ACODEC/外接功放codec | 部分对齐 | V2 acodec节点与多个codec模块存在，但V1九路多连dummy，不能声称所有codec实际装板。E无厂商等效模拟播放验收 | 主线ASoC标准codec驱动/DT；先确认实际焊接和接口，再A03/TDMB；板图、对应codec扩展板/耳机或功放、模拟音频分析 |
 

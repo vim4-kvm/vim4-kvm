@@ -1,6 +1,6 @@
 # 2026-10-27：UU HDR 降分辨率的 GPU 缩放
 
-接续[UU HDR 能力与首帧修复](2026-10-27-uu-hdr.md)。用户确认原尺寸4K约60fps，
+接续UU HDR 能力与首帧修复。用户确认原尺寸4K约60fps，
 降分辨率约5fps。真实PQ输入下，生产UU的3022×1700编码输出约4.3fps，
 每帧发送约1–2ms、无序号缺口；等待在发送之前。原尺寸4K60不能证明缩放路径性能。
 
@@ -69,7 +69,7 @@ Rust调试和优化构建全套均789通过、3忽略；Meson四项及三份SPIR
 本轮验证One-KVM网页及UU共用的编码路径，不替代官方UU客户端逐档显示验收，
 也不覆盖任意输入时序、动态高负载或其他应用。NanoKVM/JetKVM/PiKVM的公共
 `vim4h265src`在本轮仍有CPU HDR缩放，不能套用此表。没有更改生产代码。
-后续已接通[四应用共用 GPU 缩放](2026-10-27-all-kvm-hdr-scale.md)，各应用结果独立记录。
+后续已接通四应用共用 GPU 缩放，各应用结果独立记录。
 测完恢复`height=0,fps=0,hdr=true`、原网页H.264模式与全局`HDR_SDR_ENABLED=0`；
 源端PQ和203/1000曲线保持原值。原始结果保存在忽略目录`build/uu-hdr-scale/`的
 `resolution-matrix-results.json`、`resolution-matrix.log`，复测脚本为`resolution-matrix.mjs`。

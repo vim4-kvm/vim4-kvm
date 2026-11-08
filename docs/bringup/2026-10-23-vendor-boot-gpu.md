@@ -3,7 +3,7 @@
 摘要：5.15.137-vim4kvm经RAM sysboot启动，SSH可达；正常重启自动返回未修改的7.3
 默认基线。5.15实际EGL/GLES是Mesa/llvmpipe，未找到匹配的专有libMali；相同glmark2
 命令得19分，实际4096×2160，与M1/Panfrost历史925分的1920×1080不可直接比较。
-本轮没有安装GPU库、修应用或部署内核；整夜采样只形成[待确认计划](../overnight-performance-plan.md)。
+本轮没有安装GPU库、修应用或部署内核；整夜采样只形成待确认计划。
 
 ## 基线与暂存边界
 
@@ -75,7 +75,7 @@ sudo env DRI_PRIME=1 /var/tmp/perf-vendor-20261023/gpu-root/usr/bin/glmark2-es2-
 
 运行加110秒有界超时，实际88.677秒、退出0。原始结果与历史口径：
 
-| 项目 | 本次5.15 | [M1第七窗口7.3](2026-10-23-display-m1-window7.md) |
+| 项目 | 本次5.15 | M1第七窗口7.3 |
 |---|---|---|
 | GL_VENDOR | Mesa | Mesa |
 | GL_RENDERER | llvmpipe (LLVM 20.1.2, 128 bits) | Mali-G52 r1 (Panfrost) |

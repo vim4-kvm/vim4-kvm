@@ -53,5 +53,5 @@ PD 合同与 UDC 分开判，保持供电拓扑不变，单线供电运行中不
 
 共享根文件系统不会随内核回退：禁止中途安装升级，恢复服务和应用设置，
 D 状态时不覆盖打开的数据库或 WAL，回健康基线再处理。
-性能与预算按[基线协议](performance-baseline.md)和[执行矩阵](overnight-performance-plan.md)，
+性能与预算按[基线协议](performance-baseline.md)，
 历史操作授权不自动扩展到新窗口。

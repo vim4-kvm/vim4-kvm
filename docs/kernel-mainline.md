@@ -51,7 +51,7 @@ RAM候选的基线准入与恢复证明只在[短窗口](board-window.md#当前�
 
 ## 2026-10-19 首轮构建结果
 
-[rc7 导入与首轮构建快照](archive/kernel-rc7-import.md)保留导入命令、bundle、产物哈希与未验范围。
+导入命令、bundle、产物哈希与未验范围见 `git show ba9972e:docs/archive/kernel-rc7-import.md`。
 
 ## 启动固件预检与模块准备
 
@@ -60,7 +60,6 @@ RAM候选的基线准入与恢复证明只在[短窗口](board-window.md#当前�
 ## 审查边界与后续验证
 
 原始 164 个 Armbian 补丁涉及 108 个文件，未修改 HDMI RX、VDIN、Wave5 或 USB gadget 路径。
-后续本地 CRG 实验驱动及验证范围见 [适配记录](archive/kernel-edge-porting.md#crg-实验驱动2026-10-19)。
 GPU 纯调频已完成[专项验证](bringup/2026-10-21-edge-gpu-devfreq.md)及上述合并部署；
 音频输出和显示输出仍需上板验证，不能用编译成功替代。
 
@@ -71,8 +70,7 @@ GPU 纯调频已完成[专项验证](bringup/2026-10-21-edge-gpu-devfreq.md)及�
 - `0103/0146`：保持显示及 USB/SDIO/eMMC 电源域，涉及功耗与恢复行为，需测试挂起恢复。
 - `0073–0080`：USB Host 接入，不是 HID/虚拟介质需要的 CRG UDC。
 
-基础启动结果见上述首次启动记录；下一阶段依赖与验收见
-[USB 与音视频适配拆解](archive/kernel-edge-porting.md)。
+基础启动结果见上述首次启动记录；下一阶段依赖与验收按[能力对照](parity/README.md)。
 新板 `kvim4n` 的硬件差异和启动固件要求也必须核对，不能直接复用厂商 DTB。
 
 ## 补丁维护方法
@@ -89,8 +87,8 @@ GPU 纯调频已完成[专项验证](bringup/2026-10-21-edge-gpu-devfreq.md)及�
 
 合入前逐提交运行 strict checkpatch、宿主 fixture、binding 和 DT 实例检查，再用同次配置构建
 Image、DTB 和完整模块。保留失败、跳过和产物哈希；宿主 fixture 不能代替 KUnit 或硬件验收。
-`packaging/kernel/maintain.py` 提供 inventory、forward 和 verify；具体用法、
-厂商对照与音频基线依赖见[维护快照](archive/kernel-patch-inventory.md#主题序列与一键离线验证)。
+`packaging/kernel/maintain.py` 提供 inventory、forward 和 verify；具体用法见
+其 `--help`。
 forward 遇冲突须保留现场，解决后对完整结果运行 verify；构建成功不能覆盖其他阶段失败。
 离线检查通过后按[部署门禁](subsystems/deployment.md#内核开发流程与部署门禁)安排独占回归；
 全局改动仍需九类回归和性能配对，离线通过不代表可部署。
@@ -113,7 +111,6 @@ forward 遇冲突须保留现场，解决后对完整结果运行 verify；构�
 - [管理器与 WPA3](bringup/2026-10-21-manager-mainline-status.md)、[Wi-Fi Direct](bringup/2026-10-21-edge-wifi-p2p.md)：WCC/AKM 与 P2P 适配，真实对端传输未验。
 - [双内核运行时](bringup/2026-10-21-dual-kernel-integration.md)：应用数据与切换验证；此前的[独立实验网关](bringup/2026-10-20-edge-lan-gateway.md)使用回环 8082，不代表正式入口。
 - [实验 HID](bringup/2026-10-20-edge-hid-integration.md)、[USB 功能接入](bringup/2026-10-21-edge-usb-functions.md)：早期独立准备器、助手和数据目录的验证范围；当时 USB 串口未启用。
-- [NanoKVM 迁移快照](archive/nanokvm-migration.md)、[迁移前功能差异](archive/nanokvm-feature-review.md)、[旧功能表](archive/feature-status.md)、[One-KVM 审查](archive/one-kvm-audit.md)：历史应用基线，不代表现行功能。
 - [高码率实验](bringup/2026-10-14-4k60-high-bitrate-experiment.md)、[HEVC 画质模式](bringup/2026-10-27-hevc-quality.md)、[UU 文件传输](bringup/2026-10-25-uu-files.md)：应用能力的原始验收边界。
 - [看门狗运行时复位](bringup/2026-10-23-wave5-parity-window.md)：停止喂狗后的串口与恢复证据，不覆盖睡眠期硬锁。
 - [7.x 缩放与硬件 MJPEG](bringup/2026-10-21-edge-scaling-jpeg.md)：VDIN 下采样、HCODEC/OP-TEE 接入与 4K 帧率边界。
@@ -131,4 +128,4 @@ forward 遇冲突须保留现场，解决后对完整结果运行 verify；构�
 - [7.3 HDMI 1080p60](bringup/2026-10-19-hdmirx-dma-ring.md)：实验私有 DMA 环、V4L2 MMAP 复制队列及剩余接入缺口。
 - [7.3 HDMI DMA-buf](bringup/2026-10-19-hdmirx-dmabuf.md)：此前的连续导出、缓冲跨驱动重载及软件 H.264 校验。
 - [7.3 Wave521 与 4K60](bringup/2026-10-19-wave521-uhd.md)：固定 RGB8 输入、NV12、H.264/H.265 硬编码与实测边界。
-- [HDMI 恢复路径对照](archive/hdmi-recovery-review.md)、[UU 虚拟屏恢复](bringup/2026-10-15-uu-virtual-screen-recovery.md)：显示器恢复故障的源码审查与现场取证。
+- [UU 虚拟屏恢复](bringup/2026-10-15-uu-virtual-screen-recovery.md)：显示器恢复故障的现场取证。

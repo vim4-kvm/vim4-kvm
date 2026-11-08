@@ -9,24 +9,24 @@
 全部授权范围已完成风险确认及文件迁移，共 82 个 Python 文件迁出/删除。
 逐批 arm64 QEMU 的实际结果如下；九份配置合并后的完整重跑为 **11 套、44/44**，
 包含全部 fixup 后的代码。最终提交、实际命令、完整输出及失败证据见
-[组合复验](2026-11-05-kunit-final-replay.md)。
+组合复验。
 
-后续[审查返工](2026-11-05-kunit-review-rework.md)补齐每提交正文和 Signed-off-by，
+后续审查返工补齐每提交正文和 Signed-off-by，
 消息阶段文件 diff 为空，原四个修复 SHA 不变。撤销原 fallthrough 标注后，依厂商
 历史独立修复利用率分支的 break，标“需实板回归”；当前 SHA 对照和完整提交检查
 见返工记录。新提交上的完整 QEMU 仍为 44/44，未验证实际利用率显示。
 
 | 已执行批次 | Python 文件数 | 实际 QEMU KUnit | 结果记录 |
 |---|---|---|---|
-| Wave5 | 13 | 9/9 | [结果](2026-11-05-wave5-kunit-results.md)及[仅离线准备的故障注入方案](2026-11-05-wave5-fault-injection-plan.md) |
+| Wave5 | 13 | 9/9 | 结果及仅离线准备的故障注入方案 |
 | HDMI RX | 20 | 9/9 | [结果](2026-11-05-hdmirx-kunit-results.md) |
-| JPEG | 2 | 2/2 | [结果](2026-11-05-jpeg-kunit-results.md) |
-| Meson DRM | 18 | 8/8 | [结果](2026-11-05-drm-kunit-results.md) |
-| Meson ASoC | 15 | 3/3 | [结果](2026-11-05-asoc-kunit-results.md) |
-| 其余非暂缓驱动 | 9 | 风扇 3/3，其余为 V/B | [逐子系统结果](2026-11-05-remaining-drivers-kunit-results.md) |
-| ADLA（暂缓解除后） | 4 | 4/4 | [结果](2026-11-05-adla-kunit-results.md) |
-| brcmfmac（暂缓解除后） | 1 | 新 2/2，复用 NVRAM 3/3 | [结果](2026-11-05-brcmfmac-kunit-results.md) |
-| PWM/PWM regulator（无 Python） | 0 | 复用原测试 1/1 | [结果](2026-11-05-pwm-kunit-results.md) |
+| JPEG | 2 | 2/2 | 结果 |
+| Meson DRM | 18 | 8/8 | 结果 |
+| Meson ASoC | 15 | 3/3 | 结果 |
+| 其余非暂缓驱动 | 9 | 风扇 3/3，其余为 V/B | 逐子系统结果 |
+| ADLA（暂缓解除后） | 4 | 4/4 | 结果 |
+| brcmfmac（暂缓解除后） | 1 | 新 2/2，复用 NVRAM 3/3 | 结果 |
+| PWM/PWM regulator（无 Python） | 0 | 复用原测试 1/1 | 结果 |
 
 构建和检查已执行；CRG/TCPM 的有效 sparse、ADLA 的 W=1/sparse 保留既有诊断，
 明确记为静态门禁未通过，其余各批的检查范围及限制见结果。组合运行 profile
@@ -42,24 +42,24 @@ PWM 原本没有 Python，复用现有 KUnit；同控制器 ABBA 未解决，见
 
 | 分表 | 文件数 |
 |---|---|
-| [2026-11-05-kunit-inventory-drm-1.md](2026-11-05-kunit-inventory-drm-1.md) | 6 |
-| [2026-11-05-kunit-inventory-drm-2.md](2026-11-05-kunit-inventory-drm-2.md) | 6 |
-| [2026-11-05-kunit-inventory-drm-3.md](2026-11-05-kunit-inventory-drm-3.md) | 6 |
-| [2026-11-05-kunit-inventory-other-1.md](2026-11-05-kunit-inventory-other-1.md) | 6 |
-| [2026-11-05-kunit-inventory-other-2.md](2026-11-05-kunit-inventory-other-2.md) | 6 |
-| [2026-11-05-kunit-inventory-other-3.md](2026-11-05-kunit-inventory-other-3.md) | 6 |
-| [2026-11-05-kunit-inventory-other-4.md](2026-11-05-kunit-inventory-other-4.md) | 1 |
-| [2026-11-05-kunit-inventory-hdmirx-1.md](2026-11-05-kunit-inventory-hdmirx-1.md) | 6 |
-| [2026-11-05-kunit-inventory-hdmirx-2.md](2026-11-05-kunit-inventory-hdmirx-2.md) | 6 |
-| [2026-11-05-kunit-inventory-hdmirx-3.md](2026-11-05-kunit-inventory-hdmirx-3.md) | 6 |
-| [2026-11-05-kunit-inventory-hdmirx-4.md](2026-11-05-kunit-inventory-hdmirx-4.md) | 2 |
-| [2026-11-05-kunit-inventory-jpeg-1.md](2026-11-05-kunit-inventory-jpeg-1.md) | 2 |
-| [2026-11-05-kunit-inventory-wave5-1.md](2026-11-05-kunit-inventory-wave5-1.md) | 6 |
-| [2026-11-05-kunit-inventory-wave5-2.md](2026-11-05-kunit-inventory-wave5-2.md) | 6 |
-| [2026-11-05-kunit-inventory-wave5-3.md](2026-11-05-kunit-inventory-wave5-3.md) | 1 |
-| [2026-11-05-kunit-inventory-audio-1.md](2026-11-05-kunit-inventory-audio-1.md) | 6 |
-| [2026-11-05-kunit-inventory-audio-2.md](2026-11-05-kunit-inventory-audio-2.md) | 6 |
-| [2026-11-05-kunit-inventory-audio-3.md](2026-11-05-kunit-inventory-audio-3.md) | 3 |
+| 2026-11-05-kunit-inventory-drm-1.md | 6 |
+| 2026-11-05-kunit-inventory-drm-2.md | 6 |
+| 2026-11-05-kunit-inventory-drm-3.md | 6 |
+| 2026-11-05-kunit-inventory-other-1.md | 6 |
+| 2026-11-05-kunit-inventory-other-2.md | 6 |
+| 2026-11-05-kunit-inventory-other-3.md | 6 |
+| 2026-11-05-kunit-inventory-other-4.md | 1 |
+| 2026-11-05-kunit-inventory-hdmirx-1.md | 6 |
+| 2026-11-05-kunit-inventory-hdmirx-2.md | 6 |
+| 2026-11-05-kunit-inventory-hdmirx-3.md | 6 |
+| 2026-11-05-kunit-inventory-hdmirx-4.md | 2 |
+| 2026-11-05-kunit-inventory-jpeg-1.md | 2 |
+| 2026-11-05-kunit-inventory-wave5-1.md | 6 |
+| 2026-11-05-kunit-inventory-wave5-2.md | 6 |
+| 2026-11-05-kunit-inventory-wave5-3.md | 1 |
+| 2026-11-05-kunit-inventory-audio-1.md | 6 |
+| 2026-11-05-kunit-inventory-audio-2.md | 6 |
+| 2026-11-05-kunit-inventory-audio-3.md | 3 |
 
 顺序：Wave5 → HDMI RX → JPEG → Meson DRM → Meson ASoC → 其余。
 每批先确认原断言风险，再直接测试生产函数；不得重建媒体/DRM/ASoC 框架。

@@ -25,7 +25,7 @@ GPU收尾记录确认已结束；现场默认5.15、四服务active、UDC config
 
 新现场证明生成bundle并stage，仅U-Boot RAM sysboot选择，不改默认、不刷U-Boot。
 ADLA probe成功，KMD1.4.0.3，CmaTotal=524288KiB，四服务active。
-SDK1.4.0.2与固定Khadas提交模型/输入、probe均沿用[5.15基线](2026-10-30-npu-adla-acceptance.md)，
+SDK1.4.0.2与固定Khadas提交模型/输入、probe均沿用5.15基线，
 未重跑5.15推理，也不声称本窗口两内核实时交替配对。
 probe SHA为509eee645a022f923c58aa614b14b98009a714edd85df55ca89dd1b08a839aed；
 libadla/libnnsdk SHA分别为cd5fc35e273939a50cfe14585d1fb15b60939037a670f679b209c85cdc50a5f8、
@@ -44,7 +44,7 @@ libadla/libnnsdk SHA分别为cd5fc35e273939a50cfe14585d1fb15b60939037a670f679b20
 
 主测及最终完整dmesg的task create fail均为0，没有fixup拒绝坐标/errno日志。
 YOLO第三输出的56664值差异已消除；符合有效缓存长度检查的预期，见内核
-`drivers/misc/adla/drv/common/adlak_submit.c:994–1017`及[npu4设计](../archive/npu-adla-npu4.md)。
+`drivers/misc/adla/drv/common/adlak_submit.c:994–1017`及npu4设计。
 VGG已接近5%上限，当前结果不应推广为所有环境均无退化。
 
 ## 取消、各故障前后与PM

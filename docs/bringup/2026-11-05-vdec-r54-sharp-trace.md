@@ -8,7 +8,7 @@
 ## Sharp：缺少提交发生在用户态
 
 两条输出均 7,257,600 字节，即 14 个 720×480 I420 帧；预期 15 帧应为
-7,776,000 字节。与 r50 导出逐字节相等，因此继续适用[既有参考比较](2026-11-05-vdec-sharp-tail.md)：
+7,776,000 字节。与 r50 导出逐字节相等，因此继续适用既有参考比较：
 Field 已输出 0–13 全部正确，缺显示帧 14；PAFF 已输出 0–12 和 14 全部正确，缺最后解码的 B 帧（显示帧 13）。
 本次原始输出 MD5：Field `bdbd94b5629b7d79da5155dbea8677f5`；
 PAFF `3861dfb8bde8d9be0c53ac21694f2a34`。
@@ -40,7 +40,7 @@ STREAMOFF 路径释放；本次“已接收请求未见像素错误”不证明 
 
 ## 身份、证据、恢复
 
-源码、配置、RAM 包同 [r52](2026-11-05-vdec-r52-baseline-guard.md)，没有 HEVC 草稿。
+源码、配置、RAM 包同 r52，没有 HEVC 草稿。
 完整原始数据位于 `logs/hwdecode-parity-r54/validation-fluster-1793910163620005000/`：
 `results/compliance/results.json`、三份 `results.json`、逐码流 JSON/日志、
 `vector-0120-v4l2.trace` 和 followup-0 下的 `vector-0123-v4l2.trace`，以及各自 trace-stats。

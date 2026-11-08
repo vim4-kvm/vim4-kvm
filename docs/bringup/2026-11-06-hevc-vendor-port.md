@@ -2,7 +2,7 @@
 
 交付七个内核提交及[寄存器目录](2026-11-06-hevc-vendor-registers.csv)。未上板，未出帧；
 尖端f21dfc47由协调者经heavy代跑：W=1、KUnit 25/25通过，模块`58bf25309444`。
-接续[启动证据](2026-11-05-hevc-start.md)与[r70 结果](2026-11-06-vdec-r70-integration32.md)。
+接续启动证据与[r70 结果](2026-11-06-vdec-r70-integration32.md)。
 
 **路由更正**：amvdec_ports实际选decoder_v4l/h265；本文及CSV的decoder/h265是对照源，
 并非V4L实际入口。parser自检差异及r71排序见[08前定位](2026-11-06-hevc-pre08-analysis.md)。

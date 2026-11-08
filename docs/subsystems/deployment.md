@@ -55,7 +55,7 @@ PD策略的前后hash及持续观察边界见[切换记录](../bringup/2026-11-0
 
 候选锁、整包暂存及原子切换按[升级合同](../kernel-mainline.md#正式构建与整包升级)。
 危险候选留默认基线，先确认看门狗能复位本板；[运行证据](../kernel-mainline.md#相关记录)不证明电源、总线或secure firmware故障时仍会计数，也不证明睡眠硬锁可恢复。
-suspend回调停止计数；s2idle/deep须独立复位或已验睡眠watchdog契约，见[PM缺口](../archive/platform-pm-offline.md#系统挂起与唤醒缺口)。
+suspend回调停止计数；s2idle/deep须独立复位或已验睡眠watchdog契约，见[P08](../parity/platform.md#能力与边界)。
 
 [watchdog配置](../../board/60-vim4-watchdog.conf)由板安装/Ubuntu board包共同安装，PID1共用；下次启动生效，受控窗口可daemon-reexec。
 检查systemctl实际属性、journal启用记录、设备持有者PID1，不只看文件；管理员可用/etc/systemd/system.conf.d/覆盖，禁用后reexec/重启。

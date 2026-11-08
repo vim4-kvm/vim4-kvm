@@ -7,7 +7,7 @@ HEVC 启动握手修正仍未提交、未实板验证，不能把这次失败归
 
 ## 身份与原始证据
 
-候选来源、配置及归档见[离线准备](2026-11-05-vdec-standard-preparation.md)。
+候选来源、配置及归档见离线准备。
 本次使用候选 `7.3.1-vim4-20261105.22`，Image build ID
 `9244e6c734b7cac00d9b38c7d09bb494295d055b`；窗口 `hwdecode-parity-r31`。
 动作入口为主仓库 `1aa279b` 的 vdec-window，编排脚本与输入计划保存在

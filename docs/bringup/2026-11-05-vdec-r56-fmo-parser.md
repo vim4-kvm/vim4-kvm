@@ -40,7 +40,7 @@ APT index 路径/源 URI、本地 md5 数据库及安装历史。采证只读；
 - dpkg 历史显示 2025-09-21 安装无 epoch Ubuntu 版本，2025-09-25 升级到
   Khadas 的 `2:` 版本。结合包校验，证据支持厂商包内构建差异，没有发现安装后覆盖。
 - 系统 parser SHA-256 仍为 `2da88e7aa1c9bd39a74f5cf6806d24f1c7cd80ec11aab712b25f0975e89bb017`；
-  与[官方包对照](2026-11-05-vdec-r55-parser-identity.md)不同。
+  与官方包对照不同。
 - 私有 `libgstv4l2codecs.so` SHA-256
   `ca9b5d41cd5cb4e1971778e3db99171c66bc78a24a6b9bcd906cfe7de2e8f601`，
   来源是 vdec-gstreamer.toml 的官方 bad recipe；不是系统 parser，也不是

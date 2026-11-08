@@ -22,7 +22,7 @@ Timeout，原始 JSON 没有改写。另一个 Error 是 `FM2_SVA_C`。MPEG-2 �
 为 `MEI`、`MEI.stream16`、`tcela-16`、`tcela-18`、`tcela-19`、`ccm1`。
 这些 Error 的管线未正常完成，不能归类为像素摘要不匹配或固件能力限制。
 
-窗口沿用[上一轮 `.25` 身份](2026-11-05-vdec-buffer-sequence.md#离线验证与候选)、
+窗口沿用上一轮 `.25` 身份、
 生产配置、同一私有模块和锁定输入。未重跑 compliance，引用 r37 同一产物的结果；
 本轮结果不能替代调试内核锁/DMA/内存验证。FR-EXT High、MPEG2 422、HEVC 全套与
 性能/共存测试仍未运行。

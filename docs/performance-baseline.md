@@ -42,7 +42,7 @@ plan 只输出模板，不执行或 SSH；逐项代入环境，不把整个计�
 发送、解码和呈现分别证明，无更新尾段、漏回调、停顿及源帧率一并报告。
 同 PTS 分段不能相加；相对基线通过仍须满足实际播放流畅性。
 每种保留编码另做同连接长期增长测试，处理帧号回绕；
-本轮稳定性窗口限制见[执行矩阵](overnight-performance-plan.md)，不能擅自扩成长测。
+窗口预算由 `python3 tools/perf-baseline.py matrix` 输出，不能擅自扩成长测。
 
 录像校验另轮解析实际 profile、SPS、码率、细线和颜色，不在性能计时轮写码流。
 光学端点需同时观察源与接收屏；量化误差大于容差则缺测，不能从软件分段推算。
@@ -80,7 +80,7 @@ GPU 每轮确认实际加载库、renderer、模块和输出像素，不能把 l
 功率确认驱动单位与测量域，缺传感器不记零。整板优先同一功率计、同一供电拓扑及时间轴；
 PD 合同、单轨读数、CPU 百分比和温度均不能代替整板瓦数。
 可扣仪器通道偏差，不能扣系统背景功耗。温升相对环境，风扇与噪声策略一并保存。
-启动准备和硬挂死边界见[一次性对照](vendor-boot-baseline.md)；预算唯一维护在[分窗矩阵](overnight-performance-plan.md)。
+启动准备和硬挂死边界见[一次性对照](vendor-boot-baseline.md)。
 
 ## NPU 与编码诊断
 
@@ -90,7 +90,7 @@ DDR 条件和扰动资格不闭合时仅定位，不把 SDK 外残差算作驱�
 输出、取消、保页和 profiling 细则见[NPU](npu-adla.md)。
 
 厂商编码延迟须区分插件、硬件等待和输出处理，单 bit 候选的收益与画质尚未证明，
-见[审计快照](archive/encoder-fast-packing-audit.md)；不能以源码开关存在宣称 fast packing 生效。
+不能以源码开关存在宣称 fast packing 生效。
 RTP 加密、interceptor 与 UDP 交付分别测，离线复现正式 features、架构和包形状；
 单 HMAC 或冷加密数字不能推断屏幕延迟。已采用后端与未改的批量发送、协商限制见
-[正式接入](bringup/2026-10-25-srtp-openssl-hmac.md)及[审计快照](archive/rtp-send-optimization-audit.md)。
+[正式接入](bringup/2026-10-25-srtp-openssl-hmac.md)。

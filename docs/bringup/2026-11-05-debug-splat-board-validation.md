@@ -20,7 +20,7 @@
 - `f911e1d8817fb`：MMC sync/unmap/完成恢复到 IRQ 线程，SDIO 短寄存器锁改 raw。
 
 前四项的根因、来源及静态验证见[原记录](2026-11-05-debug-splat-fixes.md)，
-MMC 的上游核对、真实 RT 根因和逐项离线检查见[后续记录](2026-11-05-mmc-irq-reset-analysis.md)。
+MMC 的上游核对、真实 RT 根因和逐项离线检查见后续记录。
 本轮未更改上述代码，没有合入解码分支或 HEVC 草稿。
 
 两个候选分别持 heavy 票全量构建 Image、DT、2338 树内和 3 外部模块，独立封包。

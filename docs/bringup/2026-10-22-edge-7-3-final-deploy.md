@@ -37,7 +37,7 @@ One-KVM 使用独立 `build/deploy-7.3-final/One-KVM`，容器 vim4-deploy-final
 release 构建成功，19 条既有 Rust 警告；DMA allocator 的实际 C 测试通过，产物与板上
 库同为 `7aaf2373e9d47b581181b3b019c7217c605b7aee52d009e39299a7ca6af3a82d`，无需替换。
 manager 使用上一轮已经核对的干净 release 产物，Go 内嵌 revision 匹配、vcs.modified=false；
-测试与构建范围见 [离线准备](2026-10-22-deploy-7-3-final-prep.md)。
+测试与构建范围见 离线准备。
 
 ## 构建、暂存与单次上板窗口
 

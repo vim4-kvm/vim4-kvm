@@ -2,26 +2,26 @@
 
 本页管对应能力差距与验证条件；当前身份见[主线入口](../kernel-mainline.md)。
 性能与功耗配对尚未闭合；[PM 窗口](platform-pm-board-checklist.md)只完成基线 idle，其余仍未验。
-导航：[能力与边界](#能力与边界)；[范围和依赖](README.md)；[固定来源](../archive/parity-sources.md)。
+导航：[能力与边界](#能力与边界)；[范围和依赖](README.md)。
 
 ## 能力与边界
 
 | ID / 厂商能力及来源 | 7.3 状态 | 差异与证据 | 路线、依赖与验证条件 |
 |---|---|---|---|
 | P01 八核SMP、内存、GIC/定时器/基础启动 | 完全对齐 | 限本行基础启动功能，E0/E1八核与约7.69GiB可用，双内核重启回归。[首次启动](../bringup/2026-10-19-edge-firstboot.md)、[M0](../bringup/2026-10-23-display-m0-r4.md)；不包含idle/低功耗 | 保持主线架构；后续版本升级做启动/内存压力回归，两板型、串口；非新增缺口 |
-| P02 CPU DVFS/调压/芯片分档 | 部分对齐 | 两簇四bin、T7/T7C共184个频压条目与7.3逐项一致；标准OPP/PWM和按簇secure bin已接。编译默认 governor 有差异；5.15 上次两簇实录 performance，主组按启动块核对实际策略。两侧温控阈值有差异，全部批次稳定性未验。[对照](../archive/platform-pm-offline.md#cputhermal-与风扇对照) | 保持主线cpufreq/OPP/regulator；验证升压先于升频和各bin/温区，两芯片批次、可测电压与负载/散热；不试表外电压 |
+| P02 CPU DVFS/调压/芯片分档 | 部分对齐 | 两簇四bin、T7/T7C共184个频压条目与7.3逐项一致；标准OPP/PWM和按簇secure bin已接。编译默认 governor 有差异；5.15 上次两簇实录 performance，主组按启动块核对实际策略。两侧温控阈值有差异，全部批次稳定性未验 | 保持主线cpufreq/OPP/regulator；验证升压先于升频和各bin/温区，两芯片批次、可测电压与负载/散热；不试表外电压 |
 | P03 GPU OpenGL/渲染、devfreq | 部分对齐 | 默认 kbase + governor_vim4，Panfrost 为可选 DT；Panfrost与250/400/500/666/800MHz纯调频通过，但旧Mali专有用户态功能/全部API未齐。[GPU](../bringup/2026-10-21-edge-gpu-devfreq.md)，E0:109 | 主线DRM/Panfrost＋Mesa，配D01/D02作GBM/compositor/压力及API覆盖；HDMI sink、渲染测试、GPU压力 |
-| P04 GPU逐频调压 | 部分对齐 | **保持启动PWM电压**；追查厂商Linux、U-Boot PWM编码、GPU leakage/corner及签名BL31后仍无可信逐频电压表；已检查的厂商Linux路径只切频，未添加opp-microvolt。[本轮结论](../archive/platform-pm-offline.md#gpu-电压结论) | 保留主线OPP/devfreq/regulator；先取得T7板型/分档电压表和PWM实测标定，万用表/示波器、GPU负载、温控；禁止表外电压，不据闭源固件缺源码断言其绝不调压 |
+| P04 GPU逐频调压 | 部分对齐 | **保持启动PWM电压**；追查厂商Linux、U-Boot PWM编码、GPU leakage/corner及签名BL31后仍无可信逐频电压表；已检查的厂商Linux路径只切频，未添加opp-microvolt | 保留主线OPP/devfreq/regulator；先取得T7板型/分档电压表和PWM实测标定，万用表/示波器、GPU负载、温控；禁止表外电压，不据闭源固件缺源码断言其绝不调压 |
 | P05 NPU推理与驱动 | 部分对齐 | kvim4n实际加载adla_core，不能把Vivante AMLOGIC_NPU/Galcore当其驱动。正式 `4111568841bd` 已含 ADLA 六段实现；[uhd3窗口](../bringup/2026-10-30-uhd3-formal-regression.md)三模型6909个输出与5.15逐字节一致。真实复位失败注入仍未验 | 外围先厂商移植后整理；分清T7/T7C IP，已有推理链上补真实复位失败、DMA/PM边界，再评估accel/DRM通用接口；对应板型、可合法使用的SDK和模型、参考CPU结果；Q07依赖 |
-| P06 genpd/runtime PM、时钟/复位、低功耗 | 部分对齐 | VPU/VI、USB/SDIO/eMMC临时常开保留，SRAM/DDR/NOC等固件必需常开另列；Wave runtime恢复不等于live instance系统恢复。[逐消费者审查](../archive/platform-pm-offline.md#系统挂起与唤醒缺口) | 主线genpd/CCF/reset生命周期，逐消费者证明保存/重建再解除临时常开；D01/R02/E03/U04先就绪；功率计、串口、独立复位、同板厂商基准 |
+| P06 genpd/runtime PM、时钟/复位、低功耗 | 部分对齐 | VPU/VI、USB/SDIO/eMMC临时常开保留，SRAM/DDR/NOC等固件必需常开另列；Wave runtime恢复不等于live instance系统恢复 | 主线genpd/CCF/reset生命周期，逐消费者证明保存/重建再解除临时常开；D01/R02/E03/U04先就绪；功率计、串口、独立复位、同板厂商基准 |
 | P07 六温区/安静自动风扇 | 完全对齐 | 限已实现风扇调速、最高有效温度策略、故障保底；7.x标准thermal cooling已验，主动安静曲线替代旧策略，不减调速能力。[风扇](../bringup/2026-10-20-edge-quiet-fan.md)，M0回归 | 保持thermal/hwmon实现，其他温区/芯片批次回归原装风扇、温度与转速外测；系统恢复另见P08 |
-| P08 整机挂起/恢复、cpuidle | 部分对齐 | 正式 DT 禁用 PSCI 深 idle，源码已合入 idle 描述、风扇回滚/恢复和Panfrost OPP错误传播，RX/VDIN/T7 Wave在prepare显式拒绝；CRG/handoff仍拒绝。Meson watchdog在suspend停计数，30s运行时保护不能保证deep复位。[离线证据](../archive/platform-pm-offline.md) | 常开 KVM 不排整机 sleep；CPU idle 单变量候选另验。[窗口](platform-pm-board-checklist.md) |
-| P09 唤醒源：IR/Power/RTC/WoL/USB | 缺失 | HYM8563无DT IRQ；meson-vrtc有AO超时写入契约、未证BL31唤醒；Power轮询、IR关解码器且无IRQ wake；Ethernet/USB路由未验。[唤醒矩阵](../archive/platform-pm-offline.md#系统挂起与唤醒缺口) | 无常开产品用途，不排唤醒验证 |
-| P10 CPU/GPU/DDR thermal降频与整机散热 | 部分对齐 | 正式 kbase DT 启用 GPU 95°C passive→devfreq cooling；CPU 85/95/110°C比厂商95/105/115°C保守，保留保护；风扇曲线不改。私有hotplug/core/DDR cooling与功耗性能仍欠验。[对照](../archive/platform-pm-offline.md#cputhermal-与风扇对照) | 主线thermal/OPP/devfreq/cooling，按实际功率/温升/吞吐验收；P02/P04/P06，可控热负载、热电偶、原装散热器/风扇 |
+| P08 整机挂起/恢复、cpuidle | 部分对齐 | 正式 DT 禁用 PSCI 深 idle，源码已合入 idle 描述、风扇回滚/恢复和Panfrost OPP错误传播，RX/VDIN/T7 Wave在prepare显式拒绝；CRG/handoff仍拒绝。Meson watchdog在suspend停计数，30s运行时保护不能保证deep复位 | 常开 KVM 不排整机 sleep；CPU idle 单变量候选另验。[窗口](platform-pm-board-checklist.md) |
+| P09 唤醒源：IR/Power/RTC/WoL/USB | 缺失 | HYM8563无DT IRQ；meson-vrtc有AO超时写入契约、未证BL31唤醒；Power轮询、IR关解码器且无IRQ wake；Ethernet/USB路由未验 | 无常开产品用途，不排唤醒验证 |
+| P10 CPU/GPU/DDR thermal降频与整机散热 | 部分对齐 | 正式 kbase DT 启用 GPU 95°C passive→devfreq cooling；CPU 85/95/110°C比厂商95/105/115°C保守，保留保护；风扇曲线不改。私有hotplug/core/DDR cooling与功耗性能仍欠验 | 主线thermal/OPP/devfreq/cooling，按实际功率/温升/吞吐验收；P02/P04/P06，可控热负载、热电偶、原装散热器/风扇 |
 | U01 USB host2/3、PHY/hub | 部分对齐 | E1 xHCI/PHY、保留另一host；未完成所有端口速率、热插拔/错误与resume矩阵。[首次启动](../bringup/2026-10-19-edge-firstboot.md)，E6临时常开 | 外围可厂商PHY序列移植后整理，保持USB HCD/PHY/reset/PM框架；P06/U04；USB2/3盘、hub、键鼠、带宽测试主机 |
 | U02 gadget HID/虚拟介质、配置生命周期 | 完全对齐 | 限已验三HID/消费者键与只读/可写虚拟盘、host eject、fd/重绑边界；E6标准UDC/configfs。[USB](../bringup/2026-10-21-edge-usb-functions.md)、[后续盘回归](../bringup/2026-10-22-p2-usb-audio.md)。UAC/网卡/睡眠另列 | 保持标准gadget/function；新增主机矩阵Mac/Windows/Linux USB主机；非全部组合无限兼容的承诺 |
 | U03 UAC2、NCM/ECM/RNDIS/ACM组合；同U02，通用gadget框架 | 部分对齐 | NCM/ECM双向已过；UAC2仅枚举，真实录音受权限阻断；Windows RNDIS缺MS OS描述符/真实传输；ACM未启用。[USB复核](../bringup/2026-10-22-p2-usb-audio.md)。5 IN端点是硬件预算不是软件bug | 标准gadget函数/描述符/应用预算；已授权录音Mac、Windows、Linux；不能靠隐藏HID冒充所有功能共存，ACM先确认真实消费者 |
-| U04 gadget/host运行中角色、系统PM与remote wake | 部分对齐 | E专用DT固定peripheral，运行角色切换未接；CRG suspend拒绝，不能移除保护冒充恢复。[适配](../archive/kernel-edge-porting.md)，E6 | 外围CRG厂商序列先移植后收敛USB role-switch、PHY/runtime/system PM；U05/P06、端点DMA停止证明；DRP主机、可测VBUS、串口、现场RESET |
+| U04 gadget/host运行中角色、系统PM与remote wake | 部分对齐 | E专用DT固定peripheral，运行角色切换未接；CRG suspend拒绝，不能移除保护冒充恢复，E6 | 外围CRG厂商序列先移植后收敛USB role-switch、PHY/runtime/system PM；U05/P06、端点DMA停止证明；DRP主机、可测VBUS、串口、现场RESET |
 | U05 PD/Type-C协商与交接；板上FUSB302，V1 I²C/CRG，B | 部分对齐 | 用户态有限协商＋U-Boot合同交接；不是完整TCPM，热重启可能保留历史合同，固定Request/KASLR候选曾早期失败。[PD](../usb-pd.md)、[SD恢复](../bringup/2026-10-22-uboot-sd-recovery.md) | 外围先保留可验证厂商/现有协议，正式USB Type-C/TCPM/role-switch明确一个协议所有者及boot handoff；U04/P06，PD分析仪、双电源/DRP、microSD回退和人在场；当前禁刷U-Boot |
 | N01 PCIe/NVMe、DMA保护窗口 | 部分对齐 | E0:704/E1:493有DWC PCIe+restricted pool/SMC；厂商旧启动无NVMe时也有-110。无本轮实际端点吞吐/错误/PM验收。[首次Ubuntu](../bringup/2026-10-12-initial-serial-oowow-ubuntu.md) | 外围厂商PHY/SMC移植后整理PCI host/DMA API；P06/Q01、保护窗口固件；M.2 NVMe/适配板、PCIe端点、串口 |
 | N02 有线Ethernet/PHY/MDIO | 部分对齐 | E0网口已用于SSH/传输；TSO/校验和/PTP/WoL、断线与系统PM未全覆盖，不能以SSH可达判全功能 | 标准stmmac/phylib/ethtool；P06/P09，千兆交换机、另一主机、时间戳/PTP设备（如需） |

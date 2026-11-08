@@ -39,7 +39,7 @@ REED_SOLOMON 依赖项。主仓 `uhd1.config` 更新为候选 `.config`，逐字
 | manager | `4ea748426935f782cb2bc0a6e724a1e8075c741f` / `3fc215e3de431d1c65e08e62b3179b6329e190d803ab77e89dae3c3d90728eb1` |
 
 保留区沿用厂商地址 `0x07400000–0x074fffff`，与安全固件、CMA、加载区的核对见
-[候选记录](2026-10-22-p2-pstore.md)。本轮没有改变其内存布局。
+候选记录。本轮没有改变其内存布局。
 Mac 产物 `build/pstore-deploy/kernel/`；正式部署 bundle `build/pstore-deploy/bundle/`。
 仅给原 manifest 补齐源码 tree、11 个模块 build ID，Image/DTB/模块归档未变。
 

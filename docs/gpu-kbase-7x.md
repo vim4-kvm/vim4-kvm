@@ -31,7 +31,7 @@ dma-fence 适配保留锁和重复 signal 错误。OPP 遍历全部出口归还�
 平台通过标准电源域供电，不直接发私有 SMC；先持域、开 bus、释放 reset，再由 DDK 管 core，
 终止逆序回收。持域避免厂商已知的空闲 reset 问题；内部 shader gating 不等于外部域节能或系统睡眠。
 保持启动 PWM 电压，不推断闭源固件绝不调压；无可信板型分档表不试电压。
-平台 DT 与 MMU/heap 边界见[heap 合同](gpu-kbase-mmu-heaps.md)，不能把同一轮联合修改都归因于单项。
+r5 同时修正 PWR_OVERRIDE1 初始化与 DMA coherent 路径，[r6](bringup/2026-10-31-kbase-r6-window.md)才单独证明 override 必要；不能把同一轮联合修改都归因于单项。
 
 默认 governor 必须复现已验厂商策略，不用 performance 成绩冒充默认能效。
 softdep 须先加载 governor，避免异步 probe 与模块请求互等，见[策略补丁](../packaging/kbase/0008-t7-devfreq-policy.patch)。
@@ -51,14 +51,14 @@ Panfrost 和 kbase 由 DT 互斥，通过重启切换，不能热解绑；黑名
 共用[启动器](../packaging/kbase/run.py)验证 UK 与 blob，Panfrost 清理继承环境。
 已知内核路线检查不证明 build ID、完整模块或服务可用，须核对运行助手与收据逐文件哈希，
 不能只更新源码或修改收据。
-集成证据见[正式集成](bringup/2026-10-31-uhd5-main-integration.md)，历史分轮清单见[归档](archive/gpu-kbase-uhd5-integration.md)。
+集成证据见[正式集成](bringup/2026-10-31-uhd5-main-integration.md)。
 
 ## 用户态与许可证
 
 不覆盖系统 Mesa、EGL、GLES 或 GBM；逐进程选择 ICD 和私有图形前缀。
 现有 blob 缺少 GLVND EGL vendor 入口，不能用 JSON 假装支持；未实现桥接层。
 GBM 须选实际显示节点，kbase 不产生 Panfrost render node；库导出 GBM 也不证明 X11 支持。
-选择、ABI 与电源范围的补充见[集成合同](gpu-kbase-integration.md)。
+产品推荐用 Vulkan/OpenCL ICD；需要 GLES 的独立进程用私有 EGL/GLES/GBM 前缀，不选 GLVND shim。
 
 保留源码作者、版权和许可证；分发修改模块须提供相应源码、补丁与构建材料。
 blob 为专有组件，公开可下载不等于获准再分发，通用 Arm EULA 也不自动授权第三方构建。

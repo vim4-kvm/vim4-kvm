@@ -58,7 +58,7 @@ M6 回读原生 1080p/1440p 的 120 Hz 模式 ID 86/119；未单独验到 1080p1
 高刷源 `latency-source --display-link` 在三份码流覆盖的帧号区间内，逐次 vsync 回调未见重复或缺失 target。
 1080p 启动时 ID 6→7 的 target 间隔为 16.667 ms，在 bench 取样之前。帧号记在 AppKit NSView.draw。
 若绘制错过合成器锁存，屏幕会多显示一遍上一帧，随后跳到新帧号。444 的 capture-pattern 用 1/60 秒 NSTimer，
-也未与 vsync 同步。5.15 同一图样曾出现过一次重复、一次跳号。[5.15 全帧记录](2026-10-16-yuv444-full-frame-4k60.md)
+也未与 vsync 同步。5.15 同一图样曾出现过一次重复、一次跳号。5.15 全帧记录
 
 **登记 issue：测试源呈现回执。** 测试源需使用 CAMetalLayer 并在 presentedHandler 中逐帧记录 presentedTime，
 与实际采集的图样帧号对照后，才能把严格连续性作为采集/编码门禁。本轮保留原测试源。

@@ -16,7 +16,7 @@
 | 非swap条目 | 包目录名`t7_hevc_mmu.bin`，声明data_size=36864字节（9000），对应format `hevc_mmu`、请求别名`h265_mmu`、VIDEO_DEC_HEVC_MMU=17 |
 | swap条目 | 包目录名`t7_hevc_mmu_swap.bin`，声明data_size=40960字节（a000），对应format/request名`hevc_mmu_swap`、VIDEO_DEC_HEVC_MMU_SWAP=TAG('2','6','5','S')=32363553 |
 | f21实际请求 | `aml_vdec_hw.c:1354`在核心reset后发`SMC 0xb200000f(index=17, core=0, swap=0)`，r71日志a0=0。这明确是非swap请求，并没有请求hevc_mmu_swap。DMC配置为另一个调用`0xb200000e(4,0,0)`，不要与固件core选择混淆 |
-| 实际执行blob | 主线驱动未request_firmware该文件，而是复用已预装的TEE固件。历史预装服务/TA证据见[安全微码审计](2026-10-23-vdec-timeout-audit.md)。SMC只返回a0，不返回版本、字节数、装载地址或哈希；本轮无法证明驻留代码逐字节等于哪个CODE条目，也无法给出可验证的单blob SHA |
+| 实际执行blob | 主线驱动未request_firmware该文件，而是复用已预装的TEE固件。历史预装服务/TA证据见安全微码审计。SMC只返回a0，不返回版本、字节数、装载地址或哈希；本轮无法证明驻留代码逐字节等于哪个CODE条目，也无法给出可验证的单blob SHA |
 
 15个包目录项的length均512，仅有CODE元数据；后部是尚未在本任务解析的377920字节。
 目录声明data_size不是可直接切片的明文长度。不能对512字节头取哈希后冒称blob哈希，

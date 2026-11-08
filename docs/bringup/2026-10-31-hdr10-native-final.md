@@ -12,7 +12,7 @@ r13 使用最新 main 工具，只 RAM 启动，sampling on 后采样约 30 秒�
 
 | 门禁 | 结果与证据 |
 |---|---|
-| 真实十位 DMA | 复用 [r6](2026-10-31-hdr10-remote-r6.md) 的 AMLY / GPU P010 高精度数据证明，未重复读帧 |
+| 真实十位 DMA | 复用 r6 的 AMLY / GPU P010 高精度数据证明，未重复读帧 |
 | 实际接收与 SDP | 3840×2160、1798 新解码帧 / 30.002 秒 = 59.929 fps；profile-id=2，零丢帧、零冻结 |
 | SPS / VUI | 独立 FFmpeg trace_headers：profile_idc=2、Y/UV bit_depth_minus8=2、9/16/9、limited |
 | prefix SEI | IRAP 前 type 137 / 144，各 24 / 4 字节；与本次 V4L2 HDMI metadata 逐字节一致，源全零即保留零 |
@@ -35,7 +35,7 @@ r13 使用最新 main 工具，只 RAM 启动，sampling on 后采样约 30 秒�
 约 59.98 fps。已取 8192 字节随机访问前缀未见 HDR SEI，只能说明该前缀；
 不能宣称整个 5.15 产品流没有 SEI，也不能声称两者静态元数据相同。
 
-[失败记录](2026-10-31-hdr10-remote-r7.md)保留 r7b–r11 的真实失败，不覆盖为通过。
+失败记录保留 r7b–r11 的真实失败，不覆盖为通过。
 最终必要修复包括 P010 裸 caps、完整 PQ TRY_FMT、Wave5 CAPTURE 颜色约束延后，
 以及以运行库 ISO transfer API 解决厂商 libgstvideo 枚举 ABI 差异。
 后者已分别链接标准库和板上同哈希厂商库执行实际 C 函数回归。

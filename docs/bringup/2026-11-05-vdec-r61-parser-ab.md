@@ -12,14 +12,14 @@ Sharp_MP_Field_1_B、Sharp_MP_PAFF_1r2预计同类，**本轮未运行、官方p
 
 ## 窗口、恢复与身份
 
-协调者批准[计划](2026-11-05-vdec-parser-ab-plan.md)，额外要求入场连续运行至少5分钟。
+协调者批准计划，额外要求入场连续运行至少5分钟。
 FIFO 1346，sampling，全窗约19分钟；只启动一次`.28`，没有候选重试。
 入场连续UART观察300秒，uptime2725.97→3026.43秒，boot ID相同、未观察到新启动。
 正式proof和4K视频通过后才上传。两组YUV保守上界452666880字节，入场要求4GB可用空间。
 
 候选源码`960132382e00864f4944aee077cd621927a97bb0`，build ID
 `81bb2f999ffffb38d549afbf8b15fb3048184c0f`，既有`.28`包未重建。
-parser与私有插件身份沿用[visl记录](2026-11-05-vdec-visl-controls.md)，每组实际
+parser与私有插件身份沿用visl记录，每组实际
 gst-inspect Filename/SHA对应私有官方或系统Khadas库，依赖路径与哈希一并归档。
 正式默认仍是`7.3.1-vim4-20261105`，build ID `bdbfa439f298e92b5bad092528d11119a974f262`。
 

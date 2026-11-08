@@ -60,7 +60,7 @@ thermal和HDMI/Wave5并行均未运行。编译无法消除旧DDK内存生命周
 
 ## r2复核（独立主仓worktree）
 
-详细选择与证据见[r2集成](../gpu-kbase-integration.md)。主仓独立worktree为
+详细选择与证据见r2集成。主仓独立worktree为
 `vim4-kvm-kbase-r2`，原主仓始终留在main；不操作HDR工作树，不访问板子。
 私有blob仍只读本地缓存，不进入提交。
 

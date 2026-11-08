@@ -35,4 +35,4 @@ sysfs/debugfs 的 read 回调也可能直接访问 MMIO；未上电或受时钟�
 后续音频实验持有 `/tmp/vim4-board.lock` 和 `/tmp/vim4-heavy.lock`；不再改 One-KVM，
 也不通过绕过 macOS 辅助功能权限来重连 UU 客户端。
 
-音频实现及后续验证见 [HDMI 音频桥](2026-10-25-vendor-passthrough-audio.md)。
+音频实现及后续验证见 HDMI 音频桥。

@@ -14,7 +14,7 @@
 |---|---|
 | 正在运行 | SSH 实读 `5.15.137-vim4kvm-hdrdual6`，`one-kvm.service` active |
 | 5.15 源码 | Linux `80a07ad5406d`，common_drivers `6558c1eee6d5` |
-| 7.3 保留运行时锁 | 10月30日已更新为 `213f271505411`＋ACM，M0 DTB，build ID `7a473adf9353013fd1ab01908d20bbf503a063fb`；[更新证据](2026-10-30-kernel73-retained-pin.md)。下文其他功能判断保留10月28日口径 |
+| 7.3 保留运行时锁 | 10月30日已更新为 `213f271505411`＋ACM，M0 DTB，build ID `7a473adf9353013fd1ab01908d20bbf503a063fb`；更新证据。下文其他功能判断保留10月28日口径 |
 | 7.3 正式源码 | `vim4-kvm-7.3@213f271505411845eecb3c6ef10df7565b895ebc`，工作树干净 |
 | 共享应用 | One-KVM `c1200faa0898`；其他应用与插件沿用当前工作区源码 |
 
@@ -48,33 +48,33 @@ Linux行号固定上述213f2715：`t7-vdin-test.c:1578`、
 `wave5-vpu-enc.c:56`、`t7-hdmirx.c:839,1161`，均相对各驱动目录。
 
 5.15对照证据：[远程HDR](2026-10-26-remote-hdr-modes.md)、
-[四应用HDR缩放](2026-10-27-all-kvm-hdr-scale.md)、
+四应用HDR缩放、
 [本地双路径](2026-10-25-native-hdr-dual-path.md)、
 [HEVC画质](2026-10-27-hevc-quality.md)、[高刷](2026-10-26-1080p120.md)、
-[真实VRR](2026-10-26-vrr-live.md)、[NPU](2026-10-27-npu-inference.md)、
-[GPU趋势](2026-10-27-manager-gpu-trends.md)。各条只沿用其明确验收范围，
+[真实VRR](2026-10-26-vrr-live.md)、NPU、
+GPU趋势。各条只沿用其明确验收范围，
 不将5.15未验的Safari HDR、HDR120或任意12bit也列成7.3已知退步。
 
 ## 已可用但仍欠匹配部署或完整验收
 
 - **SDR四应用和基础USB不是缺失项**：10月25日同一7.3运行时上四应用两轮共8次切换均解码4K约60fps；
   HID/只读可写虚拟介质、NCM/ECM已有实测。不能把它写成“只有One-KVM能用”。
-  [同板记录](2026-10-25-kernel-video-latency.md)、[USB](2026-10-22-p2-usb-audio.md)。
+  同板记录、[USB](2026-10-22-p2-usb-audio.md)。
 - **采集测量误拒绝的修复已合入，保留运行时尚未包含后续版本**：213f2715包含FDET与TOP四窗口修复，
   旧b1300eb在后续采集中仍观察过ERROR；四档各约610秒、0 ERROR属于候选证据。
   不能据浏览器解码60fps推断所有原始帧有效，也不能把旧误拒绝继续列为正式源码完全未修。
-  lowclock分支仍未合入，38场景矩阵不是全过。[合入](2026-10-24-hdmi-integration.md)。
+  lowclock分支仍未合入，38场景矩阵不是全过。合入。
 - **输入恢复、音频与故障恢复需扩大验证**：7.3已有source-change、PCM XRUN/重开、Wave5受控复位与失败隔离，
   并非没有恢复实现；真实固件硬锁、长期多源、全采样率、并行读写仍欠验。
   5.15最近48次四应用尺寸/PQ往返不自动覆盖7.3；近期UU官方客户端、SRT/RTMP并发和音频低频诊断也没有7.3专项硬件复测。
-  [恢复记录](2026-10-27-signal-recovery.md)、[共享输出](2026-10-27-shared-broadcast.md)。
+  恢复记录、共享输出。
 - **USB扩展功能**：One-KVM USB ACM虚拟串口在Wave5后端被应用拒绝（`src/platform/vim4.rs:228`），匹配`uhd1.config`未启用`CONFIG_USB_CONFIGFS_ACM`，5.15有实现；UAC2有枚举、缺主机实际录音；Windows RNDIS描述符/传输、运行中host/device角色切换、
   remote wake、完整TCPM仍未对齐。现有5个IN端点预算同样限制5.15，不是升级额外引入的缺陷。
 - **性能没有整体优势结论**：10月25日同SDR软件端到端约68ms，两个内核接近；没有同画质、三组A/B/A和长期数据，
   不能承诺换7.3更快。该历史表与当前5.15后续优化也不是同一源码基线。
 - **发布锁与正式源码同步已更新（10月30日）**：sources.toml已固定213f2715、已验证ACM构建和配套应用/插件；
   完整Image/DTB/modules及运行时已登记，5.15仍默认。严格版本检查保留并实际执行通过。
-  [字段来源与上板记录](2026-10-30-kernel73-retained-pin.md)列出分项验收边界；未重新跑九类全量，也未发布Release产物。
+  字段来源与上板记录列出分项验收边界；未重新跑九类全量，也未发布Release产物。
 
 ## 更广的厂商能力仍有欠账
 

@@ -35,5 +35,5 @@ tmpfs fresh、rewrite、resident pread 与 fwrite 含 close 分开；pread 还�
 memcpy/pread 未全面追平；[两对窗口](bringup/2026-10-30-nodebug-paired-gate.md)
 未复现大核 memcpy 退化，但联合区间与 DDR 条件缺口仍令门禁不确定。
 [正式回归](bringup/2026-10-30-uhd3-formal-regression.md)是所列功能范围的证明，
-不能替代性能配对；历史候选和统计分析见[nodebug 快照](archive/nodebug-performance-gate.md)。
+不能替代性能配对。
 后续新窗口遵守[性能协议](performance-baseline.md)，不照抄旧候选 release、恢复目标或文件哈希。

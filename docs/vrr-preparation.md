@@ -42,4 +42,3 @@ FVA、自定义非 CTA 时序不在已验范围；没有改变完整帧、RDMA �
 只覆盖厂商 One-KVM 指定 SDR 输入与网页编码短测，不能外推全部应用、UU、HDR 或长期稳定。
 后续仍须核对真实 VTEM/SPD、锁定、Vtotal、完整帧及时间戳，
 各应用不反复重建并持续更新；本地还需同时确认 KVM 完整帧和音画关系。
-原始源码调查、缓冲及 EMP 限制见[审查快照](archive/vrr-passthrough-audit.md)。

@@ -88,5 +88,5 @@ header kernel-doc 和 format-patch strict checkpatch 0/0/0；仍未覆盖真实 
 trace零丢失，全部控制内容与之前官方 Ubuntu 组相同。插件哈希已保存；visl 镜像没有
 重建，也不执行 Amlogic 硬件路径，此项只复核输入序列，不证明修复正确。
 
-协调者已批准 [实板计划](2026-11-05-vdec-gap-validation-plan.md)，按新 SHA 构建 `.29`；
+协调者已批准 实板计划，按新 SHA 构建 `.29`；
 结果另记，批准和封包不等于实板通过，不部署。

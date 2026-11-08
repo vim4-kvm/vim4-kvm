@@ -8,8 +8,8 @@
 混合了集成、PD补丁与无线环境变量，不能据此归因MMC修复。此次只比较正式`.3`与不含
 PD补丁的集成生产`.90`。结果和恢复证明见下；没有重编、改驱动、push或合并。
 
-前序：[PD A/B](2026-11-05-pd-fifo-validation.md)、
-[MMC修复](2026-11-05-mmc-irq-reset-analysis.md)、
+前序：PD A/B、
+MMC修复、
 [集成边界](2026-11-05-debug-splat-integration.md)。
 
 ## 范围、身份与执行方法

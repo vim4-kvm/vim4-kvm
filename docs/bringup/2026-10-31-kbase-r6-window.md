@@ -4,7 +4,7 @@
 新增T7专用performance governor默认值与95°C GPU cooling map，64位heap实测通过。
 override遗漏被独立复现为首个原生compute的MMU fault；dma-coherent恢复的最小对照通过。
 实际scanout、GBM NV12→Wave5仍缺可靠布局元数据，**不提交可批准的产品路径方案**。
-维护入口见[候选状态](../gpu-kbase-7x.md)，前次见[r5](2026-10-30-kbase-r5-window.md)。
+维护入口见[候选状态](../gpu-kbase-7x.md)，前次见r5。
 
 ## 资源、封存与恢复
 

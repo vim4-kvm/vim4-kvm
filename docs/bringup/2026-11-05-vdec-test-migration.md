@@ -101,8 +101,8 @@ strict checkpatch 和改动头文件 kernel-doc 检查后提交。变更 binding
 内核实板证据；标准故障注入只在调试配置启用。
 
 原有上板记录见
-[H.264](2026-11-04-h264-boundaries.md)、[MPEG-2](2026-11-04-mpeg2-request.md)、
-[MJPEG](2026-11-04-mjpeg-decoder.md)、[HEVC](2026-11-05-hevc-stateful.md)；
+H.264、MPEG-2、
+MJPEG、HEVC；
 这些历史正常路径证据不能证明所有故障路径通过。
 
 迁移提交、实际命令、原始输出和未验边界集中在[执行结果](2026-11-05-vdec-kunit-results.md)。

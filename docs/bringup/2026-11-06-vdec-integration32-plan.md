@@ -88,7 +88,7 @@ parser/v4l2codecs/codecs，路径、ldd解析与SHA身份门禁全部通过后�
 
 ## HEVC 有效输入与首帧
 
-按[HEVC短清单](2026-11-05-hevc-start.md#给-t48t3k-的下一窗短清单)，只启用hevc.c +p。
+按HEVC短清单，只启用hevc.c +p。
 固件/电源预检、IRQ起点采证后，compliance显式送r69同一hevc-intra.vhdr（16 AU）。
 核对首AU5999字节（0x176f）、前缀`0000000140010c01ffff040800000300`、skip=0及
 启动前WAIT_FLAG=0；保存ACTION/reset三时点、IRQ差值、SOURCE_CHANGE和停机日志。

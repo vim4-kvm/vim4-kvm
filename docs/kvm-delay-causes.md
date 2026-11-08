@@ -9,12 +9,11 @@ One-KVM读[策略](#首要差异接收端播放策略)、[配置](#编码配置�
 各应用当前协商/发送规则见[NanoKVM](../NanoKVM/server/service/stream/webrtc/track.go)、[JetKVM](../kvm/internal/playoutdelay/interceptor.go)、[One-KVM](../One-KVM/src/webrtc/universal_session.rs)、[PiKVM](../ustreamer/janus/src/client.c)。
 尽快播放意图不表示网络/解码/显示耗时为零；未协商接收端保持自身策略，WebRTC改动不证明Direct/JPEG收益。
 One-KVM正式复测未持续积压，但H.264回调尾部未改善；PiKVM缓冲下降伴尾部退步，重复轮有丢包/冻结，旧插件也有异常，根因未分离。弱网、长期、多观看者/其他浏览器未覆盖，不能推广固定收益。
-[历史因果对照](archive/kvm-playout-20261016.md)保留临时/正式版本及失败轮，不能作当前内核重测。
 
 ## 接收端耗时拆分
 
 统计计算见[接收器](../tools/one-kvm-smoke.mjs)。processing含缓冲/解码，不能相加；target/minimum是估计目标，actual是驻留，均不是端到端。
-[旧统计](archive/kvm-playout-20261016.md#接收端耗时拆分)非同步同负载，不能据均值差认定H.265固有开销。
+旧统计非同步同负载，不能据均值差认定H.265固有开销。
 
 ## 编码配置也不相同
 
@@ -23,19 +22,19 @@ One-KVM正式复测未持续积压，但H.264回调尾部未改善；PiKVM缓冲
 
 ## One-KVM 低延迟播放策略临时版本对照
 
-[临时对照](archive/kvm-playout-20261016.md#one-kvm-低延迟播放策略临时版本对照)：含IPv6初测限制与固定IPv4协商干预。
+临时对照含IPv6初测限制与固定IPv4协商干预。
 
 ## One-KVM 正式启用与复测
 
-[正式启用](archive/kvm-playout-20261016.md#one-kvm-正式启用与复测)：运动/静态分段与RTP包头证据。
+正式启用后按运动/静态分段并核对RTP包头。
 
 ## PiKVM 正式启用低缓冲策略与限制
 
-[正式启用与失败复测](archive/kvm-playout-20261016.md#pikvm-正式启用低缓冲策略与限制)：0/10、10/20未采用，0/0仍有尾部退步，不能宣称全轮无停顿。
+正式启用与失败复测：0/10、10/20未采用，0/0仍有尾部退步，不能宣称全轮无停顿。
 
 ## PiKVM 软件端到端基线与候选筛选
 
-[软件端点初筛及连续源A/B/A](archive/kvm-playout-20261016.md#pikvm-软件端到端基线与候选筛选)：未证实发布唤醒/采集PTS/按需JPEG达到收益门槛。
+软件端点初筛及连续源A/B/A未证实发布唤醒/采集PTS/按需JPEG达到收益门槛。
 按需JPEG初版因preroll阻塞，async=false后功能恢复；截图完成通知修复改善HTTP响应，不能称WebRTC延迟降低。
 
 ## KVM 播放延迟复核（2026-10-15）

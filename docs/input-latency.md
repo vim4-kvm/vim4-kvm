@@ -36,7 +36,7 @@ UU 像素增量与普通 HID 刻度不同，不能用一个历史位移比做通
 边界以 One-KVM `src/uu_remote/input.rs` 的 MouseScroll 分支为准。
 按[接收探针](../tools/uu-scroll-probe.swift)分别测直连 UU、经 KVM 的 UU 和网页，
 固定鼠标与节奏，用同一原生点单位比较；事件数不等于物理刻度。
-不能 ptrace 实时视频进程，会明显扰动视频。调查及用户主观改善反馈见[滚轮快照](archive/uu-scroll.md)，
+不能 ptrace 实时视频进程，会明显扰动视频。用户主观反馈有改善，
 尚不证明像素滚动与直连完全一致。
 
 ## 证据与边界

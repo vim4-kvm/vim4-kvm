@@ -119,7 +119,7 @@ sudo taskset -c 0,1 /private/path/rtp-udp-bench 300 30 4194304 force-private-buf
 
 ## 编码结论
 
-[编码审查](../archive/encoder-fast-packing-audit.md) 核实每帧只等一次完成中断，无固定重试睡眠。
+编码审查 核实每帧只等一次完成中断，无固定重试睡眠。
 原实测编码入口→输出约12.5/13.3ms，厂商WAIT约12.1/12.9ms，其他API CPU工作约0.27ms。
 WAIT包含硬件与IRQ/调度，现有探针不足以继续拆分。库将 lowLatencyMode 设0；可研究
 只开bit0的fast packing，但bit1中断会进入当前wrapper不支持分支，不能直接启用。

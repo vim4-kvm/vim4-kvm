@@ -31,7 +31,7 @@
 | CL latency，µs | 78.32 / 79.14 | 53.19 / 56.54 |
 | CL SP，GFLOPS | 101.69 / 101.71 | 101.74 / 101.76 |
 
-[r12正式封包烟测](2026-10-31-kbase-r12-package.md)通过API/像素、六类内存、mpgpu、连续GPU负载与
+r12正式封包烟测通过API/像素、六类内存、mpgpu、连续GPU负载与
 实际网页3840×2160并行（35秒59.91fps）、零新增WARN/fault；正常候选一次回5.15后DHCP/SSH、
 四服务、UDC、八项保护哈希及临时助手恢复核验通过，无串口补救。
 API为EGL1.5、GLES3.2、Vulkan1.3.231、OpenCL设备/C3.0；不代表CTS。

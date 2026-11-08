@@ -26,7 +26,7 @@ SDK 显式缓冲由对应释放、detach 或 close 回收，取消不抢收可�
 
 无法确认 DMA 停止时必须锁定故障、拒绝后续请求并向用户态报告，保留模块和可能被访问的页至重启，
 禁止 sysfs 解绑；不能记成“全部资源回收”。这是用户接受的保页例外，真实软复位失败仍欠硬件证明。
-实现与审查依据见[npu3](archive/npu-adla-npu3.md)、[npu4](archive/npu-adla-npu4.md)及[专项验收](bringup/2026-10-30-npu4-acceptance.md)。
+实现与审查依据见[专项验收](bringup/2026-10-30-npu4-acceptance.md)。
 
 ## 兼容合同
 

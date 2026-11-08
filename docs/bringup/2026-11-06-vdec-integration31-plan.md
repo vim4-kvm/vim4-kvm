@@ -66,7 +66,7 @@ VM未安装gst-inspect-1.0，宿主插件加载预检未完成（plugin-prefligh
    请求控制及CAPTURE时间戳；strace包装使用65535字节和十六进制，避免控制数组截断。
    原Fluster ISO容差仍为主判据；FFmpeg逐帧/逐平面差异另列，不替换ISO或忽略缺帧。
    六条MPEG-1仅列格式不支持，不送MPEG-2接口。固定库SHA见工具manifest及原清单。
-4. 最后按[HEVC启动清单](2026-11-05-hevc-start.md)启用hevc.c dynamic debug，保存IRQ起点，
+4. 最后按HEVC启动清单启用hevc.c dynamic debug，保存IRQ起点，
    用既有256×256八位全I样本跑节点带流compliance，再捕获SOURCE_CHANGE及首帧。
    核before-reset/after-reset/after-start、命令读回、IRQ及停机；I420与同输入软件参考
    逐帧比较。全I正确才关闭debug复跑，再运行既有P/B样本并检查显示顺序及EOS/LAST。

@@ -54,7 +54,7 @@ runtime-build 的 overlay、commit、哈希及 `/etc/vim4-kvm/one-kvm-audio.json
 主仓最终完整 unittest 日志 `build/p0-5/p0-final-merge-unittest.log`，451 项、15 跳过，其余通过。
 组件复用既有构建、定向回归与独立审查，完整证据见
 [阶段二记录](2026-11-01-hdr10-phase2-uhd6.md)、[安装](2026-11-01-hdr10-r14e-installed.md)、
-[MAC](2026-11-01-ethernet-mac-handoff.md)、[音频](2026-11-01-onekvm-audio-source-recovery.md)。
+MAC、音频。
 音频 VIM4 lib 830 通过/4 忽略、部署助手37通过；真实 API/旧数字配置及60秒现有采集推进/XRUN=0通过。
 非 VIM4 check 的既有 RKMPP SDK 缺失阻断仍保留，不写为通过。
 

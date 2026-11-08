@@ -7,7 +7,7 @@
 
 ## 窗口与身份
 
-复用[序号修复记录](2026-11-05-vdec-buffer-sequence.md)中的 `.25` Image、
+复用序号修复记录中的 `.25` Image、
 配置与匹配私有模块，未重新构建或变更草稿。内核提交 `e7729c116550`，正式配置，
 Image build ID `915bf903142f874b6f7836568eb89332d8d782be`。不打开 HEVC 节点；
 stateless/JPEG compliance 使用上一窗口同一产物的记录，不重复计为本轮运行。
@@ -18,7 +18,7 @@ H.264 失败后先恢复并释放板锁，再用 `run39/validation-plan.json` �
 每个窗口持 FIFO 票，目标/租约 15 分钟；没有失败后现场重载或换 codec 继续。
 CPU 保持 performance，未调整节能、音频、HID、MMC、DMA debug 或 PWM。
 
-输入和 Fluster 版本沿用[标准准备](2026-11-05-vdec-standard-preparation.md)；
+输入和 Fluster 版本沿用标准准备；
 每个窗口实际执行 `list -c`，可用解码器分别为 `GStreamer-H.264-V4L2SL` 与
 `GStreamer-MPEG2_VIDEO-V4L2SL`，MPEG-2 参考解码器也通过可用性检查。
 板上没有下载码流。

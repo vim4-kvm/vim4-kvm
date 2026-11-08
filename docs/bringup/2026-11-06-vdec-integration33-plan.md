@@ -117,7 +117,7 @@ Sony若ERROR没有对应时间戳的请求诊断，保存rejection-evidence.json
 
 ## HEVC手动头握手与首帧
 
-按[手动NAL短清单](2026-11-05-hevc-header-handshake.md#下一窗分流与判停)，
+按手动NAL短清单，
 只开hevc.c +p；预检固件/电源，记录IRQ起点。使用r70同一全I hevc-intra.vhdr，
 首AU5999字节、skip=0；不换输入。首次search预期0x200001，观察
 09/32→01、09/33→02、09/34→03、09/20→04，随后08/RPM及SOURCE_CHANGE。

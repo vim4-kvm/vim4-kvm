@@ -11,7 +11,7 @@ CPU可见寄存器轨迹及正确首帧；当前没有金标准或已定位分�
 | 厂商入口和release | [r44](2026-11-05-vdec-full-conformance.md#515-一次性启动与中止)当时核对 `5.15.137-vim4kvm-hdrdual6` Image/initrd/DT/1535项清单；相邻主仓库build/hwdecode-parity/vendor-comparison仍有本机归档，不能证明今天板上仍在 |
 | 身份 | kernel-manifest内核build ID=`4a9b69d62ba7b3a5adeb41b213f7f3e573006165`，source字段明确未证实，不能把当前common_drivers当部署来源 |
 | 启动风险 | r44解码前DRM vblank WARNING、约33.6秒hard LOCKUP/panic；未获得成功运行notes匹配，不可直接复用profile称已稳定 |
-| 旧成功路径 | [厂商启动](2026-10-23-vendor-boot-gpu.md)、[H.264活体](2026-10-23-vdec-vendor-live.md)：较早5.15.137-vim4kvm曾一次性往返、已装libgstamlv4l2解600帧；不是hdrdual6/HEVC成功证明 |
+| 旧成功路径 | [厂商启动](2026-10-23-vendor-boot-gpu.md)、H.264活体：较早5.15.137-vim4kvm曾一次性往返、已装libgstamlv4l2解600帧；不是hdrdual6/HEVC成功证明 |
 | VM构建树 | /home/deepdream/src/linux=workspace固定80a07ad5406d57855c996285ae75a50a1b9147ae，有.config/Module.symvers；generated release=5.15.137-vim4kvm；内部common_drivers=563cff9dab2c8cd44590bf57c8ffaa7e2dae35e1，vdin有他人修改，未动 |
 | 本轮参考 | workspace锁common_drivers=31619c527655514b4c89516ef609b6db1dd47db6，Mac只读参考及vendor patch均基于它；与VM树不同，不能用于冒充hdrdual6匹配构建 |
 | 本机归档 | VM build/native-hdr6-5.15-stage/boot有hdrdual6 Image/config/System.map/DT；该stage未找到精确symvers/源码证明，没有修改已有树/O= |

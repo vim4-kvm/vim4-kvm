@@ -1,6 +1,6 @@
 # 2026-10-31：kbase厂商默认策略补齐
 
-承接[r10](2026-10-31-kbase-r10-uhd5.md)，两仓门禁未过的提交已按用户授权推送备份：
+承接r10，两仓门禁未过的提交已按用户授权推送备份：
 主仓gpu-kbase-7x@9b7419f、内核gpu-kbase-7x@9e1726aeb4b3f；未合入正式。
 主仓合入origin/main@be81255，后续窗口直接运行本工作树已合入的main版board-window，
 不再从工具特性worktree加载副本。HDR10、透传和manager工作树未修改。
@@ -94,7 +94,7 @@ main版精简cleanup已执行成功，含r10遗留归属marker的空模块挂载
 140份JSON/日志/脚本等证据逐项SHA验证；scp仅遗漏root私有registry.bin缓存，不是测量证据。
 三张票据分别为只读诊断、候选窗口和故障后恢复，均已释放；没有第三次候选试验。
 正常默认路径的API/性能/温控/并行门禁已满足，**回退自动化仍有DHCP恢复边界**，
-必须作为[待审集成清单](../archive/gpu-kbase-uhd5-integration.md)的限制，不自行改变正式默认路径。
+必须作为待审集成清单的限制，不自行改变正式默认路径。
 
 证据：logs/kbase-r11/、logs/kbase-r11-window/，含live DT、原始驻留、manifest、UART、
 负向故障、final-identity.json、final-state.json和evidence-receipt.json。

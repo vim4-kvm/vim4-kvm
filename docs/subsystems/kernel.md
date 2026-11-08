@@ -16,9 +16,8 @@ IR/按键及NOR与eMMC引脚限制见[设备树记录](../bringup/2026-10-21-edg
 - [构建、安装与回退](../kernel.md)、[VM工作树](../workspace.md#构建)、[部署门禁](deployment.md#内核开发流程与部署门禁)。
 - [Wi-Fi、WPA3及P2P证据](../kernel-mainline.md#相关记录)。
 - [内存、拷贝与锁调试](../memory-copy-audit.md)、[PWM/CCF 锁拓扑与修复边界](../pwm-clock-locking.md)。
-- [下游补丁快照](../archive/kernel-patch-inventory.md)。
-- [电压、温控、空闲与挂起审查](../archive/platform-pm-offline.md)、[板测清单](../parity/platform-pm-board-checklist.md)。
-- [GPU差距、散热与验收](../archive/gpu-parity-plan.md)。
+- [电压、温控、空闲与挂起差距](../parity/platform.md)、[板测清单](../parity/platform-pm-board-checklist.md)。
+- [kbase 产品合同](../gpu-kbase-7x.md)、[GPU 候选维护](../gpu-maintenance.md)。
 - [HEVC 接口与固件参数证据](../bringup/2026-11-05-hevc-interface-review.md)。
 
 ## 内核驱动开发与验证
@@ -41,7 +40,7 @@ IR/按键及NOR与eMMC引脚限制见[设备树记录](../bringup/2026-10-21-edg
 | checkpatch记通过、提交却缺说明和Signed-off-by | 只对diff跑漏查提交信息；对format-patch输出跑并保存原始结果 | `git format-patch -1 --stdout <提交> \| scripts/checkpatch.pl --strict -` |
 | make C=2成功但未跑sparse | 旧版被警告跳过；固定工具、查实际CHECK行，拒绝不可用日志，不只看退出码 | [门禁](../bringup/2026-10-31-hdr2-uhd4-gate.md) |
 | 切换配置后 M= 仍复用旧模块对象 | 跨配置先清理自身目录模块产物，确认实际 CC/CHECK，并检查配置敏感导出/注入符号；退出码不能证明对象属于新配置 | [HDMI RX 迁移](../bringup/2026-11-05-hdmirx-kunit-results.md) |
-| Bifrost回边补丁主机通过、G52挂起 | 分支偏移误算前块而重置计数，须加layout回归；CFG和静态统计不能替代最终编码与硬件验证，短负载全帧正确且无新增timeout才测FPS，出错即否决并正常重启 | [修复](../archive/gpu-loop-repair.md) |
+| Bifrost回边补丁主机通过、G52挂起 | 分支偏移误算前块而重置计数，须加layout回归；CFG和静态统计不能替代最终编码与硬件验证，短负载全帧正确且无新增timeout才测FPS，出错即否决并正常重启 | [板测](../bringup/2026-10-30-gpu-repair-window.md) |
 | 根目录解包破坏/lib，动态程序失效 | 安装保目录符号链接、留stock启动项，按工具参数 | tools/kernel-install.sh、[内核](../kernel.md) |
 | 换Image后模块BTF错、SSH失联 | 分离BTF依赖原vmlinux类型ID，release/vermagic不足；同次构建完整模块、核实际加载，不关BTF掩混装 | [DDC](../bringup/2026-10-19-hdmirx-ddc.md) |
 | 回5.15网口carrier正常却不收包 | 热解绑/重绑实测Oops，保留串口、优先正常重启，不作通用恢复 | [恢复限制](../bringup/2026-10-19-hdmirx-ddc.md#恢复与限制) |

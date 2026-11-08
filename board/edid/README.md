@@ -72,7 +72,7 @@ FreeSync 40–61Hz声明；不新增菜单项。按所选模式限定上限：�
 SDR 8-bit 开始；增加声明不等于已经验证 HDR120、远程120帧或本地 HDMI OUT120。
 原表内的其他保留 VIC/能力声明沿用，不能把校验和正确当作整表协议符合性证明。
 加载后需在源端主动选择 1920×1080 120Hz；完整验收步骤见
-[1080p120 审查](../../docs/archive/1080p120-audit.md)。历史[1080p120实板验收](../../docs/bringup/2026-10-26-1080p120.md)测后曾恢复原表；当前合并部署见[统一RTK入口](../../docs/bringup/2026-10-26-rtk-unified.md)。
+`git show ba9972e:docs/archive/1080p120-audit.md`。历史[1080p120实板验收](../../docs/bringup/2026-10-26-1080p120.md)测后曾恢复原表；当前合并部署见[统一RTK入口](../../docs/bringup/2026-10-26-rtk-unified.md)。
 
 ## VRR EDID 离线候选
 

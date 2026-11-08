@@ -12,7 +12,7 @@
   `libamvenc.so` 和 `amvenc.h` 只开放 `change_bitrate`。实现需要在中间层加 change_qp 转发、
   开启 `ENABLE_PARA_UPDATE`（0x2），再在插件里按 IDR 重置计数，属于小范围用户态改动。
 - **收益**：去掉行刷新后，One-KVM 和 UU 的静止带宽下降，5.15 记录为 AVC 4.28→0.52 Mbps、
-  HEVC 约 19.8→10 Mbps（[编码控制](2026-10-13-encoder-controls.md)）。NanoKVM、JetKVM 的
+  HEVC 约 19.8→10 Mbps（编码控制）。NanoKVM、JetKVM 的
   GOP 120 和 PiKVM 的 GOP 30 改为 0 后，可消除周期关键帧尖峰。
 
 ## 登记 issue

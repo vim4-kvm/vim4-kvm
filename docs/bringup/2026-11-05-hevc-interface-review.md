@@ -73,7 +73,7 @@ compliance 和标准码流验证。当前不进行这项重构。
 EOS 修复 `8c94ee343220cebc8f208097daf2308fd5a04c76` 已提交并推送。
 历史实板结果为三个节点接口 compliance 各 47/47、零警告；HEVC 首个码流超时，
 输出零帧。因此只确认订阅接口修复，带流 EOS 尚未通过。固定版本、原始输出与
-恢复情况见 [记录](2026-11-05-hevc-stateful.md)，不能用本次源码核对代替实板成功。
+恢复情况见 记录，不能用本次源码核对代替实板成功。
 
 本次核对的原始检索输出保存到
 `build/hwdecode-parity/vendor-hevc-parameter-search.log`，代码摘录另存同目录

@@ -13,7 +13,7 @@ then-current main branch and check whether the issue is already fixed there.
    independently of GCM. Tests cover self, forward and cross-block offsets.
 
 Apply with `git am` in this order; patch 2 also applies independently. No author
-or license changes to existing source. Review evidence: [loop repair](../../../docs/archive/gpu-loop-repair.md)
+or license changes to existing source. Review evidence: `git show ba9972e:docs/archive/gpu-loop-repair.md`
 and [hardware results](../../../docs/bringup/2026-10-30-gpu-repair-window.md).
 Original 0004/0005 remain experimental, not in this upstream queue. The fixed
 probe passes; divergent/helper-invocation/CTS coverage remains insufficient to
@@ -25,6 +25,6 @@ from the GPU branch, retaining its author and license; the private pm-test DTS
 cleanup is omitted. It is for a kernel queue,
 not `git am` into Mesa. Its T7/VIM4 DTS baseline must first be matched to the
 target upstream tree; it is not claimed to apply to an arbitrary Linux release.
-Review/build/schema and hardware binding evidence: [GPU parity](../../../docs/archive/gpu-parity-plan.md).
+Review/build/schema and hardware binding evidence: `git show ba9972e:docs/archive/gpu-parity-plan.md`.
 The 10ms polling and temporary PM QoS boost changes remain platform experiments
 pending wider power/lifecycle review, not in this submission-ready queue.

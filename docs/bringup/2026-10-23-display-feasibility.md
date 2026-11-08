@@ -9,7 +9,7 @@ simpledrm 仅保留条件路线：当前启动没有已点亮 HDMI framebuffer �
 
 本任务只审源码、检索、SSH 只读查询，没有写驱动、构建、加载模块、停服务或重启。
 日期按板端 UTC；寄存器、厂商文件/行号及差异见
-[硬件与源码明细](2026-10-23-display-hardware-audit.md)。
+硬件与源码明细。
 
 ## 基线与证据范围
 
@@ -22,7 +22,7 @@ simpledrm 仅保留条件路线：当前启动没有已点亮 HDMI framebuffer �
 | 板上内核 | `7.3.0-vim4kvm-uhd1+`，build ID `3a61b75bccf8c46e9411dee92928999884bbfc7f` |
 | 已部署 U-Boot | `0d5a3d7848377c0093ecdfb15de80cf2bf83e928`，源码 `~/src/u-boot-pd-handoff` |
 
-部署来源及既有 HID 回归见 [Wave5 正式部署](2026-10-22-edge-wave5-deploy.md)。
+部署来源及既有 HID 回归见 Wave5 正式部署。
 原始只读日志在主工作区 `logs/display-feasibility/`，不入库；关键输出抄录如下。
 
 ## 已有实现与社区现状
@@ -135,5 +135,5 @@ SMC/直接 MMIO 差异不能凭 bridge 已绑定跳过。
 待用户确认：HDMI-OUT 是否接显示器、型号/1080p60/声音能力；能否提供真实画面和后续拔插窗口；
 最终是否要求 KVM 与桌面同时运行。未收到硬件答复时按“显示器及音频 sink 尚未确认”安排后续。
 
-本轮无部署和恢复；结束复核及测试见[明细](2026-10-23-display-hardware-audit.md)。HID 仅查节点与 UDC，
+本轮无部署和恢复；结束复核及测试见明细。HID 仅查节点与 UDC，
 没有写 HID 报告，不能声称本轮重新通过端到端键鼠验证。

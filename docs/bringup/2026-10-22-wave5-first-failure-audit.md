@@ -7,7 +7,7 @@
 
 ## 保存日志的时间线
 
-来源：[部署记录](2026-10-22-edge-wave5-deploy.md)、
+来源：部署记录、
 `logs/wave5-deploy/window/h265.log`、failure-board.log、video/browser-h265-events.jsonl。
 浏览器文件名时间是Mac Unix毫秒，journal为板端UTC；下表的截图保存时间来自本地文件mtime，
 只辅助排序，不作为精确延迟测量。

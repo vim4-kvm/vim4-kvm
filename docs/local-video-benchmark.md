@@ -4,8 +4,7 @@
 最后在 7.x 测真实采集、编码和网页解码。无需为每次用户态改动重启或更新内核。
 
 RTP 分包、默认 interceptor、真实 SRTP 和 UDP 批量发送另见
-[发送基准](bringup/2026-10-25-rtp-send-benchmark.md)。编码器的
-[fast packing 审查](archive/encoder-fast-packing-audit.md) 区分离线可验证行为与硬件 A/B。
+[发送基准](bringup/2026-10-25-rtp-send-benchmark.md)。
 
 ## 软件路径
 

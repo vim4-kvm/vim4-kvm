@@ -9,7 +9,7 @@
 
 内核提交 `99fbe81fdcbf8b88836574323c410b293c8b6be6`，tree
 `866535fece97691eb9c4d69a9f4919a75bf05096`，基于
-[首版 V4L2 队列](2026-10-19-hdmirx-v4l2.md)。源码仍在 VM `vim4-build` 的
+首版 V4L2 队列。源码仍在 VM `vim4-build` 的
 `/home/deepdream/src/linux-7.3/drivers/media/platform/amlogic/t7-hdmirx/`。
 普通 VIM4 DTB 不启用此实验；专用 DTB 独占整个 VPU 寄存器窗口并禁用 DRM VPU 节点。
 共享 VPU、时钟和电源的生产架构仍需处理。
@@ -86,7 +86,7 @@ Mac 物理 HDMI 屏幕运行 `latency-source.swift --motion --verify-coherence`�
 ## 验证入口与证据
 
 加载接收器参数及实验启动隔离沿用
-[完整快照记录](2026-10-19-hdmirx-frames.md)。V4L2 工具和调用方法沿用首版记录；
+完整快照记录。V4L2 工具和调用方法沿用首版记录；
 长测参数为 `/dev/video0 1800 3 输出目录`。仅支持 MMAP；节点编号动态分配。
 
 内核的 `test_stream.py` 直接编译实际 C IRQ、私有环、工作线程和队列函数，用条件变量

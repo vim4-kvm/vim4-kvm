@@ -92,7 +92,7 @@ def anchors(path):
 class DocsTest(unittest.TestCase):
     def test_documented_python_scripts_exist(self):
         documents = [path for path in tracked('*.md')
-                     if not path.relative_to(ROOT).as_posix().startswith(('docs/bringup/', 'docs/archive/'))]
+                     if not path.relative_to(ROOT).as_posix().startswith('docs/bringup/')]
         missing = []
         for document in documents:
             # tools/ and packaging/ commands refer to the main workspace root.
@@ -151,22 +151,10 @@ class DocsTest(unittest.TestCase):
                      if p.stat().st_size > 10000}
         self.assertEqual(oversized, {})
 
-    def test_archive_snapshots_are_labelled_and_indexed(self):
-        archive = ROOT / 'docs/archive'
-        index = archive / 'README.md'
-        indexed = {(index.parent / target.split('#')[0]).resolve()
-                   for target in LINK.findall(index.read_text()) if not re.match(r'[a-z]+:', target)}
-        for doc in archive.rglob('*.md'):
-            if doc.name == 'README.md':
-                continue
-            with self.subTest(doc=doc.relative_to(ROOT)):
-                self.assertRegex(doc.read_text(), r'\A# [^\n]+\n\n> 归档快照（\d{4}-\d{2}-\d{2}）：[^\n]+')
-                self.assertIn(doc.resolve(), indexed)
-
     def test_task_routes_do_not_link_directly_to_evidence(self):
         for target in LINK.findall((ROOT / 'AGENTS.md').read_text()):
             path = target.split('#')[0]
-            if path.startswith(('docs/archive/', 'docs/bringup/')):
+            if path.startswith('docs/bringup/'):
                 self.assertEqual(path.rsplit('/', 1)[-1], 'README.md', target)
 
     def test_bringup_entries_are_indexed_and_bounded(self):
@@ -176,6 +164,14 @@ class DocsTest(unittest.TestCase):
         self.assertEqual([p.name for p in entries if f'({p.name})' not in index], [])
         self.assertEqual([p.name for p in entries if len(p.read_bytes()) > 12000], [])
         self.assertFalse((ROOT / 'docs/bringup-log.md').exists())
+        self.assertFalse((ROOT / 'docs/archive').exists())
+
+    # Searched on every evidence lookup: one title-and-tags line per record; prune unreferenced records when full.
+    def test_bringup_index_stays_small(self):
+        index = (ROOT / 'docs/bringup/README.md').read_text()
+        entries = [line for line in index.split(DATE_INDEX, 1)[1].splitlines() if line.startswith('- ')]
+        self.assertEqual([line for line in entries if not re.fullmatch(r'- \[[^\]]+\]\([\w-]+\.md\) — [a-z0-9 ]+', line)], [])
+        self.assertLessEqual(len(index.encode()), 40000)
 
 
 if __name__ == '__main__':

@@ -1,6 +1,6 @@
 # 2026-10-30：nodebug 两启动对门禁不确定，大核 memcpy 未复现退化
 
-完成[预登记两对门禁](../archive/nodebug-performance-gate.md)：A1/B1/A2/B2各独立启动，最后回默认A。
+完成预登记两对门禁：A1/B1/A2/B2各独立启动，最后回默认A。
 **大核64MiB memcpy没有复现变慢；tmpfs、三模型SDK和YOLO端到端点估计均更快，
 但性能门禁仍不确定。** 建议批准纯调试关闭配置草案，不据本轮单独pin或宣称全局追平。
 按用户本轮判定，memcpy为辅助待查项，不阻塞tmpfs/端到端；其余保持原统计口径。
@@ -9,7 +9,7 @@
 
 A为5.15.137-vim4kvm-hdrdual6，ID `4a9b69d62ba7b3a5adeb41b213f7f3e573006165`；
 B为7.3.0-vim4kvm-uhd2-nodebug+，ID `af60b9bcb3cb6b84a62d6f4f664e9db53dfde202`，
-源码/配置/完整2338模块沿用[已测候选](../archive/uhd2-nodebug.md)，没有新驱动/正式配置改动。
+源码/配置/完整2338模块沿用已测候选，没有新驱动/正式配置改动。
 新微基准同SHA `09f8eb10d83ece4f4a68edc95c8fb7e42b79f1d95b3c0534eba71d7724e8ef18`；
 NPU probe同`d721833446b3525f84263d8a1daf123367dafa56a1ded2ea07e79c90a73e5bd3`，SDK/输入不变。
 

@@ -3,7 +3,7 @@
 ## 摘要与环境
 
 根因已定位，独立网页全尺寸达到约 60fps；用户随后确认 UU 客户端各分辨率均正常
-60fps。非致命时钟降级、生产合入与最终重部署见[生产记录](2026-10-25-uu-scaling-production.md)。
+60fps。非致命时钟降级、生产合入与最终重部署见生产记录。
 
 板子为 `5.15.137-vim4kvm`，保留 aml_media 字节序修复、One-KVM 和
 `vim4-passthrough`：VDIN0 → vfm_cap → amvideo → VD1，扫描输出配置为 4K60。

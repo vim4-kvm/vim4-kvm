@@ -29,7 +29,7 @@ mask 防止 syslog socket 或手工依赖重新激活；`/dev/log` 继续由 jou
 
 配置为 `Storage=persistent`、压缩、`SystemMaxUse=256M`、`SystemKeepFree=1G`、
 `SystemMaxFileSize=32M`、`MaxRetentionSec=7day`、`RuntimeMaxUse=32M`、`SyncIntervalSec=5m`。
-依据[第一轮预算](2026-10-22-p2-persistent-logs.md#写入量估算与容量)：1 条/秒约 84 MiB/日，
+依据第一轮预算：1 条/秒约 84 MiB/日，
 256 MiB 约留 3 天；活跃测试窗口 5.71 条/秒约留半天。7 天是期限上限，不保证保存时长。
 五分钟同步降低同步频率；突然断电仍可能丢最后一段。存量上限不限制累计 eMMC 写入。
 
@@ -64,7 +64,7 @@ rsyslog masked/inactive；两个旧文件仍为 115074703 / 17339575 字节，�
 最终只读证据 `logs/p2-round2/logging-final-readonly.log`。
 这证明 journal 的有效上限被采用，未用大量日志灌满磁盘验证轮转边界；没有 24 小时
 写放大或 eMMC 寿命测量。服务检查为 one-kvm、vim4-manager；实际 HID 与内核身份的
-最终复核见 [ramoops 记录](2026-10-22-p2-pstore.md)。
+最终复核见 ramoops 记录。
 
 离线 shell 语法、board 包 payload/权限/postinst 组装检查通过；未构建完整 Ubuntu 镜像。
 主仓库测试 `python3 -m unittest discover -s tests -p 'test_*.py'`：163 项、5 skipped、OK。

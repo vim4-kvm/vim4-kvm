@@ -2,7 +2,7 @@
 
 ## 范围与安全边界
 
-前置 [HDR→SDR 修复](2026-10-25-vendor-passthrough-hdr.md) 已交付默认 hdr1，
+前置 HDR→SDR 修复 已交付默认 hdr1，
 manager main `3c6ade7`、common_drivers 正式分支 `28b3dfef6`、主仓 `828630d`。
 本条记录后续原生 HDR 实验及交付：显示保留 HDR10，独立 VDIN1 为 KVM 映射 SDR，
 两路4K60。用户目视确认“没问题”，批准全部合入、部署并改为默认；未单独确认 HDR 图标。
@@ -130,7 +130,7 @@ frame_rate5999→5998、tmds_invalid→unready、READY→WAIT_CLK_STABLE，
 drop/lost/freeze/PLI增量0，呈现p95 18.0ms、最大32.7ms、无>50ms。
 不创建音频分析器、不播音；仅只读确认声音服务 active。
 随后复核发现 modeset 后 AVI 色域退回709，原观察提前结束；修复及重新验收见
-[正式部署收尾](2026-10-25-native-hdr-production.md)，不把该窗口记作30分钟成功。
+正式部署收尾，不把该窗口记作30分钟成功。
 
 ## 版本、验证与限制
 

@@ -8,8 +8,8 @@
 没有安装候选库、修改应用配置或承诺UU端到端收益。
 
 本轮是板上硬编码、固定输入回放；不是纯CPU模拟，也不是HDMI→浏览器延迟测试。
-网络FIFO结果是离线模型。后续方案分别见[1080p120](../archive/1080p120-audit.md)和
-[本地VRR](../archive/vrr-passthrough-audit.md)，本轮没有实施它们。
+网络FIFO结果是离线模型。后续方案分别见1080p120和
+本地VRR，本轮没有实施它们。
 
 ## 身份与隔离方法
 
@@ -25,7 +25,7 @@
 
 libamvenc为`0.2-202406~noble`，libmultienc为`0.7-202406~noble`。
 公开头文件来自既有审查的`encoder_libs_aml@4c38af2b`，不把其当作厂商二进制精确同源证明；
-身份/ABI背景见[编码库审计](../archive/encoder-fast-packing-audit.md)。头文件不随项目再分发。
+身份/ABI背景见编码库审计。头文件不随项目再分发。
 
 私有LD_PRELOAD探针截获`VPU_EncOpen`，只改变`EncOpenParam.vbvBufferSize`。
 实机反汇编中`AML_MultiEncInitialize`写3000到该结构偏移56；探针读回尺寸3840×2160、
