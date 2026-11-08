@@ -101,7 +101,6 @@
 
 - [HEVC 金标准轨迹离线方案](2026-11-05-hevc-golden-plan.md) — kernel video
 
-- [MR3/4/5 缺口参考定位](2026-11-05-vdec-gap-references.md) — kernel video
 - [r61 parser A/B 像素采证](2026-11-05-vdec-r61-parser-ab.md) — kernel video
 - [冷复位 A/B r60](2026-11-05-vdec-coldboot-ab-r60.md) — kernel
 - [RESET/VBUS/PD 闭环方案](2026-11-05-vdec-reset-measurement-plan.md) — kernel usb
@@ -116,7 +115,6 @@
 - [7.3 集成内核与新 manager 正式部署](2026-11-05-integration-formal-deploy.md) — kernel deployment manager
 
 - [完整 AVC/MPEG-2 一致性与 bit21 实验](2026-11-05-vdec-full-conformance.md) — kernel video
-- [标准码流失败特性聚类](2026-11-05-vdec-failure-groups.md) — kernel video
 - [H.264 场缓冲生命周期](2026-11-05-vdec-field-lifetime.md) — kernel video
 - [独立格式 Fluster 与 HEVC 启动顺序](2026-11-05-vdec-independent-fluster.md) — kernel video
 - [集成候选构建与 KUnit 复验](2026-11-05-integration-build-results.md) — kernel

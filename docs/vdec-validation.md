@@ -77,6 +77,11 @@ compliance 也启用首个失败/警告即退出。
 结果目录，全部共用原截止时间。像素 Fail 或解码 Error 按流记录后继续收集；
 Timeout、内核 BUG/WARNING/KASAN、DMA 停机失败或挂死立即停止并恢复。
 每流结束都检查内核日志；预算不足时保留 Not run，下一窗口从未运行项继续。
+`known_unsupported` 按已有证据逐项跳过并单列原因，不计通过；`keep_output_vectors`、
+`trace_vectors`、`ioctl_trace_vectors`、`vector_environment` 分别保留点名输出、用独立
+tracefs instance 记录队列事件及丢事件计数、记录 ioctl、设置逐流调试日志。
+编码共存统计只解析指定设备 minor 的 CAPTURE `v4l2_dqbuf`，不依赖无调用点的
+`vb2_v4l2_buf_done`；K9 还须独立核验丢事件、应用连续性和 busy-open 前/中/后统计。
 `window-status.json` 的 success 表示窗口安全完成，conformance_passed 才表示
 所选码流全部通过，不能以进程退出零替代逐流结果。生产配置窗口可以验证
 功能和像素，仍核运行配置哈希，但必须与尚未完成的调试内核锁/内存验收分开记录。

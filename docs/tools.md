@@ -5,10 +5,6 @@
 约束见[板级工具](board-tools.md)、[占板窗口](board-window.md)。增删工具同步本页。
 导航：[构建打包](#工作区构建与打包) · [板操作](#板级操作) · [服务](#板级服务源码由-boardinstallsh-或组件包安装) · [应用回归](#应用回归浏览器) · [诊断测量](#诊断与测量)。
 
-## 浏览器测试的公共前提
-
-见[公共前提](board-tools.md#浏览器测试的公共前提)。
-
 ## 工作区、构建与打包
 
 重型构建在Mac侧通过 `tools/board-queue run --heavy --who TASK --purpose PURPOSE -- orb -m vim4-build ...`
@@ -21,9 +17,8 @@
 | [hevc-golden/align.py](../packaging/kernel/hevc-golden/align.py) | 无 | 离线归一化/对齐厂商与7.3轨迹；拒绝丢事件或snapshot冒充完整访问，补丁/边界见同目录README。 |
 | [ubuntu-build.py](../tools/ubuntu-build.py)、ubuntu-image.py、[packaging/ubuntu/](../packaging/ubuntu)、[packaging/image/](../packaging/image) | 无 | 组件打包与镜像组装；开发包可指定目标已安装版本下限。 |
 | [packaging/kernel/](../packaging/kernel) | 独占 | 内核构建及板端准备。 |
-| [build-integration.py](../packaging/kernel/build-integration.py) | 无 | 持heavy票离线构建并封存生产/调试RAM候选；复用同一O=时同步并核对生效配置，保存生成头证据，分别传构建号可指定顺序。 |
 | [package-unified.py](../packaging/kernel/package-unified.py)（同目录 package-hdr10.py、package-final.py、package-vdec.py） | 无 | 封存已构建候选包。 |
-| [build-integration.py](../packaging/kernel/build-integration.py) | 无；写 VM 构建目录 | 持 heavy 租约后离线构建指定完整 SHA 的生产/调试 RAM 候选，复用同一 O=，封包后清理对象；不排票、不访问板子。 |
+| [build-integration.py](../packaging/kernel/build-integration.py) | 无；写 VM 构建目录 | 持 heavy 租约后离线构建并封存指定完整 SHA 的生产/调试 RAM 候选；复用同一 O= 时核对生效配置，封包后清理对象；不排票、不访问板子。 |
 | [build-gstreamer.py](../packaging/kernel/build-gstreamer.py)（test_gstreamer_p010.py、test_gstreamer_pq.py、test_gstreamer_visible_crop.py、[test_gstreamer_hevc_eos.py](../packaging/kernel/test_gstreamer_hevc_eos.py)） | 无 | 插件构建及离线协商回放；HEVC EOS fixture用实际驱动/GStreamer C复现初始事件与LAST分流，不打开设备。 |
 | [maintain.py](../packaging/kernel/maintain.py) | 无 | 补丁导出与前移。 |
 | [vdec-fixtures.py](../packaging/kernel/vdec-fixtures.py) | 无 | 生成 H.264/MPEG-2/MJPEG 运动样本；JPEG 保留全范围参考像素，generate-fields 下载并校验固定场编码样本。离线逐帧比较 I420 并量化平面误差，非逐字节一致仍返回失败。 |
@@ -54,15 +49,12 @@
 | [coldboot-ab.py](../packaging/kernel/coldboot-ab.py) | 破坏；重启 | 默认离线核验两组锁定 RAM 包；显式 execute 在既有票内交替启动、连续 UART 及独立 ready 模块快照采证、恢复正式基线，不自行排票。 |
 | [coldboot-collect.py](../packaging/kernel/coldboot-collect.py) | 只读 | 仅显式启用的 RAM init 启动；有界子进程读取模块参数和配置，完整快照留 tmpfs，串口只报紧凑摘要。 |
 | [final-window.py](../packaging/kernel/final-window.py)（final-board.py） | 破坏；重启 | 正式包部署、验证与恢复。 |
-| [final-regression.py](../packaging/kernel/final-regression.py)（[final-manager-check.mjs](../packaging/kernel/final-manager-check.mjs)、final-manager-pd.mjs） | 独占；断开 USB | 离线快照及部署回归；manager检查用 `VIM4_EXPECTED_RELEASE` 指定窗口内核，核PD的B状态固定字段、标准thermal风扇和管理页；期望来自[pd-b-state.json](../packaging/kernel/pd-b-state.json)，当次固件协商原样存证，允许合同/Rp变化，拒绝驱动接管/协商回退及I/O错误/hardReset。 |
-| [vdec-window.py](../packaging/kernel/vdec-window.py)（vdec-register-dump.c、[vdec-benchmark.c](../packaging/kernel/vdec-benchmark.c)） | 破坏；重启 | 解码候选窗口、compliance、fluster 与性能；默认离线，复用板队列、manifest、watchdog 和基线视频恢复；`--baseline-proof` 排票前核对保护清单；主线候选正常 open/close 验 runtime PM，不传 bring-up 参数或执行强制预检；显式 `preserve_decoder_probe` 只卸载编码器并核原绑定模块身份，用于运行期租约切换；删除 power/mdec/snapshot 动作，旧动作和诊断计划明确拒绝；像素失败继续、超时/内核异常停止；`known_unsupported` 按已有证据逐项跳过并单列原因，不计通过；`keep_output_vectors` 保留点名输出，`trace_vectors` 用独立 tracefs instance 记录队列事件并保存丢事件计数，`ioctl_trace_vectors` 使用已校验的 `ioctl_trace_tool` 记录 ioctl，`vector_environment` 设置逐流调试日志；见[验收合同](vdec-validation.md)。 |
+| [final-regression.py](../packaging/kernel/final-regression.py)（[final-manager-check.mjs](../packaging/kernel/final-manager-check.mjs)、final-manager-pd.mjs） | 独占；断开 USB | 离线快照及部署回归，含 manager 与 PD B 状态检查；期望值见[pd-b-state.json](../packaging/kernel/pd-b-state.json)，参数见头注释。 |
+| [vdec-window.py](../packaging/kernel/vdec-window.py)（vdec-register-dump.c、[vdec-benchmark.c](../packaging/kernel/vdec-benchmark.c)） | 破坏；重启 | 解码候选窗口：compliance、fluster、性能与共存；默认离线，复用板队列、manifest、watchdog 和基线视频恢复，见[验收合同](vdec-validation.md)。 |
 | [check-wifi-p2p.py](../packaging/kernel/check-wifi-p2p.py) | 独占 | Wi-Fi/P2P 验证。 |
 | [phase2-window.py](../packaging/hdr10/phase2-window.py)（m6-gates.py、phase2-board.py、phase2-run） | 破坏；重启 | HDR10 批量验收窗口。 |
 | [build.py](../packaging/kbase/build.py)（同目录 package.py、run.py、check-style.py、check-semantics.py、check-heaps.py、clpeak-subset.py、dma-profile.py、default-parity.py、resolve-egl.c、heaps/vim4_kbase_heaps.c、dvfs/governor_vim4.c） | 独占 | kbase 构建、GPU 门禁与调频。 |
 
-`vdec-window.py` 的编码共存统计辅助函数只解析指定设备 minor 的 CAPTURE `v4l2_dqbuf`，
-按完成数和时间跨度判定活动，拒绝错误缓冲；不依赖无调用点的 `vb2_v4l2_buf_done`。
-它不改变默认窗口或trace采集路径；K9还须独立核验丢事件、应用连续性和busy-open前/中/后统计。
 
 ## 板级服务源码（由 board/install.sh 或组件包安装）
 
@@ -120,7 +112,7 @@
 | [perf-sensors.py](../tools/perf-sensors.py)、passthrough-monitor.py、hdmi-control-watch.py | 只读 | 板端遥测与 HDMI 状态观察。 |
 | [vendor-boot-plan.py](../tools/vendor-boot-plan.py) | 无 | 离线一次性启动计划。 |
 | [hdmi-source-mode.swift](../tools/hdmi-source-mode.swift)、hdmi-resolution-source.swift、latency-source.swift、input-target.swift | 独占 | Mac 信源模式、图样及输入接收窗口。 |
-| [latency-receiver.mjs](../tools/latency-receiver.mjs)、board-window-receiver.mjs、board-window-timing.mjs | 独占 | 浏览器帧标记与呈现接收；在 build/ 私有目录锁定 Playwright/Chromium，用 PLAYWRIGHT_MODULE 指向 index.mjs，入场前离线导入冒烟；默认使用 Chrome 通道。 |
+| [latency-receiver.mjs](../tools/latency-receiver.mjs)、board-window-receiver.mjs、board-window-timing.mjs | 独占 | 浏览器帧标记与呈现接收；Playwright 依赖见[工作区](workspace.md)，用法见头注释。 |
 | [latency-summary.py](../tools/latency-summary.py)、latency-rtp-summary.py、video-timing-summary.py、input-summary.py | 无 | 离线时序汇总。 |
 | [key-repeat.html](../tools/key-repeat.html) | 无 | 被控电脑浏览器手动长按对照。 |
 | [uu-scroll-probe.swift](../tools/uu-scroll-probe.swift) | 无 | 历史：Mac 滚轮事件调查，见[滚轮语义](input-latency.md#滚轮语义)。 |
