@@ -1,0 +1,54 @@
+{
+  "schema": 1,
+  "release": "7.3.1-vim4-20261108",
+  "image_source_revision": "3eab9050d53ebb4ae4fdb21e1b3c50282280579f",
+  "build_id": "e5b33474e34ac9eec34a8e357a2f25709e8e0715",
+  "package_sha256": "3dc376aa370489172276218bebc0cec8e83ac1081b3df3f0d9d6a5c92b27e508",
+  "manifest": "manifest.json",
+  "installed": true,
+  "default_boot": "Mainline",
+  "profiles": {
+    "kbase": {
+      "dtb": "vim4.dtb",
+      "sha256": "fbef1ddaecdc7924de841c9fe36885bcb8c36b18cd4b97804a74af44f2588b90",
+      "compatible": "khadas,vim4-mali-kbase-r44p0",
+      "blacklist": [
+        "panfrost"
+      ],
+      "modules": [
+        "vim4_kbase_heaps",
+        "governor_vim4",
+        "mali_kbase"
+      ],
+      "gpu_driver": "mali",
+      "wrapper": "/usr/libexec/vim4-kvm-run",
+      "gpu_wrapper": "/usr/lib/vim4-kvm/python/vim4gpu.py",
+      "egl": "private-prefix",
+      "vulkan": "private-icd",
+      "opencl": "private-icd"
+    },
+    "panfrost": {
+      "dtb": "panfrost.dtb",
+      "sha256": "848e9b1d8b637b2a47e4a1f314174cd9e18ec9bf0cf6ae99b1ac334757a947a7",
+      "gpu_driver": "panfrost",
+      "userspace": "system-mesa"
+    }
+  },
+  "blob": {
+    "provision_separately": true,
+    "sha256": "536ee80c17dc5c54e7c6ff029ca43270da8efc3fdc5b3aeb263f364419368494",
+    "uk": "11.39",
+    "glvnd_vendor": false
+  },
+  "validation": {
+    "accepted": "Single-subsystem decoder change: identity, artifact hashes, passive video, DOS regmap debugfs gating, K9 busy open and HEVC/JPEG decode smoke",
+    "receipt": "validation.json",
+    "limitations": [
+      "Single-subsystem gate: nine classes, 600-second motion, HID injection, EDID, audio, media and GPU were not run.",
+      "Decode smoke covers three HEVC conformance streams and three JPEG fixtures, not the full HEVC/H264/MPEG2 suites.",
+      "HEVC integration42 has 127 Success, 3 Error and 2 kernel Timeout among 132 streams; no claim of full 5.15 parity.",
+      "Cold-reset absence in this natural default boot does not establish a fix or physical VBUS cause."
+    ]
+  },
+  "gpu_default": "kbase"
+}

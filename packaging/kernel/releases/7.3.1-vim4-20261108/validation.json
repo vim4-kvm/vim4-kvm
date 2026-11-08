@@ -1,0 +1,30 @@
+{
+  "source": "3eab9050d53ebb4ae4fdb21e1b3c50282280579f",
+  "release": "7.3.1-vim4-20261108",
+  "kernel_build_id": "e5b33474e34ac9eec34a8e357a2f25709e8e0715",
+  "package_sha256": "3dc376aa370489172276218bebc0cec8e83ac1081b3df3f0d9d6a5c92b27e508",
+  "status": "installed-targeted-checks",
+  "scope": "single-subsystem-targeted-checks",
+  "evidence": "docs/bringup/2026-11-08-vdec-dos-regmap-deploy.md",
+  "limitations": [
+    "Single-subsystem gate: nine classes, 600-second motion, HID injection, EDID, audio, media and GPU were not run.",
+    "Decode smoke covers three HEVC conformance streams and three JPEG fixtures, not the full HEVC/H264/MPEG2 suites.",
+    "HEVC integration42 has 127 Success, 3 Error and 2 kernel Timeout among 132 streams; no claim of full 5.15 parity.",
+    "Cold-reset absence in this natural default boot does not establish a fix or physical VBUS cause."
+  ],
+  "passive_video": [
+    {
+      "fps": 59.96204252802869,
+      "frames": 300
+    },
+    {
+      "fps": 59.36888378248613,
+      "frames": 297
+    }
+  ],
+  "smoke_sha256": "0fda68f29b596cfeb1c5bcc7cbf358fb89c4c52faf6947ba1793a36728b81b63",
+  "installed_proof_sha256": "4b92872b2394d0c3bf5d14b8812a8aa5eedd24097b04807c1ac13fa5eae3d229",
+  "baseline_proof_sha256": "2c25c7fa65cba33471ff3394ba83eb73ad248ed0f828e9bc9f4ec9658f431258",
+  "runtime_metadata_sha256": "d90dd108c2dc2967768872c417b0e8d4672d8774fd5e7e55424d62dffb5371cd",
+  "logs": "logs/vdec-followups/deploy-1"
+}

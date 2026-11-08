@@ -17,6 +17,7 @@
 
 ## 2026-11-08
 
+- [DOS regmap debugfs修复设为默认](2026-11-08-vdec-dos-regmap-deploy.md) — kernel video deployment；.43 cache-only挡住断电DOS读，debugfs空闲全X/open有值，HEVC3/JPEG3冒烟、K9 EBUSY、被动4K视频通过；退役20261105启动目录。
 - [fusb302屏蔽时显示固件PD](2026-11-08-manager-pd-firmware-display.md) — manager usb；vim4pd让出内核PD状态、helper不走I²C，manager dev.11上板，概览显示U-Boot交接，PD服务未重启。
 
 ## 2026-11-07
