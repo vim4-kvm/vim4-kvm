@@ -55,8 +55,8 @@ revision = "4cc240747f1863439ff9e1263fd3eb1803fee39f"
 name = "vim4-manager"
 url = "https://github.com/vim4-kvm/vim4-manager.git"
 branch = "main"
-# Deployed 2026-11-08 as 2.5.1+vim4.20261029.102.dev.11.gf384b3d; firmware PD handoff shown with fusb302 blacklisted (docs/bringup/2026-11-08-manager-pd-firmware-display.md).
-revision = "f384b3d2854cb3985c63ab03753bb2ed6a96ad3e"
+# Deployed 2026-11-11 as 2.5.1+vim4.20261029.102.dev.12.g1aac105; pollers pause in hidden tabs (docs/bringup/2026-11-11-manager-hidden-polling.md).
+revision = "1aac105d3e3b6c66453f14e0026daa60f43b8228"
 
 [kernel]
 url = "https://github.com/vim4-kvm/linux.git"

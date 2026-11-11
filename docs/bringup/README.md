@@ -18,6 +18,10 @@
 
 以下保留完整日期索引。
 
+## 2026-11-11
+
+- [管理器后台标签页暂停轮询与输入法回车修复](2026-11-11-manager-hidden-polling.md) — manager deployment
+
 ## 2026-11-08
 
 - [HEVC 剩余修复正式默认与四次部署记录](2026-11-08-hevc-remaining5-deploy.md) — kernel video deployment
