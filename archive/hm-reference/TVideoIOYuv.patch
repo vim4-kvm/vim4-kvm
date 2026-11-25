@@ -1,0 +1,12 @@
+diff --git a/source/Lib/Utilities/TVideoIOYuv.cpp b/source/Lib/Utilities/TVideoIOYuv.cpp
+index 2362c67..24dfdbd 100644
+--- a/source/Lib/Utilities/TVideoIOYuv.cpp
++++ b/source/Lib/Utilities/TVideoIOYuv.cpp
+@@ -810,6 +810,7 @@ Bool TVideoIOYuv::write( TComPicYuv* pPicYuvUser, const InputColourSpaceConversi
+   const Int  stride444 = dstPicYuv->getStride(COMPONENT_Y);
+   const UInt width444  = dstPicYuv->getWidth(COMPONENT_Y) - confLeft - confRight;
+   const UInt height444 = dstPicYuv->getHeight(COMPONENT_Y) -  confTop  - confBottom;
++  fprintf(stderr, "REFERENCE_LAYOUT %u %u\n", width444, height444);
+ 
+   if ((width444 == 0) || (height444 == 0))
+   {
